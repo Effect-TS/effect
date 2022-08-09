@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/io/Schedule.Ops succeed
  */
-export function succeed<A>(
-  a: LazyArg<A>
-): Schedule<number, never, unknown, A> {
-  return Schedule.repeatForever.map(a)
+export function succeed<A>(a: A): Schedule<number, never, unknown, A> {
+  return Schedule.repeatForever.map(() => a)
 }

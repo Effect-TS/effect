@@ -7,7 +7,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus static effect/core/io/Schedule.Aspects provideEnvironment
  * @tsplus pipeable effect/core/io/Schedule provideEnvironment
  */
-export function provideEnvironment<R>(environment: LazyArg<Env<R>>) {
+export function provideEnvironment<R>(environment: Env<R>) {
   return <State, In, Out>(self: Schedule<State, R, In, Out>): Schedule<State, never, In, Out> =>
     makeWithState(
       self.initial,

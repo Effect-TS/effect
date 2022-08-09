@@ -5,10 +5,10 @@
  * @tsplus static effect/core/io/Effect.Ops collectFirst
  */
 export function collectFirst<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, Maybe<B>>
 ): Effect<R, E, Maybe<B>> {
-  return Effect.sync(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
+  return Effect.suspendSucceed(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(

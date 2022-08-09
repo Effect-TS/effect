@@ -5,10 +5,10 @@
  * @tsplus static effect/core/io/Effect.Ops forAll
  */
 export function forAll<R, E, A>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, boolean> {
-  return Effect.sync(as).flatMap((Collection) => loop(Collection[Symbol.iterator](), f))
+  return Effect.suspendSucceed(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(

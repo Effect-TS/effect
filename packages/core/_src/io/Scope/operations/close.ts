@@ -6,7 +6,7 @@ import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_intern
  *
  * @tsplus pipeable effect/core/io/Scope/Closeable close
  */
-export function close(exit: LazyArg<Exit<unknown, unknown>>) {
+export function close(exit: Exit<unknown, unknown>) {
   return (self: Scope.Closeable): Effect<never, never, void> => {
     concreteCloseableScope(self)
     return self._close(exit)

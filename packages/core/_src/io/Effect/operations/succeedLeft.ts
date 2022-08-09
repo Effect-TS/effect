@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops left
  */
-export function succeedLeft<A>(
-  value: LazyArg<A>
-): Effect<never, never, Either<A, never>> {
-  return Effect.sync(Either.left(value()))
+export function succeedLeft<A>(value: A): Effect<never, never, Either<A, never>> {
+  return Effect.succeed(Either.left(value))
 }

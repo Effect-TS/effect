@@ -5,8 +5,7 @@
  * @tsplus pipeable effect/core/io/Effect retryN
  */
 export function retryN(n: number) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.suspendSucceed(retryNLoop(self, n))
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => retryNLoop(self, n)
 }
 
 function retryNLoop<R, E, A>(

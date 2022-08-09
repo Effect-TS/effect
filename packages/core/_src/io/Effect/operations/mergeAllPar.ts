@@ -12,8 +12,8 @@
  * @tsplus static effect/core/io/Effect.Ops mergeAllPar
  */
 export function mergeAllPar<R, E, A, B>(
-  as: LazyArg<Collection<Effect<R, E, A>>>,
-  zero: LazyArg<B>,
+  as: Collection<Effect<R, E, A>>,
+  zero: B,
   f: (b: B, a: A) => B
 ): Effect<R, E, B> {
   return Ref.make(zero)

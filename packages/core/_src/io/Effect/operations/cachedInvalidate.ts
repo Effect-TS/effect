@@ -7,15 +7,14 @@
  * @tsplus static effect/core/io/Effect.Aspects cachedInvalidate
  * @tsplus pipeable effect/core/io/Effect cachedInvalidate
  */
-export function cachedInvalidate(timeToLive: LazyArg<Duration>) {
+export function cachedInvalidate(timeToLive: Duration) {
   return <R, E, A>(
     self: Effect<R, E, A>
   ): Effect<R, never, Tuple<[Effect<never, E, A>, Effect<never, never, void>]>> =>
     Do(($) => {
-      const ttl = $(Effect.sync(timeToLive))
       const environment = $(Effect.environment<R>())
       const cache = $(Ref.Synchronized.make<Maybe<Tuple<[number, Deferred<E, A>]>>>(Maybe.none))
-      return Tuple(get(self, ttl, cache).provideEnvironment(environment), invalidate(cache))
+      return Tuple(get(self, timeToLive, cache).provideEnvironment(environment), invalidate(cache))
     })
 }
 
@@ -48,7 +47,7 @@ function get<R, E, A>(
                 : Maybe.none
           )
         )
-        .flatMap((a) => a._tag === "None" ? Effect.die("Bug") : restore(a.value.get(1).await))
+        .flatMap((a) => a._tag === "None" ? Effect.dieSync("Bug") : restore(a.value.get(1).await))
     )
   )
 }

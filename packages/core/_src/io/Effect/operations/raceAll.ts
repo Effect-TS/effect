@@ -6,10 +6,10 @@
  * @tsplus static effect/core/io/Effect.Aspects raceAll
  * @tsplus pipeable effect/core/io/Effect raceAll
  */
-export function raceAll<R1, E1, A1>(effects: LazyArg<Collection<Effect<R1, E1, A1>>>) {
+export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A | A1> =>
     Do(($) => {
-      const ios = $(Effect.sync(Chunk.from(effects())))
+      const ios = $(Effect.sync(Chunk.from(effects)))
       const done = $(Deferred.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>())
       const fails = $(Ref.make(ios.size))
       return $(Effect.uninterruptibleMask(({ restore }) =>

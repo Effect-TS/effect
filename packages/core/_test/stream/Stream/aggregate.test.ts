@@ -28,7 +28,7 @@ describe.concurrent("Stream", () => {
         const error = new RuntimeError("boom")
         const sink = Sink.foldLeftEffect(
           List.empty(),
-          () => Effect.die(error)
+          () => Effect.dieSync(error)
         )
         const stream = Stream(1, 1, 1, 1).aggregate(sink)
         const result = $(stream.runCollect.exit)
@@ -186,7 +186,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 2", () =>
       Do(($) => {
         const error = new RuntimeError("boom")
-        const sink = Sink.foldLeftEffect(List.empty(), () => Effect.die(error))
+        const sink = Sink.foldLeftEffect(List.empty(), () => Effect.dieSync(error))
         const schedule = Schedule.spaced((30).minutes)
         const stream = Stream(1, 1, 1, 1)
         const result = $(stream.aggregateWithinEither(sink, schedule).runCollect.exit)

@@ -17,5 +17,5 @@ export function filterOrDie<A>(
   defect: LazyArg<unknown>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.$.filterOrElse(f, Effect.die(defect))(self)
+    Effect.$.filterOrElse(f, Effect.dieSync(defect))(self)
 }

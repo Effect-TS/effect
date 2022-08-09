@@ -11,6 +11,6 @@ export function simple<A, B>(log: (a: A) => B): Logger<A, B> {
       _context,
       _spans,
       _annotations
-    ) => log(message())
+    ) => log(message)
   }
 }

@@ -4,7 +4,7 @@
  *
  * @tsplus static effect/core/io/Effect.Ops fromMaybe
  */
-export function fromMaybe<A>(option: LazyArg<Maybe<A>>): Effect<never, Maybe<never>, A> {
+export function fromMaybe<A>(option: Maybe<A>): Effect<never, Maybe<never>, A> {
   return Effect.sync(option).flatMap((option) =>
     option.fold(Effect.failSync(Maybe.none), Effect.succeed)
   )

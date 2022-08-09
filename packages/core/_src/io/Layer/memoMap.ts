@@ -18,87 +18,85 @@ export class MemoMap {
    */
   getOrElseMemoize<RIn, E, ROut>(
     layer: Layer<RIn, E, ROut>,
-    scope: LazyArg<Scope>
+    scope: Scope
   ): Effect<RIn, E, Env<ROut>> {
-    return Effect.sync(scope).flatMap((scope) =>
-      this.ref.modifyEffect((map) => {
-        const inMap = Maybe.fromNullable(map.get(layer))
+    return this.ref.modifyEffect((map) => {
+      const inMap = Maybe.fromNullable(map.get(layer))
 
-        switch (inMap._tag) {
-          case "Some": {
-            const {
-              tuple: [acquire, release]
-            } = inMap.value
+      switch (inMap._tag) {
+        case "Some": {
+          const {
+            tuple: [acquire, release]
+          } = inMap.value
 
-            const cached: Effect<never, E, Env<ROut>> = acquire.onExit((exit) =>
-              exit.fold(
-                () => Effect.unit,
-                () => scope.addFinalizerExit(release)
-              )
+          const cached: Effect<never, E, Env<ROut>> = acquire.onExit((exit) =>
+            exit.fold(
+              () => Effect.unit,
+              () => scope.addFinalizerExit(release)
             )
+          )
 
-            return Effect.sync(Tuple(cached, map))
-          }
-          case "None": {
-            return Do(($) => {
-              const observers = $(Ref.Synchronized.make(0))
-              const deferred = $(Deferred.make<E, Env<ROut>>())
-              const finalizerRef = $(
-                Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit))
-              )
-              const resource = Effect.uninterruptibleMask(({ restore }) =>
-                Effect.Do()
-                  .bindValue("outerScope", () => scope)
-                  .bind("innerScope", () => Scope.make)
-                  .flatMap(({ innerScope, outerScope }) =>
-                    restore(layer.withScope(innerScope).flatMap((f) => f(this)))
-                      .exit
-                      .flatMap((exit) => {
-                        switch (exit._tag) {
-                          case "Failure": {
-                            return (
-                              deferred.failCause(exit.cause) >
-                                innerScope.close(exit) >
-                                Effect.failCauseSync(exit.cause)
-                            )
-                          }
-                          case "Success": {
-                            return finalizerRef.set((exit) =>
-                              Effect.whenEffect(
-                                observers.modify((n) => Tuple(n === 1, n - 1)),
-                                innerScope.close(exit)
-                              )
-                            )
-                              .zipRight(observers.update((n) => n + 1))
-                              .zipRight(
-                                outerScope.addFinalizerExit((e) =>
-                                  finalizerRef.get.flatMap((fin) => fin(e))
-                                )
-                              )
-                              .zipRight(deferred.succeed(exit.value))
-                              .as(exit.value)
-                          }
-                        }
-                      })
-                  )
-              )
-              const memoized = Tuple(
-                deferred
-                  .await
-                  .onExit((exit) =>
-                    exit.fold(
-                      () => Effect.unit,
-                      () => observers.update((n) => n + 1)
-                    )
-                  ),
-                (e: Exit<unknown, unknown>) => finalizerRef.get.flatMap((fin) => fin(e))
-              )
-              return Tuple(resource, layer.isFresh ? map : map.set(layer, memoized))
-            })
-          }
+          return Effect.sync(Tuple(cached, map))
         }
-      }).flatten
-    )
+        case "None": {
+          return Do(($) => {
+            const observers = $(Ref.Synchronized.make(0))
+            const deferred = $(Deferred.make<E, Env<ROut>>())
+            const finalizerRef = $(
+              Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit))
+            )
+            const resource = Effect.uninterruptibleMask(({ restore }) =>
+              Effect.Do()
+                .bindValue("outerScope", () => scope)
+                .bind("innerScope", () => Scope.make)
+                .flatMap(({ innerScope, outerScope }) =>
+                  restore(layer.withScope(innerScope).flatMap((f) => f(this)))
+                    .exit
+                    .flatMap((exit) => {
+                      switch (exit._tag) {
+                        case "Failure": {
+                          return (
+                            deferred.failCause(exit.cause) >
+                              innerScope.close(exit) >
+                              Effect.failCauseSync(exit.cause)
+                          )
+                        }
+                        case "Success": {
+                          return finalizerRef.set((exit) =>
+                            Effect.whenEffect(
+                              observers.modify((n) => Tuple(n === 1, n - 1)),
+                              innerScope.close(exit)
+                            )
+                          )
+                            .zipRight(observers.update((n) => n + 1))
+                            .zipRight(
+                              outerScope.addFinalizerExit((e) =>
+                                finalizerRef.get.flatMap((fin) => fin(e))
+                              )
+                            )
+                            .zipRight(deferred.succeed(exit.value))
+                            .as(exit.value)
+                        }
+                      }
+                    })
+                )
+            )
+            const memoized = Tuple(
+              deferred
+                .await
+                .onExit((exit) =>
+                  exit.fold(
+                    () => Effect.unit,
+                    () => observers.update((n) => n + 1)
+                  )
+                ),
+              (e: Exit<unknown, unknown>) => finalizerRef.get.flatMap((fin) => fin(e))
+            )
+            return Tuple(resource, layer.isFresh ? map : map.set(layer, memoized))
+          })
+        }
+      }
+    }).flatten
   }
 }
 
@@ -130,7 +128,7 @@ export function build<RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn | Sco
  * @tsplus static effect/core/io/Layer.Aspects buildWithScope
  * @tsplus pipeable effect/core/io/Layer buildWithScope
  */
-export function buildWithScope(scope: LazyArg<Scope>) {
+export function buildWithScope(scope: Scope) {
   return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, Env<ROut>> =>
     Do(($) => {
       const memoMap = $(makeMemoMap())
@@ -143,13 +141,13 @@ export function buildWithScope(scope: LazyArg<Scope>) {
  * @tsplus static effect/core/io/Layer.Aspects withScope
  * @tsplus pipeable effect/core/io/Layer withScope
  */
-export function withScope(scope: LazyArg<Scope>) {
+export function withScope(scope: Scope) {
   return <RIn, E, ROut>(
     self: Layer<RIn, E, ROut>
   ): Effect<never, never, (_: MemoMap) => Effect<RIn, E, Env<ROut>>> =>
     Match.tag(instruction(self), {
       LayerApply: (_) =>
-        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) => _.self),
+        Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((_memoMap: MemoMap) => _.self),
       LayerExtendScope: (_) =>
         Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>((memoMap: MemoMap) =>
           Effect.scopeWith((scope) => memoMap.getOrElseMemoize(_.self, scope))
@@ -168,7 +166,7 @@ export function withScope(scope: LazyArg<Scope>) {
         ),
       LayerScoped: (_) =>
         Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(
-          (__: MemoMap) => scope().extend(_.self)
+          (__: MemoMap) => scope.extend(_.self)
         ),
       LayerSuspend: (_) =>
         Effect.sync<(_: MemoMap) => Effect<RIn, E, Env<ROut>>>(

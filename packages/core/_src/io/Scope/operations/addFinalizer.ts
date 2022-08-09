@@ -6,9 +6,6 @@
  * @tsplus pipeable effect/core/io/Scope addFinalizer
  * @tsplus pipeable effect/core/io/Scope/Closeable addFinalizer
  */
-export function addFinalizer(finalizer: LazyArg<Effect<never, never, unknown>>) {
-  return (self: Scope): Effect<never, never, void> =>
-    self.addFinalizerExit(
-      () => finalizer()
-    )
+export function addFinalizer(finalizer: Effect<never, never, unknown>) {
+  return (self: Scope): Effect<never, never, void> => self.addFinalizerExit(() => finalizer)
 }

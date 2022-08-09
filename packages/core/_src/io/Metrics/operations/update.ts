@@ -6,7 +6,7 @@
  * @tsplus static effect/core/io/Metrics/Metric.Aspects update
  * @tsplus pipeable effect/core/io/Metrics/Metric update
  */
-export function update<In>(input: LazyArg<In>) {
+export function update<In>(input: In) {
   return <Type, Out>(self: Metric<Type, In, Out>): Effect<never, never, void> =>
-    Effect.sync(self.unsafeUpdate(input(), HashSet.empty()))
+    Effect.sync(self.unsafeUpdate(input, HashSet.empty()))
 }

@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects repeatUntilEquals
  * @tsplus pipeable effect/core/io/Effect repeatUntilEquals
  */
-export function repeatUntilEquals<A>(
-  E: Equivalence<A>,
-  a: LazyArg<A>
-) {
+export function repeatUntilEquals<A>(E: Equivalence<A>, a: A) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
     Effect.sync(a).flatMap((a) => self.repeatUntil((_) => E.equals(_, a)))
 }

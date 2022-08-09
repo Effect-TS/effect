@@ -8,7 +8,7 @@ import { Die, Fail, Interrupt, Stackless } from "@effect/core/io/Cause/definitio
  */
 export function linearize<E>(self: Cause<E>): HashSet<Cause<E>> {
   return self.fold(
-    () => HashSet.empty<Cause<E>>(),
+    HashSet.empty<Cause<E>>(),
     (e) => HashSet.empty<Cause<E>>().add(new Fail(e)),
     (d) => HashSet.empty<Cause<E>>().add(new Die(d)),
     (fiberId) => HashSet.empty<Cause<E>>().add(new Interrupt(fiberId)),

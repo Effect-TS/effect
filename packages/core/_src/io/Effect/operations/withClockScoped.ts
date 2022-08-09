@@ -4,8 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops withClockScoped
  */
-export function withClockScoped<A extends Clock>(clock: LazyArg<A>) {
+export function withClockScoped<A extends Clock>(clock: A) {
   return DefaultServices.currentServices.locallyScopedWith(
-    (env) => env.add(Clock.Tag, clock())
+    (env) => env.add(Clock.Tag, clock)
   )
 }

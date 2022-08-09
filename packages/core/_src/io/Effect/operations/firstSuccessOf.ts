@@ -8,7 +8,7 @@ export function firstSuccessOf<R, E, A>(effects: Collection<Effect<R, E, A>>): E
   return Effect.suspendSucceed(() => {
     const chunk = Chunk.from(effects)
     if (chunk.length <= 0) {
-      return Effect.die(new IllegalArgumentException(`received empty collection of effects`))
+      return Effect.dieSync(new IllegalArgumentException(`received empty collection of effects`))
     }
     const head = chunk.unsafeHead!
     const tail = chunk.length === 1 ? Chunk.empty<Effect<R, E, A>>() : chunk.unsafeTail!

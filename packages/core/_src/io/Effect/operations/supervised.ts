@@ -7,7 +7,6 @@ import { ISupervise } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Aspects supervised
  * @tsplus pipeable effect/core/io/Effect supervised
  */
-export function supervised<X>(supervisor: LazyArg<Supervisor<X>>) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.suspendSucceed(new ISupervise(self, supervisor))
+export function supervised<X>(supervisor: Supervisor<X>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => new ISupervise(self, supervisor)
 }

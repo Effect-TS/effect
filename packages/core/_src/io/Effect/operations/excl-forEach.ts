@@ -27,7 +27,7 @@ import { Maybe } from "@tsplus/stdlib/data/Maybe"
  * @tsplus static effect/core/io/Effect.Ops forEach
  */
 export function forEach<A, R, E, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
@@ -51,7 +51,7 @@ export function forEach<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachWithIndex
  */
 export function forEachWithIndex<A, R, E, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A, i: number) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(() => {
@@ -79,11 +79,11 @@ export function forEachWithIndex<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachDiscard
  */
 export function forEachDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
-  return Effect.sync(as).flatMap((collection) =>
-    forEachDiscardLoop(collection[Symbol.iterator](), f)
+  return Effect.suspendSucceed(
+    forEachDiscardLoop(as[Symbol.iterator](), f)
   )
 }
 
@@ -92,7 +92,7 @@ function forEachDiscardLoop<R, E, A, X>(
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   const next = iterator.next()
-  return next.done ? Effect.unit : f(next.value) > forEachDiscardLoop(iterator, f)
+  return next.done ? Effect.unit : f(next.value).flatMap(() => forEachDiscardLoop(iterator, f))
 }
 
 // -----------------------------------------------------------------------------
@@ -108,7 +108,7 @@ function forEachDiscardLoop<R, E, A, X>(
  * @tsplus static effect/core/io/Effect.Ops forEachPar
  */
 export function forEachPar<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.parallelismWith((option) =>
@@ -124,13 +124,13 @@ export function forEachPar<R, E, A, B>(
  * and returns the results in a new `Chunk<B>`.
  */
 function forEachParUnbounded<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
-    Effect.sync<B[]>([]).flatMap((array) =>
+    Effect.succeed<Array<B>>([]).flatMap((array) =>
       forEachParUnboundedDiscard(
-        as().map((a, n) => [a, n] as [A, number]),
+        as.map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a)).flatMap((b) =>
             Effect.sync(() => {
@@ -143,7 +143,7 @@ function forEachParUnbounded<R, E, A, B>(
 }
 
 function forEachParN<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   n: number,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
@@ -154,7 +154,7 @@ function forEachParN<R, E, A, B>(
       )
     }
 
-    const as0 = Chunk.from(as())
+    const as0 = Chunk.from(as)
     const size = as0.size
 
     if (size === 0) {
@@ -202,20 +202,20 @@ function forEachParN<R, E, A, B>(
 // -----------------------------------------------------------------------------
 
 /**
- * Same as `forEachPar_`, except that the function `f` is supplied
+ * Same as `forEachPar`, except that the function `f` is supplied
  * a second argument that corresponds to the index (starting from 0)
  * of the current element being iterated over.
  *
  * @tsplus static effect/core/io/Effect.Ops forEachParWithIndex
  */
 export function forEachParWithIndex<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A, i: number) => Effect<R, E, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.suspendSucceed(
     Effect.sync<B[]>([]).flatMap((array) =>
       Effect.forEachParDiscard(
-        as().map((a, n) => [a, n] as [A, number]),
+        as.map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a, n)).flatMap((b) =>
             Effect.sync(() => {
@@ -244,7 +244,7 @@ export function forEachParWithIndex<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachParDiscard
  */
 export function forEachParDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.parallelismWith((option) =>
@@ -256,11 +256,11 @@ export function forEachParDiscard<R, E, A, X>(
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.suspendSucceed<R, E, void>(() => {
-    const bs = Chunk.from(as())
+    const bs = Chunk.from(as)
     const size = bs.size
 
     if (size === 0) {
@@ -308,13 +308,12 @@ function forEachParUnboundedDiscard<R, E, A, X>(
 }
 
 function forEachParNDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   n: number,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.suspendSucceed(() => {
-    const as0 = as()
-    const bs = Chunk.from(as0)
+    const bs = Chunk.from(as)
     const size = bs.size
 
     if (size === 0) {
@@ -335,7 +334,7 @@ function forEachParNDiscard<R, E, A, X>(
 
     return makeBoundedQueue<A>(size).flatMap((queue) =>
       queue
-        .offerAll(as0)
+        .offerAll(as)
         .flatMap(() => forEachParUnboundedDiscard(worker(queue).replicate(n), identity))
     )
   })
@@ -352,7 +351,7 @@ function forEachParNDiscard<R, E, A, X>(
  * @tsplus static effect/core/io/Effect.Ops forEachExec
  */
 export function forEachExec<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy
 ): Effect<R, E, Chunk<B>> {
@@ -381,7 +380,7 @@ export function forEachExec<R, E, A, B>(
  *
  * @tsplus static effect/core/io/Effect.Ops collectAll
  */
-export function collectAll<R, E, A>(as: LazyArg<Collection<Effect<R, E, A>>>) {
+export function collectAll<R, E, A>(as: Collection<Effect<R, E, A>>) {
   return Effect.forEach(as, identity)
 }
 
@@ -396,7 +395,7 @@ export function collectAll<R, E, A>(as: LazyArg<Collection<Effect<R, E, A>>>) {
  * @tsplus static effect/core/io/Effect.Ops collectAllPar
  */
 export function collectAllPar<R, E, A>(
-  as: LazyArg<Collection<Effect<R, E, A>>>
+  as: Collection<Effect<R, E, A>>
 ): Effect<R, E, Chunk<A>> {
   return Effect.forEachPar(as, identity)
 }
@@ -412,7 +411,7 @@ export function collectAllPar<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
-  as: LazyArg<Collection<Effect<R, E, A>>>
+  as: Collection<Effect<R, E, A>>
 ): Effect<R, E, void> {
   return Effect.forEachDiscard(as, identity)
 }
@@ -428,7 +427,7 @@ export function collectAllDiscard<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
-  as: LazyArg<Collection<Effect<R, E, A>>>
+  as: Collection<Effect<R, E, A>>
 ): Effect<R, E, void> {
   return Effect.forEachParDiscard(as, identity)
 }
@@ -444,7 +443,7 @@ export function collectAllParDiscard<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllWith
  */
 export function collectAllWith<R, E, A, B>(
-  as: LazyArg<Collection<Effect<R, E, A>>>,
+  as: Collection<Effect<R, E, A>>,
   pf: (a: A) => Maybe<B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAll(as).map((chunk) => chunk.collect(pf))
@@ -461,7 +460,7 @@ export function collectAllWith<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops collectAllWithPar
  */
 export function collectAllWithPar<R, E, A, B>(
-  as: LazyArg<Collection<Effect<R, E, A>>>,
+  as: Collection<Effect<R, E, A>>,
   pf: (a: A) => Maybe<B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
@@ -517,10 +516,10 @@ export function collectAllWithEffect<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
-  as: LazyArg<Collection<Effect<R, E, A>>>
+  as: Collection<Effect<R, E, A>>
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWith(
-    as().map((effect) => effect.exit),
+    as.map((effect) => effect.exit),
     (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
@@ -535,10 +534,10 @@ export function collectAllSuccesses<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
-  as: LazyArg<Collection<Effect<R, E, A>>>
+  as: Collection<Effect<R, E, A>>
 ): Effect<R, never, Chunk<A>> {
   return Effect.collectAllWithPar(
-    as().map((effect) => effect.exit),
+    as.map((effect) => effect.exit),
     (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
   )
 }
@@ -553,7 +552,7 @@ export function collectAllSuccessesPar<R, E, A>(
  * a catchable error, _if_ that error does not result from interruption.
  */
 export function fiberJoinAll<E, A>(
-  as: LazyArg<Collection<Fiber<E, A>>>
+  as: Collection<Fiber<E, A>>
 ): Effect<never, E, Chunk<A>> {
   return fiberWaitAll(as)
     .flatMap((exit) => Effect.done(exit))
@@ -564,7 +563,7 @@ export function fiberJoinAll<E, A>(
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function fiberWaitAll<E, A>(
-  as: LazyArg<Collection<Fiber<E, A>>>
+  as: Collection<Fiber<E, A>>
 ): Effect<never, never, Exit<E, Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) => fiber.await.flatMap((exit) => Effect.done(exit))).exit
 }
@@ -662,12 +661,15 @@ class QueueImpl<A> implements Queue<A> {
   get [_In](): (_: A) => unknown {
     return (a) => a
   }
+
   get [QueueSym](): QueueSym {
     return QueueSym
   }
+
   get [_Out](): (_: never) => A {
     return (a) => a
   }
+
   constructor(
     readonly queue: MutableQueue<A>,
     readonly takers: MutableQueue<Deferred<never, A>>,
@@ -675,6 +677,7 @@ class QueueImpl<A> implements Queue<A> {
     readonly shutdownFlag: AtomicBoolean,
     readonly strategy: Strategy<A>
   ) {}
+
   offer(this: this, a: A): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
@@ -712,6 +715,7 @@ class QueueImpl<A> implements Queue<A> {
         )
     })
   }
+
   offerAll(this: this, as: Collection<A>): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
       if (this.shutdownFlag.get) {
@@ -747,9 +751,11 @@ class QueueImpl<A> implements Queue<A> {
         )
     })
   }
+
   get capacity(): number {
     return (this.queue as MutableQueue<unknown>).capacity
   }
+
   get size(): Effect<never, never, number> {
     return Effect.suspendSucceed(
       this.shutdownFlag.get
@@ -757,31 +763,36 @@ class QueueImpl<A> implements Queue<A> {
         : Effect.succeed(this.queue.size - this.takers.size + this.strategy.surplusSize)
     )
   }
+
   get awaitShutdown(): Effect<never, never, void> {
     return this.shutdownHook.await
   }
+
   get isShutdown(): Effect<never, never, boolean> {
-    return Effect.sync(() => this.shutdownFlag.get)
+    return Effect.sync(this.shutdownFlag.get)
   }
+
   get shutdown(): Effect<never, never, void> {
     return Effect.suspendSucceedWith((_, fiberId) => {
       this.shutdownFlag.set(true)
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
-        () =>
-          Effect.forEachParDiscard(
-            unsafePollAll(this.takers),
-            (deferred) => deferred.interruptAs(fiberId)
-          ) > this.strategy.shutdown
+        Effect.forEachParDiscard(
+          unsafePollAll(this.takers),
+          (deferred) => deferred.interruptAs(fiberId)
+        ).zipRight(this.strategy.shutdown)
       ).unit
     }).uninterruptible
   }
+
   get isFull(): Effect<never, never, boolean> {
     return this.size.map((size) => size === this.capacity)
   }
+
   get isEmpty(): Effect<never, never, boolean> {
     return this.size.map((size) => size === 0)
   }
+
   get take(): Effect<never, never, A> {
     return Effect.suspendSucceedWith((_, fiberId) => {
       if (this.shutdownFlag.get) {
@@ -816,6 +827,7 @@ class QueueImpl<A> implements Queue<A> {
       }
     })
   }
+
   get takeAll(): Effect<never, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       this.shutdownFlag.get
@@ -827,6 +839,7 @@ class QueueImpl<A> implements Queue<A> {
         })
     )
   }
+
   takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>> {
     return Effect.suspendSucceed(() =>
       (this.shutdownFlag as AtomicBoolean).get
@@ -841,6 +854,7 @@ class QueueImpl<A> implements Queue<A> {
         })
     )
   }
+
   takeRemainderLoop<A>(
     self: Dequeue<A>,
     min: number,
@@ -871,12 +885,15 @@ class QueueImpl<A> implements Queue<A> {
       return Effect.succeed(acc + bs)
     })
   }
+
   takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<A>> {
     return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty()))
   }
+
   takeN(this: this, n: number): Effect<never, never, Chunk<A>> {
     return this.takeBetween(n, n)
   }
+
   get poll(): Effect<never, never, Maybe<A>> {
     return this.takeUpTo(1).map((chunk) => chunk.head)
   }

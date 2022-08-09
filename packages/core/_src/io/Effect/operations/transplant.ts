@@ -1,7 +1,7 @@
 import { IGetForkScope, IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives"
 
 export interface Grafter {
-  <R, E, A>(effect: LazyArg<Effect<R, E, A>>): Effect<R, E, A>
+  <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 
 /**
@@ -21,7 +21,7 @@ export function transplant<R, E, A>(
     new IGetForkScope((scope) =>
       f((effect) =>
         Effect.suspendSucceed(
-          new IOverrideForkScope(effect(), Maybe.some(scope))
+          new IOverrideForkScope(effect, Maybe.some(scope))
         )
       )
     )

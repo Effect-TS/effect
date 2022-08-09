@@ -7,5 +7,5 @@
  */
 export function replicateEffect(n: number) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Chunk<A>> =>
-    Effect.suspendSucceed(Effect.collectAll(self.replicate(n)))
+    Effect.collectAll(self.replicate(n))
 }

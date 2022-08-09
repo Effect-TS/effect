@@ -17,7 +17,7 @@
  * @tsplus static effect/core/io/Effect.Aspects timeout
  * @tsplus pipeable effect/core/io/Effect timeout
  */
-export function timeout(duration: LazyArg<Duration>) {
+export function timeout(duration: Duration) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Maybe<A>> =>
     self.timeoutTo(Maybe.none, Maybe.some, duration)
 }

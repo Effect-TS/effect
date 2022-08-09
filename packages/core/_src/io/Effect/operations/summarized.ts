@@ -7,16 +7,14 @@
  * @tsplus pipeable effect/core/io/Effect summarized
  */
 export function summarized<R2, E2, B, C>(
-  summary: LazyArg<Effect<R2, E2, B>>,
+  summary: Effect<R2, E2, B>,
   f: (start: B, end: B) => C
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Tuple<[C, A]>> =>
-    Effect.sync(summary).flatMap((summary) =>
-      Do(($) => {
-        const start = $(summary)
-        const value = $(self)
-        const end = $(summary)
-        return Tuple(f(start, end), value)
-      })
-    )
+    Do(($) => {
+      const start = $(summary)
+      const value = $(self)
+      const end = $(summary)
+      return Tuple(f(start, end), value)
+    })
 }

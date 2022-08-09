@@ -12,5 +12,7 @@ export function repeatN(n: number) {
 }
 
 function loop<R, E, A>(self: Effect<R, E, A>, n: number): Effect<R, E, A> {
-  return self.flatMap((a) => n <= 0 ? Effect.succeed(a) : Effect.yieldNow > loop(self, n - 1))
+  return self.flatMap((a) =>
+    n <= 0 ? Effect.succeed(a) : Effect.yieldNow.zipRight(loop(self, n - 1))
+  )
 }

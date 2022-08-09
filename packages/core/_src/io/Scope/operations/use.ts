@@ -6,7 +6,7 @@
  *
  * @tsplus pipeable effect/core/io/Scope/Closeable use
  */
-export function use<R, E, A>(effect: LazyArg<Effect<R, E, A>>) {
+export function use<R, E, A>(effect: Effect<R, E, A>) {
   return (self: Scope.Closeable): Effect<Exclude<R, Scope>, E, A> =>
     self.extend(effect).onExit((exit) => self.close(exit))
 }

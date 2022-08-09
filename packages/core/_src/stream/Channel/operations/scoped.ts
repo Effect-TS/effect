@@ -4,7 +4,7 @@
  * @tsplus static effect/core/stream/Channel.Ops scoped
  */
 export function scoped<R, E, A>(
-  effect: LazyArg<Effect<R, E, A>>
+  effect: Effect<R, E, A>
 ): Channel<Exclude<R, Scope>, unknown, unknown, unknown, E, A, unknown> {
   return Channel.acquireUseReleaseOutExit(
     Scope.make.flatMap((scope) =>

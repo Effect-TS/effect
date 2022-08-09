@@ -5,10 +5,7 @@
  * @tsplus static effect/core/io/Effect.Aspects retryWhileEquals
  * @tsplus pipeable effect/core/io/Effect retryWhileEquals
  */
-export function retryWhileEquals<E>(
-  E: Equivalence<E>,
-  e: LazyArg<E>
-) {
+export function retryWhileEquals<E>(E: Equivalence<E>, e: E) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
     Effect.sync(e).flatMap((_) => self.retryWhile((e) => E.equals(_, e)))
 }

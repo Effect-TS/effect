@@ -2,446 +2,346 @@ import { ExampleError } from "@effect/core/test/io/Effect/test-utils"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("isFailure", () => {
-    it("returns true when the effect is a failure", async () => {
-      const program = Effect.failSync("fail").isFailure
+    it("returns true when the effect is a failure", () =>
+      Do(($) => {
+        const result = $(Effect.failSync("fail").isFailure)
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("returns false when the effect is a success", async () => {
-      const program = Effect.sync("succeed").isFailure
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
+    it("returns false when the effect is a success", () =>
+      Do(($) => {
+        const result = $(Effect.sync("succeed").isFailure)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("isSuccess", () => {
-    it("returns false when the effect is a failure", async () => {
-      const program = Effect.failSync("fail").isSuccess
+    it("returns false when the effect is a failure", () =>
+      Do(($) => {
+        const result = $(Effect.failSync("fail").isSuccess)
+        assert.isFalse(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isFalse(result)
-    })
-
-    it("returns true when the effect is a success", async () => {
-      const program = Effect.sync("succeed").isSuccess
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("returns true when the effect is a success", () =>
+      Do(($) => {
+        const result = $(Effect.sync("succeed").isSuccess)
+        assert.isTrue(result)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("left", () => {
-    it("on Left value", async () => {
-      const program = Effect.sync(Either.left("left")).left
+    it("on Left value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Either.left("left")).left)
+        assert.strictEqual(result, "left")
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("on Right value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Either.right("right")).left.exit)
+        assert.isTrue(result == Exit.fail(Either.right("right")))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, "left")
-    })
-
-    it("on Right value", async () => {
-      const program = Effect.sync(Either.right("right")).left
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Either.right("right")))
-    })
-
-    it("on failure", async () => {
-      const program = Effect.failSync("fail").left
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Either.left("fail")))
-    })
+    it("on failure", () =>
+      Do(($) => {
+        const result = $(Effect.failSync("fail").left.exit)
+        assert.isTrue(result == Exit.fail(Either.left("fail")))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("right", () => {
-    it("on Right value", async () => {
-      const program = Effect.sync(Either.right("right")).right
+    it("on Right value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Either.right("right")).right)
+        assert.strictEqual(result, "right")
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("on Left value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Either.left("left")).right.exit)
+        assert.isTrue(result == Exit.fail(Either.left("left")))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, "right")
-    })
-
-    it("on Left value", async () => {
-      const program = Effect.sync(Either.left("left")).right
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Either.left("left")))
-    })
-
-    it("on failure", async () => {
-      const program = Effect.failSync("fail").right
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Either.right("fail")))
-    })
+    it("on failure", () =>
+      Do(($) => {
+        const result = $(Effect.failSync("fail").right.exit)
+        assert.isTrue(result == Exit.fail(Either.right("fail")))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("some", () => {
-    it("extracts the value from Some", async () => {
-      const program = Effect.sync(Maybe.some(1)).some
+    it("extracts the value from Some", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.some(1)).some)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("fails on None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).some.exit)
+        assert.isTrue(result == Exit.fail(Maybe.none))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, 1)
-    })
-
-    it("fails on None", async () => {
-      const program = Effect.sync(Maybe.none).some
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Maybe.none))
-    })
-
-    it("fails when given an exception", async () => {
-      const error = new RuntimeError("failed")
-      const program = Effect.failSync(error).some
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Maybe.some(error)))
-    })
+    it("fails when given an exception", () =>
+      Do(($) => {
+        const error = new RuntimeError("failed")
+        const result = $(Effect.failSync(error).some.exit)
+        assert.isTrue(result == Exit.fail(Maybe.some(error)))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("none", () => {
-    it("on Some fails with None", async () => {
-      const program = Effect.sync(Maybe.some(1)).none
+    it("on Some fails with None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.some(1)).none.exit)
+        assert.isTrue(result == Exit.fail(Maybe.none))
+      }).unsafeRunPromiseExit())
 
-      const result = await program.unsafeRunPromiseExit()
+    it("on None succeeds with undefined", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).none)
+        assert.isUndefined(result)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Exit.fail(Maybe.none))
-    })
-
-    it("on None succeeds with undefined", async () => {
-      const program = Effect.sync(Maybe.none).none
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isUndefined(result)
-    })
-
-    it("fails with Some(ex) when effect fails with ex", async () => {
-      const error = new RuntimeError("failed task")
-      const program = Effect.failSync(error).none
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Maybe.some(error)))
-    })
+    it("fails with Some(ex) when effect fails with ex", () =>
+      Do(($) => {
+        const error = new RuntimeError("failed task")
+        const result = $(Effect.failSync(error).none.exit)
+        assert.isTrue(result == Exit.fail(Maybe.some(error)))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("noneOrFail", () => {
-    it("on None succeeds with Unit", async () => {
-      const program = Effect.noneOrFail(Maybe.none)
+    it("on None succeeds with Unit", () =>
+      Do(($) => {
+        const result = $(Effect.noneOrFail(Maybe.none))
+        assert.isUndefined(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isUndefined(result)
-    })
-
-    it("on Some fails", async () => {
-      const program = Effect.noneOrFail(Maybe.some("some")).catchAll(Effect.succeed)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, "some")
-    })
+    it("on Some fails", () =>
+      Do(($) => {
+        const result = $(Effect.noneOrFail(Maybe.some("some")).catchAll(Effect.succeed))
+        assert.strictEqual(result, "some")
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("noneOrFailWith", () => {
-    it("on None succeeds with Unit", async () => {
-      const program = Effect.noneOrFailWith(Maybe.none, identity)
+    it("on None succeeds with Unit", () =>
+      Do(($) => {
+        const result = $(Effect.noneOrFailWith(Maybe.none, identity))
+        assert.isUndefined(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isUndefined(result)
-    })
-
-    it("on Some fails", async () => {
-      const program = Effect.noneOrFailWith(Maybe.some("some"), (s) => s + s).catchAll(
-        Effect.succeed
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, "somesome")
-    })
+    it("on Some fails", () =>
+      Do(($) => {
+        const result = $(
+          Effect.noneOrFailWith(Maybe.some("some"), (s) => s + s).catchAll(Effect.succeed)
+        )
+        assert.strictEqual(result, "somesome")
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("someOrElse", () => {
-    it("extracts the value from Some", async () => {
-      const program = Effect.sync(Maybe.some(1)).someOrElse(42)
+    it("extracts the value from Some", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.some(1)).someOrElse(42))
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("falls back to the default value if None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).someOrElse(42))
+        assert.strictEqual(result, 42)
+      }).unsafeRunPromise())
 
-      assert.strictEqual(result, 1)
-    })
-
-    it("falls back to the default value if None", async () => {
-      const program = Effect.sync(Maybe.none).someOrElse(42)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 42)
-    })
-
-    it("does not change failed state", async () => {
-      const program = Effect.failSync(ExampleError).someOrElse(42)
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
+    it("does not change failed state", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(ExampleError).someOrElse(42).exit)
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("someOrElseEffect", () => {
-    it("extracts the value from Some", async () => {
-      const program = Effect.sync(Maybe.some(1)).someOrElseEffect(
-        Effect.sync(42)
-      )
+    it("extracts the value from Some", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.some(1)).someOrElseEffect(Effect.sync(42)))
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("falls back to the default effect if None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).someOrElseEffect(Effect.sync(42)))
+        assert.strictEqual(result, 42)
+      }).unsafeRunPromise())
 
-      assert.strictEqual(result, 1)
-    })
-
-    it("falls back to the default effect if None", async () => {
-      const program = Effect.sync(Maybe.none).someOrElseEffect(Effect.sync(42))
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 42)
-    })
-
-    it("does not change failed state", async () => {
-      const program = Effect.failSync(ExampleError).someOrElseEffect(Effect.sync(42))
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
+    it("does not change failed state", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(ExampleError).someOrElseEffect(Effect.sync(42)).exit)
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("someOrFail", () => {
-    it("extracts the optional value", async () => {
-      const program = Effect.sync(Maybe.some(42)).someOrFail(ExampleError)
+    it("extracts the optional value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.some(42)).someOrFail(ExampleError))
+        assert.strictEqual(result, 42)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 42)
-    })
-
-    it("fails when given a None", async () => {
-      const program = Effect.sync(Maybe.none).someOrFail(ExampleError)
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
+    it("fails when given a None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).someOrFail(ExampleError).exit)
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("getOrFailDiscard", () => {
-    it("basic option test", async () => {
-      const program = Effect.getOrFailDiscard(Maybe.some("foo"))
+    it("basic option test", () =>
+      Do(($) => {
+        const result = $(Effect.getOrFailDiscard(Maybe.some("foo")))
+        assert.strictEqual(result, "foo")
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, "foo")
-    })
-
-    it("side effect unit in option test", async () => {
-      const program = Effect.getOrFailDiscard(Maybe.none).catchAll(() =>
-        Effect.sync("controlling unit side-effect")
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, "controlling unit side-effect")
-    })
+    it("side effect unit in option test", () =>
+      Do(($) => {
+        const result = $(
+          Effect.getOrFailDiscard(Maybe.none).catchAll(() =>
+            Effect.sync("controlling unit side-effect")
+          )
+        )
+        assert.strictEqual(result, "controlling unit side-effect")
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("option", () => {
-    it("return success in Some", async () => {
-      const program = Effect.sync(11).option
+    it("return success in Some", () =>
+      Do(($) => {
+        const result = $(Effect.sync(11).option)
+        assert.isTrue(result == Maybe.some(11))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("return failure as None", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(123).option)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Maybe.some(11))
-    })
+    it("not catch throwable", () =>
+      Do(($) => {
+        const result = $(Effect.dieSync(ExampleError).option.exit)
+        assert.isTrue(result == Exit.die(ExampleError))
+      }).unsafeRunPromiseExit())
 
-    it("return failure as None", async () => {
-      const program = Effect.failSync(123).option
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("not catch throwable", async () => {
-      const program = Effect.die(ExampleError).option
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.die(ExampleError))
-    })
-
-    it("catch throwable after sandboxing", async () => {
-      const program = Effect.die(ExampleError).sandbox.option
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
+    it("catch throwable after sandboxing", () =>
+      Do(($) => {
+        const result = $(Effect.dieSync(ExampleError).sandbox.option)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("unsome", () => {
-    it("fails when given Some error", async () => {
-      const program = Effect.failSync(Maybe.some("error")).unsome
+    it("fails when given Some error", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(Maybe.some("error")).unsome.exit)
+        assert.isTrue(result == Exit.fail("error"))
+      }).unsafeRunPromiseExit())
 
-      const result = await program.unsafeRunPromiseExit()
+    it("succeeds with None given None error", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(Maybe.none).unsome)
+        assert.isTrue(result == Maybe.none)
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Exit.fail("error"))
-    })
-
-    it("succeeds with None given None error", async () => {
-      const program = Effect.failSync(Maybe.none).unsome
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.none)
-    })
-
-    it("succeeds with Some given a value", async () => {
-      const program = Effect.sync(1).unsome
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Maybe.some(1))
-    })
+    it("succeeds with Some given a value", () =>
+      Do(($) => {
+        const result = $(Effect.sync(1).unsome)
+        assert.isTrue(result == Maybe.some(1))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("getOrFail", () => {
-    it("make a task from a defined option", async () => {
-      const program = Effect.getOrFail(Maybe.some(1))
+    it("make a task from a defined option", () =>
+      Do(($) => {
+        const result = $(Effect.getOrFail(Maybe.some(1)))
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
-
-    it("make a task from an empty option", async () => {
-      const program = Effect.getOrFail(Maybe.none)
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(
-        result.isFailure() && result.cause.isFailType() &&
-          result.cause.value instanceof NoSuchElement
-      )
-    })
+    it("make a task from an empty option", () =>
+      Do(($) => {
+        const result = $(Effect.getOrFail(Maybe.none).exit)
+        assert.isTrue(
+          result.isFailure() && result.cause.isFailType() &&
+            result.cause.value instanceof NoSuchElement
+        )
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("someOrFailException", () => {
-    it("extracts the optional value", async () => {
-      const program = Effect.some(42).someOrFailException
+    it("extracts the optional value", () =>
+      Do(($) => {
+        const result = $(Effect.some(42).someOrFailException)
+        assert.strictEqual(result, 42)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 42)
-    })
-
-    it("fails when given a None", async () => {
-      const program = Effect.sync(Maybe.none).someOrFailException
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(
-        result.isFailure() && result.cause.isFailType() &&
-          result.cause.value instanceof NoSuchElement
-      )
-    })
+    it("fails when given a None", () =>
+      Do(($) => {
+        const result = $(Effect.sync(Maybe.none).someOrFailException.exit)
+        assert.isTrue(
+          result.isFailure() && result.cause.isFailType() &&
+            result.cause.value instanceof NoSuchElement
+        )
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("unleft", () => {
-    it("should handle successes with right", async () => {
-      const effect = Effect.sync(Either.right(42))
-      const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft.exit)
-        .bind("expected", () => effect.exit)
+    it("should handle successes with right", () =>
+      Do(($) => {
+        const effect = Effect.succeed(Either.right(42))
+        const result = $(effect.left.unleft.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-      const { actual, expected } = await program.unsafeRunPromise()
+    it("should handle successes with left", () =>
+      Do(($) => {
+        const effect = Effect.succeed(Either.left(42))
+        const result = $(effect.left.unleft.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-      assert.isTrue(actual == expected)
-    })
-
-    it("should handle successes with left", async () => {
-      const effect = Effect.sync(Either.left(42))
-      const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft.exit)
-        .bind("expected", () => effect.exit)
-
-      const { actual, expected } = await program.unsafeRunPromise()
-
-      assert.isTrue(actual == expected)
-    })
-
-    it("should handle failures", async () => {
-      const effect = Effect.failSync(42)
-      const program = Effect.Do()
-        .bind("actual", () => effect.left.unleft.exit)
-        .bind("expected", () => effect.exit)
-
-      const { actual, expected } = await program.unsafeRunPromise()
-
-      assert.isTrue(actual == expected)
-    })
+    it("should handle failures", () =>
+      Do(($) => {
+        const effect = Effect.fail(42)
+        const result = $(effect.left.unleft.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("unright", () => {
-    it("should handle successes with right", async () => {
-      const effect = Effect.sync(Either.right(42))
-      const program = Effect.Do()
-        .bind("actual", () => effect.right.unright.exit)
-        .bind("expected", () => effect.exit)
+    it("should handle successes with right", () =>
+      Do(($) => {
+        const effect = Effect.succeed(Either.right(42))
+        const result = $(effect.right.unright.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-      const { actual, expected } = await program.unsafeRunPromise()
+    it("should handle successes with left", () =>
+      Do(($) => {
+        const effect = Effect.succeed(Either.left(42))
+        const result = $(effect.right.unright.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
 
-      assert.isTrue(actual == expected)
-    })
-
-    it("should handle successes with left", async () => {
-      const effect = Effect.sync(Either.left(42))
-      const program = Effect.Do()
-        .bind("actual", () => effect.right.unright.exit)
-        .bind("expected", () => effect.exit)
-
-      const { actual, expected } = await program.unsafeRunPromise()
-
-      assert.isTrue(actual == expected)
-    })
-
-    it("should handle failures", async () => {
-      const effect = Effect.failSync(42)
-      const program = Effect.Do()
-        .bind("actual", () => effect.right.unright.exit)
-        .bind("expected", () => effect.exit)
-
-      const { actual, expected } = await program.unsafeRunPromise()
-
-      assert.isTrue(actual == expected)
-    })
+    it("should handle failures", () =>
+      Do(($) => {
+        const effect = Effect.fail(42)
+        const result = $(effect.right.unright.exit)
+        const expected = $(effect.exit)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
   })
 })

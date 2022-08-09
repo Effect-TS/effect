@@ -104,7 +104,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       if (head._tag === "ContinuationK") {
         conts = conts.unsafeTail ?? List.empty()
       } else {
-        acc = acc > head.finalizer(exit).exit
+        acc = acc.flatMap(() => head.finalizer(exit).exit)
         conts = conts.unsafeTail ?? List.empty()
       }
     }
@@ -192,7 +192,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       this.ifNotNull(runInProgressFinalizers).exit,
       this.ifNotNull(closeSelf).exit
     )
-      .map(({ tuple: [a, b, c] }) => a > b > c)
+      .map(({ tuple: [a, b, c] }) => a.zipRight(b).zipRight(c))
       .uninterruptible
       .flatMap((exit) => Effect.done(exit))
   }
@@ -237,7 +237,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                   const inputExecutor = this.input
                   this.input = undefined
 
-                  const drainer: Effect.RIO<R, unknown> = currentChannel.input.awaitRead >
+                  const drainer: Effect<R, never, unknown> = currentChannel.input.awaitRead >
                     Effect.suspendSucceed(() => {
                       const state = inputExecutor.run()
                       concreteChannelState(state)
@@ -251,7 +251,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                         case "Emit": {
                           return currentChannel.input
                             .emit(inputExecutor.getEmit())
-                            .zipRight(() => drainer)
+                            .zipRight(drainer)
                         }
                         case "Effect": {
                           return state.effect.foldCauseEffect(
@@ -397,7 +397,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
                       const prevLastClose = this.closeLastSubstream == null
                         ? Effect.unit
                         : this.closeLastSubstream
-                      this.closeLastSubstream = prevLastClose > effect
+                      this.closeLastSubstream = prevLastClose.zipRight(effect)
                     })
                 )
                 executor.input = this.input
@@ -489,7 +489,8 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return ChannelState.Effect(
       finalizerEffect
         .ensuring(Effect.sync(this.clearInProgressFinalizer()))
-        .uninterruptible > Effect.sync(this.doneSucceed(z))
+        .uninterruptible
+        .zipRight(Effect.sync(this.doneSucceed(z)))
     )
   }
 
@@ -691,7 +692,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       (effect) => {
         const closeLast = this.closeLastSubstream == null ? Effect.unit : this.closeLastSubstream
         this.closeLastSubstream = undefined
-        return this.executeCloseLastSubstream(closeLast) > effect
+        return this.executeCloseLastSubstream(closeLast).zipRight(effect)
       },
       (emitted) => {
         if (this.closeLastSubstream != null) {
@@ -1048,28 +1049,28 @@ function read<R, E, A>(
       const emitEffect = current.onEmit(current.upstream.getEmit())
       if (newReadStack == null) {
         if (emitEffect == null) {
-          return Effect.suspendSucceed(cont())
+          return Effect.suspendSucceed(cont)
         }
-        return emitEffect > cont()
+        return emitEffect.flatMap(cont)
       }
       if (emitEffect == null) {
         return Effect.suspendSucceed(read(newReadStack, cont))
       }
-      return emitEffect > read(newReadStack, cont)
+      return emitEffect.flatMap(() => read(newReadStack!, cont))
     }
 
     case "Done": {
       const doneEffect = current.onDone(current.upstream.getDone())
       if (newReadStack == null) {
         if (doneEffect == null) {
-          return Effect.suspendSucceed(cont())
+          return Effect.suspendSucceed(cont)
         }
-        return doneEffect > cont()
+        return doneEffect.flatMap(cont)
       }
       if (doneEffect == null) {
         return Effect.suspendSucceed(read(newReadStack, cont))
       }
-      return doneEffect > read(newReadStack, cont)
+      return doneEffect.flatMap(() => read(newReadStack!, cont))
     }
 
     case "Effect": {
@@ -1082,7 +1083,7 @@ function read<R, E, A>(
               const doneEffect = current.onDone(Exit.failCause(cause))
               return doneEffect == null ? Effect.unit : doneEffect
             })
-          ) > read(newReadStack, cont)
+          ).flatMap(() => read(newReadStack!, cont))
       )
     }
 

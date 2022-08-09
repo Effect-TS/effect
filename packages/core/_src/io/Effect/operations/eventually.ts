@@ -5,5 +5,5 @@
  * @tsplus getter effect/core/io/Effect eventually
  */
 export function eventually<R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> {
-  return self.orElse(Effect.yieldNow.zipRight(self.eventually))
+  return self.orElse(Effect.yieldNow.flatMap(() => self.eventually))
 }

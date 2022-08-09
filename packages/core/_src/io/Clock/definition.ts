@@ -15,7 +15,7 @@ export interface Clock {
 
   readonly scheduler: Effect<never, never, Clock.Scheduler>
 
-  readonly sleep: (duration: LazyArg<Duration>) => Effect<never, never, void>
+  readonly sleep: (duration: Duration) => Effect<never, never, void>
 }
 
 /**

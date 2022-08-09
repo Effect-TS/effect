@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops done
  */
-export function done<E, A>(
-  exit: LazyArg<Exit<E, A>>
-): Stream<never, E, A> {
+export function done<E, A>(exit: Exit<E, A>): Stream<never, E, A> {
   return Stream.fromEffect(Effect.done(exit))
 }

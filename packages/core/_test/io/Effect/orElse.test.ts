@@ -1,57 +1,48 @@
 describe.concurrent("orElse", () => {
   describe.concurrent("orElse", () => {
-    it("does not recover from defects", async () => {
-      const error = new Error("died")
-      const fiberId = FiberId(0, 123)
-      const program = Effect.Do()
-        .bind("plain", () => (Effect.die(error) | Effect.unit).exit)
-        .bind("both", () =>
-          (
-            Effect.failCauseSync(Cause.both(Cause.interrupt(fiberId), Cause.die(error))) |
-            Effect.unit
-          ).exit)
-        .bind("then", () =>
-          (
-            Effect.failCauseSync(Cause.then(Cause.interrupt(fiberId), Cause.die(error))) |
-            Effect.unit
-          ).exit)
-        .bind("fail", () => (Effect.failSync(error) | Effect.unit).exit)
+    it("does not recover from defects", () =>
+      Do(($) => {
+        const error = new Error("died")
+        const fiberId = FiberId(0, 123)
+        const bothCause = Cause.both(Cause.interrupt(fiberId), Cause.die(error))
+        const thenCause = Cause.then(Cause.interrupt(fiberId), Cause.die(error))
+        const plain = $(Effect.dieSync(error).orElse(Effect.unit).exit)
+        const both = $(Effect.failCause(bothCause).orElse(Effect.unit).exit)
+        const then = $(Effect.failCause(thenCause).orElse(Effect.unit).exit)
+        const fail = $(Effect.failSync(error).orElse(Effect.unit).exit)
+        assert.isTrue(plain == Exit.die(error))
+        assert.isTrue(both == Exit.die(error))
+        assert.isTrue(then == Exit.die(error))
+        assert.isTrue(fail == Exit.succeed(undefined))
+      }).unsafeRunPromiseExit())
 
-      const { both, fail, plain, then } = await program.unsafeRunPromise()
+    it("left failed and right died with kept cause", () =>
+      Do(($) => {
+        const z1 = Effect.failSync(new Error("1"))
+        const z2 = Effect.dieSync(new Error("2"))
+        const result = $(
+          z1.orElse(z2).catchAllCause((cause) =>
+            cause.isDieType()
+              ? Effect.sync((cause.value as Error).message === "2")
+              : Effect.sync(false)
+          )
+        )
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      assert.isTrue(plain == Exit.die(error))
-      assert.isTrue(both == Exit.die(error))
-      assert.isTrue(then == Exit.die(error))
-      assert.isTrue(fail == Exit.succeed(undefined))
-    })
-
-    it("left failed and right died with kept cause", async () => {
-      const z1 = Effect.failSync(new Error("1"))
-      const z2 = Effect.die(new Error("2"))
-      const program = (z1 | z2).catchAllCause((cause) =>
-        cause.isDieType()
-          ? Effect.sync((cause.value as Error).message === "2")
-          : Effect.sync(false)
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("left failed and right failed with kept cause", async () => {
-      const z1 = Effect.failSync(new Error("1"))
-      const z2 = Effect.failSync(new Error("2"))
-      const program = (z1 | z2).catchAllCause((cause) =>
-        cause.isFailType()
-          ? Effect.sync((cause.value as Error).message === "2")
-          : Effect.sync(false)
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("left failed and right failed with kept cause", () =>
+      Do(($) => {
+        const z1 = Effect.failSync(new Error("1"))
+        const z2 = Effect.failSync(new Error("2"))
+        const result = $(
+          z1.orElse(z2).catchAllCause((cause) =>
+            cause.isFailType()
+              ? Effect.sync((cause.value as Error).message === "2")
+              : Effect.sync(false)
+          )
+        )
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
     // TODO(Mike/Max): implement once Gen has been implemented
     // it("is associative", async () => {
@@ -74,66 +65,52 @@ describe.concurrent("orElse", () => {
   })
 
   describe.concurrent("orElseFail", () => {
-    it("executes this effect and returns its value if it succeeds", async () => {
-      const program = Effect.sync(true).orElseFail(false)
+    it("executes this effect and returns its value if it succeeds", () =>
+      Do(($) => {
+        const result = $(Effect.sync(true).orElseFail(false))
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("otherwise fails with the specified error", async () => {
-      const program = Effect.failSync(false).orElseFail(true).flip
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("otherwise fails with the specified error", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(false).orElseFail(true).flip)
+        assert.isTrue(result)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("orElseOptional", () => {
-    it("produces the value of this effect if it succeeds", async () => {
-      const program = Effect.sync("succeed").orElseOptional(Effect.sync("orElse"))
+    it("produces the value of this effect if it succeeds", () =>
+      Do(($) => {
+        const result = $(Effect.sync("succeed").orElseOptional(Effect.sync("orElse")))
+        assert.strictEqual(result, "succeed")
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("produces the value of this effect if it fails with some error", () =>
+      Do(($) => {
+        const result = $(
+          Effect.failSync(Maybe.some("fail")).orElseOptional(Effect.sync("orElse")).exit
+        )
+        assert.isTrue(result == Exit.fail(Maybe.some("fail")))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, "succeed")
-    })
-
-    it("produces the value of this effect if it fails with some error", async () => {
-      const program = Effect.failSync(Maybe.some("fail")).orElseOptional(
-        Effect.sync("orElse")
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(Maybe.some("fail")))
-    })
-
-    it("produces the value of the specified effect if it fails with none", async () => {
-      const program = Effect.failSync(Maybe.none).orElseOptional(Effect.sync("orElse"))
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, "orElse")
-    })
+    it("produces the value of the specified effect if it fails with none", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(Maybe.none).orElseOptional(Effect.sync("orElse")))
+        assert.strictEqual(result, "orElse")
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("orElseSucceed", () => {
-    it("executes this effect and returns its value if it succeeds", async () => {
-      const program = Effect.sync(true).orElseSucceed(false)
+    it("executes this effect and returns its value if it succeeds", () =>
+      Do(($) => {
+        const result = $(Effect.sync(true).orElseSucceed(false))
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("otherwise succeeds with the specified value", async () => {
-      const program = Effect.failSync(false).orElseSucceed(true)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("otherwise succeeds with the specified value", () =>
+      Do(($) => {
+        const result = $(Effect.failSync(false).orElseSucceed(true))
+        assert.isTrue(result)
+      }).unsafeRunPromise())
   })
 })

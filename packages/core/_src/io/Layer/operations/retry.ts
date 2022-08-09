@@ -6,14 +6,12 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  * @tsplus static effect/core/io/Layer.Aspects retry
  * @tsplus pipeable effect/core/io/Layer retry
  */
-export function retry<S, RIn1, E, X>(schedule: LazyArg<Schedule<S, RIn1, E, X>>) {
+export function retry<S, RIn1, E, X>(schedule: Schedule<S, RIn1, E, X>) {
   return <RIn, ROut>(self: Layer<RIn, E, ROut>): Layer<RIn | RIn1, E, ROut> =>
     Layer.suspend(() => {
-      const schedule0 = schedule()
       const stateTag = Tag<UpdateState<S>>()
-
-      return Layer.succeed(stateTag, { state: schedule0.initial }).flatMap((env) =>
-        loop(self, schedule0, stateTag, env.get(stateTag).state)
+      return Layer.succeed(stateTag, { state: schedule.initial }).flatMap((env) =>
+        loop(self, schedule, stateTag, env.get(stateTag).state)
       )
     })
 }

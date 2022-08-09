@@ -4,7 +4,7 @@
  * @tsplus static effect/core/io/Deferred.Ops makeAs
  */
 export function makeAs<E, A>(
-  fiberId: LazyArg<FiberId>
+  fiberId: FiberId
 ): Effect<never, never, Deferred<E, A>> {
-  return Effect.sync(Deferred.unsafeMake(fiberId()))
+  return Effect.sync(Deferred.unsafeMake(fiberId))
 }

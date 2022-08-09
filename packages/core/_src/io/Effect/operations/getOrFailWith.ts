@@ -4,6 +4,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops getOrFailWith
  */
-export function getOrFailWith<E, A>(option: LazyArg<Maybe<A>>, e: LazyArg<E>): Effect<never, E, A> {
-  return Effect.suspendSucceed(option().fold(Effect.failSync(e), Effect.succeed))
+export function getOrFailWith<E, A>(option: Maybe<A>, e: E): Effect<never, E, A> {
+  return option.fold(Effect.fail(e), Effect.succeed)
 }

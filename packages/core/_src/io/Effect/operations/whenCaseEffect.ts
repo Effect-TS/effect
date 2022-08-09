@@ -5,8 +5,8 @@
  * @tsplus static effect/core/io/Effect.Ops whenCaseEffect
  */
 export function whenCaseEffect<R, E, A, R1, E1, B>(
-  a: LazyArg<Effect<R, E, A>>,
+  a: Effect<R, E, A>,
   pf: (a: A) => Maybe<Effect<R1, E1, B>>
 ): Effect<R | R1, E | E1, Maybe<B>> {
-  return Effect.suspendSucceed(a().flatMap((a) => Effect.whenCase(a, pf)))
+  return a.flatMap((a) => Effect.whenCase(a, pf))
 }

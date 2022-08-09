@@ -5,6 +5,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops die
  */
-export function die<A>(f: LazyArg<A>): Effect<never, never, never> {
-  return Effect.failCauseSync(Cause.die(f()))
+export function die(defect: unknown): Effect<never, never, never> {
+  return Effect.failCauseSync(Cause.die(defect))
 }

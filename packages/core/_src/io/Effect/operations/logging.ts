@@ -12,8 +12,8 @@ const someDebug = Maybe.some(LogLevel.Debug)
  *
  * @tsplus static effect/core/io/Effect.Ops log
  */
-export function log(message: LazyArg<string>): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, Maybe.none, null, null)
+export function log(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, Maybe.none, null, null)
 }
 
 /**
@@ -21,8 +21,8 @@ export function log(message: LazyArg<string>): Effect<never, never, void> {
  *
  * @tsplus static effect/core/io/Effect.Ops logDebug
  */
-export function logDebug(message: LazyArg<string>): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someDebug, null, null)
+export function logDebug(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someDebug, null, null)
 }
 
 /**
@@ -30,8 +30,8 @@ export function logDebug(message: LazyArg<string>): Effect<never, never, void> {
  *
  * @tsplus static effect/core/io/Effect.Ops logDebugCause
  */
-export function logDebugCause<E>(cause: LazyArg<Cause<E>>): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someDebug, null, null)
+export function logDebugCause<E>(cause: Cause<E>): Effect<never, never, void> {
+  return new ILogged("", cause, someDebug, null, null)
 }
 
 /**
@@ -40,8 +40,8 @@ export function logDebugCause<E>(cause: LazyArg<Cause<E>>): Effect<never, never,
  * @tsplus static effect/core/io/Effect.Ops logDebugCauseMessage
  */
 export function logDebugCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someDebug, null, null)
 }
@@ -51,10 +51,8 @@ export function logDebugCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logError
  */
-export function logError(
-  message: LazyArg<string>
-): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someError, null, null)
+export function logError(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someError, null, null)
 }
 
 /**
@@ -62,10 +60,8 @@ export function logError(
  *
  * @tsplus static effect/core/io/Effect.Ops logErrorCause
  */
-export function logErrorCause<E>(
-  cause: LazyArg<Cause<E>>
-): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someError, null, null)
+export function logErrorCause<E>(cause: Cause<E>): Effect<never, never, void> {
+  return new ILogged("", cause, someError, null, null)
 }
 
 /**
@@ -74,8 +70,8 @@ export function logErrorCause<E>(
  * @tsplus static effect/core/io/Effect.Ops logErrorCauseMessage
  */
 export function logErrorCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someError, null, null)
 }
@@ -85,10 +81,8 @@ export function logErrorCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logFatal
  */
-export function logFatal(
-  message: LazyArg<string>
-): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someFatal, null, null)
+export function logFatal(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someFatal, null, null)
 }
 
 /**
@@ -97,9 +91,9 @@ export function logFatal(
  * @tsplus static effect/core/io/Effect.Ops logFatalCause
  */
 export function logFatalCause<E>(
-  cause: LazyArg<Cause<E>>
+  cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someFatal, null, null)
+  return new ILogged("", cause, someFatal, null, null)
 }
 
 /**
@@ -108,8 +102,8 @@ export function logFatalCause<E>(
  * @tsplus static effect/core/io/Effect.Ops logFatalCauseMessage
  */
 export function logFatalCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someFatal, null, null)
 }
@@ -119,10 +113,8 @@ export function logFatalCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logInfo
  */
-export function logInfo(
-  message: LazyArg<string>
-): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someInfo, null, null)
+export function logInfo(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someInfo, null, null)
 }
 
 /**
@@ -130,10 +122,8 @@ export function logInfo(
  *
  * @tsplus static effect/core/io/Effect.Ops logInfoCause
  */
-export function logInfoCause<E>(
-  cause: LazyArg<Cause<E>>
-): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someInfo, null, null)
+export function logInfoCause<E>(cause: Cause<E>): Effect<never, never, void> {
+  return new ILogged("", cause, someInfo, null, null)
 }
 
 /**
@@ -142,8 +132,8 @@ export function logInfoCause<E>(
  * @tsplus static effect/core/io/Effect.Ops logInfoCauseMessage
  */
 export function logInfoCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someInfo, null, null)
 }
@@ -153,10 +143,8 @@ export function logInfoCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logWarning
  */
-export function logWarning(
-  message: LazyArg<string>
-): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someWarning, null, null)
+export function logWarning(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someWarning, null, null)
 }
 
 /**
@@ -165,9 +153,9 @@ export function logWarning(
  * @tsplus static effect/core/io/Effect.Ops logWarningCause
  */
 export function logWarningCause<E>(
-  cause: LazyArg<Cause<E>>
+  cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someWarning, null, null)
+  return new ILogged("", cause, someWarning, null, null)
 }
 
 /**
@@ -176,8 +164,8 @@ export function logWarningCause<E>(
  * @tsplus static effect/core/io/Effect.Ops logWarningCauseMessage
  */
 export function logWarningCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someWarning, null, null)
 }
@@ -187,10 +175,8 @@ export function logWarningCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logTrace
  */
-export function logTrace(
-  message: LazyArg<string>
-): Effect<never, never, void> {
-  return new ILogged(message, () => Cause.empty, someTrace, null, null)
+export function logTrace(message: string): Effect<never, never, void> {
+  return new ILogged(message, Cause.empty, someTrace, null, null)
 }
 
 /**
@@ -198,10 +184,8 @@ export function logTrace(
  *
  * @tsplus static effect/core/io/Effect.Ops logTraceCause
  */
-export function logTraceCause<E>(
-  cause: LazyArg<Cause<E>>
-): Effect<never, never, void> {
-  return new ILogged(() => "", cause, someTrace, null, null)
+export function logTraceCause<E>(cause: Cause<E>): Effect<never, never, void> {
+  return new ILogged("", cause, someTrace, null, null)
 }
 
 /**
@@ -210,8 +194,8 @@ export function logTraceCause<E>(
  * @tsplus static effect/core/io/Effect.Ops logTraceCauseMessage
  */
 export function logTraceCauseMessage<E>(
-  message: LazyArg<string>,
-  cause: LazyArg<Cause<E>>
+  message: string,
+  cause: Cause<E>
 ): Effect<never, never, void> {
   return new ILogged(message, cause, someTrace, null, null)
 }
@@ -221,12 +205,12 @@ export function logTraceCauseMessage<E>(
  *
  * @tsplus static effect/core/io/Effect.Ops logSpan
  */
-export function logSpan(label: LazyArg<string>) {
+export function logSpan(label: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     FiberRef.currentLogSpan.get.flatMap((stack) =>
       Effect.suspendSucceed(() => {
         const now = Date.now()
-        const logSpan = LogSpan(label(), now)
+        const logSpan = LogSpan(label, now)
         return effect.apply(
           FiberRef.currentLogSpan.locally(stack.prepend(logSpan))
         )
@@ -239,7 +223,7 @@ export function logSpan(label: LazyArg<string>) {
  *
  * @tsplus static effect/core/io/Effect.Ops logAnnotate
  */
-export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
+export function logAnnotate(key: string, value: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     FiberRef.currentLogAnnotations
       .get
@@ -247,7 +231,7 @@ export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
         Effect.suspendSucceed(() =>
           effect.apply(
             FiberRef.currentLogAnnotations.locally(
-              annotations.set(key(), value())
+              annotations.set(key, value)
             )
           )
         )
@@ -271,8 +255,8 @@ export function logAnnotations(): Effect<never, never, ImmutableMap<string, stri
 export function disableLogging<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
   return Effect.runtimeConfig.flatMap((runtimeConfig) =>
     Effect.withRuntimeConfig(
-      RuntimeConfig({ ...runtimeConfig.value, loggers: HashSet.empty() }),
-      effect
+      effect,
+      RuntimeConfig({ ...runtimeConfig.value, loggers: HashSet.empty() })
     )
   )
 }

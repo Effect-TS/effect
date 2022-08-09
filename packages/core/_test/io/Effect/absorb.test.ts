@@ -1,7 +1,7 @@
 const ExampleError = new Error("Oh noes!")
 
 const ExampleErrorFail = Effect.failSync(ExampleError)
-const ExampleErrorDie = Effect.die(() => {
+const ExampleErrorDie = Effect.dieSync(() => {
   throw ExampleError
 })
 

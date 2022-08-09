@@ -21,7 +21,7 @@ export function secondOfMinute(
 ): Schedule<Tuple<[number, number]>, never, unknown, number> {
   return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(second) || second < 0 || 59 < second) {
-      return Effect.die(
+      return Effect.dieSync(
         new IllegalArgumentException(
           `Invalid argument in: secondOfMinute(${second}). Must be in range 0...59`
         )

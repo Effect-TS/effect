@@ -7,7 +7,7 @@ import { realCause } from "@effect/core/io/Cause/definition"
  * @tsplus pipeable effect/core/io/Cause fold
  */
 export function fold<E, Z>(
-  onEmptyCause: LazyArg<Z>,
+  onEmptyCause: Z,
   onFailCause: (e: E) => Z,
   onDieCause: (e: unknown) => Z,
   onInterruptCause: (fiberId: FiberId) => Z,
@@ -30,7 +30,7 @@ export function fold<E, Z>(
 
 function foldSafe<E, Z>(
   self: Cause<E>,
-  onEmptyCause: LazyArg<Z>,
+  onEmptyCause: Z,
   onFailCause: (e: E) => Z,
   onDieCause: (e: unknown) => Z,
   onInterruptCause: (fiberId: FiberId) => Z,

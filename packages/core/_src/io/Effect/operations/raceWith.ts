@@ -8,13 +8,13 @@ import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus pipeable effect/core/io/Effect raceWith
  */
 export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
-  that: LazyArg<Effect<R1, E1, A1>>,
+  that: Effect<R1, E1, A1>,
   leftDone: (exit: Exit<E, A>, fiber: Fiber<E1, A1>) => Effect<R2, E2, A2>,
   rightDone: (exit: Exit<E1, A1>, fiber: Fiber<E, A>) => Effect<R3, E3, A3>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3> =>
     new IRaceWith(
-      () => self,
+      self,
       that,
       (winner, loser) =>
         winner.await.flatMap((exit) => {

@@ -1,100 +1,99 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("catchNonFatalOrDie", () => {
-    it("recovers from non-fatal", async () => {
-      const message = "division by zero"
-      const program = Effect.failSync(
-        new IllegalArgumentException(message)
-      ).catchNonFatalOrDie((e) => Effect.sync(e.message))
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.succeed(message))
-    })
+    it("recovers from non-fatal", () =>
+      Do(($) => {
+        const message = "division by zero"
+        const result = $(
+          Effect
+            .failSync(new IllegalArgumentException(message))
+            .catchNonFatalOrDie((e) => Effect.sync(e.message))
+            .exit
+        )
+        assert.isTrue(result == Exit.succeed(message))
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("catchAllDefect", () => {
-    it("recovers from all defects", async () => {
-      const message = "division by zero"
-      const program = Effect.die(new IllegalArgumentException(message)).catchAllDefect(
-        (e) => Effect.sync((e as Error).message)
-      )
+    it("recovers from all defects", () =>
+      Do(($) => {
+        const message = "division by zero"
+        const result = $(
+          Effect
+            .die(new IllegalArgumentException(message))
+            .catchAllDefect((e) => Effect.sync((e as Error).message))
+        )
+        assert.strictEqual(result, message)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("leaves errors", () =>
+      Do(($) => {
+        const error = new IllegalArgumentException("division by zero")
+        const result = $(
+          Effect.failSync(error).catchAllDefect((e) => Effect.sync((e as Error).message).exit)
+        )
+        assert.isTrue(result == Exit.fail(error))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, message)
-    })
-
-    it("leaves errors", async () => {
-      const error = new IllegalArgumentException("division by zero")
-      const program = Effect.failSync(error).catchAllDefect((e) =>
-        Effect.sync((e as Error).message)
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(error))
-    })
-
-    it("leaves values", async () => {
-      const error = new IllegalArgumentException("division by zero")
-      const program = Effect.sync(error).catchAllDefect((e) => Effect.sync((e as Error).message))
-
-      const result = await program.unsafeRunPromise()
-
-      assert.deepEqual(result, error)
-    })
+    it("leaves values", () =>
+      Do(($) => {
+        const error = new IllegalArgumentException("division by zero")
+        const result = $(
+          Effect.sync(error).catchAllDefect((e) => Effect.sync((e as Error).message))
+        )
+        assert.deepEqual(result, error)
+      }).unsafeRunPromiseExit())
   })
 
   describe.concurrent("catchSomeDefect", () => {
-    it("recovers from some defects", async () => {
-      const message = "division by zero"
-      const program = Effect.die(new IllegalArgumentException(message)).catchSomeDefect(
-        (e) =>
-          e instanceof IllegalArgumentException
-            ? Maybe.some(Effect.sync(e.message))
-            : Maybe.none
-      )
+    it("recovers from some defects", () =>
+      Do(($) => {
+        const message = "division by zero"
+        const result = $(
+          Effect.dieSync(new IllegalArgumentException(message))
+            .catchSomeDefect((e) =>
+              e instanceof IllegalArgumentException
+                ? Maybe.some(Effect.sync(e.message))
+                : Maybe.none
+            )
+        )
+        assert.strictEqual(result, message)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("leaves the rest", () =>
+      Do(($) => {
+        const error = new IllegalArgumentException("division by zero")
+        const result = $(
+          Effect.dieSync(error).catchSomeDefect((e) =>
+            e instanceof RuntimeError ? Maybe.some(Effect.sync(e.message)) : Maybe.none
+          ).exit
+        )
+        assert.isTrue(result == Exit.die(error))
+      }).unsafeRunPromiseExit())
 
-      assert.strictEqual(result, message)
-    })
+    it("leaves errors", () =>
+      Do(($) => {
+        const error = new IllegalArgumentException("division by zero")
+        const result = $(
+          Effect.failSync(error).catchSomeDefect((e) =>
+            e instanceof IllegalArgumentException
+              ? Maybe.some(Effect.sync(e.message))
+              : Maybe.none
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(error))
+      }).unsafeRunPromiseExit())
 
-    it("leaves the rest", async () => {
-      const error = new IllegalArgumentException("division by zero")
-      const program = Effect.die(error).catchSomeDefect((e) =>
-        e instanceof RuntimeError ? Maybe.some(Effect.sync(e.message)) : Maybe.none
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.die(error))
-    })
-
-    it("leaves errors", async () => {
-      const error = new IllegalArgumentException("division by zero")
-      const program = Effect.failSync(error).catchSomeDefect((e) =>
-        e instanceof IllegalArgumentException
-          ? Maybe.some(Effect.sync(e.message))
-          : Maybe.none
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(error))
-    })
-
-    it("leaves values", async () => {
-      const error = new IllegalArgumentException("division by zero")
-      const program = Effect.sync(error).catchSomeDefect((e) =>
-        e instanceof IllegalArgumentException
-          ? Maybe.some(Effect.sync(e.message))
-          : Maybe.none
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.deepEqual(result, error)
-    })
+    it("leaves values", () =>
+      Do(($) => {
+        const error = new IllegalArgumentException("division by zero")
+        const result = $(
+          Effect.sync(error).catchSomeDefect((e) =>
+            e instanceof IllegalArgumentException
+              ? Maybe.some(Effect.sync(e.message))
+              : Maybe.none
+          )
+        )
+        assert.deepEqual(result, error)
+      }).unsafeRunPromise())
   })
 })

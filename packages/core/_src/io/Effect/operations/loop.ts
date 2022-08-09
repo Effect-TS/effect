@@ -17,7 +17,7 @@
  * @tsplus static effect/core/io/Effect.Ops loop
  */
 export function loop<Z>(
-  initial: LazyArg<Z>,
+  initial: Z,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z
 ) {
@@ -27,16 +27,15 @@ export function loop<Z>(
 }
 
 function loopInternal<Z, R, E, A>(
-  initial: LazyArg<Z>,
+  initial: Z,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z,
   body: (z: Z) => Effect<R, E, A>
 ): Effect<R, E, ListBuffer<A>> {
   return Effect.suspendSucceed(() => {
-    const initial0 = initial()
-    return cont(initial0)
-      ? body(initial0).flatMap((a) =>
-        loopInternal(inc(initial0), cont, inc, body).map((as) => {
+    return cont(initial)
+      ? body(initial).flatMap((a) =>
+        loopInternal(inc(initial), cont, inc, body).map((as) => {
           as.prepend(a)
           return as
         })

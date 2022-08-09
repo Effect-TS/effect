@@ -11,7 +11,7 @@ import {
  * @tsplus pipeable effect/core/stream/Stream mapAccumEffect
  */
 export function mapAccumEffect<A, R2, E2, A2, S>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
@@ -21,7 +21,7 @@ export function mapAccumEffect<A, R2, E2, A2, S>(
 }
 
 function accumulator<A, R2, E2, A2, S>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
 ): Channel<R2, unknown, Chunk<A>, unknown, E2, Chunk<A2>, unknown> {
   return Channel.readWith(

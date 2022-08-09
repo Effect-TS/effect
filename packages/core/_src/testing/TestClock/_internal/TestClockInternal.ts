@@ -59,10 +59,10 @@ export class TestClockInternal extends LiveClock {
    * greater than the specified duration. Once the clock time is adjusted to
    * on or after the duration, the fiber will automatically be resumed.
    */
-  sleep(duration: LazyArg<Duration>): Effect<never, never, void> {
+  sleep(duration: Duration): Effect<never, never, void> {
     return Deferred.make<never, void>().flatMap((deferred) =>
       this.clockState.modify((data) => {
-        const end = data.instant + duration().millis
+        const end = data.instant + duration.millis
         if (end > data.instant) {
           return Tuple(
             true,

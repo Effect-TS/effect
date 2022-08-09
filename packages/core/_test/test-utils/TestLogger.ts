@@ -52,8 +52,8 @@ export class LogEntry {
   constructor(
     readonly fiberId: FiberId,
     readonly logLevel: LogLevel,
-    readonly message: Lazy<string>,
-    readonly cause: Lazy<Cause<any>>,
+    readonly message: string,
+    readonly cause: Cause<any>,
     readonly context: ImmutableMap<FiberRef<any>, unknown>,
     readonly spans: List<LogSpan>,
     readonly annotations: ImmutableMap<string, string>

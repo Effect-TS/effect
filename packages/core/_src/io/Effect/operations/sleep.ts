@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/io/Effect.Ops sleep
  */
-export function sleep(
-  duration: LazyArg<Duration>
-): Effect<never, never, void> {
+export function sleep(duration: Duration): Effect<never, never, void> {
   return Clock.sleep(duration)
 }

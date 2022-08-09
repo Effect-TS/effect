@@ -30,7 +30,7 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
     concreteChannelState(channelState)
     switch (channelState._tag) {
       case "Effect": {
-        return channelState.effect.zipRight(
+        return channelState.effect.flatMap(() =>
           interpret(exec.run() as ChannelState<Env, OutErr>, exec)
         )
       }

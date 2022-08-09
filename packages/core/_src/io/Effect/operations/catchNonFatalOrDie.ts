@@ -11,7 +11,7 @@ export function catchNonFatalOrDie<E, R2, E2, A2>(f: (e: E) => Effect<R2, E2, A2
         Effect.runtime<never>()
           .flatMap((runtime) =>
             runtime.runtimeConfig.value.fatal(e) ?
-              Effect.dieNow(e) :
+              Effect.die(e) :
               f(e)
           ),
       Effect.succeed

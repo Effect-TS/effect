@@ -2,160 +2,133 @@ import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("retryUntil", () => {
-    it("retries until condition is true", async () => {
-      const program = Effect.Do()
-        .bind("input", () => Ref.make<number>(10))
-        .bind("output", () => Ref.make<number>(0))
-        .tap(({ input, output }) =>
-          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
-            (effect) => effect.retryUntil((n) => n === 0)
-          )
+    it("retries until condition is true", () =>
+      Do(($) => {
+        const input = $(Ref.make(10))
+        const output = $(Ref.make(0))
+        $(
+          input
+            .updateAndGet((n) => n - 1)
+            .zipLeft(output.update((n) => n + 1))
+            .flipWith((effect) => effect.retryUntil((n) => n === 0))
         )
-        .flatMap(({ output }) => output.get)
+        const result = $(output.get)
+        assert.strictEqual(result, 10)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 10)
-    })
-
-    it("runs at least once", async () => {
-      const program = Ref.make<number>(0)
-        .tap((ref) => ref.update((n) => n + 1).flipWith((effect) => effect.retryUntil(constTrue)))
-        .flatMap((ref) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+    it("runs at least once", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        $(ref.update((n) => n + 1).flipWith((effect) => effect.retryUntil(constTrue)))
+        const result = $(ref.get)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("retryUntilEquals", () => {
-    it("retries until error equals predicate", async () => {
-      const program = Effect.Do()
-        .bind("queue", () => Queue.unbounded<number>())
-        .tap(({ queue }) => queue.offerAll(List(1, 2, 3, 4, 5, 6)))
-        .bind("acc", () => Ref.make<number>(0))
-        .tap(({ acc, queue }) =>
-          (queue.take < acc.update((n) => n + 1)).flipWith((effect) =>
-            effect.retryUntilEquals(Equivalence.number, 5)
-          )
+    it("retries until error equals predicate", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        const queue = $(Queue.unbounded<number>())
+        $(queue.offerAll(List(1, 2, 3, 4, 5, 6)))
+        $(
+          queue.take
+            .zipLeft(ref.update((n) => n + 1))
+            .flipWith((effect) => effect.retryUntilEquals(Equivalence.number, 5))
         )
-        .flatMap(({ acc }) => acc.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 5)
-    })
+        const result = $(ref.get)
+        assert.strictEqual(result, 5)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("retryUntilEffect", () => {
-    it("retries until condition is true", async () => {
-      const program = Effect.Do()
-        .bind("input", () => Ref.make<number>(10))
-        .bind("output", () => Ref.make<number>(0))
-        .tap(({ input, output }) =>
-          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+    it("retries until condition is true", () =>
+      Do(($) => {
+        const input = $(Ref.make(10))
+        const output = $(Ref.make(0))
+        $(
+          input.updateAndGet((n) => n - 1).zipLeft(output.update((n) => n + 1)).flipWith(
             (effect) => effect.retryUntilEffect((n) => Effect.sync(n === 0))
           )
         )
-        .flatMap(({ output }) => output.get)
+        const result = $(output.get)
+        assert.strictEqual(result, 10)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 10)
-    })
-
-    it("runs at least once", async () => {
-      const program = Ref.make<number>(0)
-        .tap((ref) =>
-          ref
-            .update((n) => n + 1)
+    it("runs at least once", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        $(
+          ref.update((n) => n + 1)
             .flipWith((effect) => effect.retryUntilEffect(() => Effect.sync(true)))
         )
-        .flatMap((ref) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+        const result = $(ref.get)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("retryWhile", () => {
-    it("retries while condition is true", async () => {
-      const program = Effect.Do()
-        .bind("input", () => Ref.make<number>(10))
-        .bind("output", () => Ref.make<number>(0))
-        .tap(({ input, output }) =>
-          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+    it("retries while condition is true", () =>
+      Do(($) => {
+        const input = $(Ref.make(10))
+        const output = $(Ref.make(0))
+        $(
+          input.updateAndGet((n) => n - 1).zipLeft(output.update((n) => n + 1)).flipWith(
             (effect) => effect.retryWhile((n) => n >= 0)
           )
         )
-        .flatMap(({ output }) => output.get)
+        const result = $(output.get)
+        assert.strictEqual(result, 11)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 11)
-    })
-
-    it("runs at least once", async () => {
-      const program = Ref.make<number>(0)
-        .tap((ref) => ref.update((n) => n + 1).flipWith((effect) => effect.retryWhile(constFalse)))
-        .flatMap((ref) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+    it("runs at least once", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        $(ref.update((n) => n + 1).flipWith((effect) => effect.retryWhile(constFalse)))
+        const result = $(ref.get)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("retryWhileEquals", () => {
-    it("retries while error equals predicate", async () => {
-      const program = Effect.Do()
-        .bind("queue", () => Queue.unbounded<number>())
-        .tap(({ queue }) => queue.offerAll(List(0, 0, 0, 0, 1, 2)))
-        .bind("acc", () => Ref.make<number>(0))
-        .tap(({ acc, queue }) =>
-          (queue.take < acc.update((n) => n + 1)).flipWith((effect) =>
+    it("retries while error equals predicate", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        const queue = $(Queue.unbounded<number>())
+        $(queue.offerAll(List(0, 0, 0, 0, 1, 2)))
+        $(
+          queue.take.zipLeft(ref.update((n) => n + 1)).flipWith((effect) =>
             effect.retryWhileEquals(Equivalence.number, 0)
           )
         )
-        .flatMap(({ acc }) => acc.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 5)
-    })
+        const result = $(ref.get)
+        assert.strictEqual(result, 5)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("retryWhileEffect", () => {
-    it("retries while condition is true", async () => {
-      const program = Effect.Do()
-        .bind("input", () => Ref.make<number>(10))
-        .bind("output", () => Ref.make<number>(0))
-        .tap(({ input, output }) =>
-          (input.updateAndGet((n) => n - 1) < output.update((n) => n + 1)).flipWith(
+    it("retries while condition is true", () =>
+      Do(($) => {
+        const input = $(Ref.make(10))
+        const output = $(Ref.make(0))
+        $(
+          input.updateAndGet((n) => n - 1).zipLeft(output.update((n) => n + 1)).flipWith(
             (effect) => effect.retryWhileEffect((n) => Effect.sync(n >= 0))
           )
         )
-        .flatMap(({ output }) => output.get)
+        const result = $(output.get)
+        assert.strictEqual(result, 11)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 11)
-    })
-
-    it("runs at least once", async () => {
-      const program = Ref.make<number>(0)
-        .tap((ref) =>
-          ref
-            .update((n) => n + 1)
+    it("runs at least once", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        $(
+          ref.update((n) => n + 1)
             .flipWith((effect) => effect.retryWhileEffect(() => Effect.sync(false)))
         )
-        .flatMap((ref) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 1)
-    })
+        const result = $(ref.get)
+        assert.strictEqual(result, 1)
+      }).unsafeRunPromise())
   })
 })

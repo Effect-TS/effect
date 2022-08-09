@@ -10,15 +10,7 @@
  * @tsplus static effect/core/io/Effect.Aspects timeoutTo
  * @tsplus pipeable effect/core/io/Effect timeoutTo
  */
-export function timeoutTo<A, B, B1>(
-  def: LazyArg<B1>,
-  f: (a: A) => B,
-  duration: LazyArg<Duration>
-) {
+export function timeoutTo<A, B, B1>(def: B1, f: (a: A) => B, duration: Duration) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, B | B1> =>
-    self.map(f).raceFirst(
-      Effect.sleep(duration)
-        .interruptible
-        .map(def)
-    )
+    self.map(f).raceFirst(Effect.sleep(duration).interruptible.as(def))
 }

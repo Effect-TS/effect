@@ -5,7 +5,7 @@ import { ICheckInterrupt, IInterruptStatus } from "@effect/core/io/Effect/defini
  */
 export interface InterruptStatusRestore {
   readonly restore: <R, E, A>(
-    effect: LazyArg<Effect<R, E, A>>
+    effect: Effect<R, E, A>
   ) => Effect<R, E, A>
   /**
    * Returns a new effect that, if the parent region is uninterruptible, can
@@ -14,7 +14,7 @@ export interface InterruptStatusRestore {
    * foreground.
    */
   readonly force: <R, E, A>(
-    effect: LazyArg<Effect<R, E, A>>
+    effect: Effect<R, E, A>
   ) => Effect<R, E, A>
 }
 
@@ -22,19 +22,17 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
   constructor(readonly flag: InterruptStatus) {}
 
   restore = <R, E, A>(
-    effect: LazyArg<Effect<R, E, A>>
+    effect: Effect<R, E, A>
   ): Effect<R, E, A> => {
-    return Effect.suspendSucceed(effect().interruptStatus(this.flag))
+    return effect.interruptStatus(this.flag)
   }
 
   force = <R, E, A>(
-    effect: LazyArg<Effect<R, E, A>>
+    effect: Effect<R, E, A>
   ): Effect<R, E, A> => {
-    return Effect.suspendSucceed(
-      this.flag.isUninterruptible
-        ? effect().uninterruptible.disconnect.interruptible
-        : effect().interruptStatus(this.flag)
-    )
+    return this.flag.isUninterruptible
+      ? effect.uninterruptible.disconnect.interruptible
+      : effect.interruptStatus(this.flag)
   }
 }
 
@@ -196,7 +194,7 @@ export function onInterruptPolymorphic<R2, E2, X>(
         (cause) =>
           cause.isInterrupted
             ? cleanup(cause.interruptors).foldCauseEffect(
-              (_) => Effect.failCause(_),
+              Effect.failCause,
               () => Effect.failCause(cause)
             )
             : Effect.failCause(cause),
@@ -210,6 +208,6 @@ export function onInterruptPolymorphic<R2, E2, X>(
  *
  * @tsplus static effect/core/io/Effect.Ops interruptAs
  */
-export function interruptAs(fiberId: LazyArg<FiberId>) {
-  return Effect.failCauseSync(Cause.interrupt(fiberId()))
+export function interruptAs(fiberId: FiberId) {
+  return Effect.failCauseSync(Cause.interrupt(fiberId))
 }

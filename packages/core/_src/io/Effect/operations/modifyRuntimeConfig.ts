@@ -2,7 +2,7 @@
  * A combinator that runs the specified effect with the runtime configuration
  * modified with the specified function.
  *
- * @tsplus fluent effect/core/io/Effect.Aspects modifyRuntimeConfig
+ * @tsplus static effect/core/io/Effect.Aspects modifyRuntimeConfig
  * @tsplus pipeable effect/core/io/Effect modifyRuntimeConfig
  */
 export function modifyRuntimeConfig(f: (runtimeConfig: RuntimeConfig) => RuntimeConfig) {

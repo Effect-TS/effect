@@ -14,7 +14,7 @@ import { IEnsuring } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Aspects ensuring
  * @tsplus pipeable effect/core/io/Effect ensuring
  */
-export function ensuring<R1, X>(finalizer: LazyArg<Effect<R1, never, X>>) {
+export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
-    Effect.suspendSucceed(new IEnsuring(self, finalizer()))
+    Effect.suspendSucceed(new IEnsuring(self, finalizer))
 }

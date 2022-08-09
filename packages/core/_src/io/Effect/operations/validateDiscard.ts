@@ -5,7 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops validateDiscard
  */
 export function validateDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, Chunk<E>, void> {
   return Effect.partition(as, f).flatMap(({ tuple: [es, _] }) =>

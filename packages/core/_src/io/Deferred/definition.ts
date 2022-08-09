@@ -87,10 +87,7 @@ export class DeferredInternal<E, A> {
    * Note that `Deferred.completeWith` will be much faster, so consider using
    * that if you do not need to memoize the result of the specified effect.
    */
-  complete<E, A>(
-    this: Deferred<E, A>,
-    effect: Effect<never, E, A>
-  ): Effect<never, never, boolean> {
+  complete<E, A>(this: Deferred<E, A>, effect: Effect<never, E, A>): Effect<never, never, boolean> {
     return effect.intoDeferred(this)
   }
 
@@ -126,21 +123,23 @@ export class DeferredInternal<E, A> {
    * Kills the promise with the specified error, which will be propagated to all
    * fibers waiting on the value of the promise.
    */
-  die<E, A>(
-    this: Deferred<E, A>,
-    defect: LazyArg<unknown>
-  ): Effect<never, never, boolean> {
+  die<E, A>(this: Deferred<E, A>, defect: unknown): Effect<never, never, boolean> {
     return this.completeWith(Effect.die(defect))
+  }
+
+  /**
+   * Kills the promise with the specified error, which will be propagated to all
+   * fibers waiting on the value of the promise.
+   */
+  dieSync<E, A>(this: Deferred<E, A>, defect: LazyArg<unknown>): Effect<never, never, boolean> {
+    return this.completeWith(Effect.dieSync(defect))
   }
 
   /**
    * Exits the deferred with the specified exit, which will be propagated to all
    * fibers waiting on the value of the deferred.
    */
-  done<E, A>(
-    this: Deferred<E, A>,
-    exit: LazyArg<Exit<E, A>>
-  ): Effect<never, never, boolean> {
+  done<E, A>(this: Deferred<E, A>, exit: Exit<E, A>): Effect<never, never, boolean> {
     return this.completeWith(Effect.done(exit))
   }
 
@@ -148,10 +147,15 @@ export class DeferredInternal<E, A> {
    * Fails the deferred with the specified error, which will be propagated to all
    * fibers waiting on the value of the deferred.
    */
-  fail<E, A>(
-    this: Deferred<E, A>,
-    e: LazyArg<E>
-  ): Effect<never, never, boolean> {
+  fail<E, A>(this: Deferred<E, A>, e: E): Effect<never, never, boolean> {
+    return this.completeWith(Effect.fail(e))
+  }
+
+  /**
+   * Fails the deferred with the specified error, which will be propagated to all
+   * fibers waiting on the value of the deferred.
+   */
+  failSync<E, A>(this: Deferred<E, A>, e: LazyArg<E>): Effect<never, never, boolean> {
     return this.completeWith(Effect.failSync(e))
   }
 
@@ -159,11 +163,16 @@ export class DeferredInternal<E, A> {
    * Fails the deferred with the specified cause, which will be propagated to all
    * fibers waiting on the value of the deferred.
    */
-  failCause<E, A>(
-    this: Deferred<E, A>,
-    cause: LazyArg<Cause<E>>
-  ): Effect<never, never, boolean> {
+  failCause<E, A>(this: Deferred<E, A>, cause: LazyArg<Cause<E>>): Effect<never, never, boolean> {
     return this.completeWith(Effect.failCauseSync(cause))
+  }
+
+  /**
+   * Fails the deferred with the specified cause, which will be propagated to all
+   * fibers waiting on the value of the deferred.
+   */
+  failCauseSync<E, A>(this: Deferred<E, A>, cause: Cause<E>): Effect<never, never, boolean> {
+    return this.completeWith(Effect.failCause(cause))
   }
 
   /**
@@ -178,10 +187,7 @@ export class DeferredInternal<E, A> {
    * Completes the deferred with interruption. This will interrupt all fibers
    * waiting on the value of the deferred as by the fiber calling this method.
    */
-  interruptAs<E, A>(
-    this: Deferred<E, A>,
-    fiberId: LazyArg<FiberId>
-  ): Effect<never, never, boolean> {
+  interruptAs<E, A>(this: Deferred<E, A>, fiberId: FiberId): Effect<never, never, boolean> {
     return this.completeWith(Effect.interruptAs(fiberId))
   }
 
@@ -214,10 +220,14 @@ export class DeferredInternal<E, A> {
   /**
    * Completes the deferred with the specified value.
    */
-  succeed<E, A>(
-    this: Deferred<E, A>,
-    value: LazyArg<A>
-  ): Effect<never, never, boolean> {
+  succeed<E, A>(this: Deferred<E, A>, value: A): Effect<never, never, boolean> {
+    return this.completeWith(Effect.sync(value))
+  }
+
+  /**
+   * Completes the deferred with the specified value.
+   */
+  sync<E, A>(this: Deferred<E, A>, value: LazyArg<A>): Effect<never, never, boolean> {
     return this.completeWith(Effect.sync(value))
   }
 

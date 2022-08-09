@@ -5,7 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops addFinalizer
  */
 export function addFinalizer<R, X>(
-  finalizer: LazyArg<Effect<R, never, X>>
+  finalizer: Effect<R, never, X>
 ): Effect<R | Scope, never, void> {
-  return Effect.addFinalizerExit(finalizer)
+  return Effect.addFinalizerExit(() => finalizer)
 }

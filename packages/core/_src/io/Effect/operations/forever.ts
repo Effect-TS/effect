@@ -4,5 +4,5 @@
  * @tsplus getter effect/core/io/Effect forever
  */
 export function forever<R, E, A>(self: Effect<R, E, A>): Effect<R, E, never> {
-  return self.zipRight(Effect.yieldNow).zipRight(self.forever)
+  return self.flatMap(() => Effect.yieldNow).flatMap(() => self.forever)
 }

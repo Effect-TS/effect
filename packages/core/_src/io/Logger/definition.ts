@@ -1,5 +1,3 @@
-import type { Lazy } from "@tsplus/stdlib/data/Function"
-
 /**
  * @tsplus type effect/core/io/Logger
  */
@@ -7,8 +5,8 @@ export interface Logger<Message, Output> {
   readonly apply: (
     fiberId: FiberId,
     logLevel: LogLevel,
-    message: Lazy<Message>,
-    cause: Lazy<Cause<unknown>>,
+    message: Message,
+    cause: Cause<unknown>,
     context: ImmutableMap<FiberRef<unknown>, unknown>,
     spans: List<LogSpan>,
     annotations: ImmutableMap<string, string>

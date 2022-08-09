@@ -1,9 +1,13 @@
-const pollSchedule = <E, A>(): Schedule<
+function pollSchedule<E, A>(): Schedule<
   Tuple<[number, void]>,
   never,
   Maybe<Exit<E, A>>,
   Maybe<Exit<E, A>>
-> => (Schedule.recurs(100) > Schedule.identity<Maybe<Exit<E, A>>>()).whileOutput((_) => _.isNone())
+> {
+  return Schedule.recurs(100)
+    .zipRight(Schedule.identity<Maybe<Exit<E, A>>>())
+    .whileOutput((maybe) => maybe.isNone())
+}
 
 describe.concurrent("TReentrantLock", () => {
   describe.concurrent("locks", () => {
@@ -218,13 +222,13 @@ describe.concurrent("TReentrantLock", () => {
 
         $(wlatch.await)
 
-        const option = $(writer.poll.repeat(pollSchedule))
+        const maybe = $(writer.poll.repeat(pollSchedule()))
 
         $(rlatch.succeed(undefined))
 
         const count = $(writer.join)
 
-        return option.isNone() && count === 1
+        return maybe.isNone() && count === 1
       })
 
       const result = await program.unsafeRunPromise()

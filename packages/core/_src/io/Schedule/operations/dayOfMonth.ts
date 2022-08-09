@@ -22,7 +22,7 @@ export function dayOfMonth(
 ): Schedule<Tuple<[number, number]>, never, unknown, number> {
   return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(day) || day < 1 || 31 < day) {
-      return Effect.die(
+      return Effect.dieSync(
         new IllegalArgumentException(
           `Invalid argument in: dayOfMonth(${day}). Must be in range 1...31`
         )

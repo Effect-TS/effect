@@ -6,7 +6,7 @@
  * @tsplus fluent effect/core/stream/Stream acquireRelease
  */
 export function acquireRelease<R, E, A, R2, Z>(
-  acquire: LazyArg<Effect<R, E, A>>,
+  acquire: Effect<R, E, A>,
   release: (a: A) => Effect<R2, never, Z>
 ): Stream<R | R2, E, A> {
   return Stream.scoped(Effect.acquireRelease(acquire, release))
