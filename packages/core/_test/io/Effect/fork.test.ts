@@ -1,73 +1,50 @@
-import { constTrue } from "@tsplus/stdlib/data/Function"
-
 describe.concurrent("Effect", () => {
   describe.concurrent("fork", () => {
-    it("propagates interruption", async () => {
-      const program = Effect.never.fork.flatMap((fiber) => fiber.interrupt)
+    it("propagates interruption", () =>
+      Do(($) => {
+        const result = $(Effect.never.fork.flatMap((fiber) => fiber.interrupt))
+        assert.isTrue(result.isInterrupted)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.isInterrupted)
-    })
-
-    it("propagates interruption with zip of defect", async () => {
-      const program = Effect.Do()
-        .bind("latch", () => Deferred.make<never, void>())
-        .bind("fiber", ({ latch }) =>
-          (latch.succeed(undefined) > Effect.die(new Error()))
-            .zipPar(Effect.never)
-            .fork)
-        .tap(({ latch }) => latch.await)
-        .flatMap(({ fiber }) =>
-          fiber
-            .interrupt
-            .map((exit) => exit.mapErrorCause((cause) => cause))
+    it("propagates interruption with zip of defect", () =>
+      Do(($) => {
+        const latch = $(Deferred.make<never, void>())
+        const fiber = $(
+          latch.succeed(undefined).zipRight(Effect.dieSync(new Error())).zipPar(Effect.never).fork
         )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.isInterrupted)
-    })
+        $(latch.await)
+        const result = $(fiber.interrupt.map((exit) => exit.mapErrorCause((cause) => cause)))
+        assert.isTrue(result.isInterrupted)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("forkWithErrorHandler", () => {
-    it("calls provided function when task fails", async () => {
-      const program = Deferred.make<never, void>()
-        .tap((deferred) =>
-          Effect.failSync(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit)
-        )
-        .flatMap((deferred) => deferred.await)
-        .map(constTrue)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+    it("calls provided function when task fails", () =>
+      Do(($) => {
+        const deferred = $(Deferred.make<never, void>())
+        $(Effect.failSync(undefined).forkWithErrorHandler((e) => deferred.succeed(e).unit))
+        const result = $(deferred.await)
+        assert.isUndefined(result)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("head", () => {
-    it("on non empty list", async () => {
-      const program = Effect.sync(List(1, 2, 3)).head.either
+    it("on non empty list", () =>
+      Do(($) => {
+        const result = $(Effect.sync(List(1, 2, 3)).head.either)
+        assert.isTrue(result == Either.right(1))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
+    it("on empty list", () =>
+      Do(($) => {
+        const result = $(Effect.sync(List.empty<number>()).head.either)
+        assert.isTrue(result == Either.left(Maybe.none))
+      }).unsafeRunPromise())
 
-      assert.isTrue(result == Either.right(1))
-    })
-
-    it("on empty list", async () => {
-      const program = Effect.sync(List.empty<number>()).head.either
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left(Maybe.none))
-    })
-
-    it("on failure", async () => {
-      const program = Effect.failSync("fail").head.either
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left(Maybe.some("fail")))
-    })
+    it("on failure", () =>
+      Do(($) => {
+        const result = $(Effect.failSync("fail").head.either)
+        assert.isTrue(result == Either.left(Maybe.some("fail")))
+      }).unsafeRunPromise())
   })
 })

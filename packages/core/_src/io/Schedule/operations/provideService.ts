@@ -8,7 +8,7 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus static effect/core/io/Schedule.Aspects provideService
  * @tsplus pipeable effect/core/io/Schedule provideService
  */
-export function provideService<T, T1 extends T>(tag: Tag<T>, service: LazyArg<T1>) {
+export function provideService<T, T1 extends T>(tag: Tag<T>, service: T1) {
   return <State, R, In, Out>(
     self: Schedule<State, R | T, In, Out>
   ): Schedule<State, Exclude<R, T>, In, Out> =>
@@ -18,7 +18,7 @@ export function provideService<T, T1 extends T>(tag: Tag<T>, service: LazyArg<T1
         Effect.environmentWithEffect((env: Env<Exclude<R, T>>) =>
           self
             .step(now, input, state)
-            .provideEnvironment(env.add(tag, service()))
+            .provideEnvironment(env.add(tag, service))
         )
     )
 }

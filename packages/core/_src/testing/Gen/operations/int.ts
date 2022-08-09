@@ -12,7 +12,7 @@ export function int(constraints: NumberConstraints = {}): Gen<never, number> {
       const min = constraints.min ?? Number.MIN_SAFE_INTEGER
       const max = constraints.max ?? Number.MAX_SAFE_INTEGER
       return min > max || min < Number.MIN_SAFE_INTEGER || max > Number.MAX_SAFE_INTEGER ?
-        Effect.die(new IllegalArgumentException("invalid bounds")) :
+        Effect.dieSync(new IllegalArgumentException("invalid bounds")) :
         Random.nextIntBetween(min, max).map(Sample.shrinkIntegral(min))
     })
   )

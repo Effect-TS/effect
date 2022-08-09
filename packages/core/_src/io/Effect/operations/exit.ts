@@ -6,9 +6,7 @@ import { IFold } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus getter effect/core/io/Effect exit
  */
-export function exit<R, E, A>(
-  self: Effect<R, E, A>
-): Effect<R, never, Exit<E, A>> {
+export function exit<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Exit<E, A>> {
   return new IFold(
     self,
     (cause) => Effect.succeed(Exit.failCause(cause)),

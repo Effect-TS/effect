@@ -5,7 +5,7 @@
  * @tsplus static effect/core/io/Effect.Ops collect
  */
 export function collect<A, R, E, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, Maybe<E>, B>
 ): Effect<R, E, Chunk<B>> {
   return Effect.forEach(as, (a) => f(a).unsome).map((chunk) => chunk.compact)

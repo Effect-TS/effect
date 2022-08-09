@@ -8,7 +8,7 @@ import { Both, Die, Stackless, Then } from "@effect/core/io/Cause/definition"
  */
 export function keepDefects<E>(self: Cause<E>): Maybe<Cause<never>> {
   return self.fold<E, Maybe<Cause<never>>>(
-    () => Maybe.none,
+    Maybe.none,
     () => Maybe.none,
     (e) => Maybe.some(new Die(e)),
     () => Maybe.none,

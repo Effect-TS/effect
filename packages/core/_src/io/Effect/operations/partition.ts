@@ -7,10 +7,8 @@ import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partit
  * @tsplus static effect/core/io/Effect.Ops partition
  */
 export function partition<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
-  return Effect.suspendSucceed(
-    Effect.forEach(as, (a) => f(a).either)
-  ).map((chunk) => partitionMap(chunk, identity))
+  return Effect.forEach(as, (a) => f(a).either).map((chunk) => partitionMap(chunk, identity))
 }

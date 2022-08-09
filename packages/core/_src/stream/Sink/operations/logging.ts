@@ -3,9 +3,7 @@
  *
  * @tsplus static effect/core/stream/Sink.Ops log
  */
-export function log(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function log(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.log(message))
 }
 
@@ -14,9 +12,7 @@ export function log(
  *
  * @tsplus static effect/core/stream/Sink.Ops logDebug
  */
-export function logDebug(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logDebug(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logDebug(message))
 }
 
@@ -25,9 +21,7 @@ export function logDebug(
  *
  * @tsplus static effect/core/stream/Sink.Ops logError
  */
-export function logError(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logError(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logError(message))
 }
 
@@ -36,9 +30,7 @@ export function logError(
  *
  * @tsplus static effect/core/stream/Sink.Ops logErrorCause
  */
-export function logErrorCause(
-  cause: LazyArg<Cause<unknown>>
-): Sink<never, never, unknown, unknown, void> {
+export function logErrorCause(cause: Cause<unknown>): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logErrorCause(cause))
 }
 
@@ -47,9 +39,7 @@ export function logErrorCause(
  *
  * @tsplus static effect/core/stream/Sink.Ops logFatal
  */
-export function logFatal(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logFatal(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logFatal(message))
 }
 
@@ -58,9 +48,7 @@ export function logFatal(
  *
  * @tsplus static effect/core/stream/Sink.Ops logInfo
  */
-export function logInfo(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logInfo(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logInfo(message))
 }
 
@@ -69,9 +57,7 @@ export function logInfo(
  *
  * @tsplus static effect/core/stream/Sink.Ops logTrace
  */
-export function logTrace(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logTrace(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logTrace(message))
 }
 
@@ -80,9 +66,7 @@ export function logTrace(
  *
  * @tsplus static effect/core/stream/Sink.Ops logWarning
  */
-export function logWarning(
-  message: LazyArg<string>
-): Sink<never, never, unknown, unknown, void> {
+export function logWarning(message: string): Sink<never, never, unknown, unknown, void> {
   return Sink.fromEffect(Effect.logWarning(message))
 }
 
@@ -92,9 +76,7 @@ export function logWarning(
  * @tsplus static effect/core/stream/Sink.Ops logLevel
  */
 export function logLevel(level: LogLevel) {
-  return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>
-  ): Sink<R, E, In, L, Z> =>
+  return <R, E, In, L, Z>(sink: Sink<R, E, In, L, Z>): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(FiberRef.currentLogLevel.locallyScoped(level).as(sink))
 }
 
@@ -103,14 +85,12 @@ export function logLevel(level: LogLevel) {
  *
  * @tsplus static effect/core/stream/Sink.Ops logSpan
  */
-export function logSpan(label: LazyArg<string>) {
-  return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>
-  ): Sink<R, E, In, L, Z> =>
+export function logSpan(label: string) {
+  return <R, E, In, L, Z>(sink: Sink<R, E, In, L, Z>): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
       FiberRef.currentLogSpan.get.flatMap((stack) => {
         const now = Date.now()
-        const logSpan = LogSpan(label(), now)
+        const logSpan = LogSpan(label, now)
         return FiberRef.currentLogSpan.locallyScoped(stack.prepend(logSpan)).as(sink)
       })
     )
@@ -122,13 +102,11 @@ export function logSpan(label: LazyArg<string>) {
  *
  * @tsplus static effect/core/stream/Sink.Ops logAnnotate
  */
-export function logAnnotate(key: LazyArg<string>, value: LazyArg<string>) {
-  return <R, E, In, L, Z>(
-    sink: Sink<R, E, In, L, Z>
-  ): Sink<R, E, In, L, Z> =>
+export function logAnnotate(key: string, value: string) {
+  return <R, E, In, L, Z>(sink: Sink<R, E, In, L, Z>): Sink<R, E, In, L, Z> =>
     Sink.unwrapScoped(
       FiberRef.currentLogAnnotations.get.flatMap((annotations) =>
-        FiberRef.currentLogAnnotations.locallyScoped(annotations.set(key(), value())).as(sink)
+        FiberRef.currentLogAnnotations.locallyScoped(annotations.set(key, value)).as(sink)
       )
     )
 }

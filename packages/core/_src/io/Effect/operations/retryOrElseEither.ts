@@ -9,16 +9,13 @@ import type { Driver } from "@effect/core/io/Schedule"
  * @tsplus pipeable effect/core/io/Effect retryOrElseEither
  */
 export function retryOrElseEither<S, R1, E, A1, R2, E2, A2>(
-  policy: LazyArg<Schedule<S, R1, E, A1>>,
+  policy: Schedule<S, R1, E, A1>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>
 ): <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, Either<A2, A>> {
   return <R, A>(
     self: Effect<R, E, A>
   ): Effect<R | R1 | R2, E | E2, Either<A2, A>> =>
-    Effect.suspendSucceed(() => {
-      const schedule = policy()
-      return schedule.driver.flatMap((driver) => retryOrElseEitherLoop(self, driver, orElse))
-    })
+    policy.driver.flatMap((driver) => retryOrElseEitherLoop(self, driver, orElse))
 }
 
 function retryOrElseEitherLoop<R, E, A, R1, A1, R2, E2, A2>(

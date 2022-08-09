@@ -5,8 +5,6 @@ import { IFail } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus static effect/core/io/Effect.Ops failCauseSync
  */
-export function failCauseSync<E>(
-  cause: LazyArg<Cause<E>>
-): Effect<never, E, never> {
+export function failCauseSync<E>(cause: LazyArg<Cause<E>>): Effect<never, E, never> {
   return new IFail(cause)
 }

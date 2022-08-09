@@ -132,26 +132,26 @@ export function isInterrupting(self: FiberStatus): boolean {
 }
 
 /**
- * @tsplus fluent effect/core/io/Fiber/Status withInterrupting
+ * @tsplus pipeable effect/core/io/Fiber/Status withInterrupting
+ * @tsplus pipeable effect/core/io/Fiber/Status withInterrupting
  */
-export function withInterrupting(
-  self: FiberStatus,
-  newInterrupting: boolean
-): FiberStatus {
-  switch (self._tag) {
-    case "Done": {
-      return self
-    }
-    case "Running": {
-      return new Running(newInterrupting)
-    }
-    case "Suspended": {
-      return new Suspended(
-        newInterrupting,
-        self.interruptible,
-        self.asyncs,
-        self.blockingOn
-      )
+export function withInterrupting(newInterrupting: boolean) {
+  return (self: FiberStatus): FiberStatus => {
+    switch (self._tag) {
+      case "Done": {
+        return self
+      }
+      case "Running": {
+        return new Running(newInterrupting)
+      }
+      case "Suspended": {
+        return new Suspended(
+          newInterrupting,
+          self.interruptible,
+          self.asyncs,
+          self.blockingOn
+        )
+      }
     }
   }
 }

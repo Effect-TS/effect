@@ -7,21 +7,21 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  * @tsplus static effect/core/io/Scope.Ops makeWith
  */
 export function makeWith(
-  executionStrategy: LazyArg<ExecutionStrategy>
+  executionStrategy: ExecutionStrategy
 ): Effect<never, never, Scope.Closeable> {
   return ReleaseMap.make.map(
     (releaseMap) =>
       new CloseableScopeInternal(
-        Effect.Do()
-          .bind("scope", () => Scope.makeWith(ExecutionStrategy.Sequential))
-          .bind("finalizer", ({ scope }) => releaseMap.add((exit) => scope.close(exit)))
-          .tap(({ finalizer, scope }) => scope.addFinalizerExit(finalizer))
-          .map(({ scope }) => scope)
-          .uninterruptible,
+        Do(($) => {
+          const scope = $(Scope.makeWith(ExecutionStrategy.Sequential))
+          const finalizer = $(releaseMap.add((exit) => scope.close(exit)))
+          $(scope.addFinalizerExit(finalizer))
+          return scope
+        }).uninterruptible,
         (finalizer) => releaseMap.add(finalizer).unit,
         (exit) =>
           Effect.suspendSucceed(
-            releaseMap.releaseAll(exit(), executionStrategy()).unit
+            releaseMap.releaseAll(exit, executionStrategy).unit
           )
       )
   )

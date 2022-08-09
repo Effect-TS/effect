@@ -6,7 +6,7 @@
  * @tsplus static effect/core/io/Effect.Ops noneOrFailWith
  */
 export function noneOrFailWith<E, A>(
-  option: LazyArg<Maybe<A>>,
+  option: Maybe<A>,
   f: (a: A) => E
 ): Effect<never, E, void> {
   return Effect.getOrFailDiscard(option).flip.mapError(f)

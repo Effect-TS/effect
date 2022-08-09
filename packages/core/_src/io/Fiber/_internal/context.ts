@@ -225,7 +225,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   // Logging
   // ---------------------------------------------------------------------------
 
-  unsafeLog(message: () => string): void {
+  unsafeLog(message: string): void {
     const logLevel = this.unsafeGetRef(FiberRef.currentLogLevel)
     const spans = this.unsafeGetRef(FiberRef.currentLogSpan)
     const annotations = this.unsafeGetRef(FiberRef.currentLogAnnotations)
@@ -236,7 +236,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
         this.fiberId,
         logLevel,
         message,
-        () => Cause.empty,
+        Cause.empty,
         contextMap,
         spans,
         annotations
@@ -245,8 +245,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   }
 
   unsafeLogWith(
-    message: Lazy<string>,
-    cause: Lazy<Cause<unknown>>,
+    message: string,
+    cause: Cause<unknown>,
     overrideLogLevel: Maybe<LogLevel>,
     overrideRef1: FiberRef<unknown> | null = null,
     overrideValue1: unknown = null
@@ -429,7 +429,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
 
         this.state.set(newState)
 
-        const interrupt = Effect.failCauseSync(interruptedCause)
+        const interrupt = Effect.failCause(interruptedCause)
         const asyncCanceler = oldState.asyncCanceler.asyncCanceler
         const effect = asyncCanceler === Effect.unit ? interrupt : asyncCanceler.zipRight(interrupt)
 
@@ -585,8 +585,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
     if (exit._tag === "Failure") {
       try {
         this.unsafeLogWith(
-          () => `Fiber ${this.fiberId.threadName} did not handle an error`,
-          () => exit.cause,
+          `Fiber ${this.fiberId.threadName} did not handle an error`,
+          exit.cause,
           Maybe.some(LogLevel.Debug),
           null,
           null
@@ -854,7 +854,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
               }
 
               return cause.fold<E, void>(
-                () => fiberFailureCauses.unsafeUpdate("<empty>", HashSet.empty()),
+                fiberFailureCauses.unsafeUpdate("<empty>", HashSet.empty()),
                 (failure) => {
                   this.observeFailure(
                     typeof failure === "object"
@@ -1014,8 +1014,8 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
   ): Effect<R | R1 | R2 | R3, E2 | E3, A2 | A3> {
     const raceIndicator = new AtomicBoolean(true)
 
-    const left = this.unsafeFork(instruction(race.left()))
-    const right = this.unsafeFork(instruction(race.right()))
+    const left = this.unsafeFork(instruction(race.left))
+    const right = this.unsafeFork(instruction(race.right))
 
     return Effect.asyncBlockingOn((cb) => {
       const leftRegister = left.unsafeAddObserverMaybe(() =>
@@ -1086,7 +1086,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                 current = undefined
               } else {
                 if (logRuntime) {
-                  this.unsafeLog(() => current!.unsafeLog())
+                  this.unsafeLog(current!.unsafeLog())
                 }
 
                 if (superviseOps) {
@@ -1327,7 +1327,7 @@ export class FiberContext<E, A> implements Fiber.Runtime<E, A> {
                   case "Supervise": {
                     const effect = current
                     const oldSupervisor = this.runtimeConfig.value.supervisor
-                    const newSupervisor = effect.supervisor() + oldSupervisor
+                    const newSupervisor = effect.supervisor.and(oldSupervisor)
 
                     this.runtimeConfig = RuntimeConfig({
                       ...this.runtimeConfig.value,

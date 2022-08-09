@@ -6,6 +6,6 @@
  * @tsplus pipeable effect/core/io/Fiber as
  * @tsplus pipeable effect/core/io/RuntimeFiber as
  */
-export function as<B>(b: LazyArg<B>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E, B> => self.map(b)
+export function as<B>(b: B) {
+  return <E, A>(self: Fiber<E, A>): Fiber<E, B> => self.map(() => b)
 }

@@ -6,9 +6,9 @@
  * @tsplus pipeable effect/core/io/Effect continueOrFailEffect
  */
 export function continueOrFailEffect<E1, A, R2, E2, A2>(
-  e: LazyArg<E1>,
+  e: E1,
   pf: (a: A) => Maybe<Effect<R2, E2, A2>>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E1 | E2, A2> =>
-    self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.failSync(e)))
+    self.flatMap((v): Effect<R2, E1 | E2, A2> => pf(v).getOrElse(Effect.fail(e)))
 }

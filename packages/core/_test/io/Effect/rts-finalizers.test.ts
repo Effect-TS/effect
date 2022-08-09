@@ -4,251 +4,228 @@ import {
   ExampleError,
   ExampleErrorFail
 } from "@effect/core/test/io/Effect/test-utils"
-import { constTrue } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Effect", () => {
   describe.concurrent("RTS finalizers", () => {
-    it("fail ensuring", async () => {
-      let finalized = false
-      const program = Effect.failSync(ExampleError).ensuring(
-        Effect.sync(() => {
-          finalized = true
-        })
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-      assert.isTrue(finalized)
-    })
-
-    it("fail on error", async () => {
-      let finalized = false
-      const program = Effect.failSync(ExampleError).onError(() =>
-        Effect.sync(() => {
-          finalized = true
-        })
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-      assert.isTrue(finalized)
-    })
-
-    it("finalizer errors not caught", async () => {
-      const e2 = new Error("e2")
-      const e3 = new Error("e3")
-      const program = ExampleErrorFail.ensuring(Effect.die(e2))
-        .ensuring(Effect.die(e3))
-        .sandbox
-        .flip
-        .map((cause) => cause)
-
-      const result = await program.unsafeRunPromise()
-
-      const expectedCause = Cause.fail(ExampleError) + Cause.die(e2) + Cause.die(e3)
-
-      assert.isTrue(result == expectedCause)
-    })
-
-    it("finalizer errors reported", async () => {
-      let reported: Exit<never, number> | undefined
-      const program = Effect.sync(42)
-        .ensuring(Effect.die(ExampleError))
-        .fork
-        .flatMap((fiber) =>
-          fiber.await.flatMap((e) =>
+    it("fail ensuring", () =>
+      Do(($) => {
+        let finalized = false
+        const result = $(
+          Effect.failSync(ExampleError).ensuring(
             Effect.sync(() => {
-              reported = e
+              finalized = true
             })
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(ExampleError))
+        assert.isTrue(finalized)
+      }).unsafeRunPromiseExit())
+
+    it("fail on error", () =>
+      Do(($) => {
+        let finalized = false
+        const result = $(
+          Effect.failSync(ExampleError).onError(() =>
+            Effect.sync(() => {
+              finalized = true
+            })
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(ExampleError))
+        assert.isTrue(finalized)
+      }).unsafeRunPromiseExit())
+
+    it("finalizer errors not caught", () =>
+      Do(($) => {
+        const e2 = new Error("e2")
+        const e3 = new Error("e3")
+        const result = $(
+          ExampleErrorFail.ensuring(Effect.dieSync(e2))
+            .ensuring(Effect.dieSync(e3))
+            .sandbox
+            .flip
+            .map((cause) => cause)
+        )
+        const expected = Cause.fail(ExampleError) + Cause.die(e2) + Cause.die(e3)
+        assert.isTrue(result == expected)
+      }).unsafeRunPromise())
+
+    it("finalizer errors reported", () =>
+      Do(($) => {
+        let reported: Exit<never, number> | undefined
+        const result = $(
+          Effect.sync(42).ensuring(Effect.dieSync(ExampleError)).fork.flatMap((fiber) =>
+            fiber.await.flatMap((e) =>
+              Effect.sync(() => {
+                reported = e
+              })
+            )
           )
         )
-        .map(constTrue)
+        assert.isUndefined(result)
+        assert.isFalse(reported && reported.isSuccess())
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-      assert.isFalse(reported && reported.isSuccess())
-    })
-
-    it("acquireUseRelease exit() is usage result", async () => {
-      const program = Effect.acquireUseRelease(
-        Effect.unit,
-        () => Effect.sync(42),
-        () => Effect.unit
-      )
-
-      const result = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 42)
-    })
-
-    it("error in just acquisition", async () => {
-      const program = Effect.acquireUseRelease(
-        ExampleErrorFail,
-        () => Effect.unit,
-        () => Effect.unit
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
-
-    it("error in just release", async () => {
-      const program = Effect.acquireUseRelease(
-        Effect.unit,
-        () => Effect.unit,
-        () => Effect.die(ExampleError)
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.die(ExampleError))
-    })
-
-    it("error in just usage", async () => {
-      const program = Effect.acquireUseRelease(
-        Effect.unit,
-        () => Effect.failSync(ExampleError),
-        () => Effect.unit
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
-
-    it("rethrown caught error in acquisition", async () => {
-      const program = Effect.absolve(
-        Effect.acquireUseRelease(
-          ExampleErrorFail,
-          () => Effect.unit,
-          () => Effect.unit
-        ).either
-      ).flip
-
-      const result = await program.unsafeRunPromise()
-
-      assert.deepEqual(result, ExampleError)
-    })
-
-    it("rethrown caught error in release", async () => {
-      const program = Effect.acquireUseRelease(
-        Effect.unit,
-        () => Effect.unit,
-        () => Effect.die(ExampleError)
-      )
-
-      const result = await program.unsafeRunPromiseExit()
-
-      assert.isTrue(result == Exit.die(ExampleError))
-    })
-
-    it("rethrown caught error in usage", async () => {
-      const program = Effect.absolve(
-        Effect.acquireUseReleaseDiscard(
+    it("acquireUseRelease exit() is usage result", () =>
+      Do(($) => {
+        const result = $(Effect.acquireUseRelease(
           Effect.unit,
-          ExampleErrorFail,
-          Effect.unit
-        ).either
-      )
+          () => Effect.sync(42),
+          () => Effect.unit
+        ))
+        assert.strictEqual(result, 42)
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromiseExit()
+    it("error in just acquisition", () =>
+      Do(($) => {
+        const result = $(
+          Effect.acquireUseRelease(
+            ExampleErrorFail,
+            () => Effect.unit,
+            () => Effect.unit
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
 
-      assert.isTrue(result == Exit.fail(ExampleError))
-    })
+    it("error in just release", () =>
+      Do(($) => {
+        const result = $(
+          Effect.acquireUseRelease(
+            Effect.unit,
+            () => Effect.unit,
+            () => Effect.dieSync(ExampleError)
+          ).exit
+        )
+        assert.isTrue(result == Exit.die(ExampleError))
+      }).unsafeRunPromiseExit())
 
-    it("test eval of async fail", async () => {
-      const io1 = Effect.acquireUseReleaseDiscard(
-        Effect.unit,
-        asyncExampleError<void>(),
-        asyncUnit<never>()
-      )
-      const io2 = Effect.acquireUseReleaseDiscard(
-        asyncUnit<never>(),
-        asyncExampleError<void>(),
-        asyncUnit<never>()
-      )
-      const program = Effect.Do()
-        .bind("a1", () => io1.exit.map((exit) => exit))
-        .bind("a2", () => io2.exit.map((exit) => exit))
-        .bind("a3", () =>
-          Effect.absolve(io1.either)
-            .exit
-            .map((exit) => exit))
-        .bind("a4", () =>
-          Effect.absolve(io2.either)
-            .exit
-            .map((exit) => exit))
+    it("error in just usage", () =>
+      Do(($) => {
+        const result = $(
+          Effect.acquireUseRelease(
+            Effect.unit,
+            () => Effect.failSync(ExampleError),
+            () => Effect.unit
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
 
-      const { a1, a2, a3, a4 } = await program.unsafeRunPromise()
+    it("rethrown caught error in acquisition", () =>
+      Do(($) => {
+        const result = $(
+          Effect.absolve(
+            Effect.acquireUseRelease(
+              ExampleErrorFail,
+              () => Effect.unit,
+              () => Effect.unit
+            ).either
+          ).flip
+        )
+        assert.deepEqual(result, ExampleError)
+      }).unsafeRunPromise())
 
-      assert.isTrue(a1 == Exit.fail(ExampleError))
-      assert.isTrue(a2 == Exit.fail(ExampleError))
-      assert.isTrue(a3 == Exit.fail(ExampleError))
-      assert.isTrue(a4 == Exit.fail(ExampleError))
-    })
+    it("rethrown caught error in release", () =>
+      Do(($) => {
+        const result = $(
+          Effect.acquireUseRelease(
+            Effect.unit,
+            () => Effect.unit,
+            () => Effect.dieSync(ExampleError)
+          ).exit
+        )
+        assert.isTrue(result == Exit.die(ExampleError))
+      }).unsafeRunPromiseExit())
 
-    it("acquireReleaseWith regression 1", async () => {
-      function makeLogger(ref: Ref<List<string>>) {
-        return (line: string): Effect.UIO<void> => ref.update((list) => list + List(line))
-      }
+    it("rethrown caught error in usage", () =>
+      Do(($) => {
+        const result = $(
+          Effect.absolve(
+            Effect.acquireUseReleaseDiscard(
+              Effect.unit,
+              ExampleErrorFail,
+              Effect.unit
+            ).either
+          ).exit
+        )
+        assert.isTrue(result == Exit.fail(ExampleError))
+      }).unsafeRunPromiseExit())
 
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<string>>(List.empty()))
-        .bindValue("log", ({ ref }) => makeLogger(ref))
-        .bind("fiber", ({ log }) =>
+    it("test eval of async fail", () =>
+      Do(($) => {
+        const io1 = Effect.acquireUseReleaseDiscard(
+          Effect.unit,
+          asyncExampleError<void>(),
+          asyncUnit<never>()
+        )
+        const io2 = Effect.acquireUseReleaseDiscard(
+          asyncUnit<never>(),
+          asyncExampleError<void>(),
+          asyncUnit<never>()
+        )
+        const a1 = $(io1.exit)
+        const a2 = $(io2.exit)
+        const a3 = $(Effect.absolve(io1.either).exit)
+        const a4 = $(Effect.absolve(io2.either).exit)
+        assert.isTrue(a1 == Exit.fail(ExampleError))
+        assert.isTrue(a2 == Exit.fail(ExampleError))
+        assert.isTrue(a3 == Exit.fail(ExampleError))
+        assert.isTrue(a4 == Exit.fail(ExampleError))
+      }).unsafeRunPromise())
+
+    it("acquireReleaseWith regression 1", () =>
+      Do(($) => {
+        function makeLogger(ref: Ref<List<string>>) {
+          return (line: string): Effect<never, never, void> =>
+            ref.update((list) => list.concat(List(line)))
+        }
+        const ref = $(Ref.make(List.empty<string>()))
+        const log = makeLogger(ref)
+        const fiber = $(
           Effect.acquireUseRelease(
             Effect.acquireUseRelease(
               Effect.unit,
               () => Effect.unit,
-              () => log("start 1") > Effect.sleep((10).millis) > log("release 1")
+              () => log("start 1").zipRight(Effect.sleep((10).millis)).zipRight(log("release 1"))
             ),
             () => Effect.unit,
-            () => log("start 2") > Effect.sleep((10).millis) > log("release 2")
-          ).fork)
-        .tap(({ ref }) =>
-          (ref.get < Effect.sleep((1).millis)).repeatUntil((list) =>
+            () => log("start 2").zipRight(Effect.sleep((10).millis)).zipRight(log("release 2"))
+          ).fork
+        )
+        $(
+          ref.get.zipLeft(Effect.sleep((1).millis)).repeatUntil((list) =>
             list.find((s) => s === "start 1").isSome()
           )
         )
-        .tap(({ fiber }) => fiber.interrupt)
-        .tap(({ ref }) =>
-          (ref.get < Effect.sleep((1).millis)).repeatUntil((list) =>
+        $(fiber.interrupt)
+        $(
+          ref.get.zipLeft(Effect.sleep((1).millis)).repeatUntil((list) =>
             list.find((s) => s === "release 2").isSome()
           )
         )
-        .flatMap(({ ref }) => ref.get)
+        const result = $(ref.get)
+        assert.isTrue(result.find((s) => s === "start 1").isSome())
+        assert.isTrue(result.find((s) => s === "release 1").isSome())
+        assert.isTrue(result.find((s) => s === "start 2").isSome())
+        assert.isTrue(result.find((s) => s === "release 2").isSome())
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.find((s) => s === "start 1").isSome())
-      assert.isTrue(result.find((s) => s === "release 1").isSome())
-      assert.isTrue(result.find((s) => s === "start 2").isSome())
-      assert.isTrue(result.find((s) => s === "release 2").isSome())
-    })
-
-    it("interrupt waits for finalizer", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(false))
-        .bind("deferred1", () => Deferred.make<never, void>())
-        .bind("deferred2", () => Deferred.make<never, number>())
-        .bind(
-          "fiber",
-          ({ deferred1, deferred2, ref }) =>
-            (deferred1.succeed(undefined) > deferred2.await)
-              .ensuring(ref.set(true) > Effect.sleep((10).millis))
-              .fork
+    it("interrupt waits for finalizer", () =>
+      Do(($) => {
+        const ref = $(Ref.make(false))
+        const deferred1 = $(Deferred.make<never, void>())
+        const deferred2 = $(Deferred.make<never, number>())
+        const fiber = $(
+          deferred1.succeed(undefined)
+            .zipRight(deferred2.await)
+            .ensuring(ref.set(true).zipRight(Effect.sleep((10).millis)))
+            .fork
         )
-        .tap(({ deferred1 }) => deferred1.await)
-        .tap(({ fiber }) => fiber.interrupt)
-        .flatMap(({ ref }) => ref.get)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
+        $(deferred1.await)
+        $(fiber.interrupt)
+        const result = $(ref.get)
+        assert.isTrue(result)
+      }).unsafeRunPromise())
   })
 })

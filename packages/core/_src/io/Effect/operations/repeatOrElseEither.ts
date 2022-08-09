@@ -13,19 +13,16 @@ import type { Driver } from "@effect/core/io/Schedule"
  * @tsplus pipeable effect/core/io/Effect repeatOrElseEither
  */
 export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
-  schedule: LazyArg<Schedule<S, R1, A, B>>,
+  schedule: Schedule<S, R1, A, B>,
   orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, C>
 ): <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E2, Either<C, B>> {
   return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, Either<C, B>> =>
-    Effect.suspendSucceed(() => {
-      const schedule0 = schedule()
-      return schedule0.driver.flatMap((driver) =>
-        self.foldEffect(
-          (e) => orElse(e, Maybe.none).map(Either.left),
-          (a) => repeatOrElseEitherLoop(self, driver, orElse, a)
-        )
+    schedule.driver.flatMap((driver) =>
+      self.foldEffect(
+        (e) => orElse(e, Maybe.none).map(Either.left),
+        (a) => repeatOrElseEitherLoop(self, driver, orElse, a)
       )
-    })
+    )
 }
 
 function repeatOrElseEitherLoop<R, E, A, R1, B, R2, E2, C>(

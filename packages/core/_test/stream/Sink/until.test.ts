@@ -1,4 +1,4 @@
-import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
+import { constFalse } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Sink", () => {
   describe.concurrent("untilOutputEffect", () => {
@@ -11,7 +11,7 @@ describe.concurrent("Sink", () => {
         const result = $(
           Effect.forEach(Chunk(1, 3, 7, 20), (n) => stream(n).run(sink))
             .flatMap((chunk) =>
-              Effect.reduce(chunk, constTrue, (acc, option) =>
+              Effect.reduce(chunk, true, (acc, option) =>
                 Effect.sync(
                   acc && option.isSome() && option.value.isSome() && option.value.value === 10
                 ))

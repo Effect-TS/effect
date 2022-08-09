@@ -8,9 +8,7 @@
  * @tsplus pipeable effect/core/io/Scope extend
  * @tsplus pipeable effect/core/io/Scope/Closeable extend
  */
-export function extend<R, E, A>(effect: LazyArg<Effect<R, E, A>>) {
+export function extend<R, E, A>(effect: Effect<R, E, A>) {
   return (self: Scope): Effect<Exclude<R, Scope>, E, A> =>
-    Effect.suspendSucceed(
-      effect().provideSomeEnvironment((env) => env.merge(Env(Scope.Tag, self) as Env<R>))
-    )
+    effect.provideSomeEnvironment((env) => env.merge(Env(Scope.Tag, self) as Env<R>))
 }

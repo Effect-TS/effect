@@ -9,16 +9,9 @@ import type { Driver } from "@effect/core/io/Schedule"
  * @tsplus static effect/core/io/Effect.Aspects scheduleFrom
  * @tsplus pipeable effect/core/io/Effect scheduleFrom
  */
-export function scheduleFrom<S, R1, A, A1>(
-  a: LazyArg<A>,
-  schedule: LazyArg<Schedule<S, R1, A, A1>>
-) {
+export function scheduleFrom<S, R1, A, A1>(a: A, schedule: Schedule<S, R1, A, A1>) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A1> =>
-    Effect.suspendSucceed(() => {
-      const schedule0 = schedule()
-      const value = a()
-      return schedule0.driver.flatMap(scheduleFromLoop(self, value))
-    })
+    schedule.driver.flatMap(scheduleFromLoop(self, a))
 }
 
 function scheduleFromLoop<R, E, A>(self: Effect<R, E, A>, value: A) {

@@ -105,7 +105,7 @@ describe.concurrent("ReentrantLock", () => {
         const result = $(ref.get)
         return result === f(1)
       })
-      const results = $(Effect.collectAll(Effect.replicate(100, program)))
+      const results = $(Effect.collectAll(program.replicate(100)))
       assert.isBelow(results.filter(identity).size, 100)
     }).unsafeRunPromise())
 

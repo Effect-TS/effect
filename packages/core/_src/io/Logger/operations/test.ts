@@ -7,8 +7,8 @@ export function test<Message>(input: Message) {
     self.apply(
       FiberId.none,
       LogLevel.Info,
-      () => input,
-      () => Cause.empty,
+      input,
+      Cause.empty,
       ImmutableMap.empty(),
       List.empty(),
       ImmutableMap.empty()

@@ -7,9 +7,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/io/Effect zipFlattenPar
  * @tsplus pipeable-operator effect/core/io/Effect &
  */
-export function zipFlattenPar<R, E, A, R2, E2, A2>(
-  that: LazyArg<Effect<R2, E2, A2>>
-) {
-  return (self: Effect<R, E, A>): Effect<R | R2, E | E2, MergeTuple<A, A2>> =>
+export function zipFlattenPar<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, MergeTuple<A, A2>> =>
     self.zipWithPar(that, Tuple.mergeTuple)
 }

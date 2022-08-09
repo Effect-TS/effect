@@ -5,10 +5,10 @@
  * @tsplus static effect/core/io/Effect.Ops exists
  */
 export function exists<R, E, A>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, boolean> {
-  return Effect.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
+  return Effect.suspendSucceed(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(

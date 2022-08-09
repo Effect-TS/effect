@@ -9,11 +9,11 @@ import { ILayerZipWithPar } from "@effect/core/io/Layer/definition"
  * @tsplus pipeable effect/core/io/Layer zipWithPar
  */
 export function zipWithPar<R1, E1, A1, A, A2>(
-  that: LazyArg<Layer<R1, E1, A1>>,
+  that: Layer<R1, E1, A1>,
   f: (a: Env<A>, b: Env<A1>) => Env<A2>
 ) {
   return <R, E>(self: Layer<R, E, A>): Layer<R | R1, E | E1, A2> =>
     Layer.suspend(
-      new ILayerZipWithPar(self, that(), f)
+      new ILayerZipWithPar(self, that, f)
     )
 }

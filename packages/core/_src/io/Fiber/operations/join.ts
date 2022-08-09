@@ -9,5 +9,5 @@
  * @tsplus getter effect/core/io/RuntimeFiber join
  */
 export function join<E, A>(self: Fiber<E, A>): Effect<never, E, A> {
-  return self.await.flatMap((exit) => Effect.done(exit)) < self.inheritRefs
+  return self.await.flatMap((exit) => Effect.done(exit)).zipLeft(self.inheritRefs)
 }

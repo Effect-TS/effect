@@ -2,7 +2,6 @@ import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/
 import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base"
 import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols"
 import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue"
-import { constFalse, constTrue } from "@tsplus/stdlib/data/Function"
 
 export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym = GroupBySym
@@ -34,52 +33,53 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
 
   grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
     return Stream.unwrapScoped(
-      Effect.Do()
-        .bind(
-          "decider",
-          () => Deferred.make<never, (k: K, v: V) => Effect<never, never, Predicate<UniqueKey>>>()
+      Do(($) => {
+        const decider = $(
+          Deferred.make<never, (k: K, v: V) => Effect<never, never, Predicate<UniqueKey>>>()
         )
-        .bind("out", () =>
+        const out = $(
           Effect.acquireRelease(
             Queue.bounded<Exit<Maybe<E>, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>>>(
               this.buffer
             ),
             (queue) => queue.shutdown
-          ))
-        .bind("ref", () => Ref.make(HashMap.empty<K, UniqueKey>()))
-        .bind("add", ({ decider, out }) =>
+          )
+        )
+        const ref = $(Ref.make(HashMap.empty<K, UniqueKey>()))
+        const add = $(
           this.stream.mapEffect(this.key).distributedWithDynamic(
             this.buffer,
             ({ tuple: [k, v] }) => decider.await.flatMap((f) => f(k, v)),
             (exit) => out.offer(exit)
-          ))
-        .tap(({ add, decider, out, ref }) =>
-          decider.succeed(
-            () =>
-              (k: K, _: V) =>
-                ref.get
-                  .map((map) => map.get(k))
-                  .flatMap((option) =>
-                    option.fold(
-                      add.flatMap(({ tuple: [id, queue] }) =>
-                        (
-                          ref.update((map) => map.set(k, id)) >
-                            out.offer(
-                              Exit.succeed(
-                                Tuple(
-                                  k,
-                                  mapDequeue(queue, (exit) => exit.map((_) => _.get(1)))
-                                )
-                              )
-                            )
-                        ).as(() => (n: number) => n === id)
-                      ),
-                      (id) => Effect.succeed((n: number) => n === id)
-                    )
-                  )
           )
         )
-        .map(({ out }) => Stream.fromQueueWithShutdown(out).flattenExitMaybe)
+        $(
+          decider.succeed(
+            (k: K, _: V) =>
+              ref.get
+                .map((map) => map.get(k))
+                .flatMap((option) =>
+                  option.fold(
+                    add.flatMap(({ tuple: [id, queue] }) =>
+                      (
+                        ref.update((map) => map.set(k, id)) >
+                          out.offer(
+                            Exit.succeed(
+                              Tuple(
+                                k,
+                                mapDequeue(queue, (exit) => exit.map((_) => _.get(1)))
+                              )
+                            )
+                          )
+                      ).as((n: number) => n === id)
+                    ),
+                    (id) => Effect.succeed((n: number) => n === id)
+                  )
+                )
+          )
+        )
+        return Stream.fromQueueWithShutdown(out).flattenExitMaybe
+      })
     )
   }
 
@@ -131,8 +131,8 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
           ]
         } = elem
         return i < this.n
-          ? Effect.succeed(elem).as(constTrue)
-          : queue.shutdown.as(constFalse)
+          ? Effect.succeed(elem).as(true)
+          : queue.shutdown.as(false)
       })
       .map((tuple) => tuple.get(0))
   }
@@ -154,8 +154,8 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
         tuple: [k, queue]
       } = elem
       return this.f(k)
-        ? Effect.succeed(elem).as(() => true)
-        : queue.shutdown.as(() => false)
+        ? Effect.succeed(elem).as(true)
+        : queue.shutdown.as(false)
     })
   }
 }

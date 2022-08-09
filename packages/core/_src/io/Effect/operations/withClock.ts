@@ -4,9 +4,9 @@
  *
  * @tsplus static effect/core/io/Effect.Ops withClock
  */
-export function withClock<C extends Clock>(clock: LazyArg<C>) {
+export function withClock<C extends Clock>(clock: C) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     DefaultServices.currentServices.locallyWith(
-      (env) => env.add(Clock.Tag, clock())
+      (env) => env.add(Clock.Tag, clock)
     )(effect)
 }

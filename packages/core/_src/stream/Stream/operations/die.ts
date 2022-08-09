@@ -6,5 +6,5 @@
 export function die(
   defect: LazyArg<unknown>
 ): Stream<never, never, never> {
-  return Stream.fromEffect(Effect.die(defect))
+  return Stream.fromEffect(Effect.dieSync(defect))
 }

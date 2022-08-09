@@ -1,3 +1,5 @@
+import { constVoid } from "@tsplus/stdlib/data/Function"
+
 /**
  * Returns a new schedule that maps the output of this schedule to unit.
  *
@@ -6,5 +8,5 @@
 export function unit<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>
 ): Schedule<State, Env, In, void> {
-  return self.as(() => undefined)
+  return self.map(constVoid)
 }

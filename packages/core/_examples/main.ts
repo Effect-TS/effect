@@ -28,9 +28,9 @@ export const switched = (n: number) => {
     case 3:
       return Effect.failSync(3 as const)
     case 4:
-      return Effect.serviceWithEffect(Bar, ({ bar }) => Effect.die(bar))
+      return Effect.serviceWithEffect(Bar, ({ bar }) => Effect.dieSync(bar))
     default:
-      return Effect.serviceWithEffect(Foo, ({ foo }) => Effect.die(foo))
+      return Effect.serviceWithEffect(Foo, ({ foo }) => Effect.dieSync(foo))
   }
 }
 

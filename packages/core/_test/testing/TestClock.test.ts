@@ -112,7 +112,7 @@ describe.concurrent("TestClock", () => {
       const s3 = s1.zipWithLatest(s2, (a, b) => Tuple(a, b))
       const queue = $(Queue.unbounded<Tuple<[number, number]>>())
       $(s3.runForEach((tuple) => queue.offer(tuple)).fork)
-      const fiber = $(Effect.collectAll(Effect.replicate(4, queue.take)).fork)
+      const fiber = $(Effect.collectAll(queue.take.replicate(4)).fork)
       $(TestClock.adjust((1).seconds))
       const result = $(fiber.join)
       assert.isTrue(result == Chunk(Tuple(0, 0), Tuple(0, 1), Tuple(1, 1), Tuple(1, 2)))

@@ -7,5 +7,5 @@
  */
 export function orDieWith<E>(f: (e: E) => unknown) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, never, A> =>
-    self.foldEffect((e) => Effect.dieNow(f(e)), Effect.succeed)
+    self.foldEffect((e) => Effect.die(f(e)), Effect.succeed)
 }

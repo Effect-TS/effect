@@ -4,7 +4,7 @@ export const InterruptCause2 = new Error("Oh noes 2!")
 export const InterruptCause3 = new Error("Oh noes 3!")
 
 export const ExampleErrorFail = Effect.failSync(ExampleError)
-export const ExampleErrorDie = Effect.die(() => {
+export const ExampleErrorDie = Effect.dieSync(() => {
   throw ExampleError
 })
 
@@ -30,13 +30,13 @@ export function exactlyOnce<R, A, A1>(
   value: A,
   f: (_: Effect.UIO<A>) => Effect<R, string, A1>
 ): Effect<R, string, A1> {
-  return Ref.make(0).flatMap((ref) =>
-    Effect.Do()
-      .bind("res", () => f(ref.update((n) => n + 1) > Effect.sync(value)))
-      .bind("count", () => ref.get)
-      .tap(({ count }) => count !== 1 ? Effect.failSync("Accessed more than once") : Effect.unit)
-      .map(({ res }) => res)
-  )
+  return Do(($) => {
+    const ref = $(Ref.make(0))
+    const res = $(f(ref.update((n) => n + 1).zipRight(Effect.sync(value))))
+    const count = $(ref.get)
+    $(count !== 1 ? Effect.failSync("Accessed more than once") : Effect.unit)
+    return res
+  })
 }
 
 export function sum(n: number): number {
@@ -72,14 +72,14 @@ export function deepErrorEffect(n: number): Effect<never, unknown, void> {
       throw ExampleError
     })
   }
-  return Effect.unit > deepErrorEffect(n - 1)
+  return Effect.unit.zipRight(deepErrorEffect(n - 1))
 }
 
 export function deepErrorFail(n: number): Effect<never, unknown, void> {
   if (n === 0) {
     return Effect.failSync(ExampleError)
   }
-  return Effect.unit > deepErrorFail(n - 1)
+  return Effect.unit.zipRight(deepErrorFail(n - 1))
 }
 
 export function deepMapEffect(n: number): Effect<never, never, number> {

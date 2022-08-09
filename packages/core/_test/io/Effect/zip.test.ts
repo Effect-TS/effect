@@ -1,62 +1,60 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("zipFlatten", () => {
-    it("is compositional", async () => {
-      const program = Effect.sync(1) + Effect.unit + Effect.sync("test") + Effect.sync(true)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Tuple(1, undefined, "test", true))
-    })
+    it("is compositional", () =>
+      Do(($) => {
+        const result = $(
+          Effect.sync(1)
+            .zipFlatten(Effect.unit)
+            .zipFlatten(Effect.sync("test"))
+            .zipFlatten(Effect.sync(true))
+        )
+        assert.isTrue(result == Tuple(1, undefined, "test", true))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("zipPar", () => {
-    it("does not swallow exit() causes of loser", async () => {
-      const program = Effect.interrupt.zipPar(Effect.interrupt)
+    it("does not swallow exit() causes of loser", () =>
+      Do(($) => {
+        const result = $(Effect.interrupt.zipPar(Effect.interrupt).exit)
+        assert.isTrue(
+          result.causeMaybe.map((cause) => cause.interruptors.size > 0)
+            == Maybe.some(true)
+        )
+      }).unsafeRunPromiseExit())
 
-      const result = await program.unsafeRunPromiseExit()
+    it("does not report failure when interrupting loser after it succeeded", () =>
+      Do(($) => {
+        const result = $(
+          Effect.interrupt
+            .zipPar(Effect.sync(1)).sandbox.either
+            .map((either) => either.mapLeft((cause) => cause.isInterrupted))
+        )
+        assert.isTrue(result == Either.left(true))
+      }).unsafeRunPromise())
 
-      assert.isTrue(
-        result.causeMaybe.map((cause) => cause.interruptors.size > 0)
-          == Maybe.some(true)
-      )
-    })
-
-    it("does not report failure when interrupting loser after it succeeded", async () => {
-      const program = Effect.interrupt
-        .zipPar(Effect.sync(1))
-        .sandbox
-        .either
-        .map((either) => either.mapLeft((cause) => cause.isInterrupted))
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result == Either.left(true))
-    })
-
-    it("passes regression 1", async () => {
-      const program = Effect.sync(1)
-        .zipPar(Effect.sync(2))
-        .flatMap((tuple) => Effect.sync(tuple.get(0) + tuple.get(1)))
-        .map((n) => n === 3)
-
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result)
-    })
-
-    it("paralellizes simple success values", async () => {
-      function countdown(n: number): Effect.UIO<number> {
-        return n === 0
-          ? Effect.sync(0)
-          : Effect.sync(1)
+    it("passes regression 1", () =>
+      Do(($) => {
+        const result = $(
+          Effect.sync(1)
             .zipPar(Effect.sync(2))
-            .flatMap((tuple) => countdown(n - 1).map((y) => tuple.get(0) + tuple.get(1) + y))
-      }
+            .flatMap((tuple) => Effect.sync(tuple.get(0) + tuple.get(1)))
+            .map((n) => n === 3)
+        )
+        assert.isTrue(result)
+      }).unsafeRunPromise())
 
-      const result = await countdown(50).unsafeRunPromise()
-
-      assert.strictEqual(result, 150)
-    })
+    it("paralellizes simple success values", () =>
+      Do(($) => {
+        function countdown(n: number): Effect.UIO<number> {
+          return n === 0
+            ? Effect.sync(0)
+            : Effect.sync(1)
+              .zipPar(Effect.sync(2))
+              .flatMap((tuple) => countdown(n - 1).map((y) => tuple.get(0) + tuple.get(1) + y))
+        }
+        const result = $(countdown(50))
+        assert.strictEqual(result, 150)
+      }).unsafeRunPromise())
 
     it("does not kill fiber when forked on parent scope", () =>
       Do(($) => {

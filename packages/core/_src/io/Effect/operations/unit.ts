@@ -19,6 +19,6 @@ export function unitTraced(): Effect<never, never, void> {
  *
  * @tsplus getter effect/core/io/Effect unit
  */
-export function unit_<R, E, X>(self: Effect<R, E, X>): Effect<R, E, void> {
-  return self > Effect.unit
+export function asUnit<R, E, X>(self: Effect<R, E, X>): Effect<R, E, void> {
+  return self.zipRight(Effect.unit)
 }

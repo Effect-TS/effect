@@ -14,15 +14,14 @@
  * @tsplus static effect/core/io/Effect.Ops loopDiscard
  */
 export function loopDiscard<Z>(
-  initial: LazyArg<Z>,
+  initial: Z,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z
 ) {
   return <R, E, X>(body: (z: Z) => Effect<R, E, X>): Effect<R, E, void> => {
     return Effect.suspendSucceed(() => {
-      const initial0 = initial()
-      return cont(initial0)
-        ? body(initial0) > loopDiscard(inc(initial0), cont, inc)(body)
+      return cont(initial)
+        ? body(initial).zipRight(loopDiscard(inc(initial), cont, inc)(body))
         : Effect.unit
     })
   }

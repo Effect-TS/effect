@@ -43,7 +43,7 @@ export function distributedWith<A>(
             )
             return deferred
               .succeed(
-                () => (a: A) => decide(a).map((f) => (key: UniqueKey) => f(mappings.unsafeGet(key)))
+                (a: A) => decide(a).map((f) => (key: UniqueKey) => f(mappings.unsafeGet(key)))
               )
               .as(queues)
           })

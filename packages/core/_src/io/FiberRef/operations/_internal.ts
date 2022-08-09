@@ -191,9 +191,9 @@ export function make<A>(
  * @tsplus static effect/core/io/FiberRef.Ops makeEnvironment
  */
 export function makeEnvironment<A>(
-  initial: LazyArg<Service.Env<A>>
+  initial: Service.Env<A>
 ): Effect<Scope, never, FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>>> {
-  return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial()))
+  return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial))
 }
 
 /**
@@ -219,7 +219,7 @@ export function makePatch<Value, Patch>(
  * @tsplus static effect/core/io/FiberRef.Ops makeWith
  */
 export function makeWith<Value, Patch>(
-  ref: LazyArg<FiberRef.WithPatch<Value, Patch>>
+  ref: FiberRef.WithPatch<Value, Patch>
 ): Effect<Scope, never, FiberRef.WithPatch<Value, Patch>> {
   return Effect.acquireRelease(
     Effect.sync(ref).tap((ref) => ref.update(identity)),
@@ -306,12 +306,10 @@ export function addFinalizerExit<R, X>(
  * @tsplus fluent effect/core/io/Effect acquireReleaseExit
  */
 export function acquireReleaseExit<R, E, A, R2, X>(
-  acquire: LazyArg<Effect<R, E, A>>,
+  acquire: Effect<R, E, A>,
   release: (a: A, exit: Exit<unknown, unknown>) => Effect<R2, never, X>
 ): Effect<R | R2 | Scope, E, A> {
-  return Effect.suspendSucceed(acquire)
-    .tap((a) => Effect.addFinalizerExit((exit) => release(a, exit)))
-    .uninterruptible
+  return acquire.tap((a) => Effect.addFinalizerExit((exit) => release(a, exit))).uninterruptible
 }
 
 /**
@@ -326,7 +324,7 @@ export function acquireReleaseExit<R, E, A, R2, X>(
  * @tsplus fluent effect/core/io/Effect acquireRelease
  */
 export function acquireRelease<R, E, A, R2, X>(
-  acquire: LazyArg<Effect<R, E, A>>,
+  acquire: Effect<R, E, A>,
   release: (a: A) => Effect<R2, never, X>
 ): Effect<R | R2 | Scope, E, A> {
   return Effect.acquireReleaseExit(acquire, (a, _) => release(a))
@@ -390,12 +388,10 @@ export const forkScopeOverride: FiberRef<Maybe<FiberScope>> = FiberRef.unsafeMak
  * @tsplus static effect/core/io/Effect.Aspects provideEnvironment
  * @tsplus pipeable effect/core/io/Effect provideEnvironment
  */
-export function provideEnvironment<R>(environment: LazyArg<Env<R>>) {
+export function provideEnvironment<R>(environment: Env<R>) {
   return <E, A>(self: Effect<R, E, A>): Effect<never, E, A> =>
-    Effect.sync(environment).flatMap((env) =>
-      (self as Effect<never, E, A>).apply(
-        FiberRef.currentEnvironment.locally(env as Env<never>)
-      )
+    (self as Effect<never, E, A>).apply(
+      FiberRef.currentEnvironment.locally(environment as Env<never>)
     )
 }
 
@@ -414,9 +410,7 @@ export const scope: Effect<Scope, never, Scope> = Effect.service(Scope.Tag)
  *
  * @tsplus static effect/core/io/Effect.Ops service
  */
-export function service<T>(
-  tag: Tag<T>
-): Effect<T, never, T> {
+export function service<T>(tag: Tag<T>): Effect<T, never, T> {
   return Effect.serviceWithEffect(tag, Effect.succeed)
 }
 

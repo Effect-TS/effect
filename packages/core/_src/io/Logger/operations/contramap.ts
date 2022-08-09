@@ -8,7 +8,7 @@ export function contramap<Message, Message1>(f: (message: Message1) => Message) 
       self.apply(
         fiberId,
         logLevel,
-        () => f(message()),
+        f(message),
         cause,
         context,
         spans,

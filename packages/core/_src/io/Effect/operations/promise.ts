@@ -47,7 +47,7 @@ export function promise<A>(
     Effect.async<never, never, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeed(a)))
-        .catch((e) => resolve(Effect.dieNow(e)))
+        .catch((e) => resolve(Effect.die(e)))
     })
   )
 }

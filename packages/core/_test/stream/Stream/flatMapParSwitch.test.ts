@@ -139,7 +139,7 @@ describe.concurrent("Stream", () => {
                 .zipRight(Effect.never)
                 .onInterrupt(() => substreamCancelled.set(true))
             ),
-            Stream.fromEffect(latch.await.zipRight(Effect.die(error)))
+            Stream.fromEffect(latch.await.zipRight(Effect.dieSync(error)))
           )
             .flatMapPar(2, identity)
             .runDrain
@@ -161,7 +161,7 @@ describe.concurrent("Stream", () => {
           "result",
           ({ latch, substreamCancelled }) =>
             Stream(undefined)
-              .concat(Stream.fromEffect(latch.await.zipRight(Effect.die(error))))
+              .concat(Stream.fromEffect(latch.await.zipRight(Effect.dieSync(error))))
               .flatMapParSwitch(2, () =>
                 Stream.fromEffect(
                   latch.succeed(undefined)

@@ -3,8 +3,6 @@
  *
  * @tsplus getter effect/core/io/Effect asLeft
  */
-export function asLeft<R, E, A>(
-  self: Effect<R, E, A>
-): Effect<R, E, Either<A, never>> {
+export function asLeft<R, E, A>(self: Effect<R, E, A>): Effect<R, E, Either<A, never>> {
   return self.map(Either.left)
 }

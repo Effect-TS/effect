@@ -9,7 +9,7 @@
  * @tsplus pipeable effect/core/io/Effect repeat
  */
 export function repeat<S, R1, A, B>(
-  schedule: LazyArg<Schedule<S, R1, A, B>>
+  schedule: Schedule<S, R1, A, B>
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, B> =>
     self.repeatOrElse(schedule, (e, _) => Effect.failSync(e))

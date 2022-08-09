@@ -5,7 +5,7 @@
  */
 export function none<R, E, A>(self: Effect<R, E, Maybe<A>>): Effect<R, Maybe<E>, void> {
   return self.foldEffect(
-    (e) => Effect.failSync(Maybe.some(e)),
-    (option) => option.fold(Effect.succeed(undefined), () => Effect.failSync(Maybe.none))
+    (e) => Effect.fail(Maybe.some(e)),
+    (option) => option.fold(Effect.succeed(undefined), () => Effect.fail(Maybe.none))
   )
 }

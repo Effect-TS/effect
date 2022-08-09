@@ -29,22 +29,20 @@ export class LiveRandom implements Random {
     return Effect.sync(() => this.PRNG.integer(high - low) + low)
   }
 
-  shuffle<A>(collection: LazyArg<Collection<A>>): Effect<never, never, Collection<A>> {
+  shuffle<A>(collection: Collection<A>): Effect<never, never, Collection<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n))
   }
 }
 
 function shuffleWith<A>(
-  collection: LazyArg<Collection<A>>,
+  collection: Collection<A>,
   nextIntBounded: (n: number) => Effect<never, never, number>
 ): Effect<never, never, Collection<A>> {
   return Effect.suspendSucceed(() => {
-    const collection0 = collection()
-
     return Do(($) => {
       const buffer = $(Effect.sync(() => {
         const buffer: Array<A> = []
-        for (const element of collection0) {
+        for (const element of collection) {
           buffer.push(element)
         }
         return buffer

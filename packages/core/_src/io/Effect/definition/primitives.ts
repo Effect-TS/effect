@@ -313,8 +313,8 @@ export class IRaceWith<R, E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3> extends Base
   readonly _tag = "RaceWith"
 
   constructor(
-    readonly left: Lazy<Effect<R, E, A>>,
-    readonly right: Lazy<Effect<R1, E1, A1>>,
+    readonly left: Effect<R, E, A>,
+    readonly right: Effect<R1, E1, A1>,
     readonly leftWins: (winner: Fiber<E, A>, loser: Fiber<E1, A1>) => Effect<R2, E2, A2>,
     readonly rightWins: (winner: Fiber<E1, A1>, loser: Fiber<E, A>) => Effect<R3, E3, A3>
   ) {
@@ -331,7 +331,7 @@ export class ISupervise<R, E, A> extends Base<R, E, A> {
 
   constructor(
     readonly effect: Effect<R, E, A>,
-    readonly supervisor: Lazy<Supervisor<any>>
+    readonly supervisor: Supervisor<any>
   ) {
     super()
   }
@@ -387,8 +387,8 @@ export class ILogged<A> extends Base<never, never, void> {
   readonly _tag = "Logged"
 
   constructor(
-    readonly message: Lazy<A>,
-    readonly cause: Lazy<Cause<unknown>>,
+    readonly message: A,
+    readonly cause: Cause<unknown>,
     readonly overrideLogLevel: Maybe<LogLevel> = Maybe.none,
     readonly overrideRef1: FiberRef.WithPatch<unknown, unknown> | null = null,
     readonly overrideValue1: unknown = null

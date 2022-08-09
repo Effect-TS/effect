@@ -3,8 +3,8 @@
  * be used for terminating a fiber because a defect has been detected in the
  * code.
  *
- * @tsplus static effect/core/io/Effect.Ops dieNow
+ * @tsplus static effect/core/io/Effect.Ops dieSync
  */
-export function dieNow(defect: unknown): Effect<never, never, never> {
-  return Effect.failCauseSync(Cause.die(defect))
+export function dieSync<A>(f: LazyArg<A>): Effect<never, never, never> {
+  return Effect.failCauseSync(Cause.die(f()))
 }

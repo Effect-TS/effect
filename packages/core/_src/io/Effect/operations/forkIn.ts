@@ -5,11 +5,11 @@
  * @tsplus static effect/core/io/Effect.Aspects forkIn
  * @tsplus pipeable effect/core/io/Effect forkIn
  */
-export function forkIn(scope: LazyArg<Scope>) {
+export function forkIn(scope: Scope) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> =>
     Effect.uninterruptibleMask(({ restore }) =>
       restore(self)
         .forkDaemon
-        .tap((fiber) => scope().addFinalizer(fiber.interrupt))
+        .tap((fiber) => scope.addFinalizer(fiber.interrupt))
     )
 }

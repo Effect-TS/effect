@@ -6,9 +6,7 @@
  * @tsplus static effect/core/io/Effect.Aspects withFinalizer
  * @tsplus pipeable effect/core/io/Effect withFinalizer
  */
-export function withFinalizer<R2, X>(
-  finalizer: LazyArg<Effect<R2, never, X>>
-) {
+export function withFinalizer<R2, X>(finalizer: Effect<R2, never, X>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2 | Scope, E, A> =>
-    self.withFinalizerExit(finalizer)
+    self.withFinalizerExit(() => finalizer)
 }

@@ -20,7 +20,7 @@ export function hourOfDay(
 ): Schedule<Tuple<[number, number]>, never, unknown, number> {
   return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
-      return Effect.die(
+      return Effect.dieSync(
         new IllegalArgumentException(
           `Invalid argument in: hourOfDay(${hour}). Must be in range 0...23`
         )

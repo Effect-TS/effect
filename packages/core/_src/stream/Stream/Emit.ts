@@ -78,7 +78,7 @@ export function apply<R, E, A, B>(
       return this(Effect.succeed(as))
     },
     die<Err>(this: Emit<R, E, A, B>, err: Err) {
-      return this(Effect.die(err))
+      return this(Effect.dieSync(err))
     },
     dieMessage(this: Emit<R, E, A, B>, message: string) {
       return this(Effect.dieMessage(message))

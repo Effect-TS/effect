@@ -8,7 +8,7 @@ import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus pipeable effect/core/io/Effect zipWithPar
  */
 export function zipWithPar<R2, E2, A2, A, B>(
-  that: LazyArg<Effect<R2, E2, A2>>,
+  that: Effect<R2, E2, A2>,
   f: (a: A, b: A2) => B
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E2, B> => {
@@ -16,8 +16,8 @@ export function zipWithPar<R2, E2, A2, A, B>(
     return Effect.transplant((graft) =>
       Effect.descriptorWith((d) =>
         new IRaceWith(
-          () => graft(self),
-          () => graft(that),
+          graft(self),
+          graft(that),
           (winner, loser) => coordinate<E | E2, B, A, A2>(d.id, f, true, winner, loser),
           (winner, loser) => coordinate<E | E2, B, A2, A>(d.id, g, false, winner, loser)
         )
@@ -40,8 +40,8 @@ function coordinate<E, B, X, Y>(
           loserExit.fold(
             (loserCause) =>
               leftWinner ?
-                Effect.failCauseSync(winnerCause & loserCause) :
-                Effect.failCauseSync(loserCause & winnerCause),
+                Effect.failCauseSync(Cause.both(winnerCause, loserCause)) :
+                Effect.failCauseSync(Cause.both(loserCause, winnerCause)),
             () => Effect.failCauseSync(winnerCause)
           )
         ),
@@ -49,7 +49,7 @@ function coordinate<E, B, X, Y>(
         loser.await.flatMap((loserExit) =>
           loserExit.fold<E, Y, Effect<never, E, B>>(
             (loserCause) => Effect.failCauseSync(loserCause),
-            (b) => winner.inheritRefs > loser.inheritRefs > Effect.sync(f(a, b))
+            (b) => winner.inheritRefs.zipRight(loser.inheritRefs).zipRight(Effect.sync(f(a, b)))
           )
         )
     )

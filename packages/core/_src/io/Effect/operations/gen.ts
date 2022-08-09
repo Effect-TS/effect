@@ -25,7 +25,7 @@ export class GenEffect<R, E, A> {
 function adapter(_: any, __?: any) {
   if (Either.isEither(_)) {
     return new GenEffect(
-      Effect.fromEither(() => _)
+      Effect.fromEither(_)
     )
   }
   if (Maybe.isMaybe(_)) {

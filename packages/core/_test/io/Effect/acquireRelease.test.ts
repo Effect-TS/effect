@@ -1,180 +1,159 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("acquireUseRelease", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
-          Effect.sync(42).acquireUseRelease(
+    it("happy path", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
+          Effect.succeed(42).acquireUseRelease(
             (n) => Effect.sync(n + 1),
             () => release.set(true)
-          ))
-        .bind("released", ({ release }) => release.get)
+          )
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 43)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
 
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 43)
-      assert.isTrue(released)
-    })
-
-    it("happy path + disconnect", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
+    it("happy path + disconnect", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
           Effect.sync(42).acquireUseRelease(
-            (n) => Effect.sync(n + 1),
+            (n) => Effect.succeed(n + 1),
             () => release.set(true)
-          ).disconnect)
-        .bind("released", ({ release }) => release.get)
-
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 43)
-      assert.isTrue(released)
-    })
+          ).disconnect
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 43)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("acquireUseReleaseDiscard", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
+    it("happy path", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
           Effect.acquireUseReleaseDiscard(
-            Effect.sync(42),
-            Effect.sync(0),
+            Effect.succeed(42),
+            Effect.succeed(0),
             release.set(true)
-          ))
-        .bind("released", ({ release }) => release.get)
+          )
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 0)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
 
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 0)
-      assert.isTrue(released)
-    })
-
-    it("happy path + disconnect", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
+    it("happy path + disconnect", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
           Effect.acquireUseReleaseDiscard(
-            Effect.sync(42),
-            Effect.sync(0),
+            Effect.succeed(42),
+            Effect.succeed(0),
             release.set(true)
-          ).disconnect)
-        .bind("released", ({ release }) => release.get)
-
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 0)
-      assert.isTrue(released)
-    })
+          ).disconnect
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 0)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("acquireReleaseExitWith", () => {
-    it("happy path", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
+    it("happy path", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
           Effect.acquireUseReleaseExit(
-            Effect.sync(42),
-            () => Effect.sync(0),
+            Effect.succeed(42),
+            () => Effect.succeed(0),
             () => release.set(true)
-          ).disconnect)
-        .bind("released", ({ release }) => release.get)
+          ).disconnect
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 0)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
 
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 0)
-      assert.isTrue(released)
-    })
-
-    it("error handling", async () => {
-      const releaseDied = new RuntimeError("release died")
-      const program = Effect.Do()
-        .bind("exit", () =>
+    it("error handling", () =>
+      Do(($) => {
+        const releaseDied = new RuntimeError("release died")
+        const exit = $(
           Effect.acquireUseReleaseExit(
             Effect.sync(42),
-            () => Effect.failSync("use failed"),
-            () => Effect.die(releaseDied)
-          ).exit)
-        .flatMap(({ exit }) =>
+            () => Effect.fail("use failed"),
+            () => Effect.dieSync(releaseDied)
+          ).exit
+        )
+        const result = $(
           exit.foldEffect(
-            (cause) => Effect.sync(cause),
-            () => Effect.failSync("effect should have failed")
+            Effect.succeed,
+            () => Effect.fail("effect should have failed")
           )
         )
+        assert.isTrue(result.failures == List("use failed"))
+        assert.isTrue(result.defects == List(releaseDied))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.failures == List("use failed"))
-      assert.isTrue(result.defects == List(releaseDied))
-    })
-
-    it("happy path + disconnect", async () => {
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("result", ({ release }) =>
+    it("happy path + disconnect", () =>
+      Do(($) => {
+        const release = $(Ref.make(false))
+        const result = $(
           Effect.acquireUseReleaseExit(
-            Effect.sync(42),
-            () => Effect.sync(0),
+            Effect.succeed(42),
+            () => Effect.succeed(0),
             () => release.set(true)
-          ).disconnect)
-        .bind("released", ({ release }) => release.get)
+          ).disconnect
+        )
+        const released = $(release.get)
+        assert.strictEqual(result, 0)
+        assert.isTrue(released)
+      }).unsafeRunPromise())
 
-      const { released, result } = await program.unsafeRunPromise()
-
-      assert.strictEqual(result, 0)
-      assert.isTrue(released)
-    })
-
-    it("error handling + disconnect", async () => {
-      const releaseDied = new RuntimeError("release died")
-      const program = Effect.Do()
-        .bind("exit", () =>
+    it("error handling + disconnect", () =>
+      Do(($) => {
+        const releaseDied = new RuntimeError("release died")
+        const exit = $(
           Effect.acquireUseReleaseExit(
             Effect.sync(42),
-            () => Effect.failSync("use failed"),
-            () => Effect.die(releaseDied)
-          )
-            .disconnect
-            .exit)
-        .flatMap(({ exit }) =>
+            () => Effect.fail("use failed"),
+            () => Effect.dieSync(releaseDied)
+          ).disconnect.exit
+        )
+        const result = $(
           exit.foldEffect(
-            (cause) => Effect.sync(cause),
-            () => Effect.failSync("effect should have failed")
+            Effect.succeed,
+            () => Effect.fail("effect should have failed")
           )
         )
+        assert.isTrue(result.failures == List("use failed"))
+        assert.isTrue(result.defects == List(releaseDied))
+      }).unsafeRunPromise())
 
-      const result = await program.unsafeRunPromise()
-
-      assert.isTrue(result.failures == List("use failed"))
-      assert.isTrue(result.defects == List(releaseDied))
-    })
-
-    it("beast mode error handling + disconnect", async () => {
-      const releaseDied = new RuntimeError("release died")
-      const program = Effect.Do()
-        .bind("release", () => Ref.make(false))
-        .bind("exit", ({ release }) =>
+    it("beast mode error handling + disconnect", () =>
+      Do(($) => {
+        const releaseDied = new RuntimeError("release died")
+        const release = $(Ref.make(false))
+        const exit = $(
           Effect.acquireUseReleaseExit(
-            Effect.sync(42),
+            Effect.succeed(42),
             (): Effect<never, unknown, unknown> => {
               throw releaseDied
             },
             () => release.set(true)
-          )
-            .disconnect
-            .exit)
-        .bind("cause", ({ exit }) =>
+          ).disconnect.exit
+        )
+        const result = $(
           exit.foldEffect(
-            (cause) => Effect.sync(cause),
-            () => Effect.failSync("effect should have failed")
-          ))
-        .bind("released", ({ release }) => release.get)
-
-      const { cause, released } = await program.unsafeRunPromise()
-
-      assert.isTrue(cause.defects == List(releaseDied))
-      assert.isTrue(released)
-    })
+            Effect.succeed,
+            () => Effect.fail("effect should have failed")
+          )
+        )
+        const released = $(release.get)
+        assert.isTrue(result.defects == List(releaseDied))
+        assert.isTrue(released)
+      }).unsafeRunPromise())
   })
 })

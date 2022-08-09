@@ -18,7 +18,7 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  * @tsplus static effect/core/io/Schedule.Ops fixed
  */
 export function fixed(
-  interval: LazyArg<Duration>
+  interval: Duration
 ): Schedule<
   Tuple<[Maybe<Tuple<[number, number]>>, number]>,
   never,
@@ -29,8 +29,7 @@ export function fixed(
     Tuple(Maybe.empty(), 0),
     (now, _, { tuple: [option, n] }) =>
       Effect.sync(() => {
-        const interval0 = interval()
-        const intervalMillis = interval0.millis
+        const intervalMillis = interval.millis
         return option.fold(
           () =>
             Tuple(
@@ -40,10 +39,10 @@ export function fixed(
             ),
           ({ tuple: [startMillis, lastRun] }) => {
             const runningBehind = now > (lastRun + intervalMillis)
-            const boundary = interval0 == (0).millis
-              ? interval0
+            const boundary = interval == (0).millis
+              ? interval
               : new DurationInternal(intervalMillis - ((now - startMillis) % intervalMillis))
-            const sleepTime = boundary == (0).millis ? interval0 : boundary
+            const sleepTime = boundary == (0).millis ? interval : boundary
             const nextRun = runningBehind ? now : now + sleepTime.millis
             return Tuple(
               Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),

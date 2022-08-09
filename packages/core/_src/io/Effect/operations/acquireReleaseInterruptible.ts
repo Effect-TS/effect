@@ -10,8 +10,8 @@
  * @tsplus fluent effect/core/io/Effect acquireReleaseInterruptible
  */
 export function acquireReleaseInterruptible<R, E, A, R2, X>(
-  acquire: LazyArg<Effect<R, E, A>>,
-  release: LazyArg<Effect<R2, never, X>>
+  acquire: Effect<R, E, A>,
+  release: Effect<R2, never, X>
 ): Effect<R | R2 | Scope, E, A> {
-  return Effect.acquireReleaseInterruptibleExit(acquire, release)
+  return Effect.acquireReleaseInterruptibleExit(acquire, () => release)
 }

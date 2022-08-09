@@ -21,7 +21,7 @@ export function minuteOfHour(
 ): Schedule<Tuple<[number, number]>, never, unknown, number> {
   return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
     if (!Number.isInteger(minute) || minute < 0 || 59 < minute) {
-      return Effect.die(
+      return Effect.dieSync(
         new IllegalArgumentException(
           `Invalid argument in: minuteOfHour(${minute}). Must be in range 0...59`
         )

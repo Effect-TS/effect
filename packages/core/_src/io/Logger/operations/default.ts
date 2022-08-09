@@ -2,8 +2,7 @@
  * @tsplus static effect/core/io/Logger.Ops default
  */
 export const defaultLogger: Logger<string, string> = {
-  apply: (fiberId, logLevel, message, cause0, context, spans, annotations) => {
-    const cause = cause0()
+  apply: (fiberId, logLevel, message, cause, _context, spans, annotations) => {
     const now = new Date()
     const nowMillis = now.getTime()
 
@@ -11,7 +10,7 @@ export const defaultLogger: Logger<string, string> = {
       `timestamp=${now.toISOString()}`,
       ` level=${logLevel.label}`,
       ` thread=#${fiberId.threadName}`,
-      ` message="${message()}"`
+      ` message="${message}"`
     ].join("")
 
     if (cause != null && cause != Cause.empty) {

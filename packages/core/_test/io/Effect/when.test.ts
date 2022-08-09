@@ -1,116 +1,84 @@
 describe.concurrent("Effect", () => {
   describe.concurrent("when", () => {
-    it("executes correct branch only", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(0))
-        .tap(({ ref }) => Effect.when(false, ref.set(1)))
-        .bind("v1", ({ ref }) => ref.get)
-        .tap(({ ref }) => Effect.when(true, ref.set(2)))
-        .bind("v2", ({ ref }) => ref.get)
-        .bindValue("failure", () => new Error("expected"))
-        .tap(({ failure }) => Effect.when(false, Effect.failSync(failure)))
-        .bind("failed", ({ failure }) => Effect.when(true, Effect.failSync(failure)).either)
-
-      const { failed, failure, v1, v2 } = await program.unsafeRunPromise()
-
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(v2, 2)
-      assert.isTrue(failed == Either.left(failure))
-    })
+    it("executes correct branch only", () =>
+      Do(($) => {
+        const ref = $(Ref.make(0))
+        $(Effect.when(false, ref.set(1)))
+        const v1 = $(ref.get)
+        $(Effect.when(true, ref.set(2)))
+        const v2 = $(ref.get)
+        const failure = new Error("expected")
+        $(Effect.when(false, Effect.failSync(failure)))
+        const failed = $(Effect.when(true, Effect.failSync(failure)).either)
+        assert.strictEqual(v1, 0)
+        assert.strictEqual(v2, 2)
+        assert.isTrue(failed == Either.left(failure))
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("whenCase", () => {
-    it("executes correct branch only", async () => {
-      const v1 = Maybe.empty<number>()
-      const v2 = Maybe.some(0)
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(false))
-        .tap(({ ref }) =>
-          Effect.whenCase(
-            v1,
-            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
-          )
-        )
-        .bind("res1", ({ ref }) => ref.get)
-        .tap(({ ref }) =>
-          Effect.whenCase(
-            v2,
-            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
-          )
-        )
-        .bind("res2", ({ ref }) => ref.get)
-
-      const { res1, res2 } = await program.unsafeRunPromise()
-
-      assert.isFalse(res1)
-      assert.isTrue(res2)
-    })
+    it("executes correct branch only", () =>
+      Do(($) => {
+        const v1 = Maybe.empty<number>()
+        const v2 = Maybe.some(0)
+        const ref = $(Ref.make(false))
+        $(Effect.whenCase(v1, (option) =>
+          option._tag === "Some" ?
+            Maybe.some(ref.set(true)) :
+            Maybe.none))
+        const res1 = $(ref.get)
+        $(Effect.whenCase(v2, (option) =>
+          option._tag === "Some" ?
+            Maybe.some(ref.set(true)) :
+            Maybe.none))
+        const res2 = $(ref.get)
+        assert.isFalse(res1)
+        assert.isTrue(res2)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("whenCaseEffect", () => {
-    it("executes condition effect and correct branch", async () => {
-      const v1 = Maybe.empty<number>()
-      const v2 = Maybe.some(0)
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make(false))
-        .tap(({ ref }) =>
-          Effect.whenCaseEffect(
-            Effect.sync(v1),
-            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
-          )
-        )
-        .bind("res1", ({ ref }) => ref.get)
-        .tap(({ ref }) =>
-          Effect.whenCaseEffect(
-            Effect.sync(v2),
-            (option) => option._tag === "Some" ? Maybe.some(ref.set(true)) : Maybe.none
-          )
-        )
-        .bind("res2", ({ ref }) => ref.get)
-
-      const { res1, res2 } = await program.unsafeRunPromise()
-
-      assert.isFalse(res1)
-      assert.isTrue(res2)
-    })
+    it("executes condition effect and correct branch", () =>
+      Do(($) => {
+        const v1 = Maybe.empty<number>()
+        const v2 = Maybe.some(0)
+        const ref = $(Ref.make(false))
+        $(Effect.whenCaseEffect(Effect.sync(v1), (option) =>
+          option._tag === "Some" ?
+            Maybe.some(ref.set(true)) :
+            Maybe.none))
+        const res1 = $(ref.get)
+        $(Effect.whenCaseEffect(Effect.sync(v2), (option) =>
+          option._tag === "Some" ?
+            Maybe.some(ref.set(true)) :
+            Maybe.none))
+        const res2 = $(ref.get)
+        assert.isFalse(res1)
+        assert.isTrue(res2)
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("whenEffect", () => {
-    it("executes condition effect and correct branch", async () => {
-      const program = Effect.Do()
-        .bind("effectRef", () => Ref.make(0))
-        .bind("conditionRef", () => Ref.make(0))
-        .bindValue(
-          "conditionTrue",
-          ({ conditionRef }) => conditionRef.update((n) => n + 1).as(true)
-        )
-        .bindValue(
-          "conditionFalse",
-          ({ conditionRef }) => conditionRef.update((n) => n + 1).as(false)
-        )
-        .tap(({ conditionFalse, effectRef }) => Effect.whenEffect(conditionFalse, effectRef.set(1)))
-        .bind("v1", ({ effectRef }) => effectRef.get)
-        .bind("c1", ({ conditionRef }) => conditionRef.get)
-        .tap(({ conditionTrue, effectRef }) => Effect.whenEffect(conditionTrue, effectRef.set(2)))
-        .bind("v2", ({ effectRef }) => effectRef.get)
-        .bind("c2", ({ conditionRef }) => conditionRef.get)
-        .bindValue("failure", () => new Error("expected"))
-        .tap(({ conditionFalse, failure }) =>
-          Effect.whenEffect(conditionFalse, Effect.failSync(failure))
-        )
-        .bind(
-          "failed",
-          ({ conditionTrue, failure }) =>
-            Effect.whenEffect(conditionTrue, Effect.failSync(failure)).either
-        )
-
-      const { c1, c2, failed, failure, v1, v2 } = await program.unsafeRunPromise()
-
-      assert.strictEqual(v1, 0)
-      assert.strictEqual(c1, 1)
-      assert.strictEqual(v2, 2)
-      assert.strictEqual(c2, 2)
-      assert.isTrue(failed == Either.left(failure))
-    })
+    it("executes condition effect and correct branch", () =>
+      Do(($) => {
+        const effectRef = $(Ref.make(0))
+        const conditionRef = $(Ref.make(0))
+        const conditionTrue = conditionRef.update((n) => n + 1).as(true)
+        const conditionFalse = conditionRef.update((n) => n + 1).as(false)
+        $(Effect.whenEffect(conditionFalse, effectRef.set(1)))
+        const v1 = $(effectRef.get)
+        const c1 = $(conditionRef.get)
+        $(Effect.whenEffect(conditionTrue, effectRef.set(2)))
+        const v2 = $(effectRef.get)
+        const c2 = $(conditionRef.get)
+        const failure = new Error("expected")
+        $(Effect.whenEffect(conditionFalse, Effect.failSync(failure)))
+        const failed = $(Effect.whenEffect(conditionTrue, Effect.failSync(failure)).either)
+        assert.strictEqual(v1, 0)
+        assert.strictEqual(c1, 1)
+        assert.strictEqual(v2, 2)
+        assert.strictEqual(c2, 2)
+        assert.isTrue(failed == Either.left(failure))
+      }).unsafeRunPromise())
   })
 })
