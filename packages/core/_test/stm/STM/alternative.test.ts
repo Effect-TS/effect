@@ -16,7 +16,7 @@ describe.concurrent("STM", () => {
     it("tries alternative once left fails", async () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(0))
-        .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.fail("boom"))
+        .bindValue("left", ({ tRef }) => tRef.update((n) => n + 100) > STM.failSync("boom"))
         .bindValue("right", ({ tRef }) => tRef.update((n) => n + 200))
         .tap(({ left, right }) => (left | right).commit)
         .flatMap(({ tRef }) => tRef.get.commit)
@@ -27,7 +27,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fail if alternative fails", async () => {
-      const program = (STM.fail("left") | STM.fail("right")).commit
+      const program = (STM.failSync("left") | STM.failSync("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -69,7 +69,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails with the specified error once left fails", async () => {
-      const program = STM.fail(true).orElseFail(false).either.commit
+      const program = STM.failSync(true).orElseFail(false).either.commit
 
       const result = await program.unsafeRunPromise()
 
@@ -95,7 +95,7 @@ describe.concurrent("STM", () => {
     })
 
     it("succeeds with the specified value if left fails", async () => {
-      const program = STM.fail(true).orElseSucceed(false).commit
+      const program = STM.failSync(true).orElseSucceed(false).commit
 
       const result = await program.unsafeRunPromise()
 
@@ -138,7 +138,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails if left fails", async () => {
-      const program = STM.fail("left").orTry(STM.succeed("right")).commit
+      const program = STM.failSync("left").orTry(STM.succeed("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -146,7 +146,7 @@ describe.concurrent("STM", () => {
     })
 
     it("fails if right fails", async () => {
-      const program = STM.retry.orTry(STM.fail("right")).commit
+      const program = STM.retry.orTry(STM.failSync("right")).commit
 
       const result = await program.unsafeRunPromiseExit()
 

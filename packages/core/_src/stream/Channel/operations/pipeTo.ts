@@ -15,7 +15,7 @@ export function pipeTo<
   OutErr2,
   OutElem2,
   OutDone2
->(that: LazyArg<Channel<Env2, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>>) {
+>(that: Channel<Env2, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>) {
   return <Env, InErr, InElem, InDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> =>
@@ -30,5 +30,5 @@ export function pipeTo<
       OutErr,
       OutElem,
       OutDone
-    >(() => self, that)
+    >(() => self, () => that)
 }

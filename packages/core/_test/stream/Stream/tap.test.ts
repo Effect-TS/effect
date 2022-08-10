@@ -38,7 +38,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(""))
         .bind("result", ({ ref }) =>
-          (Stream(1, 1) + Stream.fail("ouch"))
+          (Stream(1, 1) + Stream.failSync("ouch"))
             .tapError((err) => ref.update((s) => s + err))
             .runCollect
             .either)
@@ -86,7 +86,7 @@ describe.concurrent("Stream", () => {
     it("sink that fails before stream", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(0))
-        .bindValue("sink", ({ ref }) => Sink.fail("error"))
+        .bindValue("sink", ({ ref }) => Sink.failSync("error"))
         .bindValue("stream", ({ sink }) => Stream.never.tapSink(sink))
         .flatMap(({ stream }) => stream.runCollect.flip)
 

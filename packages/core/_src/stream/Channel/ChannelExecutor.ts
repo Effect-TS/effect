@@ -347,10 +347,8 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
               case "FromEffect": {
                 const peffect = this.providedEnv != null
-                  ? currentChannel
-                    .effect()
-                    .provideEnvironment(this.providedEnv as Env<R>)
-                  : currentChannel.effect()
+                  ? currentChannel.effect.provideEnvironment(this.providedEnv as Env<R>)
+                  : currentChannel.effect
 
                 result = ChannelState.Effect(
                   peffect.foldCauseEffect(
@@ -375,7 +373,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
               }
 
               case "Emit": {
-                this.emitted = currentChannel.out()
+                this.emitted = currentChannel.out
                 this.currentChannel = this.activeSubexecutor != null ?
                   undefined :
                   new SucceedNow(undefined)
@@ -432,7 +430,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
               case "Provide": {
                 const previousEnv = this.providedEnv
-                this.providedEnv = currentChannel.env()
+                this.providedEnv = currentChannel.env
                 this.currentChannel = currentChannel.channel
 
                 this.addFinalizer(() =>
@@ -445,7 +443,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
               }
             }
           } catch (error) {
-            this.currentChannel = Channel.failCause(Cause.die(error))
+            this.currentChannel = Channel.failCauseSync(Cause.die(error))
           }
         }
       }
@@ -554,7 +552,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
           (out) =>
             Effect.sync(() => {
               this.addFinalizer((exit) => bracketOut.finalizer(out, exit))
-              this.currentChannel = new Emit(() => out)
+              this.currentChannel = new Emit(out)
             })
         )
       )

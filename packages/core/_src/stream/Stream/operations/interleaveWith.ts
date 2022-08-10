@@ -16,8 +16,8 @@ import {
  * @tsplus pipeable effect/core/stream/Stream interleaveWith
  */
 export function interleaveWith<R2, E2, A2, R3, E3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  b: LazyArg<Stream<R3, E3, boolean>>
+  that: Stream<R2, E2, A2>,
+  b: Stream<R3, E3, boolean>
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2 | R3, E | E2 | E3, A | A2> => {
     concreteStream(self)
@@ -31,16 +31,14 @@ export function interleaveWith<R2, E2, A2, R3, E3>(
               .runScoped
               .fork
           )
-          const that0 = $(Effect.sync(that))
-          concreteStream(that0)
+          concreteStream(that)
           $(
-            (that0.channel.concatMap(Channel.writeChunk) >> producer(right))
+            (that.channel.concatMap(Channel.writeChunk) >> producer(right))
               .runScoped
               .fork
           )
-          const b0 = $(Effect.sync(b))
-          concreteStream(b0)
-          return b0.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
+          concreteStream(b)
+          return b.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)
         })
       )
     )
@@ -71,7 +69,7 @@ function process<E, E2, E3, A, A2>(
         return Channel.fromEffect(left.take).flatMap((take) =>
           take.fold(
             rightDone ? Channel.unit : process(left, right, true, rightDone),
-            (cause) => Channel.failCause(cause),
+            (cause) => Channel.failCauseSync(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
         )
@@ -80,14 +78,14 @@ function process<E, E2, E3, A, A2>(
         return Channel.fromEffect(right.take).flatMap((take) =>
           take.fold(
             leftDone ? Channel.unit : process(left, right, leftDone, true),
-            (cause) => Channel.failCause(cause),
+            (cause) => Channel.failCauseSync(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
         )
       }
       return process(left, right, leftDone, rightDone)
     },
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => Channel.unit
   )
 }

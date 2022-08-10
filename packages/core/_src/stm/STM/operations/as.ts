@@ -4,6 +4,6 @@
  * @tsplus static effect/core/stm/STM.Aspects as
  * @tsplus pipeable effect/core/stm/STM as
  */
-export function as<B>(b: LazyArg<B>) {
-  return <R, E, A>(self: STM<R, E, A>): STM<R, E, B> => self.map(b)
+export function as<B>(b: B) {
+  return <R, E, A>(self: STM<R, E, A>): STM<R, E, B> => self.map(() => b)
 }

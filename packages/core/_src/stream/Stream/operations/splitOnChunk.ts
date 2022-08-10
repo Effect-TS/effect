@@ -10,14 +10,10 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects splitOnChunk
  * @tsplus pipeable effect/core/stream/Stream splitOnChunk
  */
-export function splitOnChunk<A>(
-  delimiter: LazyArg<Chunk<A>>
-) {
+export function splitOnChunk<A>(delimiter: Chunk<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
     concreteStream(self)
-    return Stream.sync(delimiter).flatMap(
-      (delimiter) => new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
-    )
+    return new StreamInternal(self.channel >> next<R, E, A>(delimiter, Maybe.none, 0))
   }
 }
 
@@ -61,8 +57,8 @@ function next<R, E, A>(
     },
     (cause) =>
       leftover.fold(
-        Channel.failCause(cause),
-        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.failCause(cause)
+        Channel.failCauseSync(cause),
+        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.failCauseSync(cause)
       ),
     (done) =>
       leftover.fold(

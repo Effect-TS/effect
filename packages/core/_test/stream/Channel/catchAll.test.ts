@@ -4,8 +4,8 @@ describe.concurrent("Channel", () => {
       Do(($) => {
         const result = $(
           Channel.write(8)
-            .catchAll(() => Channel.write(0).concatMap(() => Channel.fail("error1")))
-            .concatMap(() => Channel.fail("error2"))
+            .catchAll(() => Channel.write(0).concatMap(() => Channel.failSync("error1")))
+            .concatMap(() => Channel.failSync("error2"))
             .runCollect
             .exit
         )

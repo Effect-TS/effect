@@ -11,9 +11,7 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  * @tsplus static effect/core/stream/Stream.Aspects tapSink
  * @tsplus pipeable effect/core/stream/Stream tapSink
  */
-export function tapSink<R2, E2, A, X, Z>(
-  sink: LazyArg<Sink<R2, E2, A, X, Z>>
-) {
+export function tapSink<R2, E2, A, X, Z>(sink: Sink<R2, E2, A, X, Z>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     Stream.fromEffect(Queue.bounded<Take<E | E2, A>>(1)).flatMap((queue) => {
       const right = Stream.fromQueueWithShutdown(queue, 1).flattenTake
@@ -39,7 +37,7 @@ export function tapSink<R2, E2, A, X, Z>(
 
       return (new StreamInternal(self.channel >> loop) as Stream<R | R2, E2, A>).merge(
         Stream.execute(right.run(sink)),
-        () => TerminationStrategy.Both
+        TerminationStrategy.Both
       )
     })
 }

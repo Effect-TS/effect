@@ -5,6 +5,6 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  *
  * @tsplus static effect/core/stream/Sink.Ops failCause
  */
-export function failCause<E>(cause: LazyArg<Cause<E>>): Sink<never, E, unknown, never, never> {
+export function failCause<E>(cause: Cause<E>): Sink<never, E, unknown, never, never> {
   return new SinkInternal(Channel.failCause(cause))
 }

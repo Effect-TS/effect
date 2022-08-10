@@ -8,9 +8,7 @@ import {
  *
  * @tsplus getter effect/core/stream/Stream zipWithNext
  */
-export function zipWithNext<R, E, A>(
-  self: Stream<R, E, A>
-): Stream<R, E, Tuple<[A, Maybe<A>]>> {
+export function zipWithNext<R, E, A>(self: Stream<R, E, A>): Stream<R, E, Tuple<[A, Maybe<A>]>> {
   concreteStream(self)
   return new StreamInternal(self.channel >> process<E, A>(Maybe.none))
 }
@@ -34,7 +32,7 @@ function process<E, A>(
       )
       return Channel.write(out) > process<E, A>(newLast)
     },
-    (err: E) => Channel.fail(err),
+    (err: E) => Channel.failSync(err),
     () =>
       last.fold(
         Channel.unit,

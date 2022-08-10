@@ -5,10 +5,10 @@
  * @tsplus static effect/core/stm/STM.Ops exists
  */
 export function exists<R, E, A>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, E, boolean>
 ): STM<R, E, boolean> {
-  return STM.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
+  return STM.suspend(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A>(

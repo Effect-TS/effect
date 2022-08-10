@@ -14,5 +14,5 @@ export function filterOrDieWith<A>(
 ): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
 export function filterOrDieWith<A>(f: Predicate<A>, dieWith: unknown) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A> =>
-    self.filterOrElseWith(f, (x) => STM.die((dieWith as (a: A) => unknown)(x)))
+    self.filterOrElseWith(f, (x) => STM.dieSync((dieWith as (a: A) => unknown)(x)))
 }

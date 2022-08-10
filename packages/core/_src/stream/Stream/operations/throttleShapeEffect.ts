@@ -16,7 +16,7 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  */
 export function throttleShapeEffect<A, R2, E2>(
   units: number,
-  duration: LazyArg<Duration>,
+  duration: Duration,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst = 0
 ) {
@@ -65,7 +65,7 @@ function loop<E, A, R2, E2>(
                 loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
           })
       ),
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     () => Channel.unit
   )
 }

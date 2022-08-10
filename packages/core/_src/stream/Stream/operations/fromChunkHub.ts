@@ -4,7 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkHub
  */
 export function fromChunkHub<A>(
-  hub: LazyArg<Hub<Chunk<A>>>
+  hub: Hub<Chunk<A>>
 ): Stream<never, never, A> {
-  return Stream.scoped(hub().subscribe).flatMap((queue) => Stream.fromChunkQueue(queue))
+  return Stream.scoped(hub.subscribe).flatMap((queue) => Stream.fromChunkQueue(queue))
 }

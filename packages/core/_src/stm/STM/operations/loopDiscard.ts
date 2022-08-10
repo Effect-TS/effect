@@ -14,15 +14,14 @@
  * @tsplus static effect/core/stm/STM.Ops loopDiscard
  */
 export function loopDiscard<Z>(
-  initial: LazyArg<Z>,
+  initial: Z,
   cont: (z: Z) => boolean,
   inc: (z: Z) => Z
 ) {
   return <R, E, X>(body: (z: Z) => STM<R, E, X>): STM<R, E, void> => {
     return STM.suspend(() => {
-      const initial0 = initial()
-      return cont(initial0)
-        ? body(initial0) > loopDiscard(inc(initial0), cont, inc)(body)
+      return cont(initial)
+        ? body(initial).zipRight(loopDiscard(inc(initial), cont, inc)(body))
         : STM.unit
     })
   }

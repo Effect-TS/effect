@@ -9,12 +9,7 @@ import { zipLeftChunks } from "@effect/core/stream/Stream/operations/_internal/z
  * @tsplus static effect/core/stream/Stream.Aspects zipLeft
  * @tsplus pipeable effect/core/stream/Stream zipLeft
  */
-export function zipLeft<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>
-) {
+export function zipLeft<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
-    self.zipWithChunks(
-      that,
-      zipLeftChunks
-    )
+    self.zipWithChunks(that, zipLeftChunks)
 }

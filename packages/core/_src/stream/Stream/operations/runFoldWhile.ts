@@ -6,7 +6,7 @@
  * @tsplus pipeable effect/core/stream/Stream runFoldWhile
  */
 export function runFoldWhile<S, A>(
-  s: LazyArg<S>,
+  s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => S
 ) {

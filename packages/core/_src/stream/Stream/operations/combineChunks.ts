@@ -15,8 +15,8 @@ import {
  * @tsplus pipeable effect/core/stream/Stream combineChunks
  */
 export function combineChunks<R, E, A, R2, E2, A2, S, A3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  s: LazyArg<S>,
+  that: Stream<R2, E2, A2>,
+  s: S,
   f: (
     s: S,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
@@ -33,11 +33,12 @@ export function combineChunks<R, E, A, R2, E2, A2, S, A3>(
           const latchR = $(Handoff.make<void>())
           concreteStream(self)
           $((self.channel >> producer(left, latchL)).runScoped.fork)
-          const that0 = that()
-          concreteStream(that0)
-          $((that0.channel >> producer(right, latchR)).runScoped.fork)
-          const pullLeft = latchL.offer(undefined) > left.take.flatMap((take) => take.done)
-          const pullRight = latchR.offer(undefined) > right.take.flatMap((take) => take.done)
+          concreteStream(that)
+          $((that.channel >> producer(right, latchR)).runScoped.fork)
+          const pullLeft = latchL.offer(undefined)
+            .zipRight(left.take.flatMap((take) => take.done))
+          const pullRight = latchR.offer(undefined)
+            .zipRight(right.take.flatMap((take) => take.done))
           const stream = Stream.unfoldChunkEffect(
             s,
             (s) => f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome)

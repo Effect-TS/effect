@@ -19,7 +19,7 @@ describe.concurrent("Channel", () => {
     it("structure confusion", async () => {
       const program = Channel.write(Chunk(1, 2))
         .concatMap((chunk) => Channel.writeAll(chunk))
-        .zipRight(Channel.fail("hello"))
+        .zipRight(Channel.failSync("hello"))
         .runDrain
 
       const result = await program.unsafeRunPromiseExit()

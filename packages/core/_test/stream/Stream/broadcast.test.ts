@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
 
     it("errors", async () => {
       const program = Effect.scoped(
-        (Stream.range(0, 1) + Stream.fail("boom")).broadcast(2, 12).flatMap((streams) =>
+        (Stream.range(0, 1) + Stream.failSync("boom")).broadcast(2, 12).flatMap((streams) =>
           Effect.struct({
             out1: streams.unsafeGet(0)!.runCollect.either,
             out2: streams.unsafeGet(1)!.runCollect.either,

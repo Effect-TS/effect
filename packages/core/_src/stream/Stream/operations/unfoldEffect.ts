@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Ops unfoldEffect
  */
 export function unfoldEffect<S, R, E, A>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S) => Effect<R, E, Maybe<Tuple<[A, S]>>>
 ): Stream<R, E, A> {
   return Stream.unfoldChunkEffect<S, R, E, A>(

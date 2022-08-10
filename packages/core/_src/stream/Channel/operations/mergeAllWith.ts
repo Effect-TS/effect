@@ -179,7 +179,7 @@ export function mergeAllWith<
         OutDone
       > = Channel.unwrap(
         queue.take.flatten.foldCause(
-          (cause) => Channel.failCause(cause),
+          (cause) => Channel.failCauseSync(cause),
           (either) =>
             either.fold(
               (outDone) => Channel.succeed(outDone),

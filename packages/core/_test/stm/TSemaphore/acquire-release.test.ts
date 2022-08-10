@@ -1,6 +1,6 @@
 function repeat<E, A>(self: STM<never, E, A>, n: number): STM<never, E, A> {
   if (n < 1) {
-    return STM.die(`The value of "n" must be greater than 0, received: ${n}`)
+    return STM.dieSync(`The value of "n" must be greater than 0, received: ${n}`)
   }
   if (n === 1) {
     return self

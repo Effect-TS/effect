@@ -4,9 +4,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops iterate
  */
-export function iterate<A>(
-  a: LazyArg<A>,
-  f: (a: A) => A
-): Stream<never, never, A> {
+export function iterate<A>(a: A, f: (a: A) => A): Stream<never, never, A> {
   return Stream.unfold(a, (a) => Maybe.some(Tuple(a, f(a))))
 }

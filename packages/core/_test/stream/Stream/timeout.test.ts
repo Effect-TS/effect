@@ -1,5 +1,4 @@
 import { chunkCoordination } from "@effect/core/test/stream/Stream/test-utils"
-import { constFalse } from "@tsplus/stdlib/data/Function"
 
 describe.concurrent("Stream", () => {
   describe.concurrent("timeout", () => {
@@ -24,14 +23,14 @@ describe.concurrent("Stream", () => {
       Do(($) => {
         const stream = Stream.range(0, 5)
           .tap(() => Effect.never)
-          .timeoutFail(constFalse, (0).millis)
+          .timeoutFail(false, (0).millis)
         const result = $(stream.runDrain.either)
         assert.isTrue(result == Either.left(false))
       }).unsafeRunPromise())
 
     it("fail", () =>
       Do(($) => {
-        const stream = Stream.fail("original").timeoutFail("timeout", (15).minutes)
+        const stream = Stream.failSync("original").timeoutFail("timeout", (15).minutes)
         const result = $(stream.runDrain.flip)
         assert.strictEqual(result, "original")
       }).unsafeRunPromise())

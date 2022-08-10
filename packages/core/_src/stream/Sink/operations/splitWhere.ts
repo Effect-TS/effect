@@ -58,7 +58,7 @@ function splitter<E, A>(
       } = input.splitAt(Math.max(index, 1))
       return Channel.write(left) > Channel.fromEffect(leftovers.set(right))
     },
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     (done) => Channel.sync(done)
   )
 }

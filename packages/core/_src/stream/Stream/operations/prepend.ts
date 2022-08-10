@@ -9,11 +9,9 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects prepend
  * @tsplus pipeable effect/core/stream/Stream prepend
  */
-export function prepend<A2>(
-  values: LazyArg<Chunk<A2>>
-) {
+export function prepend<A2>(values: Chunk<A2>) {
   return <R, E, A>(stream: Stream<R, E, A>): Stream<R, E, A | A2> => {
     concreteStream(stream)
-    return new StreamInternal<R, E, A | A2>(Channel.write(values) > stream.channel)
+    return new StreamInternal<R, E, A | A2>(Channel.write(values).zipRight(stream.channel))
   }
 }

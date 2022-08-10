@@ -55,7 +55,7 @@ export function asyncEffect<R, E, A, Z>(
               .fold(
                 (maybeError) =>
                   Channel.fromEffect(output.shutdown) >
-                    maybeError.fold(Channel.unit, (e) => Channel.fail(e)),
+                    maybeError.fold(Channel.unit, (e) => Channel.failSync(e)),
                 (a) => Channel.write(a) > loop
               )
           )

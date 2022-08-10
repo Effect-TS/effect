@@ -3,10 +3,10 @@ import { STMDieException, STMEffect } from "@effect/core/stm/STM/definition/prim
 /**
  * Kills the fiber running the effect.
  *
- * @tsplus static effect/core/stm/STM.Ops dieNow
+ * @tsplus static effect/core/stm/STM.Ops dieSync
  */
-export function dieNow(u: unknown): STM<never, never, never> {
+export function dieSync(u: LazyArg<unknown>): STM<never, never, never> {
   return new STMEffect(() => {
-    throw new STMDieException(u)
+    throw new STMDieException(u())
   })
 }

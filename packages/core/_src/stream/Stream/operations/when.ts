@@ -4,9 +4,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops when
  */
-export function when<R, E, A>(
-  b: LazyArg<boolean>,
-  stream: LazyArg<Stream<R, E, A>>
-): Stream<R, E, A> {
+export function when<R, E, A>(b: LazyArg<boolean>, stream: Stream<R, E, A>): Stream<R, E, A> {
   return Stream.whenEffect(Effect.sync(b), stream)
 }

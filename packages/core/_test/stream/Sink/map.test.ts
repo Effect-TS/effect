@@ -22,7 +22,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("mapError", () => {
     it("should map errors", () =>
       Do(($) => {
-        const sink = Sink.fail("fail").mapError((s) => s + "!")
+        const sink = Sink.failSync("fail").mapError((s) => s + "!")
         const stream = Stream.range(1, 10)
         const result = $(stream.run(sink).either)
         assert.isTrue(result == Either.left("fail!"))

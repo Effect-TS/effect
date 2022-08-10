@@ -11,7 +11,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("recovery from errors", async () => {
-      const program = (Stream(1, 2) + Stream.fail("boom"))
+      const program = (Stream(1, 2) + Stream.failSync("boom"))
         .catchAllCause(() => Stream(3, 4))
         .runCollect
 
@@ -34,11 +34,11 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("finalizers", () => Ref.make<List<string>>(List.empty()))
         .bindValue("stream1", ({ finalizers }) =>
-          (Stream(1, 2) + Stream.fail("boom")).ensuring(
+          (Stream(1, 2) + Stream.failSync("boom")).ensuring(
             finalizers.update((list) => list.prepend("stream1"))
           ))
         .bindValue("stream2", ({ finalizers }) =>
-          (Stream(3, 4) + Stream.fail("boom")).ensuring(
+          (Stream(3, 4) + Stream.failSync("boom")).ensuring(
             finalizers.update((list) => list.prepend("stream2"))
           ))
         .tap(({ stream1, stream2 }) =>
@@ -63,7 +63,7 @@ describe.concurrent("Stream", () => {
             Stream.finalizer(finalizers.update((chunk) => chunk.prepend(1))) >
               Stream.finalizer(finalizers.update((chunk) => chunk.prepend(2))) >
               Stream.finalizer(finalizers.update((chunk) => chunk.prepend(3))) >
-              Stream.fail("boom")
+              Stream.failSync("boom")
         )
         .flatMap(({ finalizers, stream }) =>
           stream
@@ -81,7 +81,7 @@ describe.concurrent("Stream", () => {
       const program = Ref.make<Exit<unknown, unknown>>(Exit.unit)
         .tap((ref) =>
           Stream.acquireReleaseExit(Effect.unit, (_, exit) => ref.set(exit))
-            .flatMap(() => Stream.fail("boom"))
+            .flatMap(() => Stream.failSync("boom"))
             .either
             .runDrain
             .exit
@@ -96,7 +96,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("catchSome", () => {
     it("recovery from some errors", async () => {
-      const program = (Stream(1, 2) + Stream.fail("boom"))
+      const program = (Stream(1, 2) + Stream.failSync("boom"))
         .catchSome((s) => (s === "boom" ? Maybe.some(Stream(3, 4)) : Maybe.none))
         .runCollect
 
@@ -106,7 +106,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("fails stream when partial function does not match", async () => {
-      const program = (Stream(1, 2) + Stream.fail("boom"))
+      const program = (Stream(1, 2) + Stream.failSync("boom"))
         .catchSome((s) => (s === "boomer" ? Maybe.some(Stream(3, 4)) : Maybe.none))
         .runCollect
         .either
@@ -119,7 +119,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("catchSomeCause", () => {
     it("recovery from some errors", async () => {
-      const program = (Stream(1, 2) + Stream.failCause(Cause.fail("boom")))
+      const program = (Stream(1, 2) + Stream.failCauseSync(Cause.fail("boom")))
         .catchSomeCause((cause) =>
           cause.isFailType() && cause.value === "boom"
             ? Maybe.some(Stream(3, 4))
@@ -133,7 +133,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("halts stream when partial function does not match", async () => {
-      const program = (Stream(1, 2) + Stream.fail("boom"))
+      const program = (Stream(1, 2) + Stream.failSync("boom"))
         .catchSomeCause((cause) => cause.isEmpty ? Maybe.some(Stream(3, 4)) : Maybe.none)
         .runCollect
         .either
@@ -149,7 +149,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(false))
         .bind("exit", ({ ref }) =>
-          Stream.fail("boom")
+          Stream.failSync("boom")
             .onError(() => ref.set(true))
             .runDrain
             .exit)

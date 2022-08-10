@@ -6,7 +6,7 @@
  * @tsplus pipeable effect/core/stream/Sink zipPar
  */
 export function zipPar<R1, E1, In1, L1, Z1>(
-  that: LazyArg<Sink<R1, E1, In1, L1, Z1>>
+  that: Sink<R1, E1, In1, L1, Z1>
 ) {
   return <R, E, In, L, Z>(
     self: Sink<R, E, In, L, Z>

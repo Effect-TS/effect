@@ -9,15 +9,15 @@
  * @tsplus pipeable effect/core/stream/Stream zipAll
  */
 export function zipAll<R2, E2, A2, A>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  defaultLeft: LazyArg<A>,
-  defaultRight: LazyArg<A2>
+  that: Stream<R2, E2, A2>,
+  defaultLeft: A,
+  defaultRight: A2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Tuple<[A, A2]>> =>
     self.zipAllWith(
       that,
-      (a) => Tuple(a, defaultRight()),
-      (a2) => Tuple(defaultLeft(), a2),
+      (a) => Tuple(a, defaultRight),
+      (a2) => Tuple(defaultLeft, a2),
       (a, a2) => Tuple(a, a2)
     )
 }

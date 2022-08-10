@@ -13,10 +13,8 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  * @tsplus static effect/core/stream/Stream.Ops fromHubScopedWithShutdown
  */
 export function fromHubScopedWithShutdown<A>(
-  hub: LazyArg<Hub<A>>,
+  hub: Hub<A>,
   maxChunkSize = DEFAULT_CHUNK_SIZE
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.sync(hub).flatMap((hub) =>
-    Stream.fromHubScoped(hub, maxChunkSize).map((stream) => stream.ensuring(hub.shutdown))
-  )
+  return Stream.fromHubScoped(hub, maxChunkSize).map((stream) => stream.ensuring(hub.shutdown))
 }

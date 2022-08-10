@@ -11,7 +11,7 @@ import {
  * @tsplus pipeable effect/core/stream/Stream pipeThroughChannelFail
  */
 export function pipeThroughChannelFail<E, A, R2, E2, A2>(
-  channel: LazyArg<Channel<R2, E, Chunk<A>, unknown, E2, Chunk<A2>, unknown>>
+  channel: Channel<R2, E, Chunk<A>, unknown, E2, Chunk<A2>, unknown>
 ) {
   return <R>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)

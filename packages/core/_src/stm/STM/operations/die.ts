@@ -5,8 +5,8 @@ import { STMDieException, STMEffect } from "@effect/core/stm/STM/definition/prim
  *
  * @tsplus static effect/core/stm/STM.Ops die
  */
-export function die(u: LazyArg<unknown>): STM<never, never, never> {
+export function die(u: unknown): STM<never, never, never> {
   return new STMEffect(() => {
-    throw new STMDieException(u())
+    throw new STMDieException(u)
   })
 }

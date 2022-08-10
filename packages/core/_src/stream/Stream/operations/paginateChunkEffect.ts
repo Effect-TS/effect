@@ -8,21 +8,21 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Stream.Ops paginateChunkEffect
  */
 export function paginateChunkEffect<S, R, E, A>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S) => Effect<R, E, Tuple<[Chunk<A>, Maybe<S>]>>
 ): Stream<R, E, A> {
   return new StreamInternal(Channel.suspend(loop(s, f)))
 }
 
 function loop<S, R, E, A>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S) => Effect<R, E, Tuple<[Chunk<A>, Maybe<S>]>>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
   return Channel.unwrap(
-    f(s()).map(({ tuple: [as, maybeS] }) =>
+    f(s).map(({ tuple: [as, maybeS] }) =>
       maybeS.fold(
-        Channel.write(as) > Channel.unit,
-        (s) => Channel.write(as) > loop(s, f)
+        Channel.write(as).zipRight(Channel.unit),
+        (s) => Channel.write(as).zipRight(loop(s, f))
       )
     )
   )

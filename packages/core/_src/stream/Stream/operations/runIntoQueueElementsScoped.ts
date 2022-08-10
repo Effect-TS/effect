@@ -7,9 +7,7 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  * @tsplus static effect/core/stream/Stream.Aspects runIntoQueueElementsScoped
  * @tsplus pipeable effect/core/stream/Stream runIntoQueueElementsScoped
  */
-export function runIntoQueueElementsScoped<E1, A>(
-  queue: LazyArg<Enqueue<Exit<Maybe<E1>, A>>>
-) {
+export function runIntoQueueElementsScoped<E1, A>(queue: Enqueue<Exit<Maybe<E1>, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {
     const writer: Channel<
       R,
@@ -38,7 +36,7 @@ export function runIntoQueueElementsScoped<E1, A>(
     )
     concreteStream(self)
     return (self.channel >> writer)
-      .mapOutEffect((take) => queue().offer(take))
+      .mapOutEffect((take) => queue.offer(take))
       .drain
       .runScoped
       .unit

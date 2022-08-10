@@ -17,7 +17,7 @@ export function zipWith<
   OutDone1,
   OutDone2
 >(
-  that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>,
+  that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
   f: (outDone: OutDone, outDone1: OutDone1) => OutDone2
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem>(
@@ -30,5 +30,5 @@ export function zipWith<
     OutErr | OutErr1,
     OutElem | OutElem1,
     OutDone2
-  > => self.flatMap((a) => that().map((b) => f(a, b)))
+  > => self.flatMap((a) => that.map((b) => f(a, b)))
 }

@@ -16,7 +16,7 @@ export function interruptWhen<
   Env1,
   OutErr1,
   OutDone1
->(io: LazyArg<Effect<Env1, OutErr1, OutDone1>>) {
+>(io: Effect<Env1, OutErr1, OutDone1>) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<

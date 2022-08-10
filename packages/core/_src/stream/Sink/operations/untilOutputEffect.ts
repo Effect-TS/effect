@@ -29,7 +29,7 @@ export function untilOutputEffect<R2, E2, Z>(
             unknown
           > = Channel.readWith(
             (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-            (err) => Channel.fail(() => err),
+            (err) => Channel.failSync(() => err),
             (done) => Channel.fromEffect(upstreamDoneRef.set(true)).as(done)
           )
 
@@ -42,7 +42,7 @@ export function untilOutputEffect<R2, E2, Z>(
             Chunk<L>,
             Maybe<Z>
           > = self.channel.doneCollect.foldChannel(
-            (err) => Channel.fail(err),
+            (err) => Channel.failSync(err),
             ({ tuple: [leftovers, doneValue] }) =>
               Channel.fromEffect(f(doneValue)).flatMap(
                 (satisfied) =>

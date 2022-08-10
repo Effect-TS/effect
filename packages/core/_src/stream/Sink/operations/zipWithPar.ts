@@ -9,7 +9,7 @@ import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
  * @tsplus pipeable effect/core/stream/Sink zipWithPar
  */
 export function zipWithPar<R1, E1, In1, L1, Z, Z1, Z2>(
-  that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
+  that: Sink<R1, E1, In1, L1, Z1>,
   f: (z: Z, z1: Z1) => Z2
 ) {
   return <R, E, In, L>(self: Sink<R, E, In, L, Z>): Sink<R | R1, E | E1, In & In1, L | L1, Z2> =>

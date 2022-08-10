@@ -9,16 +9,15 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  * @tsplus static effect/core/stream/Stream.Ops fromQueue
  */
 export function fromQueue<A>(
-  queue: LazyArg<Dequeue<A>>,
+  queue: Dequeue<A>,
   maxChunkSize = DEFAULT_CHUNK_SIZE
 ): Stream<never, never, A> {
-  return Stream.repeatEffectChunkMaybe(() => {
-    const queue0 = queue()
-    return (queue0 as Queue<A>)
+  return Stream.repeatEffectChunkMaybe(
+    (queue as Queue<A>)
       .takeBetween(1, maxChunkSize)
       .map(Chunk.from)
       .catchAllCause((cause) =>
-        queue0.isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause)
+        queue.isShutdown && cause.isInterrupted ? Pull.end : Pull.failCause(cause)
       )
-  })
+  )
 }

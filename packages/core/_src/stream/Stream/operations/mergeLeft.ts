@@ -8,12 +8,9 @@ import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStra
  * @tsplus pipeable effect/core/stream/Stream mergeLeft
  */
 export function mergeLeft<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both
+  that: Stream<R2, E2, A2>,
+  strategy: TerminationStrategy = TerminationStrategy.Both
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
-    self.merge(
-      that().drain,
-      strategy
-    )
+    self.merge(that.drain, strategy)
 }

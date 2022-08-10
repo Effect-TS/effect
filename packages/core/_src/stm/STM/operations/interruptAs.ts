@@ -4,8 +4,8 @@ import { STMEffect, STMInterruptException } from "@effect/core/stm/STM/definitio
  *
  * @tsplus static effect/core/stm/STM.Ops interruptAs
  */
-export function interruptAs(fiberId: LazyArg<FiberId>): USTM<never> {
+export function interruptAs(fiberId: FiberId): USTM<never> {
   return new STMEffect(() => {
-    throw new STMInterruptException(fiberId())
+    throw new STMInterruptException(fiberId)
   })
 }

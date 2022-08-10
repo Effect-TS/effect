@@ -8,12 +8,12 @@
  * @tsplus static effect/core/stm/STM.Ops validate
  */
 export function validate<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, E, B>
 ): STM<R, Chunk<E>, Chunk<B>> {
   return STM.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty
       ? STM.succeed(Chunk.from(bs))
-      : STM.fail(es)
+      : STM.failSync(es)
   )
 }

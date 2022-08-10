@@ -28,8 +28,8 @@ import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
  * @tsplus pipeable effect/core/stream/Stream aggregateWithinEither
  */
 export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
-  sink: LazyArg<Sink<R2, E2, A | A2, A2, B>>,
-  schedule: LazyArg<Schedule<S, R3, Maybe<B>, C>>
+  sink: Sink<R2, E2, A | A2, A2, B>,
+  schedule: Schedule<S, R3, Maybe<B>, C>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2 | R3, E | E2, Either<C, B>> => {
     type EndReason = SinkEndReason
@@ -40,7 +40,7 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
         Handoff.make<Signal>(),
         Ref.make<EndReason>(SinkEndReason.ScheduleEnd),
         Ref.make(Chunk.empty<A | A2>()),
-        schedule().driver,
+        schedule.driver,
         Ref.make(false)
       )
     ).flatMap(({ tuple: [handoff, sinkEndReason, sinkLeftovers, scheduleDriver, consumed] }) => {
@@ -54,7 +54,9 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
         unknown
       > = Channel.readWithCause(
         (input: Chunk<A>) =>
-          Channel.fromEffect(handoff.offer(HandoffSignal.Emit(input))) > handoffProducer,
+          Channel.fromEffect(handoff.offer(HandoffSignal.Emit(input))).flatMap(() =>
+            handoffProducer
+          ),
         (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
         () => Channel.fromEffect(handoff.offer(HandoffSignal.End(SinkEndReason.UpstreamEnd)))
       )
@@ -70,15 +72,17 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
       > = Channel.unwrap(
         sinkLeftovers.getAndSet(Chunk.empty<A | A2>()).flatMap((leftovers) =>
           leftovers.isNonEmpty
-            ? consumed.set(true).zipRight(Effect.sync(Channel.write(leftovers) > handoffConsumer))
+            ? consumed.set(true)
+              .zipRight(Effect.sync(Channel.write(leftovers).flatMap(() => handoffConsumer)))
             : handoff.take.map((signal) => {
               switch (signal._tag) {
                 case "Emit": {
-                  return Channel.fromEffect(consumed.set(true)) > Channel.write(signal.elements) >
-                    handoffConsumer
+                  return Channel.fromEffect(consumed.set(true))
+                    .zipRight(Channel.write(signal.elements))
+                    .flatMap(() => handoffConsumer)
                 }
                 case "Halt": {
-                  return Channel.failCause(signal.error)
+                  return Channel.failCauseSync(signal.error)
                 }
                 case "End": {
                   return (
@@ -86,8 +90,8 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
                       consumed.get.map((p) =>
                         p ?
                           Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) :
-                          Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd)) >
-                            handoffConsumer
+                          Channel.fromEffect(sinkEndReason.set(SinkEndReason.ScheduleEnd))
+                            .flatMap(() => handoffConsumer)
                       ) :
                       Channel.fromEffect(sinkEndReason.set(signal.reason))
                   ) as Channel<
@@ -105,18 +109,17 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
         )
       )
 
-      const sink0 = sink()
       concreteStream(self)
-      concreteSink(sink0)
+      concreteSink(sink)
       const stream = Do(($) => {
-        $((self.channel >> handoffProducer).runScoped.forkScoped)
+        $(self.channel.pipeTo(handoffProducer).runScoped.forkScoped)
         const sinkFiber = $(
-          handoffConsumer.pipeToOrFail(sink0.channel).doneCollect.runScoped.forkScoped
+          handoffConsumer.pipeToOrFail(sink.channel).doneCollect.runScoped.forkScoped
         )
         const scheduleFiber = $(timeout(scheduleDriver, Maybe.none).forkScoped)
         return new StreamInternal(
           scheduledAggregator(
-            sink0,
+            sink,
             handoff,
             sinkEndReason,
             sinkLeftovers,

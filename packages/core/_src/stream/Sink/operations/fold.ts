@@ -7,11 +7,11 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops fold
  */
 export function fold<In, S>(
-  z: LazyArg<S>,
+  z: S,
   cont: Predicate<S>,
   f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
-  return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
+  return Sink.suspend(new SinkInternal(reader(z, cont, f)))
 }
 
 function reader<S, In>(
@@ -30,7 +30,7 @@ function reader<S, In>(
           ? Channel.write(leftovers).as(nextS)
           : reader<S, In>(nextS, cont, f)
       },
-      (err) => Channel.fail(() => err),
+      (err) => Channel.failSync(() => err),
       () => Channel.succeed(z)
     )
 }

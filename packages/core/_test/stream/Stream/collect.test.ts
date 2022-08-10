@@ -137,7 +137,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("short circuits", async () => {
-      const program = (Stream(Maybe.some(1)) + Stream.fail("ouch"))
+      const program = (Stream(Maybe.some(1)) + Stream.failSync("ouch"))
         .collectWhile((option) => (option.isNone() ? Maybe.some(1) : Maybe.none))
         .runDrain
         .either
@@ -168,7 +168,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("short circuits", async () => {
-      const program = (Stream(Maybe.some(1)) + Stream.fail("ouch"))
+      const program = (Stream(Maybe.some(1)) + Stream.failSync("ouch"))
         .collectWhileEffect((option) =>
           option.isNone() ? Maybe.some(Effect.succeed(1)) : Maybe.none
         )

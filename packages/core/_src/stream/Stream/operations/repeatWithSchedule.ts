@@ -4,8 +4,8 @@
  * @tsplus static effect/core/stream/Stream.Ops repeatWithSchedule
  */
 export function repeatWithSchedule<S, R, A>(
-  a: LazyArg<A>,
-  schedule: LazyArg<Schedule<S, R, A, unknown>>
+  a: A,
+  schedule: Schedule<S, R, A, unknown>
 ): Stream<R, never, A> {
-  return Stream.repeatEffectWithSchedule(Effect.sync(a), schedule)
+  return Stream.repeatEffectWithSchedule(Effect.succeed(a), schedule)
 }

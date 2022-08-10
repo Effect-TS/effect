@@ -40,7 +40,7 @@ describe.concurrent("STM", () => {
 
     it("return error if it exists in list", () =>
       Do(($) => {
-        const list = List(STM.unit, STM.fail(1))
+        const list = List(STM.unit, STM.failSync(1))
         const result = $(STM.mergeAll(list, undefined, constVoid).commit.exit)
         assert.isTrue(result == Exit.fail(1))
       }).unsafeRunPromise())

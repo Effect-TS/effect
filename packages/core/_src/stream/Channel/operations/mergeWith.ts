@@ -27,7 +27,7 @@ export function mergeWith_<
   OutDone2,
   OutDone3
 >(
-  that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>,
+  that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>,
   leftDone: (
     ex: Exit<OutErr, OutDone>
   ) => MergeDecision<Env1, OutErr1, OutDone1, OutErr2, OutDone2>,
@@ -55,7 +55,7 @@ export function mergeWith_<
         >())
         const queueReader = Channel.fromInput(input)
         const pullL = $((queueReader >> self).toPull)
-        const pullR = $((queueReader >> that()).toPull)
+        const pullR = $((queueReader >> that).toPull)
         type State = MergeState<
           Env | Env1,
           OutErr,
@@ -127,7 +127,7 @@ export function mergeWith_<
             > => {
               concreteMergeDecision(decision)
               if (decision._tag === "Done") {
-                return Effect.sync(Channel.fromEffect(fiber.interrupt > decision.io))
+                return Effect.sync(Channel.fromEffect(fiber.interrupt.zipRight(decision.io)))
               }
               return fiber.await.map((exit) =>
                 exit.fold(
@@ -135,7 +135,7 @@ export function mergeWith_<
                   (either) =>
                     either.fold(
                       (done) => Channel.fromEffect(decision.f(Exit.succeed(done))),
-                      (elem) => Channel.write(elem) > go(single(decision.f))
+                      (elem) => Channel.write(elem).zipRight(go(single(decision.f)))
                     )
                 )
               )

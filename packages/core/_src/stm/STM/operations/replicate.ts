@@ -3,11 +3,8 @@
  *
  * @tsplus static effect/core/stm/STM.Ops replicate
  */
-export function replicate<R, E, A>(
-  n: number,
-  stm: LazyArg<STM<R, E, A>>
-): Chunk<STM<R, E, A>> {
-  return Chunk.range(0, n - 1).map(stm)
+export function replicate<R, E, A>(n: number, stm: STM<R, E, A>): Chunk<STM<R, E, A>> {
+  return Chunk.range(0, n - 1).map(() => stm)
 }
 
 /**

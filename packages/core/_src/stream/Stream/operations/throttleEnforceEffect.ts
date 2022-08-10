@@ -16,19 +16,17 @@ import {
  */
 export function throttleEnforceEffect<A, R2, E2>(
   units: number,
-  duration: LazyArg<Duration>,
+  duration: Duration,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst = 0
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(
-      Channel.sync(duration)
-        .zip(Channel.fromEffect(Clock.currentTime))
-        .flatMap(
-          ({ tuple: [duration, timestamp] }) =>
-            self.channel >>
-            loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
+      Channel.fromEffect(Clock.currentTime)
+        .flatMap((timestamp) =>
+          self.channel >>
+          loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
         )
     )
   }
@@ -66,7 +64,7 @@ function loop<E, A, R2, E2>(
               : loop<E, A, R2, E2>(units, duration, costFn, burst, available, current)
           })
       ),
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     () => Channel.unit
   )
 }

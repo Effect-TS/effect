@@ -18,8 +18,8 @@ import {
  * @tsplus pipeable effect/core/stream/Stream combine
  */
 export function combine<R, E, A, R2, E2, A2, S, A3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  s: LazyArg<S>,
+  that: Stream<R2, E2, A2>,
+  s: S,
   f: (
     s: S,
     pullLeft: Effect<R, Maybe<E>, A>,
@@ -40,18 +40,17 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
               .runScoped
               .fork
           )
-          const that0 = that()
-          concreteStream(that0)
+          concreteStream(that)
           $(
-            (that0.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
+            (that.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
               producer(right, latchR))
               .runScoped
               .fork
           )
-          const pullLeft = latchL.offer(undefined) > left.take.flatMap((exit) => Effect.done(exit))
-          const pullRight = latchR.offer(undefined) > right.take.flatMap((exit) =>
-            Effect.done(exit)
-          )
+          const pullLeft = latchL.offer(undefined)
+            .zipRight(left.take.flatMap((exit) => Effect.done(exit)))
+          const pullRight = latchR.offer(undefined)
+            .zipRight(right.take.flatMap((exit) => Effect.done(exit)))
           const stream = Stream.unfoldEffect(s, (s) =>
             f(s, pullLeft, pullRight).flatMap((exit) => Effect.done(exit).unsome))
           concreteStream(stream)

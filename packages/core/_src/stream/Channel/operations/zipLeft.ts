@@ -8,7 +8,7 @@
  * @tsplus pipeable effect/core/stream/Channel zipLeft
  */
 export function zipLeft<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
-  that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>
+  that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -20,5 +20,5 @@ export function zipLeft<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDo
     OutErr | OutErr1,
     OutElem | OutElem1,
     OutDone
-  > => self.flatMap((z) => that().as(z))
+  > => self.flatMap((z) => that.as(z))
 }

@@ -55,7 +55,7 @@ describe.concurrent("Stream", () => {
     it("outer errors", () =>
       Do(($) => {
         const words = Chunk("abc", "test", "test", "foo")
-        const stream = (Stream.fromCollection(words) + Stream.fail("boom"))
+        const stream = (Stream.fromCollection(words) + Stream.failSync("boom"))
           .groupByKey(identity)
           .mergeGroupBy((_, s) => s.drain)
         const result = $(stream.runCollect.either)
@@ -99,7 +99,7 @@ describe.concurrent("Stream", () => {
       Do(($) => {
         const ref = $(Ref.make(Chunk.empty<Chunk<number>>()))
         const streamChunks = Stream.fromChunks(Chunk(1, 2, 3, 4), Chunk(5, 6, 7), Chunk(8))
-        const stream = streamChunks.concat(Stream.fail("ouch")).grouped(3)
+        const stream = streamChunks.concat(Stream.failSync("ouch")).grouped(3)
           .mapEffect((chunk) => ref.update((chunks) => chunks.append(chunk)))
         const either = $(stream.runCollect.either)
         const result = $(ref.get)

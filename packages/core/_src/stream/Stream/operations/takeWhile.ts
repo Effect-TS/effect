@@ -18,7 +18,7 @@ export function takeWhile<A>(f: Predicate<A>) {
         const more = taken.length === chunk.length
         return more ? Channel.write(taken) > loop : Channel.write(taken)
       },
-      (err) => Channel.fail(err),
+      (err) => Channel.failSync(err),
       (done) => Channel.sync(done)
     )
     concreteStream(self)

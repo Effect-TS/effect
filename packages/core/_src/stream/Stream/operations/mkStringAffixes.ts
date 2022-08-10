@@ -7,14 +7,10 @@
  * @tsplus pipeable effect/core/stream/Stream mkStringAffixes
  */
 export function mkStringAffixes(
-  start: LazyArg<string>,
-  middle: LazyArg<string>,
-  end: LazyArg<string>
+  start: string,
+  middle: string,
+  end: string
 ) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R, E, string> =>
-    self.intersperseAffixes(
-      start,
-      middle,
-      end
-    ).mkString
+    self.intersperseAffixes(start, middle, end).mkString
 }

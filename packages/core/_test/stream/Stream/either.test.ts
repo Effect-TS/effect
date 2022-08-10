@@ -1,7 +1,7 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("either", () => {
     it("should convert stream elements to Either", async () => {
-      const program = (Stream(1, 2, 3) + Stream.fail("boom")).either.runCollect
+      const program = (Stream(1, 2, 3) + Stream.failSync("boom")).either.runCollect
 
       const result = await program.unsafeRunPromise()
 

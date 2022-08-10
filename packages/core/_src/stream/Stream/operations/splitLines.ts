@@ -87,8 +87,8 @@ function next<E>(
     },
     (cause) =>
       leftover.fold(
-        Channel.failCause(cause),
-        (value) => Channel.write(Chunk.single(value)) > Channel.failCause(cause)
+        Channel.failCauseSync(cause),
+        (value) => Channel.write(Chunk.single(value)) > Channel.failCauseSync(cause)
       ),
     (done) =>
       leftover.fold(

@@ -170,7 +170,7 @@ describe.concurrent("Stream", () => {
               exit.fold(
                 () => ref.set(true),
                 () => Effect.unit
-              )).flatMap(() => Stream.fail("ouch"))
+              )).flatMap(() => Stream.failSync("ouch"))
         )
         .tap(({ inner }) =>
           Stream.sync(constVoid)

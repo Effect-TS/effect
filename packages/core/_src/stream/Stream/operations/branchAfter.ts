@@ -45,7 +45,7 @@ function collecting<R, E, A, R2, E2, B>(
       }
       return collecting(newBuffer, n, f)
     },
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => {
       if (buffer.isEmpty) {
         return Channel.unit
@@ -67,7 +67,7 @@ function emitting<R, E, A, R2, E2, B>(
       concreteStream(stream)
       return stream.channel > emitting(pipeline)
     },
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => Channel.unit
   )
 }

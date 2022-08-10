@@ -25,7 +25,7 @@ export function contramapChunksEffect<In0, R2, E2, In2>(
     > = Channel.readWith(
       (chunk: Chunk<In0>) =>
         Channel.fromEffect(f(chunk)).flatMap((chunk) => Channel.write(chunk)) > loop,
-      (err) => Channel.fail(() => err),
+      (err) => Channel.failSync(() => err),
       (done) => Channel.sync(done)
     )
     concreteSink(self)

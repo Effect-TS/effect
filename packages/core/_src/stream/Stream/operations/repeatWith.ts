@@ -13,13 +13,13 @@ import {
  * @tsplus pipeable effect/core/stream/Stream repeatWith
  */
 export function repeatWith<A, S, R2, B, C1, C2>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
+  schedule: Schedule<S, R2, unknown, B>,
   f: (a: A) => C1,
   g: (b: B) => C2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, C1 | C2> =>
     new StreamInternal(
-      Channel.fromEffect(schedule().driver).flatMap((driver) => {
+      Channel.fromEffect(schedule.driver).flatMap((driver) => {
         const scheduleOutput = driver.last.orDie.map(g)
         const stream = self.map(f)
         concreteStream(stream)

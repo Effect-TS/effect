@@ -52,7 +52,7 @@ describe.concurrent("TArray", () => {
       Do(($) => {
         const array = $(makeStair(n).commit)
         const result = $(
-          array.forAllSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n !== 5))).commit.flip
+          array.forAllSTM((n) => (n === 4 ? STM.failSync(boom) : STM.succeed(n !== 5))).commit.flip
         )
         assert.deepEqual(result, boom)
       }).unsafeRunPromise())
@@ -61,7 +61,7 @@ describe.concurrent("TArray", () => {
       Do(($) => {
         const array = $(makeStair(n).commit)
         const result = $(
-          array.forAllSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n === 5))).commit.flip
+          array.forAllSTM((n) => (n === 6 ? STM.failSync(boom) : STM.succeed(n === 5))).commit.flip
         )
         assert.deepEqual(result, boom)
       }).unsafeRunPromise())

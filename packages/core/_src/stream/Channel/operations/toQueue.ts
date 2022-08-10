@@ -3,9 +3,9 @@
  * @tsplus static effect/core/stream/Channel.Ops toQueue
  */
 export function toQueue<Err, Done, Elem>(
-  queue: LazyArg<Enqueue<Either<Exit<Err, Done>, Elem>>>
+  queue: Enqueue<Either<Exit<Err, Done>, Elem>>
 ): Channel<never, Err, Elem, Done, never, never, unknown> {
-  return Channel.suspend(toQueueInternal(queue()))
+  return Channel.suspend(toQueueInternal(queue))
 }
 
 function toQueueInternal<Err, Done, Elem>(

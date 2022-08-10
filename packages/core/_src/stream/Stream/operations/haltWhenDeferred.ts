@@ -11,9 +11,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects haltWhenDeferred
  * @tsplus pipeable effect/core/stream/Stream haltWhenDeferred
  */
-export function haltWhenDeferred<E2, Z>(
-  deferred: LazyArg<Deferred<E2, Z>>
-) {
+export function haltWhenDeferred<E2, Z>(deferred: Deferred<E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> => {
     const writer: Channel<
       R,
@@ -24,19 +22,18 @@ export function haltWhenDeferred<E2, Z>(
       Chunk<A>,
       void
     > = Channel.unwrap(
-      deferred()
-        .poll
+      deferred.poll
         .map((option) =>
           option.fold(
             Channel.readWith(
               (input: Chunk<A>) => Channel.write(input) > writer,
-              (err) => Channel.fail(err),
+              (err) => Channel.failSync(err),
               () => Channel.unit
             ),
             (io) =>
               Channel.unwrap(
                 io.fold(
-                  (e) => Channel.fail(e),
+                  (e) => Channel.failSync(e),
                   () => Channel.unit
                 )
               )

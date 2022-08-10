@@ -14,5 +14,5 @@ export function filterOrFailWith<A, E1>(
 ): <R, E>(self: STM<R, E, A>) => STM<R, E | E1, A>
 export function filterOrFailWith<A, E1>(f: Predicate<A>, failWith: unknown) {
   return <R, E>(self: STM<R, E, A>): STM<R, E | E1, A> =>
-    self.filterOrElseWith(f, (x) => STM.fail((failWith as (a: A) => E1)(x)))
+    self.filterOrElseWith(f, (x) => STM.failSync((failWith as (a: A) => E1)(x)))
 }

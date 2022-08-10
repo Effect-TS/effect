@@ -72,9 +72,10 @@ describe.concurrent("Stream", () => {
     })
 
     it("environmentWithStream fails", async () => {
-      const program = Stream.environmentWithStream((env: Env<NumberService>) => Stream.fail("fail"))
-        .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
-        .runHead
+      const program =
+        Stream.environmentWithStream((env: Env<NumberService>) => Stream.failSync("fail"))
+          .provideEnvironment(Env(NumberService, new NumberServiceImpl(10)))
+          .runHead
 
       const result = await program.unsafeRunPromiseExit()
 

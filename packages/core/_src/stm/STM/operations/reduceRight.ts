@@ -4,12 +4,12 @@
  * @tsplus static effect/core/stm/STM.Ops reduceRight
  */
 export function reduceRight_<A, Z, R, E>(
-  as: LazyArg<Collection<A>>,
-  z: LazyArg<Z>,
+  as: Collection<A>,
+  z: Z,
   f: (a: A, z: Z) => STM<R, E, Z>
 ): STM<R, E, Z> {
   return STM.suspend(
-    Chunk.from(as()).reduceRight(
+    Chunk.from(as).reduceRight(
       STM.sync(z) as STM<R, E, Z>,
       (el, acc) => acc.flatMap((a) => f(el, a))
     )

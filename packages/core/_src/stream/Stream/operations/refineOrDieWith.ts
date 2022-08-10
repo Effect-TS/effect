@@ -19,8 +19,8 @@ export function refineOrDieWith<E, E2>(
     return new StreamInternal(
       self.channel.catchAll((e) =>
         pf(e).fold(
-          Channel.failCause(Cause.die(f(e))),
-          (e2) => Channel.fail(e2)
+          Channel.failCauseSync(Cause.die(f(e))),
+          (e2) => Channel.failSync(e2)
         )
       )
     )

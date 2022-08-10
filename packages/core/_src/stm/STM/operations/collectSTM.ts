@@ -8,7 +8,7 @@
 export function collectSTM<A, R1, E1, B>(pf: (a: A) => STM<R1, E1, Maybe<B>>) {
   return <R, E>(self: STM<R, E, A>): STM<R | R1, E | E1, B> =>
     self.foldSTM(
-      (_) => STM.fail(_),
+      (_) => STM.failSync(_),
       (a: A) => pf(a).flatMap((_) => _.isSome() ? STM.succeed(_.value) : STM.retry)
     )
 }

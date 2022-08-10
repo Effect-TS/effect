@@ -69,7 +69,7 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
           OutDone
         > = Channel.unwrap(
           queue.take.flatten.foldCause(
-            (cause) => Channel.failCause(cause),
+            (cause) => Channel.failCauseSync(cause),
             (either) =>
               either.fold(
                 (outDone) => Channel.succeed(outDone),

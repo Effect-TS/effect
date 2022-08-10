@@ -27,7 +27,7 @@ function dropWhileInternal<E, A>(
         ? dropWhileInternal<E, A>(f)
         : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>()
     },
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     (out) => Channel.succeed(out)
   )
 }

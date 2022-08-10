@@ -18,7 +18,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 1", () =>
       Do(($) => {
         const error = new RuntimeError("boom")
-        const stream = Stream(1, 1, 1, 1).aggregate(Sink.die(error))
+        const stream = Stream(1, 1, 1, 1).aggregate(Sink.dieSync(error))
         const result = $(stream.runCollect.exit)
         assert.isTrue(result == Exit.die(error))
       }).unsafeRunPromise())
@@ -176,7 +176,7 @@ describe.concurrent("Stream", () => {
     it("error propagation 1", () =>
       Do(($) => {
         const error = new RuntimeError("boom")
-        const sink = Sink.die(error)
+        const sink = Sink.dieSync(error)
         const schedule = Schedule.spaced((30).minutes)
         const stream = Stream(1, 1, 1, 1).aggregateWithinEither(sink, schedule)
         const result = $(stream.runCollect.exit)

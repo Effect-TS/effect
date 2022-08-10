@@ -10,7 +10,7 @@
  * @tsplus static effect/core/stream/Sink.Ops foldWeightedEffect
  */
 export function foldWeightedEffect<R, E, R2, E2, In, S>(
-  z: LazyArg<S>,
+  z: S,
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
   f: (s: S, input: In) => Effect<R2, E2, S>

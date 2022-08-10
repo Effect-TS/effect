@@ -27,19 +27,16 @@ export class End {
  * @tsplus static effect/core/stream/Stream.Aspects peel
  * @tsplus pipeable effect/core/stream/Stream peel
  */
-export function peel<R2, E2, A2, Z>(
-  sink: LazyArg<Sink<R2, E2, A2, A2, Z>>
-) {
+export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
   return <R, E extends E2, A extends A2>(
     self: Stream<R, E, A>
   ): Effect<R | R2 | Scope, E | E2, Tuple<[Z, Stream<never, E, A2>]>> =>
     Do(($) => {
       const deferred = $(Deferred.make<E | E2, Z>())
       const handoff = $(Handoff.make<Signal<E, A2>>())
-      const consumer = sink()
-        .exposeLeftover
+      const consumer = sink.exposeLeftover
         .foldSink(
-          (e) => Sink.fromEffect(deferred.fail(e)) > Sink.fail(e),
+          (e) => Sink.fromEffect(deferred.fail(e)) > Sink.failSync(e),
           ({ tuple: [z1, leftovers] }) => {
             const loop: Channel<
               never,
@@ -53,7 +50,7 @@ export function peel<R2, E2, A2, Z>(
               (chunk: Chunk<A2>) => Channel.fromEffect(handoff.offer(new Emit(chunk))) > loop,
               (cause) =>
                 Channel.fromEffect(handoff.offer(new Halt(cause))) >
-                  Channel.failCause(cause),
+                  Channel.failCauseSync(cause),
               () => Channel.fromEffect(handoff.offer(new End())) > Channel.unit
             )
             return new SinkInternal(
@@ -79,7 +76,7 @@ export function peel<R2, E2, A2, Z>(
               return Channel.write(signal.elements) > producer
             }
             case "Halt": {
-              return Channel.failCause(signal.error)
+              return Channel.failCauseSync(signal.error)
             }
             case "End": {
               return Channel.unit

@@ -11,5 +11,5 @@ export function cond<E, A>(
   result: LazyArg<A>,
   error: LazyArg<E>
 ): STM<never, E, A> {
-  return STM.suspend(() => (predicate() ? STM.sync(result) : STM.fail(error)))
+  return STM.suspend(() => (predicate() ? STM.sync(result) : STM.failSync(error)))
 }

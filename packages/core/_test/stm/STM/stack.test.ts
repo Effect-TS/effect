@@ -80,7 +80,7 @@ describe.concurrent("STM", () => {
 
     it("long mapError chains", async () => {
       function chainError(depth: number): Effect<never, number, never> {
-        return chainErrorLoop(depth, STM.fail(0))
+        return chainErrorLoop(depth, STM.failSync(0))
       }
 
       function chainErrorLoop(

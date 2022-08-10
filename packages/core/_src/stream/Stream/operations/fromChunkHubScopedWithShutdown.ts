@@ -8,7 +8,7 @@
  * @tsplus static effect/core/stream/Stream.Ops fromChunkHubScopedWithShutdown
  */
 export function fromChunkHubScopedWithShutdown<A>(
-  hub: LazyArg<Hub<Chunk<A>>>
+  hub: Hub<Chunk<A>>
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.sync(hub).flatMap((hub) => Stream.fromChunkHubScoped(hub).ensuring(hub.shutdown))
+  return Stream.fromChunkHubScoped(hub).ensuring(hub.shutdown)
 }

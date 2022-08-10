@@ -11,7 +11,7 @@ export function findSTM<K, V, R, E, A>(
   return (self: TMap<K, V>): STM<R, E, Maybe<A>> =>
     self.foldSTM(Maybe.empty<A>(), (a, kv) => {
       if (a.isNone()) {
-        return f(kv).foldSTM((_) => _.fold(STM.none, (e) => STM.fail(e)), STM.some)
+        return f(kv).foldSTM((_) => _.fold(STM.none, (e) => STM.failSync(e)), STM.some)
       }
 
       return STM.succeed(a)

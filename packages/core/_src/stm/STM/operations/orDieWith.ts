@@ -9,6 +9,6 @@
 export function orDieWith<E>(f: (e: E) => unknown) {
   return <R, A>(self: STM<R, E, A>): STM<R, never, A> =>
     self.mapError(f).catchAll(
-      (e) => STM.die(e)
+      (e) => STM.dieSync(e)
     )
 }

@@ -6,5 +6,5 @@
  */
 export function leftOrFail<C, E1>(orFail: (c: C) => E1) {
   return <R, E, B>(self: STM<R, E, Either<B, C>>): STM<R, E | E1, B> =>
-    self.flatMap((_) => _.fold(STM.succeed, (x) => STM.fail(orFail(x))))
+    self.flatMap((_) => _.fold(STM.succeed, (x) => STM.failSync(orFail(x))))
 }

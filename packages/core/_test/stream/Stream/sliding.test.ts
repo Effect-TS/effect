@@ -51,7 +51,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("fails if upstream produces an error", async () => {
-      const program = (Stream(1, 2, 3) + Stream.fail("ouch") + Stream(4, 5))
+      const program = (Stream(1, 2, 3) + Stream.failSync("ouch") + Stream(4, 5))
         .sliding(2)
         .runCollect
         .either
@@ -78,7 +78,7 @@ describe.concurrent("Stream", () => {
         )
         .bindValue(
           "stream",
-          ({ streamChunks }) => (streamChunks + Stream.fail("ouch")).sliding(3, 3)
+          ({ streamChunks }) => (streamChunks + Stream.failSync("ouch")).sliding(3, 3)
         )
         .bind("either", ({ ref, stream }) =>
           stream

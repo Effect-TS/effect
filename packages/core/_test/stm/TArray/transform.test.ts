@@ -33,7 +33,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeTArray(N, 0).commit)
         $(array.update(N / 2, () => 1).commit)
         const result = $(
-          array.transformSTM((a) => (a === 0 ? STM.succeed(42) : STM.fail(boom))).commit.flip
+          array.transformSTM((a) => (a === 0 ? STM.succeed(42) : STM.failSync(boom))).commit.flip
         )
         const first = $(array.get(0).commit)
         assert.deepEqual(result, boom)

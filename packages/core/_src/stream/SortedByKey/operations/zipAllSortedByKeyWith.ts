@@ -45,7 +45,7 @@ export class PullRight<K, A> {
  */
 export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
   ord: Ord<K>,
-  that: LazyArg<SortedByKey<R2, E2, K, A2>>,
+  that: SortedByKey<R2, E2, K, A2>,
   left: (a: A) => C1,
   right: (b: A2) => C2,
   both: (a: A, b: A2) => C3

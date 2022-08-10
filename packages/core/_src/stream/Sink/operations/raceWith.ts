@@ -12,7 +12,7 @@ import {
  * @tsplus pipeable effect/core/stream/Sink raceWith
  */
 export function raceWith<R1, E1, In1, L1, Z1, E, Z, Z2>(
-  that: LazyArg<Sink<R1, E1, In1, L1, Z1>>,
+  that: Sink<R1, E1, In1, L1, Z1>,
   leftDone: (exit: Exit<E, Z>) => MergeDecision<R1, E1, Z1, E | E1, Z2>,
   rightDone: (exit: Exit<E1, Z1>) => MergeDecision<R1, E, Z, E | E1, Z2>,
   capacity = 16
@@ -24,10 +24,9 @@ export function raceWith<R1, E1, In1, L1, Z1, E, Z, Z2>(
         const c1 = $(Channel.fromHubScoped(hub))
         const c2 = $(Channel.fromHubScoped(hub))
         const reader = Channel.toHub(hub)
-        const that0 = that()
         concreteSink(self)
-        concreteSink(that0)
-        const writer = (c1 >> self.channel).mergeWith(c2 >> that0.channel, leftDone, rightDone)
+        concreteSink(that)
+        const writer = (c1 >> self.channel).mergeWith(c2 >> that.channel, leftDone, rightDone)
         const channel = reader.mergeWith(
           writer,
           () => MergeDecision.await((exit) => Effect.done(exit)),

@@ -21,7 +21,7 @@ describe.concurrent("STM", () => {
     })
 
     it("catchAll errors", async () => {
-      const program = (STM.fail("uh oh!") > STM.succeed("everything is fine"))
+      const program = (STM.failSync("uh oh!") > STM.succeed("everything is fine"))
         .catchAll((s) => STM.succeed(`${s} phew`))
         .commit
 
@@ -88,7 +88,7 @@ describe.concurrent("STM", () => {
       })
 
       it("a failed computation into Left(e)", async () => {
-        const program = STM.fail("oh no!").either.commit
+        const program = STM.failSync("oh no!").either.commit
 
         const result = await program.unsafeRunPromise()
 
@@ -100,7 +100,7 @@ describe.concurrent("STM", () => {
       function stm(ref: TRef<number>): STM<never, string, number> {
         return ref
           .get
-          .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > STM.fail("ouch") : STM.succeed(n))
+          .flatMap((n) => n < 10 ? ref.update((n) => n + 1) > STM.failSync("ouch") : STM.succeed(n))
       }
 
       const program = TRef.make(0)
@@ -113,7 +113,7 @@ describe.concurrent("STM", () => {
     })
 
     it("failed to make a failed computation and check the value", async () => {
-      const program = STM.fail("bye bye world").commit
+      const program = STM.failSync("bye bye world").commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -215,7 +215,7 @@ describe.concurrent("STM", () => {
       })
 
       it("returns error", async () => {
-        const program = (STM.fail(ExampleError) > STM.succeed(1))
+        const program = (STM.failSync(ExampleError) > STM.succeed(1))
           .filterOrElseWith(
             (n) => n !== 1,
             (n) => STM.succeed(n + 1)
@@ -239,7 +239,7 @@ describe.concurrent("STM", () => {
     })
 
     it("flatMapError to flatMap from one error to another", async () => {
-      const program = STM.fail(-1)
+      const program = STM.failSync(-1)
         .flatMapError((n) => STM.succeed(`log: ${n}`))
         .commit
 
@@ -262,7 +262,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("flattenErrorMaybe", () => {
       it("with an existing error and return it", async () => {
-        const program = STM.fail(Maybe.some("oh no!"))
+        const program = STM.failSync(Maybe.some("oh no!"))
           .flattenErrorMaybe("default error")
           .commit
 
@@ -272,7 +272,7 @@ describe.concurrent("STM", () => {
       })
 
       it("with no error and default to value", async () => {
-        const program = STM.fail(Maybe.none)
+        const program = STM.failSync(Maybe.none)
           .flattenErrorMaybe("default error")
           .commit
 
@@ -290,7 +290,7 @@ describe.concurrent("STM", () => {
             () => 1
           ))
         .bind("result2", () =>
-          STM.fail("no").fold(
+          STM.failSync("no").fold(
             () => -1,
             () => 1
           ))
@@ -305,7 +305,7 @@ describe.concurrent("STM", () => {
     it("foldSTM to fold over the `STM` effect, and handle failure and success", async () => {
       const program = STM.Do()
         .bind("result1", () => STM.succeed("yes").foldSTM(() => STM.succeed("no"), STM.succeed))
-        .bind("result2", () => STM.fail("no").foldSTM(STM.succeed, () => STM.succeed("yes")))
+        .bind("result2", () => STM.failSync("no").foldSTM(STM.succeed, () => STM.succeed("yes")))
         .commit
 
       const { result1, result2 } = await program.unsafeRunPromise()
@@ -324,7 +324,7 @@ describe.concurrent("STM", () => {
       })
 
       it("with a failing step function returns a failed transaction", async () => {
-        const program = STM.reduce(List(1), 0, () => STM.fail("fail")).commit
+        const program = STM.reduce(List(1), 0, () => STM.failSync("fail")).commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -357,7 +357,8 @@ describe.concurrent("STM", () => {
       })
 
       it("with a failing step function returns a failed transaction", async () => {
-        const program = STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) => STM.fail("fail")).commit
+        const program =
+          STM.reduceRight(List(1, 2, 3, 4, 5), 0, (acc, n) => STM.failSync("fail")).commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -451,7 +452,7 @@ describe.concurrent("STM", () => {
       })
 
       it("on failure", async () => {
-        const program = STM.fail("fail").left.commit
+        const program = STM.failSync("fail").left.commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -482,7 +483,7 @@ describe.concurrent("STM", () => {
       })
 
       it("having a fail value", async () => {
-        const program = STM.fail(-1)
+        const program = STM.failSync(-1)
           .mapBoth(
             (n) => `${n} as string`,
             () => 0
@@ -496,7 +497,7 @@ describe.concurrent("STM", () => {
     })
 
     it("mapError to map from one error to another", async () => {
-      const program = STM.fail(-1)
+      const program = STM.failSync(-1)
         .mapError(() => "oh no!")
         .commit
 
@@ -533,7 +534,7 @@ describe.concurrent("STM", () => {
       })
 
       it("when Error", async () => {
-        const program = STM.fail(ExampleError).noneOrFail.commit
+        const program = STM.failSync(ExampleError).noneOrFail.commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -567,7 +568,7 @@ describe.concurrent("STM", () => {
       })
 
       it("a failed computation into None", async () => {
-        const program = STM.fail("oh no!").option.commit
+        const program = STM.failSync("oh no!").option.commit
 
         const result = await program.unsafeRunPromise()
 
@@ -611,7 +612,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("orDie", () => {
       it("when failure should die", async () => {
-        const program = STM.fail(() => {
+        const program = STM.failSync(() => {
           throw ExampleError
         })
           .orDie
@@ -633,7 +634,7 @@ describe.concurrent("STM", () => {
 
     describe.concurrent("orDieWith", () => {
       it("when failure should die", async () => {
-        const program = STM.fail("-1")
+        const program = STM.failSync("-1")
           .orDieWith((s) => new Error(s))
           .commit
 
@@ -673,7 +674,7 @@ describe.concurrent("STM", () => {
 
       it("collects only failures", async () => {
         const input = List.from(Array.from({ length: 10 }, () => 0))
-        const program = STM.partition(input, STM.failNow).commit
+        const program = STM.partition(input, STM.fail).commit
 
         const {
           tuple: [left, right]
@@ -686,7 +687,7 @@ describe.concurrent("STM", () => {
       it("collects failures and successes", async () => {
         const input = Chunk.range(0, 9)
         const program =
-          STM.partition(input, (n) => n % 2 === 0 ? STM.fail(n) : STM.succeed(n)).commit
+          STM.partition(input, (n) => n % 2 === 0 ? STM.failSync(n) : STM.succeed(n)).commit
 
         const {
           tuple: [left, right]
@@ -798,7 +799,7 @@ describe.concurrent("STM", () => {
       })
 
       it("on failure", async () => {
-        const program = STM.fail("fail").right.commit
+        const program = STM.failSync("fail").right.commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -832,7 +833,7 @@ describe.concurrent("STM", () => {
       })
 
       it("fails when given an exception", async () => {
-        const program = STM.fail(ExampleError).some.commit
+        const program = STM.failSync(ExampleError).some.commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -872,7 +873,7 @@ describe.concurrent("STM", () => {
       })
 
       it("does not change failed state", async () => {
-        const program = STM.fail(ExampleError).someOrElse(42).commit
+        const program = STM.failSync(ExampleError).someOrElse(42).commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -905,7 +906,7 @@ describe.concurrent("STM", () => {
       })
 
       it("does not change failed state", async () => {
-        const program = STM.fail(ExampleError).someOrElseSTM(STM.succeed(42)).commit
+        const program = STM.failSync(ExampleError).someOrElseSTM(STM.succeed(42)).commit
 
         const result = await program.unsafeRunPromiseExit()
 
@@ -941,7 +942,7 @@ describe.concurrent("STM", () => {
       })
 
       it("fails with the original error", async () => {
-        const program = STM.fail(ExampleError)
+        const program = STM.failSync(ExampleError)
           .someOrFail(new Error("not example"))
           .commit
 

@@ -11,7 +11,7 @@ export function rejectSTM<A, R1, E1>(pf: (a: A) => Maybe<STM<R1, E1, E1>>) {
     self.flatMap((a) =>
       pf(a).fold(
         () => STM.succeed(a),
-        (effect) => effect.flatMap(STM.failNow)
+        (effect) => effect.flatMap(STM.fail)
       )
     )
 }

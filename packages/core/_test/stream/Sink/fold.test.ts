@@ -83,7 +83,7 @@ describe.concurrent("Sink", () => {
       const empty: Stream<never, never, number> = Stream.empty
       const single: Stream<never, never, number> = Stream.sync(1)
       const double: Stream<never, never, number> = Stream(1, 2)
-      const failed: Stream<never, string, number> = Stream.fail("ouch")
+      const failed: Stream<never, string, number> = Stream.failSync("ouch")
 
       function run<E>(stream: Stream<never, E, number>) {
         return Effect.Do()

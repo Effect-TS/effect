@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
 
     it("fail as soon as one stream fails", () =>
       Do(($) => {
-        const stream = Stream(1, 2, 3).merge(Stream.fail(undefined))
+        const stream = Stream(1, 2, 3).merge(Stream.failSync(undefined))
         const result = $(stream.runCollect.exit.map((exit) => exit.isSuccess()))
         assert.isFalse(result)
       }).unsafeRunPromise())
@@ -98,7 +98,7 @@ describe.concurrent("Stream", () => {
     it("prioritizes failure", () =>
       Do(($) => {
         const stream1 = Stream.never
-        const stream2 = Stream.fail("ouch")
+        const stream2 = Stream.failSync("ouch")
         const result = $(stream1.mergeWith(stream2, constVoid, constVoid).runCollect.either)
         assert.isTrue(result == Either.left("ouch"))
       }).unsafeRunPromise())

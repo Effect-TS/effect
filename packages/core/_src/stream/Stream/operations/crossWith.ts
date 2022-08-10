@@ -8,10 +8,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects crossWith
  * @tsplus pipeable effect/core/stream/Stream crossWith
  */
-export function crossWith<R2, E2, B, A, C>(
-  that: LazyArg<Stream<R2, E2, B>>,
-  f: (a: A, b: B) => C
-) {
+export function crossWith<R2, E2, B, A, C>(that: Stream<R2, E2, B>, f: (a: A, b: B) => C) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, C> =>
-    self.flatMap((a) => that().map((b) => f(a, b)))
+    self.flatMap((a) => that.map((b) => f(a, b)))
 }

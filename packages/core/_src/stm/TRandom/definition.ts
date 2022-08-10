@@ -8,13 +8,15 @@ export type TRandomSym = typeof TRandomSym
  */
 export interface TRandom {
   readonly [TRandomSym]: TRandomSym
-  readonly next: USTM<number>
-  readonly nextBoolean: USTM<boolean>
-  readonly nextInt: USTM<number>
-  readonly nextRange: (low: number, high: number) => USTM<number>
-  readonly nextIntBetween: (low: number, high: number) => USTM<number>
-  readonly shuffle: <A>(collection: LazyArg<Collection<A>>) => USTM<Collection<A>>
-  readonly withState: <A>(f: (state: PCGRandomState) => Tuple<[A, PCGRandomState]>) => USTM<A>
+  readonly next: STM<never, never, number>
+  readonly nextBoolean: STM<never, never, boolean>
+  readonly nextInt: STM<never, never, number>
+  readonly nextRange: (low: number, high: number) => STM<never, never, number>
+  readonly nextIntBetween: (low: number, high: number) => STM<never, never, number>
+  readonly shuffle: <A>(collection: Collection<A>) => STM<never, never, Collection<A>>
+  readonly withState: <A>(
+    f: (state: PCGRandomState) => Tuple<[A, PCGRandomState]>
+  ) => STM<never, never, A>
 }
 
 /**

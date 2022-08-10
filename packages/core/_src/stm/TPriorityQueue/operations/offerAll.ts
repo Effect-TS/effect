@@ -6,16 +6,16 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  * @tsplus static effect/core/stm/TPriorityQueue.Aspects offerAll
  * @tsplus pipeable effect/core/stm/TPriorityQueue offerAll
  */
-export function offerAll<A>(values: LazyArg<Collection<A>>) {
+export function offerAll<A>(values: Collection<A>) {
   return (self: TPriorityQueue<A>): STM<never, never, void> => {
     concreteTPriorityQueue(self)
     return self.map
       .getAndUpdate((sa) =>
-        values().reduce(
+        values.reduce(
           SortedMap.empty<A, Chunk<A>>(sa.getOrd),
           (map, a) => map.set(a, Chunk.single(a))
         )
       )
-      .map(() => STM.unit)
+      .as(STM.unit)
   }
 }

@@ -10,7 +10,7 @@ import {
  * @tsplus static effect/core/stream/Sink.Aspects provideEnvironment
  * @tsplus pipeable effect/core/stream/Sink provideEnvironment
  */
-export function provideEnvironment<R>(env: LazyArg<Env<R>>) {
+export function provideEnvironment<R>(env: Env<R>) {
   return <E, In, L, Z>(self: Sink<R, E, In, L, Z>): Sink<never, E, In, L, Z> => {
     concreteSink(self)
     return new SinkInternal(self.channel.provideEnvironment(env))

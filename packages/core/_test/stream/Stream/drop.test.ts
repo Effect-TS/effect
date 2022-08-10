@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream.fail("ouch") + Stream(1)).drop(1).runDrain.either
+      const program = (Stream.failSync("ouch") + Stream(1)).drop(1).runDrain.either
 
       const result = await program.unsafeRunPromise()
 
@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("doesn't swallow errors", async () => {
-      const program = (Stream(1) + Stream.fail("ouch")).dropRight(1).runDrain.either
+      const program = (Stream(1) + Stream.failSync("ouch")).dropRight(1).runDrain.either
 
       const result = await program.unsafeRunPromise()
 
@@ -77,7 +77,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("short circuits", async () => {
-      const program = (Stream(1) + Stream.fail("ouch"))
+      const program = (Stream(1) + Stream.failSync("ouch"))
         .take(1)
         .dropWhile(constTrue)
         .runDrain

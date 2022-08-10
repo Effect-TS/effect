@@ -6,5 +6,5 @@
 export function runDrain<R, E, A>(
   self: Stream<R, E, A>
 ): Effect<R, E, void> {
-  return self.run(Sink.drain)
+  return self.run(Sink.drain())
 }

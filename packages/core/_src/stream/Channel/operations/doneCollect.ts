@@ -38,7 +38,7 @@ function reader<Env, OutErr, OutElem, OutDone>(
       Channel.sync(() => {
         builder.append(outElem)
       }) > reader<Env, OutErr, OutElem, OutDone>(builder),
-    (outErr) => Channel.fail(outErr),
+    (outErr) => Channel.failSync(outErr),
     (outDone) => Channel.succeed(outDone)
   )
 }

@@ -4,14 +4,11 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops logAnnotate
  */
-export function logAnnotate(
-  key: LazyArg<string>,
-  value: LazyArg<string>
-): Stream<never, never, void> {
+export function logAnnotate(key: string, value: string): Stream<never, never, void> {
   return Stream.scoped(
     FiberRef.currentLogAnnotations.get.flatMap((annotations) =>
       FiberRef.currentLogAnnotations.locallyScoped(
-        annotations.set(key(), value())
+        annotations.set(key, value)
       )
     )
   )

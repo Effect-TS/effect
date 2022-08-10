@@ -9,11 +9,11 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops foldChunksEffect
  */
 export function foldChunksEffect<R, E, S, In>(
-  z: LazyArg<S>,
+  z: S,
   cont: Predicate<S>,
   f: (s: S, input: Chunk<In>) => Effect<R, E, S>
 ): Sink<R, E, In, never, S> {
-  return Sink.suspend(new SinkInternal(reader(z(), cont, f)))
+  return Sink.suspend(new SinkInternal(reader(z, cont, f)))
 }
 
 function reader<R, E, S, In>(
@@ -25,7 +25,7 @@ function reader<R, E, S, In>(
     ? Channel.readWith(
       (chunk: Chunk<In>) =>
         Channel.fromEffect(f(z, chunk)).flatMap((nextS) => reader<R, E, S, In>(nextS, cont, f)),
-      (err) => Channel.fail(err),
+      (err) => Channel.failSync(err),
       () => Channel.succeed(z)
     )
     : Channel.succeed(z)

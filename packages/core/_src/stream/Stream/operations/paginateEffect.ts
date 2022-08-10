@@ -6,7 +6,7 @@
  * @tsplus static effect/core/stream/Stream.Ops paginateEffect
  */
 export function paginateEffect<S, R, E, A>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S) => Effect<R, E, Tuple<[A, Maybe<S>]>>
 ): Stream<R, E, A> {
   return Stream.paginateChunkEffect(

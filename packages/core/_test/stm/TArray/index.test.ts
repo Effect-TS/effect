@@ -153,7 +153,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .indexWhereSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n % 5 === 0)))
+            .indexWhereSTM((n) => (n === 4 ? STM.failSync(boom) : STM.succeed(n % 5 === 0)))
             .commit
             .flip
         )
@@ -165,7 +165,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .indexWhereSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n % 5 === 0)))
+            .indexWhereSTM((n) => (n === 6 ? STM.failSync(boom) : STM.succeed(n % 5 === 0)))
             .commit
         )
         assert.strictEqual(result, 4)
@@ -236,7 +236,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .indexWhereFromSTM((n) => (n === 1 ? STM.fail(boom) : STM.succeed(n % 5 === 0)), 2)
+            .indexWhereFromSTM((n) => (n === 1 ? STM.failSync(boom) : STM.succeed(n % 5 === 0)), 2)
             .commit
         )
         assert.strictEqual(result, 4)

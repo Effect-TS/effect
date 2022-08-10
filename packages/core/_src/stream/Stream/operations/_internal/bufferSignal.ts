@@ -1,16 +1,14 @@
 export function bufferSignal<R, E, A>(
-  effect: LazyArg<
-    Effect<Scope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>
-  >,
-  channel: LazyArg<Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>>
+  effect: Effect<Scope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>,
+  channel: Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
   return Channel.unwrapScoped(
     Do(($) => {
-      const queue = $(Effect.suspendSucceed(effect))
+      const queue = $(effect)
       const start = $(Deferred.make<never, void>())
       $(start.succeed(undefined))
       const ref = $(Ref.make(start))
-      $((channel() >> producer<E, A>(queue, ref)).runScoped.fork)
+      $((channel >> producer<E, A>(queue, ref)).runScoped.fork)
       return consumer(queue)
     })
   )
@@ -23,11 +21,12 @@ function producer<E, A>(
   return Channel.readWith(
     (input: Chunk<A>) =>
       Channel.fromEffect(
-        Effect.Do()
-          .bind("promise", () => Deferred.make<never, void>())
-          .bind("added", ({ promise }) => queue.offer(Tuple(Take.chunk(input), promise)))
-          .tap(({ added, promise }) => Effect.when(added, ref.set(promise)))
-      ) > producer(queue, ref),
+        Do(($) => {
+          const deferred = $(Deferred.make<never, void>())
+          const added = $(queue.offer(Tuple(Take.chunk(input), deferred)))
+          $(Effect.when(added, ref.set(deferred)))
+        })
+      ).zipRight(producer(queue, ref)),
     (err) => terminate(queue, ref, Take.fail(err)),
     () => terminate(queue, ref, Take.end)
   )
@@ -49,7 +48,7 @@ function consumer<E, A>(
       Channel.fromEffect(deferred.succeed(undefined)) >
         take.fold(
           Channel.unit,
-          (cause) => Channel.failCause(cause),
+          (cause) => Channel.failCauseSync(cause),
           (a) => Channel.write(a) > process
         )
   )

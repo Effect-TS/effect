@@ -9,9 +9,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects repeatElementsEither
  * @tsplus pipeable effect/core/stream/Stream repeatElementsEither
  */
-export function repeatElementsEither<S, R2, B>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>
-) {
+export function repeatElementsEither<S, R2, B>(schedule: Schedule<S, R2, unknown, B>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, Either<B, A>> =>
     self.repeatElementsWith(
       schedule,

@@ -8,10 +8,10 @@
  * @tsplus static effect/core/stm/STM.Ops forEachDiscard
  */
 export function forEachDiscard<R, E, A, X>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, E, X>
 ): STM<R, E, void> {
-  return STM.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
+  return STM.suspend(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, X>(

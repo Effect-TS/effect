@@ -16,25 +16,23 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  * @tsplus pipeable effect/core/stream/Stream mergeWith
  */
 export function mergeWith<R2, E2, A, A2, A3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
+  that: Stream<R2, E2, A2>,
   left: (a: A) => A3,
   right: (a2: A2) => A3,
-  strategy: LazyArg<TerminationStrategy> = () => TerminationStrategy.Both
+  strategy: TerminationStrategy = TerminationStrategy.Both
 ) {
-  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
-    new StreamInternal(
-      Channel.sync(strategy).flatMap((strategy) => {
-        const leftStream = self.map(left)
-        const rightStream = that().map(right)
-        concreteStream(leftStream)
-        concreteStream(rightStream)
-        return leftStream.channel.mergeWith(
-          rightStream.channel,
-          handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Left"),
-          handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Right")
-        )
-      })
+  return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> => {
+    const leftStream = self.map(left)
+    const rightStream = that.map(right)
+    concreteStream(leftStream)
+    concreteStream(rightStream)
+    const stream = leftStream.channel.mergeWith(
+      rightStream.channel,
+      handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Left"),
+      handler<R | R2, E | E2>(strategy._tag === "Either" || strategy._tag === "Right")
     )
+    return new StreamInternal(stream)
+  }
 }
 
 function handler<R, E>(terminate: boolean) {

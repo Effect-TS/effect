@@ -3,7 +3,7 @@ import { a, as, b, eventEq, eventOrd } from "@effect/core/test/stm/TPriorityQueu
 describe.concurrent("TPriorityQueue", () => {
   describe.concurrent("take", () => {
     it("take", async () => {
-      const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      const program = TPriorityQueue.from(eventOrd)(as)
         .flatMap((queue) => STM.collectAll(queue.take.replicate(as.size)))
         .commit
 
@@ -13,7 +13,7 @@ describe.concurrent("TPriorityQueue", () => {
     })
 
     it("takeUpTo", async () => {
-      const program = TPriorityQueue.fromIterable(eventOrd)(as)
+      const program = TPriorityQueue.from(eventOrd)(as)
         .flatMap((queue) =>
           STM.struct({
             left: queue.takeUpTo(1),

@@ -7,7 +7,7 @@ import { Provide } from "@effect/core/stream/Channel/definition/primitives"
  * @tsplus static effect/core/stream/Channel.Aspects provideEnvironment
  * @tsplus pipeable effect/core/stream/Channel provideEnvironment
  */
-export function provideEnvironment<R>(env: LazyArg<Env<R>>) {
+export function provideEnvironment<R>(env: Env<R>) {
   return <InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<never, InErr, InElem, InDone, OutErr, OutElem, OutDone> => new Provide(env, self)

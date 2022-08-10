@@ -16,7 +16,7 @@ describe.concurrent("Stream", () => {
 
     it("buffer the stream with error", async () => {
       const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error)).buffer(2).runCollect
+      const program = (Stream.range(0, 10) + Stream.failSync(error)).buffer(2).runCollect
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -51,7 +51,7 @@ describe.concurrent("Stream", () => {
       const error = new RuntimeError("boom")
       const program = (
         Stream.range(1, 1000) +
-        Stream.fail(error) +
+        Stream.failSync(error) +
         Stream.range(1001, 2000)
       )
         .bufferDropping(2)
@@ -128,7 +128,7 @@ describe.concurrent("Stream", () => {
       const error = new RuntimeError("boom")
       const program = (
         Stream.range(1, 1000) +
-        Stream.fail(error) +
+        Stream.failSync(error) +
         Stream.range(1001, 2000)
       )
         .bufferSliding(2)
@@ -213,7 +213,7 @@ describe.concurrent("Stream", () => {
 
     it("buffer the stream with error", async () => {
       const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error))
+      const program = (Stream.range(0, 10) + Stream.failSync(error))
         .bufferUnbounded
         .runCollect
 
@@ -265,7 +265,7 @@ describe.concurrent("Stream", () => {
 
     it("bufferChunks the stream with error", async () => {
       const error = new RuntimeError("boom")
-      const program = (Stream.range(0, 10) + Stream.fail(error))
+      const program = (Stream.range(0, 10) + Stream.failSync(error))
         .bufferChunks(2)
         .runCollect
 

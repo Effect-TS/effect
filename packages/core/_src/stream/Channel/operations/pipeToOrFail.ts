@@ -12,7 +12,7 @@ export function pipeToOrFail<
   OutElem2,
   OutDone2
 >(
-  that: LazyArg<Channel<Env2, never, OutElem, OutDone, OutErr2, OutElem2, OutDone2>>
+  that: Channel<Env2, never, OutElem, OutDone, OutErr2, OutElem2, OutDone2>
 ) {
   return <Env, InErr, InElem, InDone, OutErr>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -20,7 +20,7 @@ export function pipeToOrFail<
     const reader: Channel<Env, OutErr, OutElem, OutDone, never, OutElem, OutDone> = Channel
       .readWith(
         (outElem) => Channel.write(outElem) > reader,
-        (outErr) => Channel.failCause(Cause.die(new ChannelError(outErr))),
+        (outErr) => Channel.failCauseSync(Cause.die(new ChannelError(outErr))),
         (outDone) => Channel.succeed(outDone)
       )
 
@@ -36,11 +36,11 @@ export function pipeToOrFail<
       (outElem) => Channel.write(outElem) > writer,
       (cause) =>
         cause.isDieType() && isChannelError(cause.value)
-          ? Channel.fail(cause.value.error as OutErr2)
-          : Channel.failCause(cause),
+          ? Channel.failSync(cause.value.error as OutErr2)
+          : Channel.failCauseSync(cause),
       (outDone) => Channel.succeed(outDone)
     )
 
-    return ((self >> reader) >> that()) >> writer
+    return ((self >> reader) >> that) >> writer
   }
 }

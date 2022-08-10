@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops fail
  */
-export function fail<E>(
-  error: LazyArg<E>
-): Stream<never, E, never> {
-  return Stream.fromEffect(Effect.failSync(error))
+export function fail<E>(error: E): Stream<never, E, never> {
+  return Stream.fromEffect(Effect.fail(error))
 }
