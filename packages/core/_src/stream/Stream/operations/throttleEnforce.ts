@@ -11,7 +11,7 @@
  */
 export function throttleEnforce<A>(
   units: number,
-  duration: LazyArg<Duration>,
+  duration: Duration,
   costFn: (input: Chunk<A>) => number,
   burst = 0
 ) {

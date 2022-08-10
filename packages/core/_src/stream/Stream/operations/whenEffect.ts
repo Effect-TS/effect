@@ -5,8 +5,8 @@
  * @tsplus static effect/core/stream/Stream.Ops whenEffect
  */
 export function whenEffect<R, E, R1, E1, A>(
-  b: LazyArg<Effect<R, E, boolean>>,
-  stream: LazyArg<Stream<R1, E1, A>>
+  b: Effect<R, E, boolean>,
+  stream: Stream<R1, E1, A>
 ): Stream<R | R1, E | E1, A> {
-  return Stream.fromEffect(b()).flatMap((b) => (b ? stream() : Stream.empty))
+  return Stream.fromEffect(b).flatMap((b) => (b ? stream : Stream.empty))
 }

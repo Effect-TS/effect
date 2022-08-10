@@ -13,9 +13,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects interruptWhenDeferred
  * @tsplus pipeable effect/core/stream/Stream interruptWhenDeferred
  */
-export function interruptWhenDeferred<E2, Z>(
-  promise: LazyArg<Deferred<E2, Z>>
-) {
+export function interruptWhenDeferred<E2, Z>(promise: Deferred<E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel.interruptWhenDeferred(promise))

@@ -36,7 +36,7 @@ describe.concurrent("Sink", () => {
 
     it("handles errors", () =>
       Do(($) => {
-        const sink = Sink.fail(undefined).repeat
+        const sink = Sink.failSync(undefined).repeat
         const stream = Stream.fromChunks(Chunk(1, 2))
         const result = $(stream.run(sink).either)
         assert.isTrue(result == Either.left(undefined))

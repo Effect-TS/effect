@@ -49,8 +49,8 @@ describe.concurrent("Channel", () => {
     })
 
     it("handles polymorphic failures", async () => {
-      const left = Channel.write(1) > Channel.fail("boom").as(true)
-      const right = Channel.write(2) > Channel.fail(true).as(true)
+      const left = Channel.write(1) > Channel.failSync("boom").as(true)
+      const right = Channel.write(2) > Channel.failSync(true).as(true)
       const program = left
         .mergeWith(
           right,

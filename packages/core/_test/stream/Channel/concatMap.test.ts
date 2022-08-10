@@ -54,7 +54,7 @@ describe.concurrent("Channel", () => {
       Do(($) => {
         const result = $(
           Channel.write(0)
-            .concatMap(() => Channel.fail("error"))
+            .concatMap(() => Channel.failSync("error"))
             .runCollect
             .exit
         )
@@ -67,7 +67,7 @@ describe.concurrent("Channel", () => {
           Ref.make(Chunk.empty<string>()).flatMap((events) => {
             const event = (label: string) => events.update((chunk) => chunk.append(label))
             const conduit = Channel.acquireUseReleaseOut(event("Acquired"), () => event("Released"))
-              .concatMap(() => Channel.fail("error"))
+              .concatMap(() => Channel.failSync("error"))
               .runDrain
               .exit
             return conduit.zip(events.get)
@@ -82,7 +82,7 @@ describe.concurrent("Channel", () => {
       Do(($) => {
         const result = $(
           Channel.write(undefined)
-            .concatMap(() => Channel.write(Channel.fail("error")))
+            .concatMap(() => Channel.write(Channel.failSync("error")))
             .concatMap((e) => e)
             .runCollect
             .exit
@@ -94,7 +94,7 @@ describe.concurrent("Channel", () => {
       Do(($) => {
         const result = $(
           Channel.write(undefined)
-            .concatMap(() => Channel.fail("error"))
+            .concatMap(() => Channel.failSync("error"))
             .flatMap(() => Channel.write(undefined))
             .runCollect
             .exit
@@ -106,8 +106,8 @@ describe.concurrent("Channel", () => {
       Do(($) => {
         const result = $(
           Channel.write(undefined)
-            .concatMap(() => Channel.write(Channel.fail("error")))
-            .concatMap((e) => e.catchAllCause(() => Channel.fail("error2")))
+            .concatMap(() => Channel.write(Channel.failSync("error")))
+            .concatMap((e) => e.catchAllCause(() => Channel.failSync("error2")))
             .runCollect
             .exit
         )

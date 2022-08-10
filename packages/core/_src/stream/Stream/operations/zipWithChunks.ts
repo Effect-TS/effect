@@ -24,14 +24,14 @@ class PullRight<A> {
  * @tsplus pipeable effect/core/stream/Stream zipWithChunks
  */
 export function zipWithChunks<R2, E2, A2, A, A3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
+  that: Stream<R2, E2, A2>,
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
   ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
-    self.combineChunks(that, (): State<A, A2> => new PullBoth(), pull(f))
+    self.combineChunks(that, new PullBoth() as State<A, A2>, pull(f))
 }
 
 function zipWithChunksInternal<A, A2, A3>(

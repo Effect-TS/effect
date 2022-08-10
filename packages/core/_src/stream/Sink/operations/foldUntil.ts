@@ -7,12 +7,12 @@
  * @tsplus static effect/core/stream/Sink.Ops foldUntil
  */
 export function foldUntil<In, S>(
-  z: LazyArg<S>,
+  z: S,
   max: number,
   f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.fold(
-    Tuple(z(), 0),
+    Tuple(z, 0),
     (tuple) => tuple.get(1) < max,
     ({ tuple: [o, count] }, i: In) => Tuple(f(o, i), count + 1)
   ).map((tuple) => tuple.get(0))

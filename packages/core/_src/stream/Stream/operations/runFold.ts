@@ -8,11 +8,9 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  * @tsplus pipeable effect/core/stream/Stream runFold
  */
 export function runFold<S, A>(
-  s: LazyArg<S>,
+  s: S,
   f: (s: S, a: A) => S
 ) {
   return <R, E>(self: Stream<R, E, A>): Effect<R, E, S> =>
-    Effect.scoped(
-      self.runFoldWhileScoped(s, constTrue, f)
-    )
+    Effect.scoped(self.runFoldWhileScoped(s, constTrue, f))
 }

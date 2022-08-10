@@ -6,10 +6,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects flattenPar
  * @tsplus pipeable effect/core/stream/Stream flattenPar
  */
-export function flattenPar(
-  n: number,
-  outputBuffer = 16
-) {
+export function flattenPar(n: number, outputBuffer = 16) {
   return <R, E, R1, E1, A>(self: Stream<R, E, Stream<R1, E1, A>>): Stream<R | R1, E | E1, A> =>
     self.flatMapPar(n, identity, outputBuffer)
 }

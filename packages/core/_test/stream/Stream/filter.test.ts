@@ -52,14 +52,13 @@ describe.concurrent("Stream", () => {
       const program = Stream.fromChunk(Chunk.range(0, 3))
         .filterEffect((n) => {
           builder.append(n)
-          return Effect.sync(true)
+          return Effect.sync(constTrue)
         })
         .map((n) => {
           builder.append(n)
           return n
         })
         .runDrain
-
       await program.unsafeRunPromise()
 
       assert.isTrue(

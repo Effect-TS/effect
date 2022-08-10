@@ -2,9 +2,9 @@
  * @tsplus static effect/core/stream/Channel.Ops fromQueue
  */
 export function fromQueue<Err, Elem, Done>(
-  queue: LazyArg<Dequeue<Either<Exit<Err, Done>, Elem>>>
+  queue: Dequeue<Either<Exit<Err, Done>, Elem>>
 ): Channel<never, unknown, unknown, unknown, Err, Elem, Done> {
-  return Channel.suspend(fromQueueInternal(queue()))
+  return Channel.suspend(fromQueueInternal(queue))
 }
 
 function fromQueueInternal<Err, Elem, Done>(
@@ -14,7 +14,7 @@ function fromQueueInternal<Err, Elem, Done>(
     either.fold(
       (exit) =>
         exit.fold(
-          (cause) => Channel.failCause(cause),
+          (cause) => Channel.failCauseSync(cause),
           (done): Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
             Channel.succeed(done)
         ),

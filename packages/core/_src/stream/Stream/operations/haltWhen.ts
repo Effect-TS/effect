@@ -16,16 +16,12 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects haltWhen
  * @tsplus pipeable effect/core/stream/Stream haltWhen
  */
-export function haltWhen<R2, E2, Z>(
-  io: LazyArg<Effect<R2, E2, Z>>
-) {
+export function haltWhen<R2, E2, Z>(io: Effect<R2, E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(
       Channel.unwrapScoped(
-        io()
-          .forkScoped
-          .map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
+        io.forkScoped.map((fiber) => self.channel >> writer<R, E, A, R2, E2, Z>(fiber))
       )
     )
   }
@@ -39,12 +35,12 @@ function writer<R, E, A, R2, E2, Z>(
       option.fold(
         Channel.readWith(
           (input: Chunk<A>) => Channel.write(input) > writer<R, E, A, R2, E2, Z>(fiber),
-          (err) => Channel.fail(err),
+          (err) => Channel.failSync(err),
           () => Channel.unit
         ),
         (exit) =>
           exit.fold(
-            (cause) => Channel.failCause(cause),
+            (cause) => Channel.failCauseSync(cause),
             (): Channel<R | R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> => Channel.unit
           )
       )

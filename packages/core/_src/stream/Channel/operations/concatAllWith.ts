@@ -23,16 +23,14 @@ export function concatAllWith<
   InDone2,
   OutErr2
 >(
-  channels: LazyArg<
-    Channel<
-      Env,
-      InErr,
-      InElem,
-      InDone,
-      OutErr,
-      Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem, OutDone>,
-      OutDone2
-    >
+  channels: Channel<
+    Env,
+    InErr,
+    InElem,
+    InDone,
+    OutErr,
+    Channel<Env2, InErr2, InElem2, InDone2, OutErr2, OutElem, OutDone>,
+    OutDone2
   >,
   f: (o: OutDone, o1: OutDone) => OutDone,
   g: (o: OutDone, o2: OutDone2) => OutDone3
@@ -61,7 +59,7 @@ export function concatAllWith<
     g,
     () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
     () => ChildExecutorDecision.Continue,
-    channels,
+    () => channels,
     identity
   )
 }

@@ -11,15 +11,15 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/stream/Stream zipAllFlatten
  */
 export function zipAllFlatten<R2, E2, A2, A>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  defaultLeft: LazyArg<A>,
-  defaultRight: LazyArg<A2>
+  that: Stream<R2, E2, A2>,
+  defaultLeft: A,
+  defaultRight: A2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, MergeTuple<A, A2>> =>
     self.zipAllWith(
       that,
-      (a) => Tuple.mergeTuple(a, defaultRight()),
-      (a2) => Tuple.mergeTuple(defaultLeft(), a2),
+      (a) => Tuple.mergeTuple(a, defaultRight),
+      (a2) => Tuple.mergeTuple(defaultLeft, a2),
       (a, a2) => Tuple.mergeTuple(a, a2)
     )
 }

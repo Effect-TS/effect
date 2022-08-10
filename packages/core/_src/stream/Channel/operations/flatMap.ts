@@ -41,5 +41,5 @@ export function flatMap<
       OutDone2,
       OutErr | OutErr1,
       OutDone
-    >(self, new ContinuationK(f, (cause) => Channel.failCause(cause)))
+    >(self, new ContinuationK(f, (cause) => Channel.failCauseSync(cause)))
 }

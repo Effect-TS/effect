@@ -5,8 +5,8 @@
  * @tsplus static effect/core/io/Effect.Ops whenCase
  */
 export function whenCase<R, E, A, B>(
-  a: A,
+  a: LazyArg<A>,
   pf: (a: A) => Maybe<Effect<R, E, B>>
 ): Effect<R, E, Maybe<B>> {
-  return pf(a).map((effect) => effect.asSome).getOrElse(Effect.none)
+  return Effect.sync(a).flatMap((a) => pf(a).map((effect) => effect.asSome).getOrElse(Effect.none))
 }

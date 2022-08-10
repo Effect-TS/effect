@@ -41,7 +41,7 @@ describe.concurrent("Stream", () => {
 
     it("propagate managed error", async () => {
       const fail = "I'm such a failure!"
-      const program = Stream(1, 2, 3).transduce(Sink.fail(fail)).runCollect.either
+      const program = Stream(1, 2, 3).transduce(Sink.failSync(fail)).runCollect.either
 
       const result = await program.unsafeRunPromise()
 

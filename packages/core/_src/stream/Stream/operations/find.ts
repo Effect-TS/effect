@@ -20,7 +20,7 @@ export function find<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const loop: Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, any> = Channel.readWith(
       (chunk) => chunk.find(f).fold(loop, (a) => Channel.write(Chunk.single(a))),
-      (e) => Channel.fail(e),
+      Channel.fail,
       (_) => Channel.unit
     )
     concreteStream(self)

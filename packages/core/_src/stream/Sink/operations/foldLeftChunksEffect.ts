@@ -7,7 +7,7 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  * @tsplus static effect/core/stream/Sink.Ops foldLeftChunksEffect
  */
 export function foldLeftChunksEffect<R, E, In, S>(
-  z: LazyArg<S>,
+  z: S,
   f: (s: S, input: Chunk<In>) => Effect<R, E, S>
 ): Sink<R, E, In, never, S> {
   return Sink.foldChunksEffect(z, constTrue, f).dropLeftover

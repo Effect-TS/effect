@@ -13,12 +13,11 @@
  * @tsplus pipeable effect/core/stream/Stream retry
  */
 export function retry<E, S, R2, Z>(
-  schedule: LazyArg<Schedule<S, R2, E, Z>>
+  schedule: Schedule<S, R2, E, Z>
 ) {
   return <R, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
     Stream.unwrap(
-      schedule()
-        .driver
+      schedule.driver
         .map((driver) => {
           const loop: Stream<R | R2, E, A> = self.catchAll((e) =>
             Stream.unwrap(

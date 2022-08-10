@@ -12,7 +12,7 @@ export function tryCatch<E, A>(
     try {
       return STM.sync(attempt)
     } catch (error) {
-      return STM.fail(onThrow(error))
+      return STM.failSync(onThrow(error))
     }
   })
 }

@@ -20,7 +20,7 @@ import {
  * @tsplus pipeable effect/core/stream/Stream repeatElementsWith
  */
 export function repeatElementsWith<A, S, R2, B, C1, C2>(
-  schedule: LazyArg<Schedule<S, R2, unknown, B>>,
+  schedule: Schedule<S, R2, unknown, B>,
   f: (a: A) => C1,
   g: (b: B) => C2
 ) {
@@ -29,8 +29,7 @@ export function repeatElementsWith<A, S, R2, B, C1, C2>(
     return new StreamInternal(
       self.channel >>
         Channel.unwrap(
-          schedule()
-            .driver
+          schedule.driver
             .map((driver) => {
               const loop: Channel<
                 R | R2,
@@ -42,7 +41,7 @@ export function repeatElementsWith<A, S, R2, B, C1, C2>(
                 void
               > = Channel.readWith(
                 (chunk: Chunk<A>) => feed<R, E, A, R2, B, C1, C2>(loop, driver, f, g, chunk),
-                (err) => Channel.fail(err),
+                (err) => Channel.failSync(err),
                 () => Channel.unit
               )
 
@@ -79,8 +78,9 @@ function step<R, E, A, R2, B, C1, C2>(
   const advance = driver
     .next(value)
     .as(
-      Channel.write(Chunk.single(f(value))) >
+      Channel.write(Chunk.single(f(value))).flatMap(() =>
         step<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input, value)
+      )
     )
   const reset: Effect<
     R | R2,

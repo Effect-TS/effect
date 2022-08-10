@@ -20,16 +20,13 @@ export function isStreamTimeoutError(u: unknown): u is StreamTimeoutError {
  * @tsplus static effect/core/stream/Stream.Aspects timeoutTo
  * @tsplus pipeable effect/core/stream/Stream timeoutTo
  */
-export function timeoutTo<R2, E2, A2>(
-  duration: LazyArg<Duration>,
-  that: LazyArg<Stream<R2, E2, A2>>
-) {
+export function timeoutTo<R2, E2, A2>(duration: Duration, that: Stream<R2, E2, A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>
     self
       .timeoutFailCause(Cause.die(new StreamTimeoutError()), duration)
       .catchSomeCause((cause) =>
         cause.isDieType() && isStreamTimeoutError(cause.value)
-          ? Maybe.some(that())
+          ? Maybe.some(that)
           : Maybe.none
       )
 }

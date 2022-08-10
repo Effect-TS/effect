@@ -6,7 +6,5 @@
  */
 export function someOrElse<B>(orElse: LazyArg<B>) {
   return <R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, E, A | B> =>
-    self.map(
-      (option) => option.getOrElse(orElse)
-    )
+    self.map((option) => option.getOrElse(orElse))
 }

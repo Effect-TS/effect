@@ -10,9 +10,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects flatMap
  * @tsplus pipeable effect/core/stream/Stream flatMap
  */
-export function flatMap<A, R2, E2, B>(
-  f: (a: A) => Stream<R2, E2, B>
-) {
+export function flatMap<A, R2, E2, B>(f: (a: A) => Stream<R2, E2, B>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
     concreteStream(self)
     return new StreamInternal(

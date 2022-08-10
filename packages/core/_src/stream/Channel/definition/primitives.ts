@@ -131,7 +131,7 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
   OutDone
 > {
   readonly _tag = "FromEffect"
-  constructor(readonly effect: Lazy<Effect<Env, OutErr, OutDone>>) {
+  constructor(readonly effect: Effect<Env, OutErr, OutDone>) {
     super()
   }
 }
@@ -150,7 +150,7 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
   OutDone
 > {
   readonly _tag = "Emit"
-  constructor(readonly out: Lazy<OutElem>) {
+  constructor(readonly out: OutElem) {
     super()
   }
 }
@@ -345,7 +345,7 @@ export class Provide<
 > extends ChannelBase<never, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly _tag = "Provide"
   constructor(
-    readonly env: Lazy<Env<R>>,
+    readonly env: Env<R>,
     readonly channel: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
     super()

@@ -5,9 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects runIntoQueue
  * @tsplus pipeable effect/core/stream/Stream runIntoQueue
  */
-export function runIntoQueue<E1, A>(
-  queue: LazyArg<Enqueue<Take<E1, A>>>
-) {
+export function runIntoQueue<E1, A>(queue: Enqueue<Take<E1, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R, E | E1, void> =>
     Effect.scoped(self.runIntoQueueScoped(queue))
 }

@@ -37,14 +37,11 @@ class Current<E, A> {
  * @tsplus static effect/core/stream/Stream.Aspects debounce
  * @tsplus pipeable effect/core/stream/Stream debounce
  */
-export function debounce<R, E, A>(
-  duration0: LazyArg<Duration>
-) {
+export function debounce<R, E, A>(duration: Duration) {
   return (self: Stream<R, E, A>): Stream<R, E, A> =>
     Stream.unwrap(
       Effect.transplant((grafter) =>
         Do(($) => {
-          const duration = $(Effect.sync(duration0))
           const handoff = $(Handoff.make<HandoffSignal<E, A>>())
 
           function enqueue(last: Chunk<A>) {
@@ -80,7 +77,7 @@ export function debounce<R, E, A>(
           function consumer(
             state: DebounceState<E, A>
           ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
-            return Channel.unwrap(() => {
+            return Channel.unwrap((() => {
               switch (state._tag) {
                 case "NotStarted": {
                   return handoff.take.map((signal) => {
@@ -89,7 +86,7 @@ export function debounce<R, E, A>(
                         return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCause(signal.error)
+                        return Channel.failCauseSync(signal.error)
                       }
                       case "End": {
                         return Channel.unit
@@ -104,7 +101,7 @@ export function debounce<R, E, A>(
                         return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCause(signal.error)
+                        return Channel.failCauseSync(signal.error)
                       }
                       case "End": {
                         return Channel.unit
@@ -117,7 +114,7 @@ export function debounce<R, E, A>(
                     handoff.take,
                     (exit, current) =>
                       exit.fold(
-                        (cause) => current.interrupt.as(Channel.failCause(cause)),
+                        (cause) => current.interrupt.as(Channel.failCauseSync(cause)),
                         (chunk) =>
                           Effect.succeed(
                             Channel.write(chunk) > consumer(new Current(current))
@@ -125,14 +122,14 @@ export function debounce<R, E, A>(
                       ),
                     (exit, previous) =>
                       exit.fold(
-                        (cause) => previous.interrupt.as(Channel.failCause(cause)),
+                        (cause) => previous.interrupt.as(Channel.failCauseSync(cause)),
                         (signal) => {
                           switch (signal._tag) {
                             case "Emit": {
                               return previous.interrupt > enqueue(signal.elements)
                             }
                             case "Halt": {
-                              return previous.interrupt.as(Channel.failCause(signal.error))
+                              return previous.interrupt.as(Channel.failCauseSync(signal.error))
                             }
                             case "End": {
                               return previous
@@ -145,7 +142,7 @@ export function debounce<R, E, A>(
                   )
                 }
               }
-            })
+            })())
           }
 
           concreteStream(self)

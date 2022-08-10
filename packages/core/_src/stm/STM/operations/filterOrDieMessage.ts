@@ -6,15 +6,15 @@
  */
 export function filterOrDieMessage<A, B extends A>(
   f: Refinement<A, B>,
-  message: LazyArg<string>
+  message: string
 ): <R, E>(self: STM<R, E, A>) => STM<R, E, B>
 export function filterOrDieMessage<A>(
   f: Predicate<A>,
-  message: LazyArg<string>
+  message: string
 ): <R, E>(self: STM<R, E, A>) => STM<R, E, A>
 export function filterOrDieMessage<A>(
   f: Predicate<A>,
-  message: LazyArg<string>
+  message: string
 ) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A> => self.filterOrElse(f, STM.dieMessage(message))
 }

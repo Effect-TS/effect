@@ -4,9 +4,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects schedule
  * @tsplus pipeable effect/core/stream/Stream schedule
  */
-export function schedule<S, R2, A, B>(
-  schedule: LazyArg<Schedule<S, R2, A, B>>
-) {
+export function schedule<S, R2, A, B>(schedule: Schedule<S, R2, A, B>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>
     self
       .scheduleEither(schedule)

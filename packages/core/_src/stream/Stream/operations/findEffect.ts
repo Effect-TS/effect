@@ -26,7 +26,7 @@ export function findEffect<R1, E1, A>(f: (a: A) => Effect<R1, E1, boolean>) {
           Effect.find(chunk, f)
             .map((option) => option.fold(loop, (a) => Channel.write(Chunk.single(a))))
         ),
-      (e) => Channel.fail(e),
+      (e) => Channel.failSync(e),
       () => Channel.unit
     )
     concreteStream(self)

@@ -15,7 +15,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("fail", () => {
     it("handles leftovers", () =>
       Do(($) => {
-        const sink = Sink.fail("boom").foldSink(
+        const sink = Sink.failSync("boom").foldSink(
           (err) => Sink.collectAll<number>().map((c) => Tuple(c, err)),
           (): Sink<never, never, number, never, Tuple<[Chunk<number>, string]>> => {
             throw new Error("should never happen")
@@ -31,7 +31,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("drain", () => {
     it("fails if upstream fails", () =>
       Do(($) => {
-        const sink = Sink.drain
+        const sink = Sink.drain()
         const stream = Stream.succeed(1).mapEffect(() => Effect.failSync("boom"))
         const result = $(stream.run(sink).exit)
         assert.isTrue(result == Exit.fail("boom"))
@@ -158,7 +158,7 @@ describe.concurrent("Sink", () => {
       Do(($) => {
         const sink = Sink.dropWhileEffect((n: number) => Effect.sync(n < 3))
         const stream = Stream(1, 2, 3)
-          .concat(Stream.fail("boom"))
+          .concat(Stream.failSync("boom"))
           .concat(Stream(5, 1, 2, 3, 4, 5))
           .pipeThrough(sink)
           .pipeThrough(sink)
@@ -207,7 +207,7 @@ describe.concurrent("Sink", () => {
   describe.concurrent("head", () => {
     it("should return the first element", () =>
       Do(($) => {
-        const sink = Sink.head
+        const sink = Sink.head()
         const stream = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4))
         const result = $(stream.run(sink))
         assert.isTrue(result == Maybe.some(1))
@@ -263,7 +263,7 @@ describe.concurrent("Sink", () => {
         const closed = $(Ref.make(false))
         const effect = Effect.acquireRelease(Effect.sync(100), () => closed.set(true))
         const sink = Sink.unwrapScoped(effect.as(Sink.succeed("ok")))
-        const result = $(Stream.fail("fail").run(sink))
+        const result = $(Stream.failSync("fail").run(sink))
         const state = $(closed.get)
         assert.strictEqual(result, "ok")
         assert.isTrue(state)

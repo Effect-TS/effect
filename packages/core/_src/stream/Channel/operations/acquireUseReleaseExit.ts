@@ -11,7 +11,7 @@ export function acquireUseReleaseExit<
   OutDone,
   Acquired
 >(
-  acquire: LazyArg<Effect<Env, OutErr, Acquired>>,
+  acquire: Effect<Env, OutErr, Acquired>,
   use: (a: Acquired) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone>,
   release: (a: Acquired, exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> {
@@ -19,7 +19,7 @@ export function acquireUseReleaseExit<
     Ref.make<(exit: Exit<OutErr, OutDone>) => Effect<Env, never, any>>((_) => Effect.unit)
   ).flatMap((ref) =>
     Channel.fromEffect(
-      acquire()
+      acquire
         .tap((a) => ref.set((exit) => release(a, exit)))
         .uninterruptible
     )

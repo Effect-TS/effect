@@ -3,6 +3,6 @@
  *
  * @tsplus static effect/core/stm/STM.Ops done
  */
-export function done<E, A>(exit: LazyArg<TExit<E, A>>): STM<never, E, A> {
+export function done<E, A>(exit: TExit<E, A>): STM<never, E, A> {
   return STM.suspend(done(exit))
 }

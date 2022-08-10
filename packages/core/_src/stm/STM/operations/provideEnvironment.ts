@@ -5,6 +5,6 @@
  * @tsplus static effect/core/stm/STM.Aspects provideEnvironment
  * @tsplus pipeable effect/core/stm/STM provideEnvironment
  */
-export function provideEnvironment<R>(env: LazyArg<Env<R>>) {
-  return <E, A>(self: STM<R, E, A>): STM<never, E, A> => self.provideSomeEnvironment(env)
+export function provideEnvironment<R>(env: Env<R>) {
+  return <E, A>(self: STM<R, E, A>): STM<never, E, A> => self.provideSomeEnvironment(() => env)
 }

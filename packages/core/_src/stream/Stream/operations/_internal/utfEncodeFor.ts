@@ -33,7 +33,7 @@ export function utfEncodeFor(
             })
             return Channel.write(bytes) > transform
           },
-          (err) => Channel.fail(err),
+          (err) => Channel.failSync(err),
           () => Channel.unit
         )
         const channel = Channel.write(bom) > transform

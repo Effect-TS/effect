@@ -52,7 +52,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .existsSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n === 5)))
+            .existsSTM((n) => (n === 4 ? STM.failSync(boom) : STM.succeed(n === 5)))
             .commit
             .flip
         )
@@ -64,7 +64,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .existsSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n === 5)))
+            .existsSTM((n) => (n === 6 ? STM.failSync(boom) : STM.succeed(n === 5)))
             .commit
             .flip
         )

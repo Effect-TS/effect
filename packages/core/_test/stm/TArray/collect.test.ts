@@ -119,7 +119,7 @@ describe.concurrent("TArray", () => {
         const result = $(
           array.collectFirstSTM((option) =>
             option.fold(
-              Maybe.some(STM.fail(boom)),
+              Maybe.some(STM.failSync(boom)),
               (i) => i > 2 ? Maybe.some(STM.succeed(i.toString)) : Maybe.none
             )
           ).commit.flip
@@ -135,7 +135,7 @@ describe.concurrent("TArray", () => {
             option.isSome() && option.value > 2
               ? Maybe.some(STM.succeed(option.value.toString()))
               : option.isSome() && option.value === 7
-              ? Maybe.some(STM.fail(boom))
+              ? Maybe.some(STM.failSync(boom))
               : Maybe.none
           ).commit
         )

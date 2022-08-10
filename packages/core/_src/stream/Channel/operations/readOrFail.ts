@@ -9,8 +9,8 @@ export function readOrFail<In, E>(
   return new Read<never, unknown, In, unknown, E, never, In, never, In>(
     (i) => Channel.succeed(i),
     new ContinuationK(
-      () => Channel.fail(e),
-      () => Channel.fail(e)
+      () => Channel.failSync(e),
+      () => Channel.failSync(e)
     )
   )
 }

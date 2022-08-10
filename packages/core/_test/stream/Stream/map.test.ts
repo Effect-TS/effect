@@ -140,7 +140,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("mapError", () => {
     it("simple example", async () => {
-      const program = Stream.fail("123")
+      const program = Stream.failSync("123")
         .mapError(s => Number.parseInt(s))
         .runCollect
         .either
@@ -153,7 +153,7 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("mapErrorCause", () => {
     it("simple example", async () => {
-      const program = Stream.fail("123")
+      const program = Stream.failSync("123")
         .mapErrorCause(cause => cause.map(s => Number.parseInt(s)))
         .runCollect
         .either
@@ -292,7 +292,7 @@ describe.concurrent("Stream", () => {
 
     it("propagates error of original stream", async () => {
       const program = (
-        Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.fail("boom")
+        Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + Stream.failSync("boom")
       )
         .mapEffectPar(2, () => Effect.sleep((100).millis))
         .runDrain

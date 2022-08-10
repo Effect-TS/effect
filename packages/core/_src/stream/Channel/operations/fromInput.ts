@@ -8,7 +8,7 @@ export function fromInput<Err, Elem, Done>(
 ): Channel<never, unknown, unknown, unknown, Err, Elem, Done> {
   return Channel.unwrap(
     input.takeWith(
-      (cause) => Channel.failCause(cause),
+      (cause) => Channel.failCauseSync(cause),
       (elem) => Channel.write(elem) > fromInput(input),
       (done) => Channel.succeed(done)
     )

@@ -11,10 +11,8 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  * @tsplus static effect/core/stream/Stream.Ops fromHubScoped
  */
 export function fromHubScoped<A>(
-  hub: LazyArg<Hub<A>>,
+  hub: Hub<A>,
   maxChunkSize = DEFAULT_CHUNK_SIZE
 ): Effect<Scope, never, Stream<never, never, A>> {
-  return Effect.suspendSucceed(
-    hub().subscribe.map((queue) => Stream.fromQueueWithShutdown(queue, maxChunkSize))
-  )
+  return hub.subscribe.map((queue) => Stream.fromQueueWithShutdown(queue, maxChunkSize))
 }

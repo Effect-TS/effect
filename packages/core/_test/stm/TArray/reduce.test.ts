@@ -25,7 +25,7 @@ describe.concurrent("TArray", () => {
     it("returns effect failure", () =>
       Do(($) => {
         function failInTheMiddle(acc: number, n: number): STM<never, Error, number> {
-          return acc === N / 2 ? STM.fail(boom) : STM.succeed(acc + n)
+          return acc === N / 2 ? STM.failSync(boom) : STM.succeed(acc + n)
         }
         const array = $(makeTArray(N, 1).commit)
         const result = $(array.reduceSTM(0, failInTheMiddle).commit.flip)
@@ -101,7 +101,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .reduceMaybeSTM((a, b) => (b === 4 ? STM.fail(boom) : STM.succeed(a + b)))
+            .reduceMaybeSTM((a, b) => (b === 4 ? STM.failSync(boom) : STM.succeed(a + b)))
             .commit
             .flip
         )

@@ -5,8 +5,6 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  *
  * @tsplus static effect/core/stream/Sink.Ops sync
  */
-export function sync<Z>(
-  z: LazyArg<Z>
-): Sink<never, never, unknown, never, Z> {
+export function sync<Z>(z: LazyArg<Z>): Sink<never, never, unknown, never, Z> {
   return new SinkInternal(Channel.sync(z))
 }

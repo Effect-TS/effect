@@ -10,7 +10,7 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   const drainer: Channel<Env, OutErr, OutElem, OutDone, OutErr, never, OutDone> = Channel
     .readWithCause(
       () => drainer,
-      (cause) => Channel.failCause(cause),
+      (cause) => Channel.failCauseSync(cause),
       Channel.succeed
     )
   return self >> drainer

@@ -9,7 +9,7 @@
  * @tsplus pipeable effect/core/stream/Stream runFoldWhileScoped
  */
 export function runFoldWhileScoped<S, A>(
-  s: LazyArg<S>,
+  s: S,
   cont: Predicate<S>,
   f: (s: S, a: A) => S
 ) {

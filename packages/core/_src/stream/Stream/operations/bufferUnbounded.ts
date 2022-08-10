@@ -23,7 +23,7 @@ export function bufferUnbounded<R, E, A>(
       > = Channel.fromEffect(queue.take).flatMap((take) =>
         take.fold(
           Channel.unit,
-          (cause) => Channel.failCause(cause),
+          (cause) => Channel.failCauseSync(cause),
           (a) => Channel.write(a) > process
         )
       )

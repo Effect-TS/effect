@@ -7,8 +7,6 @@
  *
  * @tsplus static effect/core/stm/STM.Ops collectAllDiscard
  */
-export function collectAllDiscard<R, E, A>(
-  as: LazyArg<Collection<STM<R, E, A>>>
-): STM<R, E, void> {
+export function collectAllDiscard<R, E, A>(as: Collection<STM<R, E, A>>): STM<R, E, void> {
   return STM.forEachDiscard(as, identity)
 }

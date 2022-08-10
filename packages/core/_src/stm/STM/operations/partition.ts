@@ -7,7 +7,7 @@ import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partit
  * @tsplus static effect/core/stm/STM.Ops partition
  */
 export function partition<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, E, B>
 ): STM<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
   return STM.suspend(STM.forEach(as, (a) => f(a).either)).map((chunk) =>

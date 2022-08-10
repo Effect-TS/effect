@@ -24,7 +24,7 @@ export function dropWhileEffect<R, E, In>(
               : Channel.write(leftover) > Channel.identity<E, Chunk<In>, unknown>()
           )
       ),
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     () => Channel.unit
   )
   return new SinkInternal(loop)

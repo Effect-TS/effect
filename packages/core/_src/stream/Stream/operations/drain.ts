@@ -9,9 +9,7 @@ import {
  *
  * @tsplus getter effect/core/stream/Stream drain
  */
-export function drain<R, E, A>(
-  self: Stream<R, E, A>
-): Stream<R, E, never> {
+export function drain<R, E, A>(self: Stream<R, E, A>): Stream<R, E, never> {
   concreteStream(self)
   return new StreamInternal(self.channel.drain)
 }

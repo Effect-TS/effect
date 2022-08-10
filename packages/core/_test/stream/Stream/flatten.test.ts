@@ -21,7 +21,7 @@ describe.concurrent("Stream", () => {
     it("errors", async () => {
       const error = new RuntimeError("boom")
       const program = Effect.scoped(
-        (Stream.range(0, 10) + Stream.fail(error)).toQueue(1).flatMap((queue) =>
+        (Stream.range(0, 10) + Stream.failSync(error)).toQueue(1).flatMap((queue) =>
           Stream.fromQueue(queue)
             .map((take) => take.exit)
             .flattenExitMaybe

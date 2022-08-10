@@ -9,12 +9,10 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects intersperse
  * @tsplus pipeable effect/core/stream/Stream intersperse
  */
-export function intersperse<A2>(
-  middle: LazyArg<A2>
-) {
+export function intersperse<A2>(middle: A2) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> => {
     concreteStream(self)
-    return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle(), true))
+    return new StreamInternal(self.channel >> writer<R, E, A, A2>(middle, true))
   }
 }
 
@@ -39,7 +37,7 @@ function writer<R, E, A, A2>(
 
       return Channel.write(builder.build()) > writer<R, E, A, A2>(middle, flagResult)
     },
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     () => Channel.unit
   )
 }

@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops repeatEffect
  */
-export function repeatEffect<R, E, A>(
-  effect: LazyArg<Effect<R, E, A>>
-): Stream<R, E, A> {
-  return Stream.repeatEffectMaybe(effect().mapError(Maybe.some))
+export function repeatEffect<R, E, A>(effect: Effect<R, E, A>): Stream<R, E, A> {
+  return Stream.repeatEffectMaybe(effect.mapError(Maybe.some))
 }

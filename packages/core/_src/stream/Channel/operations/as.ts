@@ -8,8 +8,8 @@
  * @tsplus static effect/core/stream/Channel.Aspects as
  * @tsplus pipeable effect/core/stream/Channel as
  */
-export function as<OutDone2>(z2: LazyArg<OutDone2>) {
+export function as<OutDone2>(z2: OutDone2) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-  ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> => self.map(z2)
+  ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2> => self.map(() => z2)
 }

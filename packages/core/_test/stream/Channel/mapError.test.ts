@@ -1,7 +1,7 @@
 describe.concurrent("Channel", () => {
   describe.concurrent("mapError", () => {
     it("structure confusion", async () => {
-      const program = Channel.fail("err")
+      const program = Channel.failSync("err")
         .mapError(() => 1)
         .runCollect
 

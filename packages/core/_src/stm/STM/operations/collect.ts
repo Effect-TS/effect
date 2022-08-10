@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stm/STM.Ops collect
  */
 export function collect<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, Maybe<E>, B>
 ): STM<R, E, Chunk<B>> {
   return STM.forEach(as, (a) => f(a).unsome).map((chunk) => chunk.compact)

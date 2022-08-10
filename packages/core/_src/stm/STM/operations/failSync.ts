@@ -3,10 +3,10 @@ import { STMEffect, STMFailException } from "@effect/core/stm/STM/definition/pri
 /**
  * Returns a value that models failure in the transaction.
  *
- * @tsplus static effect/core/stm/STM.Ops failNow
+ * @tsplus static effect/core/stm/STM.Ops failSync
  */
-export function failNow<E>(e: E): STM<never, E, never> {
+export function failSync<E>(e: LazyArg<E>): STM<never, E, never> {
   return new STMEffect(() => {
-    throw new STMFailException(e)
+    throw new STMFailException(e())
   })
 }

@@ -76,7 +76,8 @@ describe.concurrent("TArray", () => {
       Do(($) => {
         const array = $(makeStair(n).commit)
         const result = $(
-          array.findSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n % 5 === 0))).commit.flip
+          array.findSTM((n) => (n === 4 ? STM.failSync(boom) : STM.succeed(n % 5 === 0))).commit
+            .flip
         )
         assert.deepEqual(result, boom)
       }).unsafeRunPromise())
@@ -85,7 +86,7 @@ describe.concurrent("TArray", () => {
       Do(($) => {
         const array = $(makeStair(n).commit)
         const result = $(
-          array.findSTM((n) => (n === 6 ? STM.fail(boom) : STM.succeed(n % 5 === 0))).commit
+          array.findSTM((n) => (n === 6 ? STM.failSync(boom) : STM.succeed(n % 5 === 0))).commit
         )
         assert.isTrue(result == Maybe.some(5))
       }).unsafeRunPromise())
@@ -159,7 +160,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .findLastSTM((n) => (n === 4 ? STM.fail(boom) : STM.succeed(n % 7 === 0)))
+            .findLastSTM((n) => (n === 4 ? STM.failSync(boom) : STM.succeed(n % 7 === 0)))
             .commit
         )
         assert.isTrue(result == Maybe.some(7))
@@ -170,7 +171,7 @@ describe.concurrent("TArray", () => {
         const array = $(makeStair(n).commit)
         const result = $(
           array
-            .findLastSTM((n) => (n === 8 ? STM.fail(boom) : STM.succeed(n % 7 === 0)))
+            .findLastSTM((n) => (n === 8 ? STM.failSync(boom) : STM.succeed(n % 7 === 0)))
             .commit
             .flip
         )

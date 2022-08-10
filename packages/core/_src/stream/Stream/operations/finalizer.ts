@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops finalizer
  */
-export function finalizer<R, Z>(
-  finalizer: LazyArg<Effect<R, never, Z>>
-): Stream<R, never, void> {
-  return Stream.acquireRelease(Effect.unit, finalizer)
+export function finalizer<R, Z>(finalizer: Effect<R, never, Z>): Stream<R, never, void> {
+  return Stream.acquireRelease(Effect.unit, () => finalizer)
 }

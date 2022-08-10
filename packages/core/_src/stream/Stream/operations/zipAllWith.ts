@@ -35,7 +35,7 @@ class PullRight<A> {
  * @tsplus pipeable effect/core/stream/Stream zipAllWith
  */
 export function zipAllWith<R2, E2, A2, A, A3>(
-  that: LazyArg<Stream<R2, E2, A2>>,
+  that: Stream<R2, E2, A2>,
   left: (a: A) => A3,
   right: (a2: A2) => A3,
   both: (a: A, a2: A2) => A3
@@ -43,7 +43,7 @@ export function zipAllWith<R2, E2, A2, A, A3>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     self.combineChunks(
       that,
-      (): State<A, A2> => new PullBoth(),
+      new PullBoth() as State<A, A2>,
       pull(left, right, both)
     )
 }

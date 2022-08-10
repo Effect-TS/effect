@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/stream/Sink.Ops fromHubWithShutdown
  */
-export function fromHubWithShutdown<In>(
-  hub: LazyArg<Hub<In>>
-): Sink<never, never, In, never, void> {
+export function fromHubWithShutdown<In>(hub: Hub<In>): Sink<never, never, In, never, void> {
   return Sink.fromQueueWithShutdown(hub)
 }

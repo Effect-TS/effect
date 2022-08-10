@@ -41,14 +41,14 @@ function accumulator<A, R2, E2, A2, S>(
               (failure) => {
                 const partialResult = outputChunk.build()
                 return partialResult.isNonEmpty
-                  ? Channel.write(partialResult) > Channel.fail(failure)
-                  : Channel.fail(failure)
+                  ? Channel.write(partialResult) > Channel.failSync(failure)
+                  : Channel.failSync(failure)
               },
               (out) => Channel.write(outputChunk.build()) > accumulator(out, f)
             )
         })
       ),
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     () => Channel.unit
   ) as Channel<R2, unknown, Chunk<A>, unknown, E2, Chunk<A2>, unknown>
 }

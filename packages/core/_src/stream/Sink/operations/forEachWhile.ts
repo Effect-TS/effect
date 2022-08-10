@@ -19,7 +19,7 @@ export function forEachWhile<R, E, In>(
     void
   > = Channel.readWithCause(
     (input: Chunk<In>) => go(f, input, 0, input.length, process),
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => Channel.unit
   )
   return new SinkInternal(process)
@@ -36,5 +36,5 @@ function go<R, E, In>(
     ? cont
     : Channel.fromEffect(f(chunk.unsafeGet(index)))
       .flatMap((b) => b ? go(f, chunk, index + 1, length, cont) : Channel.write(chunk.drop(index)))
-      .catchAll((e) => Channel.write(chunk.drop(index)) > Channel.fail(e))
+      .catchAll((e) => Channel.write(chunk.drop(index)) > Channel.failSync(e))
 }

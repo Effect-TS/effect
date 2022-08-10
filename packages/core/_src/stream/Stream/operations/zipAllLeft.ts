@@ -8,15 +8,12 @@
  * @tsplus static effect/core/stream/Stream.Aspects zipAllLeft
  * @tsplus pipeable effect/core/stream/Stream zipAllLeft
  */
-export function zipAllLeft<A, R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>,
-  def: LazyArg<A>
-) {
+export function zipAllLeft<A, R2, E2, A2>(that: Stream<R2, E2, A2>, def: A) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
     self.zipAllWith(
       that,
       identity,
-      def,
+      () => def,
       (a, _) => a
     )
 }

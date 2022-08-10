@@ -5,10 +5,10 @@
  * @tsplus static effect/core/stm/STM.Ops collectFirst
  */
 export function collectFirst<R, E, A, B>(
-  as: LazyArg<Collection<A>>,
+  as: Collection<A>,
   f: (a: A) => STM<R, E, Maybe<B>>
 ): STM<R, E, Maybe<B>> {
-  return STM.sync(as).flatMap((collection) => loop(collection[Symbol.iterator](), f))
+  return STM.suspend(loop(as[Symbol.iterator](), f))
 }
 
 function loop<R, E, A, B>(

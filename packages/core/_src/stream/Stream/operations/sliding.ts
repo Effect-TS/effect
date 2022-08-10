@@ -13,7 +13,7 @@ import { RingBufferNew } from "@effect/core/support/RingBufferNew"
 export function sliding(chunkSize: number, stepSize = 1) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
     if (chunkSize <= 0 || stepSize <= 0) {
-      return Stream.die(
+      return Stream.dieSync(
         new IllegalArgumentException(
           "Invalid bounds - `chunkSize` and `stepSize` must be greater than 0"
         )
@@ -53,7 +53,7 @@ function reader<E, A>(
         stepSize,
         queue,
         queueSize,
-        Channel.failCause(cause)
+        Channel.failCauseSync(cause)
       ),
     () => emitOnStreamEnd<E, A>(chunkSize, stepSize, queue, queueSize, Channel.unit)
   )

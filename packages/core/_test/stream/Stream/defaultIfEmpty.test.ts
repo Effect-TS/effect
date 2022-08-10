@@ -26,7 +26,7 @@ describe.concurrent("Stream", () => {
 
     it("should throw correct error from default stream", async () => {
       const program = Stream.empty
-        .defaultIfEmpty(Stream.fail("ouch"))
+        .defaultIfEmpty(Stream.failSync("ouch"))
         .runCollect
         .either
 

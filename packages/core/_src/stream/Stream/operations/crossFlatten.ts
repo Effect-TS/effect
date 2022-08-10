@@ -14,16 +14,13 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus static effect/core/stream/Stream.Aspects crossFlatten
  * @tsplus pipeable effect/core/stream/Stream crossFlatten
  */
-export function crossFlatten<R2, E2, A2>(
-  that: LazyArg<Stream<R2, E2, A2>>
-) {
+export function crossFlatten<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, MergeTuple<A, A2>> => {
     concreteStream(self)
     return new StreamInternal(
       self.channel.concatMap((a) => {
-        const that0 = that()
-        concreteStream(that0)
-        return that0.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple.mergeTuple(a, b))))
+        concreteStream(that)
+        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple.mergeTuple(a, b))))
       })
     )
   }

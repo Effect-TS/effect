@@ -12,6 +12,9 @@ export function filterOrFail<A, E1>(
   f: Predicate<A>,
   e: LazyArg<E1>
 ): <R, E>(self: STM<R, E, A>) => STM<R, E | E1, A>
-export function filterOrFail<A, E1>(f: Predicate<A>, e: LazyArg<E1>) {
-  return <R, E>(self: STM<R, E, A>): STM<R, E | E1, A> => self.filterOrElse(f, STM.fail(e))
+export function filterOrFail<A, E1>(
+  f: Predicate<A>,
+  e: LazyArg<E1>
+) {
+  return <R, E>(self: STM<R, E, A>): STM<R, E | E1, A> => self.filterOrElse(f, STM.failSync(e))
 }

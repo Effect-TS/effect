@@ -24,7 +24,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("zip", () => {
     it("doesn't pull too much when one of the streams is done", async () => {
       const left = Stream.fromChunks(Chunk(1, 2), Chunk(3, 4), Chunk(5)) +
-        Stream.fail("nothing to see here")
+        Stream.failSync("nothing to see here")
       const right = Stream.fromChunks(Chunk("a", "b"), Chunk("c"))
       const program = left.zip(right).runCollect
 
@@ -52,7 +52,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("zipWith", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
-        .zipWith(Stream.fail("ouch"), () => Maybe.none)
+        .zipWith(Stream.failSync("ouch"), () => Maybe.none)
         .runCollect
         .either
 
@@ -81,7 +81,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("zipAll", () => {
     it("prioritizes failure", async () => {
       const program = Stream.never
-        .zipAll(Stream.fail("ouch"), Maybe.none, Maybe.none)
+        .zipAll(Stream.failSync("ouch"), Maybe.none, Maybe.none)
         .runCollect
         .either
 

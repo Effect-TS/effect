@@ -5,7 +5,7 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.makeCommit(0))
         .bind(
           "either",
-          ({ tRef }) => (tRef.update((n) => n + 10) > STM.fail("error")).commit.either
+          ({ tRef }) => (tRef.update((n) => n + 10) > STM.failSync("error")).commit.either
         )
         .bind("value", ({ tRef }) => tRef.get.commit)
 
@@ -20,7 +20,7 @@ describe.concurrent("STM", () => {
         .bind("tRef", () => TRef.makeCommit(0))
         .bind(
           "either",
-          ({ tRef }) => (tRef.update((n) => n + 10) > STM.fail("error")).commit.ignore
+          ({ tRef }) => (tRef.update((n) => n + 10) > STM.failSync("error")).commit.ignore
         )
         .bind("value", ({ tRef }) => tRef.get.commit)
 

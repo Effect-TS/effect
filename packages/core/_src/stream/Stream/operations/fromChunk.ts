@@ -5,10 +5,6 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  *
  * @tsplus static effect/core/stream/Stream.Ops fromChunk
  */
-export function fromChunk<A>(
-  chunk: LazyArg<Chunk<A>>
-): Stream<never, never, A> {
-  return new StreamInternal(
-    Channel.sync(chunk).flatMap((chunk) => chunk.isEmpty ? Channel.unit : Channel.write(chunk))
-  )
+export function fromChunk<A>(chunk: Chunk<A>): Stream<never, never, A> {
+  return new StreamInternal(chunk.isEmpty ? Channel.unit : Channel.write(chunk))
 }

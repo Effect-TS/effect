@@ -10,7 +10,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects provideEnvironment
  * @tsplus pipeable effect/core/stream/Stream provideEnvironment
  */
-export function provideEnvironment<R>(env: LazyArg<Env<R>>) {
+export function provideEnvironment<R>(env: Env<R>) {
   return <E, A>(self: Stream<R, E, A>): Stream<never, E, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel.provideEnvironment(env))

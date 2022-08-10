@@ -11,7 +11,7 @@ export function get<A>(index: number) {
   return (self: TArray<A>): STM<never, never, A> => {
     concreteTArray(self)
     if (!Number.isInteger(index) || index < 0 || index >= self.chunk.length) {
-      return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
+      return STM.dieSync(new IndexOutOfBounds(index, 0, self.chunk.length))
     }
     return self.chunk[index].value!.get
   }

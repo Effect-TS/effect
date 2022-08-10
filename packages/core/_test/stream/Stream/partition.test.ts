@@ -39,7 +39,7 @@ describe.concurrent("Stream", () => {
     it("errors", async () => {
       const program = Effect.scoped(
         Stream.range(0, 1)
-          .concat(Stream.fail("boom"))
+          .concat(Stream.failSync("boom"))
           .partitionEither((i) =>
             i % 2 === 0
               ? Effect.succeed(Either.left(i))

@@ -32,7 +32,7 @@ export function takeRight(n: number) {
               input.forEach((a) => queue.put(a))
               return reader
             },
-            (err) => Channel.fail(err),
+            (err) => Channel.failSync(err),
             () => Channel.write(queue.toChunk()) > Channel.unit
           )
           return self.channel >> reader

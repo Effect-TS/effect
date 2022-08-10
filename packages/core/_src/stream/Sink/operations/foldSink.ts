@@ -46,12 +46,9 @@ export function foldSink_<
               leftoversRef.getAndSet(Chunk.empty())
             ).flatMap((chunk) => Channel.writeChunk(chunk as unknown as Chunk<Chunk<In1 & In2>>))
             const passThrough = Channel.identity<never, Chunk<In1 & In2>, unknown>()
-            const continuationSink = refReader.zipRight(passThrough).pipeTo(() => {
-              const result = success(z)
-              concreteSink(result)
-              return result.channel
-            })
-
+            const result = success(z)
+            concreteSink(result)
+            const continuationSink = refReader.zipRight(passThrough).pipeTo(result.channel)
             return continuationSink
               .doneCollect
               .flatMap(

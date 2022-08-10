@@ -15,9 +15,7 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects interruptWhen
  * @tsplus pipeable effect/core/stream/Stream interruptWhen
  */
-export function interruptWhen<R2, E2, Z>(
-  effect: LazyArg<Effect<R2, E2, Z>>
-) {
+export function interruptWhen<R2, E2, Z>(effect: Effect<R2, E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(self.channel.interruptWhen(effect))

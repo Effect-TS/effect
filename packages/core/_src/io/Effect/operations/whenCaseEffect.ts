@@ -5,8 +5,8 @@
  * @tsplus static effect/core/io/Effect.Ops whenCaseEffect
  */
 export function whenCaseEffect<R, E, A, R1, E1, B>(
-  a: Effect<R, E, A>,
+  effect: Effect<R, E, A>,
   pf: (a: A) => Maybe<Effect<R1, E1, B>>
 ): Effect<R | R1, E | E1, Maybe<B>> {
-  return a.flatMap((a) => Effect.whenCase(a, pf))
+  return effect.flatMap((a) => Effect.whenCase(a, pf))
 }

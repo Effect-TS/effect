@@ -4,8 +4,6 @@
  *
  * @tsplus static effect/core/stm/STM.Ops collectAll
  */
-export function collectAll<R, E, A>(
-  as: LazyArg<Collection<STM<R, E, A>>>
-): STM<R, E, Chunk<A>> {
+export function collectAll<R, E, A>(as: Collection<STM<R, E, A>>): STM<R, E, Chunk<A>> {
   return STM.forEach(as, identity)
 }

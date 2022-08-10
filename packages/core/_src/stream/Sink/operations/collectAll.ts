@@ -12,7 +12,7 @@ function loop<In>(
 ): Channel<never, never, Chunk<In>, unknown, never, never, Chunk<In>> {
   return Channel.readWithCause(
     (chunk: Chunk<In>) => loop<In>(acc + chunk),
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => Channel.sync(acc)
   )
 }

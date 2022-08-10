@@ -35,7 +35,7 @@ function writer<R, E, A>(
       )
       return Channel.write(newChunk) > writer<R, E, A>(newLast, f)
     },
-    (cause) => Channel.failCause(cause),
+    (cause) => Channel.failCauseSync(cause),
     () => Channel.unit
   )
 }

@@ -16,5 +16,5 @@ export function filterOrDie<A>(
   f: Predicate<A>,
   defect: LazyArg<unknown>
 ) {
-  return <R, E>(self: STM<R, E, A>): STM<R, E, A> => self.filterOrElse(f, STM.die(defect))
+  return <R, E>(self: STM<R, E, A>): STM<R, E, A> => self.filterOrElse(f, STM.dieSync(defect))
 }

@@ -37,7 +37,7 @@ describe.concurrent("Stream", () => {
 
       it("round trip #2", async () => {
         const xss = Stream.fromCollection(Chunk(1, 2, 3))
-        const stream = xss + Stream.fail("ouch")
+        const stream = xss + Stream.failSync("ouch")
         const program = Effect.Do()
           .bind("res1", () => stream.runCollect.exit)
           .bind("res2", () => stream.either.absolve.runCollect.exit)

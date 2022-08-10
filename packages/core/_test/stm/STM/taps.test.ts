@@ -66,7 +66,7 @@ describe.concurrent("STM", () => {
       const tx = Do(($) => {
         const tapSuccess = $(TDeferred.make<never, number>())
         const tapError = $(TDeferred.make<never, string>())
-        const succeededSTM: STM<never, string, number> = STM.fail("error")
+        const succeededSTM: STM<never, string, number> = STM.failSync("error")
         const result = $(
           succeededSTM.tapBoth(e => tapError.succeed(e), a => tapSuccess.succeed(a)).either
         )
@@ -83,7 +83,7 @@ describe.concurrent("STM", () => {
     // it("tapError should apply the transactional function to the error result while keeping the effect itself", async () => {
     //   const tx = Do(($) => {
     //     const errorRef = $(TDeferred.make<never, string>())
-    //     const failedStm = STM.fail("error") > STM.succeed(0)
+    //     const failedStm = STM.failSync("error") > STM.succeed(0)
     //     const result = $(failedStm.tapError((e) => errorRef.succeed(e).either))
     //     const tappedError = $(errorRef.await)
 

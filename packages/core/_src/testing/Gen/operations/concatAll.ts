@@ -5,6 +5,6 @@
  *
  * @tsplus static effect/core/testing/Gen.Ops concatAll
  */
-export function concatAll<R, A>(gens: LazyArg<Collection<Gen<R, A>>>): Gen<R, A> {
-  return Gen.suspend(gens().reduce(Gen.empty as Gen<R, A>, (acc, curr) => acc.concat(curr)))
+export function concatAll<R, A>(gens: Collection<Gen<R, A>>): Gen<R, A> {
+  return Gen.suspend(gens.reduce(Gen.empty as Gen<R, A>, (acc, curr) => acc.concat(curr)))
 }

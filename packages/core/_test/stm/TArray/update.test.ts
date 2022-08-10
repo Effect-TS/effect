@@ -65,7 +65,7 @@ describe.concurrent("TArray", () => {
         .commit
         .flatMap((tArray) =>
           tArray
-            .updateSTM(0, () => STM.fail(boom))
+            .updateSTM(0, () => STM.failSync(boom))
             .commit
             .flip
         )

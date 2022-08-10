@@ -4,8 +4,8 @@
  *
  * @tsplus static effect/core/stm/STM.Ops dieMessage
  */
-export function dieMessage(message: LazyArg<string>): STM<never, never, never> {
+export function dieMessage(message: string): STM<never, never, never> {
   return STM.sync(() => {
-    throw new RuntimeError(message())
+    throw new RuntimeError(message)
   })
 }

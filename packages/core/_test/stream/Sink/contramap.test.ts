@@ -10,7 +10,7 @@ describe.concurrent("Sink", () => {
 
     it("error", () =>
       Do(($) => {
-        const sink = Sink.fail("ouch").contramap((s: string) => Number.parseInt(s))
+        const sink = Sink.failSync("ouch").contramap((s: string) => Number.parseInt(s))
         const stream = Stream("1", "2", "3")
         const result = $(stream.run(sink).either)
         assert.isTrue(result == Either.left("ouch"))
@@ -29,7 +29,7 @@ describe.concurrent("Sink", () => {
 
     it("error", () =>
       Do(($) => {
-        const sink = Sink.fail("ouch")
+        const sink = Sink.failSync("ouch")
           .contramapChunks((chunk: Chunk<string>) => chunk.map((s) => Number.parseInt(s)))
         const stream = Stream("1", "2", "3")
         const result = $(stream.run(sink).either)
@@ -49,7 +49,7 @@ describe.concurrent("Sink", () => {
 
     it("error", () =>
       Do(($) => {
-        const sink = Sink.fail("ouch")
+        const sink = Sink.failSync("ouch")
           .contramapEffect((s: string) => Effect.attempt(Number.parseInt(s)))
         const stream = Stream("1", "2", "3")
         const result = $(stream.run(sink).either)
@@ -87,7 +87,7 @@ describe.concurrent("Sink", () => {
 
     it("error", () =>
       Do(($) => {
-        const sink = Sink.fail("ouch").contramapChunksEffect((chunk: Chunk<string>) =>
+        const sink = Sink.failSync("ouch").contramapChunksEffect((chunk: Chunk<string>) =>
           Effect.forEach(chunk, (s) => Effect.attempt(Number.parseInt(s)))
         )
         const stream = Stream("1", "2", "3")

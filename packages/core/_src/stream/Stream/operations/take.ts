@@ -12,7 +12,7 @@ import {
 export function take(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     if (!Number.isInteger(n)) {
-      return Stream.die(new IllegalArgumentException(`${n} must be an integer`))
+      return Stream.dieSync(new IllegalArgumentException(`${n} must be an integer`))
     }
     concreteStream(self)
     return new StreamInternal(
@@ -33,7 +33,7 @@ function loop<R, E, A>(
         ? Channel.write(taken) > loop<R, E, A>(leftover)
         : Channel.write(taken)
     },
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     (done) => Channel.sync(done)
   )
 }

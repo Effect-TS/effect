@@ -6,7 +6,7 @@ import { Fail } from "@effect/core/stream/Channel/definition/primitives"
  * @tsplus static effect/core/stream/Channel.Ops failCause
  */
 export function failCause<E>(
-  cause: LazyArg<Cause<E>>
+  cause: Cause<E>
 ): Channel<never, unknown, unknown, unknown, E, never, never> {
-  return new Fail(cause)
+  return new Fail(() => cause)
 }

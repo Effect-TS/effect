@@ -27,16 +27,17 @@ function loop<E, A, R1, E1>(
   const next = chunkIterator.next()
   if (next.done) {
     return Channel.readWithCause(
-      elem => loop(elem[Symbol.iterator](), f),
-      err => Channel.failCause(err),
-      done => Channel.sync(done)
+      (elem) => loop(elem[Symbol.iterator](), f),
+      (err) => Channel.failCauseSync(err),
+      (done) => Channel.sync(done)
     )
   } else {
     return Channel.unwrap(
       f(next.value).map(b =>
         b
-          ? Channel.write(Chunk.single(next.value)) >
+          ? Channel.write(Chunk.single(next.value)).flatMap(() =>
             loop<E, A, R1, E1>(chunkIterator, f)
+          )
           : loop<E, A, R1, E1>(chunkIterator, f)
       )
     )

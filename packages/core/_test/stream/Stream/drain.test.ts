@@ -22,7 +22,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .bind(
           "res",
-          ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.fail("fail")).runDrain.either
+          ({ ref }) => (Stream(1).tap((n) => ref.set(n)) + Stream.failSync("fail")).runDrain.either
         )
         .bind("refRes", ({ ref }) => ref.get)
 
@@ -70,7 +70,7 @@ describe.concurrent("Stream", () => {
     })
 
     it("fails the foreground stream if the background fails with a typed error", async () => {
-      const program = Stream.never.drainFork(Stream.fail("boom")).runDrain
+      const program = Stream.never.drainFork(Stream.failSync("boom")).runDrain
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -79,7 +79,7 @@ describe.concurrent("Stream", () => {
 
     it("fails the foreground stream if the background fails with a defect", async () => {
       const error = new RuntimeError("boom")
-      const program = Stream.never.drainFork(Stream.die(error)).runDrain
+      const program = Stream.never.drainFork(Stream.dieSync(error)).runDrain
 
       const result = await program.unsafeRunPromiseExit()
 

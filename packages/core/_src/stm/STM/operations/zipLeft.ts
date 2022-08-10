@@ -6,6 +6,6 @@
  * @tsplus static effect/core/stm/STM.Aspects zipLeft
  * @tsplus pipeable effect/core/stm/STM zipLeft
  */
-export function zipLeft<R1, E1, A1>(that: LazyArg<STM<R1, E1, A1>>) {
+export function zipLeft<R1, E1, A1>(that: STM<R1, E1, A1>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E | E1, A> => self.zipWith(that, (a, _) => a)
 }

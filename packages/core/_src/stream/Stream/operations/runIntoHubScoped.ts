@@ -5,9 +5,7 @@
  * @tsplus static effect/core/stream/Stream.Aspects runIntoHubScoped
  * @tsplus pipeable effect/core/stream/Stream runIntoHubScoped
  */
-export function runIntoHubScoped<E1, A>(
-  hub: LazyArg<Hub<Take<E1, A>>>
-) {
+export function runIntoHubScoped<E1, A>(hub: Hub<Take<E1, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> =>
     self.runIntoQueueScoped(hub)
 }

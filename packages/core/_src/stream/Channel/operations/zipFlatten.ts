@@ -10,7 +10,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/stream/Channel zipFlatten
  */
 export function zipFlatten<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
-  that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>
+  that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
 ) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -22,5 +22,5 @@ export function zipFlatten<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, Ou
     OutErr | OutErr1,
     OutElem | OutElem1,
     MergeTuple<OutDone, OutDone1>
-  > => self.flatMap((a) => that().map((b) => Tuple.mergeTuple(a, b)))
+  > => self.flatMap((a) => that.map((b) => Tuple.mergeTuple(a, b)))
 }

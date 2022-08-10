@@ -5,7 +5,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/stream/Sink zipFlatten
  */
 export function zipFlatten<R1, E1, In, In1 extends In, L, L1 extends L, Z1>(
-  that: LazyArg<Sink<R1, E1, In1, L1, Z1>>
+  that: Sink<R1, E1, In1, L1, Z1>
 ) {
   return <R, E, Z>(
     self: Sink<R, E, In, L, Z>

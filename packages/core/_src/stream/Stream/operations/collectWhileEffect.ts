@@ -29,7 +29,7 @@ function loop<E, A, R1, E1, A1>(
   if (next.done) {
     return Channel.readWithCause(
       elem => loop(elem[Symbol.iterator](), pf),
-      err => Channel.failCause(err),
+      err => Channel.failCauseSync(err),
       done => Channel.sync(done)
     )
   } else {
@@ -37,10 +37,8 @@ function loop<E, A, R1, E1, A1>(
       pf(next.value).fold(
         () => Effect.sync(Channel.unit),
         effect =>
-          effect.map(
-            a1 =>
-              Channel.write(Chunk.single(a1)) >
-                loop<E, A, R1, E1, A1>(chunkIterator, pf)
+          effect.map(a1 =>
+            Channel.write(Chunk.single(a1)).flatMap(() => loop<E, A, R1, E1, A1>(chunkIterator, pf))
           )
       )
     )

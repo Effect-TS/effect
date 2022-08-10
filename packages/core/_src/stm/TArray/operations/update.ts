@@ -12,7 +12,7 @@ export function update<A>(index: number, f: (a: A) => A) {
     if (0 <= index && index < self.chunk.length) {
       return self.chunk.unsafeGet(index)!.update(f)
     } else {
-      return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
+      return STM.dieSync(new IndexOutOfBounds(index, 0, self.chunk.length))
     }
   }
 }

@@ -5,7 +5,7 @@ describe.concurrent("Stream", () => {
         const ref = $(Ref.make(0))
         const effect = ref.getAndUpdate((n) => n + 1)
         const schedule = Schedule.repeatForever
-        const stream = Stream.fromEffect(effect).concat(Stream.fail(Maybe.none)).retry(schedule)
+        const stream = Stream.fromEffect(effect).concat(Stream.failSync(Maybe.none)).retry(schedule)
         const result = $(stream.take(2).runCollect)
         assert.isTrue(result == Chunk(0, 1))
       }).unsafeRunPromise())
@@ -15,7 +15,7 @@ describe.concurrent("Stream", () => {
         const ref = $(Ref.make(0))
         const effect = Effect.addFinalizer(ref.getAndUpdate((n) => n + 1))
         const schedule = Schedule.repeatForever
-        const innerStream = Stream.fromEffect(ref.get).concat(Stream.fail(Maybe.none))
+        const innerStream = Stream.fromEffect(ref.get).concat(Stream.failSync(Maybe.none))
         const stream = Stream.unwrapScoped(effect.as(innerStream)).retry(schedule)
         const result = $(stream.take(2).runCollect)
         assert.isTrue(result == Chunk(0, 1))
@@ -28,7 +28,7 @@ describe.concurrent("Stream", () => {
           .flatMap((time) => times.update((list) => list.prepend(time)))
         const schedule = Schedule.exponential((1).seconds)
         const stream = Stream.fromEffect(effect)
-          .flatMap(() => Stream.fail(Maybe.none))
+          .flatMap(() => Stream.failSync(Maybe.none))
           .retry(schedule)
           .take(3)
         const fiber = $(stream.runDrain.fork)
@@ -51,7 +51,7 @@ describe.concurrent("Stream", () => {
           .flatMap((attemptNumber) =>
             attemptNumber === 3 || attemptNumber === 5 ?
               Stream.sync(attemptNumber) :
-              Stream.fail(Maybe.none)
+              Stream.failSync(Maybe.none)
           )
           .forever
           .retry(schedule)

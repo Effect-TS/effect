@@ -5,6 +5,6 @@
  *
  * @tsplus static effect/core/testing/TestClock.Ops sleep
  */
-export function sleep(duration: LazyArg<Duration>): Effect<never, never, void> {
-  return TestClock.testClockWith((testClock) => testClock.sleep(duration()))
+export function sleep(duration: Duration): Effect<never, never, void> {
+  return TestClock.testClockWith((testClock) => testClock.sleep(duration))
 }

@@ -9,11 +9,11 @@ import {
  * @tsplus static effect/core/stream/Sink.Ops unwrap
  */
 export function unwrap<R, E, In, L, Z>(
-  effect: LazyArg<Effect<R, E, Sink<R, E, In, L, Z>>>
+  effect: Effect<R, E, Sink<R, E, In, L, Z>>
 ): Sink<R, E, In, L, Z> {
   return new SinkInternal(
     Channel.unwrap(
-      effect().map((sink) => {
+      effect.map((sink) => {
         concreteSink(sink)
         return sink.channel
       })

@@ -9,15 +9,11 @@ import {
  * @tsplus static effect/core/stream/Stream.Aspects mapAccum
  * @tsplus pipeable effect/core/stream/Stream mapAccum
  */
-export function mapAccum<A, S, A1>(
-  s: LazyArg<S>,
-  f: (s: S, a: A) => Tuple<[S, A1]>
-) {
-  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> =>
-    Stream.sync(s).flatMap((s) => {
-      concreteStream(self)
-      return new StreamInternal(self.channel >> accumulator<E, A, S, A1>(s, f))
-    })
+export function mapAccum<A, S, A1>(s: S, f: (s: S, a: A) => Tuple<[S, A1]>) {
+  return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> => {
+    concreteStream(self)
+    return new StreamInternal(self.channel >> accumulator<E, A, S, A1>(s, f))
+  }
 }
 
 function accumulator<E, A, S, A1>(
@@ -31,7 +27,7 @@ function accumulator<E, A, S, A1>(
       } = input.mapAccum(current, f)
       return Channel.write(a1s) > accumulator<E, A, S, A1>(nextS, f)
     },
-    (err: E) => Channel.fail(err),
+    (err: E) => Channel.failSync(err),
     () => Channel.unit
   )
 }

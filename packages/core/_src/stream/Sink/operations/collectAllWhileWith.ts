@@ -12,7 +12,7 @@ import {
  * @tsplus pipeable effect/core/stream/Sink collectAllWhileWith
  */
 export function collectAllWhileWith<Z, S>(
-  z: LazyArg<S>,
+  z: S,
   p: Predicate<Z>,
   f: (s: S, z: Z) => S
 ) {
@@ -31,12 +31,12 @@ export function collectAllWhileWith<Z, S>(
             unknown
           > = Channel.readWith(
             (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-            (err) => Channel.fail(() => err),
+            (err) => Channel.failSync(() => err),
             (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
           )
           return (
             (upstreamMarker >> Channel.bufferChunk<In, never, unknown>(leftoversRef)) >>
-            loop(self, leftoversRef, upstreamDoneRef, z(), p, f)
+            loop(self, leftoversRef, upstreamDoneRef, z, p, f)
           )
         }
       )
@@ -54,7 +54,7 @@ function loop<R, E, In, L extends In, Z, S>(
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, S> {
   concreteSink(self)
   return self.channel.doneCollect.foldChannel(
-    (err) => Channel.fail(err),
+    (err) => Channel.failSync(err),
     ({ tuple: [leftovers, doneValue] }) =>
       p(doneValue)
         ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >

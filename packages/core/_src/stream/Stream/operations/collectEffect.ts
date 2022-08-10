@@ -27,9 +27,9 @@ function loop<E, A, R1, E1, A1>(
   const next = chunkIterator.next()
   if (next.done) {
     return Channel.readWithCause(
-      elem => loop(elem[Symbol.iterator](), pf),
-      err => Channel.failCause(err),
-      done => Channel.sync(done)
+      (elem) => loop(elem[Symbol.iterator](), pf),
+      (err) => Channel.failCauseSync(err),
+      (done) => Channel.sync(done)
     )
   } else {
     return Channel.unwrap(
@@ -38,8 +38,9 @@ function loop<E, A, R1, E1, A1>(
         effect =>
           effect.map(
             a1 =>
-              Channel.write(Chunk.single(a1)) >
+              Channel.write(Chunk.single(a1)).flatMap(() =>
                 loop<E, A, R1, E1, A1>(chunkIterator, pf)
+              )
           )
       )
     )

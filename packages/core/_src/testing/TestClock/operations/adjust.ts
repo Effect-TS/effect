@@ -5,6 +5,6 @@
  *
  * @tsplus static effect/core/testing/TestClock.Ops adjust
  */
-export function adjust(duration: LazyArg<Duration>): Effect<never, never, void> {
-  return TestClock.testClockWith((testClock) => testClock.adjust(duration()))
+export function adjust(duration: Duration): Effect<never, never, void> {
+  return TestClock.testClockWith((testClock) => testClock.adjust(duration))
 }

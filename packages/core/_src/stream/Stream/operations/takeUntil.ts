@@ -18,7 +18,7 @@ export function takeUntil<A>(f: Predicate<A>) {
         const last = chunk.drop(taken.length).take(1)
         return last.isEmpty ? Channel.write(taken) > loop : Channel.write(taken + last)
       },
-      (err) => Channel.fail(err),
+      (err) => Channel.failSync(err),
       (done) => Channel.sync(done)
     )
     concreteStream(self)

@@ -12,8 +12,8 @@ export function refineOrDieWith<E, E1>(
   return <R, A>(self: STM<R, E, A>): STM<R, E1, A> =>
     self.catchAll((e) =>
       pf(e).fold(
-        () => STM.dieNow(f(e)),
-        (e1) => STM.failNow(e1)
+        () => STM.dieSync(f(e)),
+        (e1) => STM.fail(e1)
       )
     )
 }

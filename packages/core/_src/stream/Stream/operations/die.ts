@@ -3,8 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops die
  */
-export function die(
-  defect: LazyArg<unknown>
-): Stream<never, never, never> {
-  return Stream.fromEffect(Effect.dieSync(defect))
+export function die(defect: unknown): Stream<never, never, never> {
+  return Stream.fromEffect(Effect.die(defect))
 }

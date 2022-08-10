@@ -16,9 +16,9 @@
  */
 export function zipAllSortedByKey<K, R2, E2, A, A2>(
   ord: Ord<K>,
-  that: LazyArg<SortedByKey<R2, E2, K, A2>>,
-  defaultLeft: LazyArg<A>,
-  defaultRight: LazyArg<A2>
+  that: SortedByKey<R2, E2, K, A2>,
+  defaultLeft: A,
+  defaultRight: A2
 ) {
   return <R, E>(
     self: SortedByKey<R, E, K, A>
@@ -26,8 +26,8 @@ export function zipAllSortedByKey<K, R2, E2, A, A2>(
     self.zipAllSortedByKeyWith(
       ord,
       that,
-      (a) => Tuple(a, defaultRight()),
-      (b) => Tuple(defaultLeft(), b),
+      (a) => Tuple(a, defaultRight),
+      (b) => Tuple(defaultLeft, b),
       (a, b) => Tuple(a, b)
     )
 }

@@ -7,5 +7,5 @@
  */
 export function find<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
   return (self: TMap<K, V>): STM<never, never, Maybe<A>> =>
-    self.findSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeed))
+    self.findSTM((kv) => pf(kv).fold(STM.failSync(Maybe.none), STM.succeed))
 }

@@ -19,13 +19,13 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * @tsplus static effect/core/stream/Sink.Ops foldWeightedDecompose
  */
 export function foldWeightedDecompose<S, In>(
-  z: LazyArg<S>,
+  z: S,
   costFn: (s: S, input: In) => number,
   max: number,
   decompose: (input: In) => Chunk<In>,
   f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
-  return Sink.suspend(new SinkInternal(go(z(), costFn, decompose, f, false, 0, max)))
+  return Sink.suspend(new SinkInternal(go(z, costFn, decompose, f, false, 0, max)))
 }
 
 function go<S, In>(
@@ -53,7 +53,7 @@ function go<S, In>(
 
       return go(nextS, costFn, decompose, f, nextDirty, nextCost, max)
     },
-    (err) => Channel.fail(() => err),
+    (err) => Channel.failSync(() => err),
     () => Channel.succeed(s)
   )
 }

@@ -16,7 +16,7 @@ export function updateSTM<E, A>(index: number, f: (a: A) => STM<never, E, A>) {
         return $(self.chunk.unsafeGet(index)!.set(newVal))
       })
     } else {
-      return STM.die(new IndexOutOfBounds(index, 0, self.chunk.length))
+      return STM.dieSync(new IndexOutOfBounds(index, 0, self.chunk.length))
     }
   }
 }
