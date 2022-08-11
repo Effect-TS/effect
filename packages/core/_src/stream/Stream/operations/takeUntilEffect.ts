@@ -16,7 +16,7 @@ export function takeUntilEffect<A, R2, E2>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(
-      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
+      self.channel >> loop<E, A, R2, E2>(Chunk.empty<A>()[Symbol.iterator](), f)
     )
   }
 }

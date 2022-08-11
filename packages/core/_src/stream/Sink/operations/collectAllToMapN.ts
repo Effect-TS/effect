@@ -11,7 +11,7 @@ export function collectAllToMapN<In, K>(
   f: (in1: In, in2: In) => In
 ): Sink<never, never, In, In, HashMap<K, In>> {
   return Sink.foldWeighted(
-    HashMap.empty(),
+    HashMap.empty<K, In>(),
     (acc, in_) => (acc.has(key(in_)) ? 0 : 1),
     n,
     (acc, in_) => {

@@ -7,7 +7,7 @@ export function collectAllToSetN<In>(
   n: number
 ): Sink<never, never, In, In, HashSet<In>> {
   return Sink.foldWeighted(
-    HashSet.empty(),
+    HashSet.empty<In>(),
     (set, a) => (set.has(a) ? 0 : 1),
     n,
     (set, a) => set.add(a)

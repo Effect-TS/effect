@@ -13,17 +13,22 @@ export interface StateOps {}
 export const State: StateOps = {}
 
 /**
- * @tsplus unify effect/core/stm/STM/State
+ * @tsplus unify effect/core/stm/STM/State/Done
+ * @tsplus unify effect/core/stm/STM/State/Interrupted
+ * @tsplus unify effect/core/stm/STM/State/Running
  */
 export function unifyState<X extends State<any, any>>(
   self: X
 ): State<
-  [X] extends [State<infer EX, any>] ? EX : never,
-  [X] extends [State<any, infer AX>] ? AX : never
+  X extends Done<infer EX, any> ? EX : never,
+  X extends Done<any, infer AX> ? AX : never
 > {
   return self
 }
 
+/**
+ * @tsplus type effect/core/stm/STM/State/Done
+ */
 export class Done<E, A> implements Equals {
   readonly _tag = "Done"
 
@@ -40,6 +45,9 @@ export class Done<E, A> implements Equals {
   }
 }
 
+/**
+ * @tsplus type effect/core/stm/STM/State/Interrupted
+ */
 export class Interrupted implements Equals {
   readonly _tag = "Interrupted"
 
@@ -54,6 +62,9 @@ export class Interrupted implements Equals {
   }
 }
 
+/**
+ * @tsplus type effect/core/stm/STM/State/Running
+ */
 export class Running implements Equals {
   readonly _tag = "Running"
 

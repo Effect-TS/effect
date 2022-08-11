@@ -13,21 +13,27 @@ export interface FiberStateOps {}
 export const FiberState: FiberStateOps = {}
 
 /**
- * @tsplus unify effect/core/io/Fiber/State
+ * @tsplus unify effect/core/io/Fiber/State/Executing
+ * @tsplus unify effect/core/io/Fiber/State/Done
  */
 export function unifyFiberState<X extends FiberState<any, any>>(
   self: X
 ): FiberState<
-  [X] extends [FiberState<infer EX, any>] ? EX : never,
-  [X] extends [FiberState<any, infer AX>] ? AX : never
+  [X] extends [{ _E: () => infer E }] ? E : never,
+  [X] extends [{ _A: () => infer A }] ? A : never
 > {
   return self
 }
 
 export type Callback<E, A> = (exit: Exit<E, A>) => void
 
+/**
+ * @tsplus type effect/core/io/Fiber/State/Executing
+ */
 export class Executing<E, A> {
   readonly _tag = "Executing"
+  readonly _E!: () => E
+  readonly _A!: () => A
 
   constructor(
     readonly status: FiberStatus,
@@ -39,8 +45,13 @@ export class Executing<E, A> {
   ) {}
 }
 
+/**
+ * @tsplus type effect/core/io/Fiber/State/Done
+ */
 export class Done<E, A> {
   readonly _tag = "Done"
+  readonly _E!: () => E
+  readonly _A!: () => A
 
   readonly suppressed = Cause.empty
   readonly status: FiberStatus = FiberStatus.Done

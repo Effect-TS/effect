@@ -15,7 +15,7 @@ export function collectEffect<A, R2, E2, A2>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)
     return new StreamInternal(
-      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), pf)
+      self.channel >> loop<E, A, R2, E2, A2>(Chunk.empty<A>()[Symbol.iterator](), pf)
     )
   }
 }
@@ -34,7 +34,7 @@ function loop<E, A, R1, E1, A1>(
   } else {
     return Channel.unwrap(
       pf(next.value).fold(
-        () => Effect.sync(loop(chunkIterator, pf)),
+        () => Effect.sync(loop<E, A, R1, E1, A1>(chunkIterator, pf)),
         effect =>
           effect.map(
             a1 =>

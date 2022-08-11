@@ -19,21 +19,30 @@ export const TExit: TExitOps = {
 export interface TExitAspects {}
 
 /**
- * @tsplus unify effect/core/stm/TExit
+ * @tsplus unify effect/core/stm/TExit/Fail
+ * @tsplus unify effect/core/stm/TExit/Die
+ * @tsplus unify effect/core/stm/TExit/Interrupt
+ * @tsplus unify effect/core/stm/TExit/Succeed
+ * @tsplus unify effect/core/stm/TExit/Retry
  */
 export function unifyTExit<X extends TExit<any, any>>(
   self: X
 ): TExit<
-  [X] extends [TExit<infer EX, any>] ? EX : never,
-  [X] extends [TExit<any, infer AX>] ? AX : never
+  [X] extends [{ _E: () => infer E }] ? E : never,
+  [X] extends [{ _A: () => infer A }] ? A : never
 > {
   return self
 }
 
-export class Fail<A> implements Equals {
+/**
+ * @tsplus type effect/core/stm/TExit/Fail
+ */
+export class Fail<E> implements Equals {
   readonly _tag = "Fail"
+  readonly _E!: () => E
+  readonly _A!: () => never
 
-  constructor(readonly value: A) {}
+  constructor(readonly value: E) {}
 
   [Hash.sym](): number {
     return Hash.unknown(this.value)
@@ -44,8 +53,13 @@ export class Fail<A> implements Equals {
   }
 }
 
+/**
+ * @tsplus type effect/core/stm/TExit/Die
+ */
 export class Die implements Equals {
   readonly _tag = "Die"
+  readonly _E!: () => never
+  readonly _A!: () => never
 
   constructor(readonly value: unknown) {}
 
@@ -58,8 +72,13 @@ export class Die implements Equals {
   }
 }
 
+/**
+ * @tsplus type effect/core/stm/TExit/Interrupt
+ */
 export class Interrupt implements Equals {
   readonly _tag = "Interrupt"
+  readonly _E!: () => never
+  readonly _A!: () => never
 
   constructor(readonly fiberId: FiberId) {}
 
@@ -72,10 +91,15 @@ export class Interrupt implements Equals {
   }
 }
 
-export class Succeed<B> implements Equals {
+/**
+ * @tsplus type effect/core/stm/TExit/Succeed
+ */
+export class Succeed<A> implements Equals {
   readonly _tag = "Succeed"
+  readonly _E!: () => never
+  readonly _A!: () => A
 
-  constructor(readonly value: B) {}
+  constructor(readonly value: A) {}
 
   [Hash.sym](): number {
     return Hash.unknown(this.value)
@@ -88,6 +112,9 @@ export class Succeed<B> implements Equals {
 
 const _retryHash = Hash.random()
 
+/**
+ * @tsplus type effect/core/stm/TExit/Retry
+ */
 export class Retry implements Equals {
   readonly _tag = "Retry";
 

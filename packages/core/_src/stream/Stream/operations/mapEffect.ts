@@ -15,7 +15,7 @@ export function mapEffect<A, R1, E1, B>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R1, E | E1, B> => {
     concreteStream(self)
     return new StreamInternal(
-      self.channel >> loop(Chunk.empty<A>()[Symbol.iterator](), f)
+      self.channel >> loop<E, A, R1, E1, B>(Chunk.empty<A>()[Symbol.iterator](), f)
     )
   }
 }

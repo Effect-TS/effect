@@ -1,4 +1,4 @@
-import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk/builder"
+import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk"
 
 /**
  * A sink that collects first `n` elements into a chunk.
