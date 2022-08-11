@@ -58,8 +58,8 @@
     "rimraf": "^3.0.2",
     "typescript": "^4.7.4",
     "ultra-runner": "^3.10.5",
-    "vite": "^3.0.5",
-    "vitest": "0.21.1"
+    "vite": "3.0.5",
+    "vitest": "0.14.2"
   },
   "resolutions": {
     "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd"
