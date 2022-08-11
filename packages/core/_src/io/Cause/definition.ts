@@ -33,7 +33,7 @@ export interface CauseAspects {}
  */
 export function unifyCause<X extends Cause<any>>(
   self: X
-): Cause<[X] extends [Cause<infer CX>] ? CX : never> {
+): Cause<[X] extends [{ [_E]: () => infer E }] ? E : never> {
   return self
 }
 

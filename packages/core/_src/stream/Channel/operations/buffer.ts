@@ -10,7 +10,7 @@ export function buffer<InElem, InErr, InDone>(
   isEmpty: Predicate<InElem>,
   ref: Ref<InElem>
 ): Channel<never, InErr, InElem, InDone, InErr, InElem, InDone> {
-  return Channel.suspend(bufferInternal(empty, isEmpty, ref))
+  return Channel.suspend(bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref))
 }
 
 function bufferInternal<InElem, InErr, InDone>(
@@ -19,7 +19,9 @@ function bufferInternal<InElem, InErr, InDone>(
   ref: Ref<InElem>
 ): Channel<never, InErr, InElem, InDone, InErr, InElem, InDone> {
   return Channel.unwrap(
-    ref.modify((value) =>
+    ref.modify((
+      value
+    ): Tuple<[Channel<never, InErr, InElem, InDone, InErr, InElem, InDone>, InElem]> =>
       isEmpty(value)
         ? Tuple(
           Channel.readWith(

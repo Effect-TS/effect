@@ -53,15 +53,14 @@ export class Failure<E> implements Equals {
 }
 
 /**
- * @tsplus unify effect/core/io/Exit
  * @tsplus unify effect/core/io/Exit/Success
  * @tsplus unify effect/core/io/Exit/Failure
  */
 export function unifyExit<X extends Exit<any, any>>(
   self: X
 ): Exit<
-  [X] extends [Exit<infer EX, any>] ? EX : never,
-  [X] extends [Exit<any, infer AX>] ? AX : never
+  X extends Failure<infer EX> ? EX : never,
+  X extends Success<infer AX> ? AX : never
 > {
   return self
 }
