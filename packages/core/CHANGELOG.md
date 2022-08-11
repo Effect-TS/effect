@@ -1,5 +1,17 @@
 # @effect/core
 
+## 0.0.11
+
+### Patch Changes
+
+- [#1275](https://github.com/Effect-TS/core/pull/1275) [`a64d44296`](https://github.com/Effect-TS/core/commit/a64d442964e419aebcfc9e2f75b23bcc5bde7176) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Upgrade TS+
+
+* [#1268](https://github.com/Effect-TS/core/pull/1268) [`3a86f0a56`](https://github.com/Effect-TS/core/commit/3a86f0a56600eb7dc24699bfd60df99880e67770) Thanks [@IMax153](https://github.com/IMax153)! - remove Chunk methods
+
+- [#1270](https://github.com/Effect-TS/core/pull/1270) [`cbde6137e`](https://github.com/Effect-TS/core/commit/cbde6137edada1e14e600d6b8d4f2ba4a5bfdf87) Thanks [@IMax153](https://github.com/IMax153)! - unify datatype constructors
+
+* [#1272](https://github.com/Effect-TS/core/pull/1272) [`296032dc5`](https://github.com/Effect-TS/core/commit/296032dc52dc157cf1657146a5a8f60f11517ade) Thanks [@IMax153](https://github.com/IMax153)! - remove LazyArg where applicable from io module
+
 ## 0.0.10
 
 ### Patch Changes
