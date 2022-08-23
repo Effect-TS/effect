@@ -11,5 +11,5 @@ export function poll<E, A>(
   self: Fiber<E, A>
 ): Effect<never, never, Maybe<Exit<E, A>>> {
   realFiber(self)
-  return self._poll
+  return self.poll
 }

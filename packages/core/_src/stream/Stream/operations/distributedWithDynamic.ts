@@ -80,7 +80,7 @@ export function distributedWithDynamic<A, E, Z>(
                 (cause) => finalize(Exit.failCause(cause.map(Maybe.some))),
                 () => finalize(Exit.fail(Maybe.none))
               )
-              .fork
+              .forkScoped
           )
           return queuesLock.withPermit(newQueue.get.flatten)
         })

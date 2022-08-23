@@ -1,4 +1,4 @@
-import type { _A, _E, _R } from "@effect/core/io/Effect/definition/base"
+import type { EffectURI } from "@effect/core/io/Effect/definition/base"
 
 /**
  * Applicative structure.
@@ -8,10 +8,10 @@ import type { _A, _E, _R } from "@effect/core/io/Effect/definition/base"
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>
 ): Effect<
-  [NER[keyof NER]] extends [{ [_R]: () => infer R }] ? R : never,
-  [NER[keyof NER]] extends [{ [_E]: () => infer E }] ? E : never,
+  [NER[keyof NER]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
+  [NER[keyof NER]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   {
-    [K in keyof NER]: [NER[K]] extends [{ [_A]: () => infer A }] ? A : never
+    [K in keyof NER]: [NER[K]] extends [{ [EffectURI]: { _A: (_: never) => infer A } }] ? A : never
   }
 > {
   return Effect.forEach(
@@ -34,10 +34,10 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
 export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>
 ): Effect<
-  [NER[keyof NER]] extends [{ [_R]: () => infer R }] ? R : never,
-  [NER[keyof NER]] extends [{ [_E]: () => infer E }] ? E : never,
+  [NER[keyof NER]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
+  [NER[keyof NER]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   {
-    [K in keyof NER]: [NER[K]] extends [{ [_A]: () => infer A }] ? A : never
+    [K in keyof NER]: [NER[K]] extends [{ [EffectURI]: { _A: (_: never) => infer A } }] ? A : never
   }
 > {
   return Effect.forEachPar(

@@ -12,5 +12,9 @@
  */
 export function timeoutTo<A, B, B1>(def: B1, f: (a: A) => B, duration: Duration) {
   return <R, E>(self: Effect<R, E, A>): Effect<R, E, B | B1> =>
-    self.map(f).raceFirst(Effect.sleep(duration).interruptible.as(def))
+    self.map(f).raceFirst(
+      Effect.sleep(duration)
+        .as(def)
+        .interruptible
+    )
 }

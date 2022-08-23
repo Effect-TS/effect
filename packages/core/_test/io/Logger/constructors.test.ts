@@ -16,7 +16,7 @@ describe.concurrent("Logger", () => {
 
     it("none", async () => {
       const program = Effect.log("It's alive!")
-        .apply(Effect.disableLogging)
+        .apply(FiberRef.currentLoggers.locally(HashSet.empty()))
         .zipRight(TestLogger.logOutput)
         .provideLayer(TestLogger.default)
 

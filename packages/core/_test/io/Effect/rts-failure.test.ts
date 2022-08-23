@@ -78,7 +78,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const result = $(ExampleErrorFail.exit)
         assert.isTrue(result == Exit.fail(ExampleError))
-      }).unsafeRunPromiseExit())
+      }).unsafeRunPromise())
 
     it("uncaught sync effect error", () =>
       Do(($) => {
@@ -122,7 +122,7 @@ describe.concurrent("Effect", () => {
           Cause.die(InterruptCause2) +
           Cause.die(InterruptCause3)
         assert.isTrue(result == Exit.failCause(expected))
-      }).unsafeRunPromiseExit())
+      }).unsafeRunPromise())
 
     it("catch failing finalizers with terminate", () =>
       Do(($) => {
@@ -150,7 +150,7 @@ describe.concurrent("Effect", () => {
           Cause.die(InterruptCause2) +
           Cause.die(InterruptCause3)
         assert.isTrue(result == Exit.failCause(expected))
-      }).unsafeRunPromiseExit())
+      }).unsafeRunPromise())
 
     it("run preserves interruption status", () =>
       Do(($) => {
@@ -175,7 +175,7 @@ describe.concurrent("Effect", () => {
           Effect.sleep((5).seconds).zipRight(Effect.sync(true)).timeoutFail(false, (10).millis).exit
         )
         assert.isTrue(result == Exit.fail(false))
-      }).unsafeRunPromiseExit())
+      }).unsafeRunPromise())
 
     it("timeout a long computation with a cause", () =>
       Do(($) => {
@@ -220,6 +220,6 @@ describe.concurrent("Effect", () => {
           }).exit
         )
         assert.isTrue(result == Exit.die(ExampleError))
-      }).unsafeRunPromiseExit())
+      }).unsafeRunPromise())
   })
 })

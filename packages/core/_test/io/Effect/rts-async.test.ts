@@ -20,12 +20,12 @@ describe.concurrent("Effect", () => {
 
     it("deep asyncEffect doesn't block", () =>
       Do(($) => {
-        function asyncIO(cont: Effect.UIO<number>): Effect.UIO<number> {
+        function asyncIO(cont: Effect<never, never, number>): Effect<never, never, number> {
           return Effect.asyncEffect(
             (cb) => Effect.sleep((5).millis) > cont > Effect.sync(cb(Effect.sync(42)))
           )
         }
-        function stackIOs(count: number): Effect.UIO<number> {
+        function stackIOs(count: number): Effect<never, never, number> {
           return count < 0 ? Effect.sync(42) : asyncIO(stackIOs(count - 1))
         }
         const procNum = Effect.sync(os.cpus().length)

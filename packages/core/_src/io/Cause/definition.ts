@@ -433,7 +433,13 @@ export function stackless<E>(cause: Cause<E>): Cause<E> {
  * @tsplus static effect/core/io/Cause.Ops then
  */
 export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
-  return isEmpty(left) ? right : isEmpty(right) ? left : new Then<E1 | E2>(left, right)
+  return isEmpty(left) ?
+    right :
+    isEmpty(right) ?
+    left :
+    left.equals(right) ?
+    left :
+    new Then<E1 | E2>(left, right)
 }
 
 /**

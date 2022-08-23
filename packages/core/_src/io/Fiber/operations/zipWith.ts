@@ -14,17 +14,10 @@ export function zipWith<E2, A, B, C>(that: Fiber<E2, B>, f: (a: A, b: B) => C) {
   return <E>(self: Fiber<E, A>): Fiber<E | E2, C> =>
     makeSynthetic({
       id: self.id.getOrElse(that.id),
-      await: self
-        .await
-        .flatMap((exit) => Effect.done(exit))
-        .zipWithPar(that.await.flatMap((exit) => Effect.done(exit)), f)
-        .exit,
+      await: self.await.flatten.zipWithPar(that.await.flatten, f).exit,
       children: self.children,
-      inheritRefs: that.inheritRefs.zipRight(self.inheritRefs),
-      interruptAs: (id) =>
-        self
-          .interruptAs(id)
-          .zipWith(that.interruptAs(id), (ea, eb) => ea.zipWith(eb, f, Cause.both)),
+      inheritAll: that.inheritAll.zipRight(self.inheritAll),
+      interruptAsFork: (id) => self.interruptAsFork(id) > that.interruptAsFork(id),
       poll: self.poll.zipWith(
         that.poll,
         (oa, ob) => oa.flatMap((ea) => ob.map((eb) => ea.zipWith(eb, f, Cause.both)))

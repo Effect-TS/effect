@@ -1,5 +1,3 @@
-import { IDescriptor } from "@effect/core/io/Effect/definition/primitives"
-
 /**
  * Constructs an effect based on information about the current fiber, such as
  * its identity.
@@ -9,5 +7,11 @@ import { IDescriptor } from "@effect/core/io/Effect/definition/primitives"
 export function descriptorWith<R, E, A>(
   f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return new IDescriptor(f)
+  return Effect.withFiberRuntime((state, status) => {
+    return f({
+      id: state.id,
+      status,
+      interrupters: state.getFiberRef(FiberRef.interruptedCause).interruptors
+    })
+  })
 }

@@ -1,24 +1,22 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-      "tsPlusConfig": "../../tsplus.config.json",
-      "tsBuildInfoFile": "build/tsbuildinfo/tsconfig.tsbuildinfo",
+    "tsPlusConfig": "../../tsplus.config.json",
+    "tsBuildInfoFile": "build/tsbuildinfo/tsconfig.tsbuildinfo"
   },
   "references": [
-      {
-          "path": "./tsconfig.build.json"
-      },
-      {
-          "path": "./tsconfig.build-test.json"
-      },
-      {
-          "path": "./tsconfig.build-examples.json"
-      }
+    {
+      "path": "./tsconfig.build.json"
+    },
+    {
+      "path": "./tsconfig.build-test.json"
+    },
+    {
+      "path": "./tsconfig.build-examples.json"
+    }
   ],
   "ts-node": {
-      "files": true,
-      "require": [
-          "tsconfig-paths/register"
-      ]
+    "files": true,
+    "require": ["tsconfig-paths/register"]
   }
 }

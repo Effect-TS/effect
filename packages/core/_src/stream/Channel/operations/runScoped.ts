@@ -25,29 +25,28 @@ function interpret<Env, InErr, InDone, OutErr, OutDone>(
   channelState: ChannelState<Env, OutErr>,
   exec: ChannelExecutor<Env, InErr, unknown, InDone, OutErr, never, OutDone>
 ): Effect<Env, OutErr, OutDone> {
-  // eslint-disable-next-line no-constant-condition
-  while (1) {
-    concreteChannelState(channelState)
-    switch (channelState._tag) {
-      case "Effect": {
-        return channelState.effect.flatMap(() =>
-          interpret(exec.run() as ChannelState<Env, OutErr>, exec)
-        )
-      }
-      case "Emit": {
-        channelState = exec.run() as ChannelState<Env, OutErr>
-        break
-      }
-      case "Done": {
-        return Effect.done(exec.getDone())
-      }
-      case "Read": {
-        return readUpstream(
-          channelState,
-          interpret(exec.run() as ChannelState<Env, OutErr>, exec)
-        )
-      }
+  concreteChannelState(channelState)
+  switch (channelState._tag) {
+    case "Effect": {
+      return channelState.effect.flatMap(() =>
+        interpret(exec.run() as ChannelState<Env, OutErr>, exec)
+      )
+    }
+    case "Emit": {
+      // Can't really happen because Out <:< Nothing. So just skip ahead.
+      return interpret<Env, InErr, InDone, OutErr, OutDone>(
+        exec.run() as ChannelState<Env, OutErr>,
+        exec
+      )
+    }
+    case "Done": {
+      return Effect.done(exec.getDone())
+    }
+    case "Read": {
+      return readUpstream(
+        channelState,
+        interpret(exec.run() as ChannelState<Env, OutErr>, exec)
+      )
     }
   }
-  throw new Error("Bug")
 }

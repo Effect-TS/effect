@@ -1,4 +1,5 @@
-import type { FiberContext } from "@effect/core/io/Fiber/_internal/context"
+import { Stateful } from "@effect/core/io/Fiber/_internal/message"
+import type { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
 
 /**
  * A `FiberScope` represents the scope of a fiber lifetime. The scope of a
@@ -18,39 +19,43 @@ export const FiberScope: FiberScopeOps = {}
 export interface CommonScope {
   readonly fiberId: FiberId
 
-  readonly unsafeAdd: (
-    runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>
-  ) => boolean
+  readonly add: (
+    runtimeFlags: RuntimeFlags,
+    child: FiberRuntime<any, any>
+  ) => void
 }
 
 export class Global implements CommonScope {
   readonly fiberId = FiberId.none
 
-  unsafeAdd(
-    runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>
-  ): boolean {
-    if (runtimeConfig.value.flags.isEnabled(RuntimeConfigFlag.EnableFiberRoots)) {
+  add(
+    runtimeFlags: RuntimeFlags,
+    child: FiberRuntime<any, any>
+  ) {
+    if (runtimeFlags.isEnabled(RuntimeFlags.FiberRoots)) {
       _roots.add(child)
-
-      child.unsafeOnDone(() => {
+      child.addObserver(() => {
         _roots.delete(child)
       })
     }
-    return true
   }
 }
 
 export class Local implements CommonScope {
-  constructor(readonly fiberId: FiberId, readonly parent: FiberContext<any, any>) {}
+  constructor(readonly fiberId: FiberId, readonly parent: FiberRuntime<any, any>) {}
 
-  unsafeAdd(
-    _runtimeConfig: RuntimeConfig,
-    child: FiberContext<any, any>
-  ): boolean {
-    const parent = this.parent
-    return parent != null && parent.unsafeAddChild(child)
+  add(
+    _runtimeFlags: RuntimeFlags,
+    child: FiberRuntime<any, any>
+  ) {
+    this.parent.tell(
+      new Stateful((parentFiber) => {
+        parentFiber.addChild(child)
+        child.addObserver(() => {
+          parentFiber.removeChild(child)
+        })
+      })
+    )
   }
 }
 
@@ -66,13 +71,13 @@ export const globalScope = new Global()
 /**
  * Unsafely creats a new `Scope` from a `Fiber`.
  *
- * @tsplus static effect/core/io/FiberScope.Ops unsafeMake
+ * @tsplus static effect/core/io/FiberScope.Ops make
  */
-export function unsafeMake(fiber: FiberContext<any, any>): FiberScope {
-  return new Local(fiber.fiberId, fiber)
+export function make(fiber: FiberRuntime<any, any>): FiberScope {
+  return new Local(fiber.id, fiber)
 }
 
 /**
  * @tsplus static effect/core/io/FiberScope.Ops _roots
  */
-export const _roots = new Set<FiberContext<any, any>>()
+export const _roots = new Set<FiberRuntime<any, any>>()

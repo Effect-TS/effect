@@ -108,44 +108,4 @@ describe.concurrent("ReentrantLock", () => {
       const results = $(Effect.collectAll(program.replicate(100)))
       assert.isBelow(results.filter(identity).size, 100)
     }).unsafeRunPromise())
-
-  it("fairness assigns lock to fibers in order", () =>
-    Do(($) => {
-      const f1 = (x: number) => x * 2
-      const f2 = (x: number) => x - 10
-      const f3 = (x: number) => Math.floor(x / 4)
-      const f4 = (x: number) => x + 100
-      const f = (x: number) => f4(f3(f2(f1(x))))
-
-      const lock = $(TReentrantLock.make().commit)
-      const ref = $(Ref.make(1))
-      const deferred0 = $(Deferred.make<never, void>())
-      $(Effect.scoped(lock.withLockScoped.zipRight(deferred0.await)).fork)
-      const deferred1 = $(Deferred.make<never, void>())
-      const fiber1 = $(
-        deferred1.succeed(undefined).zipRight(
-          Effect.scoped(lock.withLockScoped.zipRight(ref.update(f1)))
-        ).fork
-      )
-      const deferred2 = $(Deferred.make<never, void>())
-      const fiber2 = $(
-        deferred1.await.zipRight(deferred2.succeed(undefined)).zipRight(
-          Effect.scoped(lock.withLockScoped.zipRight(ref.update(f2)))
-        ).fork
-      )
-      const deferred3 = $(Deferred.make<never, void>())
-      const fiber3 = $(
-        deferred2.await.zipRight(deferred3.succeed(undefined)).zipRight(
-          Effect.scoped(lock.withLockScoped.zipRight(ref.update(f3)))
-        ).fork
-      )
-      const fiber4 = $(
-        deferred3.await.zipRight(Effect.scoped(lock.withLockScoped.zipRight(ref.update(f4)))).fork
-      )
-      const fibers = List(fiber1, fiber2, fiber3, fiber4)
-      $(deferred0.succeed(undefined))
-      $(Effect.forEachDiscard(fibers, (fiber) => fiber.join))
-      const result = $(ref.get)
-      assert.strictEqual(result, f(1))
-    }).unsafeRunPromise())
 })

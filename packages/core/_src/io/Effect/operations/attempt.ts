@@ -5,14 +5,11 @@
  * @tsplus static effect/core/io/Effect.Ops attempt
  */
 export function attempt<A>(f: LazyArg<A>): Effect<never, unknown, A> {
-  return Effect.succeedWith((runtimeConfig) => {
+  return Effect.sync(() => {
     try {
       return f()
     } catch (error) {
-      if (!runtimeConfig.value.fatal(error)) {
-        throw new Effect.Error(Exit.fail(error))
-      }
-      throw error
+      throw new Effect.Error(Cause.fail(error))
     }
   })
 }

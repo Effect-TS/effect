@@ -1,4 +1,4 @@
-import type { _E, _R } from "@effect/core/io/Effect/definition/base"
+import type { EffectURI } from "@effect/core/io/Effect/definition/base"
 
 type NonEmptyArrayEffect = Array<Effect<any, any, any>> & { readonly 0: Effect<any, any, any> }
 
@@ -16,8 +16,8 @@ export function tuple<T extends NonEmptyArrayEffect>(
     0: Effect<any, any, any>
   }
 ): Effect<
-  [T[number]] extends [{ [_R]: () => infer R }] ? R : never,
-  [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
+  [T[number]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
+  [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   ForcedTuple<TupleA<T>>
 > {
   return Effect.collectAll(t).map((x) => Tuple(...x)) as any
@@ -33,8 +33,8 @@ export function tuplePar<T extends NonEmptyArrayEffect>(
     0: Effect<any, any, any>
   }
 ): Effect<
-  [T[number]] extends [{ [_R]: () => infer R }] ? R : never,
-  [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
+  [T[number]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
+  [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   ForcedTuple<TupleA<T>>
 > {
   return Effect.collectAllPar(t).map((x) => Tuple(...x)) as any

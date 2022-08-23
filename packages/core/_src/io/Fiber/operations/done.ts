@@ -10,8 +10,8 @@ export function done<E, A>(exit: Exit<E, A>): Fiber<E, A> {
     id: FiberId.none,
     await: Effect.succeed(exit),
     children: Effect.succeed(Chunk.empty()),
-    inheritRefs: Effect.unit,
+    inheritAll: Effect.unit,
     poll: Effect.succeed(Maybe.some(exit)),
-    interruptAs: () => Effect.succeed(exit)
+    interruptAsFork: () => Effect.unit
   })
 }

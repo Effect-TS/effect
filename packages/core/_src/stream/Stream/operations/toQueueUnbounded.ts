@@ -10,5 +10,5 @@ export function toQueueUnbounded<R, E, A>(
   return Effect.acquireRelease(
     Queue.unbounded<Take<E, A>>(),
     (queue) => queue.shutdown
-  ).tap((queue) => self.runIntoQueueScoped(queue).fork)
+  ).tap((queue) => self.runIntoQueueScoped(queue).forkScoped)
 }

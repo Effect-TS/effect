@@ -8,36 +8,27 @@ import { FiberRefs } from "@effect/core/io/FiberRefs"
  * @tsplus static effect/core/io/Effect.Ops runtime
  */
 export function runtime<R>(): Effect<R, never, Runtime<R>> {
-  return Effect.environment<R>()
-    .flatMap(
-      (env) =>
-        Effect.getFiberRefs()
-          .flatMap((refs) => Effect.runtimeConfig.map((config) => new Runtime(env, config, refs)))
+  return Effect.withFiberRuntime<R, never, Runtime<R>>((state, status) =>
+    Effect.succeed(
+      new Runtime<R>(
+        state.getFiberRef(FiberRef.currentEnvironment),
+        status.runtimeFlags,
+        state.getFiberRefs
+      )
     )
+  )
 }
 
-/**
- * @tsplus static effect/core/io/Effect.Ops defaultRuntimeConfig
- */
-export const defaultRuntimeConfig: RuntimeConfig = RuntimeConfig({
-  fatal: () => false,
-  reportFatal: (defect) => {
-    throw defect
-  },
-  supervisor: Supervisor.unsafeTrack(),
-  loggers: HashSet(
-    Logger.default
-      .map((output) => console.log(output))
-      .filterLogLevel((level) => level >= LogLevel.Info)
-  ),
-  flags: RuntimeConfigFlags.empty + RuntimeConfigFlag.EnableFiberRoots,
-  maxOp: 2048
-})
+export const defaultFlags = RuntimeFlags(
+  RuntimeFlags.FiberRoots,
+  RuntimeFlags.Interruption,
+  RuntimeFlags.CooperativeYielding
+)
 
 export const defaultRuntime = new Runtime<never>(
   Env.empty,
-  defaultRuntimeConfig,
-  new FiberRefs(ImmutableMap() as any)
+  defaultFlags,
+  new FiberRefs(ImmutableMap.empty())
 )
 
 /**

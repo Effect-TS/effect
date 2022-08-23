@@ -11,7 +11,7 @@ export function _await<E, A>(
   self: Fiber<E, A>
 ): Effect<never, never, Exit<E, A>> {
   realFiber(self)
-  return self._await
+  return self.await
 }
 
 export { _await as await }

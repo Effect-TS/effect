@@ -6,7 +6,7 @@ describe.concurrent("Effect", () => {
         const result = $(io.zip(io))
         const { tuple: [first, second] } = result
         assert.notStrictEqual(first, second)
-      }).unsafeRunPromise())
+      }).flackyTest().unsafeRunPromise())
 
     it("memoized returns the same instance on repeated calls", () =>
       Do(($) => {
@@ -14,7 +14,7 @@ describe.concurrent("Effect", () => {
         const result = $(ioMemo.flatMap((io) => io.zip(io)))
         const { tuple: [first, second] } = result
         assert.strictEqual(first, second)
-      }).unsafeRunPromise())
+      }).flackyTest().unsafeRunPromise())
 
     it("memoized function returns the same instance on repeated calls", () =>
       Do(($) => {
@@ -27,6 +27,6 @@ describe.concurrent("Effect", () => {
         assert.strictEqual(a, b)
         assert.notStrictEqual(b, c)
         assert.strictEqual(c, d)
-      }).unsafeRunPromise())
+      }).flackyTest().unsafeRunPromise())
   })
 })

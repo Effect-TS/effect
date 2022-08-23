@@ -4,42 +4,46 @@
  * succeeds, the other will be interrupted. If neither succeeds, then the
  * effect will fail with some error.
  *
- * WARNING: The raced effect will safely interrupt the "loser", but will not
- * resume until the loser has been cleanly terminated. If early return is
- * desired, then instead of performing `l race r`, perform `l.disconnect race
- * r.disconnect`, which disconnects left and right interruption signals,
- * allowing a fast return, with interruption performed in the background.
- *
- * Note that if the `race` is embedded into an uninterruptible region, then
- * because the loser cannot be interrupted, it will be allowed to continue
- * executing in the background, without delaying the return of the race.
+ * Note that both effects are disconnected before being raced. This means that
+ * interruption of the loser will always be performed in the background. This
+ * is a change in behavior compared to ZIO 2.0. If this behavior is not
+ * desired, you can use [[Effect#raceWith]], which will not disconnect or
+ * interrupt losers.
  *
  * @tsplus static effect/core/io/Effect.Aspects race
  * @tsplus pipeable effect/core/io/Effect race
  */
 export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
-    Effect.descriptorWith((descriptor) => {
-      const parentFiberId = descriptor.id
+    self.disconnect.raceAwait(that.disconnect)
+}
 
-      function maybeDisconnect<R, E, A>(io: Effect<R, E, A>) {
-        return Effect.uninterruptibleMask(({ force }) => force(io))
-      }
-
-      return maybeDisconnect(self).raceWith(
-        maybeDisconnect(that),
+/**
+ * Returns an effect that races this effect with the specified effect,
+ * returning the first successful `A` from the faster side. If one effect
+ * succeeds, the other will be interrupted. If neither succeeds, then the
+ * effect will fail with some error.
+ *
+ * @tsplus static effect/core/io/Effect.Aspects raceAwait
+ * @tsplus pipeable effect/core/io/Effect raceAwait
+ */
+export function raceAwait<R2, E2, A2>(that: Effect<R2, E2, A2>) {
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
+    Effect.withFiberRuntime((state) =>
+      self.raceWith(
+        that,
         (exit, right) =>
           exit.foldEffect(
             (cause) => right.join.mapErrorCause((_) => cause & _),
-            (a) => right.interruptAs(parentFiberId).as(a)
+            (a) => right.interruptAs(state.id).as(a)
           ),
         (exit, left) =>
           exit.foldEffect(
             (cause) => left.join.mapErrorCause((_) => _ & cause),
-            (a) => left.interruptAs(parentFiberId).as(a)
+            (a) => left.interruptAs(state.id).as(a)
           )
       )
-    })
+    )
 }
 
 /**
@@ -75,7 +79,5 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  */
 export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E2 | E, A2 | A> =>
-    self.exit
-      .race(that.exit)
-      .flatMap((a) => Effect.done(a as Exit<E | E2, A | A2>))
+    self.exit.race(that.exit).flatten
 }

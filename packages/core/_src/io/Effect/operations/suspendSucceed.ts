@@ -1,5 +1,3 @@
-import { ISuspend } from "@effect/core/io/Effect/definition/primitives"
-
 /**
  * Returns a lazily constructed effect, whose construction may itself require
  * effects. The effect must not throw any exceptions. When no environment is
@@ -12,5 +10,5 @@ import { ISuspend } from "@effect/core/io/Effect/definition/primitives"
 export function suspendSucceed<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>
 ): Effect<R, E, A> {
-  return new ISuspend(effect)
+  return Effect.sync(effect).flatMap(identity)
 }

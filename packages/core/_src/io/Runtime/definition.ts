@@ -1,28 +1,21 @@
-import { FiberContext } from "@effect/core/io/Fiber/_internal/context"
+import { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
 import { StagedScheduler } from "@effect/core/support/Scheduler"
 import { constVoid } from "@tsplus/stdlib/data/Function"
 
 export class AsyncFiber<E, A> {
   readonly _tag = "AsyncFiber"
-  constructor(readonly fiber: FiberContext<E, A>) {}
+  constructor(readonly fiber: FiberRuntime<E, A>) {}
 }
 
 export class Runtime<R> {
   constructor(
     readonly environment: Env<R>,
-    readonly runtimeConfig: RuntimeConfig,
+    readonly runtimeFlags: RuntimeFlags,
     readonly fiberRefs: FiberRefs
   ) {}
 
-  unsafeRunWith = <E, A>(
-    effect: Effect<R, E, A>,
-    k: (exit: Exit<E, A>) => void
-  ): ((fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void) => {
+  unsafeFork = <E, A>(effect: Effect<R, E, A>) => {
     const fiberId = FiberId.unsafeMake()
-
-    const children = new Set<FiberContext<any, any>>()
-
-    const supervisor = this.runtimeConfig.value.supervisor
 
     const fiberRefs = this.fiberRefs
       .updateAs(
@@ -31,30 +24,64 @@ export class Runtime<R> {
         this.environment as Env<never>
       )
 
-    const context: FiberContext<E, A> = new FiberContext(
+    const context = new FiberRuntime<E, A>(
       fiberId,
-      children,
       fiberRefs,
-      this.runtimeConfig,
-      new Stack(InterruptStatus.Interruptible.toBoolean)
+      this.runtimeFlags
     )
 
-    FiberScope.global.unsafeAdd(this.runtimeConfig, context)
+    const supervisor = context.getSupervisor
 
-    if (supervisor !== Supervisor.none) {
-      supervisor.unsafeOnStart(this.environment, effect, Maybe.none, context)
+    if (supervisor != Supervisor.none) {
+      supervisor.onStart(this.environment, effect, Maybe.none, context)
 
-      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten, context))
+      context.addObserver(exit => supervisor.onEnd(exit, context))
     }
 
-    context.nextEffect = effect
-    context.run()
-    context.unsafeOnDone((exit) => {
-      k(exit.flatten)
+    context.start(effect)
+
+    FiberScope.global.add(this.runtimeFlags, context)
+
+    return context
+  }
+
+  unsafeRunWith = <E, A>(
+    effect: Effect<R, E, A>,
+    k: (exit: Exit<E, A>) => void
+  ): ((fiberId: FiberId) => (_: (exit: Exit<E, A>) => void) => void) => {
+    const fiberId = FiberId.unsafeMake()
+
+    const fiberRefs = this.fiberRefs
+      .updateAs(
+        fiberId,
+        FiberRef.currentEnvironment,
+        this.environment as Env<never>
+      )
+
+    const context = new FiberRuntime<E, A>(
+      fiberId,
+      fiberRefs,
+      this.runtimeFlags
+    )
+
+    const supervisor = context.getSupervisor
+
+    if (supervisor != Supervisor.none) {
+      supervisor.onStart(this.environment, effect, Maybe.none, context)
+
+      context.addObserver(exit => supervisor.onEnd(exit, context))
+    }
+
+    context.start(effect)
+
+    FiberScope.global.add(this.runtimeFlags, context)
+
+    context.addObserver((exit) => {
+      k(exit)
     })
 
     return (id) =>
-      (k) => this.unsafeRunAsyncWith(context._interruptAs(id), (exit) => k(exit.flatten))
+      (k) => this.unsafeRunAsyncWith(context.interruptAs(id), (exit) => k(exit.flatten))
   }
 
   unsafeRunSync = <E, A>(
@@ -72,10 +99,6 @@ export class Runtime<R> {
   ): Exit<E, A> => {
     const fiberId = FiberId.unsafeMake()
 
-    const children = new Set<FiberContext<any, any>>()
-
-    const supervisor = this.runtimeConfig.value.supervisor
-
     const scheduler = new StagedScheduler()
 
     const fiberRefs = this.fiberRefs
@@ -90,30 +113,30 @@ export class Runtime<R> {
         scheduler
       )
 
-    const context: FiberContext<E, A> = new FiberContext(
+    const context = new FiberRuntime<E, A>(
       fiberId,
-      children,
       fiberRefs,
-      this.runtimeConfig,
-      new Stack(InterruptStatus.Interruptible.toBoolean)
+      this.runtimeFlags
     )
 
-    FiberScope.global.unsafeAdd(this.runtimeConfig, context)
+    const supervisor = context.getSupervisor
 
-    if (supervisor !== Supervisor.none) {
-      supervisor.unsafeOnStart(this.environment, effect, Maybe.none, context)
+    if (supervisor != Supervisor.none) {
+      supervisor.onStart(this.environment, effect, Maybe.none, context)
 
-      context.unsafeOnDone((exit) => supervisor.unsafeOnEnd(exit.flatten, context))
+      context.addObserver(exit => supervisor.onEnd(exit, context))
     }
 
-    context.nextEffect = effect
-    context.run()
+    context.start(effect)
+
+    FiberScope.global.add(this.runtimeFlags, context)
+
     scheduler.flush()
 
-    const result = context.unsafePoll()
+    const result = context.unsafePoll
 
-    if (result.isSome()) {
-      return result.value
+    if (result) {
+      return result
     }
 
     return Exit.die(new AsyncFiber(context))

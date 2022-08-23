@@ -24,20 +24,22 @@ describe.concurrent("Stream", () => {
     })
 
     it("fast producer progress independently", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bind("latch", () => Deferred.make<never, void>())
-        .bindValue("stream", ({ latch, ref }) =>
-          Stream.range(1, 5)
-            .tap(
-              (n) =>
-                ref.update((list) => list.prepend(n)) >
-                  Effect.when(n === 4, latch.succeed(undefined))
-            )
-            .buffer(2))
-        .bind("chunk", ({ stream }) => stream.take(2).runCollect)
-        .tap(({ latch }) => latch.await)
-        .bind("list", ({ ref }) => ref.get)
+      const program = Effect.scoped(
+        Effect.Do()
+          .bind("ref", () => Ref.make<List<number>>(List.empty()))
+          .bind("latch", () => Deferred.make<never, void>())
+          .bindValue("stream", ({ latch, ref }) =>
+            Stream.range(1, 5)
+              .tap(
+                (n) =>
+                  ref.update((list) => list.prepend(n)) >
+                    Effect.when(n === 4, latch.succeed(undefined))
+              )
+              .buffer(2))
+          .bind("chunk", ({ stream }) => stream.take(2).runScoped(Sink.collectAll()))
+          .tap(({ latch }) => latch.await)
+          .bind("list", ({ ref }) => ref.get)
+      )
 
       const { chunk, list } = await program.unsafeRunPromise()
 
@@ -275,20 +277,22 @@ describe.concurrent("Stream", () => {
     })
 
     it("fast producer progress independently", async () => {
-      const program = Effect.Do()
-        .bind("ref", () => Ref.make<List<number>>(List.empty()))
-        .bind("latch", () => Deferred.make<never, void>())
-        .bindValue("stream", ({ latch, ref }) =>
-          Stream.range(1, 5)
-            .tap(
-              (n) =>
-                ref.update((list) => list.prepend(n)) >
-                  Effect.when(n === 4, latch.succeed(undefined))
-            )
-            .bufferChunks(2))
-        .bind("chunk", ({ stream }) => stream.take(2).runCollect)
-        .tap(({ latch }) => latch.await)
-        .bind("list", ({ ref }) => ref.get)
+      const program = Effect.scoped(
+        Effect.Do()
+          .bind("ref", () => Ref.make<List<number>>(List.empty()))
+          .bind("latch", () => Deferred.make<never, void>())
+          .bindValue("stream", ({ latch, ref }) =>
+            Stream.range(1, 5)
+              .tap(
+                (n) =>
+                  ref.update((list) => list.prepend(n)) >
+                    Effect.when(n === 4, latch.succeed(undefined))
+              )
+              .bufferChunks(2))
+          .bind("chunk", ({ stream }) => stream.take(2).runScoped(Sink.collectAll()))
+          .tap(({ latch }) => latch.await)
+          .bind("list", ({ ref }) => ref.get)
+      )
 
       const { chunk, list } = await program.unsafeRunPromise()
 

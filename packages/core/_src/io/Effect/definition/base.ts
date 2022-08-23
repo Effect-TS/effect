@@ -1,26 +1,5 @@
-export const EffectURI = "Effect"
+export const EffectURI = Symbol.for("@effect/core/io/Effect/Effect")
 export type EffectURI = typeof EffectURI
-
-export const _U = Symbol.for("@effect/core/io/Effect/U")
-export type _U = typeof _U
-
-export const _R = Symbol.for("@effect/core/io/Effect/R")
-export type _R = typeof _R
-
-export const _E = Symbol.for("@effect/core/io/Effect/E")
-export type _E = typeof _E
-
-export const _A = Symbol.for("@effect/core/io/Effect/A")
-export type _A = typeof _A
-
-export const _S1 = Symbol.for("@effect/core/io/Effect/S1")
-export type _S1 = typeof _S1
-
-export const _S2 = Symbol.for("@effect/core/io/Effect/S2")
-export type _S2 = typeof _S2
-
-export const _W = Symbol.for("@effect/core/io/Effect/W")
-export type _W = typeof _W
 
 /**
  * An`Effect<R, E, A>` value is an immutable value that lazily describes a
@@ -47,10 +26,11 @@ export type _W = typeof _W
  * @tsplus type effect/core/io/Effect
  */
 export interface Effect<R, E, A> {
-  readonly [_U]: EffectURI
-  readonly [_R]: () => R
-  readonly [_E]: () => E
-  readonly [_A]: () => A
+  readonly [EffectURI]: {
+    _R: (_: never) => R
+    _E: (_: never) => E
+    _A: (_: never) => A
+  }
 }
 
 /**
@@ -59,9 +39,9 @@ export interface Effect<R, E, A> {
 export function unifyEffect<X extends Effect<any, any, any>>(
   self: X
 ): Effect<
-  [X] extends [{ [_R]: () => infer R }] ? R : never,
-  [X] extends [{ [_E]: () => infer E }] ? E : never,
-  [X] extends [{ [_A]: () => infer A }] ? A : never
+  [X] extends [{ readonly [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
+  [X] extends [{ readonly [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
+  [X] extends [{ readonly [EffectURI]: { _A: (_: never) => infer A } }] ? A : never
 > {
   return self
 }
@@ -72,15 +52,15 @@ export function unifyEffect<X extends Effect<any, any, any>>(
 export interface EffectOps {
   readonly $: EffectAspects
   readonly Error: {
-    new<E, A>(exit: Exit<E, A>, __taPlusTrace?: string): Effect.Error<E, A>
+    new<E>(cause: Cause<E>): Effect.Error<E>
   }
 }
 export const Effect: EffectOps = {
   $: {},
-  Error: class EffectError<E, A> extends Error {
+  Error: class EffectError<E> extends Error {
     readonly _tag = "EffectError"
 
-    constructor(readonly exit: Exit<E, A>, readonly trace?: string) {
+    constructor(readonly cause: Cause<E>) {
       super()
     }
   }
@@ -92,24 +72,12 @@ export const Effect: EffectOps = {
 export interface EffectAspects {}
 
 export namespace Effect {
-  export type UIO<A> = Effect<never, never, A>
-  export type IO<E, A> = Effect<never, E, A>
-  export type RIO<R, A> = Effect<R, never, A>
-  export interface Error<E, A> {
+  export interface Error<E> {
     readonly _tag: "EffectError"
-    readonly exit: Exit<E, A>
-    readonly trace?: string
+    readonly cause: Cause<E>
   }
   export type Success<T extends Effect<any, any, any>> = [T] extends
     [Effect<infer R, infer E, infer A>] ? A : never
-}
-
-export abstract class Base<R, E, A> implements Effect<R, E, A> {
-  readonly [_U]!: EffectURI
-  readonly [_R]!: () => R
-  readonly [_E]!: () => E
-  readonly [_A]!: () => A
-  abstract unsafeLog(): string
 }
 
 export type Canceler<R> = Effect<R, never, void>

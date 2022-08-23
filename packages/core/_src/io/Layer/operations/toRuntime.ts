@@ -5,11 +5,9 @@
  * @tsplus static effect/core/io/Layer.Aspects toRuntime
  * @tsplus pipeable effect/core/io/Layer toRuntime
  */
-export function toRuntime(runtimeConfig: RuntimeConfig) {
+export function toRuntime() {
   return <RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn | Scope, E, Runtime<ROut>> =>
-    Effect.getFiberRefs()
-      .flatMap((refs) =>
-        Effect.scopeWith((scope) => self.buildWithScope(scope))
-          .map((environment) => new Runtime(environment, runtimeConfig, refs))
-      )
+    Effect.scopeWith((scope) => self.buildWithScope(scope)).flatMap((environment) =>
+      Effect.runtime<ROut>().provideEnvironment(environment)
+    )
 }

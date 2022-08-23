@@ -1,5 +1,3 @@
-import { IEnsuring } from "@effect/core/io/Effect/definition/primitives"
-
 /**
  * Returns an effect that, if this effect _starts_ execution, then the
  * specified `finalizer` is guaranteed to begin execution, whether this effect
@@ -16,5 +14,14 @@ import { IEnsuring } from "@effect/core/io/Effect/definition/primitives"
  */
 export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
-    Effect.suspendSucceed(new IEnsuring(self, finalizer))
+    Effect.uninterruptibleMask((mask) =>
+      mask.restore(self).foldCauseEffect(
+        (cause1) =>
+          finalizer.foldCauseEffect(
+            (cause2) => Effect.failCause(Cause.then(cause1, cause2)),
+            () => Effect.failCause(cause1)
+          ),
+        a => finalizer.map(() => a)
+      )
+    )
 }

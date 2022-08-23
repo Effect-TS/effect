@@ -15,6 +15,6 @@ export function make(id: number, startTimeSeconds: number): FiberId {
 export function unsafeMake(): FiberId.Runtime {
   return new RuntimeFiberId(
     _fiberCounter.getAndIncrement(),
-    Math.floor(new Date().getTime() / 1000)
+    new Date().getTime()
   )
 }

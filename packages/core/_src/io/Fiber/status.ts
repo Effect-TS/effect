@@ -29,17 +29,17 @@ export class Running implements Equals {
   readonly _tag = "Running"
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
 
-  constructor(readonly interrupting: boolean) {}
+  constructor(readonly runtimeFlags: RuntimeFlags) {}
 
   [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.interrupting))
+    return Hash.combine(Hash.string(this._tag), Hash.number(this.runtimeFlags))
   }
 
   [Equals.sym](that: unknown): boolean {
     return (
       isFiberStatus(that) &&
       that._tag === "Running" &&
-      this.interrupting === that.interrupting
+      this.runtimeFlags === that.runtimeFlags
     )
   }
 }
@@ -49,9 +49,7 @@ export class Suspended implements Equals {
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
 
   constructor(
-    readonly interrupting: boolean,
-    readonly interruptible: boolean,
-    readonly asyncs: number,
+    readonly runtimeFlags: RuntimeFlags,
     readonly blockingOn: FiberId
   ) {}
 
@@ -59,14 +57,8 @@ export class Suspended implements Equals {
     return Hash.combine(
       Hash.string(this._tag),
       Hash.combine(
-        Hash.unknown(this.interrupting),
-        Hash.combine(
-          Hash.unknown(this.interruptible),
-          Hash.combine(
-            Hash.number(this.asyncs),
-            Hash.unknown(this.blockingOn)
-          )
-        )
+        Hash.number(this.runtimeFlags),
+        Hash.unknown(this.blockingOn)
       )
     )
   }
@@ -75,9 +67,7 @@ export class Suspended implements Equals {
     return (
       isFiberStatus(that) &&
       that._tag === "Suspended" &&
-      this.interrupting === that.interrupting &&
-      this.interruptible === that.interruptible &&
-      this.asyncs === that.asyncs &&
+      this.runtimeFlags === that.runtimeFlags &&
       this.blockingOn == that.blockingOn
     )
   }
@@ -88,70 +78,4 @@ export class Suspended implements Equals {
  */
 export function isFiberStatus(u: unknown): u is FiberStatus {
   return typeof u === "object" && u != null && FiberStatusSym in u
-}
-
-/**
- * @tsplus static effect/core/io/Fiber/Status.Ops Done
- */
-export const statusDone: FiberStatus = new Done()
-
-/**
- * @tsplus static effect/core/io/Fiber/Status.Ops Running
- */
-export function statusRunning(interrupting: boolean): FiberStatus {
-  return new Running(interrupting)
-}
-
-/**
- * @tsplus static effect/core/io/Fiber/Status.Ops Suspended
- */
-export function statusSuspended(
-  interrupting: boolean,
-  interruptible: boolean,
-  asyncs: number,
-  blockingOn: FiberId
-): FiberStatus {
-  return new Suspended(interrupting, interruptible, asyncs, blockingOn)
-}
-
-/**
- * @tsplus getter effect/core/io/Fiber/Status isInterrupting
- */
-export function isInterrupting(self: FiberStatus): boolean {
-  switch (self._tag) {
-    case "Done": {
-      return false
-    }
-    case "Running": {
-      return self.interrupting
-    }
-    case "Suspended": {
-      return self.interrupting
-    }
-  }
-}
-
-/**
- * @tsplus pipeable effect/core/io/Fiber/Status withInterrupting
- * @tsplus pipeable effect/core/io/Fiber/Status withInterrupting
- */
-export function withInterrupting(newInterrupting: boolean) {
-  return (self: FiberStatus): FiberStatus => {
-    switch (self._tag) {
-      case "Done": {
-        return self
-      }
-      case "Running": {
-        return new Running(newInterrupting)
-      }
-      case "Suspended": {
-        return new Suspended(
-          newInterrupting,
-          self.interruptible,
-          self.asyncs,
-          self.blockingOn
-        )
-      }
-    }
-  }
 }

@@ -50,7 +50,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
     readonly strategy: Strategy<A>
   ) {}
   get take(): Effect<never, never, A> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
+    return Effect.withFiberRuntime((state) => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
@@ -58,7 +58,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
         ? this.subscription.poll(EmptyMutableQueue)
         : EmptyMutableQueue
       if (message === EmptyMutableQueue) {
-        const deferred = Deferred.unsafeMake<never, A>(fiberId)
+        const deferred = Deferred.unsafeMake<never, A>(state.id)
         return Effect.suspendSucceed(() => {
           this.pollers.offer(deferred)
           this.subscribers.add(Tuple(this.subscription, this.pollers))
@@ -156,13 +156,13 @@ class SubscriptionImpl<A> implements Dequeue<A> {
     return Effect.sync(this.shutdownFlag.get)
   }
   get shutdown(): Effect<never, never, void> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
+    return Effect.withFiberRuntime<never, never, void>((state) => {
       this.shutdownFlag.set(true)
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
         Effect.forEachPar(
           unsafePollAll(this.pollers),
-          (deferred) => deferred.interruptAs(fiberId)
+          (deferred) => deferred.interruptAs(state.id)
         ) >
           Effect.sync(this.subscription.unsubscribe()) >
           Effect.sync(this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers))

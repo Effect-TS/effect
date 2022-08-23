@@ -21,10 +21,10 @@ export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
             Effect.unit,
             (io, fiber) => io > fiber.await.flatMap(arbiter(fs, fiber, done, fails)).fork
           ))
-          const inheritRefs = (res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>) =>
-            res.get(1).inheritRefs.as(res.get(0))
+          const inheritAll = (res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>) =>
+            res.get(1).inheritAll.as(res.get(0))
           return $(
-            restore(done.await.flatMap(inheritRefs)).onInterrupt(() =>
+            restore(done.await.flatMap(inheritAll)).onInterrupt(() =>
               fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt)
             )
           )

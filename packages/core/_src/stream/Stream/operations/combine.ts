@@ -38,14 +38,14 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
           $(
             (self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >> producer(left, latchL))
               .runScoped
-              .fork
+              .forkScoped
           )
           concreteStream(that)
           $(
             (that.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
               producer(right, latchR))
               .runScoped
-              .fork
+              .forkScoped
           )
           const pullLeft = latchL.offer(undefined)
             .zipRight(left.take.flatMap((exit) => Effect.done(exit)))

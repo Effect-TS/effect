@@ -7,7 +7,7 @@ describe.concurrent("Fiber", () => {
         const fiber1 = $(Effect.never.fork)
         const fiber2 = $(fiber1.await.fork)
         const blockingOn = $(
-          fiber2._status
+          fiber2.status
             .continueOrFail(constVoid, (status) =>
               status._tag === "Suspended"
                 ? Maybe.some(status.blockingOn)
