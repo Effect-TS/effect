@@ -3,7 +3,7 @@ const update = "update"
 const update1 = "update1"
 const update2 = "update2"
 
-const loseTimeAndCpu: Effect.UIO<void> = (
+const loseTimeAndCpu: Effect<never, never, void> = (
   Effect.yieldNow < Clock.sleep((1).millis)
 ).repeatN(100)
 
@@ -20,11 +20,12 @@ describe.concurrent("FiberRef", () => {
     it("its value is inherited after a race with a bad winner", () =>
       Do(($) => {
         const fiberRef = $(FiberRef.make(initial))
-        const badWinner = fiberRef.set(update1).zipRight(Effect.fail("ups"))
-        const goodLoser = fiberRef.set(update2).zipRight(loseTimeAndCpu)
+        const latch = $(Deferred.make<never, void>())
+        const badWinner = fiberRef.set(update1) > Effect.fail("ups").ensuring(latch.succeed(void 0))
+        const goodLoser = fiberRef.set(update2) > latch.await > Effect.sleep((1).seconds)
         $(badWinner.race(goodLoser))
         const result = $(fiberRef.get)
-        assert.isTrue(new RegExp(update2).test(result))
+        assert.equal(result, update2)
       }).scoped.unsafeRunPromise())
 
     it("its value is not inherited after a race of losers", () =>
@@ -40,7 +41,7 @@ describe.concurrent("FiberRef", () => {
     it("its value is inherited in a trivial race", () =>
       Do(($) => {
         const fiberRef = $(FiberRef.make(initial))
-        $(fiberRef.set(update).raceAll(Chunk.empty<Effect.UIO<void>>()))
+        $(fiberRef.set(update).raceAll(Chunk.empty<Effect<never, never, void>>()))
         const result = $(fiberRef.get)
         assert.strictEqual(result, update)
       }).scoped.unsafeRunPromise())

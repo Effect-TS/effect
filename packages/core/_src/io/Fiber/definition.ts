@@ -47,10 +47,6 @@ export declare namespace Fiber {
      * The set of fibers attempting to interrupt the fiber or its ancestors.
      */
     readonly interrupters: HashSet<FiberId>
-    /**
-     * The interrupt status of the `Fiber`.
-     */
-    readonly interruptStatus: InterruptStatus
   }
 }
 
@@ -92,37 +88,37 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
   /**
    * The identity of the fiber.
    */
-  readonly _id: FiberId
+  readonly id: FiberId
 
   /**
    * Awaits the fiber, which suspends the awaiting fiber until the result of the
    * fiber has been determined.
    */
-  readonly _await: Effect<never, never, Exit<E, A>>
+  readonly await: Effect<never, never, Exit<E, A>>
 
   /**
    * Retrieves the immediate children of the fiber.
    */
-  readonly _children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>
+  readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
    * will resume immediately.
    */
-  readonly _inheritRefs: Effect<never, never, void>
+  readonly inheritAll: Effect<never, never, void>
 
   /**
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly _poll: Effect<never, never, Maybe<Exit<E, A>>>
+  readonly poll: Effect<never, never, Maybe<Exit<E, A>>>
 
   /**
-   * Interrupts the fiber as if interrupted from the specified fiber. If the
-   * fiber has already exited, the returned effect will resume immediately.
-   * Otherwise, the effect will resume when the fiber exits.
+   * In the background, interrupts the fiber as if interrupted from the
+   * specified fiber. If the fiber has already exited, the returned effect will
+   * resume immediately. Otherwise, the effect will resume when the fiber exits.
    */
-  readonly _interruptAs: (fiberId: FiberId) => Effect<never, never, Exit<E, A>>
+  readonly interruptAsFork: (fiberId: FiberId) => Effect<never, never, void>
 }
 
 /**
@@ -137,31 +133,12 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   /**
    * The identity of the fiber.
    */
-  readonly _id: FiberId.Runtime
+  readonly id: FiberId.Runtime
 
   /**
    * The status of the fiber.
    */
-  readonly _status: Effect<never, never, FiberStatus>
-
-  /**
-   * Evaluates the specified effect on the fiber. If this is not possible,
-   * because the fiber has already ended life, then the specified alternate
-   * effect will be executed instead.
-   */
-  readonly _evalOn: (
-    effect: Effect<never, never, any>,
-    orElse: Effect<never, never, any>
-  ) => Effect<never, never, void>
-
-  /**
-   * A fully-featured, but much slower version of `evalOn`, which is useful
-   * when environment and error are required.
-   */
-  readonly _evalOnEffect: <R, E2, A2>(
-    effect: Effect<R, E2, A2>,
-    orElse: Effect<R, E2, A2>
-  ) => Effect<R, E2, A2>
+  readonly status: Effect<never, never, FiberStatus>
 }
 
 /**
@@ -176,67 +153,44 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
   readonly [FiberSym]: FiberSym = FiberSym
   readonly [_E]!: () => E
   readonly [_A]!: () => A
-
+  readonly await: Effect<never, never, Exit<E, A>>
   constructor(
-    readonly _id: FiberId,
-    readonly _await: Effect<never, never, Exit<E, A>>,
-    readonly _children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>,
-    readonly _inheritRefs: Effect<never, never, void>,
-    readonly _poll: Effect<never, never, Maybe<Exit<E, A>>>,
-    readonly _interruptAs: (fiberId: FiberId) => Effect<never, never, Exit<E, A>>
-  ) {}
-}
-
-type NonEmptyArrayOrd = Array<Ord<any>> & { readonly 0: Ord<any> }
-
-type TupleOrd<T extends NonEmptyArrayOrd> = {
-  [K in keyof T]: [T[K]] extends [Ord<infer A>] ? A : never
-}
-
-// TODO: remove when incorporated into stdlib
-const tupleOrd = <T extends NonEmptyArrayOrd>(
-  ...ords: T & {
-    readonly 0: Ord<any>
+    readonly id: FiberId,
+    _await: Effect<never, never, Exit<E, A>>,
+    readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>,
+    readonly inheritAll: Effect<never, never, void>,
+    readonly poll: Effect<never, never, Maybe<Exit<E, A>>>,
+    readonly interruptAsFork: (fiberId: FiberId) => Effect<never, never, void>
+  ) {
+    this.await = _await
   }
-): Ord<ForcedTuple<TupleOrd<T>>> =>
-  Ord((first, second) => {
-    let i = 0
-    for (; i < ords.length - 1; i++) {
-      const r = ords[i]!.compare(first[i], second[i])
-      if (r !== 0) {
-        return r
-      }
-    }
-    return ords[i]!.compare(first[i], second[i])
-  })
+}
 
 /**
  * @tsplus static effect/core/io/Fiber.Ops Ord
  */
-export const ordFiber: Ord<Fiber.Runtime<unknown, unknown>> = tupleOrd(
-  Ord.number,
-  Ord.number
-).contramap((fiber) =>
-  Tuple(
-    (fiber._id as FiberId.Runtime).startTimeSeconds,
-    (fiber._id as FiberId.Runtime).id
+export const ordFiber: Ord<Fiber.Runtime<unknown, unknown>> = Ord.tuple(Ord.number, Ord.number)
+  .contramap((fiber) =>
+    Tuple(
+      (fiber.id as FiberId.Runtime).startTimeMillis,
+      (fiber.id as FiberId.Runtime).id
+    )
   )
-)
 
 export function makeSynthetic<E, A>(_: {
   readonly id: FiberId
   readonly await: Effect<never, never, Exit<E, A>>
   readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>
-  readonly inheritRefs: Effect<never, never, void>
+  readonly inheritAll: Effect<never, never, void>
   readonly poll: Effect<never, never, Maybe<Exit<E, A>>>
-  readonly interruptAs: (fiberId: FiberId) => Effect<never, never, Exit<E, A>>
+  readonly interruptAsFork: (fiberId: FiberId) => Effect<never, never, void>
 }): Fiber<E, A> {
   return new SyntheticFiber(
     _.id,
     _.await,
     _.children,
-    _.inheritRefs,
+    _.inheritAll,
     _.poll,
-    _.interruptAs
+    _.interruptAsFork
   )
 }

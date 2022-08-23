@@ -10,5 +10,5 @@ export function toHub(capacity: number) {
     Effect.acquireRelease(
       Hub.bounded<Take<E, A>>(capacity),
       (hub) => hub.shutdown
-    ).tap((hub) => self.runIntoHubScoped(hub).fork)
+    ).tap((hub) => self.runIntoHubScoped(hub).forkScoped)
 }

@@ -28,7 +28,7 @@ export function asyncUnit<E>(): Effect<never, E, void> {
 
 export function exactlyOnce<R, A, A1>(
   value: A,
-  f: (_: Effect.UIO<A>) => Effect<R, string, A1>
+  f: (_: Effect<never, never, A>) => Effect<R, string, A1>
 ): Effect<R, string, A1> {
   return Do(($) => {
     const ref = $(Ref.make(0))
@@ -95,4 +95,13 @@ export function deepMapEffect(n: number): Effect<never, never, number> {
     )
   }
   return loop(n, Effect.sync(0))
+}
+
+/**
+ * @tsplus fluent effect/core/io/Effect flackyTest
+ */
+export function flacky<R, E, A>(self: Effect<R, E, A>, timeout: Duration = (30).seconds) {
+  return self.resurrect
+    .retry((Schedule.recurs(10) >> Schedule.elapsed).whileOutput(_ => _ <= timeout))
+    .orDie
 }

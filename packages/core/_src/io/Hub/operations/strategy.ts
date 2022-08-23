@@ -144,8 +144,8 @@ export class BackPressure<A> extends BaseStrategy<A> {
     as: Collection<A>,
     isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
-      const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(fiberId)
+    return Effect.withFiberRuntime((state) => {
+      const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(state.id)
 
       return Effect.suspendSucceed(() => {
         this.unsafeOffer(as, deferred)

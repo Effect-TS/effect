@@ -61,6 +61,7 @@ describe.concurrent("SubscriptionRef", () => {
 
     assert.isTrue(result)
   })
+
   it("concurrent subscribes and unsubscribes are handled correctly", async () => {
     const program = Do(($) => {
       const subscriptionRef = $(SubscriptionRef.make(0))
@@ -75,5 +76,5 @@ describe.concurrent("SubscriptionRef", () => {
     const result = await program.unsafeRunPromise()
 
     assert.isTrue(result)
-  })
+  }, 20_000)
 })

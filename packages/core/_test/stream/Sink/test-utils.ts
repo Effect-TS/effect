@@ -17,7 +17,7 @@ export function sinkRaceLaw<E, A, L>(
   s: Stream<never, never, A>,
   sink1: Sink<never, E, A, L, A>,
   sink2: Sink<never, E, A, L, A>
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return Effect.struct({
     r1: s.run(sink1).either,
     r2: s.run(sink2).either,
@@ -38,7 +38,7 @@ export function zipParLaw<A, B, C, E>(
   s: Stream<never, never, A>,
   sink1: Sink<never, E, A, A, B>,
   sink2: Sink<never, E, A, A, C>
-): Effect.UIO<boolean> {
+): Effect<never, never, boolean> {
   return Effect.struct({
     zb: s.run(sink1).either,
     zc: s.run(sink2).either,
@@ -71,11 +71,11 @@ class Spy<A> implements Queue<A> {
     throw new Error("Method not implemented.")
   }
 
-  offer(a: A, __tsplusTrace?: string | undefined) {
+  offer(a: A) {
     return this.queue.offer(a)
   }
 
-  offerAll(as: Collection<A>, __tsplusTrace?: string | undefined) {
+  offerAll(as: Collection<A>) {
     return this.queue.offerAll(as)
   }
 
@@ -117,7 +117,7 @@ class Spy<A> implements Queue<A> {
     return this.queue.takeAll
   }
 
-  takeUpTo(max: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
+  takeUpTo(max: number): Effect<never, never, Chunk<A>> {
     return this.queue.takeUpTo(max)
   }
 
@@ -125,7 +125,7 @@ class Spy<A> implements Queue<A> {
     return this.queue.takeBetween(min, max)
   }
 
-  takeN(n: number, __tsplusTrace?: string | undefined): Effect<never, never, Chunk<A>> {
+  takeN(n: number): Effect<never, never, Chunk<A>> {
     return this.queue.takeN(n)
   }
 

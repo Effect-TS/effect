@@ -7,7 +7,7 @@ import { constant } from "@tsplus/stdlib/data/Function"
 export class MemoMap {
   constructor(
     readonly ref: Ref.Synchronized<
-      Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
+      Map<Layer<any, any, any>, Tuple<[Effect<never, any, any>, Scope.Finalizer]>>
     >
   ) {}
 
@@ -105,7 +105,7 @@ export class MemoMap {
  */
 export function makeMemoMap(): Effect<never, never, MemoMap> {
   return Ref.Synchronized.make<
-    Map<Layer<any, any, any>, Tuple<[Effect.IO<any, any>, Scope.Finalizer]>>
+    Map<Layer<any, any, any>, Tuple<[Effect<never, any, any>, Scope.Finalizer]>>
   >(new Map()).flatMap((r) => Effect.sync(new MemoMap(r)))
 }
 

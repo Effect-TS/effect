@@ -10,5 +10,5 @@ export function toQueueDropping(capacity = 2) {
     Effect.acquireRelease(
       Queue.dropping<Take<E, A>>(capacity),
       (queue) => queue.shutdown
-    ).tap((queue) => self.runIntoQueueScoped(queue).fork)
+    ).tap((queue) => self.runIntoQueueScoped(queue).forkScoped)
 }

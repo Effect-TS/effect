@@ -1,4 +1,4 @@
-import { IFlatMap } from "@effect/core/io/Effect/definition/primitives"
+import { IOnSuccess } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that models the execution of this effect, followed by the
@@ -9,5 +9,5 @@ import { IFlatMap } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus pipeable effect/core/io/Effect flatMap
  */
 export function flatMap<A, R1, E1, B>(f: (a: A) => Effect<R1, E1, B>) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, B> => new IFlatMap(self, f)
+  return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, B> => new IOnSuccess(self, f)
 }

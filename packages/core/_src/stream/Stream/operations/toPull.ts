@@ -10,8 +10,8 @@ export function toPull<R, E, A>(
   return self.channel.toPull.map((pull) =>
     pull.mapError(Maybe.some).flatMap((either) =>
       either.fold(
-        () => Effect.failSync(Maybe.none),
-        (elem) => Effect.sync(elem)
+        () => Effect.fail(Maybe.none),
+        (elem) => Effect.succeed(elem)
       )
     )
   )

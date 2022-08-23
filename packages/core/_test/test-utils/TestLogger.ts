@@ -12,7 +12,7 @@ export type TestLoggerId = typeof TestLoggerId
  */
 export interface TestLogger<Message, Output> extends Logger<Message, Output> {
   readonly [TestLoggerId]: TestLoggerId
-  readonly logOutput: Effect.UIO<ImmutableArray<LogEntry>>
+  readonly logOutput: Effect<never, never, ImmutableArray<LogEntry>>
 }
 
 /**
@@ -54,7 +54,7 @@ export class LogEntry {
     readonly logLevel: LogLevel,
     readonly message: string,
     readonly cause: Cause<any>,
-    readonly context: ImmutableMap<FiberRef<any>, unknown>,
+    readonly context: FiberRefs,
     readonly spans: List<LogSpan>,
     readonly annotations: ImmutableMap<string, string>
   ) {}
@@ -75,7 +75,7 @@ export class LogEntry {
 /**
  * @tsplus static effect/core/test/TestLogger.Ops make
  */
-export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.sync(() => {
+export const makeTestLogger: Effect<never, never, TestLogger<string, void>> = Effect.sync(() => {
   const logOutput = new AtomicReference<ImmutableArray<LogEntry>>(ImmutableArray.empty())
   return {
     [TestLoggerId]: TestLoggerId,
@@ -116,13 +116,18 @@ export const makeTestLogger: Effect.UIO<TestLogger<string, void>> = Effect.sync(
 export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = Layer.scoped(
   TestLogger.Tag,
   Effect.Do()
-    .bind("runtimeConfig", () => Effect.runtimeConfig)
     .bind("testLogger", () => makeTestLogger)
-    .bindValue("acquire", ({ runtimeConfig, testLogger }) =>
-      Effect.setRuntimeConfig(
-        runtimeConfig.copy({ loggers: HashSet(testLogger) })
-      ))
-    .bindValue("release", ({ runtimeConfig }) => Effect.setRuntimeConfig(runtimeConfig))
+    .bind("refs", () => Effect.getFiberRefs)
+    .bindValue(
+      "acquire",
+      ({ refs, testLogger }) =>
+        Effect.withFiberRuntime<never, never, void>((state) =>
+          Effect.setFiberRefs(
+            refs.updateAs(state.id, FiberRef.currentLoggers, HashSet(testLogger))
+          )
+        )
+    )
+    .bindValue("release", ({ refs }) => Effect.setFiberRefs(refs))
     .tap(({ acquire, release }) => Effect.acquireRelease(acquire, () => release))
     .map(({ testLogger }) => testLogger)
 )
@@ -132,9 +137,10 @@ export const defaultTestLogger: Layer<never, never, TestLogger<string, void>> = 
  *
  * @tsplus static effect/core/test/TestLogger.Ops logOutput
  */
-export const logOutput: Effect.UIO<ImmutableArray<LogEntry>> = Effect.runtimeConfig.flatMap(
-  (runtimeConfig) =>
-    runtimeConfig.value.loggers.toList.head.flatMap((logger) =>
-      isTestLogger(logger) ? Maybe.some(logger.logOutput) : Maybe.none
-    ).getOrElse(Effect.dieMessage("Defect: TestLogger is missing"))
-)
+export const logOutput: Effect<never, never, ImmutableArray<LogEntry>> = FiberRef.currentLoggers.get
+  .flatMap(
+    (loggers) =>
+      loggers.toList.head.flatMap((logger) =>
+        isTestLogger(logger) ? Maybe.some(logger.logOutput) : Maybe.none
+      ).getOrElse(Effect.dieMessage("Defect: TestLogger is missing"))
+  )

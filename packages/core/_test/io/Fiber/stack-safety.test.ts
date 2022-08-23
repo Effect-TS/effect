@@ -8,18 +8,18 @@ describe.concurrent("Fiber", () => {
       Do(($) => {
         const result = $(Fiber.awaitAll(fibers).map(constTrue))
         assert.isTrue(result)
-      }).unsafeRunPromise(), 20_000)
+      }).unsafeRunPromise(), 60_000)
 
     it("joinAll", () =>
       Do(($) => {
         const result = $(Fiber.joinAll(fibers).map(constTrue))
         assert.isTrue(result)
-      }).unsafeRunPromise(), 20_000)
+      }).unsafeRunPromise(), 60_000)
 
     it("collectAll", () =>
       Do(($) => {
         const result = $(Fiber.collectAll(fibers).join.map(constTrue))
         assert.isTrue(result)
-      }).unsafeRunPromise(), 20_000)
+      }).unsafeRunPromise(), 60_000)
   })
 })

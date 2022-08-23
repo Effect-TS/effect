@@ -35,7 +35,7 @@ export function checkDelays<State, Env>(
 
 export function checkRepetitions<State, Env>(
   schedule: Schedule<State, Env, number, number>
-): Effect.RIO<Env, Tuple<[Chunk<number>, Chunk<number>]>> {
+): Effect<Env, never, Tuple<[Chunk<number>, Chunk<number>]>> {
   return Do(($) => {
     const now = $(Effect.sync(Date.now()))
     const input = Chunk(1, 2, 3, 4, 5)

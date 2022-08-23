@@ -55,7 +55,7 @@ export type ErasedContinuation<R> = Continuation<
   unknown
 >
 
-export type ErasedFinalizer<R> = (_: Exit<unknown, unknown>) => Effect.RIO<R, unknown>
+export type ErasedFinalizer<R> = (_: Exit<unknown, unknown>) => Effect<R, never, unknown>
 
 export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   private currentChannel: ErasedChannel<R> | undefined
@@ -79,7 +79,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   constructor(
     initialChannel: Lazy<Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
     private providedEnv: Env<unknown> | undefined,
-    private executeCloseLastSubstream: (_: Effect<R, never, unknown>) => Effect.RIO<R, unknown>
+    private executeCloseLastSubstream: (_: Effect<R, never, unknown>) => Effect<R, never, unknown>
   ) {
     this.currentChannel = initialChannel() as ErasedChannel<R>
   }
@@ -113,7 +113,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private popAllFinalizers(
     exit: Exit<unknown, unknown>
-  ): Effect.RIO<R, unknown> {
+  ): Effect<R, never, unknown> {
     const effect = this.unwindAllFinalizers(
       Effect.sync(Exit.unit),
       this.doneStack,
@@ -146,7 +146,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     return List.from(builder)
   }
 
-  private storeInProgressFinalizer(finalizer: Effect.RIO<R, unknown>): void {
+  private storeInProgressFinalizer(finalizer: Effect<R, never, unknown>): void {
     this.inProgressFinalizer = finalizer
   }
 
@@ -154,12 +154,12 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     this.inProgressFinalizer = undefined
   }
 
-  private ifNotNull<R>(effect: Effect.RIO<R, unknown> | undefined): Effect.RIO<R, unknown> {
+  private ifNotNull<R>(effect: Effect<R, never, unknown> | undefined): Effect<R, never, unknown> {
     return effect != null ? effect : Effect.unit
   }
 
-  close(exit: Exit<unknown, unknown>): Effect.RIO<R, unknown> | undefined {
-    let runInProgressFinalizers: Effect.RIO<R, unknown> | undefined = undefined
+  close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
+    let runInProgressFinalizers: Effect<R, never, unknown> | undefined = undefined
     const finalizer = this.inProgressFinalizer
     if (finalizer != null) {
       runInProgressFinalizers = finalizer.ensuring(
@@ -171,7 +171,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       undefined :
       this.activeSubexecutor.close(exit)
 
-    let closeSelf: Effect.RIO<R, unknown> | undefined = undefined
+    let closeSelf: Effect<R, never, unknown> | undefined = undefined
     const selfFinalizers = this.popAllFinalizers(exit)
     if (selfFinalizers != null) {
       closeSelf = selfFinalizers.ensuring(
@@ -579,9 +579,9 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
 
   private runFinalizers(
-    finalizers: List<(exit: Exit<unknown, unknown>) => Effect.RIO<R, unknown>>,
+    finalizers: List<(exit: Exit<unknown, unknown>) => Effect<R, never, unknown>>,
     exit: Exit<unknown, unknown>
-  ): Effect.RIO<R, unknown> | undefined {
+  ): Effect<R, never, unknown> | undefined {
     return finalizers.length === 0
       ? undefined
       : Effect.forEach(finalizers, (f) => f(exit).exit)
@@ -628,7 +628,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
   private finishSubexecutorWithCloseEffect(
     subexecutorDone: Exit<unknown, unknown>,
-    ...closeFns: Array<(exit: Exit<unknown, unknown>) => Effect.RIO<R, unknown> | undefined>
+    ...closeFns: Array<(exit: Exit<unknown, unknown>) => Effect<R, never, unknown> | undefined>
   ): ChannelState<R, unknown> | undefined {
     this.addFinalizer(() =>
       Effect.forEachDiscard(

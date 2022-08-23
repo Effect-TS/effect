@@ -51,7 +51,7 @@ describe.concurrent("Effect", () => {
 
     it("daemon fiber race interruption", () =>
       Do(($) => {
-        function plus1<X>(latch: Deferred<never, void>, finalizer: Effect.UIO<X>) {
+        function plus1<X>(latch: Deferred<never, void>, finalizer: Effect<never, never, X>) {
           return (
             latch.succeed(undefined) > Effect.sleep((1).hours)
           ).onInterrupt(() => finalizer.map((x) => x))
@@ -96,7 +96,7 @@ describe.concurrent("Effect", () => {
 
     it("supervise fibers", () =>
       Do(($) => {
-        function makeChild(n: number): Effect.UIO<Fiber<never, void>> {
+        function makeChild(n: number): Effect<never, never, Fiber<never, void>> {
           return (Effect.sleep(new DurationInternal(20 * n)) > Effect.never).fork
         }
 
@@ -146,21 +146,32 @@ describe.concurrent("Effect", () => {
       await deferred.succeed(undefined).unsafeRunPromise()
     })
 
-    it("race of two forks does not interrupt winner", () =>
-      Do(($) => {
-        const ref = $(Ref.make(0))
-        const fibers = $(Ref.make(HashSet.empty<Fiber<unknown, unknown>>()))
-        const latch = $(Deferred.make<never, void>())
-        const effect = Effect.uninterruptibleMask(({ restore }) =>
-          restore(latch.await.onInterrupt(() => ref.update((n) => n + 1)))
+    it("race of two forks does not interrupt winner", () => {
+      function forkWaiter(
+        interrupted: Ref<number>,
+        latch: Deferred<never, void>,
+        done: Deferred<never, void>
+      ) {
+        return Effect.uninterruptibleMask((mask) =>
+          mask.restore(latch.await)
+            .onInterrupt(() => interrupted.update(_ => _ + 1) > done.succeed(void 0))
             .fork
-            .tap((fiber) => fibers.update((set) => set.add(fiber)))
         )
-        const awaitAll = fibers.get.flatMap((set) => Fiber.awaitAll(set))
-        $(effect.race(effect))
-        const result = $(latch.succeed(undefined).zipRight(awaitAll).zipRight(ref.get))
-        assert.isAtMost(result, 1)
-      }).unsafeRunPromise())
+      }
+
+      return Do(($) => {
+        const interrupted = $(Ref.make(0))
+        const latch1 = $(Deferred.make<never, void>())
+        const latch2 = $(Deferred.make<never, void>())
+        const done1 = $(Deferred.make<never, void>())
+        const done2 = $(Deferred.make<never, void>())
+        const forkWaiter1 = forkWaiter(interrupted, latch1, done1)
+        const forkWaiter2 = forkWaiter(interrupted, latch2, done2)
+        $(forkWaiter1.race(forkWaiter2))
+        const count = $(latch1.succeed(void 0) > done1.await > done2.await > interrupted.get)
+        assert.equal(count, 2)
+      }).unsafeRunPromise()
+    })
 
     it("firstSuccessOf of values", () =>
       Do(($) => {
@@ -237,7 +248,9 @@ describe.concurrent("Effect", () => {
 
     it("mergeAll - empty", () =>
       Do(($) => {
-        const result = $(Effect.mergeAll(List.empty<Effect.UIO<number>>(), 0, (b, a) => b + a))
+        const result = $(
+          Effect.mergeAll(List.empty<Effect<never, never, number>>(), 0, (b, a) => b + a)
+        )
         assert.strictEqual(result, 0)
       }).unsafeRunPromise())
 
@@ -255,7 +268,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const result = $(Effect.reduceAll(
           Effect.sync(1),
-          List.empty<Effect.UIO<number>>(),
+          List.empty<Effect<never, never, number>>(),
           (acc, a) => acc + a
         ))
         assert.strictEqual(result, 1)

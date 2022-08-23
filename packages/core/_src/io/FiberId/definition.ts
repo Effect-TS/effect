@@ -61,7 +61,7 @@ export class RuntimeFiberId implements FiberId.Runtime, Equals {
 
   constructor(
     readonly id: number,
-    readonly startTimeSeconds: number
+    readonly startTimeMillis: number
   ) {}
 
   [Hash.sym](): number {
@@ -69,7 +69,7 @@ export class RuntimeFiberId implements FiberId.Runtime, Equals {
       Hash.string(this._tag),
       Hash.combine(
         Hash.number(this.id),
-        Hash.number(this.startTimeSeconds)
+        Hash.number(this.startTimeMillis)
       )
     )
   }
@@ -79,7 +79,7 @@ export class RuntimeFiberId implements FiberId.Runtime, Equals {
       realFiberId(that)
       return this._tag === that._tag &&
         this.id === that.id &&
-        this.startTimeSeconds === that.startTimeSeconds
+        this.startTimeMillis === that.startTimeMillis
     }
     return false
   }

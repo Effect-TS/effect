@@ -230,26 +230,16 @@ describe.concurrent("STM", () => {
         assert.strictEqual(result, -1)
       })
 
-      it("interrupt the fiber and observe it, it should be resumed with Interrupted Cause", async () => {
-        const program = Effect.Do()
-          .bind("selfId", () => Effect.fiberId)
-          .bind("tRef", () => TRef.makeCommit(1))
-          .bind("fiber", ({ tRef }) =>
-            tRef
-              .get
-              .flatMap((n) => STM.check(n === 0))
-              .commit
-              .fork)
-          .tap(({ fiber }) => fiber.interrupt)
-          .bind("observe", ({ fiber }) => fiber.join.sandbox.either)
-
-        const { observe, selfId } = await program.unsafeRunPromise()
-
-        assert.isTrue(
-          observe.mapLeft((cause) => cause) ==
-            Either.left(Cause.interrupt(selfId))
-        )
-      })
+      it("interrupt the fiber and observe it, it should be resumed with Interrupted Cause", () =>
+        Do(($) => {
+          const selfId = $(Effect.fiberId)
+          const v = $(TRef.makeCommit(1))
+          const f = $(v.get.flatMap((n) => STM.check(n === 0)).commit.fork)
+          $(f.interrupt)
+          const observe = $(f.join.sandbox.either)
+          assert.isTrue(observe.isLeft())
+          assert.isTrue(observe.left.value! == Cause.interrupt(selfId))
+        }).unsafeRunPromise())
     })
 
     it("Using `continueOrRetry` filter and map simultaneously the value produced by the transaction", async () => {

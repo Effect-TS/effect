@@ -5,9 +5,9 @@ interface Foo {
 const Foo = Tag<Foo>()
 
 const program = Do(($) => {
-  const a = $(Effect.sync(1))
-  const b = $(Effect.sync(2))
-  const cf = $(Effect.sync(3).fork)
+  const a = $(Effect.succeed(1))
+  const b = $(Effect.succeed(2))
+  const cf = $(Effect.succeed(3).fork)
   const c = $(cf.join)
   const foo = $(Effect.service(Foo))
   return a + b + c + foo.d

@@ -10,5 +10,5 @@ export function children<E, A>(
   self: Fiber<E, A>
 ): Effect<never, never, Chunk<Fiber.Runtime<any, any>>> {
   realFiber(self)
-  return self._children
+  return self.children
 }

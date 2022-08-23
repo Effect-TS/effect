@@ -12,7 +12,7 @@ export function tryCatch<E, A>(
     try {
       return attempt()
     } catch (error) {
-      throw new Effect.Error(Exit.fail(onThrow(error)))
+      throw new Effect.Error(Cause.fail(onThrow(error)))
     }
   })
 }

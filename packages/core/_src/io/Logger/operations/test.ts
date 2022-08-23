@@ -9,7 +9,7 @@ export function test<Message>(input: Message) {
       LogLevel.Info,
       input,
       Cause.empty,
-      ImmutableMap.empty(),
+      new FiberRefs(ImmutableMap.empty()),
       List.empty(),
       ImmutableMap.empty()
     )

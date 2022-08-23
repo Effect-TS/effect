@@ -29,13 +29,13 @@ export function interleaveWith<R2, E2, A2, R3, E3>(
           $(
             (self.channel.concatMap(Channel.writeChunk) >> producer(left))
               .runScoped
-              .fork
+              .forkScoped
           )
           concreteStream(that)
           $(
             (that.channel.concatMap(Channel.writeChunk) >> producer(right))
               .runScoped
-              .fork
+              .forkScoped
           )
           concreteStream(b)
           return b.channel.concatMap(Channel.writeChunk) >> process(left, right, false, false)

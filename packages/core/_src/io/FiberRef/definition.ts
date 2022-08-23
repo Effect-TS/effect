@@ -49,6 +49,11 @@ export namespace FiberRef {
     readonly combine: (first: Patch, second: Patch) => Patch
 
     /**
+     * Joins the values
+     */
+    readonly join: (oldV: Value, newV: Value) => Value
+
+    /**
      * Applies a patch to an old value to produce a new value that is equal to the
      * old value with the updates described by the patch.
      */

@@ -1,4 +1,4 @@
-import { IFold } from "@effect/core/io/Effect/definition/primitives"
+import { IOnSuccessAndFailure } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * A more powerful version of `foldEffect` that allows recovering from any kind
@@ -12,5 +12,5 @@ export function foldCauseEffect<E, A, R2, E2, A2, R3, E3, A3>(
   success: (a: A) => Effect<R3, E3, A3>
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R2 | R3, E2 | E3, A2 | A3> =>
-    new IFold(self, failure, success)
+    new IOnSuccessAndFailure(self, success, failure)
 }

@@ -1,4 +1,4 @@
-import { IFail } from "@effect/core/io/Effect/definition/primitives"
+import { IFailure } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that models failure with the specified `Cause`.
@@ -6,5 +6,5 @@ import { IFail } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus static effect/core/io/Effect.Ops failCause
  */
 export function failCause<E>(cause: Cause<E>): Effect<never, E, never> {
-  return new IFail(() => cause)
+  return new IFailure(cause)
 }

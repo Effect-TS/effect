@@ -1,5 +1,3 @@
-import { ILogged } from "@effect/core/io/Effect/definition/primitives"
-
 const someFatal = Maybe.some(LogLevel.Fatal)
 const someError = Maybe.some(LogLevel.Error)
 const someWarning = Maybe.some(LogLevel.Warning)
@@ -13,7 +11,10 @@ const someDebug = Maybe.some(LogLevel.Debug)
  * @tsplus static effect/core/io/Effect.Ops log
  */
 export function log(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, Maybe.none, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, Maybe.none)
+    return Effect.unit
+  })
 }
 
 /**
@@ -22,7 +23,10 @@ export function log(message: string): Effect<never, never, void> {
  * @tsplus static effect/core/io/Effect.Ops logDebug
  */
 export function logDebug(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someDebug, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someDebug)
+    return Effect.unit
+  })
 }
 
 /**
@@ -31,7 +35,10 @@ export function logDebug(message: string): Effect<never, never, void> {
  * @tsplus static effect/core/io/Effect.Ops logDebugCause
  */
 export function logDebugCause<E>(cause: Cause<E>): Effect<never, never, void> {
-  return new ILogged("", cause, someDebug, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someDebug)
+    return Effect.unit
+  })
 }
 
 /**
@@ -43,7 +50,10 @@ export function logDebugCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someDebug, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someDebug)
+    return Effect.unit
+  })
 }
 
 /**
@@ -52,7 +62,10 @@ export function logDebugCauseMessage<E>(
  * @tsplus static effect/core/io/Effect.Ops logError
  */
 export function logError(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someError, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someError)
+    return Effect.unit
+  })
 }
 
 /**
@@ -61,7 +74,10 @@ export function logError(message: string): Effect<never, never, void> {
  * @tsplus static effect/core/io/Effect.Ops logErrorCause
  */
 export function logErrorCause<E>(cause: Cause<E>): Effect<never, never, void> {
-  return new ILogged("", cause, someError, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someError)
+    return Effect.unit
+  })
 }
 
 /**
@@ -73,7 +89,10 @@ export function logErrorCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someError, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someError)
+    return Effect.unit
+  })
 }
 
 /**
@@ -82,7 +101,10 @@ export function logErrorCauseMessage<E>(
  * @tsplus static effect/core/io/Effect.Ops logFatal
  */
 export function logFatal(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someFatal, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someFatal)
+    return Effect.unit
+  })
 }
 
 /**
@@ -93,7 +115,10 @@ export function logFatal(message: string): Effect<never, never, void> {
 export function logFatalCause<E>(
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged("", cause, someFatal, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someFatal)
+    return Effect.unit
+  })
 }
 
 /**
@@ -105,7 +130,10 @@ export function logFatalCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someFatal, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someFatal)
+    return Effect.unit
+  })
 }
 
 /**
@@ -114,7 +142,10 @@ export function logFatalCauseMessage<E>(
  * @tsplus static effect/core/io/Effect.Ops logInfo
  */
 export function logInfo(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someInfo, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someInfo)
+    return Effect.unit
+  })
 }
 
 /**
@@ -123,7 +154,10 @@ export function logInfo(message: string): Effect<never, never, void> {
  * @tsplus static effect/core/io/Effect.Ops logInfoCause
  */
 export function logInfoCause<E>(cause: Cause<E>): Effect<never, never, void> {
-  return new ILogged("", cause, someInfo, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someInfo)
+    return Effect.unit
+  })
 }
 
 /**
@@ -135,7 +169,10 @@ export function logInfoCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someInfo, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someInfo)
+    return Effect.unit
+  })
 }
 
 /**
@@ -144,7 +181,10 @@ export function logInfoCauseMessage<E>(
  * @tsplus static effect/core/io/Effect.Ops logWarning
  */
 export function logWarning(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someWarning, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someWarning)
+    return Effect.unit
+  })
 }
 
 /**
@@ -155,7 +195,10 @@ export function logWarning(message: string): Effect<never, never, void> {
 export function logWarningCause<E>(
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged("", cause, someWarning, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someWarning)
+    return Effect.unit
+  })
 }
 
 /**
@@ -167,7 +210,10 @@ export function logWarningCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someWarning, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someWarning)
+    return Effect.unit
+  })
 }
 
 /**
@@ -176,7 +222,10 @@ export function logWarningCauseMessage<E>(
  * @tsplus static effect/core/io/Effect.Ops logTrace
  */
 export function logTrace(message: string): Effect<never, never, void> {
-  return new ILogged(message, Cause.empty, someTrace, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, Cause.empty, someTrace)
+    return Effect.unit
+  })
 }
 
 /**
@@ -185,7 +234,10 @@ export function logTrace(message: string): Effect<never, never, void> {
  * @tsplus static effect/core/io/Effect.Ops logTraceCause
  */
 export function logTraceCause<E>(cause: Cause<E>): Effect<never, never, void> {
-  return new ILogged("", cause, someTrace, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log("", cause, someTrace)
+    return Effect.unit
+  })
 }
 
 /**
@@ -197,7 +249,10 @@ export function logTraceCauseMessage<E>(
   message: string,
   cause: Cause<E>
 ): Effect<never, never, void> {
-  return new ILogged(message, cause, someTrace, null, null)
+  return Effect.withFiberRuntime((fiberState) => {
+    fiberState.log(message, cause, someTrace)
+    return Effect.unit
+  })
 }
 
 /**
@@ -245,18 +300,4 @@ export function logAnnotate(key: string, value: string) {
  */
 export function logAnnotations(): Effect<never, never, ImmutableMap<string, string>> {
   return FiberRef.currentLogAnnotations.get
-}
-
-/**
- * An aspect that disables logging for the specified effect.
- *
- * @tsplus static effect/core/io/Effect.Ops disableLogging
- */
-export function disableLogging<R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> {
-  return Effect.runtimeConfig.flatMap((runtimeConfig) =>
-    Effect.withRuntimeConfig(
-      effect,
-      RuntimeConfig({ ...runtimeConfig.value, loggers: HashSet.empty() })
-    )
-  )
 }

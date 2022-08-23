@@ -16,7 +16,7 @@ export function broadcastedQueues(
     Do(($) => {
       const hub = $(Hub.bounded<Take<E, A>>(maximumLag))
       const queues = $(Effect.collectAll(Chunk.fill(n, () => hub.subscribe)))
-      $(self.runIntoHubScoped(hub).fork)
+      $(self.runIntoHubScoped(hub).forkScoped)
       return queues
     })
 }

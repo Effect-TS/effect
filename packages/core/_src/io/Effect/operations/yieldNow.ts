@@ -1,4 +1,4 @@
-import { IYield } from "@effect/core/io/Effect/definition/primitives"
+import { IYieldNow } from "@effect/core/io/Effect/definition/primitives"
 
 /**
  * Returns an effect that yields to the runtime system, starting on a fresh
@@ -7,4 +7,4 @@ import { IYield } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus static effect/core/io/Effect.Ops yieldNow
  */
-export const yieldNow: Effect<never, never, void> = new IYield()
+export const yieldNow: Effect<never, never, void> = new IYieldNow()

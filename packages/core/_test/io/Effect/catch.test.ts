@@ -15,20 +15,6 @@ describe.concurrent("Effect", () => {
       }).unsafeRunPromiseExit())
   })
 
-  describe.concurrent("catchNonFatalOrDie", () => {
-    it("recovers from non-fatal", () =>
-      Do(($) => {
-        const message = "division by zero"
-        const result = $(
-          Effect
-            .failSync(new IllegalArgumentException(message))
-            .catchNonFatalOrDie((e) => Effect.sync(e.message))
-            .exit
-        )
-        assert.isTrue(result == Exit.succeed(message))
-      }).unsafeRunPromiseExit())
-  })
-
   describe.concurrent("catchAllDefect", () => {
     it("recovers from all defects", () =>
       Do(($) => {

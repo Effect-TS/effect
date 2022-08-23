@@ -42,7 +42,7 @@ export interface Ref<A> {
   /**
    * Reads the value from the `Ref`.
    */
-  get get(): Effect.UIO<A>
+  get get(): Effect<never, never, A>
 
   /**
    * Atomically modifies the `Ref` with the specified function, which computes a

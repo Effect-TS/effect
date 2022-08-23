@@ -7,5 +7,5 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  */
 export function id<E, A>(self: Fiber<E, A>): FiberId {
   realFiber(self)
-  return self._id
+  return self.id
 }

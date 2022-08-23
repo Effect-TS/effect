@@ -1,5 +1,3 @@
-import { IGetForkScope, IOverrideForkScope } from "@effect/core/io/Effect/definition/primitives"
-
 export interface Grafter {
   <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
@@ -17,13 +15,9 @@ export interface Grafter {
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>
 ): Effect<R, E, A> {
-  return Effect.suspendSucceed(
-    new IGetForkScope((scope) =>
-      f((effect) =>
-        Effect.suspendSucceed(
-          new IOverrideForkScope(effect, Maybe.some(scope))
-        )
-      )
-    )
-  )
+  return Effect.withFiberRuntime<R, E, A>((state) => {
+    const scopeOverride = state.getFiberRef(FiberRef.forkScopeOverride)
+    const scope = scopeOverride.getOrElse(state.scope)
+    return f(FiberRef.forkScopeOverride.locally(Maybe.some(scope)))
+  })
 }

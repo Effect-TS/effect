@@ -7,7 +7,7 @@ export interface Logger<Message, Output> {
     logLevel: LogLevel,
     message: Message,
     cause: Cause<unknown>,
-    context: ImmutableMap<FiberRef<unknown>, unknown>,
+    context: FiberRefs,
     spans: List<LogSpan>,
     annotations: ImmutableMap<string, string>
   ) => Output

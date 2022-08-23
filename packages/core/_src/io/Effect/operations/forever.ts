@@ -4,5 +4,6 @@
  * @tsplus getter effect/core/io/Effect forever
  */
 export function forever<R, E, A>(self: Effect<R, E, A>): Effect<R, E, never> {
-  return self.flatMap(() => Effect.yieldNow).flatMap(() => self.forever)
+  const loop: Effect<R, E, never> = self.flatMap(() => Effect.yieldNow).flatMap(() => loop)
+  return loop
 }

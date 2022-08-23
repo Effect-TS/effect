@@ -10,5 +10,5 @@ export function toQueueSliding(capacity = 2) {
     Effect.acquireRelease(
       Queue.sliding<Take<E, A>>(capacity),
       (queue) => queue.shutdown
-    ).tap((queue) => self.runIntoQueueScoped(queue).fork)
+    ).tap((queue) => self.runIntoQueueScoped(queue).forkScoped)
 }

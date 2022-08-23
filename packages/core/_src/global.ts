@@ -198,19 +198,7 @@ import { Runtime } from "@effect/core/io/Runtime/definition"
 /**
  * @tsplus global
  */
-import { RuntimeConfig } from "@effect/core/io/RuntimeConfig/definition"
-/**
- * @tsplus global
- */
-import { RuntimeConfigFlag } from "@effect/core/io/RuntimeConfig/Flag"
-/**
- * @tsplus global
- */
 import { RuntimeFlags } from "@effect/core/io/RuntimeFlags/definition"
-/**
- * @tsplus global
- */
-import { RuntimeConfigFlags } from "@effect/core/io/RuntimeConfig/Flags/definition"
 /**
  * @tsplus global
  */

@@ -10,5 +10,5 @@ export function toQueueOfElements(capacity = 2) {
     Effect.acquireRelease(
       Queue.bounded<Exit<Maybe<E>, A>>(capacity),
       (queue) => queue.shutdown
-    ).tap((queue) => self.runIntoQueueElementsScoped(queue).fork)
+    ).tap((queue) => self.runIntoQueueElementsScoped(queue).forkScoped)
 }

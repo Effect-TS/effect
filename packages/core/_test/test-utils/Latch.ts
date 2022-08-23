@@ -1,5 +1,5 @@
 export function withLatch<R, E, A>(
-  f: (release: Effect.UIO<void>) => Effect<R, E, A>
+  f: (release: Effect<never, never, void>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Deferred.make<never, void>().flatMap(
     (latch) => f(latch.succeed(undefined).unit).zipLeft(latch.await)
@@ -7,7 +7,7 @@ export function withLatch<R, E, A>(
 }
 
 export function withLatchAwait<R, E, A>(
-  f: (release: Effect.UIO<void>, await: Effect.UIO<void>) => Effect<R, E, A>
+  f: (release: Effect<never, never, void>, await: Effect<never, never, void>) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Do(($) => {
     const ref = $(Ref.make(true))

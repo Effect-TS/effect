@@ -116,11 +116,11 @@ class HubImpl<A> implements Hub<A> {
     return Effect.sync(this.shutdownFlag.get)
   }
   get shutdown(): Effect<never, never, void> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
+    return Effect.withFiberRuntime<never, never, void>((state) => {
       this.shutdownFlag.set(true)
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
-        this.scope.close(Exit.interrupt(fiberId)) >
+        this.scope.close(Exit.interrupt(state.id)) >
           this.strategy.shutdown
       ).unit
     }).uninterruptible

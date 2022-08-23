@@ -29,7 +29,7 @@ export function buffer(capacity: number) {
           exit.fold(
             (cause) =>
               Cause.flipCauseMaybe<E>(cause).fold(() => Channel.unit, (cause) =>
-                Channel.failCauseSync(cause)),
+                Channel.failCause(cause)),
             (a) =>
               Channel.write(Chunk.single(a)) > process
           )

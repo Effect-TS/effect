@@ -12,5 +12,5 @@ export function validateWith<A, R1, E1, B, C>(
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, C> =>
     self.exit
       .zipWith(that.exit, (ea, eb) => ea.zipWith(eb, f, (ca, cb) => Cause.then(ca, cb)))
-      .flatMap((exit) => Effect.done(exit))
+      .flatten
 }

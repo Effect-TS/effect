@@ -9,7 +9,7 @@ export const never: Fiber<never, never> = makeSynthetic({
   id: FiberId.none,
   await: Effect.never,
   children: Effect.succeed(Chunk.empty()),
-  inheritRefs: Effect.never,
+  inheritAll: Effect.never,
   poll: Effect.succeed(Maybe.none),
-  interruptAs: () => Effect.never
+  interruptAsFork: () => Effect.never
 })

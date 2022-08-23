@@ -1,5 +1,3 @@
-import { IRaceWith } from "@effect/core/io/Effect/definition/primitives"
-
 /**
  * Sequentially zips this effect with the specified effect using the
  * specified combiner function.
@@ -13,26 +11,27 @@ export function zipWithPar<R2, E2, A2, A, B>(
 ) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E2, B> => {
     const g = (b: A2, a: A) => f(a, b)
-    return Effect.transplant((graft) =>
-      Effect.descriptorWith((d) =>
-        new IRaceWith(
-          graft(self),
-          graft(that),
-          (winner, loser) => coordinate<E | E2, B, A, A2>(d.id, f, true, winner, loser),
-          (winner, loser) => coordinate<E | E2, B, A2, A>(d.id, g, false, winner, loser)
+    return Effect.uninterruptibleMask((mask) =>
+      Effect.transplant((graft) =>
+        Effect.fiberIdWith((fiberId) =>
+          graft(mask.restore(self)).raceFibersWith(
+            graft(mask.restore(that)),
+            (w, l) => coordinate(fiberId, f, true, w, l),
+            (w, l) => coordinate(fiberId, g, false, w, l)
+          )
         )
       )
     )
   }
 }
 
-function coordinate<E, B, X, Y>(
+function coordinate<E, E1, B, X, Y>(
   fiberId: FiberId,
   f: (a: X, b: Y) => B,
   leftWinner: boolean,
   winner: Fiber<E, X>,
-  loser: Fiber<E, Y>
-): Effect<never, E, B> {
+  loser: Fiber<E1, Y>
+): Effect<never, E | E1, B> {
   return winner.await.flatMap((winnerExit) =>
     winnerExit.fold(
       (winnerCause) =>
@@ -40,16 +39,16 @@ function coordinate<E, B, X, Y>(
           loserExit.fold(
             (loserCause) =>
               leftWinner ?
-                Effect.failCauseSync(Cause.both(winnerCause, loserCause)) :
-                Effect.failCauseSync(Cause.both(loserCause, winnerCause)),
-            () => Effect.failCauseSync(winnerCause)
+                Effect.failCause(winnerCause & loserCause) :
+                Effect.failCause(loserCause & winnerCause),
+            () => Effect.failCause(winnerCause)
           )
         ),
       (a) =>
         loser.await.flatMap((loserExit) =>
-          loserExit.fold<E, Y, Effect<never, E, B>>(
-            (loserCause) => Effect.failCauseSync(loserCause),
-            (b) => winner.inheritRefs.zipRight(loser.inheritRefs).zipRight(Effect.sync(f(a, b)))
+          loserExit.fold<E | E1, Y, Effect<never, E | E1, B>>(
+            (loserCause) => Effect.failCause(loserCause),
+            (b) => winner.inheritAll > loser.inheritAll > Effect.sync(f(a, b))
           )
         )
     )

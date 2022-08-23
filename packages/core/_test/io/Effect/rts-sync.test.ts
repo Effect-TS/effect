@@ -62,17 +62,6 @@ describe.concurrent("Effect", () => {
         assert.isTrue(result == Either.left(error))
       }).unsafeRunPromise())
 
-    it("suspendWith must catch throwable", () =>
-      Do(($) => {
-        const error = new Error("woops")
-        const result = $(
-          Effect.suspendWith<never, unknown>(() => {
-            throw error
-          }).either
-        )
-        assert.isTrue(result == Either.left(error))
-      }).unsafeRunPromise())
-
     it("point, bind, map", () =>
       Do(($) => {
         function fibEffect(n: number): Effect<never, never, number> {
@@ -125,14 +114,14 @@ describe.concurrent("Effect", () => {
 
     it("deep effects", () =>
       Do(($) => {
-        function incLeft(n: number, ref: Ref<number>): Effect.UIO<number> {
+        function incLeft(n: number, ref: Ref<number>): Effect<never, never, number> {
           if (n <= 0) {
             return ref.get
           }
           return incLeft(n - 1, ref) < ref.update((n) => n + 1)
         }
 
-        function incRight(n: number, ref: Ref<number>): Effect.UIO<number> {
+        function incRight(n: number, ref: Ref<number>): Effect<never, never, number> {
           if (n <= 0) {
             return ref.get
           }

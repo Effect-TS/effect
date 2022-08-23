@@ -9,9 +9,9 @@ import { makeSynthetic } from "@effect/core/io/Fiber/definition"
 export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chunk<A>> {
   return makeSynthetic({
     id: fibers.reduce(FiberId.none, (id, fiber) => id + fiber.id),
-    await: Effect.forEachPar(fibers, (fiber) => fiber.await.flatMap((_) => Effect.done(_))).exit,
+    await: Effect.forEachPar(fibers, (fiber) => fiber.await.flatten).exit,
     children: Effect.forEachPar(fibers, (fiber) => fiber.children).map((_) => _.flatten),
-    inheritRefs: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs),
+    inheritAll: Effect.forEachDiscard(fibers, (fiber) => fiber.inheritAll),
     poll: Effect.forEach(fibers, (fiber) => fiber.poll).map((chunk) =>
       chunk.reduceRight(
         Maybe.some(Exit.succeed(Chunk.empty()) as Exit<E, Chunk<A>>),
@@ -26,12 +26,7 @@ export function collectAll<E, A>(fibers: Collection<Fiber<E, A>>): Fiber<E, Chun
           )
       )
     ),
-    interruptAs: (fiberId) =>
-      Effect.forEach(fibers, (fiber) => fiber.interruptAs(fiberId)).map((_) =>
-        _.reduceRight(
-          Exit.succeed(Chunk.empty()) as Exit<E, Chunk<A>>,
-          (a, b) => a.zipWith(b, (_a, _b) => _b.prepend(_a), Cause.both)
-        )
-      )
+    interruptAsFork: (fiberId) =>
+      Effect.forEachDiscard(fibers, (fiber) => fiber.interruptAsFork(fiberId))
   })
 }

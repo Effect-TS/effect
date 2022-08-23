@@ -16,13 +16,13 @@ export function mapEffect<A, E2, A2>(
       id: self.id,
       await: self.await.flatMap((_) => _.forEach(f)),
       children: self.children,
-      inheritRefs: self.inheritRefs,
+      inheritAll: self.inheritAll,
       poll: self.poll.flatMap((_) =>
         _.fold(
           () => Effect.succeed(Maybe.none),
           (exit) => exit.forEach(f).map(Maybe.some)
         )
       ),
-      interruptAs: (id) => self.interruptAs(id).flatMap((exit) => exit.forEach(f))
+      interruptAsFork: (id) => self.interruptAsFork(id)
     })
 }

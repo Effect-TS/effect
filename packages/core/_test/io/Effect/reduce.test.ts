@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
         const nonZero = 43
         const result = $(Effect.reduceAllPar(
           Effect.sync(zeroElement),
-          List.empty<Effect.UIO<number>>(),
+          List.empty<Effect<never, never, number>>(),
           () => nonZero
         ))
         assert.strictEqual(result, zeroElement)

@@ -5,18 +5,14 @@ const update = "update"
 const update1 = "update1"
 const update2 = "update2"
 
-const loseTimeAndCpu: Effect.UIO<void> = (
-  Effect.yieldNow < Clock.sleep((1).millis)
-).repeatN(100)
-
 describe.concurrent("FiberRef", () => {
   describe.concurrent("zipPar", () => {
     it("the value of the loser is inherited in zipPar", () =>
       Do(($) => {
         const fiberRef = $(FiberRef.make(initial))
         const latch = $(Deferred.make<never, void>())
-        const winner = fiberRef.set(update1).zipRight(latch.succeed(undefined).unit)
-        const loser = latch.await.zipRight(fiberRef.set(update2)).zipRight(loseTimeAndCpu)
+        const winner = fiberRef.set(update1) > latch.succeed(undefined)
+        const loser = latch.await > Clock.sleep((1).millis) > fiberRef.set(update2)
         $(winner.zipPar(loser))
         const result = $(fiberRef.get)
         assert.strictEqual(result, update2)

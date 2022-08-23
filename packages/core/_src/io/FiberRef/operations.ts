@@ -1,10 +1,13 @@
 export {
   currentEnvironment,
   currentLogAnnotations,
+  currentLoggers,
   currentLogLevel,
   currentLogSpan,
   currentParallelism,
+  currentScheduler,
   forkScopeOverride,
+  interruptedCause,
   make,
   makeEnvironment,
   makePatch,

@@ -180,7 +180,7 @@ describe.concurrent("Stream", () => {
         const schedule = Schedule.spaced((30).minutes)
         const stream = Stream(1, 1, 1, 1).aggregateWithinEither(sink, schedule)
         const result = $(stream.runCollect.exit)
-        assert.isTrue(result == Exit.die)
+        assert.isTrue(result == Exit.die(error))
       }).unsafeRunPromiseExit())
 
     it("error propagation 2", () =>

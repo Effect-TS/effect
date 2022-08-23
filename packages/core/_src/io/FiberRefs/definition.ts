@@ -19,47 +19,68 @@ export class FiberRefs {
     >
   ) {}
 
-  joinAs(id: FiberId.Runtime, that: FiberRefs): FiberRefs {
-    const parentFiberRefs = this.locals
-    const childFiberRefs = that.locals
+  joinAs(fiberId: FiberId.Runtime, that: FiberRefs): FiberRefs {
+    const parentFiberRefs = new Map(this.locals.internalMap)
 
-    const fiberRefLocals = Chunk.from(childFiberRefs).reduce(
-      parentFiberRefs,
-      (parentFiberRefs, { tuple: [fiberRef, childStack] }) => {
-        const parentStack = parentFiberRefs.get(fiberRef).getOrElse(
-          List.empty<Tuple<[FiberId.Runtime, unknown]>>()
+    that.locals.internalMap.forEach((childStack, fiberRef) => {
+      const ref = fiberRef
+      const childValue = childStack.head.get(1)
+      if (!(childStack.head.get(0) == fiberId)) {
+        if (!parentFiberRefs.has(ref)) {
+          if (Equals.equals(childValue, ref.initial)) {
+            return
+          } else {
+            parentFiberRefs.set(
+              fiberRef,
+              List.cons(Tuple(fiberId, ref.join(ref.initial, childValue)), List.nil())
+            )
+            return
+          }
+        }
+        const parentStack = parentFiberRefs.get(ref)!
+        const { tuple: [ancestor, wasModified] } = findAnchestor(
+          fiberRef,
+          parentStack,
+          childStack
         )
-
-        const values: List.NonEmpty<unknown> = combine(fiberRef, parentStack, childStack)
-
-        const patches: List<unknown> = values.tail.reduce(
-          Tuple(values.head, List.empty<unknown>()),
-          ({ tuple: [oldValue, patches] }, newValue) =>
-            Tuple(newValue, List.cons(fiberRef.diff(oldValue, newValue), patches))
-        ).get(1).reverse
-
-        if (patches.isNil()) {
-          return parentFiberRefs
+        if (wasModified) {
+          const patch = ref.diff(ancestor, childValue)
+          const oldValue = parentStack.head.get(1)
+          const newValue = ref.join(oldValue, ref.patch(patch)(oldValue))
+          if (!Equals.equals(oldValue, newValue)) {
+            let newStack: List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
+            const { tuple: [parentFiberId] } = parentStack.head
+            if (parentFiberId == fiberId) {
+              newStack = List.cons(Tuple(parentFiberId, newValue), parentStack.tail)
+            } else {
+              newStack = List.cons(Tuple(fiberId, newValue), parentStack)
+            }
+            parentFiberRefs.set(ref, newStack)
+          }
         }
-
-        let newStack: List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
-
-        const patch = patches.tail.reduce(patches.head, (a, b) => fiberRef.combine(a, b))
-
-        if (parentStack.isNil()) {
-          newStack = List.cons(Tuple(id, fiberRef.patch(patch)(fiberRef.initial)), List.nil())
-        } else {
-          newStack = List.cons(
-            Tuple(id, fiberRef.patch(patch)(parentStack.head.get(1))),
-            parentStack.tail
-          )
-        }
-
-        return parentFiberRefs.set(fiberRef, newStack)
       }
-    )
+    })
 
-    return new FiberRefs(fiberRefLocals)
+    return new FiberRefs(new ImmutableMap(parentFiberRefs))
+  }
+
+  /**
+   * Forks this collection of fiber refs as the specified child fiber id. This
+   * will potentially modify the value of the fiber refs, as determined by the
+   * individual fiber refs that make up the collection.
+   */
+  forkAs(childId: FiberId.Runtime) {
+    const map = new Map<FiberRef<any>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>()
+    this.locals.internalMap.forEach((stack, fiberRef) => {
+      const oldValue = stack.head.get(1)
+      const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
+      if (Equals.equals(oldValue, newValue)) {
+        map.set(fiberRef, stack)
+      } else {
+        map.set(fiberRef, List.cons(Tuple(childId, newValue), stack))
+      }
+    })
+    return new FiberRefs(new ImmutableMap(map))
   }
 
   get fiberRefs() {
@@ -90,8 +111,12 @@ export class FiberRefs {
       : oldStack.head.get(0).equals(fiberId)
       ? List.cons(Tuple(fiberId, value), oldStack.tail)
       : List.cons(Tuple(fiberId, value), oldStack)
+    return new FiberRefs(this.locals.set(fiberRef, newStack))
+  }
+
+  delete<A>(fiberRef: FiberRef<A>) {
     return new FiberRefs(
-      this.locals.set(fiberRef, newStack as List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>)
+      this.locals.remove(fiberRef)
     )
   }
 }
@@ -106,50 +131,33 @@ export interface FiberRefsAspects {}
  */
 export const FiberRefsAspects: FiberRefsAspects = {}
 
-function combine<A>(
-  fiberRef: FiberRef<A>,
-  parentStack: List<Tuple<[FiberId.Runtime, A]>>,
-  childStack: List.NonEmpty<Tuple<[FiberId.Runtime, A]>>
-): List.NonEmpty<A> {
-  return combineLoop(
-    parentStack.reverse,
-    childStack.reverse,
-    fiberRef.initial,
-    fiberRef.initial
-  )
-}
-
 /**
  * @tsplus tailRec
  */
-function combineLoop<A>(
-  parentStack: List<Tuple<[FiberId.Runtime, A]>>,
-  childStack: List<Tuple<[FiberId.Runtime, A]>>,
-  lastParentValue: A,
-  lastChildValue: A
-): List.NonEmpty<A> {
-  if (parentStack.isNil() || childStack.isNil()) {
-    return List.cons(lastChildValue, childStack.map((tuple) => tuple.get(1)))
+function findAnchestor(
+  ref: FiberRef<any>,
+  parentStack: List<Tuple<[FiberId.Runtime, unknown]>>,
+  childStack: List<Tuple<[FiberId.Runtime, unknown]>>,
+  childModified = false
+): Tuple<[unknown, boolean]> {
+  if (parentStack.isCons() && childStack.isCons()) {
+    const { tuple: [parentFiberId] } = parentStack.head
+    const parentAncestors = parentStack.tail
+    const { tuple: [childFiberId, childRefValue] } = childStack.head
+    const childAncestors = childStack.tail
+    if (parentFiberId.startTimeMillis < childFiberId.startTimeMillis) {
+      return findAnchestor(ref, parentStack, childAncestors, true)
+    } else if (parentFiberId.startTimeMillis > childFiberId.startTimeMillis) {
+      return findAnchestor(ref, parentAncestors, childStack, childModified)
+    } else {
+      if (parentFiberId.id < childFiberId.id) {
+        return findAnchestor(ref, parentStack, childAncestors, true)
+      } else if (parentFiberId.id > childFiberId.id) {
+        return findAnchestor(ref, parentAncestors, childStack, childModified)
+      } else {
+        return Tuple(childRefValue, childModified)
+      }
+    }
   }
-
-  const { tuple: [parentId, parentValue] } = parentStack.head
-  const parentTail = parentStack.tail
-
-  const { tuple: [childId, childValue] } = childStack.head
-  const childTail = childStack.tail
-
-  if (parentId == childId) {
-    return combineLoop(parentTail, childTail, parentValue, childValue)
-  }
-
-  if (parentId.id < childId.id) {
-    return childStack.map((tuple) => tuple.get(1))
-      .prepend(childValue)
-      .prepend(lastChildValue)
-      .prepend(lastParentValue)
-  }
-
-  return childStack.map((tuple) => tuple.get(1))
-    .prepend(childValue)
-    .prepend(lastChildValue)
+  return Tuple(ref.initial, true)
 }

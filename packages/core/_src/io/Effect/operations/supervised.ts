@@ -1,4 +1,4 @@
-import { ISupervise } from "@effect/core/io/Effect/definition/primitives"
+// TODO: SUPERVISOR
 
 /**
  * Returns an effect with the behavior of this one, but where all child fibers
@@ -8,5 +8,6 @@ import { ISupervise } from "@effect/core/io/Effect/definition/primitives"
  * @tsplus pipeable effect/core/io/Effect supervised
  */
 export function supervised<X>(supervisor: Supervisor<X>) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => new ISupervise(self, supervisor)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
+    self.apply(FiberRef.currentSupervisor.locallyWith((s) => s.zip(supervisor)))
 }

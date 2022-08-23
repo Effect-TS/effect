@@ -6,7 +6,7 @@ describe.concurrent("FiberRefs", () => {
       const producer = $(
         fiberRef
           .set(true)
-          .zipRight(Effect.getFiberRefs().flatMap((a) => queue.offer(a)))
+          .zipRight(Effect.getFiberRefs.flatMap((a) => queue.offer(a)))
           .fork
       )
       const consumer = $(

@@ -144,7 +144,7 @@ export class TestClockInternal extends LiveClock {
         fibers,
         HashMap.empty<FiberId, Fiber.Status>(),
         (map, fiber) =>
-          fiber._status.flatMap((status) => {
+          fiber.status.flatMap((status) => {
             switch (status._tag) {
               case "Done": {
                 return Effect.succeed(map.set(fiber.id, status))

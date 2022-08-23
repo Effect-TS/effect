@@ -7,8 +7,14 @@ export function forkScoped<R, E, A>(
   self: Effect<R, E, A>
 ): Effect<R | Scope, never, Fiber.Runtime<E, A>> {
   return Effect.uninterruptibleMask(({ restore }) =>
-    restore(self)
-      .forkDaemon
-      .tap((fiber) => Effect.addFinalizer(fiber.interrupt))
+    Effect.scopeWith((scope) =>
+      scope.fork.flatMap((child) =>
+        restore(self).onExit((e) => child.close(e)).forkDaemon.tap((fiber) =>
+          child.addFinalizer(
+            Effect.fiberIdWith((fiberId) => fiberId == fiber.id ? Effect.unit : fiber.interrupt)
+          )
+        )
+      )
+    )
   )
 }

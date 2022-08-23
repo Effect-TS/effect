@@ -1,3 +1,5 @@
+import { IAsync } from "@effect/core/io/Effect/definition/primitives"
+
 /**
  * Imports an asynchronous side-effect into a pure `Effect` value. See
  * `asyncMaybe` for the more expressive variant of this function that can
@@ -10,7 +12,7 @@
 export function _async<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void
 ): Effect<R, E, A> {
-  return asyncBlockingOn(register, FiberId.none)
+  return new IAsync(register, FiberId.none)
 }
 
 export { _async as async }
@@ -31,8 +33,5 @@ export function asyncBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,
   blockingOn: FiberId
 ): Effect<R, E, A> {
-  return Effect.asyncMaybeBlockingOn((cb) => {
-    register(cb)
-    return Maybe.none
-  }, blockingOn)
+  return new IAsync(register, blockingOn)
 }

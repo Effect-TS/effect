@@ -300,7 +300,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
                 return Effect.failCauseSync(cause.stripFailures)
               }
             ),
-          (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritRefs)
+          (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritAll)
         )
       )
     })
@@ -554,9 +554,7 @@ export function collectAllSuccessesPar<R, E, A>(
 export function fiberJoinAll<E, A>(
   as: Collection<Fiber<E, A>>
 ): Effect<never, E, Chunk<A>> {
-  return fiberWaitAll(as)
-    .flatMap((exit) => Effect.done(exit))
-    .tap(() => Effect.forEach(as, (fiber) => fiber.inheritRefs))
+  return fiberWaitAll(as).flatten.tap(() => Effect.forEach(as, (fiber) => fiber.inheritAll))
 }
 
 /**
@@ -565,7 +563,7 @@ export function fiberJoinAll<E, A>(
 export function fiberWaitAll<E, A>(
   as: Collection<Fiber<E, A>>
 ): Effect<never, never, Exit<E, Chunk<A>>> {
-  return Effect.forEachPar(as, (fiber) => fiber.await.flatMap((exit) => Effect.done(exit))).exit
+  return Effect.forEachPar(as, (fiber) => fiber.await.flatten).exit
 }
 
 // -----------------------------------------------------------------------------
@@ -593,9 +591,7 @@ export function releaseMapReleaseAll(
                 Effect.forEach(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
-                ).flatMap((
-                  results
-                ) => Effect.done(Exit.collectAll(results).getOrElse(Exit.unit))),
+                ).flatMap((results) => Exit.collectAll(results).getOrElse(Exit.unit)),
                 new Exited(s.nextKey, ex, s.update)
               )
             }
@@ -604,9 +600,7 @@ export function releaseMapReleaseAll(
                 Effect.forEachPar(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
-                ).flatMap((
-                  results
-                ) => Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))),
+                ).flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit)),
                 new Exited(s.nextKey, ex, s.update)
               )
             }
@@ -616,9 +610,7 @@ export function releaseMapReleaseAll(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
                 )
-                  .flatMap((results) =>
-                    Effect.done(Exit.collectAllPar(results).getOrElse(Exit.unit))
-                  )
+                  .flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit))
                   .withParallelism(execStrategy.n) as Effect<never, never, unknown>,
                 new Exited(s.nextKey, ex, s.update)
               )
@@ -773,13 +765,13 @@ class QueueImpl<A> implements Queue<A> {
   }
 
   get shutdown(): Effect<never, never, void> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
+    return Effect.withFiberRuntime<never, never, void>((state) => {
       this.shutdownFlag.set(true)
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
         Effect.forEachParDiscard(
           unsafePollAll(this.takers),
-          (deferred) => deferred.interruptAs(fiberId)
+          (deferred) => deferred.interruptAs(state.id)
         ).zipRight(this.strategy.shutdown)
       ).unit
     }).uninterruptible
@@ -794,7 +786,7 @@ class QueueImpl<A> implements Queue<A> {
   }
 
   get take(): Effect<never, never, A> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
+    return Effect.withFiberRuntime((state) => {
       if (this.shutdownFlag.get) {
         return Effect.interrupt
       }
@@ -810,7 +802,7 @@ class QueueImpl<A> implements Queue<A> {
         // - Try to take again in case a value was added since
         // - Wait for the deferred to be completed
         // - Clean up resources in case of interruption
-        const deferred = Deferred.unsafeMake<never, A>(fiberId)
+        const deferred = Deferred.unsafeMake<never, A>(state.id)
         return Effect.suspendSucceed(() => {
           this.takers.offer(deferred)
           unsafeCompleteTakers(
@@ -928,8 +920,8 @@ export class BackPressureStrategy<A> implements Strategy<A> {
     takers: MutableQueue<Deferred<never, A>>,
     isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
-    return Effect.suspendSucceedWith((_, fiberId) => {
-      const deferred = Deferred.unsafeMake<never, boolean>(fiberId)
+    return Effect.withFiberRuntime((state) => {
+      const deferred = Deferred.unsafeMake<never, boolean>(state.id)
 
       return Effect.suspendSucceed(() => {
         this.unsafeOffer(as, deferred)

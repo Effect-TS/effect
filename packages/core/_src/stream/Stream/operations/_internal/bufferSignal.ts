@@ -8,7 +8,7 @@ export function bufferSignal<R, E, A>(
       const start = $(Deferred.make<never, void>())
       $(start.succeed(undefined))
       const ref = $(Ref.make(start))
-      $((channel >> producer<E, A>(queue, ref)).runScoped.fork)
+      $((channel >> producer<E, A>(queue, ref)).runScoped.forkScoped)
       return consumer(queue)
     })
   )
@@ -48,7 +48,7 @@ function consumer<E, A>(
       Channel.fromEffect(deferred.succeed(undefined)) >
         take.fold(
           Channel.unit,
-          (cause) => Channel.failCauseSync(cause),
+          (cause) => Channel.failCause(cause),
           (a) => Channel.write(a) > process
         )
   )
@@ -67,7 +67,7 @@ function terminate<E, A>(
       const deferred = $(Deferred.make<never, void>())
       $(queue.offer(Tuple(take, deferred)))
       $(ref.set(deferred))
-      return deferred.await
+      $(deferred.await)
     })
   )
 }
