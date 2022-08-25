@@ -8,8 +8,8 @@ import type { Driver } from "@effect/core/io/Schedule"
  * @tsplus static effect/core/io/Effect.Aspects retryOrElseEither
  * @tsplus pipeable effect/core/io/Effect retryOrElseEither
  */
-export function retryOrElseEither<S, R1, E, A1, R2, E2, A2>(
-  policy: Schedule<S, R1, E, A1>,
+export function retryOrElseEither<S, R1, E extends E3, A1, R2, E2, A2, E3>(
+  policy: Schedule<S, R1, E3, A1>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>
 ): <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, Either<A2, A>> {
   return <R, A>(
