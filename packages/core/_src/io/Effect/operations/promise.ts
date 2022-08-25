@@ -8,7 +8,7 @@ export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,
   onReject: (reason: unknown) => E
 ): Effect<never, E, A> {
-  return Effect.sync(promise).flatMap((promise) =>
+  return Effect.tryCatch(promise, onReject).flatMap((promise) =>
     Effect.async<never, E, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeed(a)))
@@ -26,7 +26,7 @@ export function tryCatchPromise<E, A>(
 export function tryPromise<A>(
   promise: LazyArg<Promise<A>>
 ): Effect<never, unknown, A> {
-  return Effect.sync(promise).flatMap((promise) =>
+  return Effect.attempt(promise).flatMap((promise) =>
     Effect.async<never, unknown, A>((resolve) => {
       promise
         .then((a) => resolve(Effect.succeed(a)))
