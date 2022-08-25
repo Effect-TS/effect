@@ -1,4 +1,20 @@
 describe.concurrent("Effect", () => {
+  describe.concurrent("tryCatch", () => {
+    it("handles exceptions", () =>
+      Do(($) => {
+        const message = "hello"
+        const result = $(
+          Effect.tryCatch(
+            () => {
+              throw message
+            },
+            identity
+          ).exit
+        )
+        assert.deepEqual(result, Exit.fail(message))
+      }).unsafeRunPromiseExit())
+  })
+
   describe.concurrent("catchNonFatalOrDie", () => {
     it("recovers from non-fatal", () =>
       Do(($) => {
