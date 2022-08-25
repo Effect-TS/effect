@@ -8,11 +8,11 @@ export function tryCatch<E, A>(
   attempt: LazyArg<A>,
   onThrow: (u: unknown) => E
 ): Effect<never, E, A> {
-  return Effect.suspendSucceed(() => {
+  return Effect.sync(() => {
     try {
-      return Effect.sync(attempt)
+      return attempt()
     } catch (error) {
-      return Effect.fail(onThrow(error))
+      throw new Effect.Error(Exit.fail(onThrow(error)))
     }
   })
 }
