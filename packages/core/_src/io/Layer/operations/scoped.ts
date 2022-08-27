@@ -7,5 +7,5 @@ export function scoped<T, R, E, T1 extends T>(
   tag: Tag<T>,
   effect: Effect<R, E, T1>
 ): Layer<Exclude<R, Scope>, E, T> {
-  return Layer.scopedEnvironment(Effect.suspendSucceed(effect).map((service) => Env(tag, service)))
+  return Layer.scopedEnvironment(effect.map((service) => Env(tag, service)))
 }
