@@ -11,5 +11,5 @@ export function mapErrorCause<OutErr, OutErr2>(
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(
     self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): Channel<Env, InErr, InElem, InDone, OutErr2, OutElem, OutDone> =>
-    self.catchAllCause((cause) => Channel.failCauseSync(f(cause)))
+    self.catchAllCause((cause) => Channel.failCause(f(cause)))
 }

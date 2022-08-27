@@ -86,7 +86,7 @@ export function debounce<R, E, A>(duration: Duration) {
                         return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCauseSync(signal.error)
+                        return Channel.failCause(signal.error)
                       }
                       case "End": {
                         return Channel.unit
@@ -101,7 +101,7 @@ export function debounce<R, E, A>(duration: Duration) {
                         return Channel.unwrap(enqueue(signal.elements))
                       }
                       case "Halt": {
-                        return Channel.failCauseSync(signal.error)
+                        return Channel.failCause(signal.error)
                       }
                       case "End": {
                         return Channel.unit
@@ -114,7 +114,7 @@ export function debounce<R, E, A>(duration: Duration) {
                     handoff.take,
                     (exit, current) =>
                       exit.fold(
-                        (cause) => current.interrupt.as(Channel.failCauseSync(cause)),
+                        (cause) => current.interrupt.as(Channel.failCause(cause)),
                         (chunk) =>
                           Effect.succeed(
                             Channel.write(chunk) > consumer(new Current(current))
@@ -122,14 +122,14 @@ export function debounce<R, E, A>(duration: Duration) {
                       ),
                     (exit, previous) =>
                       exit.fold(
-                        (cause) => previous.interrupt.as(Channel.failCauseSync(cause)),
+                        (cause) => previous.interrupt.as(Channel.failCause(cause)),
                         (signal) => {
                           switch (signal._tag) {
                             case "Emit": {
                               return previous.interrupt > enqueue(signal.elements)
                             }
                             case "Halt": {
-                              return previous.interrupt.as(Channel.failCauseSync(signal.error))
+                              return previous.interrupt.as(Channel.failCause(signal.error))
                             }
                             case "End": {
                               return previous

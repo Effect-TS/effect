@@ -2,7 +2,6 @@ import { LiveClock } from "@effect/core/io/Clock"
 import type { Live } from "@effect/core/testing/Live"
 import { SuspendedWarningData } from "@effect/core/testing/TestClock/_internal/SuspendedWarningData"
 import { WarningData } from "@effect/core/testing/TestClock/_internal/WarningData"
-import { constVoid } from "@tsplus/stdlib/data/Function"
 
 /**
  * The warning message that will be displayed if a test is using time but is
@@ -153,7 +152,7 @@ export class TestClockInternal extends LiveClock {
                 return Effect.succeed(map.set(fiber.id, status))
               }
               default: {
-                return Effect.failSync(undefined)
+                return Effect.fail(undefined)
               }
             }
           })
@@ -207,7 +206,7 @@ export class TestClockInternal extends LiveClock {
       .flatMap(({ tuple: [first, last] }) =>
         first.equals(last) ?
           Effect.succeed(first) :
-          Effect.failSync(constVoid)
+          Effect.fail(void 0)
       )
   }
 

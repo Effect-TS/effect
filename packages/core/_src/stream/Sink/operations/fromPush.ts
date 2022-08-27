@@ -23,17 +23,17 @@ function pull<R, E, In, L, Z>(
       Channel.fromEffect(push(Maybe.some(input))).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
-            (e) => Channel.write(leftovers) > Channel.failSync(e),
+            (e) => Channel.write(leftovers) > Channel.fail(e),
             (z) => Channel.write(leftovers) > Channel.succeed(z)
           ),
         () => pull(push)
       ),
-    (err) => Channel.failSync(() => err),
+    (err) => Channel.fail(err),
     () =>
       Channel.fromEffect(push(Maybe.none)).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
-            (e) => Channel.write(leftovers) > Channel.failSync(e),
+            (e) => Channel.write(leftovers) > Channel.fail(e),
             (z) => Channel.write(leftovers) > Channel.succeed(z)
           ),
         () => Channel.fromEffect(Effect.dieMessage("empty sink"))

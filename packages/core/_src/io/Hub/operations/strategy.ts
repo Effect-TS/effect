@@ -234,7 +234,7 @@ export class Dropping<A> extends BaseStrategy<A> {
     _as: Collection<A>,
     _isShutdown: AtomicBoolean
   ): Effect<never, never, boolean> {
-    return Effect.sync(false)
+    return Effect.succeed(false)
   }
 
   shutdown: Effect<never, never, void> = Effect.unit

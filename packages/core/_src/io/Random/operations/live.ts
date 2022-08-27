@@ -14,7 +14,7 @@ export class LiveRandom implements Random {
   }
 
   get nextBoolean(): Effect<never, never, boolean> {
-    return this.next.flatMap((n) => Effect.sync(n > 0.5))
+    return this.next.map((n) => n > 0.5)
   }
 
   get nextInt(): Effect<never, never, number> {
@@ -22,7 +22,7 @@ export class LiveRandom implements Random {
   }
 
   nextRange(low: number, high: number): Effect<never, never, number> {
-    return this.next.flatMap((n) => Effect.sync((high - low) * n + low))
+    return this.next.map((n) => (high - low) * n + low)
   }
 
   nextIntBetween(low: number, high: number): Effect<never, never, number> {

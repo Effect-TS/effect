@@ -7,7 +7,7 @@ export function some<R, E, A>(
   self: Effect<R, E, Maybe<A>>
 ): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
-    (e) => Effect.failSync(Maybe.some(e)),
-    (option) => option.fold(Effect.failSync(Maybe.none), Effect.succeed)
+    (e) => Effect.fail(Maybe.some(e)),
+    (option) => option.fold(Effect.fail(Maybe.none), Effect.succeed)
   )
 }

@@ -27,7 +27,7 @@ export function atomically<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
             const currentState = state.get
             return currentState._tag === "Done"
               ? Effect.done(currentState.exit)
-              : Effect.failCauseSync(cause)
+              : Effect.failCause(cause)
           })
         )
       }

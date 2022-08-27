@@ -20,7 +20,7 @@ export function refineOrDieWith<E, E2>(
       self.channel.catchAll((e) =>
         pf(e).fold(
           Channel.failCauseSync(Cause.die(f(e))),
-          (e2) => Channel.failSync(e2)
+          (e2) => Channel.fail(e2)
         )
       )
     )

@@ -7,5 +7,5 @@
  * @tsplus static effect/core/stm/STM.Ops serviceWith
  */
 export function serviceWith<T, A>(tag: Tag<T>, f: (a: T) => A): STM<T, never, A> {
-  return STM.serviceWithSTM(tag)((a) => STM.succeed(f(a)))
+  return STM.serviceWithSTM(tag)((a) => STM.sync(f(a)))
 }

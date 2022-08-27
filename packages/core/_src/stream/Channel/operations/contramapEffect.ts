@@ -19,7 +19,7 @@ function contramapMReader<Env1, InErr, InElem, InDone0, InDone>(
 ): Channel<Env1, InErr, InElem, InDone0, InErr, InElem, InDone> {
   return Channel.readWith(
     (inElem) => Channel.write(inElem) > contramapMReader<Env1, InErr, InElem, InDone0, InDone>(f),
-    (inErr) => Channel.failSync(inErr),
+    (inErr) => Channel.fail(inErr),
     (inDone) => Channel.fromEffect(f(inDone))
   )
 }

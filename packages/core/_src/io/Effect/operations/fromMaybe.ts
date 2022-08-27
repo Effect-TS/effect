@@ -5,7 +5,5 @@
  * @tsplus static effect/core/io/Effect.Ops fromMaybe
  */
 export function fromMaybe<A>(option: Maybe<A>): Effect<never, Maybe<never>, A> {
-  return Effect.sync(option).flatMap((option) =>
-    option.fold(Effect.failSync(Maybe.none), Effect.succeed)
-  )
+  return option.fold(Effect.fail(Maybe.none), Effect.succeed)
 }

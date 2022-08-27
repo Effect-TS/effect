@@ -6,7 +6,7 @@
  */
 export function head<R, E, A>(self: Effect<R, E, Collection<A>>): Effect<R, Maybe<E>, A> {
   return self.foldEffect(
-    (e) => Effect.failSync(Maybe.some(e)),
-    (collection) => Chunk.from(collection).head.fold(Effect.failSync(Maybe.none), Effect.succeed)
+    (e) => Effect.fail(Maybe.some(e)),
+    (collection) => Chunk.from(collection).head.fold(Effect.fail(Maybe.none), Effect.succeed)
   )
 }

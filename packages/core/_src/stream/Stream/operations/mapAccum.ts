@@ -27,7 +27,7 @@ function accumulator<E, A, S, A1>(
       } = input.mapAccum(current, f)
       return Channel.write(a1s) > accumulator<E, A, S, A1>(nextS, f)
     },
-    (err: E) => Channel.failSync(err),
+    (err: E) => Channel.fail(err),
     () => Channel.unit
   )
 }

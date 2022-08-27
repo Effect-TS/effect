@@ -9,5 +9,5 @@
  */
 export function retry<S, R1, E, B>(policy: Schedule<S, R1, E, B>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>
-    self.retryOrElse(policy, (e, _) => Effect.failSync(e))
+    self.retryOrElse(policy, (e, _) => Effect.fail(e))
 }

@@ -8,8 +8,8 @@ export function toEffect<E, A>(
 ): Effect<never, E, A> {
   switch (self._tag) {
     case "Failure":
-      return Effect.failCauseSync(self.cause)
+      return Effect.failCause(self.cause)
     case "Success":
-      return Effect.sync(self.value)
+      return Effect.succeed(self.value)
   }
 }

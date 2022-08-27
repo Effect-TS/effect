@@ -293,11 +293,11 @@ function forEachParUnboundedDiscard<R, E, A, X>(
               (exits) => {
                 const collected = Exit.collectAllPar(exits)
                 if (collected._tag === "Some" && collected.value._tag === "Failure") {
-                  return Effect.failCauseSync(
+                  return Effect.failCause(
                     Cause.both(cause.stripFailures, collected.value.cause)
                   )
                 }
-                return Effect.failCauseSync(cause.stripFailures)
+                return Effect.failCause(cause.stripFailures)
               }
             ),
           (_) => Effect.forEachDiscard(fibers, (fiber) => fiber.inheritAll)

@@ -115,7 +115,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     exit: Exit<unknown, unknown>
   ): Effect<R, never, unknown> {
     const effect = this.unwindAllFinalizers(
-      Effect.sync(Exit.unit),
+      Effect.succeed(Exit.unit),
       this.doneStack,
       exit
     ).flatMap((exit) => Effect.done(exit))
@@ -269,17 +269,15 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 
                   result = ChannelState.Effect(
                     drainer.fork.flatMap((fiber) =>
-                      Effect.sync(() =>
-                        this.addFinalizer(
-                          (exit) =>
-                            fiber.interrupt.zipRight(
-                              Effect.suspendSucceed(() => {
-                                const effect = this.restorePipe(exit, inputExecutor)
-                                return effect != null ? effect : Effect.unit
-                              })
-                            )
-                        )
-                      )
+                      Effect.sync(this.addFinalizer(
+                        (exit) =>
+                          fiber.interrupt.zipRight(
+                            Effect.suspendSucceed(() => {
+                              const effect = this.restorePipe(exit, inputExecutor)
+                              return effect != null ? effect : Effect.unit
+                            })
+                          )
+                      ))
                     )
                   )
                 }
@@ -443,7 +441,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
               }
             }
           } catch (error) {
-            this.currentChannel = Channel.failCauseSync(Cause.die(error))
+            this.currentChannel = Channel.failCause(Cause.die(error))
           }
         }
       }
@@ -853,7 +851,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       () => {
         const lastClose = this.closeLastSubstream
         if (lastClose != null) {
-          this.addFinalizer(() => Effect.sync(lastClose))
+          this.addFinalizer(() => Effect.succeed(lastClose))
         }
         return this.finishSubexecutorWithCloseEffect(
           self.upstreamDone,

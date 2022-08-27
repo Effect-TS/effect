@@ -31,7 +31,7 @@ export function collectAllWhileWith<Z, S>(
             unknown
           > = Channel.readWith(
             (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
-            (err) => Channel.failSync(() => err),
+            (err) => Channel.fail(err),
             (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
           )
           return (
@@ -54,7 +54,7 @@ function loop<R, E, In, L extends In, Z, S>(
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, S> {
   concreteSink(self)
   return self.channel.doneCollect.foldChannel(
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     ({ tuple: [leftovers, doneValue] }) =>
       p(doneValue)
         ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >

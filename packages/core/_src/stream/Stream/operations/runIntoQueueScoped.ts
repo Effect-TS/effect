@@ -23,12 +23,10 @@ export function runIntoQueueScoped<E1, A>(queue: Enqueue<Take<E1, A>>) {
       () => Channel.write(Take.end)
     )
     concreteStream(self)
-    return Effect.sync(queue).flatMap((queue) =>
-      (self.channel >> writer)
-        .mapOutEffect((take) => queue.offer(take))
-        .drain
-        .runScoped
-        .unit
-    )
+    return (self.channel >> writer)
+      .mapOutEffect((take) => queue.offer(take))
+      .drain
+      .runScoped
+      .unit
   }
 }

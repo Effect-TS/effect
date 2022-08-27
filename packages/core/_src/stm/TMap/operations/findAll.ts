@@ -7,5 +7,5 @@
  */
 export function findAll<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
   return (self: TMap<K, V>): STM<never, never, Chunk<A>> =>
-    self.findAllSTM((kv) => pf(kv).fold(STM.failSync(Maybe.none), STM.succeed))
+    self.findAllSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeed))
 }

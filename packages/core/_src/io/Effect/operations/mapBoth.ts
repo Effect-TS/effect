@@ -11,7 +11,7 @@ export function mapBoth<E, A, E2, A2>(
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R, E2, A2> =>
     self.foldEffect(
-      (e) => Effect.fail(f(e)),
-      (a) => Effect.succeed(g(a))
+      (e) => Effect.failSync(f(e)),
+      (a) => Effect.sync(g(a))
     )
 }

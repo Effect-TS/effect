@@ -94,10 +94,10 @@ export function apply<R, E, A, B>(
       )
     },
     end(this: Emit<R, E, A, B>) {
-      return this(Effect.failSync(Maybe.none))
+      return this(Effect.fail(Maybe.none))
     },
     fail(this: Emit<R, E, A, B>, e: E) {
-      return this(Effect.failSync(Maybe.some(e)))
+      return this(Effect.fail(Maybe.some(e)))
     },
     fromEffect(this: Emit<R, E, A, B>, io: Effect<R, E, A>) {
       return this(

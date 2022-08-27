@@ -28,12 +28,12 @@ function loop<E, A, R1, E1, A1>(
   if (next.done) {
     return Channel.readWithCause(
       (elem) => loop(elem[Symbol.iterator](), f),
-      (err) => Channel.failCauseSync(err),
-      (done) => Channel.sync(done)
+      (err) => Channel.failCause(err),
+      (done) => Channel.succeed(done)
     )
   } else {
     return Channel.unwrap(
-      f(next.value).map(
+      Effect.suspendSucceed(f(next.value)).map(
         a1 =>
           Channel.write(Chunk.single(a1)).flatMap(() => loop<E, A, R1, E1, A1>(chunkIterator, f))
       )

@@ -12,7 +12,7 @@ export class LiveClock implements Clock {
   }
 
   get scheduler(): Effect<never, never, Clock.Scheduler> {
-    return Effect.sync(globalScheduler)
+    return Effect.succeed(globalScheduler)
   }
 
   sleep(duration: Duration): Effect<never, never, void> {

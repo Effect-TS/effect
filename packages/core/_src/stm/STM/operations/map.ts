@@ -7,6 +7,6 @@
 export function map<A, B>(f: (a: A) => B) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, B> =>
     self.flatMap(
-      (a) => STM.succeed(f(a))
+      (a) => STM.sync(f(a))
     )
 }

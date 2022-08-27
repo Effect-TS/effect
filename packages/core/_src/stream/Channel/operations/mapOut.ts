@@ -11,7 +11,7 @@ export function mapOut<OutElem, OutElem2>(f: (o: OutElem) => OutElem2) {
     const reader: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel
       .readWith(
         (outElem) => Channel.write(f(outElem)) > reader,
-        (outErr) => Channel.failSync(outErr),
+        (outErr) => Channel.fail(outErr),
         (outDone) => Channel.succeed(outDone)
       )
     return self >> reader

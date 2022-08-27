@@ -6,6 +6,5 @@
  * @tsplus pipeable effect/core/io/Effect repeatWhileEquals
  */
 export function repeatWhileEquals<A>(E: Equivalence<A>, a: A) {
-  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.sync(a).flatMap((a) => self.repeatWhile((_) => E.equals(_, a)))
+  return <R, E>(self: Effect<R, E, A>): Effect<R, E, A> => self.repeatWhile((_) => E.equals(_, a))
 }

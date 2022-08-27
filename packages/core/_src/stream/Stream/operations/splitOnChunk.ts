@@ -57,13 +57,13 @@ function next<R, E, A>(
     },
     (cause) =>
       leftover.fold(
-        Channel.failCauseSync(cause),
-        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.failCauseSync(cause)
+        Channel.failCause(cause),
+        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.failCause(cause)
       ),
     (done) =>
       leftover.fold(
-        Channel.sync(done),
-        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.sync(done)
+        Channel.succeed(done),
+        (chunk) => Channel.write(Chunk.single(chunk)) > Channel.succeed(done)
       )
   )
 }

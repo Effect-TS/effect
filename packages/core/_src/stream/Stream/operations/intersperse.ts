@@ -37,7 +37,7 @@ function writer<R, E, A, A2>(
 
       return Channel.write(builder.build()) > writer<R, E, A, A2>(middle, flagResult)
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }

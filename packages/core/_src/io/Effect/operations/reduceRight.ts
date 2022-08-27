@@ -9,7 +9,7 @@ export function reduceRight_<A, Z, R, E>(
   f: (a: A, z: Z) => Effect<R, E, Z>
 ): Effect<R, E, Z> {
   return Chunk.from(as).reduceRight(
-    Effect.sync(z) as Effect<R, E, Z>,
+    Effect.succeed(z) as Effect<R, E, Z>,
     (el, acc) => acc.flatMap((a) => f(el, a))
   )
 }

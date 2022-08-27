@@ -10,7 +10,7 @@ export function flatMapEffect<E, A, R, E1, A1>(
   return (self: Exit<E, A>): Effect<R, E1, Exit<E, A1>> => {
     switch (self._tag) {
       case "Failure":
-        return Effect.sync(self)
+        return Effect.succeed(self)
       case "Success":
         return f(self.value)
     }

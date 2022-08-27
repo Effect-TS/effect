@@ -28,7 +28,7 @@ function reader<R, E, S, In>(
         ({ tuple: [nextS, leftovers] }) =>
           leftovers.fold(reader(nextS, cont, f), (leftover) => Channel.write(leftover).as(nextS))
       ),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.succeed(z)
   )
 }
@@ -51,11 +51,11 @@ function foldEffectInternal<R, E, S, In>(
   length: number
 ): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
   if (index === length) {
-    return Effect.sync(Tuple(z, Maybe.none))
+    return Effect.succeed(Tuple(z, Maybe.none))
   }
   return f(z, chunk.unsafeGet(index)).flatMap((z1) =>
     cont(z1)
       ? foldEffectInternal<R, E, S, In>(z1, chunk, cont, f, index + 1, length)
-      : Effect.sync(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
+      : Effect.succeed(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
   )
 }

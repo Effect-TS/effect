@@ -32,7 +32,7 @@ function process<E, A>(
       )
       return Channel.write(out) > process<E, A>(newLast)
     },
-    (err: E) => Channel.failSync(err),
+    (err: E) => Channel.fail(err),
     () =>
       last.fold(
         Channel.unit,

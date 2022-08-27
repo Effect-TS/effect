@@ -23,10 +23,9 @@ export function throttleShapeEffect<A, R2, E2>(
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> => {
     concreteStream(self)
     return new StreamInternal(
-      Channel.sync(duration)
-        .zip(Channel.fromEffect(Clock.currentTime))
+      Channel.fromEffect(Clock.currentTime)
         .flatMap(
-          ({ tuple: [duration, timestamp] }) =>
+          (timestamp) =>
             self.channel >>
             loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
         )
@@ -65,7 +64,7 @@ function loop<E, A, R2, E2>(
                 loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
           })
       ),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }

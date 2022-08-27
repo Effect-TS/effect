@@ -39,7 +39,7 @@ function passThrough<R, E>(
       concreteStream(stream)
       return stream.channel > passThrough(decodingPipeline)
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }
@@ -69,7 +69,7 @@ function lookingForBom<R, E>(
 
       return lookingForBom(data, bomSize, processBom)
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => {
       if (buffer.isEmpty) {
         return Channel.unit

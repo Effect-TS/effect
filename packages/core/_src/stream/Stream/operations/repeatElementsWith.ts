@@ -41,7 +41,7 @@ export function repeatElementsWith<A, S, R2, B, C1, C2>(
                 void
               > = Channel.readWith(
                 (chunk: Chunk<A>) => feed<R, E, A, R2, B, C1, C2>(loop, driver, f, g, chunk),
-                (err) => Channel.failSync(err),
+                (err) => Channel.fail(err),
                 () => Channel.unit
               )
 

@@ -94,7 +94,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
       const promise = Deferred.unsafeMake<never, Z>(this._fiberId)
       this.tell(
         new message.Stateful((fiber, status) => {
-          promise.unsafeDone(Effect.succeed(f(fiber, status)))
+          promise.unsafeDone(Effect.sync(f(fiber, status)))
         })
       )
       return promise.await
@@ -1525,7 +1525,7 @@ export function onInterruptPolymorphic<R2, E2, X>(
  * @tsplus static effect/core/io/Effect.Ops interruptAs
  */
 export function interruptAs(fiberId: FiberId) {
-  return Effect.failCauseSync(Cause.interrupt(fiberId))
+  return Effect.failCause(Cause.interrupt(fiberId))
 }
 
 /**
@@ -2084,7 +2084,7 @@ export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
         .flatMap((exit) =>
           Effect.suspendSucceed(release(a, exit)).foldCauseEffect(
             (cause2) =>
-              Effect.failCauseSync(
+              Effect.failCause(
                 exit.fold(
                   (cause1) => cause1 + cause2,
                   () => cause2

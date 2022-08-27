@@ -27,7 +27,7 @@ export function flattenExitMaybe<R, E, A>(
     unknown
   > = Channel.readWithCause(
     (chunk: Chunk<Exit<Maybe<E>, A>>) => processChunk(chunk, process),
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
   concreteStream(self)
@@ -44,7 +44,7 @@ function processChunk<R, E, A>(
   const next = rest.head.fold(cont, (exit) =>
     exit.fold(
       (cause) =>
-        Cause.flipCauseMaybe(cause).fold(Channel.unit, (cause) => Channel.failCauseSync(cause)),
+        Cause.flipCauseMaybe(cause).fold(Channel.unit, (cause) => Channel.failCause(cause)),
       () => Channel.unit
     ))
   return (

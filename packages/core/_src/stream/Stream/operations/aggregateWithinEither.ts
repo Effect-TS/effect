@@ -82,7 +82,7 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
                     .flatMap(() => handoffConsumer)
                 }
                 case "Halt": {
-                  return Channel.failCauseSync(signal.error)
+                  return Channel.failCause(signal.error)
                 }
                 case "End": {
                   return (

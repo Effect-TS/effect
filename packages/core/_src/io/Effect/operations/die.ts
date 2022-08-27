@@ -6,5 +6,5 @@
  * @tsplus static effect/core/io/Effect.Ops die
  */
 export function die(defect: unknown): Effect<never, never, never> {
-  return Effect.failCauseSync(Cause.die(defect))
+  return Effect.failCause(Cause.die(defect))
 }

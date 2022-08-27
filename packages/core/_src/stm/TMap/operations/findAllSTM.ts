@@ -12,7 +12,7 @@ export function findAllSTM<K, V, R, E, A>(
     self.foldSTM(
       Chunk.empty<A>(),
       (acc, kv) =>
-        pf(kv).foldSTM((_) => _.fold(STM.succeed(acc), (e) => STM.failSync(e)), (a) =>
+        pf(kv).foldSTM((_) => _.fold(STM.succeed(acc), (e) => STM.fail(e)), (a) =>
           STM.succeed(acc.append(a)))
     )
 }

@@ -27,7 +27,7 @@ function reader<S, In>(
         const nextS = f(z, chunk)
         return reader(nextS, cont, f)
       },
-      (err) => Channel.failSync(() => err),
+      (err) => Channel.fail(err),
       () => Channel.succeed(z)
     )
     : Channel.succeed(z)

@@ -33,7 +33,7 @@ function loop<R, E, A>(
         ? Channel.write(taken) > loop<R, E, A>(leftover)
         : Channel.write(taken)
     },
-    (err) => Channel.failSync(err),
-    (done) => Channel.sync(done)
+    (err) => Channel.fail(err),
+    (done) => Channel.succeed(done)
   )
 }

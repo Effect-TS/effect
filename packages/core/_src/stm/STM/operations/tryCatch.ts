@@ -10,7 +10,7 @@ export function tryCatch<E, A>(
 ): STM<never, E, A> {
   return STM.suspend(() => {
     try {
-      return STM.sync(attempt)
+      return STM.succeed(attempt())
     } catch (error) {
       return STM.failSync(onThrow(error))
     }

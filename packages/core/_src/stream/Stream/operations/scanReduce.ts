@@ -9,5 +9,5 @@ export function scanReduce<A, A2 extends A>(
   f: (a2: A2, a: A) => A2
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A2> =>
-    self.scanReduceEffect((curr, next) => Effect.succeed(f(curr, next)))
+    self.scanReduceEffect((curr, next) => Effect.sync(f(curr, next)))
 }

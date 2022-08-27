@@ -15,7 +15,7 @@ export const elapsed: Schedule<
   unknown,
   Duration
 > = makeWithState(Maybe.empty(), (now, _, state) =>
-  Effect.sync(
+  Effect.succeed(
     state.fold(
       () =>
         Tuple(Maybe.some(now), new DurationInternal(0), Decision.continueWith(Interval.after(now))),

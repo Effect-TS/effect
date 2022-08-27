@@ -7,5 +7,5 @@
  * @tsplus static effect/core/io/Effect.Ops serviceWith
  */
 export function serviceWith<T, A>(tag: Tag<T>, f: (a: T) => A): Effect<T, never, A> {
-  return Effect.serviceWithEffect(tag, (a) => Effect.succeed(f(a)))
+  return Effect.serviceWithEffect(tag, (a) => Effect.sync(f(a)))
 }

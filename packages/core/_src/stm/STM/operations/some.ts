@@ -5,7 +5,7 @@
  */
 export function some<R, E, A>(self: STM<R, E, Maybe<A>>): STM<R, Maybe<E>, A> {
   return self.foldSTM(
-    (e) => STM.failSync(Maybe.some(e)),
-    (option) => option.fold(STM.failSync(Maybe.none), STM.succeed)
+    (e) => STM.fail(Maybe.some(e)),
+    (option) => option.fold(STM.fail(Maybe.none), STM.succeed)
   )
 }

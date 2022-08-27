@@ -20,7 +20,7 @@ export function dropWhile<In>(p: Predicate<In>): Sink<never, never, In, In, unkn
         ? loop
         : Channel.write(leftover) > Channel.identity<never, Chunk<In>, unknown>()
     },
-    (err) => Channel.failSync(() => err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
   return new SinkInternal(loop)

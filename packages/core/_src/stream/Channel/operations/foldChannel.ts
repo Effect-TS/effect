@@ -41,7 +41,7 @@ export function foldChannel<
     self.foldCauseChannel((_) => {
       return _.failureOrCause.fold(
         (err) => onErr(err),
-        (cause) => Channel.failCauseSync(cause)
+        (cause) => Channel.failCause(cause)
       )
     }, onSucc)
 }

@@ -39,7 +39,7 @@ function writer<R, E, A, R2, E2>(
         ({ tuple: [newLast, newChunk] }) =>
           Channel.write(newChunk) > writer<R, E, A, R2, E2>(newLast, f)
       ),
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
 }

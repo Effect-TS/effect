@@ -22,7 +22,7 @@ function transform<R, E>(
       received.isEmpty
         ? transform(charset)
         : Channel.write(stringChunkFrom(received, charset)),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }
