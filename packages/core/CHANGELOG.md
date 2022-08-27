@@ -1,5 +1,21 @@
 # @effect/core
 
+## 0.0.12
+
+### Patch Changes
+
+- [#1282](https://github.com/Effect-TS/core/pull/1282) [`0a20fafcf`](https://github.com/Effect-TS/core/commit/0a20fafcfa8f61a370fa57d28bd0ee3a89b6d1be) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix tryCatchPromise to catch sync exceptions
+
+* [#1284](https://github.com/Effect-TS/core/pull/1284) [`3e246581c`](https://github.com/Effect-TS/core/commit/3e246581cd0d5832ca2193800a61ca672339a137) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix inference of error in retryOrElse
+
+- [#1285](https://github.com/Effect-TS/core/pull/1285) [`aded87f99`](https://github.com/Effect-TS/core/commit/aded87f9983e7f15e510cb90cf8b9bb3a856c3f3) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Memoize FiberRefs in Layer
+
+* [#1286](https://github.com/Effect-TS/core/pull/1286) [`17c18925a`](https://github.com/Effect-TS/core/commit/17c18925a27a489d2264af6bbadd18f900bb8450) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Remove Redundant Sync Calls
+
+- [#1281](https://github.com/Effect-TS/core/pull/1281) [`b1206c83c`](https://github.com/Effect-TS/core/commit/b1206c83c0bcd8111905b80bff20b3598cc5f9d2) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix Effect.tryCatch to actually catch exceptions
+
+* [#1279](https://github.com/Effect-TS/core/pull/1279) [`92d56608c`](https://github.com/Effect-TS/core/commit/92d56608c74601642f4f99d32d0b69e278fff507) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Align Runtime with ZIO 2.0
+
 ## 0.0.11
 
 ### Patch Changes
