@@ -18,7 +18,6 @@ import * as message from "@effect/core/io/Fiber/_internal/message"
 import { _A, _E, FiberSym } from "@effect/core/io/Fiber/definition"
 import { Done, Running, Suspended } from "@effect/core/io/Fiber/status"
 import { _Patch, _Value, FiberRef, FiberRefSym } from "@effect/core/io/FiberRef/definition"
-import { defaultLogger } from "@effect/core/io/Logger/operations/default"
 import type { Scheduler } from "@effect/core/support/Scheduler"
 import { defaultScheduler } from "@effect/core/support/Scheduler"
 
@@ -2027,7 +2026,7 @@ export function serviceWithEffect<T, R, E, A>(
 export const currentLoggers: FiberRef.WithPatch<
   HashSet<Logger<string, any>>,
   Differ.HashSet.Patch<Logger<string, any>>
-> = FiberRef.unsafeMakeHashSet(HashSet(defaultLogger))
+> = FiberRef.unsafeMakeHashSet(HashSet.empty())
 
 /**
  * When this effect represents acquisition of a resource (for example, opening

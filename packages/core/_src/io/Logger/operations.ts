@@ -1,4 +1,5 @@
 // codegen:start {preset: barrel, include: ./operations/*.ts, prefix: "@effect/core/io/Logger"}
+export * from "@effect/core/io/Logger/operations/console"
 export * from "@effect/core/io/Logger/operations/contramap"
 export * from "@effect/core/io/Logger/operations/default"
 export * from "@effect/core/io/Logger/operations/filterLogLevel"
