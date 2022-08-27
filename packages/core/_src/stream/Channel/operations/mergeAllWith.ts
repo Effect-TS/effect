@@ -63,7 +63,7 @@ export function mergeAllWith<
           pull
             .flatMap((either) =>
               either.fold(
-                (done) => Effect.sync(Maybe.some(done)),
+                (done) => Effect.succeed(Maybe.some(done)),
                 (out) => queue.offer(Effect.succeed(Either.right(out))).as(Maybe.none)
               )
             )
@@ -76,7 +76,7 @@ export function mergeAllWith<
             )
             .catchAllCause(
               (cause) =>
-                queue.offer(Effect.failCauseSync(cause)).zipRight(
+                queue.offer(Effect.failCause(cause)).zipRight(
                   errorSignal.succeed(undefined).unit
                 )
             )
@@ -86,7 +86,7 @@ export function mergeAllWith<
               (cause) =>
                 getChildren
                   .flatMap(Fiber.interruptAll)
-                  .zipRight(queue.offer(Effect.failCauseSync(cause)).as(false)),
+                  .zipRight(queue.offer(Effect.failCause(cause)).as(false)),
               (either) =>
                 either.fold(
                   (outDone) =>
@@ -100,7 +100,7 @@ export function mergeAllWith<
                         failureAwait.interrupt >
                           lastDone.get.flatMap((option) =>
                             option.fold(
-                              queue.offer(Effect.sync(Either.left(outDone))),
+                              queue.offer(Effect.succeed(Either.left(outDone))),
                               (lastDone) =>
                                 queue.offer(
                                   Effect.sync(Either.left(f(lastDone, outDone)))
@@ -179,7 +179,7 @@ export function mergeAllWith<
         OutDone
       > = Channel.unwrap(
         queue.take.flatten.foldCause(
-          (cause) => Channel.failCauseSync(cause),
+          (cause) => Channel.failCause(cause),
           (either) =>
             either.fold(
               (outDone) => Channel.succeed(outDone),

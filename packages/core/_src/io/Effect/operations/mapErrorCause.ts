@@ -11,5 +11,5 @@
  */
 export function mapErrorCause<E, E2>(f: (cause: Cause<E>) => Cause<E2>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
-    self.foldCauseEffect((c) => Effect.failCause(f(c)), Effect.succeed)
+    self.foldCauseEffect((c) => Effect.failCauseSync(f(c)), Effect.succeed)
 }

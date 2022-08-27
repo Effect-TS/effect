@@ -10,7 +10,7 @@ export function fromEffectMaybe<R, E, A>(effect: Effect<R, Maybe<E>, A>): Stream
   return new StreamInternal(
     Channel.unwrap(
       effect.fold(
-        (option) => option.fold(Channel.unit, (e) => Channel.failSync(e)),
+        (option) => option.fold(Channel.unit, (e) => Channel.fail(e)),
         (a) => Channel.write(Chunk.single(a))
       )
     )

@@ -20,7 +20,7 @@ export function forEachChunkWhile<R, E, In>(
   > = Channel.readWith(
     (input: Chunk<In>) =>
       Channel.fromEffect(f(input)).flatMap((cont) => (cont ? reader : Channel.unit)),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
   return new SinkInternal(reader)

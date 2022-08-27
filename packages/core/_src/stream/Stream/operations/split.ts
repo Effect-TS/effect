@@ -36,7 +36,7 @@ function loop<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
   return Channel.readWith(
     (input: Chunk<A>) => splitInternal<R, E, A>(leftovers, input, f),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () =>
       leftovers.isEmpty
         ? Channel.unit

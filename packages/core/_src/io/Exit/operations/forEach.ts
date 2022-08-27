@@ -11,7 +11,7 @@ export function forEach<A, R, E1, B>(
   return <E>(self: Exit<E, A>): Effect<R, never, Exit<E | E1, B>> => {
     switch (self._tag) {
       case "Failure":
-        return Effect.sync(Exit.failCause(self.cause))
+        return Effect.succeed(Exit.failCause(self.cause))
       case "Success":
         return f(self.value).exit
     }

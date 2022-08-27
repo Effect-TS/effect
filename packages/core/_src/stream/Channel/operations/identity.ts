@@ -12,7 +12,7 @@ export function identity<Err, Elem, Done>(): Channel<
 > {
   return Channel.readWith(
     (inElem) => Channel.write(inElem) > identity<Err, Elem, Done>(),
-    (inErr) => Channel.failSync(inErr),
+    (inErr) => Channel.fail(inErr),
     (inDone) => Channel.succeed(inDone)
   )
 }

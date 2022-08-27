@@ -6,5 +6,5 @@
  */
 export function retryUntilEquals<E>(E: Equivalence<E>, e: E) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.sync(e).flatMap((_) => self.retryUntil((e) => E.equals(_, e)))
+    self.retryUntil((err) => E.equals(err, e))
 }

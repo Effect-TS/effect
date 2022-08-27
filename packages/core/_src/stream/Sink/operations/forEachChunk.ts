@@ -19,7 +19,7 @@ export function forEachChunk<R, E, In, Z>(
     void
   > = Channel.readWithCause(
     (chunk: Chunk<In>) => Channel.fromEffect(f(chunk)) > process,
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
   return new SinkInternal(process)

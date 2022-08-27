@@ -36,7 +36,7 @@ export function dropRight(n: number) {
           })
           return Channel.write(outs) > reader
         },
-        (err) => Channel.failSync(err),
+        (err) => Channel.fail(err),
         () => Channel.unit
       )
       concreteStream(self)

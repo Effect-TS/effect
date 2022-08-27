@@ -12,5 +12,5 @@ export function flatMap<R1, E1, In, In1 extends In, L, L1 extends L, Z, Z1>(
   f: (z: Z) => Sink<R1, E1, In1, L1, Z1>
 ) {
   return <R, E>(self: Sink<R, E, In, L, Z>): Sink<R | R1, E | E1, In & In1, L1, Z1> =>
-    self.foldSink((e) => Sink.failSync(e), f)
+    self.foldSink((e) => Sink.fail(e), f)
 }

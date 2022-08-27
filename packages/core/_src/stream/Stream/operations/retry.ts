@@ -22,7 +22,7 @@ export function retry<E, S, R2, Z>(
           const loop: Stream<R | R2, E, A> = self.catchAll((e) =>
             Stream.unwrap(
               driver.next(e).foldEffect(
-                () => Effect.failSync(e),
+                () => Effect.fail(e),
                 () => Effect.sync(loop.tap(() => driver.reset))
               )
             )

@@ -19,6 +19,6 @@ export function catchTag<
       if ("_tag" in e && e["_tag"] === k) {
         return f(e as any)
       }
-      return Stream.failSync(() => e as any)
+      return Stream.fail(e as any)
     })
 }

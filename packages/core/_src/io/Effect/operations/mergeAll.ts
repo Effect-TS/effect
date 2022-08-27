@@ -9,5 +9,5 @@ export function mergeAll<R, E, A, B>(
   zero: B,
   f: (b: B, a: A) => B
 ): Effect<R, E, B> {
-  return as.reduce(Effect.sync(zero) as Effect<R, E, B>, (acc, a) => acc.zipWith(a, f))
+  return as.reduce(Effect.succeed(zero) as Effect<R, E, B>, (acc, a) => acc.zipWith(a, f))
 }

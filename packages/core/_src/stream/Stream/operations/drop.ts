@@ -28,7 +28,7 @@ function loop<R, E, A>(
         ? loop<R, E, A>(leftover)
         : Channel.write(dropped) > Channel.identity<E, Chunk<A>, unknown>()
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }

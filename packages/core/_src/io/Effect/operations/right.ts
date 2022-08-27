@@ -8,7 +8,7 @@ export function right<R, E, A, B>(
   self: Effect<R, E, Either<A, B>>
 ): Effect<R, Either<A, E>, B> {
   return self.foldEffect(
-    (e) => Effect.failSync(Either.right(e)),
-    (either) => either.fold((a) => Effect.failSync(Either.left(a)), Effect.succeed)
+    (e) => Effect.fail(Either.right(e)),
+    (either) => either.fold((a) => Effect.fail(Either.left(a)), Effect.succeed)
   )
 }

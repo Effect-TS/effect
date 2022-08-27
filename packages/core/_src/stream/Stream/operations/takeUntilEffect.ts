@@ -29,8 +29,8 @@ function loop<E, A, R1, E1>(
   if (next.done) {
     return Channel.readWithCause(
       elem => loop(elem[Symbol.iterator](), f),
-      err => Channel.failCauseSync(err),
-      done => Channel.sync(done)
+      err => Channel.failCause(err),
+      done => Channel.succeed(done)
     )
   } else {
     return Channel.unwrap(

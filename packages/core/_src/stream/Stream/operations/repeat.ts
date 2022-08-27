@@ -18,7 +18,5 @@ export function repeatNow<S, R2, B>(schedule: Schedule<S, R2, unknown, B>) {
  * @tsplus static effect/core/stream/Stream.Ops repeat
  */
 export function repeat<A>(a: A): Stream<never, never, A> {
-  return new StreamInternal(
-    Channel.sync(a).flatMap((a) => Channel.write(Chunk.single(a)).repeated)
-  )
+  return new StreamInternal(Channel.write(Chunk.single(a)).repeated)
 }

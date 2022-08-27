@@ -27,7 +27,7 @@ function chunkAdjacent<E, A, K>(
       } = go(chunk, buffer, f)
       return Channel.write(outputs) > chunkAdjacent<E, A, K>(newBuffer, f)
     },
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => buffer.fold(Channel.unit, (o) => Channel.write(Chunk.single(o)))
   )
 }

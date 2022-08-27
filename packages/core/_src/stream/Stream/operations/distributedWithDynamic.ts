@@ -109,7 +109,7 @@ function offer<E, A>(
                 // them later
                 cause.isInterrupted
                   ? Effect.succeed(acc.prepend(id))
-                  : Effect.failCauseSync(cause),
+                  : Effect.failCause(cause),
               () => Effect.succeed(acc)
             )
             : Effect.succeed(acc)

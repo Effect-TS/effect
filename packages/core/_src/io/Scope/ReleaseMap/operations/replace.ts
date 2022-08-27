@@ -24,7 +24,7 @@ export function replace(key: number, finalizer: Scope.Finalizer) {
             const oldFinalizer = Maybe.fromNullable(finalizers.get(key))
             const newFinalizers = finalizers.set(key, finalizer)
             return Tuple(
-              Effect.sync(oldFinalizer),
+              Effect.succeed(oldFinalizer),
               new Running(s.nextKey, newFinalizers, s.update)
             )
           }

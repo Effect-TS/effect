@@ -27,13 +27,13 @@ export function haltWhenDeferred<E2, Z>(deferred: Deferred<E2, Z>) {
           option.fold(
             Channel.readWith(
               (input: Chunk<A>) => Channel.write(input) > writer,
-              (err) => Channel.failSync(err),
+              (err) => Channel.fail(err),
               () => Channel.unit
             ),
             (io) =>
               Channel.unwrap(
                 io.fold(
-                  (e) => Channel.failSync(e),
+                  (e) => Channel.fail(e),
                   () => Channel.unit
                 )
               )

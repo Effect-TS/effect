@@ -36,7 +36,7 @@ function readThenTransduce<R, E>(
         Channel.write(string) > readThenTransduce<R, E>(buffered, charset, fixedLength)
       )
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => buffer.isEmpty ? Channel.unit : Channel.write(stringChunkFrom(buffer, charset))
   )
 }

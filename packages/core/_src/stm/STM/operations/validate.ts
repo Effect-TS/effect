@@ -14,6 +14,6 @@ export function validate<R, E, A, B>(
   return STM.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty
       ? STM.succeed(Chunk.from(bs))
-      : STM.failSync(es)
+      : STM.fail(es)
   )
 }

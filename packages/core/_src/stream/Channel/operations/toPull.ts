@@ -28,7 +28,7 @@ function interpret<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   switch (channelState._tag) {
     case "Done": {
       return exec.getDone().fold(
-        (cause) => Effect.failCauseSync(cause),
+        (cause) => Effect.failCause(cause),
         (done): Effect<Env, OutErr, Either<OutDone, OutElem>> => Effect.sync(Either.left(done))
       )
     }

@@ -8,5 +8,5 @@ export function reduce<A, Z, R, E>(
   z: Z,
   f: (z: Z, a: A) => Effect<R, E, Z>
 ): Effect<R, E, Z> {
-  return as.reduce(Effect.sync(z) as Effect<R, E, Z>, (acc, el) => acc.flatMap((a) => f(a, el)))
+  return as.reduce(Effect.succeed(z) as Effect<R, E, Z>, (acc, el) => acc.flatMap((a) => f(a, el)))
 }

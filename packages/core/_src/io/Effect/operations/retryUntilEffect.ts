@@ -10,7 +10,7 @@ export function retryUntilEffect<R1, E>(f: (e: E) => Effect<R1, never, boolean>)
     self.catchAll((e) =>
       f(e).flatMap((b) =>
         b ?
-          Effect.failSync(e) :
+          Effect.fail(e) :
           Effect.yieldNow > self.retryUntilEffect(f)
       )
     )

@@ -8,5 +8,5 @@
  */
 export function orElseOptional<R1, E1, A1>(that: LazyArg<STM<R1, Maybe<E1>, A1>>) {
   return <R, E, A>(self: STM<R, Maybe<E>, A>): STM<R | R1, Maybe<E | E1>, A | A1> =>
-    self.catchAll((option) => option.fold(that, (e) => STM.failSync(Maybe.some<E | E1>(e))))
+    self.catchAll((option) => option.fold(that, (e) => STM.fail(Maybe.some<E | E1>(e))))
 }

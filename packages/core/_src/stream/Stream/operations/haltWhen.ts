@@ -35,12 +35,12 @@ function writer<R, E, A, R2, E2, Z>(
       option.fold(
         Channel.readWith(
           (input: Chunk<A>) => Channel.write(input) > writer<R, E, A, R2, E2, Z>(fiber),
-          (err) => Channel.failSync(err),
+          (err) => Channel.fail(err),
           () => Channel.unit
         ),
         (exit) =>
           exit.fold(
-            (cause) => Channel.failCauseSync(cause),
+            (cause) => Channel.failCause(cause),
             (): Channel<R | R2, E | E2, Chunk<A>, unknown, E | E2, Chunk<A>, void> => Channel.unit
           )
       )

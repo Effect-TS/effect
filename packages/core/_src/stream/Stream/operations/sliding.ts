@@ -53,7 +53,7 @@ function reader<E, A>(
         stepSize,
         queue,
         queueSize,
-        Channel.failCauseSync(cause)
+        Channel.failCause(cause)
       ),
     () => emitOnStreamEnd<E, A>(chunkSize, stepSize, queue, queueSize, Channel.unit)
   )

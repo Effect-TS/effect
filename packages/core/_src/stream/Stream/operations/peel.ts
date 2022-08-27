@@ -36,7 +36,7 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
       const handoff = $(Handoff.make<Signal<E, A2>>())
       const consumer = sink.exposeLeftover
         .foldSink(
-          (e) => Sink.fromEffect(deferred.fail(e)) > Sink.failSync(e),
+          (e) => Sink.fromEffect(deferred.fail(e)) > Sink.fail(e),
           ({ tuple: [z1, leftovers] }) => {
             const loop: Channel<
               never,
@@ -50,7 +50,7 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
               (chunk: Chunk<A2>) => Channel.fromEffect(handoff.offer(new Emit(chunk))) > loop,
               (cause) =>
                 Channel.fromEffect(handoff.offer(new Halt(cause))) >
-                  Channel.failCauseSync(cause),
+                  Channel.failCause(cause),
               () => Channel.fromEffect(handoff.offer(new End())) > Channel.unit
             )
             return new SinkInternal(
@@ -76,7 +76,7 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
               return Channel.write(signal.elements) > producer
             }
             case "Halt": {
-              return Channel.failCauseSync(signal.error)
+              return Channel.failCause(signal.error)
             }
             case "End": {
               return Channel.unit

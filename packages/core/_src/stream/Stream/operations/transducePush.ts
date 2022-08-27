@@ -37,7 +37,7 @@ function pull<R, E, E2, In, Out>(
     (input: Chunk<In>) =>
       Channel.fromEffect(push(Maybe.some(input))).flatMap((out) => Channel.write(out)) >
         pull<R, E, E2, In, Out>(push),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.fromEffect(push(Maybe.none)).flatMap((out) => Channel.write(out))
   )
 }

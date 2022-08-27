@@ -7,5 +7,5 @@
  */
 export function retryWhileEquals<E>(E: Equivalence<E>, e: E) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
-    Effect.sync(e).flatMap((_) => self.retryWhile((e) => E.equals(_, e)))
+    self.retryWhile((err) => E.equals(e, err))
 }

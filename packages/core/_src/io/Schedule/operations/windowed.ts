@@ -23,8 +23,8 @@ export function windowed(
   const millis = interval.millis
   return makeWithState(
     Tuple(Maybe.empty(), 0),
-    (now, input, { tuple: [option, n] }) =>
-      Effect.sync(
+    (now, _, { tuple: [option, n] }) =>
+      Effect.succeed(
         option.fold(
           () =>
             Tuple(

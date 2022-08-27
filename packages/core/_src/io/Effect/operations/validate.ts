@@ -26,6 +26,6 @@ export function validate<R, E, A, B>(
   return Effect.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
     es.isEmpty
       ? Effect.succeed(Chunk.from(bs))
-      : Effect.failSync(es)
+      : Effect.fail(es)
   )
 }

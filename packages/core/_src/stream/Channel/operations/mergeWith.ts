@@ -127,7 +127,7 @@ export function mergeWith_<
             > => {
               concreteMergeDecision(decision)
               if (decision._tag === "Done") {
-                return Effect.sync(Channel.fromEffect(fiber.interrupt.zipRight(decision.io)))
+                return Effect.succeed(Channel.fromEffect(fiber.interrupt.zipRight(decision.io)))
               }
               return fiber.await.map((exit) =>
                 exit.fold(
@@ -147,7 +147,7 @@ export function mergeWith_<
                 either.fold(
                   (z) => onDecision(done(Exit.succeed(z))),
                   (elem) =>
-                    Effect.sync(
+                    Effect.succeed(
                       Channel.write(elem) >
                         Channel.fromEffect(pull.forkDaemon).flatMap((leftFiber) =>
                           go(both(leftFiber, fiber))

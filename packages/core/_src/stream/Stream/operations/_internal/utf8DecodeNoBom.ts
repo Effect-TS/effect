@@ -25,7 +25,7 @@ function readThenTransduce<R, E>(
       } = process(buffer, received)
       return Channel.write(string) > readThenTransduce<R, E>(buffered)
     },
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => (buffer.isEmpty ? Channel.unit : Channel.write(stringChunkFrom(buffer)))
   )
 }

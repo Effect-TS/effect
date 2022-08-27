@@ -14,7 +14,7 @@ function fromQueueInternal<Err, Elem, Done>(
     either.fold(
       (exit) =>
         exit.fold(
-          (cause) => Channel.failCauseSync(cause),
+          (cause) => Channel.failCause(cause),
           (done): Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
             Channel.succeed(done)
         ),

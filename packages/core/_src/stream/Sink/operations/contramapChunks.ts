@@ -23,8 +23,8 @@ export function contramapChunks<In, In1>(
       unknown
     > = Channel.readWith(
       (chunk: Chunk<In1>) => Channel.write(f(chunk)) > loop,
-      (err) => Channel.failSync(() => err),
-      (done) => Channel.sync(done)
+      (err) => Channel.fail(err),
+      (done) => Channel.succeed(done)
     )
     concreteSink(self)
     return new SinkInternal(loop >> self.channel)

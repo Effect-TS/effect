@@ -4,5 +4,5 @@
  * @tsplus static effect/core/stream/Sink.Ops die
  */
 export function die(defect: unknown): Sink<never, never, unknown, never, never> {
-  return Sink.failCauseSync(Cause.die(defect))
+  return Sink.failCause(Cause.die(defect))
 }

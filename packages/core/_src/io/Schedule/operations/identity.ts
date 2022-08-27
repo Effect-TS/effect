@@ -11,6 +11,6 @@ export function identity<A>(): Schedule<void, never, A, A> {
   return makeWithState(
     undefined as void,
     (now, input, state) =>
-      Effect.sync(Tuple(state, input, Decision.continueWith(Interval.after(now))))
+      Effect.succeed(Tuple(state, input, Decision.continueWith(Interval.after(now))))
   )
 }

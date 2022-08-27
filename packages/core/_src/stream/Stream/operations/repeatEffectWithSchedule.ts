@@ -10,10 +10,10 @@ export function repeatEffectWithSchedule<S, R, E, A>(
 ): Stream<R, E, A> {
   return Stream.fromEffect(effect.zip(schedule.driver)).flatMap(
     ({ tuple: [a, driver] }) =>
-      Stream.sync(a) +
+      Stream.succeed(a) +
       Stream.unfoldEffect(a, (a) =>
         driver.next(a).foldEffect(
-          (e) => Effect.sync(e),
+          (e) => Effect.succeed(e),
           () => effect.map((nextA) => Maybe.some(Tuple(nextA, nextA)))
         ))
   )

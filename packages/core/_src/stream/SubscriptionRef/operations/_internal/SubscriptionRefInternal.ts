@@ -71,7 +71,7 @@ export class SubscriptionRefInternal<A> implements SubscriptionRef<A> {
     return this.ref.get
   }
   modify<B>(this: this, f: (a: A) => Tuple<[B, A]>): Effect<never, never, B> {
-    return this.modifyEffect((a) => Effect.succeed(f(a)))
+    return this.modifyEffect((a) => Effect.sync(f(a)))
   }
   set(this: this, a: A): Effect<never, never, void> {
     return this.semaphore.withPermit(this.ref.set(a).tap(() => this.hub.publish(a)))

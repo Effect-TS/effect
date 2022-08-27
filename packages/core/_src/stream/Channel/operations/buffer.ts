@@ -28,7 +28,7 @@ function bufferInternal<InElem, InErr, InDone>(
             (inElem) =>
               Channel.write(inElem) >
                 bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref),
-            (inErr) => Channel.failSync(inErr),
+            (inErr) => Channel.fail(inErr),
             (inDone) => Channel.succeed(inDone)
           ),
           value

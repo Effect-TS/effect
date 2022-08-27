@@ -67,7 +67,7 @@ function emitting<R, E, A, R2, E2, B>(
       concreteStream(stream)
       return stream.channel > emitting(pipeline)
     },
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
 }

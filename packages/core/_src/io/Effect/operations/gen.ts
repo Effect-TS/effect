@@ -81,7 +81,7 @@ export function genScoped<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.sync(state.value)
+        return Effect.succeed(state.value)
       }
       return Effect.suspendSucceed(() => state.value.effect).flatMap(
         (val) => {
@@ -119,7 +119,7 @@ export function gen<Eff extends GenEffect<any, any, any>, AEff>(
       state: IteratorYieldResult<Eff> | IteratorReturnResult<AEff>
     ): Effect<any, any, AEff> {
       if (state.done) {
-        return Effect.sync(state.value)
+        return Effect.succeed(state.value)
       }
       return Effect.suspendSucceed(() => state.value["effect"] as Effect<any, any, any>)
         .flatMap((val: any) => run(iterator.next(val)))

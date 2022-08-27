@@ -44,7 +44,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
           ? Channel.succeed(nextS)
           : go(nextS, costFn, max, decompose, f, nextDirty, nextCost)
       ),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     (): Channel<
       R | R2 | R3,
       E | E2 | E3,

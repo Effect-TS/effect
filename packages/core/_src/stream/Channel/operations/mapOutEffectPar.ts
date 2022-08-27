@@ -25,7 +25,7 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
           $(
             pull
               .foldCauseEffect(
-                (cause) => queue.offer(Effect.failCauseSync(cause)),
+                (cause) => queue.offer(Effect.failCause(cause)),
                 (either) =>
                   either.fold(
                     (outDone) =>
@@ -69,7 +69,7 @@ export function mapOutEffectPar<OutElem, Env1, OutErr1, OutElem1>(
           OutDone
         > = Channel.unwrap(
           queue.take.flatten.foldCause(
-            (cause) => Channel.failCauseSync(cause),
+            (cause) => Channel.failCause(cause),
             (either) =>
               either.fold(
                 (outDone) => Channel.succeed(outDone),

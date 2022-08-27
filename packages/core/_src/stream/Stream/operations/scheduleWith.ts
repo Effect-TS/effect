@@ -55,7 +55,7 @@ function loop<R, R2, E, A, B, C>(
   }
   return Channel.readWithCause(
     (chunk: Chunk<A>) => loop(driver, chunk, f, g, 0),
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     Channel.succeed
   )
 }

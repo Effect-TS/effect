@@ -28,7 +28,7 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
           unknown
         > = Channel.readWith(
           (chunk: Chunk<A>) => Channel.write(chunk) > upstreamMarker,
-          (err) => Channel.failSync(err),
+          (err) => Channel.fail(err),
           (done) => Channel.sync(upstreamDone.set(true)) > Channel.succeed(done)
         )
 
@@ -46,7 +46,7 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
           if (leftover.isEmpty) {
             return Channel.readWith(
               (chunk: Chunk<A>) => Channel.write(chunk) > buffer,
-              (err) => Channel.failSync(err),
+              (err) => Channel.fail(err),
               (done) => Channel.succeed(done)
             )
           }

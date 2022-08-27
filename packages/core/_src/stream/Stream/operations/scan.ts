@@ -7,5 +7,5 @@
  */
 export function scan<S, A>(s: S, f: (s: S, a: A) => S) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, S> =>
-    self.scanEffect(s, (s, a) => Effect.succeed(f(s, a)))
+    self.scanEffect(s, (s, a) => Effect.sync(f(s, a)))
 }

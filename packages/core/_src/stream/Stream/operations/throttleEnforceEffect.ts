@@ -64,7 +64,7 @@ function loop<E, A, R2, E2>(
               : loop<E, A, R2, E2>(units, duration, costFn, burst, available, current)
           })
       ),
-    (err) => Channel.failSync(err),
+    (err) => Channel.fail(err),
     () => Channel.unit
   )
 }

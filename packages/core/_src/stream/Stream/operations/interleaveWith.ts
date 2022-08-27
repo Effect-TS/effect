@@ -69,7 +69,7 @@ function process<E, E2, E3, A, A2>(
         return Channel.fromEffect(left.take).flatMap((take) =>
           take.fold(
             rightDone ? Channel.unit : process(left, right, true, rightDone),
-            (cause) => Channel.failCauseSync(cause),
+            (cause) => Channel.failCause(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
         )
@@ -78,14 +78,14 @@ function process<E, E2, E3, A, A2>(
         return Channel.fromEffect(right.take).flatMap((take) =>
           take.fold(
             leftDone ? Channel.unit : process(left, right, leftDone, true),
-            (cause) => Channel.failCauseSync(cause),
+            (cause) => Channel.failCause(cause),
             (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
           )
         )
       }
       return process(left, right, leftDone, rightDone)
     },
-    (cause) => Channel.failCauseSync(cause),
+    (cause) => Channel.failCause(cause),
     () => Channel.unit
   )
 }

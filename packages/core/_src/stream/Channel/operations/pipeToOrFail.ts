@@ -36,8 +36,8 @@ export function pipeToOrFail<
       (outElem) => Channel.write(outElem) > writer,
       (cause) =>
         cause.isDieType() && isChannelError(cause.value)
-          ? Channel.failSync(cause.value.error as OutErr2)
-          : Channel.failCauseSync(cause),
+          ? Channel.fail(cause.value.error as OutErr2)
+          : Channel.failCause(cause),
       (outDone) => Channel.succeed(outDone)
     )
 

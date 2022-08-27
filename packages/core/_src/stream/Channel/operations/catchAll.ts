@@ -30,7 +30,7 @@ export function catchAll<
     self.catchAllCause((cause) =>
       cause.failureOrCause.fold(
         (outErr) => f(outErr),
-        (cause) => Channel.failCauseSync(cause)
+        (cause) => Channel.failCause(cause)
       )
     )
 }

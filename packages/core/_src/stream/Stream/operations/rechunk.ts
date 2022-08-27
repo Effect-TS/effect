@@ -49,7 +49,7 @@ function process<R, E, A>(
       }
       return process(rechunker, target)
     },
-    (cause) => rechunker.emitIfNotEmpty() > Channel.failCauseSync(cause),
+    (cause) => rechunker.emitIfNotEmpty() > Channel.failCause(cause),
     () => rechunker.emitIfNotEmpty()
   )
 }

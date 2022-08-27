@@ -73,7 +73,7 @@ function defaultIfEmptyStream<R, R1, E, E1, A, A1>(
       input.isEmpty
         ? writer
         : Channel.write(input) > Channel.identity<E | E1, Chunk<A | A1>, unknown>(),
-    (e) => Channel.failSync(e),
+    (e) => Channel.fail(e),
     () => {
       concreteStream(stream)
       return stream.channel

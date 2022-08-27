@@ -7,5 +7,5 @@
  */
 export function provideService<T>(tag: Tag<T>, resource: T) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<Exclude<R, T>, E, A> =>
-    self.provideServiceEffect(tag, Effect.sync(resource))
+    self.provideServiceEffect(tag, Effect.succeed(resource))
 }

@@ -8,7 +8,7 @@
 export function mapError<E, E2>(f: (e: E) => E2) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>
     self.foldCauseEffect(
-      (cause) => cause.failureOrCause.fold((e) => Effect.fail(f(e)), Effect.failCause),
+      (cause) => cause.failureOrCause.fold((e) => Effect.failSync(f(e)), Effect.failCause),
       Effect.succeed
     )
 }

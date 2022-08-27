@@ -39,7 +39,7 @@ export class MemoMap {
                 )
               )
 
-          return Effect.sync(Tuple(cached, map))
+          return Effect.succeed(Tuple(cached, map))
         }
         case "None": {
           return Do(($) => {
@@ -61,7 +61,7 @@ export class MemoMap {
                           return (
                             deferred.failCause(exit.cause) >
                               innerScope.close(exit) >
-                              Effect.failCauseSync(exit.cause)
+                              Effect.failCause(exit.cause)
                           )
                         }
                         case "Success": {
