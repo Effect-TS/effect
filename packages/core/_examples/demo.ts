@@ -3,8 +3,8 @@ const namedRef = FiberRef.unsafeMake("anonymous")
 /**
  * @tsplus pipeable effect/core/io/Effect named
  */
-export function named(name: string) {
-  return <R, E, A>(self: Effect<R, E, A>) => namedRef.locally(name)(self)
+export function named(name: string): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A> {
+  return namedRef.locally(name)
 }
 
 /**
