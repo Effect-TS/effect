@@ -1,5 +1,11 @@
 # @effect/core
 
+## 0.0.13
+
+### Patch Changes
+
+- [#1287](https://github.com/Effect-TS/core/pull/1287) [`764734923`](https://github.com/Effect-TS/core/commit/764734923d8d785c5bd0e347a1dff5ed38fc8a07) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Add console logger
+
 ## 0.0.12
 
 ### Patch Changes
