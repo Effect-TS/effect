@@ -210,6 +210,10 @@ import { Scope } from "@effect/core/io/Scope/definition"
 /**
  * @tsplus global
  */
+import { ScopedRef } from "@effect/core/io/ScopedRef/definition"
+/**
+ * @tsplus global
+ */
 import { ReleaseMap } from "@effect/core/io/Scope/ReleaseMap/definition"
 /**
  * @tsplus global
