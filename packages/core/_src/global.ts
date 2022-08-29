@@ -47,6 +47,10 @@ import { MVar } from "@effect/core/concurrent/MVar/definition"
 /**
  * @tsplus global
  */
+import { Cached } from "@effect/core/io/Cached/definition"
+/**
+ * @tsplus global
+ */
 import { Cause } from "@effect/core/io/Cause/definition"
 /**
  * @tsplus global

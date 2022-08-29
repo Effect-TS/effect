@@ -1,6 +1,7 @@
 export * as countdownLatch from "@effect/core/concurrent/CountdownLatch"
 export * as cyclicBarrier from "@effect/core/concurrent/CyclicBarrier"
 export * as mVar from "@effect/core/concurrent/MVar"
+export * as cached from "@effect/core/io/Cached"
 export * as cause from "@effect/core/io/Cause"
 export * as clock from "@effect/core/io/Clock"
 export * as defaultServices from "@effect/core/io/DefaultServices"
