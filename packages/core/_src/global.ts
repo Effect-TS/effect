@@ -198,6 +198,10 @@ import { Ref } from "@effect/core/io/Ref/definition"
 /**
  * @tsplus global
  */
+import { Reloadable } from "@effect/core/io/Reloadable/definition"
+/**
+ * @tsplus global
+ */
 import { Runtime } from "@effect/core/io/Runtime/definition"
 /**
  * @tsplus global
