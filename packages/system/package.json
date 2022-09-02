@@ -23,7 +23,8 @@
   },
   "config": {
     "side": [
-      "Operator"
+      "Operator",
+      "Tracing/Enable"
     ],
     "modules": [
       "Async",
