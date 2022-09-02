@@ -112,8 +112,8 @@ const writePackageJsonContent = pipe(
           if (fs.existsSync(`./build/cjs/${m}/index.js`)) {
             map.push(`./${m}/index.js`)
           }
-          if (fs.existsSync(`./build/mjs/${m}/index.js`)) {
-            map.push(`./_mjs/${m}/index.js`)
+          if (fs.existsSync(`./build/mjs/${m}/index.mjs`)) {
+            map.push(`./_mjs/${m}/index.mjs`)
           }
           return map
         }),
