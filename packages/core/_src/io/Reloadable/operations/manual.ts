@@ -8,11 +8,10 @@ import { ReloadableInternal } from "@effect/core/io/Reloadable/operations/_inter
  */
 export function manual<In, E, Out>(
   outTag: Tag<Out>,
-  reloadableTag: Tag<Reloadable<Out>>,
   layer: Layer<In, E, Out>
 ): Layer<In, E, Reloadable<Out>> {
   return Layer.scoped(
-    reloadableTag,
+    outTag.reloadable,
     Do(($) => {
       const input = $(Effect.environment<In>())
       const ref = $(ScopedRef.fromAcquire(layer.build.map((env) => env.unsafeGet(outTag))))

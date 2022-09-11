@@ -13,11 +13,9 @@ export interface DummyService {
  */
 export interface DummyServiceOps {
   readonly ValueTag: Tag<DummyService>
-  readonly ReloadableTag: Tag<Reloadable<DummyService>>
 }
 export const DummyService: DummyServiceOps = {
-  ValueTag: Tag<DummyService>(),
-  ReloadableTag: Tag<Reloadable<DummyService>>()
+  ValueTag: Tag<DummyService>()
 }
 
 /**

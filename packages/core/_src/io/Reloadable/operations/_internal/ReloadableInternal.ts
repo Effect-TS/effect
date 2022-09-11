@@ -18,3 +18,18 @@ export class ReloadableInternal<Service> implements Reloadable<Service> {
     return this.reload.ignoreLogged.forkDaemon.unit
   }
 }
+
+const tagMap: IterableWeakMap<Tag<any>, Tag<any>> = IterableWeakMap([])
+
+/**
+ * @tsplus getter Tag reloadable
+ */
+export function reloadableTag<S>(tag: Tag<S>): Tag<Reloadable<S>> {
+  const already = tagMap.getMaybe(tag)
+  if (already.isSome()) {
+    return already.value
+  }
+  const newTag = Tag<Reloadable<S>>()
+  tagMap.set(tag, newTag)
+  return newTag
+}

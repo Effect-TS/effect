@@ -17,3 +17,13 @@ export function effect<E, A>(name: string, self: LazyArg<Effect<TestEnvironment,
     () => Effect.suspendSucceed(self).provideLayer(TestEnvironment).unsafeRunPromise()
   )
 }
+
+/**
+ * @tsplus static effect/core/test-utils/API scoped
+ */
+export function scoped<E, A>(name: string, self: LazyArg<Effect<TestEnvironment | Scope, E, A>>) {
+  return it(
+    name,
+    () => Effect.suspendSucceed(self).scoped.provideLayer(TestEnvironment).unsafeRunPromise()
+  )
+}
