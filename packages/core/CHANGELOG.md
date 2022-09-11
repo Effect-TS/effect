@@ -1,5 +1,17 @@
 # @effect/core
 
+## 0.0.14
+
+### Patch Changes
+
+- [#1289](https://github.com/Effect-TS/core/pull/1289) [`deb0dd363`](https://github.com/Effect-TS/core/commit/deb0dd363c79f50f28652061d9c6f2d1d16389c2) Thanks [@IMax153](https://github.com/IMax153)! - add Cached
+
+* [#1289](https://github.com/Effect-TS/core/pull/1289) [`c90049b65`](https://github.com/Effect-TS/core/commit/c90049b6582668d316f1b807e5446f238f2a67fe) Thanks [@IMax153](https://github.com/IMax153)! - Derive Reloadable Tag
+
+- [#1289](https://github.com/Effect-TS/core/pull/1289) [`c3b5253e4`](https://github.com/Effect-TS/core/commit/c3b5253e48a1437d70e47d827b9c7f45e1a6d464) Thanks [@IMax153](https://github.com/IMax153)! - add ScopedRef
+
+* [#1289](https://github.com/Effect-TS/core/pull/1289) [`8dfa2a819`](https://github.com/Effect-TS/core/commit/8dfa2a81919d49c1a661129d78ebc4df4ac2aa37) Thanks [@IMax153](https://github.com/IMax153)! - add Reloadable
+
 ## 0.0.13
 
 ### Patch Changes
