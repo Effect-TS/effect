@@ -7,17 +7,16 @@
  */
 export function autoFromConfig<In, E, Out, State, R, Out2>(
   outTag: Tag<Out>,
-  reloadableTag: Tag<Reloadable<Out>>,
   layer: Layer<In, E, Out>,
   scheduleFromConfig: (env: Env<In>) => Schedule<State, R, In, Out2>
 ): Layer<R | In, E, Reloadable<Out>> {
   return Layer.scoped(
-    reloadableTag,
+    outTag.reloadable,
     Do(($) => {
       const input = $(Effect.environment<In>())
       const policy = scheduleFromConfig(input)
-      const env = $(Reloadable.auto(outTag, reloadableTag, layer, policy).build)
-      return env.unsafeGet(reloadableTag)
+      const env = $(Reloadable.auto(outTag, layer, policy).build)
+      return env.unsafeGet(outTag.reloadable)
     })
   )
 }
