@@ -263,13 +263,14 @@ export function logTraceCauseMessage<E>(
 export function logSpan(label: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
     FiberRef.currentLogSpan.get.flatMap((stack) =>
-      Effect.suspendSucceed(() => {
-        const now = Date.now()
-        const logSpan = LogSpan(label, now)
-        return effect.apply(
-          FiberRef.currentLogSpan.locally(stack.prepend(logSpan))
-        )
-      })
+      Clock.currentTime.flatMap((now) =>
+        Effect.suspendSucceed(() => {
+          const logSpan = LogSpan(label, now)
+          return effect.apply(
+            FiberRef.currentLogSpan.locally(stack.prepend(logSpan))
+          )
+        })
+      )
     )
 }
 
