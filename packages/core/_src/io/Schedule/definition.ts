@@ -51,7 +51,7 @@ export interface Schedule<State, Env, In, Out> {
   readonly step: (
     now: number,
     input: In,
-    state: State,
+    state: State
   ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
 }
 
