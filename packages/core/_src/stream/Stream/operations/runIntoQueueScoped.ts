@@ -18,7 +18,7 @@ export function runIntoQueueScoped<E1, A>(queue: Enqueue<Take<E1, A>>) {
       Take<E | E1, A>,
       unknown
     > = Channel.readWithCause(
-      (input: Chunk<A>) => Channel.write(Take.chunk(input)) > writer,
+      (input: Chunk<A>) => Channel.write(Take.chunk(input)).flatMap(() => writer),
       (cause) => Channel.write(Take.failCause(cause)),
       () => Channel.write(Take.end)
     )

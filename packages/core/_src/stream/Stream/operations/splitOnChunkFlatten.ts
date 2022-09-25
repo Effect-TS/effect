@@ -46,24 +46,23 @@ function next<R, E, A>(
         }
       )
 
-      return (
-        Channel.writeChunk(buffer.build()) >
-          next<R, E, A>(
-            delimiter,
-            carry.isNonEmpty ? Maybe.some(carry) : Maybe.none,
-            delimiterCursor
-          )
+      return Channel.writeChunk(buffer.build()).flatMap(() =>
+        next<R, E, A>(
+          delimiter,
+          carry.isNonEmpty ? Maybe.some(carry) : Maybe.none,
+          delimiterCursor
+        )
       )
     },
     (cause) =>
       leftover.fold(
         Channel.failCause(cause),
-        (chunk) => Channel.write(chunk) > Channel.failCause(cause)
+        (chunk) => Channel.write(chunk).flatMap(() => Channel.failCause(cause))
       ),
     (done) =>
       leftover.fold(
         Channel.succeed(done),
-        (chunk) => Channel.write(chunk) > Channel.succeed(done)
+        (chunk) => Channel.write(chunk).flatMap(() => Channel.succeed(done))
       )
   )
 }

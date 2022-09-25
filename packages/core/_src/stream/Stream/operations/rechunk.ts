@@ -24,7 +24,7 @@ function process<R, E, A>(
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
       if (chunk.size === target && rechunker.isEmpty()) {
-        return Channel.write(chunk) > process<R, E, A>(rechunker, target)
+        return Channel.write(chunk).flatMap(() => process<R, E, A>(rechunker, target))
       }
       if (chunk.size > 0) {
         let chunks = List.empty<Chunk<A>>()
@@ -44,12 +44,12 @@ function process<R, E, A>(
         }
 
         return (
-          Channel.writeAll(...chunks.reverse) > process<R, E, A>(rechunker, target)
+          Channel.writeAll(...chunks.reverse).flatMap(() => process<R, E, A>(rechunker, target))
         )
       }
       return process(rechunker, target)
     },
-    (cause) => rechunker.emitIfNotEmpty() > Channel.failCause(cause),
+    (cause) => rechunker.emitIfNotEmpty().flatMap(() => Channel.failCause(cause)),
     () => rechunker.emitIfNotEmpty()
   )
 }

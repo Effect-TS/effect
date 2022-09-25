@@ -33,7 +33,7 @@ function writer<R, E, A>(
             ? Tuple(Maybe.some(a), as)
             : Tuple(Maybe.some(a), as.append(a))
       )
-      return Channel.write(newChunk) > writer<R, E, A>(newLast, f)
+      return Channel.write(newChunk).flatMap(() => writer<R, E, A>(newLast, f))
     },
     (cause) => Channel.failCause(cause),
     () => Channel.unit

@@ -23,7 +23,7 @@ function readThenTransduce<R, E>(
       const {
         tuple: [string, buffered]
       } = process(buffer, received)
-      return Channel.write(string) > readThenTransduce<R, E>(buffered)
+      return Channel.write(string).flatMap(() => readThenTransduce<R, E>(buffered))
     },
     (err) => Channel.fail(err),
     () => (buffer.isEmpty ? Channel.unit : Channel.write(stringChunkFrom(buffer)))

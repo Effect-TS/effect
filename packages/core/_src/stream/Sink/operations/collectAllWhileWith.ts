@@ -30,7 +30,7 @@ export function collectAllWhileWith<Z, S>(
             Chunk<In>,
             unknown
           > = Channel.readWith(
-            (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
+            (chunk: Chunk<In>) => Channel.write(chunk).flatMap(() => upstreamMarker),
             (err) => Channel.fail(err),
             (x) => Channel.fromEffect(upstreamDoneRef.set(true)).as(x)
           )
@@ -57,13 +57,14 @@ function loop<R, E, In, L extends In, Z, S>(
     (err) => Channel.fail(err),
     ({ tuple: [leftovers, doneValue] }) =>
       p(doneValue)
-        ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >
+        ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)).flatMap(() =>
           Channel.fromEffect(upstreamDoneRef.get).flatMap((upstreamDone) => {
             const accumulatedResult = f(currentResult, doneValue)
             return upstreamDone
               ? Channel.write(leftovers.flatten).as(accumulatedResult)
               : loop(self, leftoversRef, upstreamDoneRef, accumulatedResult, p, f)
           })
+        )
         : Channel.write(leftovers.flatten).as(currentResult)
   )
 }

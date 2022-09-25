@@ -19,18 +19,20 @@ describe.concurrent("Channel", () => {
     })
 
     it("merge with different types", async () => {
-      const left = Channel.write(1) >
+      const left = Channel.write(1).flatMap(() =>
         Channel.fromEffect(
           Effect.attempt("whatever").refineOrDie((e) =>
             e instanceof RuntimeError ? Maybe.some(e) : Maybe.none
           )
         )
-      const right = Channel.write(2) >
+      )
+      const right = Channel.write(2).flatMap(() =>
         Channel.fromEffect(
           Effect.attempt(true).refineOrDie((e) =>
             e instanceof IllegalStateException ? Maybe.some(e) : Maybe.none
           )
         )
+      )
       const program = left
         .mergeWith(
           right,
@@ -49,8 +51,8 @@ describe.concurrent("Channel", () => {
     })
 
     it("handles polymorphic failures", async () => {
-      const left = Channel.write(1) > Channel.failSync("boom").as(true)
-      const right = Channel.write(2) > Channel.failSync(true).as(true)
+      const left = Channel.write(1).flatMap(() => Channel.failSync("boom").as(true))
+      const right = Channel.write(2).flatMap(() => Channel.failSync(true).as(true))
       const program = left
         .mergeWith(
           right,
@@ -71,11 +73,12 @@ describe.concurrent("Channel", () => {
     it("interrupts losing side", async () => {
       const program = Deferred.make<never, void>().flatMap((latch) =>
         Ref.make(false).flatMap((interrupted) => {
-          const left = Channel.write(1) >
+          const left = Channel.write(1).flatMap(() =>
             Channel.fromEffect(
               (latch.succeed(undefined) > Effect.never).onInterrupt(() => interrupted.set(true))
             )
-          const right = Channel.write(2) > Channel.fromEffect(latch.await)
+          )
+          const right = Channel.write(2).flatMap(() => Channel.fromEffect(latch.await))
           const merged = left.mergeWith(
             right,
             (exit) => MergeDecision.done(Effect.done(exit)),

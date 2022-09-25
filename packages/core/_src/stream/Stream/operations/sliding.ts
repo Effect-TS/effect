@@ -46,7 +46,7 @@ function reader<E, A>(
             ? Maybe.none
             : Maybe.some(queue.toChunk())
         })
-      ) > reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length),
+      ).flatMap(() => reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length)),
     (cause) =>
       emitOnStreamEnd<E, A>(
         chunkSize,
@@ -69,7 +69,7 @@ function emitOnStreamEnd<E, A>(
   if (queueSize < chunkSize) {
     const items = queue.toChunk()
     const result = items.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(items)
-    return Channel.write(result) > channelEnd
+    return Channel.write(result).flatMap(() => channelEnd)
   }
 
   const lastEmitIndex = queueSize - ((queueSize - chunkSize) % stepSize)
@@ -82,5 +82,5 @@ function emitOnStreamEnd<E, A>(
   const lastItems = queue.toChunk().takeRight(leftovers)
   const result = lastItems.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems)
 
-  return Channel.write(result) > channelEnd
+  return Channel.write(result).flatMap(() => channelEnd)
 }

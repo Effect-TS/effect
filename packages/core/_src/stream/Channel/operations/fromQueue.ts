@@ -18,7 +18,8 @@ function fromQueueInternal<Err, Elem, Done>(
           (done): Channel<never, unknown, unknown, unknown, Err, Elem, Done> =>
             Channel.succeed(done)
         ),
-      (elem) => Channel.write(elem) > fromQueueInternal<Err, Elem, Done>(queue)
+      (elem) => Channel.write(elem)
+        .flatMap(() => fromQueueInternal<Err, Elem, Done>(queue))
     )
   )
 }

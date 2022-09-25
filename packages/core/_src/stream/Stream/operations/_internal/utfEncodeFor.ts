@@ -31,12 +31,12 @@ export function utfEncodeFor(
               const bytes = encoder.encode(string)
               return acc + Chunk.from(bytes)
             })
-            return Channel.write(bytes) > transform
+            return Channel.write(bytes).flatMap(() => transform)
           },
           (err) => Channel.fail(err),
           () => Channel.unit
         )
-        const channel = Channel.write(bom) > transform
+        const channel = Channel.write(bom).flatMap(() => transform)
         return stream.channel >> channel
       })
     )

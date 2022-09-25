@@ -65,7 +65,7 @@ export function debounce<R, E, A>(duration: Duration) {
                 (last) =>
                   Channel.fromEffect(
                     handoff.offer(HandoffSignal.Emit(Chunk.single(last)))
-                  ) > producer
+                  ).flatMap(() => producer)
               ),
             (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
             () =>
@@ -117,7 +117,7 @@ export function debounce<R, E, A>(duration: Duration) {
                         (cause) => current.interrupt.as(Channel.failCause(cause)),
                         (chunk) =>
                           Effect.succeed(
-                            Channel.write(chunk) > consumer(new Current(current))
+                            Channel.write(chunk).flatMap(() => consumer(new Current(current)))
                           )
                       ),
                     (exit, previous) =>
@@ -126,7 +126,7 @@ export function debounce<R, E, A>(duration: Duration) {
                         (signal) => {
                           switch (signal._tag) {
                             case "Emit": {
-                              return previous.interrupt > enqueue(signal.elements)
+                              return previous.interrupt.flatMap(() => enqueue(signal.elements))
                             }
                             case "Halt": {
                               return previous.interrupt.as(Channel.failCause(signal.error))
@@ -134,7 +134,7 @@ export function debounce<R, E, A>(duration: Duration) {
                             case "End": {
                               return previous
                                 .join
-                                .map((chunk) => Channel.write(chunk) > Channel.unit)
+                                .map((chunk) => Channel.write(chunk).flatMap(() => Channel.unit))
                             }
                           }
                         }

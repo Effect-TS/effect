@@ -26,7 +26,7 @@ export function haltWhenDeferred<E2, Z>(deferred: Deferred<E2, Z>) {
         .map((option) =>
           option.fold(
             Channel.readWith(
-              (input: Chunk<A>) => Channel.write(input) > writer,
+              (input: Chunk<A>) => Channel.write(input).flatMap(() => writer),
               (err) => Channel.fail(err),
               () => Channel.unit
             ),

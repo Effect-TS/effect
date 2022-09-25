@@ -16,6 +16,6 @@ export function take<In>(
     const {
       tuple: [taken, leftover]
     } = acc.splitAt(n)
-    return new SinkInternal(Channel.write(leftover) > Channel.succeed(taken))
+    return new SinkInternal(Channel.write(leftover).flatMap(() => Channel.succeed(taken)))
   })
 }

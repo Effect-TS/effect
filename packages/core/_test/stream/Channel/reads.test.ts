@@ -72,7 +72,7 @@ describe.concurrent("Channel", () => {
         ): Channel<never, unknown, number, unknown, never, number, string> {
           return n > 0
             ? Channel.readWith(
-              (i: number) => Channel.write(i) > readIntsN(n - 1),
+              (i: number) => Channel.write(i).flatMap(() => readIntsN(n - 1)),
               () => Channel.succeed("EOF"),
               () => Channel.succeed("EOF")
             )

@@ -30,13 +30,13 @@ function process<E, A>(
           ? Maybe.some(Tuple(option.value.get(0), Maybe.some(option.value.get(1))))
           : Maybe.none
       )
-      return Channel.write(out) > process<E, A>(newLast)
+      return Channel.write(out).flatMap(() => process<E, A>(newLast))
     },
     (err: E) => Channel.fail(err),
     () =>
       last.fold(
         Channel.unit,
-        (a) => Channel.write(Chunk.single(Tuple(a, Maybe.none))) > Channel.unit
+        (a) => Channel.write(Chunk.single(Tuple(a, Maybe.none))).flatMap(() => Channel.unit)
       )
   )
 }

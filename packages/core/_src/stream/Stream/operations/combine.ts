@@ -65,15 +65,17 @@ function producer<Err, Elem>(
   latch: Handoff<void>
 ): Channel<never, Err, Elem, unknown, never, never, unknown> {
   return (
-    Channel.fromEffect(latch.take) >
+    Channel.fromEffect(latch.take).flatMap(() =>
       Channel.readWithCause(
         (value) =>
-          Channel.fromEffect(handoff.offer(Exit.succeed(value))) >
-            producer(handoff, latch),
+          Channel.fromEffect(handoff.offer(Exit.succeed(value)))
+            .flatMap(() => producer(handoff, latch)),
         (cause) => Channel.fromEffect(handoff.offer(Exit.failCause(cause.map(Maybe.some)))),
         () =>
-          Channel.fromEffect(handoff.offer(Exit.fail(Maybe.none))) >
+          Channel.fromEffect(handoff.offer(Exit.fail(Maybe.none))).flatMap(() =>
             producer(handoff, latch)
+          )
       )
+    )
   )
 }

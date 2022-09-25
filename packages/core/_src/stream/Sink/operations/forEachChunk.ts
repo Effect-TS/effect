@@ -18,7 +18,7 @@ export function forEachChunk<R, E, In, Z>(
     never,
     void
   > = Channel.readWithCause(
-    (chunk: Chunk<In>) => Channel.fromEffect(f(chunk)) > process,
+    (chunk: Chunk<In>) => Channel.fromEffect(f(chunk)).flatMap(() => process),
     (cause) => Channel.failCause(cause),
     () => Channel.unit
   )

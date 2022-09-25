@@ -33,7 +33,7 @@ function readThenTransduce<R, E>(
         tuple: [string, buffered]
       } = process(buffer, received, charset, fixedLength)
       return (
-        Channel.write(string) > readThenTransduce<R, E>(buffered, charset, fixedLength)
+        Channel.write(string).flatMap(() => readThenTransduce<R, E>(buffered, charset, fixedLength))
       )
     },
     (err) => Channel.fail(err),

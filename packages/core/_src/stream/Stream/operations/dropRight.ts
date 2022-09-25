@@ -34,7 +34,7 @@ export function dropRight(n: number) {
             queue.put(elem)
             return head
           })
-          return Channel.write(outs) > reader
+          return Channel.write(outs).flatMap(() => reader)
         },
         (err) => Channel.fail(err),
         () => Channel.unit

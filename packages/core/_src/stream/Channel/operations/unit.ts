@@ -13,5 +13,5 @@ export const unit: Channel<never, unknown, unknown, unknown, never, never, void>
 export function unit_<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem, void> {
-  return self > Channel.unit
+  return self.flatMap(() => Channel.unit)
 }

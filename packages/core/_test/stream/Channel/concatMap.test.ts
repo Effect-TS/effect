@@ -44,7 +44,7 @@ describe.concurrent("Channel", () => {
         const source = Channel.writeAll(1, 2, 3, 4)
         const reader = Channel.read<number>().flatMap((n) => Channel.write(n))
         const readers = Channel.writeAll(undefined, undefined).concatMap(
-          () => reader > reader
+          () => reader.flatMap(() => reader)
         )
         const result = $((source >> readers).runCollect)
         assert.isTrue(result.get(0) == Chunk(1, 2, 3, 4))

@@ -29,8 +29,8 @@ export function runIntoQueueElementsScoped<E1, A>(queue: Enqueue<Exit<Maybe<E1>,
             Exit<Maybe<E | E1>, A>,
             unknown
           >,
-          (channel, a) => channel > Channel.write(Exit.succeed(a))
-        ) > writer,
+          (channel, a) => channel.flatMap(() => Channel.write(Exit.succeed(a)))
+        ).flatMap(() => writer),
       (err) => Channel.write(Exit.fail(Maybe.some(err))),
       () => Channel.write(Exit.fail(Maybe.none))
     )

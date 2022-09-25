@@ -57,11 +57,14 @@ function loop<E, A, R2, E2>(
             const delay = new DurationInternal(Math.floor(waitCycles * duration.millis))
 
             return delay > (0).millis
-              ? Channel.fromEffect(Clock.sleep(delay)) >
-                Channel.write(input) >
+              ? Channel.fromEffect(Clock.sleep(delay))
+                .flatMap(() => Channel.write(input))
+                .flatMap(() =>
+                  loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
+                )
+              : Channel.write(input).flatMap(() =>
                 loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
-              : Channel.write(input) >
-                loop<E, A, R2, E2>(units, duration, costFn, burst, remaining, current)
+              )
           })
       ),
     (err) => Channel.fail(err),

@@ -34,7 +34,8 @@ function writer<R, E, A, R2, E2, Z>(
     fiber.poll.map((option) =>
       option.fold(
         Channel.readWith(
-          (input: Chunk<A>) => Channel.write(input) > writer<R, E, A, R2, E2, Z>(fiber),
+          (input: Chunk<A>) =>
+            Channel.write(input).flatMap(() => writer<R, E, A, R2, E2, Z>(fiber)),
           (err) => Channel.fail(err),
           () => Channel.unit
         ),

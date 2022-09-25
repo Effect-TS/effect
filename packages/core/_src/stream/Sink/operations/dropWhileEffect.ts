@@ -21,7 +21,7 @@ export function dropWhileEffect<R, E, In>(
           .map((leftover) =>
             leftover.isEmpty
               ? loop
-              : Channel.write(leftover) > Channel.identity<E, Chunk<In>, unknown>()
+              : Channel.write(leftover).flatMap(() => Channel.identity<E, Chunk<In>, unknown>())
           )
       ),
     (err) => Channel.fail(err),

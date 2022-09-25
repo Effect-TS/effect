@@ -17,8 +17,9 @@ function mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDo
 ): Channel<Env | Env1, OutErr, OutElem, OutDone, OutErr | OutErr1, OutElem1, OutDone> {
   return Channel.readWith(
     (outElem) =>
-      Channel.fromEffect(f(outElem)).flatMap((out) => Channel.write(out)) >
-        mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(f),
+      Channel.fromEffect(f(outElem)).flatMap((out) => Channel.write(out)).flatMap(() =>
+        mapOutEffectReader<Env, Env1, OutErr, OutErr1, OutElem, OutElem1, OutDone>(f)
+      ),
     (outErr) => Channel.fail(outErr),
     (outDone) => Channel.succeed(outDone)
   )

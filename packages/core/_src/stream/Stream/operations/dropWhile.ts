@@ -25,7 +25,7 @@ function dropWhileInternal<E, A>(
       const out = chunk.dropWhile(f)
       return out.isEmpty
         ? dropWhileInternal<E, A>(f)
-        : Channel.write(out) > Channel.identity<E, Chunk<A>, unknown>()
+        : Channel.write(out).flatMap(() => Channel.identity<E, Chunk<A>, unknown>())
     },
     (err) => Channel.fail(err),
     (out) => Channel.succeed(out)

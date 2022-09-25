@@ -9,7 +9,7 @@ export function fromInput<Err, Elem, Done>(
   return Channel.unwrap(
     input.takeWith(
       (cause) => Channel.failCause(cause),
-      (elem) => Channel.write(elem) > fromInput(input),
+      (elem) => Channel.write(elem).flatMap(() => fromInput(input)),
       (done) => Channel.succeed(done)
     )
   )

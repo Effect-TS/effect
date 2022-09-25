@@ -36,5 +36,5 @@ function go<R, E, In>(
     ? cont
     : Channel.fromEffect(f(chunk.unsafeGet(index)))
       .flatMap((b) => b ? go(f, chunk, index + 1, length, cont) : Channel.write(chunk.drop(index)))
-      .catchAll((e) => Channel.write(chunk.drop(index)) > Channel.fail(e))
+      .catchAll((e) => Channel.write(chunk.drop(index)).flatMap(() => Channel.fail(e)))
 }

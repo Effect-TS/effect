@@ -55,12 +55,14 @@ function producer<Err, Elem>(
   latch: Handoff<void>
 ): Channel<never, Err, Chunk<Elem>, unknown, never, never, unknown> {
   return (
-    Channel.fromEffect(latch.take) >
+    Channel.fromEffect(latch.take).flatMap(() =>
       Channel.readWithCause(
         (chunk: Chunk<Elem>) =>
-          Channel.fromEffect(handoff.offer(Take.chunk(chunk))) > producer(handoff, latch),
+          Channel.fromEffect(handoff.offer(Take.chunk(chunk)))
+            .flatMap(() => producer(handoff, latch)),
         (cause) => Channel.fromEffect(handoff.offer(Take.failCause(cause))),
-        () => Channel.fromEffect(handoff.offer(Take.end)) > producer(handoff, latch)
+        () => Channel.fromEffect(handoff.offer(Take.end)).flatMap(() => producer(handoff, latch))
       )
+    )
   )
 }

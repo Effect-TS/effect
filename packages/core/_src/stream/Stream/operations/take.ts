@@ -30,7 +30,7 @@ function loop<R, E, A>(
       const leftover = Math.max(0, n - taken.length)
       const more = leftover > 0
       return more
-        ? Channel.write(taken) > loop<R, E, A>(leftover)
+        ? Channel.write(taken).flatMap(() => loop<R, E, A>(leftover))
         : Channel.write(taken)
     },
     (err) => Channel.fail(err),

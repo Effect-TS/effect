@@ -35,8 +35,9 @@ function pull<R, E, E2, In, Out>(
 ): Channel<R, E, Chunk<In>, unknown, E | E2, Chunk<Out>, unknown> {
   return Channel.readWith(
     (input: Chunk<In>) =>
-      Channel.fromEffect(push(Maybe.some(input))).flatMap((out) => Channel.write(out)) >
-        pull<R, E, E2, In, Out>(push),
+      Channel.fromEffect(push(Maybe.some(input)))
+        .flatMap((out) => Channel.write(out))
+        .flatMap(() => pull<R, E, E2, In, Out>(push)),
     (err) => Channel.fail(err),
     () => Channel.fromEffect(push(Maybe.none)).flatMap((out) => Channel.write(out))
   )

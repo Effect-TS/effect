@@ -37,7 +37,7 @@ function passThrough<R, E>(
     (received: Chunk<number>) => {
       const stream = decodingPipeline(Stream.fromChunk(received))
       concreteStream(stream)
-      return stream.channel > passThrough(decodingPipeline)
+      return stream.channel.flatMap(() => passThrough(decodingPipeline))
     },
     (err) => Channel.fail(err),
     () => Channel.unit
@@ -64,7 +64,7 @@ function lookingForBom<R, E>(
         } = processBom(bom)
         const stream = decodingPipeline(Stream.fromChunk(dataWithoutBom + rest))
         concreteStream(stream)
-        return stream.channel > passThrough(decodingPipeline)
+        return stream.channel.flatMap(() => passThrough(decodingPipeline))
       }
 
       return lookingForBom(data, bomSize, processBom)
@@ -79,7 +79,7 @@ function lookingForBom<R, E>(
       } = processBom(buffer)
       const stream = decodingPipeline(Stream.fromChunk(dataWithoutBom))
       concreteStream(stream)
-      return stream.channel > passThrough(decodingPipeline)
+      return stream.channel.flatMap(() => passThrough(decodingPipeline))
     }
   )
 }

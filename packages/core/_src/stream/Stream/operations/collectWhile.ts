@@ -24,7 +24,7 @@ export function collectWhile<A, A1>(pf: (a: A) => Maybe<A1>) {
       (input: Chunk<A>) => {
         const mapped = input.collectWhile(pf)
         return mapped.size === input.size
-          ? Channel.write(mapped) > loop
+          ? Channel.write(mapped).flatMap(() => loop)
           : Channel.write(mapped)
       },
       (err) => Channel.fail(err),

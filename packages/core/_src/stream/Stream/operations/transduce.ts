@@ -27,9 +27,9 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
           Chunk<A>,
           unknown
         > = Channel.readWith(
-          (chunk: Chunk<A>) => Channel.write(chunk) > upstreamMarker,
+          (chunk: Chunk<A>) => Channel.write(chunk).flatMap(() => upstreamMarker),
           (err) => Channel.fail(err),
-          (done) => Channel.sync(upstreamDone.set(true)) > Channel.succeed(done)
+          (done) => Channel.sync(upstreamDone.set(true)).flatMap(() => Channel.succeed(done))
         )
 
         const buffer: Channel<
@@ -45,7 +45,7 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
 
           if (leftover.isEmpty) {
             return Channel.readWith(
-              (chunk: Chunk<A>) => Channel.write(chunk) > buffer,
+              (chunk: Chunk<A>) => Channel.write(chunk).flatMap(() => buffer),
               (err) => Channel.fail(err),
               (done) => Channel.succeed(done)
             )
@@ -53,7 +53,7 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
 
           leftovers.set(Chunk.empty())
 
-          return Channel.writeChunk(leftover) > buffer
+          return Channel.writeChunk(leftover).flatMap(() => buffer)
         })
         concreteSink(sink)
         const transducer: Channel<
@@ -69,7 +69,7 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
             Tuple(upstreamDone.get, concatAndGet(leftovers, leftover))
           ).flatMap(({ tuple: [done, newLeftovers] }) => {
             const nextChannel = done && newLeftovers.isEmpty ? Channel.unit : transducer
-            return Channel.write(Chunk.single(z)) > nextChannel
+            return Channel.write(Chunk.single(z)).flatMap(() => nextChannel)
           })
         )
 

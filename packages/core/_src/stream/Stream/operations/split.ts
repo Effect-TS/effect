@@ -26,8 +26,9 @@ function splitInternal<R, E, A>(
   } = (leftovers + input).splitWhere(f)
   return chunk.isEmpty || remaining.isEmpty
     ? loop<R, E, A>(chunk + remaining.drop(1), f)
-    : Channel.write(Chunk.single(chunk)) >
+    : Channel.write(Chunk.single(chunk)).flatMap(() =>
       splitInternal<R, E, A>(Chunk.empty<A>(), remaining.drop(1), f)
+    )
 }
 
 function loop<R, E, A>(
@@ -41,7 +42,7 @@ function loop<R, E, A>(
       leftovers.isEmpty
         ? Channel.unit
         : leftovers.find(f).isNone()
-        ? Channel.write(Chunk.single(leftovers)) > Channel.unit
-        : splitInternal<R, E, A>(Chunk.empty<A>(), leftovers, f) > Channel.unit
+        ? Channel.write(Chunk.single(leftovers)).flatMap(() => Channel.unit)
+        : splitInternal<R, E, A>(Chunk.empty<A>(), leftovers, f).flatMap(() => Channel.unit)
   )
 }

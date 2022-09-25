@@ -26,7 +26,7 @@ function loop<R, E, A>(
       const more = chunk.isEmpty || leftover > 0
       return more
         ? loop<R, E, A>(leftover)
-        : Channel.write(dropped) > Channel.identity<E, Chunk<A>, unknown>()
+        : Channel.write(dropped).flatMap(() => Channel.identity<E, Chunk<A>, unknown>())
     },
     (err) => Channel.fail(err),
     () => Channel.unit

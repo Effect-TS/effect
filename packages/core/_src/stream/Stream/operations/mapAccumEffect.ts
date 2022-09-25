@@ -41,10 +41,10 @@ function accumulator<A, R2, E2, A2, S>(
               (failure) => {
                 const partialResult = outputChunk.build()
                 return partialResult.isNonEmpty
-                  ? Channel.write(partialResult) > Channel.fail(failure)
+                  ? Channel.write(partialResult).flatMap(() => Channel.fail(failure))
                   : Channel.fail(failure)
               },
-              (out) => Channel.write(outputChunk.build()) > accumulator(out, f)
+              (out) => Channel.write(outputChunk.build()).flatMap(() => accumulator(out, f))
             )
         })
       ),

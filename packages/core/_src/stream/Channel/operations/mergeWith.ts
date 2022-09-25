@@ -148,10 +148,11 @@ export function mergeWith_<
                   (z) => onDecision(done(Exit.succeed(z))),
                   (elem) =>
                     Effect.succeed(
-                      Channel.write(elem) >
+                      Channel.write(elem).flatMap(() =>
                         Channel.fromEffect(pull.forkDaemon).flatMap((leftFiber) =>
                           go(both(leftFiber, fiber))
                         )
+                      )
                     )
                 )
             )
@@ -207,7 +208,8 @@ export function mergeWith_<
                     (either) =>
                       either.fold(
                         (done) => Channel.fromEffect(state.f(Exit.succeed(done))),
-                        (elem) => Channel.write(elem) > go(MergeState.LeftDone(state.f))
+                        (elem) =>
+                          Channel.write(elem).flatMap(() => go(MergeState.LeftDone(state.f)))
                       )
                   )
                 )
@@ -221,7 +223,8 @@ export function mergeWith_<
                     (either) =>
                       either.fold(
                         (done) => Channel.fromEffect(state.f(Exit.succeed(done))),
-                        (elem) => Channel.write(elem) > go(MergeState.RightDone(state.f))
+                        (elem) =>
+                          Channel.write(elem).flatMap(() => go(MergeState.RightDone(state.f)))
                       )
                   )
                 )

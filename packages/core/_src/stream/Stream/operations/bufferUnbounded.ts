@@ -24,7 +24,7 @@ export function bufferUnbounded<R, E, A>(
         take.fold(
           Channel.unit,
           (cause) => Channel.failCause(cause),
-          (a) => Channel.write(a) > process
+          (a) => Channel.write(a).flatMap(() => process)
         )
       )
       return process

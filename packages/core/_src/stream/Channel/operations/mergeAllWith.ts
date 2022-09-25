@@ -183,7 +183,7 @@ export function mergeAllWith<
           (either) =>
             either.fold(
               (outDone) => Channel.succeed(outDone),
-              (outElem) => Channel.write(outElem) > consumer
+              (outElem) => Channel.write(outElem).flatMap(() => consumer)
             )
         )
       )
