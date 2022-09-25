@@ -19,7 +19,7 @@ export function pipeToOrFail<
   ): Channel<Env | Env2, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> => {
     const reader: Channel<Env, OutErr, OutElem, OutDone, never, OutElem, OutDone> = Channel
       .readWith(
-        (outElem) => Channel.write(outElem) > reader,
+        (outElem) => Channel.write(outElem).flatMap(() => reader),
         (outErr) => Channel.failCauseSync(Cause.die(new ChannelError(outErr))),
         (outDone) => Channel.succeed(outDone)
       )
@@ -33,7 +33,7 @@ export function pipeToOrFail<
       OutElem2,
       OutDone2
     > = Channel.readWithCause(
-      (outElem) => Channel.write(outElem) > writer,
+      (outElem) => Channel.write(outElem).flatMap(() => writer),
       (cause) =>
         cause.isDieType() && isChannelError(cause.value)
           ? Channel.fail(cause.value.error as OutErr2)

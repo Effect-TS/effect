@@ -14,5 +14,5 @@ function writer<Out>(
 ): Channel<never, unknown, unknown, unknown, never, Out, void> {
   return idx === len
     ? Channel.unit
-    : Channel.write(chunk.unsafeGet(idx)) > writer(idx + 1, len, chunk)
+    : Channel.write(chunk.unsafeGet(idx)).flatMap(() => writer(idx + 1, len, chunk))
 }

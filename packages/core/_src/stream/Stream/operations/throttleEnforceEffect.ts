@@ -52,7 +52,7 @@ function loop<E, A, R2, E2>(
             const max = units + burst < 0 ? Number.MAX_SAFE_INTEGER : units + burst
             const available = sum < 0 ? max : Math.min(sum, max)
             return weight <= available
-              ? Channel.write(input) >
+              ? Channel.write(input).flatMap(() =>
                 loop<E, A, R2, E2>(
                   units,
                   duration,
@@ -61,6 +61,7 @@ function loop<E, A, R2, E2>(
                   available - weight,
                   current
                 )
+              )
               : loop<E, A, R2, E2>(units, duration, costFn, burst, available, current)
           })
       ),

@@ -59,9 +59,10 @@ export function asyncInterrupt<R, E, A>(
                 .flatMap((take) => take.done)
                 .fold(
                   (maybeError) =>
-                    Channel.fromEffect(output.shutdown) >
-                      maybeError.fold(Channel.unit, (e) => Channel.fail(e)),
-                  (a) => Channel.write(a) > loop
+                    Channel.fromEffect(output.shutdown).flatMap(() =>
+                      maybeError.fold(Channel.unit, (e) => Channel.fail(e))
+                    ),
+                  (a) => Channel.write(a).flatMap(() => loop)
                 )
             )
             return (new StreamInternal(loop) as Stream<R, E, A>).ensuring(canceler)

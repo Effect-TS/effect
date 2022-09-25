@@ -7,8 +7,9 @@ describe.concurrent("Channel", () => {
         const event = (label: string) => events.update((chunk) => chunk.append(label))
         const channel = Channel.fromEffect(event("Acquire1"))
           .ensuring(event("Release11"))
-          .ensuring(event("Release12")) >
-          Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
+          .ensuring(event("Release12")).flatMap(() =>
+            Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
+          )
         return channel.runDrain > events.get
       })
 
@@ -23,8 +24,9 @@ describe.concurrent("Channel", () => {
         const channel = (
           Channel.fromEffect(event("Acquire1"))
             .ensuring(event("Release11"))
-            .ensuring(event("Release12")) >
-            Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
+            .ensuring(event("Release12")).flatMap(() =>
+              Channel.fromEffect(event("Acquire2")).ensuring(event("Release2"))
+            )
         ).ensuring(event("ReleaseOuter"))
 
         return Effect.scoped(

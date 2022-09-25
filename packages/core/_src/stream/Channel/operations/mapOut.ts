@@ -10,7 +10,7 @@ export function mapOut<OutElem, OutElem2>(f: (o: OutElem) => OutElem2) {
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> => {
     const reader: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel
       .readWith(
-        (outElem) => Channel.write(f(outElem)) > reader,
+        (outElem) => Channel.write(f(outElem)).flatMap(() => reader),
         (outErr) => Channel.fail(outErr),
         (outDone) => Channel.succeed(outDone)
       )

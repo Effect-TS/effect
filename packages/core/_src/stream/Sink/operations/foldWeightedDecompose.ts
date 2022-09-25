@@ -44,7 +44,7 @@ function go<S, In>(
       } = fold(chunk, s, costFn, decompose, f, dirty, cost, max, 0)
 
       if (leftovers.isNonEmpty) {
-        return Channel.write(leftovers) > Channel.succeed(nextS)
+        return Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
       }
 
       if (cost > max) {

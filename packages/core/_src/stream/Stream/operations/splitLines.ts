@@ -81,19 +81,20 @@ function next<E>(
       })
 
       return (
-        Channel.write(buffer.build()) >
-          next<E>(carry.length > 0 ? Maybe.some(carry) : Maybe.none, inCRLF)
+        Channel.write(buffer.build()).flatMap(
+          () => next<E>(carry.length > 0 ? Maybe.some(carry) : Maybe.none, inCRLF)
+        )
       )
     },
     (cause) =>
       leftover.fold(
         Channel.failCause(cause),
-        (value) => Channel.write(Chunk.single(value)) > Channel.failCause(cause)
+        (value) => Channel.write(Chunk.single(value)).flatMap(() => Channel.failCause(cause))
       ),
     (done) =>
       leftover.fold(
         Channel.succeed(done),
-        (value) => Channel.write(Chunk.single(value)) > Channel.succeed(done)
+        (value) => Channel.write(Chunk.single(value)).flatMap(() => Channel.succeed(done))
       )
   )
 }

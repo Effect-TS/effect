@@ -26,16 +26,18 @@ function bufferInternal<InElem, InErr, InDone>(
         ? Tuple(
           Channel.readWith(
             (inElem) =>
-              Channel.write(inElem) >
-                bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref),
+              Channel.write(inElem).flatMap(() =>
+                bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref)
+              ),
             (inErr) => Channel.fail(inErr),
             (inDone) => Channel.succeed(inDone)
           ),
           value
         )
         : Tuple(
-          Channel.write(value) >
-            bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref),
+          Channel.write(value).flatMap(() =>
+            bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref)
+          ),
           empty
         )
     )

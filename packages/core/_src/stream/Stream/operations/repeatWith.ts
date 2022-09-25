@@ -37,13 +37,15 @@ export function repeatWith<A, S, R2, B, C1, C2>(
           driver.next(undefined).fold(
             () => Channel.unit,
             () =>
-              process >
-                Channel.unwrap(scheduleOutput.map((c) => Channel.write(Chunk.single(c)))) >
-                loop
+              process.flatMap(() =>
+                Channel.unwrap(
+                  scheduleOutput.map((c) => Channel.write(Chunk.single(c)))
+                )
+              ).flatMap(() => loop)
           )
         )
 
-        return process > loop
+        return process.flatMap(() => loop)
       })
     )
 }

@@ -39,7 +39,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
         fold(chunk, s, costFn, max, decompose, f, dirty, cost, 0)
       ).flatMap(({ tuple: [nextS, nextCost, nextDirty, leftovers] }) =>
         leftovers.isNonEmpty
-          ? Channel.write(leftovers) > Channel.succeed(nextS)
+          ? Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
           : cost > max
           ? Channel.succeed(nextS)
           : go(nextS, costFn, max, decompose, f, nextDirty, nextCost)

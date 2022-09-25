@@ -25,7 +25,7 @@ function accumulator<E, A, S, A1>(
       const {
         tuple: [nextS, a1s]
       } = input.mapAccum(current, f)
-      return Channel.write(a1s) > accumulator<E, A, S, A1>(nextS, f)
+      return Channel.write(a1s).flatMap(() => accumulator<E, A, S, A1>(nextS, f))
     },
     (err: E) => Channel.fail(err),
     () => Channel.unit

@@ -37,8 +37,9 @@ function loop<E, A, R1, E1>(
       f(next.value).map(b =>
         b
           ? Channel.write(Chunk.single(next.value))
-          : Channel.write(Chunk.single(next.value)) >
+          : Channel.write(Chunk.single(next.value)).flatMap(() =>
             loop<E, A, R1, E1>(chunkIterator, f)
+          )
       )
     )
   }

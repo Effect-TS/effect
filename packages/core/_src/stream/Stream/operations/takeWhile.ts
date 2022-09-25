@@ -16,7 +16,7 @@ export function takeWhile<A>(f: Predicate<A>) {
       (chunk: Chunk<A>) => {
         const taken = chunk.takeWhile(f)
         const more = taken.length === chunk.length
-        return more ? Channel.write(taken) > loop : Channel.write(taken)
+        return more ? Channel.write(taken).flatMap(() => loop) : Channel.write(taken)
       },
       (err) => Channel.fail(err),
       (done) => Channel.succeed(done)

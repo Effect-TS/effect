@@ -20,7 +20,7 @@ export function collect<
   ): Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone> => {
     const collector: Channel<Env, OutErr, OutElem, OutDone, OutErr, OutElem2, OutDone> = Channel
       .readWith(
-        (out) => pf(out).fold(collector, (out2) => Channel.write(out2) > collector),
+        (out) => pf(out).fold(collector, (out2) => Channel.write(out2).flatMap(() => collector)),
         (e) => Channel.fail(e),
         (z) => Channel.succeed(z)
       )

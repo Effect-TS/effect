@@ -23,8 +23,8 @@ function pull<R, E, In, L, Z>(
       Channel.fromEffect(push(Maybe.some(input))).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
-            (e) => Channel.write(leftovers) > Channel.fail(e),
-            (z) => Channel.write(leftovers) > Channel.succeed(z)
+            (e) => Channel.write(leftovers).flatMap(() => Channel.fail(e)),
+            (z) => Channel.write(leftovers).flatMap(() => Channel.succeed(z))
           ),
         () => pull(push)
       ),
@@ -33,8 +33,8 @@ function pull<R, E, In, L, Z>(
       Channel.fromEffect(push(Maybe.none)).foldChannel(
         ({ tuple: [either, leftovers] }) =>
           either.fold(
-            (e) => Channel.write(leftovers) > Channel.fail(e),
-            (z) => Channel.write(leftovers) > Channel.succeed(z)
+            (e) => Channel.write(leftovers).flatMap(() => Channel.fail(e)),
+            (z) => Channel.write(leftovers).flatMap(() => Channel.succeed(z))
           ),
         () => Channel.fromEffect(Effect.dieMessage("empty sink"))
       )

@@ -23,7 +23,7 @@ export function flatMap<A, R2, E2, B>(f: (a: A) => Stream<R2, E2, B>) {
           })
           .reduce(
             Channel.unit as Channel<R2, unknown, unknown, unknown, E2, Chunk<B>, unknown>,
-            (c1, c2) => c1 > c2
+            (c1, c2) => c1.flatMap(() => c2)
           )
       )
     )

@@ -28,7 +28,7 @@ export function untilOutputEffect<R2, E2, Z>(
             Chunk<In>,
             unknown
           > = Channel.readWith(
-            (chunk: Chunk<In>) => Channel.write(chunk) > upstreamMarker,
+            (chunk: Chunk<In>) => Channel.write(chunk).flatMap(() => upstreamMarker),
             (err) => Channel.fail(err),
             (done) => Channel.fromEffect(upstreamDoneRef.set(true)).as(done)
           )
@@ -46,7 +46,7 @@ export function untilOutputEffect<R2, E2, Z>(
             ({ tuple: [leftovers, doneValue] }) =>
               Channel.fromEffect(f(doneValue)).flatMap(
                 (satisfied) =>
-                  Channel.fromEffect(leftoversRef.set(leftovers.flatten)) >
+                  Channel.fromEffect(leftoversRef.set(leftovers.flatten)).flatMap(() =>
                     Channel.fromEffect(upstreamDoneRef.get).flatMap((upstreamDone) =>
                       satisfied
                         ? Channel.write(leftovers.flatten).as(Maybe.some(doneValue))
@@ -54,6 +54,7 @@ export function untilOutputEffect<R2, E2, Z>(
                         ? Channel.write(leftovers.flatten).as(Maybe.none)
                         : loop
                     )
+                  )
               )
           )
 

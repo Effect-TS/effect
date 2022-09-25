@@ -18,7 +18,8 @@ export function forEach<R, E, In, Z>(
     never,
     void
   > = Channel.readWithCause(
-    (chunk: Chunk<In>) => Channel.fromEffect(Effect.forEachDiscard(chunk, f)) > process,
+    (chunk: Chunk<In>) =>
+      Channel.fromEffect(Effect.forEachDiscard(chunk, f)).flatMap(() => process),
     (cause) => Channel.failCause(cause),
     () => Channel.unit
   )

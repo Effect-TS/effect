@@ -19,8 +19,9 @@ function contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(
 ): Channel<Env1, InErr, InElem0, InDone, InErr, InElem, InDone> {
   return Channel.readWith(
     (inElem) =>
-      Channel.fromEffect(f(inElem)).flatMap((elem) => Channel.write(elem)) >
-        contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(f),
+      Channel.fromEffect(f(inElem)).flatMap((elem) => Channel.write(elem)).flatMap(() =>
+        contramapInEffectReader<Env1, InErr, InElem0, InElem, InDone>(f)
+      ),
     (inErr) => Channel.fail(inErr),
     (inDone) => Channel.succeed(inDone)
   )

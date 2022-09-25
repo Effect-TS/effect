@@ -57,7 +57,9 @@ export function mapper<A, B>(
   f: (a: A) => B
 ): Channel<never, unknown, A, unknown, never, B, void> {
   return Channel.readWith(
-    (a: A) => Channel.write(f(a)) > mapper(f),
+    (a: A) =>
+      Channel.write(f(a))
+        .flatMap(() => mapper(f)),
     () => Channel.unit,
     () => Channel.unit
   )
@@ -68,8 +70,8 @@ export function refWriter<A>(
 ): Channel<never, unknown, A, unknown, never, never, void> {
   return Channel.readWith(
     (a: A) =>
-      Channel.fromEffect(ref.update((list) => list.prepend(a)).unit) >
-        refWriter(ref),
+      Channel.fromEffect(ref.update((list) => list.prepend(a)).unit)
+        .flatMap(() => refWriter(ref)),
     () => Channel.unit,
     () => Channel.unit
   )

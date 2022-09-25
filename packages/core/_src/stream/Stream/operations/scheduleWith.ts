@@ -42,13 +42,15 @@ function loop<R, R2, E, A, B, C>(
           .orDie
           .map(
             (b) =>
-              Channel.write(Chunk(f(a), g(b))) >
+              Channel.write(Chunk(f(a), g(b))).flatMap(() =>
                 loop<R, R2, E, A, B, C>(driver, chunk, f, g, index + 1)
+              )
           ) < driver.reset,
       () =>
         Effect.succeed(
-          Channel.write(Chunk(f(a))) >
+          Channel.write(Chunk(f(a))).flatMap(() =>
             loop<R, R2, E, A, B, C>(driver, chunk, f, g, index + 1)
+          )
         )
     )
     return Channel.unwrap(channel)

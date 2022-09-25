@@ -26,9 +26,9 @@ export function tapSink<R2, E2, A, X, Z>(sink: Sink<R2, E2, A, X, Z>) {
         unknown
       > = Channel.readWithCause(
         (chunk: Chunk<A>) =>
-          Channel.fromEffect(queue.offer(Take.chunk(chunk))) >
-            Channel.write(chunk) >
-            loop,
+          Channel.fromEffect(queue.offer(Take.chunk(chunk)))
+            .flatMap(() => Channel.write(chunk))
+            .flatMap(() => loop),
         (cause) => Channel.fromEffect(queue.offer(Take.failCause(cause))),
         () => Channel.fromEffect(queue.shutdown)
       )

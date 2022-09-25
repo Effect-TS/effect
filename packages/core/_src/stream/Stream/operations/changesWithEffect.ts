@@ -37,7 +37,9 @@ function writer<R, E, A, R2, E2>(
           ))
       ).flatMap(
         ({ tuple: [newLast, newChunk] }) =>
-          Channel.write(newChunk) > writer<R, E, A, R2, E2>(newLast, f)
+          Channel.write(newChunk).flatMap(() =>
+            writer<R, E, A, R2, E2>(newLast, f)
+          )
       ),
     (cause) => Channel.failCause(cause),
     () => Channel.unit

@@ -25,7 +25,7 @@ function chunkAdjacent<E, A, K>(
       const {
         tuple: [outputs, newBuffer]
       } = go(chunk, buffer, f)
-      return Channel.write(outputs) > chunkAdjacent<E, A, K>(newBuffer, f)
+      return Channel.write(outputs).flatMap(() => chunkAdjacent<E, A, K>(newBuffer, f))
     },
     (cause) => Channel.failCause(cause),
     () => buffer.fold(Channel.unit, (o) => Channel.write(Chunk.single(o)))

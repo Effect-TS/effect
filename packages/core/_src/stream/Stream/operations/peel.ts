@@ -47,16 +47,18 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
               Chunk<A2>,
               void
             > = Channel.readWithCause(
-              (chunk: Chunk<A2>) => Channel.fromEffect(handoff.offer(new Emit(chunk))) > loop,
+              (chunk: Chunk<A2>) =>
+                Channel.fromEffect(handoff.offer(new Emit(chunk))).flatMap(() => loop),
               (cause) =>
-                Channel.fromEffect(handoff.offer(new Halt(cause))) >
-                  Channel.failCause(cause),
-              () => Channel.fromEffect(handoff.offer(new End())) > Channel.unit
+                Channel.fromEffect(handoff.offer(new Halt(cause))).flatMap(() =>
+                  Channel.failCause(cause)
+                ),
+              () => Channel.fromEffect(handoff.offer(new End())).flatMap(() => Channel.unit)
             )
             return new SinkInternal(
-              Channel.fromEffect(deferred.succeed(z1)) >
-                Channel.fromEffect(handoff.offer(new Emit(leftovers))) >
-                loop
+              Channel.fromEffect(deferred.succeed(z1)).flatMap(() =>
+                Channel.fromEffect(handoff.offer(new Emit(leftovers)))
+              ).flatMap(() => loop)
             )
           }
         )
@@ -73,7 +75,7 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
         handoff.take.map((signal) => {
           switch (signal._tag) {
             case "Emit": {
-              return Channel.write(signal.elements) > producer
+              return Channel.write(signal.elements).flatMap(() => producer)
             }
             case "Halt": {
               return Channel.failCause(signal.error)

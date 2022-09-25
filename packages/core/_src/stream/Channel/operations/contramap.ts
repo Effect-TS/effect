@@ -13,7 +13,9 @@ function contramapReader<InErr, InElem, InDone0, InDone>(
   f: (a: InDone0) => InDone
 ): Channel<never, InErr, InElem, InDone0, InErr, InElem, InDone> {
   return Channel.readWith(
-    (inElem: InElem) => Channel.write(inElem) > contramapReader<InErr, InElem, InDone0, InDone>(f),
+    (inElem: InElem) =>
+      Channel.write(inElem)
+        .flatMap(() => contramapReader<InErr, InElem, InDone0, InDone>(f)),
     (inErr: InErr) => Channel.fail(inErr),
     (done: InDone0) => Channel.sync(f(done))
   )

@@ -62,8 +62,9 @@ function feed<R, E, A, R2, B, C1, C2>(
   return input.head.fold(
     loop,
     (a) =>
-      Channel.write(Chunk.single(f(a))) >
+      Channel.write(Chunk.single(f(a))).flatMap(() =>
         step<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input.drop(1), a)
+      )
   )
 }
 
@@ -91,8 +92,9 @@ function step<R, E, A, R2, B, C1, C2>(
     .tap(() => driver.reset)
     .map(
       (b) =>
-        Channel.write(Chunk.single(g(b))) >
+        Channel.write(Chunk.single(g(b))).flatMap(() =>
           feed<R, E, A, R2, B, C1, C2>(loop, driver, f, g, input)
+        )
     )
   return Channel.unwrap(advance | reset)
 }

@@ -50,6 +50,6 @@ function processChunk<R, E, A>(
   return (
     Channel.write(
       toEmit.collect((exit) => exit.isSuccess() ? Maybe.some(exit.value) : Maybe.none)
-    ) > next
+    ).flatMap(() => next)
   )
 }

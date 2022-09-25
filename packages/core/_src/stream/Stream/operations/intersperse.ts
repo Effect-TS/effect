@@ -35,7 +35,7 @@ function writer<R, E, A, A2>(
         }
       })
 
-      return Channel.write(builder.build()) > writer<R, E, A, A2>(middle, flagResult)
+      return Channel.write(builder.build()).flatMap(() => writer<R, E, A, A2>(middle, flagResult))
     },
     (err) => Channel.fail(err),
     () => Channel.unit

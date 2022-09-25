@@ -45,12 +45,13 @@ function consumer<E, A>(
     void
   > = Channel.fromEffect(queue.take).flatMap(
     ({ tuple: [take, deferred] }) =>
-      Channel.fromEffect(deferred.succeed(undefined)) >
+      Channel.fromEffect(deferred.succeed(undefined)).flatMap(() =>
         take.fold(
           Channel.unit,
           (cause) => Channel.failCause(cause),
-          (a) => Channel.write(a) > process
+          (a) => Channel.write(a).flatMap(() => process)
         )
+      )
   )
   return process
 }

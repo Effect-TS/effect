@@ -181,17 +181,19 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
                   (c) => Chunk(Either.right(b), Either.left(c))
                 )
                 return isConsumed ?
-                  Channel.write(toWrite) > scheduledAggregator(
-                    sink,
-                    handoff,
-                    sinkEndReason,
-                    sinkLeftovers,
-                    scheduleDriver,
-                    consumed,
-                    handoffProducer,
-                    handoffConsumer,
-                    sinkFiber,
-                    scheduleFiber
+                  Channel.write(toWrite).flatMap(() =>
+                    scheduledAggregator(
+                      sink,
+                      handoff,
+                      sinkEndReason,
+                      sinkLeftovers,
+                      scheduleDriver,
+                      consumed,
+                      handoffProducer,
+                      handoffConsumer,
+                      sinkFiber,
+                      scheduleFiber
+                    )
                   ) :
                   scheduledAggregator(
                     sink,

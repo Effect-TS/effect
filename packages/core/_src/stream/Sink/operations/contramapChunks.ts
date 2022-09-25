@@ -22,7 +22,7 @@ export function contramapChunks<In, In1>(
       Chunk<In>,
       unknown
     > = Channel.readWith(
-      (chunk: Chunk<In1>) => Channel.write(f(chunk)) > loop,
+      (chunk: Chunk<In1>) => Channel.write(f(chunk)).flatMap(() => loop),
       (err) => Channel.fail(err),
       (done) => Channel.succeed(done)
     )

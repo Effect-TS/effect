@@ -50,8 +50,8 @@ function producer<E, E2, E3, A, A2>(
 ): Channel<never, E | E2 | E3, A | A2, unknown, never, never, void> {
   return Channel.readWithCause(
     (value: A | A2) =>
-      Channel.fromEffect(handoff.offer(Take.single(value))) >
-        producer<E, E2, E3, A, A2>(handoff),
+      Channel.fromEffect(handoff.offer(Take.single(value)))
+        .flatMap(() => producer<E, E2, E3, A, A2>(handoff)),
     (cause) => Channel.fromEffect(handoff.offer(Take.failCause(cause))),
     () => Channel.fromEffect(handoff.offer(Take.end))
   )
@@ -70,7 +70,7 @@ function process<E, E2, E3, A, A2>(
           take.fold(
             rightDone ? Channel.unit : process(left, right, true, rightDone),
             (cause) => Channel.failCause(cause),
-            (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
+            (chunk) => Channel.write(chunk).flatMap(() => process(left, right, leftDone, rightDone))
           )
         )
       }
@@ -79,7 +79,7 @@ function process<E, E2, E3, A, A2>(
           take.fold(
             leftDone ? Channel.unit : process(left, right, leftDone, true),
             (cause) => Channel.failCause(cause),
-            (chunk) => Channel.write(chunk) > process(left, right, leftDone, rightDone)
+            (chunk) => Channel.write(chunk).flatMap(() => process(left, right, leftDone, rightDone))
           )
         )
       }

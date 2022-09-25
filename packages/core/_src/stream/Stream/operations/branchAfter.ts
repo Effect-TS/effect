@@ -41,7 +41,7 @@ function collecting<R, E, A, R2, E2, B>(
         const pipeline = f(inputs)
         const stream = pipeline(Stream.fromChunk(inputs1))
         concreteStream(stream)
-        return stream.channel > emitting(pipeline)
+        return stream.channel.flatMap(() => emitting(pipeline))
       }
       return collecting(newBuffer, n, f)
     },
@@ -65,7 +65,7 @@ function emitting<R, E, A, R2, E2, B>(
     (chunk: Chunk<A>) => {
       const stream = pipeline(Stream.fromChunk(chunk))
       concreteStream(stream)
-      return stream.channel > emitting(pipeline)
+      return stream.channel.flatMap(() => emitting(pipeline))
     },
     (cause) => Channel.failCause(cause),
     () => Channel.unit

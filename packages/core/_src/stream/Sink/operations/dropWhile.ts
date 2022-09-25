@@ -18,7 +18,7 @@ export function dropWhile<In>(p: Predicate<In>): Sink<never, never, In, In, unkn
       const more = leftover.isEmpty
       return more
         ? loop
-        : Channel.write(leftover) > Channel.identity<never, Chunk<In>, unknown>()
+        : Channel.write(leftover).flatMap(() => Channel.identity<never, Chunk<In>, unknown>())
     },
     (err) => Channel.fail(err),
     () => Channel.unit

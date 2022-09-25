@@ -33,7 +33,7 @@ export function takeRight(n: number) {
               return reader
             },
             (err) => Channel.fail(err),
-            () => Channel.write(queue.toChunk()) > Channel.unit
+            () => Channel.write(queue.toChunk()).flatMap(() => Channel.unit)
           )
           return self.channel >> reader
         })
