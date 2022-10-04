@@ -10,6 +10,6 @@ export function zipRight<State1, Env1, In1, Out2>(
 ) {
   return <State, Env, In, Out>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, State1]>, Env | Env1, In & In1, Out2> =>
-    self.intersect(that).map((out) => out.get(1) as Out2)
+  ): Schedule<readonly [State, State1], Env | Env1, In & In1, Out2> =>
+    self.intersect(that).map((out) => out[1] as Out2)
 }

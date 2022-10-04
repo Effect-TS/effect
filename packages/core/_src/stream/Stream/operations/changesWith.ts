@@ -24,14 +24,12 @@ function writer<R, E, A>(
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, void> {
   return Channel.readWithCause(
     (chunk: Chunk<A>) => {
-      const {
-        tuple: [newLast, newChunk]
-      } = chunk.reduce(
-        Tuple(last, Chunk.empty<A>()),
-        ({ tuple: [option, as] }, a) =>
+      const [newLast, newChunk] = chunk.reduce(
+        [last, Chunk.empty<A>()] as const,
+        ([option, as], a) =>
           option.isSome() && f(option.value, a)
-            ? Tuple(Maybe.some(a), as)
-            : Tuple(Maybe.some(a), as.append(a))
+            ? [Maybe.some(a), as]
+            : [Maybe.some(a), as.append(a)]
       )
       return Channel.write(newChunk).flatMap(() => writer<R, E, A>(newLast, f))
     },

@@ -20,7 +20,7 @@ export function collectAllWhileWith<Z, S>(
     concreteSink(self)
     return new SinkInternal(
       Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
-        ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
+        ([leftoversRef, upstreamDoneRef]) => {
           const upstreamMarker: Channel<
             R,
             never,
@@ -55,7 +55,7 @@ function loop<R, E, In, L extends In, Z, S>(
   concreteSink(self)
   return self.channel.doneCollect.foldChannel(
     (err) => Channel.fail(err),
-    ({ tuple: [leftovers, doneValue] }) =>
+    ([leftovers, doneValue]) =>
       p(doneValue)
         ? Channel.fromEffect(leftoversRef.set(leftovers.flatten)).flatMap(() =>
           Channel.fromEffect(upstreamDoneRef.get).flatMap((upstreamDone) => {

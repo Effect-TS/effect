@@ -1,4 +1,4 @@
-import type { PCGRandomState } from "@tsplus/stdlib/utilities/RandomPCG"
+import type { PCGRandomState } from "@tsplus/stdlib/io/Random"
 
 export const TRandomSym = Symbol.for("@effect/core/stm/TRandom")
 export type TRandomSym = typeof TRandomSym
@@ -15,7 +15,7 @@ export interface TRandom {
   readonly nextIntBetween: (low: number, high: number) => STM<never, never, number>
   readonly shuffle: <A>(collection: Collection<A>) => STM<never, never, Collection<A>>
   readonly withState: <A>(
-    f: (state: PCGRandomState) => Tuple<[A, PCGRandomState]>
+    f: (state: PCGRandomState) => readonly [A, PCGRandomState]
   ) => STM<never, never, A>
 }
 

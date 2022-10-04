@@ -104,20 +104,20 @@ export class CyclicBarrierInternal {
         .zipRight(
           this._waiting.modify((waiting) =>
             waiting + 1 === this._parties ?
-              Tuple(
+              [
                 restore(this._action)
                   .zipRight(this.succeed.as(this._parties - waiting - 1))
                   .zipLeft(this.reset),
                 0
-              ) :
-              Tuple(
+              ] as const :
+              [
                 this._lock.get.flatMap((lock) =>
                   restore(lock.await)
                     .onInterrupt(() => this.break)
                     .as(this._parties - waiting - 1)
                 ),
                 waiting + 1
-              )
+              ] as const
           ).flatten
         )
     )

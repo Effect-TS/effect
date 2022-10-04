@@ -7,7 +7,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  * @tsplus static effect/core/stm/TMap.Aspects fold
  * @tsplus pipeable effect/core/stm/TMap fold
  */
-export function fold<K, V, A>(zero: A, op: (acc: A, kv: Tuple<[K, V]>) => A) {
+export function fold<K, V, A>(zero: A, op: (acc: A, kv: readonly [K, V]) => A) {
   return (self: TMap<K, V>): STM<never, never, A> => {
     concreteTMap(self)
     return STM.Effect((journal) => {

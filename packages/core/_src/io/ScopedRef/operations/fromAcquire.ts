@@ -14,7 +14,7 @@ export function fromAcquire<R, E, A>(acquire: Effect<R, E, A>): Effect<R | Scope
         restore(acquire.provideSomeEnvironment((env: Env<R>) => env.add(Scope.Tag, newScope)))
           .onError((cause) => newScope.close(Exit.fail(cause)))
       )
-      const ref = $(Ref.Synchronized.make(Tuple(newScope, a)))
+      const ref = $(Ref.Synchronized.make([newScope, a] as const))
       const scopedRef = new ScopedRefInternal(ref)
       $(Effect.addFinalizer(scopedRef.close))
       return scopedRef

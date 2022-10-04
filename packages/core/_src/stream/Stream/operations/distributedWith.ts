@@ -28,18 +28,16 @@ export function distributedWith<A>(
         .flatMap((next) =>
           Effect.collectAll(
             Chunk.range(0, n - 1).map((id) =>
-              next.map(({ tuple: [key, queue] }) => Tuple(Tuple(key, id), queue))
+              next.map(([key, queue]) => [[key, id] as const, queue] as const)
             )
           ).flatMap((entries) => {
-            const {
-              tuple: [mappings, queues]
-            } = entries.reduceRight(
-              Tuple(
+            const [mappings, queues] = entries.reduceRight(
+              [
                 HashMap.empty<UniqueKey, number>(),
                 List.empty<Dequeue<Exit<Maybe<E>, A>>>()
-              ),
-              ({ tuple: [mapping, queue] }, { tuple: [mappings, queues] }) =>
-                Tuple(mappings.set(mapping.get(0), mapping.get(1)), queues.prepend(queue))
+              ] as const,
+              ([mapping, queue], [mappings, queues]) =>
+                [mappings.set(mapping[0], mapping[1]), queues.prepend(queue)] as const
             )
             return deferred
               .succeed(

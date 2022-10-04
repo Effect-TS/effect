@@ -26,11 +26,9 @@ function next<R, E, A>(
     (inputChunk: Chunk<A>) => {
       const buffer = Chunk.builder<Chunk<A>>()
 
-      const {
-        tuple: [carry, delimiterCursor]
-      } = inputChunk.reduce(
-        Tuple(leftover.getOrElse(Chunk.empty<A>()), delimiterIndex),
-        ({ tuple: [carry, delimiterCursor] }, a) => {
+      const [carry, delimiterCursor] = inputChunk.reduce(
+        [leftover.getOrElse(Chunk.empty<A>()), delimiterIndex] as const,
+        ([carry, delimiterCursor], a) => {
           const concatenated = carry.append(a)
           if (
             delimiterCursor < delimiter.length &&
@@ -38,11 +36,11 @@ function next<R, E, A>(
           ) {
             if (delimiterCursor + 1 === delimiter.length) {
               buffer.append(concatenated.take(concatenated.length - delimiter.length))
-              return Tuple(Chunk.empty<A>(), 0)
+              return [Chunk.empty<A>(), 0]
             }
-            return Tuple(concatenated, delimiterCursor + 1)
+            return [concatenated, delimiterCursor + 1]
           }
-          return Tuple(concatenated, a === delimiter.unsafeHead ? 1 : 0)
+          return [concatenated, a === delimiter.unsafeHead ? 1 : 0]
         }
       )
 

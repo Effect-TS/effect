@@ -9,6 +9,6 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 export function removeIf<A>(p: Predicate<A>) {
   return (self: TSet<A>): STM<never, never, Chunk<A>> => {
     concreteTSet(self)
-    return self.tmap.removeIf((kv) => p(kv.get(0))).map((_) => _.map((kv) => kv.get(0)))
+    return self.tmap.removeIf((kv) => p(kv[0])).map((_) => _.map((kv) => kv[0]))
   }
 }

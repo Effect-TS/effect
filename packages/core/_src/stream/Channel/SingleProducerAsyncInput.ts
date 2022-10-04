@@ -99,8 +99,8 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
     return this.ref
       .modify((state) =>
         state._typeId === EmptyTypeId
-          ? Tuple(state.notifyProducer.await, state)
-          : Tuple(Effect.unit, state)
+          ? [state.notifyProducer.await, state] as const
+          : [Effect.unit, state] as const
       )
       .flatten
   }
@@ -114,28 +114,26 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
               const dequeued = state.notifyConsumers.dequeue
 
               if (dequeued._tag === "Some") {
-                const {
-                  tuple: [notifyConsumer, notifyConsumers]
-                } = dequeued.value
+                const [notifyConsumer, notifyConsumers] = dequeued.value
 
-                return Tuple(
+                return [
                   notifyConsumer.succeed(Either.right(el)),
                   notifyConsumers.size === 0
                     ? new StateEmpty(deferred)
                     : new StateEmit(notifyConsumers)
-                )
+                ] as const
               }
 
               throw new Error("SingleProducerAsyncInput#emit: queue was empty")
             }
             case ErrorTypeId: {
-              return Tuple(Effect.interrupt, state)
+              return [Effect.interrupt, state] as const
             }
             case DoneTypeId: {
-              return Tuple(Effect.interrupt, state)
+              return [Effect.interrupt, state] as const
             }
             case EmptyTypeId: {
-              return Tuple(state.notifyProducer.await, state)
+              return [state.notifyProducer.await, state] as const
             }
           }
         })
@@ -148,22 +146,22 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
       .modify((state) => {
         switch (state._typeId) {
           case EmitTypeId: {
-            return Tuple(
+            return [
               Effect.forEachDiscard(
                 state.notifyConsumers,
                 (promise) => promise.succeed(Either.left(a))
               ),
               new StateDone(a)
-            )
+            ] as const
           }
           case ErrorTypeId: {
-            return Tuple(Effect.interrupt, state)
+            return [Effect.interrupt, state] as const
           }
           case DoneTypeId: {
-            return Tuple(Effect.interrupt, state)
+            return [Effect.interrupt, state] as const
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await, state)
+            return [state.notifyProducer.await, state] as const
           }
         }
       })
@@ -175,19 +173,19 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
       .modify((state) => {
         switch (state._typeId) {
           case EmitTypeId: {
-            return Tuple(
+            return [
               Effect.forEachDiscard(state.notifyConsumers, (promise) => promise.failCause(cause)),
               new StateError(cause)
-            )
+            ] as const
           }
           case ErrorTypeId: {
-            return Tuple(Effect.interrupt, state)
+            return [Effect.interrupt, state] as const
           }
           case DoneTypeId: {
-            return Tuple(Effect.interrupt, state)
+            return [Effect.interrupt, state] as const
           }
           case EmptyTypeId: {
-            return Tuple(state.notifyProducer.await, state)
+            return [state.notifyProducer.await, state] as const
           }
         }
       })
@@ -204,27 +202,27 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
         .modify((state) => {
           switch (state._typeId) {
             case EmitTypeId: {
-              return Tuple(
+              return [
                 deferred
                   .await
                   .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(state.notifyConsumers.append(deferred))
-              )
+              ] as const
             }
             case ErrorTypeId: {
-              return Tuple(Effect.sync(onError(state.cause)), state)
+              return [Effect.sync(onError(state.cause)), state] as const
             }
             case DoneTypeId: {
-              return Tuple(Effect.sync(onDone(state.a)), state)
+              return [Effect.sync(onDone(state.a)), state] as const
             }
             case EmptyTypeId: {
-              return Tuple(
+              return [
                 state.notifyProducer.succeed(undefined) >
                   deferred
                     .await
                     .foldCause(onError, (either) => either.fold(onDone, onElement)),
                 new StateEmit(ImmutableQueue.single(deferred))
-              )
+              ] as const
             }
           }
         })

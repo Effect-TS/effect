@@ -19,10 +19,10 @@ export function ensuring<X>(finalizer: Effect<never, never, X>) {
       self
         .step(now, input, state)
         .flatMap((
-          { tuple: [state, out, decision] }
-        ): Effect<never, never, Tuple<[State, Out, Decision]>> =>
+          [state, out, decision]
+        ): Effect<never, never, readonly [State, Out, Decision]> =>
           decision._tag === "Done"
-            ? finalizer.as(Tuple(state, out, decision))
-            : Effect.succeed(Tuple(state, out, decision))
+            ? finalizer.as([state, out, decision] as const)
+            : Effect.succeed([state, out, decision] as const)
         ))
 }

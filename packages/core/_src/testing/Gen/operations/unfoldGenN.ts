@@ -8,10 +8,9 @@
 export function unfoldGenN<S, R, A>(
   n: number,
   s: S,
-  f: (s: S) => Gen<R, Tuple<[S, A]>>
+  f: (s: S) => Gen<R, readonly [S, A]>
 ): Gen<R, List<A>> {
   return n <= 0 ?
     Gen.constant(List.empty()) :
-    f(s)
-      .flatMap(({ tuple: [s, a] }) => Gen.unfoldGenN(n - 1, s, f).map((list) => list.prepend(a)))
+    f(s).flatMap(([s, a]) => Gen.unfoldGenN(n - 1, s, f).map((list) => list.prepend(a)))
 }

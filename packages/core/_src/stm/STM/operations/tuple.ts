@@ -18,7 +18,7 @@ export function tuple<T extends NonEmptyArraySTM>(
 ): STM<
   [T[number]] extends [{ [_R]: () => infer R }] ? R : never,
   [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
-  ForcedTuple<TupleA<T>>
+  TupleA<T>
 > {
-  return STM.collectAll(t).map((x) => Tuple(...x)) as any
+  return STM.collectAll(t) as any
 }

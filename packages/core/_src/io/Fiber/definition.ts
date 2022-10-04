@@ -171,10 +171,7 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
  */
 export const ordFiber: Ord<Fiber.Runtime<unknown, unknown>> = Ord.tuple(Ord.number, Ord.number)
   .contramap((fiber) =>
-    Tuple(
-      (fiber.id as FiberId.Runtime).startTimeMillis,
-      (fiber.id as FiberId.Runtime).id
-    )
+    [(fiber.id as FiberId.Runtime).startTimeMillis, (fiber.id as FiberId.Runtime).id] as const
   )
 
 export function makeSynthetic<E, A>(_: {

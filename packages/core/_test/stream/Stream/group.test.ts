@@ -10,12 +10,10 @@ describe.concurrent("Stream", () => {
           .map((n) => n.toString())
         const stream = Stream.fromCollection(words)
           .groupByKey(identity, 8192)
-          .mergeGroupBy((k, s) =>
-            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
-          )
+          .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size))))
         const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
         const expected = new Map(
-          Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10).toNative).toArray
+          Chunk.range(0, 10).map((n) => Tuple(n.toString(), 10)).toArray
         )
         assert.deepStrictEqual(result, expected)
       }).unsafeRunPromise())
@@ -28,12 +26,10 @@ describe.concurrent("Stream", () => {
         const stream = Stream.fromCollection(words)
           .groupByKey(identity, 1050)
           .first(2)
-          .mergeGroupBy((k, s) =>
-            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
-          )
+          .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size))))
         const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
         const expected = new Map(
-          Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10).toNative).toArray
+          Chunk.range(0, 1).map((n) => Tuple(n.toString(), 10)).toArray
         )
         assert.deepStrictEqual(result, expected)
       }).unsafeRunPromise())
@@ -44,11 +40,9 @@ describe.concurrent("Stream", () => {
         const stream = Stream.fromCollection(words)
           .groupByKey(identity, 1050)
           .filter((n) => n <= 5)
-          .mergeGroupBy((k, s) =>
-            Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size).toNative))
-          )
+          .mergeGroupBy((k, s) => Stream.fromEffect(s.runCollect.map((c) => Tuple(k, c.size))))
         const result = $(stream.runCollect.map((chunk) => new Map(chunk.toArray)))
-        const expected = new Map(Chunk.range(0, 5).map((n) => Tuple(n, 10).toNative).toArray)
+        const expected = new Map(Chunk.range(0, 5).map((n) => Tuple(n, 10)).toArray)
         assert.deepStrictEqual(result, expected)
       }).unsafeRunPromise())
 

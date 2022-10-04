@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stm/TMap.Aspects findAll
  * @tsplus pipeable effect/core/stm/TMap findAll
  */
-export function findAll<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
+export function findAll<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
   return (self: TMap<K, V>): STM<never, never, Chunk<A>> =>
     self.findAllSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeed))
 }

@@ -5,9 +5,9 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops paginate
  */
-export function paginate<S, A>(s: S, f: (s: S) => Tuple<[A, Maybe<S>]>): Stream<never, never, A> {
+export function paginate<S, A>(s: S, f: (s: S) => readonly [A, Maybe<S>]): Stream<never, never, A> {
   return Stream.paginateChunk(s, (s) => {
-    const { tuple: [a, maybeS] } = f(s)
-    return Tuple(Chunk.single(a), maybeS)
+    const [a, maybeS] = f(s)
+    return [Chunk.single(a), maybeS] as const
   })
 }

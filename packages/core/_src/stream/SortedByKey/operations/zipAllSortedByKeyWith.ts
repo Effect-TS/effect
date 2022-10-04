@@ -19,12 +19,12 @@ export class PullBoth {
 
 export class PullLeft<K, B> {
   readonly _tag = "PullLeft"
-  constructor(readonly rightChunk: Chunk<Tuple<[K, B]>>) {}
+  constructor(readonly rightChunk: Chunk<readonly [K, B]>) {}
 }
 
 export class PullRight<K, A> {
   readonly _tag = "PullRight"
-  constructor(readonly leftChunk: Chunk<Tuple<[K, A]>>) {}
+  constructor(readonly leftChunk: Chunk<readonly [K, A]>) {}
 }
 
 /**
@@ -52,15 +52,15 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
 ) {
   return <R, E>(
     self: SortedByKey<R, E, K, A>
-  ): Stream<R | R2, E | E2, Tuple<[K, C1 | C2 | C3]>> => {
+  ): Stream<R | R2, E | E2, readonly [K, C1 | C2 | C3]> => {
     const pull = (
       state: State<K, A, A2>,
-      pullLeft: Effect<R, Maybe<E>, Chunk<Tuple<[K, A]>>>,
-      pullRight: Effect<R2, Maybe<E2>, Chunk<Tuple<[K, A2]>>>
+      pullLeft: Effect<R, Maybe<E>, Chunk<readonly [K, A]>>,
+      pullRight: Effect<R2, Maybe<E2>, Chunk<readonly [K, A2]>>
     ): Effect<
       R | R2,
       never,
-      Exit<Maybe<E | E2>, Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, A2>]>>
+      Exit<Maybe<E | E2>, readonly [Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>]>
     > => {
       switch (state._tag) {
         case "DrainLeft":
@@ -68,10 +68,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             (e) => Exit.fail(e),
             (leftChunk) =>
               Exit.succeed(
-                Tuple(
-                  leftChunk.map(({ tuple: [k, a] }) => Tuple(k, left(a))),
-                  new DrainLeft()
-                )
+                [leftChunk.map(([k, a]) => [k, left(a)] as const), new DrainLeft()] as const
               )
           )
         case "DrainRight":
@@ -79,10 +76,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             (e) => Exit.fail(e),
             (rightChunk) =>
               Exit.succeed(
-                Tuple(
-                  rightChunk.map(({ tuple: [k, b] }) => Tuple(k, right(b))),
-                  new DrainRight()
-                )
+                [rightChunk.map(([k, b]) => [k, right(b)] as const), new DrainRight()] as const
               )
           )
         case "PullBoth": {
@@ -91,7 +85,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             .zipPar(pullRight.unsome)
             .foldEffect(
               (e) => Effect.succeed(Exit.fail(Maybe.some(e))),
-              ({ tuple: [a, b] }) => {
+              ([a, b]) => {
                 if (a.isSome() && b.isSome()) {
                   const leftChunk = a.value
                   const rightChunk = b.value
@@ -114,10 +108,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                     ? pull(new DrainLeft(), pullLeft, pullRight)
                     : Effect.succeed(
                       Exit.succeed(
-                        Tuple(
-                          leftChunk.map(({ tuple: [k, a] }) => Tuple(k, left(a))),
-                          new DrainLeft()
-                        )
+                        [leftChunk.map(([k, a]) => [k, left(a)] as const), new DrainLeft()] as const
                       )
                     )
                 } else if (b.isSome()) {
@@ -127,10 +118,10 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                     ? pull(new DrainLeft(), pullLeft, pullRight)
                     : Effect.succeed(
                       Exit.succeed(
-                        Tuple(
-                          rightChunk.map(({ tuple: [k, b] }) => Tuple(k, right(b))),
+                        [
+                          rightChunk.map(([k, b]) => [k, right(b)]),
                           new DrainRight()
-                        )
+                        ] as const
                       )
                     )
                 } else {
@@ -148,15 +139,10 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                 (): Effect<
                   never,
                   never,
-                  Exit<Maybe<E>, Tuple<[Chunk<Tuple<[K, C2]>>, DrainRight]>>
+                  Exit<Maybe<E>, [Chunk<readonly [K, C2]>, DrainRight]>
                 > =>
                   Effect.succeed(
-                    Exit.succeed(
-                      Tuple(
-                        rightChunk.map(({ tuple: [k, b] }) => Tuple(k, right(b))),
-                        new DrainRight()
-                      )
-                    )
+                    Exit.succeed([rightChunk.map(([k, b]) => [k, right(b)]), new DrainRight()])
                   ),
                 (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
               ),
@@ -177,14 +163,14 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
                 (): Effect<
                   never,
                   never,
-                  Exit<Maybe<E2>, Tuple<[Chunk<Tuple<[K, C1]>>, DrainLeft]>>
+                  Exit<Maybe<E2>, readonly [Chunk<readonly [K, C1]>, DrainLeft]>
                 > =>
                   Effect.succeed(
                     Exit.succeed(
-                      Tuple(
-                        leftChunk.map(({ tuple: [k, a] }) => Tuple(k, left(a))),
+                      [
+                        leftChunk.map(([k, a]) => [k, left(a)] as const),
                         new DrainLeft()
-                      )
+                      ] as const
                     )
                   ),
                 (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
@@ -201,19 +187,19 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
     }
 
     function mergeSortedByKeyChunk(
-      leftChunk: Chunk<Tuple<[K, A]>>,
-      rightChunk: Chunk<Tuple<[K, A2]>>
-    ): Tuple<[Chunk<Tuple<[K, C1 | C2 | C3]>>, State<K, A, A2>]> {
-      const builder = Chunk.builder<Tuple<[K, C1 | C2 | C3]>>()
+      leftChunk: Chunk<readonly [K, A]>,
+      rightChunk: Chunk<readonly [K, A2]>
+    ): readonly [Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>] {
+      const builder = Chunk.builder<readonly [K, C1 | C2 | C3]>()
       let state: State<K, A, A2> | undefined
       let leftIndex = 0
       let rightIndex = 0
       let leftTuple = leftChunk.unsafeGet(leftIndex)
       let rightTuple = rightChunk.unsafeGet(rightIndex)
-      let k1 = leftTuple.get(0)
-      let a = leftTuple.get(1)
-      let k2 = rightTuple.get(0)
-      let b = rightTuple.get(1)
+      let k1 = leftTuple[0]
+      let a = leftTuple[1]
+      let k2 = rightTuple[0]
+      let b = rightTuple[1]
       let loop = true
 
       const hasNext = <T>(c: Chunk<T>, index: number) => index < c.size - 1
@@ -222,17 +208,17 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
         const compare = ord.compare(k1, k2)
 
         if (compare === 0) {
-          builder.append(Tuple(k1, both(a, b)))
+          builder.append([k1, both(a, b)] as const)
 
           if (hasNext(leftChunk, leftIndex) && hasNext(rightChunk, rightIndex)) {
             leftIndex += 1
             rightIndex += 1
             leftTuple = leftChunk.unsafeGet(leftIndex)
             rightTuple = rightChunk.unsafeGet(rightIndex)
-            k1 = leftTuple.get(0)
-            a = leftTuple.get(1)
-            k2 = rightTuple.get(0)
-            b = rightTuple.get(1)
+            k1 = leftTuple[0]
+            a = leftTuple[1]
+            k2 = rightTuple[0]
+            b = rightTuple[1]
           } else if (hasNext(leftChunk, leftIndex)) {
             state = new PullRight(leftChunk.drop(leftIndex + 1))
             loop = false
@@ -244,15 +230,15 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             loop = false
           }
         } else if (compare < 0) {
-          builder.append(Tuple(k1, left(a)))
+          builder.append([k1, left(a)])
 
           if (hasNext(leftChunk, leftIndex)) {
             leftIndex += 1
             leftTuple = leftChunk.unsafeGet(leftIndex)
-            k1 = leftTuple.get(0)
-            a = leftTuple.get(1)
+            k1 = leftTuple[0]
+            a = leftTuple[1]
           } else {
-            const rightBuilder = Chunk.builder<Tuple<[K, A2]>>()
+            const rightBuilder = Chunk.builder<readonly [K, A2]>()
             rightBuilder.append(rightTuple)
 
             while (hasNext(rightChunk, rightIndex)) {
@@ -264,15 +250,15 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             }
           }
         } else {
-          builder.append(Tuple(k2, right(b)))
+          builder.append([k2, right(b)])
 
           if (hasNext(rightChunk, rightIndex)) {
             rightIndex += 1
             rightTuple = rightChunk.unsafeGet(rightIndex)
-            k2 = rightTuple.get(0)
-            b = rightTuple.get(1)
+            k2 = rightTuple[0]
+            b = rightTuple[1]
           } else {
-            const leftBuilder = Chunk.builder<Tuple<[K, A]>>()
+            const leftBuilder = Chunk.builder<readonly [K, A]>()
             leftBuilder.append(leftTuple)
 
             while (hasNext(leftChunk, leftIndex)) {
@@ -286,7 +272,7 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
         }
       }
 
-      return Tuple(builder.build(), state!)
+      return [builder.build(), state!]
     }
 
     return self.combineChunks(that, new PullBoth(), pull)

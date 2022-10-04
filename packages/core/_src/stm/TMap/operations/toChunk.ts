@@ -8,7 +8,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  */
 export function toChunk<K, V>(
   self: TMap<K, V>
-): USTM<Chunk<Tuple<[K, V]>>> {
+): USTM<Chunk<readonly [K, V]>> {
   concreteTMap(self)
   return STM.Effect((journal) => {
     const buckets = self.tBuckets.unsafeGet(journal)
@@ -17,7 +17,7 @@ export function toChunk<K, V>(
 
     const capacity = buckets.chunk.length
     let i = 0
-    const builder = Chunk.builder<Tuple<[K, V]>>()
+    const builder = Chunk.builder<readonly [K, V]>()
 
     while (i < capacity) {
       const bucket = buckets.chunk.unsafeGet(i)

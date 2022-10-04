@@ -6,6 +6,6 @@
  */
 export function emitCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
-): Channel<Env, InErr, InElem, InDone, OutErr, Tuple<[Chunk<OutElem>, OutDone]>, void> {
+): Channel<Env, InErr, InElem, InDone, OutErr, readonly [Chunk<OutElem>, OutDone], void> {
   return self.doneCollect.flatMap((t) => Channel.write(t))
 }

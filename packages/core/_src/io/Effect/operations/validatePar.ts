@@ -6,8 +6,8 @@
  * @tsplus pipeable effect/core/io/Effect validatePar
  */
 export function validateParNow<R1, E1, B>(that: Effect<R1, E1, B>) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, Tuple<[A, B]>> =>
-    self.validateWithPar(that, (a, b) => Tuple(a, b))
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, readonly [A, B]> =>
+    self.validateWithPar(that, (a, b) => [a, b] as const)
 }
 
 /**
@@ -23,7 +23,7 @@ export function validatePar<R, E, A, B>(
   as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
 ): Effect<R, Chunk<E>, Chunk<B>> {
-  return Effect.partitionPar(as, f).flatMap(({ tuple: [es, bs] }) =>
+  return Effect.partitionPar(as, f).flatMap(([es, bs]) =>
     es.isEmpty
       ? Effect.succeed(Chunk.from(bs))
       : Effect.fail(es)

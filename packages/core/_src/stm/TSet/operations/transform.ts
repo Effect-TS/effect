@@ -9,6 +9,6 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 export function transform<A>(f: (a: A) => A) {
   return (self: TSet<A>): STM<never, never, void> => {
     concreteTSet(self)
-    return self.tmap.transform((kv) => Tuple(f(kv.get(0)), kv.get(1)))
+    return self.tmap.transform((kv) => [f(kv[0]), kv[1]])
   }
 }

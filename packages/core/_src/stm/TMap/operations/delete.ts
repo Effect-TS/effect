@@ -18,7 +18,7 @@ export function _delete<K>(k: K) {
       const idx = TMap.indexOf(k, buckets.chunk.length)
       const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
 
-      const { tuple: [toRemove, toRetain] } = bucket.partition((_) => !Equals.equals(_.get(0), k))
+      const [toRemove, toRetain] = bucket.partition((_) => !Equals.equals(_[0], k))
 
       if (toRemove.isCons()) {
         const currSize = self.tSize.unsafeGet(journal)

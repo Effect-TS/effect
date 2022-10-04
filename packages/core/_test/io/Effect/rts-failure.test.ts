@@ -27,7 +27,7 @@ describe.concurrent("Effect", () => {
           Effect.suspendSucceed(ExampleErrorFail).either
         )
         const result = $(io1.zip(io2))
-        const { tuple: [first, second] } = result
+        const [first, second] = result
         assert.isTrue(first == Either.left(ExampleError))
         assert.isTrue(second == Either.left(ExampleError))
       }).unsafeRunPromise())

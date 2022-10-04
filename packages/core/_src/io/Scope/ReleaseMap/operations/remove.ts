@@ -10,13 +10,13 @@ export function remove(key: number) {
     self.ref.modify((s) => {
       switch (s._tag) {
         case "Exited": {
-          return Tuple(Maybe.none, new Exited(s.nextKey, s.exit, s.update))
+          return [Maybe.none, new Exited(s.nextKey, s.exit, s.update)] as const
         }
         case "Running": {
           const finalizers = s.finalizers()
           const finalizer = Maybe.fromNullable(finalizers.get(key))
           finalizers.delete(key)
-          return Tuple(finalizer, new Running(s.nextKey, finalizers, s.update))
+          return [finalizer, new Running(s.nextKey, finalizers, s.update)] as const
         }
       }
     })

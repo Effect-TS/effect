@@ -64,13 +64,13 @@ export function transduce<R2, E2, A, Z>(sink: Sink<R2, E2, A, A, Z>) {
           E | E2,
           Chunk<Z>,
           void
-        > = sink.channel.doneCollect.flatMap(({ tuple: [leftover, z] }) =>
-          Channel.sync(
-            Tuple(upstreamDone.get, concatAndGet(leftovers, leftover))
-          ).flatMap(({ tuple: [done, newLeftovers] }) => {
-            const nextChannel = done && newLeftovers.isEmpty ? Channel.unit : transducer
-            return Channel.write(Chunk.single(z)).flatMap(() => nextChannel)
-          })
+        > = sink.channel.doneCollect.flatMap(([leftover, z]) =>
+          Channel.sync([upstreamDone.get, concatAndGet(leftovers, leftover)] as const).flatMap(
+            ([done, newLeftovers]) => {
+              const nextChannel = done && newLeftovers.isEmpty ? Channel.unit : transducer
+              return Channel.write(Chunk.single(z)).flatMap(() => nextChannel)
+            }
+          )
         )
 
         return (self.channel >> upstreamMarker) >> buffer.pipeToOrFail(transducer)

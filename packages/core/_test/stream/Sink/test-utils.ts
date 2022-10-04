@@ -46,7 +46,7 @@ export function zipParLaw<A, B, C, E>(
   }).map(({ zb, zbc, zc }) =>
     zbc.fold(
       (e) => (zb.isLeft() && zb.left === e) || (zc.isLeft() && zc.left === e),
-      ({ tuple: [b, c] }) => zb.isRight() && zb.right === b && zc.isRight() && zc.right === c
+      ([b, c]) => zb.isRight() && zb.right === b && zc.isRight() && zc.right === c
     )
   )
 }

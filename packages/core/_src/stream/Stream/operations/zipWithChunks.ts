@@ -28,7 +28,7 @@ export function zipWithChunks<R2, E2, A2, A, A3>(
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
+  ) => readonly [Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     self.combineChunks(that, new PullBoth() as State<A, A2>, pull(f))
@@ -40,20 +40,18 @@ function zipWithChunksInternal<A, A2, A3>(
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
-): Tuple<[Chunk<A3>, State<A, A2>]> {
-  const {
-    tuple: [out, either]
-  } = f(leftChunk, rightChunk)
+  ) => readonly [Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]
+): readonly [Chunk<A3>, State<A, A2>] {
+  const [out, either] = f(leftChunk, rightChunk)
   return either.fold(
     (leftChunk) =>
       leftChunk.isEmpty
-        ? Tuple(out, new PullBoth())
-        : Tuple(out, new PullRight(leftChunk)),
+        ? [out, new PullBoth()]
+        : [out, new PullRight(leftChunk)],
     (rightChunk) =>
       rightChunk.isEmpty
-        ? Tuple(out, new PullBoth())
-        : Tuple(out, new PullLeft(rightChunk))
+        ? [out, new PullBoth()]
+        : [out, new PullLeft(rightChunk)]
   )
 }
 
@@ -61,20 +59,20 @@ function pull<A, A2, A3>(
   f: (
     leftChunk: Chunk<A>,
     rightChunk: Chunk<A2>
-  ) => Tuple<[Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]>
+  ) => readonly [Chunk<A3>, Either<Chunk<A>, Chunk<A2>>]
 ) {
   return <R, R2, E, E2>(
     state: State<A, A2>,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
     pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
-  ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
+  ): Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>> => {
     switch (state._tag) {
       case "PullBoth": {
         return pullLeft.unsome
           .zipPar(pullRight.unsome)
           .foldEffect(
             (err) => Effect.succeed(Exit.fail(Maybe.some(err))),
-            ({ tuple: [left, right] }) => {
+            ([left, right]) => {
               if (left.isSome() && right.isSome()) {
                 const leftChunk = left.value
                 const rightChunk = right.value

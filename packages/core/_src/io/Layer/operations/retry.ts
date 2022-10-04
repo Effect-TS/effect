@@ -42,12 +42,10 @@ function update<S, RIn, E, X>(
   return Layer.fromEffect(
     stateTag,
     Clock.currentTime.flatMap((now) =>
-      schedule.step(now, e, s).flatMap(({ tuple: [state, _, decision] }) =>
+      schedule.step(now, e, s).flatMap(([state, _, decision]) =>
         decision._tag === "Done"
           ? Effect.fail(e)
-          : Clock.sleep(new DurationInternal(decision.intervals.start - now)).as({
-            state
-          })
+          : Clock.sleep(new DurationInternal(decision.intervals.start - now)).as({ state })
       )
     )
   )

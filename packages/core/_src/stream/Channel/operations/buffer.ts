@@ -21,9 +21,9 @@ function bufferInternal<InElem, InErr, InDone>(
   return Channel.unwrap(
     ref.modify((
       value
-    ): Tuple<[Channel<never, InErr, InElem, InDone, InErr, InElem, InDone>, InElem]> =>
+    ): readonly [Channel<never, InErr, InElem, InDone, InErr, InElem, InDone>, InElem] =>
       isEmpty(value)
-        ? Tuple(
+        ? [
           Channel.readWith(
             (inElem) =>
               Channel.write(inElem).flatMap(() =>
@@ -33,13 +33,13 @@ function bufferInternal<InElem, InErr, InDone>(
             (inDone) => Channel.succeed(inDone)
           ),
           value
-        )
-        : Tuple(
+        ]
+        : [
           Channel.write(value).flatMap(() =>
             bufferInternal<InElem, InErr, InDone>(empty, isEmpty, ref)
           ),
           empty
-        )
+        ]
     )
   )
 }

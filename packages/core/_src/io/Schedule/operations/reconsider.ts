@@ -14,7 +14,7 @@ export function reconsider<State, Out, Out2>(
     state: State,
     out: Out,
     decision: Decision
-  ) => Either<Out2, Tuple<[Out2, Interval]>>
+  ) => Either<Out2, readonly [Out2, Interval]>
 ) {
   return <Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out2> =>
     self.reconsiderEffect((state, out, decision) => Effect.sync(f(state, out, decision)))

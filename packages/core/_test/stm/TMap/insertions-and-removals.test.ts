@@ -67,7 +67,7 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.empty<HashContainer, number>())
 
-        $(STM.collectAll(expected.map((i) => tmap.put(i.get(0), i.get(1)))))
+        $(STM.collectAll(expected.map((i) => tmap.put(i[0], i[1]))))
 
         const e = $(tmap.toList)
 

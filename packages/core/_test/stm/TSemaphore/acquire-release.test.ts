@@ -65,10 +65,10 @@ describe.concurrent("TSemaphore", () => {
         )
         const resN = $(acquireReleaseN)
         const resRep = $(acquireReleaseRep)
-        assert.strictEqual(resN.get(0), resRep.get(0))
-        assert.strictEqual(resN.get(1), resRep.get(1))
-        assert.strictEqual(resN.get(0), 0)
-        assert.strictEqual(resN.get(1), capacity)
+        assert.strictEqual(resN[0], resRep[0])
+        assert.strictEqual(resN[1], resRep[1])
+        assert.strictEqual(resN[0], 0)
+        assert.strictEqual(resN[1], capacity)
       }).commit.unsafeRunPromise())
 
     it("withPermit automatically releases the permit if the effect is interrupted", () =>

@@ -1,5 +1,3 @@
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
-
 /**
  * Sequentially zips this transactional effect with the that transactional
  * effect.
@@ -9,6 +7,7 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/stm/STM zipFlatten
  */
 export function zipFlatten<R2, E2, A2>(that: STM<R2, E2, A2>) {
-  return <R, E, A>(self: STM<R, E, A>): STM<R | R2, E | E2, MergeTuple<A, A2>> =>
-    self.zipWith(that, Tuple.mergeTuple)
+  return <R, E, A extends ReadonlyArray<any>>(
+    self: STM<R, E, A>
+  ): STM<R | R2, E | E2, readonly [...A, A2]> => self.zipWith(that, (a, a2) => [...a, a2])
 }

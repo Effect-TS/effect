@@ -11,10 +11,10 @@ export function scoped<R, E, A>(
       Effect.uninterruptibleMask(({ restore }) =>
         restore(scope.extend(effect)).foldCauseEffect(
           (cause) => scope.close(Exit.failCause(cause)).zipRight(Effect.failCause(cause)),
-          (out) => Effect.succeed(Tuple(out, scope))
+          (out) => Effect.succeed([out, scope] as const)
         )
       )
     ),
-    ({ tuple: [_, scope] }, exit) => scope.close(exit)
-  ).mapOut((_) => _.get(0))
+    ([_, scope], exit) => scope.close(exit)
+  ).mapOut((_) => _[0])
 }

@@ -12,7 +12,7 @@ export function partitionEither<A, R2, E2, A2, A3>(
   return <R, E>(self: Stream<R, E, A>): Effect<
     R | R2 | Scope,
     E | E2,
-    Tuple<[Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]>
+    readonly [Stream<never, E | E2, A2>, Stream<never, E | E2, A3>]
   > =>
     self
       .mapEffect(p)
@@ -23,16 +23,14 @@ export function partitionEither<A, R2, E2, A2, A3>(
         ))
       .flatMap((dequeues) => {
         if (dequeues.length === 2) {
-          return Effect.succeed(
-            Tuple(
-              Stream.fromQueueWithShutdown(dequeues.unsafeHead!)
-                .flattenExitMaybe
-                .collectLeft,
-              Stream.fromQueueWithShutdown(dequeues.unsafeLast!)
-                .flattenExitMaybe
-                .collectRight
-            )
-          )
+          return Effect.succeed([
+            Stream.fromQueueWithShutdown(dequeues.unsafeHead!)
+              .flattenExitMaybe
+              .collectLeft,
+            Stream.fromQueueWithShutdown(dequeues.unsafeLast!)
+              .flattenExitMaybe
+              .collectRight
+          ])
         }
         return Effect.dieMessage(
           `Stream.partitionEither: expected two streams but received: ${dequeues.length}`

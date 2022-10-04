@@ -14,8 +14,7 @@ export function combine(that: TestAnnotationMap) {
     concreteTestAnnotationMap(that)
     const map = Chunk.from(self.map).concat(Chunk.from(that.map)).reduce(
       ImmutableMap.empty<TestAnnotation<unknown>, unknown>(),
-      (acc, { tuple: [key, value] }) =>
-        acc.set(key, acc.get(key).fold(value, (a) => key.combine(a, value)))
+      (acc, [key, value]) => acc.set(key, acc.get(key).fold(value, (a) => key.combine(a, value)))
     )
     return new TestAnnotationMapInternal(map)
   }

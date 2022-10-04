@@ -14,12 +14,12 @@ import {
  * @tsplus pipeable effect/core/stream/Stream cross
  */
 export function cross<R2, E2, A2>(that: Stream<R2, E2, A2>) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, Tuple<[A, A2]>> => {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, readonly [A, A2]> => {
     concreteStream(self)
     return new StreamInternal(
       self.channel.concatMap((a) => {
         concreteStream(that)
-        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple(a, b))))
+        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => [a, b])))
       })
     )
   }

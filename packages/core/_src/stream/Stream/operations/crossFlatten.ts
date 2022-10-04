@@ -2,7 +2,6 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
-import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -15,12 +14,14 @@ import type { MergeTuple } from "@tsplus/stdlib/data/Tuple"
  * @tsplus pipeable effect/core/stream/Stream crossFlatten
  */
 export function crossFlatten<R2, E2, A2>(that: Stream<R2, E2, A2>) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, MergeTuple<A, A2>> => {
+  return <R, E, A extends ReadonlyArray<any>>(
+    self: Stream<R, E, A>
+  ): Stream<R | R2, E | E2, readonly [...A, A2]> => {
     concreteStream(self)
     return new StreamInternal(
       self.channel.concatMap((a) => {
         concreteStream(that)
-        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => Tuple.mergeTuple(a, b))))
+        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => [...a, b])))
       })
     )
   }

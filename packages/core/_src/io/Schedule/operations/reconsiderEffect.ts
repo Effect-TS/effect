@@ -15,24 +15,24 @@ export function reconsiderEffect<State, Out, Env1, Out2>(
     state: State,
     out: Out,
     decision: Decision
-  ) => Effect<Env1, never, Either<Out2, Tuple<[Out2, Interval]>>>
+  ) => Effect<Env1, never, Either<Out2, readonly [Out2, Interval]>>
 ) {
   return <Env, In>(self: Schedule<State, Env, In, Out>): Schedule<State, Env | Env1, In, Out2> =>
     makeWithState(
       self.initial,
       (now, input, state) =>
-        self.step(now, input, state).flatMap(({ tuple: [state, out, decision] }) =>
+        self.step(now, input, state).flatMap(([state, out, decision]) =>
           decision._tag === "Done"
             ? f(state, out, decision).map((either) =>
               either.fold(
-                (out2) => Tuple(state, out2, Decision.Done),
-                ({ tuple: [out2] }) => Tuple(state, out2, Decision.Done)
+                (out2) => [state, out2, Decision.Done] as const,
+                ([out2]) => [state, out2, Decision.Done] as const
               )
             )
             : f(state, out, decision).map((either) =>
               either.fold(
-                (out2) => Tuple(state, out2, Decision.Done),
-                ({ tuple: [out2, interval] }) => Tuple(state, out2, Decision.continueWith(interval))
+                (out2) => [state, out2, Decision.Done] as const,
+                ([out2, interval]) => [state, out2, Decision.continueWith(interval)] as const
               )
             )
         )

@@ -12,8 +12,8 @@ export function foldUntilEffect<R, E, In, S>(
   f: (s: S, input: In) => Effect<R, E, S>
 ): Sink<R, E, In, In, S> {
   return Sink.foldEffect(
-    Tuple(z, 0),
-    (tuple) => tuple.get(1) < max,
-    ({ tuple: [o, count] }, i: In) => f(o, i).map((s) => Tuple(s, count + 1))
-  ).map((tuple) => tuple.get(0))
+    [z, 0 as number] as const,
+    (tuple) => tuple[1] < max,
+    ([o, count], i: In) => f(o, i).map((s) => [s, count + 1] as const)
+  ).map((tuple) => tuple[0])
 }

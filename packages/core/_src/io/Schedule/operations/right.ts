@@ -7,6 +7,6 @@
  */
 export function right<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>
-): Schedule<Tuple<[void, State]>, Env, Either<X, In>, Either<X, Out>> {
+): Schedule<readonly [void, State], Env, Either<X, In>, Either<X, Out>> {
   return Schedule.identity<X>() + self
 }

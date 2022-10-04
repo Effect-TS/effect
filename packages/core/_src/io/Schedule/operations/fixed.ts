@@ -20,35 +20,35 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
 export function fixed(
   interval: Duration
 ): Schedule<
-  Tuple<[Maybe<Tuple<[number, number]>>, number]>,
+  readonly [Maybe<readonly [number, number]>, number],
   never,
   unknown,
   number
 > {
   return makeWithState(
-    Tuple(Maybe.empty(), 0),
-    (now, _, { tuple: [option, n] }) =>
+    [Maybe.empty(), 0] as readonly [Maybe<readonly [number, number]>, number],
+    (now, _, [option, n]) =>
       Effect.sync(() => {
         const intervalMillis = interval.millis
         return option.fold(
           () =>
-            Tuple(
-              Tuple(Maybe.some(Tuple(now, now + intervalMillis)), n + 1),
+            [
+              [Maybe.some([now, now + intervalMillis] as const), n + 1] as const,
               n,
               Decision.continueWith(Interval.after(now + intervalMillis))
-            ),
-          ({ tuple: [startMillis, lastRun] }) => {
+            ] as const,
+          ([startMillis, lastRun]) => {
             const runningBehind = now > (lastRun + intervalMillis)
             const boundary = interval == (0).millis
               ? interval
               : new DurationInternal(intervalMillis - ((now - startMillis) % intervalMillis))
             const sleepTime = boundary == (0).millis ? interval : boundary
             const nextRun = runningBehind ? now : now + sleepTime.millis
-            return Tuple(
-              Tuple(Maybe.some(Tuple(startMillis, nextRun)), n + 1),
+            return [
+              [Maybe.some([startMillis, nextRun] as const), n + 1] as const,
               n,
               Decision.continueWith(Interval.after(nextRun))
-            )
+            ] as const
           }
         )
       })

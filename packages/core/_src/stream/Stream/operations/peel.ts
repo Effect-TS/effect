@@ -30,14 +30,14 @@ export class End {
 export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
   return <R, E extends E2, A extends A2>(
     self: Stream<R, E, A>
-  ): Effect<R | R2 | Scope, E | E2, Tuple<[Z, Stream<never, E, A2>]>> =>
+  ): Effect<R | R2 | Scope, E | E2, readonly [Z, Stream<never, E, A2>]> =>
     Do(($) => {
       const deferred = $(Deferred.make<E | E2, Z>())
       const handoff = $(Handoff.make<Signal<E, A2>>())
       const consumer = sink.exposeLeftover
         .foldSink(
           (e) => Sink.fromEffect(deferred.fail(e)) > Sink.fail(e),
-          ({ tuple: [z1, leftovers] }) => {
+          ([z1, leftovers]) => {
             const loop: Channel<
               never,
               E,
@@ -92,6 +92,6 @@ export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
         .runScoped(consumer)
         .forkScoped
         .flatMap(() => deferred.await)
-        .map((z) => Tuple(z, new StreamInternal(producer)))
+        .map((z) => [z, new StreamInternal(producer)] as const)
     }).flatten
 }

@@ -28,18 +28,18 @@ export class UnsafeAPI<A> {
     return current
   }
 
-  modify<B>(f: (a: A) => Tuple<[B, A]>): B {
+  modify<B>(f: (a: A) => readonly [B, A]): B {
     const current = this.value.get
-    const { tuple: [b, a] } = f(current)
+    const [b, a] = f(current)
     this.value.set(a)
     return b
   }
 
-  modifySome<B>(fallback: B, pf: (a: A) => Maybe<Tuple<[B, A]>>): B {
+  modifySome<B>(fallback: B, pf: (a: A) => Maybe<readonly [B, A]>): B {
     const current = this.value.get
-    const tuple = pf(current).getOrElse(Tuple(fallback, current))
-    this.value.set(tuple.get(1))
-    return tuple.get(0)
+    const tuple = pf(current).getOrElse([fallback, current] as const)
+    this.value.set(tuple[1])
+    return tuple[0]
   }
 
   set(a: A): void {
@@ -97,7 +97,7 @@ export class AtomicInternal<A> implements Ref<A> {
 
   modify<B>(
     this: this,
-    f: (a: A) => Tuple<[B, A]>
+    f: (a: A) => readonly [B, A]
   ): Effect<never, never, B> {
     return Effect.sync(this.unsafe.modify(f))
   }
@@ -107,37 +107,37 @@ export class AtomicInternal<A> implements Ref<A> {
   }
 
   getAndSet(this: this, a: A): Effect<never, never, A> {
-    return this.modify((v) => Tuple(v, a))
+    return this.modify((v) => [v, a] as const)
   }
 
   getAndUpdate(this: this, f: (a: A) => A): Effect<never, never, A> {
-    return this.modify((v) => Tuple(v, f(v)))
+    return this.modify((v) => [v, f(v)] as const)
   }
 
   getAndUpdateSome(
     this: this,
     pf: (a: A) => Maybe<A>
   ): Effect<never, never, A> {
-    return this.modify((v) => Tuple(v, pf(v).getOrElse(v)))
+    return this.modify((v) => [v, pf(v).getOrElse(v)] as const)
   }
 
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<Tuple<[B, A]>>
+    pf: (a: A) => Maybe<readonly [B, A]>
   ): Effect<never, never, B> {
-    return this.modify((v) => pf(v).getOrElse(Tuple(fallback, v)))
+    return this.modify((v) => pf(v).getOrElse([fallback, v] as const))
   }
 
   update(this: this, f: (a: A) => A): Effect<never, never, void> {
-    return this.modify((v) => Tuple(undefined as void, f(v)))
+    return this.modify((v) => [undefined as void, f(v)] as const)
   }
 
   updateAndGet(this: this, f: (a: A) => A): Effect<never, never, A> {
     return this.modify(v => {
       const result = f(v)
 
-      return Tuple(result, result)
+      return [result, result] as const
     })
   }
 
@@ -145,7 +145,7 @@ export class AtomicInternal<A> implements Ref<A> {
     this: this,
     pf: (a: A) => Maybe<A>
   ): Effect<never, never, void> {
-    return this.modify((v) => Tuple(undefined as void, pf(v).getOrElse(v)))
+    return this.modify((v) => [undefined as void, pf(v).getOrElse(v)] as const)
   }
 
   updateSomeAndGet(
@@ -154,7 +154,7 @@ export class AtomicInternal<A> implements Ref<A> {
   ): Effect<never, never, A> {
     return this.modify(v => {
       const result = pf(v).getOrElse(v)
-      return Tuple(result, result)
+      return [result, result] as const
     })
   }
 }

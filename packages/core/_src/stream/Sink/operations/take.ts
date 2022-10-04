@@ -13,9 +13,7 @@ export function take<In>(
     (chunk) => chunk.length < n,
     (acc, input) => acc + input
   ).flatMap((acc) => {
-    const {
-      tuple: [taken, leftover]
-    } = acc.splitAt(n)
+    const [taken, leftover] = acc.splitAt(n)
     return new SinkInternal(Channel.write(leftover).flatMap(() => Channel.succeed(taken)))
   })
 }

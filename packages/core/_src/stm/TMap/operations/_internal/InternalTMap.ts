@@ -4,7 +4,10 @@ export class InternalTMap<K, V> implements TMap<K, V> {
   readonly [TMapSym]: TMapSym = TMapSym
   readonly [_K]!: () => K
   readonly [_V]!: () => V
-  constructor(readonly tBuckets: TRef<TArray<List<Tuple<[K, V]>>>>, readonly tSize: TRef<number>) {}
+  constructor(
+    readonly tBuckets: TRef<TArray<List<readonly [K, V]>>>,
+    readonly tSize: TRef<number>
+  ) {}
 }
 
 /**

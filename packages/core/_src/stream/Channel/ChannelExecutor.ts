@@ -192,7 +192,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
       this.ifNotNull(runInProgressFinalizers).exit,
       this.ifNotNull(closeSelf).exit
     )
-      .map(({ tuple: [a, b, c] }) => a.zipRight(b).zipRight(c))
+      .map(([a, b, c]) => a.zipRight(b).zipRight(c))
       .uninterruptible
       .flatMap((exit) => Effect.done(exit))
   }
@@ -659,23 +659,23 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
     upstreamFinished: boolean,
     queue: ImmutableQueue<PullFromChild<R> | undefined>,
     strategy: UpstreamPullStrategy<unknown>
-  ): Tuple<[Maybe<unknown>, ImmutableQueue<PullFromChild<R> | undefined>]> {
+  ): readonly [Maybe<unknown>, ImmutableQueue<PullFromChild<R> | undefined>] {
     switch (strategy._tag) {
       case "PullAfterNext": {
-        return Tuple(
+        return [
           strategy.emitSeparator,
           !upstreamFinished || queue.find((a) => a != null).isSome()
             ? queue.prepend(undefined)
             : queue
-        )
+        ]
       }
       case "PullAfterAllEnqueued": {
-        return Tuple(
+        return [
           strategy.emitSeparator,
           !upstreamFinished || queue.find((a) => a != null).isSome()
             ? queue.append(undefined)
             : queue
-        )
+        ]
       }
     }
   }
@@ -703,9 +703,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
             )
             childExecutor.input = this.input
 
-            const {
-              tuple: [emitSeparator, updatedChildExecutors]
-            } = this.applyUpstreamPullStrategy(
+            const [emitSeparator, updatedChildExecutors] = this.applyUpstreamPullStrategy(
               false,
               self.activeChildExecutors,
               self.onPull(UpstreamPullRequest.Pulled(emitted))
@@ -743,9 +741,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
           )
           childExecutor.input = this.input
 
-          const {
-            tuple: [emitSeparator, updatedChildExecutors]
-          } = this.applyUpstreamPullStrategy(
+          const [emitSeparator, updatedChildExecutors] = this.applyUpstreamPullStrategy(
             false,
             self.activeChildExecutors,
             self.onPull(UpstreamPullRequest.Pulled(emitted))
@@ -816,7 +812,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ): ChannelState<R, unknown> | undefined {
     return self.activeChildExecutors
       .dequeue
-      .fold(this.performPullFromUpstream(self), ({ tuple: [activeChild, rest] }) => {
+      .fold(this.performPullFromUpstream(self), ([activeChild, rest]) => {
         const parentSubexecutor = Subexecutor.PullFromUpstream(
           self.upstreamExecutor,
           self.createChild,
@@ -859,7 +855,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
           (exit) => self.upstreamExecutor.close(exit)
         )
       },
-      ({ tuple: [activeChild, rest] }) => {
+      ([activeChild, rest]) => {
         if (activeChild != null) {
           const parentSubexecutor = Subexecutor.DrainChildExecutors(
             self.upstreamExecutor,
@@ -882,9 +878,7 @@ export class ChannelExecutor<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
           return undefined
         }
 
-        const {
-          tuple: [emitSeparator, remainingExecutors]
-        } = this.applyUpstreamPullStrategy(
+        const [emitSeparator, remainingExecutors] = this.applyUpstreamPullStrategy(
           true,
           rest,
           self.onPull(

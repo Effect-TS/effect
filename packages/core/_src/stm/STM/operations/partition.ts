@@ -9,7 +9,7 @@ import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partit
 export function partition<R, E, A, B>(
   as: Collection<A>,
   f: (a: A) => STM<R, E, B>
-): STM<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
+): STM<R, never, readonly [Chunk<E>, Chunk<B>]> {
   return STM.suspend(STM.forEach(as, (a) => f(a).either)).map((chunk) =>
     partitionMap(chunk, identity)
   )

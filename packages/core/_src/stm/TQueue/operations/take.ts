@@ -18,7 +18,7 @@ export function take<A>(self: TQueue<A>): USTM<A> {
     const item = queue.dequeue
 
     if (item.isSome()) {
-      const { tuple: [a, queue] } = item.value
+      const [a, queue] = item.value
 
       self.ref.unsafeSet(queue, journal)
 

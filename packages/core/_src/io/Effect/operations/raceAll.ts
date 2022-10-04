@@ -10,7 +10,7 @@ export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, A | A1> =>
     Do(($) => {
       const ios = $(Effect.sync(Chunk.from(effects)))
-      const done = $(Deferred.make<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>())
+      const done = $(Deferred.make<E | E1, readonly [A | A1, Fiber<E | E1, A | A1>]>())
       const fails = $(Ref.make(ios.size))
       return $(Effect.uninterruptibleMask(({ restore }) =>
         Do(($) => {
@@ -21,8 +21,8 @@ export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
             Effect.unit,
             (io, fiber) => io > fiber.await.flatMap(arbiter(fs, fiber, done, fails)).fork
           ))
-          const inheritAll = (res: Tuple<[A | A1, Fiber<E | E1, A | A1>]>) =>
-            res.get(1).inheritAll.as(res.get(0))
+          const inheritAll = (res: readonly [A | A1, Fiber<E | E1, A | A1>]) =>
+            res[1].inheritAll.as(res[0])
           return $(
             restore(done.await.flatMap(inheritAll)).onInterrupt(() =>
               fs.reduce(Effect.unit, (io, fiber) => io < fiber.interrupt)
@@ -36,18 +36,18 @@ export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
 function arbiter<E, E1, A, A1>(
   fibers: Chunk<Fiber<E | E1, A | A1>>,
   winner: Fiber<E | E1, A | A1>,
-  promise: Deferred<E | E1, Tuple<[A | A1, Fiber<E | E1, A | A1>]>>,
+  promise: Deferred<E | E1, readonly [A | A1, Fiber<E | E1, A | A1>]>,
   fails: Ref<number>
 ) {
   return (exit: Exit<E, A | A1>): Effect<never, never, void> => {
     return exit.foldEffect(
       (e) =>
         fails
-          .modify((c) => Tuple(c === 0 ? promise.failCause(e).unit : Effect.unit, c - 1))
+          .modify((c) => [c === 0 ? promise.failCause(e).unit : Effect.unit, c - 1] as const)
           .flatten,
       (a) =>
         promise
-          .succeed(Tuple(a, winner))
+          .succeed([a, winner] as const)
           .flatMap((set) =>
             set
               ? fibers.reduce(

@@ -10,6 +10,6 @@ export function chooseMerge<State1, Env1, In2, Out2>(
 ) {
   return <State, Env, In, Out>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, State1]>, Env | Env1, Either<In, In2>, Out | Out2> =>
+  ): Schedule<readonly [State, State1], Env | Env1, Either<In, In2>, Out | Out2> =>
     (self + that).map((either) => either.merge)
 }

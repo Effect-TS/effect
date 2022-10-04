@@ -71,7 +71,7 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
     concreteTRef(tref)
     const todos = tref.todo.get
     for (const todo of todos) {
-      allTodos.set(todo.get(0), todo.get(1))
+      allTodos.set(todo[0], todo[1])
     }
     tref.todo.set(emptyTodoMap)
   }

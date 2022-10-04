@@ -18,8 +18,8 @@ describe.concurrent("Layer", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.get(0), 10)
-      assert.strictEqual(result.get(1), "hi")
+      assert.strictEqual(result[0], 10)
+      assert.strictEqual(result[1], "hi")
     })
 
     it("to provides a partial environment to another layer", async () => {
@@ -53,8 +53,8 @@ describe.concurrent("Layer", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.get(0), 10)
-      assert.strictEqual(result.get(1), "hi")
+      assert.strictEqual(result[0], 10)
+      assert.strictEqual(result[1], "hi")
     })
 
     it("andTo provides a partial environment to another layer", async () => {
@@ -83,16 +83,16 @@ describe.concurrent("Layer", () => {
       const layer = provideString > needsString
 
       const program = Effect.serviceWithEffect(FooTag, (_) => _.get)
-        .flatMap(({ tuple: [i1, s] }) =>
+        .flatMap(([i1, s]) =>
           Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get).map((i2) => Tuple(i1, i2, s))
         )
         .provideLayer(layer)
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.get(0), 10)
-      assert.strictEqual(result.get(1), 10)
-      assert.strictEqual(result.get(2), "hi")
+      assert.strictEqual(result[0], 10)
+      assert.strictEqual(result[1], 10)
+      assert.strictEqual(result[2], "hi")
     })
   })
 })

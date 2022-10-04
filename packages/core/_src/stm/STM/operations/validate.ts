@@ -11,7 +11,7 @@ export function validate<R, E, A, B>(
   as: Collection<A>,
   f: (a: A) => STM<R, E, B>
 ): STM<R, Chunk<E>, Chunk<B>> {
-  return STM.partition(as, f).flatMap(({ tuple: [es, bs] }) =>
+  return STM.partition(as, f).flatMap(([es, bs]) =>
     es.isEmpty
       ? STM.succeed(Chunk.from(bs))
       : STM.fail(es)

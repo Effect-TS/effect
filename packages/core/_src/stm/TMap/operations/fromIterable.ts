@@ -8,17 +8,17 @@ function nextPowerOfTwo(size: number): number {
   return n < 0 ? 1 : n + 1
 }
 
-function allocate<K, V>(capacity: number, data: List<Tuple<[K, V]>>): USTM<TMap<K, V>> {
-  const buckets: Array<List<Tuple<[K, V]>>> = Array.from({ length: capacity }, () => List.nil())
+function allocate<K, V>(capacity: number, data: List<readonly [K, V]>): USTM<TMap<K, V>> {
+  const buckets: Array<List<readonly [K, V]>> = Array.from({ length: capacity }, () => List.nil())
   const distinct = new Map<K, V>()
 
-  data.forEach((kv) => distinct.set(kv.get(0), kv.get(1)))
+  data.forEach((kv) => distinct.set(kv[0], kv[1]))
 
   let size = 0
 
   for (const kv0 of distinct) {
-    const kv = Tuple.fromNative(kv0)
-    const idx = TMap.indexOf(kv.get(0), capacity)
+    const kv = kv0
+    const idx = TMap.indexOf(kv[0], capacity)
 
     buckets[idx] = buckets[idx]!.prepend(kv)
 
@@ -39,7 +39,7 @@ function allocate<K, V>(capacity: number, data: List<Tuple<[K, V]>>): USTM<TMap<
  *
  * @tsplus static effect/core/stm/TMap.Ops fromIterable
  */
-export function fromIterable<K, V>(data0: Collection<Tuple<[K, V]>>): USTM<TMap<K, V>> {
+export function fromIterable<K, V>(data0: Collection<readonly [K, V]>): USTM<TMap<K, V>> {
   return STM.suspend(() => {
     const data = data0.toList
     const size = data.length

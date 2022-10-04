@@ -11,16 +11,14 @@ export function tuple<SN extends readonly Stream<any, any, any>[]>(
 ): Stream<
   [SN[number]] extends [{ [_R]: () => infer R }] ? R : never,
   [SN[number]] extends [{ [_E]: () => infer E }] ? E : never,
-  Tuple<
-    {
-      [K in keyof SN]: [SN[number]] extends [{ [_A]: () => infer A }] ? A : never
-    }
-  >
+  {
+    [K in keyof SN]: [SN[number]] extends [{ [_A]: () => infer A }] ? A : never
+  }
 > {
   const init = s1.zip(s2)
 
   return streams.reduce(
-    (acc, v) => acc.zipWith(v, (a, b) => Tuple.mergeTuple(a, b)),
+    (acc, v) => acc.zipWith(v, (a, b) => (a as ReadonlyArray<any>).concat(b)),
     init
   )
 }

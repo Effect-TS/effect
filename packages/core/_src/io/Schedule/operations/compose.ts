@@ -16,23 +16,23 @@ export function compose<Out, State1, Env1, Out2>(
 ) {
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, State1]>, Env | Env1, In, Out2> =>
-    makeWithState(Tuple(self.initial, that.initial), (now, input, state) =>
+  ): Schedule<readonly [State, State1], Env | Env1, In, Out2> =>
+    makeWithState([self.initial, that.initial] as const, (now, input, state) =>
       self
-        .step(now, input, state.get(0))
-        .flatMap(({ tuple: [lState, out, lDecision] }) =>
+        .step(now, input, state[0])
+        .flatMap(([lState, out, lDecision]) =>
           that
-            .step(now, out, state.get(1))
-            .map(({ tuple: [rState, out2, rDecision] }) =>
+            .step(now, out, state[1])
+            .map(([rState, out2, rDecision]) =>
               lDecision._tag === "Done"
-                ? Tuple(Tuple(lState, rState), out2, Decision.Done)
+                ? [[lState, rState] as const, out2, Decision.Done] as const
                 : rDecision._tag === "Done"
-                ? Tuple(Tuple(lState, rState), out2, Decision.Done)
-                : Tuple(
-                  Tuple(lState, rState),
+                ? [[lState, rState] as const, out2, Decision.Done] as const
+                : [
+                  [lState, rState] as const,
                   out2,
                   Decision.Continue(lDecision.intervals.max(rDecision.intervals))
-                )
+                ] as const
             )
         ))
 }

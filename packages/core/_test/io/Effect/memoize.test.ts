@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const io = Random.nextInt
         const result = $(io.zip(io))
-        const { tuple: [first, second] } = result
+        const [first, second] = result
         assert.notStrictEqual(first, second)
       }).flackyTest().unsafeRunPromise())
 
@@ -12,7 +12,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const ioMemo = Random.nextInt.memoize
         const result = $(ioMemo.flatMap((io) => io.zip(io)))
-        const { tuple: [first, second] } = result
+        const [first, second] = result
         assert.strictEqual(first, second)
       }).flackyTest().unsafeRunPromise())
 

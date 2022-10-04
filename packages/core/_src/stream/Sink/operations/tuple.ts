@@ -13,18 +13,16 @@ export function tuple<SN extends readonly Sink<any, any, any, any, any>[]>(
   [SN[number]] extends [{ [k in typeof _E]: () => infer E }] ? E : never,
   [SN[number]] extends [{ [k in typeof _In]: (_: infer In) => void }] ? In : never,
   [SN[number]] extends [{ [k in typeof _L]: () => infer L }] ? L : never,
-  Tuple<
-    {
-      [K in keyof SN]: [SN[K]] extends [{ [k in typeof _Z]: () => infer Z }] ? Z : never
-    }
-  >
+  {
+    [K in keyof SN]: [SN[K]] extends [{ [k in typeof _Z]: () => infer Z }] ? Z : never
+  }
 > {
   const init = (s1 as Sink<any, any, any, any, any>).zipWith(
     s2 as Sink<any, any, any, any, any>,
-    (a, b) => Tuple(a, b)
+    (a, b) => [a, b] as const
   )
   return sinks.reduce(
-    (acc, v) => acc.zipWith(v, (a, b) => (a as Tuple<[any]>).append(b)),
+    (acc, v) => acc.zipWith(v, (a, b) => (a as readonly [any]).concat(b)),
     init
   )
 }

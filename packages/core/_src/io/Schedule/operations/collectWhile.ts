@@ -6,6 +6,6 @@
  */
 export function collectWhile<A>(
   f: Predicate<A>
-): Schedule<Tuple<[void, Chunk<A>]>, never, A, Chunk<A>> {
+): Schedule<readonly [void, Chunk<A>], never, A, Chunk<A>> {
   return Schedule.recurWhile(f).collectAll
 }

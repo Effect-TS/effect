@@ -5,9 +5,7 @@ describe.concurrent("Channel", () => {
         .mapOut((n) => n + 1)
         .runCollect
 
-      const {
-        tuple: [chunk, z]
-      } = await program.unsafeRunPromise()
+      const [chunk, z] = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(2, 3, 4))
       assert.isUndefined(z)
@@ -18,7 +16,7 @@ describe.concurrent("Channel", () => {
         .mapOut((n) => n.toString())
         .flatMap(() => Channel.write("x"))
         .runCollect
-        .map((tuple) => tuple.get(0))
+        .map((tuple) => tuple[0])
 
       const result = await program.unsafeRunPromise()
 

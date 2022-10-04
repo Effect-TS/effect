@@ -15,5 +15,5 @@ export function zipParRight<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, O
     OutErr | OutErr1,
     OutElem | OutElem1,
     OutDone1
-  > => self.zipPar(that).map((tuple) => tuple.get(1))
+  > => self.zipPar(that).map((tuple) => tuple[1])
 }

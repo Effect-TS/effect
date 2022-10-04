@@ -6,6 +6,6 @@
  */
 export function collectUntilEffect<Env, A>(
   f: (a: A) => Effect<Env, never, boolean>
-): Schedule<Tuple<[void, Chunk<A>]>, Env, A, Chunk<A>> {
+): Schedule<readonly [void, Chunk<A>], Env, A, Chunk<A>> {
   return Schedule.recurUntilEffect(f).collectAll
 }

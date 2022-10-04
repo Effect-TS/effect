@@ -664,9 +664,7 @@ describe.concurrent("STM", () => {
         const input = Chunk.range(0, 9)
         const program = STM.partition(input, STM.succeed).commit
 
-        const {
-          tuple: [left, right]
-        } = await program.unsafeRunPromise()
+        const [left, right] = await program.unsafeRunPromise()
 
         assert.isTrue(left.isEmpty)
         assert.isTrue(right == input)
@@ -676,9 +674,7 @@ describe.concurrent("STM", () => {
         const input = List.from(Array.from({ length: 10 }, () => 0))
         const program = STM.partition(input, STM.fail).commit
 
-        const {
-          tuple: [left, right]
-        } = await program.unsafeRunPromise()
+        const [left, right] = await program.unsafeRunPromise()
 
         assert.isTrue(left == input)
         assert.isTrue(right.isEmpty)
@@ -689,9 +685,7 @@ describe.concurrent("STM", () => {
         const program =
           STM.partition(input, (n) => n % 2 === 0 ? STM.failSync(n) : STM.succeed(n)).commit
 
-        const {
-          tuple: [left, right]
-        } = await program.unsafeRunPromise()
+        const [left, right] = await program.unsafeRunPromise()
 
         assert.isTrue(left == Chunk(0, 2, 4, 6, 8))
         assert.isTrue(right == Chunk(1, 3, 5, 7, 9))
@@ -996,14 +990,7 @@ describe.concurrent("STM", () => {
           )
           .commit
 
-        const {
-          tuple: [
-            {
-              tuple: [start, end]
-            },
-            value
-          ]
-        } = await program.unsafeRunPromise()
+        const [[start, end], value] = await program.unsafeRunPromise()
 
         assert.strictEqual(start, 1)
         assert.strictEqual(end, 3)
@@ -1014,9 +1001,7 @@ describe.concurrent("STM", () => {
     it("zip to return a tuple of two computations", async () => {
       const program = STM.succeed(1).zip(STM.succeed("A")).commit
 
-      const {
-        tuple: [n, s]
-      } = await program.unsafeRunPromise()
+      const [n, s] = await program.unsafeRunPromise()
 
       assert.strictEqual(n, 1)
       assert.strictEqual(s, "A")

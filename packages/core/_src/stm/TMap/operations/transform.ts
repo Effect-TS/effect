@@ -7,7 +7,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  * @tsplus static effect/core/stm/TMap.Aspects transform
  * @tsplus pipeable effect/core/stm/TMap transform
  */
-export function transform<K, V>(f: (kv: Tuple<[K, V]>) => Tuple<[K, V]>) {
+export function transform<K, V>(f: (kv: readonly [K, V]) => readonly [K, V]) {
   return (self: TMap<K, V>): STM<never, never, void> => {
     concreteTMap(self)
     return STM.Effect((journal) => {
@@ -16,7 +16,7 @@ export function transform<K, V>(f: (kv: Tuple<[K, V]>) => Tuple<[K, V]>) {
       concreteTArray(buckets)
 
       const capacity = buckets.chunk.length
-      const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from(
+      const newBuckets: Array<List<readonly [K, V]>> = Array.from(
         { length: capacity },
         () => List.nil()
       )
@@ -29,10 +29,10 @@ export function transform<K, V>(f: (kv: Tuple<[K, V]>) => Tuple<[K, V]>) {
 
         for (const pair of pairs) {
           const newPair = f(pair)
-          const idx = TMap.indexOf(newPair.get(0), capacity)
+          const idx = TMap.indexOf(newPair[0], capacity)
           const newBucket = newBuckets[idx]!
 
-          if (!newBucket.exists((_) => Equals.equals(_.get(0), newPair.get(0)))) {
+          if (!newBucket.exists((_) => Equals.equals(_[0], newPair[0]))) {
             newBuckets[idx] = newBucket.prepend(newPair)
             newSize += 1
           }

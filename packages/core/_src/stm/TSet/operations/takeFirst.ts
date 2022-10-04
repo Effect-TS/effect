@@ -9,6 +9,6 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 export function takeFirst<A, B>(pf: (a: A) => Maybe<B>) {
   return (self: TSet<A>): STM<never, never, B> => {
     concreteTSet(self)
-    return self.tmap.takeFirst((kv) => pf(kv.get(0)))
+    return self.tmap.takeFirst((kv) => pf(kv[0]))
   }
 }

@@ -42,13 +42,13 @@ export function offer<A>(value: A) {
         .modify((state) => {
           switch (state._tag) {
             case "Empty": {
-              return Tuple(
+              return [
                 state.notifyConsumer.succeed(undefined) > deferred.await,
                 new Full(value, deferred)
-              )
+              ] as const
             }
             case "Full": {
-              return Tuple(state.notifyProducer.await > self.offer(value), state)
+              return [state.notifyProducer.await > self.offer(value), state] as const
             }
           }
         })
@@ -65,13 +65,13 @@ export function take<A>(self: Handoff<A>): Effect<never, never, A> {
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(state.notifyConsumer.await > self.take, state)
+            return [state.notifyConsumer.await > self.take, state] as const
           }
           case "Full": {
-            return Tuple(
+            return [
               state.notifyProducer.succeed(undefined).as(state.value),
               new Empty(deferred)
-            )
+            ] as const
           }
         }
       })
@@ -88,13 +88,13 @@ export function poll<A>(self: Handoff<A>): Effect<never, never, Maybe<A>> {
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return Tuple(Effect.succeed(Maybe.none), state)
+            return [Effect.succeed(Maybe.none), state] as const
           }
           case "Full": {
-            return Tuple(
+            return [
               state.notifyProducer.succeed(undefined).as(Maybe.some(state.value)),
               new Empty(deferred)
-            )
+            ] as const
           }
         }
       })

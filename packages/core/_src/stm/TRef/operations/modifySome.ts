@@ -5,6 +5,7 @@
  * @tsplus static effect/core/stm/TRef.Aspects modifySome
  * @tsplus pipeable effect/core/stm/TRef modifySome
  */
-export function modifySome<A, B>(def: B, pf: (a: A) => Maybe<Tuple<[B, A]>>) {
-  return (self: TRef<A>): STM<never, never, B> => self.modify((a) => pf(a).getOrElse(Tuple(def, a)))
+export function modifySome<A, B>(def: B, pf: (a: A) => Maybe<readonly [B, A]>) {
+  return (self: TRef<A>): STM<never, never, B> =>
+    self.modify((a) => pf(a).getOrElse([def, a] as const))
 }

@@ -25,13 +25,15 @@ describe.concurrent("Channel", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+      assert.isTrue(
+        Equals.equals(result, Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+      )
     })
 
     it("concatMap(provide).provide", async () => {
       const program = Channel.fromEffect(Effect.service(NumberService))
         .emitCollect
-        .mapOut((tuple) => tuple.get(1))
+        .mapOut((tuple) => tuple[1])
         .concatMap((n) =>
           Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
             .provideService(NumberService, new NumberServiceImpl(200))
@@ -43,9 +45,9 @@ describe.concurrent("Channel", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result.get(0) == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+        result[0] == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
       )
-      assert.isUndefined(result.get(1))
+      assert.isUndefined(result[1])
     })
 
     it("provide is modular", async () => {

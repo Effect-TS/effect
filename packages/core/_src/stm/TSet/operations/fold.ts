@@ -9,6 +9,6 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 export function fold<A, B>(zero: B, op: (acc: B, a: A) => B) {
   return (self: TSet<A>): STM<never, never, B> => {
     concreteTSet(self)
-    return self.tmap.fold(zero, (acc, kv) => op(acc, kv.get(0)))
+    return self.tmap.fold(zero, (acc, kv) => op(acc, kv[0]))
   }
 }

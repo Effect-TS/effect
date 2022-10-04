@@ -13,7 +13,7 @@ export function partition<A>(
 ) {
   return <R, E>(
     self: Stream<R, E, A>
-  ): Effect<R | Scope, E, Tuple<[Stream<never, E, A>, Stream<never, E, A>]>> =>
+  ): Effect<R | Scope, E, readonly [Stream<never, E, A>, Stream<never, E, A>]> =>
     self.partitionEither(
       (a) => p(a) ? Effect.succeed(Either.left(a)) : Effect.succeed(Either.right(a)),
       buffer

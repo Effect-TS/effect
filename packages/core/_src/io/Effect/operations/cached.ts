@@ -7,5 +7,5 @@
  */
 export function cached(timeToLive: Duration) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, never, Effect<never, E, A>> =>
-    self.cachedInvalidate(timeToLive).map((tuple) => tuple.get(0))
+    self.cachedInvalidate(timeToLive).map((tuple) => tuple[0])
 }

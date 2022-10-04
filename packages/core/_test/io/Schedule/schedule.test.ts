@@ -74,7 +74,7 @@ describe.concurrent("Schedule", () => {
       const inputs = List(0, 6500).zip(List(undefined, undefined))
       const result = $(
         runManually(Schedule.fixed((5).seconds), inputs).map((output) =>
-          output.get(0).map((tuple) => tuple.get(0))
+          output[0].map((tuple) => tuple[0])
         )
       )
       assert.isTrue(result == List(5000, 10000))

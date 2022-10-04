@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.range(0, 9)
         const result = $(Effect.partition(chunk, (n) => Effect.sync(n)))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk.empty())
         assert.isTrue(right == chunk)
       }).unsafeRunPromise())
@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.fill(10, () => 0)
         const result = $(Effect.partition(chunk, (n) => Effect.failSync(n)))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == chunk)
         assert.isTrue(right == Chunk.empty())
       }).unsafeRunPromise())
@@ -25,7 +25,7 @@ describe.concurrent("Effect", () => {
           chunk,
           (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n)
         ))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk(0, 2, 4, 6, 8))
         assert.isTrue(right == Chunk(1, 3, 5, 7, 9))
       }).unsafeRunPromise())
@@ -45,7 +45,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.range(0, 1000)
         const result = $(Effect.partitionPar(chunk, (n) => Effect.sync(n)))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk.empty())
         assert.isTrue(right == chunk)
       }).unsafeRunPromise())
@@ -54,7 +54,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.fill(10, () => 0)
         const result = $(Effect.partitionPar(chunk, (n) => Effect.failSync(n)))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == chunk)
         assert.isTrue(right == Chunk.empty())
       }).unsafeRunPromise())
@@ -66,7 +66,7 @@ describe.concurrent("Effect", () => {
           chunk,
           (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n)
         ))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk(0, 2, 4, 6, 8))
         assert.isTrue(right == Chunk(1, 3, 5, 7, 9))
       }).unsafeRunPromise())
@@ -77,7 +77,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.range(0, 1000)
         const result = $(Effect.partitionPar(chunk, (n) => Effect.sync(n)).withParallelism(3))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk.empty())
         assert.isTrue(right == chunk)
       }).unsafeRunPromise())
@@ -86,7 +86,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const chunk = Chunk.fill(10, () => 0)
         const result = $(Effect.partitionPar(chunk, (n) => Effect.failSync(n)).withParallelism(3))
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == chunk)
         assert.isTrue(right == Chunk.empty())
       }).unsafeRunPromise())
@@ -99,7 +99,7 @@ describe.concurrent("Effect", () => {
             .partitionPar(list, (n) => n % 2 === 0 ? Effect.failSync(n) : Effect.sync(n))
             .withParallelism(3)
         )
-        const { tuple: [left, right] } = result
+        const [left, right] = result
         assert.isTrue(left == Chunk(0, 2, 4, 6, 8))
         assert.isTrue(right == Chunk(1, 3, 5, 7, 9))
       }).unsafeRunPromise())

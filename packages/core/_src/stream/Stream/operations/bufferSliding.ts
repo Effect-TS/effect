@@ -19,7 +19,7 @@ import {
 export function bufferSliding(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const queue = Effect.acquireRelease(
-      Queue.sliding<Tuple<[Take<E, A>, Deferred<never, void>]>>(capacity),
+      Queue.sliding<readonly [Take<E, A>, Deferred<never, void>]>(capacity),
       (queue) => queue.shutdown
     )
     const stream = self.rechunk(1)

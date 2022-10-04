@@ -3,6 +3,7 @@
  * and the specified channel. The returned channel terminates with a tuple of
  * the terminal values of both channels.
  *
+ * @tsplus pipeable-operator effect/core/stream/Channel +
  * @tsplus static effect/core/stream/Channel.Aspects zip
  * @tsplus pipeable effect/core/stream/Channel zip
  */
@@ -18,6 +19,6 @@ export function zip<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>
     InDone & InDone1,
     OutErr | OutErr1,
     OutElem | OutElem1,
-    Tuple<[OutDone, OutDone1]>
-  > => self.flatMap((a) => that.map((b) => Tuple(a, b)))
+    readonly [OutDone, OutDone1]
+  > => self.flatMap((a) => that.map((b) => [a, b] as const))
 }

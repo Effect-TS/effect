@@ -154,12 +154,12 @@ describe.concurrent("Stream", () => {
       Do(($) => {
         const sink = Sink.fold(
           Tuple(List.empty<number>(), true),
-          (tuple) => tuple.get(1),
+          (tuple) => tuple[1],
           (acc, el: number) =>
             el === 1
-              ? Tuple(acc.get(0).prepend(el), true)
-              : Tuple(acc.get(0).prepend(el), false)
-        ).map((tuple) => tuple.get(0))
+              ? Tuple(acc[0].prepend(el), true)
+              : Tuple(acc[0].prepend(el), false)
+        ).map((tuple) => tuple[0])
 
         const schedule = Schedule.spaced((30).minutes)
         const stream = Stream(1, 1, 1, 1, 2, 2)

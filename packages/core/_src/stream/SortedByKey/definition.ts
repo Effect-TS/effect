@@ -3,7 +3,7 @@
  *
  * @tsplus type effect/core/stream/SortedByKey
  */
-export type SortedByKey<R, E, K, A> = Stream<R, E, Tuple<[K, A]>>
+export type SortedByKey<R, E, K, A> = Stream<R, E, readonly [K, A]>
 
 /**
  * @tsplus type effect/core/stream/SortedByKey,Ops

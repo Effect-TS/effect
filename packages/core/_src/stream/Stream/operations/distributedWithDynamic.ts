@@ -24,7 +24,7 @@ export function distributedWithDynamic<A, E, Z>(
   ): Effect<
     R | Scope,
     never,
-    Effect<never, never, Tuple<[UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>>
+    Effect<never, never, readonly [UniqueKey, Dequeue<Exit<Maybe<E>, A>>]>
   > =>
     Do(($) => {
       const queuesRef = $(Effect.acquireRelease(
@@ -32,18 +32,18 @@ export function distributedWithDynamic<A, E, Z>(
         (map) =>
           map
             .get
-            .flatMap((queues) => Effect.forEach(queues, ({ tuple: [, queue] }) => queue.shutdown))
+            .flatMap((queues) => Effect.forEach(queues, ([, queue]) => queue.shutdown))
       ))
       const add = $(
         Do(($) => {
           const queuesLock = $(TSemaphore.makeCommit(1))
           const newQueue = $(
-            Ref.make<Effect<never, never, Tuple<[UniqueKey, Queue<Exit<Maybe<E>, A>>]>>>(
+            Ref.make<Effect<never, never, readonly [UniqueKey, Queue<Exit<Maybe<E>, A>>]>>(
               Effect.Do()
                 .bind("queue", () => Queue.bounded<Exit<Maybe<E>, A>>(maximumLag))
                 .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
                 .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
-                .map(({ id, queue }) => Tuple(id, queue))
+                .map(({ id, queue }) => [id, queue] as const)
             )
           )
           const finalize = (endTake: Exit<Maybe<E>, never>) =>
@@ -58,7 +58,7 @@ export function distributedWithDynamic<A, E, Z>(
                       .tap(({ queue }) => queue.offer(endTake))
                       .bind("id", () => Effect.sync(distributedWithDynamicId.incrementAndGet()))
                       .tap(({ id, queue }) => queuesRef.update((map) => map.set(id, queue)))
-                      .map(({ id, queue }) => Tuple(id, queue))
+                      .map(({ id, queue }) => [id, queue] as const)
                   )
                 )
                 .bind("queues", () => queuesRef.get.map((map) => map.values))
@@ -101,7 +101,7 @@ function offer<E, A>(
       Effect.reduce(
         queues,
         List.empty<UniqueKey>(),
-        (acc: List<UniqueKey>, { tuple: [id, queue] }) =>
+        (acc: List<UniqueKey>, [id, queue]) =>
           shouldProcess(id)
             ? queue.offer(Exit.succeed(a)).foldCauseEffect(
               (cause) =>

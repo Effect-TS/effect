@@ -17,17 +17,17 @@ export function addIfOpen(finalizer: Scope.Finalizer) {
       .modify((s) => {
         switch (s._tag) {
           case "Exited": {
-            return Tuple(
+            return [
               finalizer(s.exit).map(() => Maybe.none),
               new Exited(next(s.nextKey), s.exit, s.update)
-            )
+            ] as const
           }
           case "Running": {
             const finalizers = s.finalizers().set(s.nextKey, finalizer)
-            return Tuple(
+            return [
               Effect.succeed(Maybe.some(s.nextKey)),
               new Running(next(s.nextKey), finalizers, s.update)
-            )
+            ] as const
           }
         }
       })

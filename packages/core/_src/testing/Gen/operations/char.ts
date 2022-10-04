@@ -8,8 +8,8 @@ const gapSize = 0xdfff + 1 - 0xd800
  * @tsplus static effect/core/testing/Gen.Ops alphaChar
  */
 export const alphaChar: Gen<never, string> = Gen.weighted(
-  Tuple(Gen.char({ min: 65, max: 90 }), 26),
-  Tuple(Gen.char({ min: 97, max: 122 }), 26)
+  [Gen.char({ min: 65, max: 90 }), 26],
+  [Gen.char({ min: 97, max: 122 }), 26]
 )
 
 /**
@@ -18,9 +18,9 @@ export const alphaChar: Gen<never, string> = Gen.weighted(
  * @tsplus static effect/core/testing/Gen.Ops alphaNumericChar
  */
 export const alphaNumericChar: Gen<never, string> = Gen.weighted(
-  Tuple(Gen.char({ min: 48, max: 57 }), 10),
-  Tuple(Gen.char({ min: 65, max: 90 }), 26),
-  Tuple(Gen.char({ min: 97, max: 122 }), 26)
+  [Gen.char({ min: 48, max: 57 }), 10],
+  [Gen.char({ min: 65, max: 90 }), 26],
+  [Gen.char({ min: 97, max: 122 }), 26]
 )
 
 /**
@@ -69,7 +69,7 @@ export const fullUnicodeChar: Gen<never, string> = _char(
  * @tsplus static effect/core/testing/Gen.Ops numericChar
  */
 export const numericChar: Gen<never, string> = Gen.weighted(
-  Tuple(Gen.char({ min: 48, max: 57 }), 10)
+  [Gen.char({ min: 48, max: 57 }), 10]
 )
 
 /**
@@ -85,8 +85,8 @@ export const hexChar: Gen<never, string> = _char(0, 15, hexToCharCode)
  * @tsplus static effect/core/testing/Gen.Ops hexCharLower
  */
 export const hexCharLower: Gen<never, string> = Gen.weighted(
-  Tuple(_char(48, 57, hexToCharCode), 10),
-  Tuple(_char(97, 102, hexToCharCode), 6)
+  [_char(48, 57, hexToCharCode), 10],
+  [_char(97, 102, hexToCharCode), 6]
 )
 
 /**
@@ -95,8 +95,8 @@ export const hexCharLower: Gen<never, string> = Gen.weighted(
  * @tsplus static effect/core/testing/Gen.Ops hexCharUpper
  */
 export const hexCharUpper: Gen<never, string> = Gen.weighted(
-  Tuple(_char(48, 57, hexToCharCode), 10),
-  Tuple(_char(65, 70, hexToCharCode), 10)
+  [_char(48, 57, hexToCharCode), 10],
+  [_char(65, 70, hexToCharCode), 10]
 )
 
 /**

@@ -7,10 +7,10 @@
  */
 export function fibonacci(
   one: Duration
-): Schedule<Tuple<[Duration, Duration]>, never, unknown, Duration> {
+): Schedule<readonly [Duration, Duration], never, unknown, Duration> {
   return Schedule.delayed(
-    Schedule.unfold(Tuple(one, one), ({ tuple: [a1, a2] }) => Tuple(a2, a1 + a2)).map(
-      (out) => out.get(0)
+    Schedule.unfold([one, one] as const, ([a1, a2]) => [a2, a1 + a2] as const).map(
+      (out) => out[0]
     )
   )
 }

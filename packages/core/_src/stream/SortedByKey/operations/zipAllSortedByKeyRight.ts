@@ -18,6 +18,6 @@ export function zipAllSortedByKeyRight<K, R2, E2, A2>(
   that: SortedByKey<R2, E2, K, A2>,
   def: A2
 ) {
-  return <R, E, A>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, Tuple<[K, A2]>> =>
+  return <R, E, A>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, readonly [K, A2]> =>
     self.zipAllSortedByKeyWith(ord, that, () => def, identity, (_, b) => b)
 }

@@ -13,19 +13,19 @@ export function release(key: number, exit: Exit<any, any>) {
       .modify((s) => {
         switch (s._tag) {
           case "Exited": {
-            return Tuple(Effect.unit, s)
+            return [Effect.unit, s] as const
           }
           case "Running": {
             const finalizers = s.finalizers()
             const finalizer = Maybe.fromNullable(finalizers.get(key))
             finalizers.delete(key)
-            return Tuple(
+            return [
               finalizer.fold(
                 () => Effect.unit,
                 (fin) => s.update(fin)(exit)
               ),
               new Running(s.nextKey, finalizers, s.update)
-            )
+            ] as const
           }
         }
       })

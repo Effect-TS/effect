@@ -19,21 +19,24 @@ import {
  */
 export function dayOfMonth(
   day: number
-): Schedule<Tuple<[number, number]>, never, unknown, number> {
-  return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
-    if (!Number.isInteger(day) || day < 1 || 31 < day) {
-      return Effect.dieSync(
-        new IllegalArgumentException(
-          `Invalid argument in: dayOfMonth(${day}). Must be in range 1...31`
+): Schedule<readonly [number, number], never, unknown, number> {
+  return makeWithState(
+    [Number.MIN_SAFE_INTEGER, 0] as readonly [number, number],
+    (now, _, state) => {
+      if (!Number.isInteger(day) || day < 1 || 31 < day) {
+        return Effect.dieSync(
+          new IllegalArgumentException(
+            `Invalid argument in: dayOfMonth(${day}). Must be in range 1...31`
+          )
         )
-      )
+      }
+      const [end0, n] = state
+      const now0 = Math.max(end0, now)
+      const day0 = nextDayOfMonth(now0, day)
+      const start = Math.max(beginningOfDay(day0), now0)
+      const end = endOfDay(day0)
+      const interval = Interval(start, end)
+      return Effect.succeed([[end, n + 1] as const, n, Decision.continueWith(interval)] as const)
     }
-    const { tuple: [end0, n] } = state
-    const now0 = Math.max(end0, now)
-    const day0 = nextDayOfMonth(now0, day)
-    const start = Math.max(beginningOfDay(day0), now0)
-    const end = endOfDay(day0)
-    const interval = Interval(start, end)
-    return Effect.succeed(Tuple(Tuple(end, n + 1), n, Decision.continueWith(interval)))
-  })
+  )
 }

@@ -5,7 +5,7 @@ import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_interna
  */
 export function grouped<R, E, K, V, A>(
   self: GroupBy<R, E, K, V, A>
-): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
   concreteGroupBy(self)
   return self.grouped()
 }

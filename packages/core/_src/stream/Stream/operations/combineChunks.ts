@@ -21,7 +21,7 @@ export function combineChunks<R, E, A, R2, E2, A2, S, A3>(
     s: S,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
     pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
-  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, S]>>>
+  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [Chunk<A3>, S]>>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(

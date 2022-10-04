@@ -116,7 +116,7 @@ export class HistogramState extends BaseMetricState<MetricKeyType.Histogram> {
   readonly [HistogramStateSym]: HistogramStateSym = HistogramStateSym
 
   constructor(
-    readonly buckets: Chunk<Tuple<[number, number]>>,
+    readonly buckets: Chunk<readonly [number, number]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -156,7 +156,7 @@ export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
 
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk<Tuple<[number, Maybe<number>]>>,
+    readonly quantiles: Chunk<readonly [number, Maybe<number>]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -220,7 +220,7 @@ export function frequency(occurrences: HashMap<string, number>): MetricState.Fre
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Histogram
  */
 export function histogram(
-  buckets: Chunk<Tuple<[number, number]>>,
+  buckets: Chunk<readonly [number, number]>,
   count: number,
   min: number,
   max: number,
@@ -234,7 +234,7 @@ export function histogram(
  */
 export function summary(
   error: number,
-  quantiles: Chunk<Tuple<[number, Maybe<number>]>>,
+  quantiles: Chunk<readonly [number, Maybe<number>]>,
   count: number,
   min: number,
   max: number,

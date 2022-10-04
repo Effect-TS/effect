@@ -7,14 +7,14 @@ import { concreteSortedMap } from "@tsplus/stdlib/collections/SortedMap/_interna
  *
  * @tsplus static effect/core/testing/Gen.Ops weighted
  */
-export function weighted<R, A>(...gens: Array<Tuple<[Gen<R, A>, number]>>): Gen<R, A> {
-  const sum = gens.reduce((acc, { tuple: [_, n] }) => acc + n, 0)
-  const { tuple: [map, _] } = gens.reduce(
-    ({ tuple: [map, acc] }, { tuple: [gen, d] }) =>
+export function weighted<R, A>(...gens: Array<readonly [Gen<R, A>, number]>): Gen<R, A> {
+  const sum = gens.reduce((acc, [_, n]) => acc + n, 0)
+  const [map, _] = gens.reduce(
+    ([map, acc], [gen, d]) =>
       (acc + d) / sum > acc / sum ?
-        Tuple(map.set((acc + d) / sum, gen), acc + d) :
-        Tuple(map, acc),
-    Tuple(SortedMap.empty<number, Gen<R, A>>(Ord.number), 0)
+        [map.set((acc + d) / sum, gen), acc + d] :
+        [map, acc],
+    [SortedMap.empty<number, Gen<R, A>>(Ord.number), 0]
   )
   return Gen.uniform().flatMap((n) =>
     getGreaterThanEqual(map, n).getOrElse(() => {

@@ -15,7 +15,7 @@ export class FiberRefs {
   constructor(
     readonly locals: ImmutableMap<
       FiberRef<any>,
-      List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
+      List.NonEmpty<readonly [FiberId.Runtime, unknown]>
     >
   ) {}
 
@@ -24,36 +24,36 @@ export class FiberRefs {
 
     that.locals.internalMap.forEach((childStack, fiberRef) => {
       const ref = fiberRef
-      const childValue = childStack.head.get(1)
-      if (!(childStack.head.get(0) == fiberId)) {
+      const childValue = childStack.head[1]
+      if (!(childStack.head[0] == fiberId)) {
         if (!parentFiberRefs.has(ref)) {
           if (Equals.equals(childValue, ref.initial)) {
             return
           } else {
             parentFiberRefs.set(
               fiberRef,
-              List.cons(Tuple(fiberId, ref.join(ref.initial, childValue)), List.nil())
+              List.cons([fiberId, ref.join(ref.initial, childValue)] as const, List.nil())
             )
             return
           }
         }
         const parentStack = parentFiberRefs.get(ref)!
-        const { tuple: [ancestor, wasModified] } = findAnchestor(
+        const [ancestor, wasModified] = findAnchestor(
           fiberRef,
           parentStack,
           childStack
         )
         if (wasModified) {
           const patch = ref.diff(ancestor, childValue)
-          const oldValue = parentStack.head.get(1)
+          const oldValue = parentStack.head[1]
           const newValue = ref.join(oldValue, ref.patch(patch)(oldValue))
           if (!Equals.equals(oldValue, newValue)) {
-            let newStack: List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>
-            const { tuple: [parentFiberId] } = parentStack.head
+            let newStack: List.NonEmpty<readonly [FiberId.Runtime, unknown]>
+            const [parentFiberId] = parentStack.head
             if (parentFiberId == fiberId) {
-              newStack = List.cons(Tuple(parentFiberId, newValue), parentStack.tail)
+              newStack = List.cons([parentFiberId, newValue] as const, parentStack.tail)
             } else {
-              newStack = List.cons(Tuple(fiberId, newValue), parentStack)
+              newStack = List.cons([fiberId, newValue] as const, parentStack)
             }
             parentFiberRefs.set(ref, newStack)
           }
@@ -70,14 +70,14 @@ export class FiberRefs {
    * individual fiber refs that make up the collection.
    */
   forkAs(childId: FiberId.Runtime) {
-    const map = new Map<FiberRef<any>, List.NonEmpty<Tuple<[FiberId.Runtime, unknown]>>>()
+    const map = new Map<FiberRef<any>, List.NonEmpty<readonly [FiberId.Runtime, unknown]>>()
     this.locals.internalMap.forEach((stack, fiberRef) => {
-      const oldValue = stack.head.get(1)
+      const oldValue = stack.head[1]
       const newValue = fiberRef.patch(fiberRef.fork)(oldValue)
       if (Equals.equals(oldValue, newValue)) {
         map.set(fiberRef, stack)
       } else {
-        map.set(fiberRef, List.cons(Tuple(childId, newValue), stack))
+        map.set(fiberRef, List.cons([childId, newValue] as const, stack))
       }
     })
     return new FiberRefs(new ImmutableMap(map))
@@ -88,7 +88,7 @@ export class FiberRefs {
   }
 
   get<A>(fiberRef: FiberRef<A>): Maybe<A> {
-    return this.locals.get(fiberRef).map((list) => list.head.get(1) as A)
+    return this.locals.get(fiberRef).map((list) => list.head[1] as A)
   }
 
   getOrDefault<A>(fiberRef: FiberRef<A>): A {
@@ -104,13 +104,13 @@ export class FiberRefs {
 
   updateAs<A>(fiberId: FiberId.Runtime, fiberRef: FiberRef<A>, value: A) {
     const oldStack = this.locals.get(fiberRef).getOrElse(
-      List.empty<Tuple<[FiberId.Runtime, unknown]>>()
+      List.empty<readonly [FiberId.Runtime, unknown]>()
     )
     const newStack = oldStack.isNil()
-      ? List.cons(Tuple(fiberId, value), List.nil())
-      : oldStack.head.get(0).equals(fiberId)
-      ? List.cons(Tuple(fiberId, value), oldStack.tail)
-      : List.cons(Tuple(fiberId, value), oldStack)
+      ? List.cons([fiberId, value] as const, List.nil())
+      : oldStack.head[0].equals(fiberId)
+      ? List.cons([fiberId, value] as const, oldStack.tail)
+      : List.cons([fiberId, value] as const, oldStack)
     return new FiberRefs(this.locals.set(fiberRef, newStack))
   }
 
@@ -136,14 +136,14 @@ export const FiberRefsAspects: FiberRefsAspects = {}
  */
 function findAnchestor(
   ref: FiberRef<any>,
-  parentStack: List<Tuple<[FiberId.Runtime, unknown]>>,
-  childStack: List<Tuple<[FiberId.Runtime, unknown]>>,
+  parentStack: List<readonly [FiberId.Runtime, unknown]>,
+  childStack: List<readonly [FiberId.Runtime, unknown]>,
   childModified = false
-): Tuple<[unknown, boolean]> {
+): readonly [unknown, boolean] {
   if (parentStack.isCons() && childStack.isCons()) {
-    const { tuple: [parentFiberId] } = parentStack.head
+    const [parentFiberId] = parentStack.head
     const parentAncestors = parentStack.tail
-    const { tuple: [childFiberId, childRefValue] } = childStack.head
+    const [childFiberId, childRefValue] = childStack.head
     const childAncestors = childStack.tail
     if (parentFiberId.startTimeMillis < childFiberId.startTimeMillis) {
       return findAnchestor(ref, parentStack, childAncestors, true)
@@ -155,9 +155,9 @@ function findAnchestor(
       } else if (parentFiberId.id > childFiberId.id) {
         return findAnchestor(ref, parentAncestors, childStack, childModified)
       } else {
-        return Tuple(childRefValue, childModified)
+        return [childRefValue, childModified] as const
       }
     }
   }
-  return Tuple(ref.initial, true)
+  return [ref.initial, true] as const
 }

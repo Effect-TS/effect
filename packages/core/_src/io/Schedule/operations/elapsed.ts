@@ -18,12 +18,18 @@ export const elapsed: Schedule<
   Effect.succeed(
     state.fold(
       () =>
-        Tuple(Maybe.some(now), new DurationInternal(0), Decision.continueWith(Interval.after(now))),
-      (start) =>
-        Tuple(
+        [
+          Maybe.some(now),
+          new DurationInternal(0),
+          Decision.continueWith(Interval.after(now))
+        ] as const,
+      (
+        start
+      ) =>
+        [
           Maybe.some(start),
           new DurationInternal(now - start),
           Decision.continueWith(Interval.after(now))
-        )
+        ] as const
     )
   ))

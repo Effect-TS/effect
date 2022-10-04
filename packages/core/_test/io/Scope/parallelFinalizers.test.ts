@@ -8,7 +8,7 @@ describe.concurrent("Scope", () => {
         $(
           Effect.scoped(
             Effect.parallelFinalizers(resource(1, ref).zipPar(resource(2, ref)))
-              .flatMap(({ tuple: [resource1, resource2] }) =>
+              .flatMap(([resource1, resource2]) =>
                 ref
                   .update((chunk) => chunk.append(Action.Use(resource1)))
                   .zipPar(ref.update((chunk) => chunk.append(Action.Use(resource2))))

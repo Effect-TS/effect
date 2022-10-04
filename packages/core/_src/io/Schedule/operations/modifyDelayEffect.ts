@@ -18,10 +18,10 @@ export function modifyDelayEffect<Out, Env1>(
     makeWithState(
       self.initial,
       (now, input, state) =>
-        self.step(now, input, state).flatMap(({ tuple: [state, out, decision] }) => {
+        self.step(now, input, state).flatMap(([state, out, decision]) => {
           switch (decision._tag) {
             case "Done": {
-              return Effect.succeed(Tuple(state, out, decision))
+              return Effect.succeed([state, out, decision] as const)
             }
             case "Continue": {
               const intervals = decision.intervals
@@ -32,7 +32,7 @@ export function modifyDelayEffect<Out, Env1>(
                 const delta = newStart - oldStart
                 const newEnd = Math.min(Math.max(0, intervals.end + delta), Number.MAX_SAFE_INTEGER)
                 const newInterval = Interval(newStart, newEnd)
-                return Tuple(state, out, Decision.continueWith(newInterval))
+                return [state, out, Decision.continueWith(newInterval)] as const
               })
             }
           }

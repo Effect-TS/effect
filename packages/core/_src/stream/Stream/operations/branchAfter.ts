@@ -35,9 +35,7 @@ function collecting<R, E, A, R2, E2, B>(
     (chunk: Chunk<A>) => {
       const newBuffer = buffer + chunk
       if (newBuffer.length >= n) {
-        const {
-          tuple: [inputs, inputs1]
-        } = newBuffer.splitAt(n)
+        const [inputs, inputs1] = newBuffer.splitAt(n)
         const pipeline = f(inputs)
         const stream = pipeline(Stream.fromChunk(inputs1))
         concreteStream(stream)

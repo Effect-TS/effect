@@ -13,6 +13,6 @@ export function tapOutput<Out, Env1, X>(f: (out: Out) => Effect<Env1, never, X>)
   ): Schedule<State, Env | Env1, In, Out> =>
     makeWithState(
       self.initial,
-      (now, input, state) => self.step(now, input, state).tap(({ tuple: [, out] }) => f(out))
+      (now, input, state) => self.step(now, input, state).tap(([, out]) => f(out))
     )
 }

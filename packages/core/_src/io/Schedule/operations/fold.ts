@@ -7,6 +7,6 @@
 export function fold<Out, Z>(z: Z, f: (z: Z, out: Out) => Z) {
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, Z]>, Env, In, Z> =>
+  ): Schedule<readonly [State, Z], Env, In, Z> =>
     self.foldEffect(z, (z, out) => Effect.sync(f(z, out)))
 }

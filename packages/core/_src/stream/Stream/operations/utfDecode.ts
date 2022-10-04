@@ -16,7 +16,7 @@ export function utfDecode<R, E>(
   return self.via(
     utfDecodeDetectingBom<R, E>(4, (bytes) =>
       bytes.take(3).corresponds(Utf8, (a, b) => a === b)
-        ? Tuple(bytes.drop(3), utf8DecodeNoBom)
-        : Tuple(bytes, utf8DecodeNoBom))
+        ? [bytes.drop(3), utf8DecodeNoBom]
+        : [bytes, utf8DecodeNoBom])
   )
 }

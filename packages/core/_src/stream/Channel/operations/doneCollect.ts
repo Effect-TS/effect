@@ -20,12 +20,12 @@ export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   InDone,
   OutErr,
   never,
-  Tuple<[Chunk<OutElem>, OutDone]>
+  readonly [Chunk<OutElem>, OutDone]
 > {
   return Channel.suspend(() => {
     const builder = Chunk.builder<OutElem>()
     return (self >> reader<Env, OutErr, OutElem, OutDone>(builder)).flatMap((z) =>
-      Channel.sync(Tuple(builder.build(), z))
+      Channel.sync([builder.build(), z])
     )
   })
 }

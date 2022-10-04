@@ -23,9 +23,7 @@ function reader<S, In>(
     ? Channel.succeed(z)
     : Channel.readWith(
       (chunk: Chunk<In>) => {
-        const {
-          tuple: [nextS, leftovers]
-        } = foldChunkSplit(z, chunk, cont, f)
+        const [nextS, leftovers] = foldChunkSplit(z, chunk, cont, f)
         return leftovers.isNonEmpty
           ? Channel.write(leftovers).as(nextS)
           : reader<S, In>(nextS, cont, f)
@@ -40,7 +38,7 @@ function foldChunkSplit<S, In>(
   chunk: Chunk<In>,
   cont: Predicate<S>,
   f: (s: S, input: In) => S
-): Tuple<[S, Chunk<In>]> {
+): readonly [S, Chunk<In>] {
   return foldInternal(z, chunk, cont, f, 0, chunk.length)
 }
 
@@ -51,12 +49,12 @@ function foldInternal<S, In>(
   f: (s: S, input: In) => S,
   index: number,
   length: number
-): Tuple<[S, Chunk<In>]> {
+): readonly [S, Chunk<In>] {
   if (index === length) {
-    return Tuple(z, Chunk.empty<In>())
+    return [z, Chunk.empty<In>()]
   }
   const z1 = f(z, chunk.unsafeGet(index))
   return cont(z1)
     ? foldInternal<S, In>(z1, chunk, cont, f, index + 1, length)
-    : Tuple(z1, chunk.drop(index + 1))
+    : [z1, chunk.drop(index + 1)]
 }

@@ -49,7 +49,7 @@ export interface Ref<A> {
    * return value for the modification. This is a more powerful version of
    * `update`.
    */
-  modify<B>(this: this, f: (a: A) => Tuple<[B, A]>): Effect<never, never, B>
+  modify<B>(this: this, f: (a: A) => readonly [B, A]): Effect<never, never, B>
 
   /**
    * Writes a new value to the `Ref`, with a guarantee of immediate consistency
@@ -88,7 +88,7 @@ export interface Ref<A> {
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<Tuple<[B, A]>>
+    pf: (a: A) => Maybe<readonly [B, A]>
   ): Effect<never, never, B>
 
   /**
@@ -133,7 +133,7 @@ export declare namespace Ref {
      */
     modifyEffect<R, E, B>(
       this: this,
-      f: (a: A) => Effect<R, E, Tuple<[B, A]>>
+      f: (a: A) => Effect<R, E, readonly [B, A]>
     ): Effect<R, E, B>
 
     /**
@@ -164,7 +164,7 @@ export declare namespace Ref {
     modifySomeEffect<R, E, B>(
       this: this,
       fallback: B,
-      pf: (a: A) => Maybe<Effect<R, E, Tuple<[B, A]>>>
+      pf: (a: A) => Maybe<Effect<R, E, readonly [B, A]>>
     ): Effect<R, E, B>
 
     /**

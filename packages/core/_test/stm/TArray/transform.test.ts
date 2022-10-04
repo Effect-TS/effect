@@ -11,7 +11,10 @@ describe.concurrent("TArray", () => {
         const first = $(array.get(0).commit)
         const last = $(array.get(N - 1).commit)
         const result = Tuple(first, last)
-        assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+        assert.isTrue(
+          Equals.equals(result, Tuple("a+b+c", "a+b+c")) ||
+            Equals.equals(result, Tuple("a+c+b", "a+c+b"))
+        )
       }).unsafeRunPromise())
   })
 
@@ -25,7 +28,9 @@ describe.concurrent("TArray", () => {
         const first = $(array.get(0).commit)
         const last = $(array.get(N - 1).commit)
         const result = Tuple(first, last)
-        assert.isTrue(result == Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+        assert.isTrue(
+          Equals.equals(result, Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+        )
       }).unsafeRunPromise())
 
     it("updates all or nothing", () =>

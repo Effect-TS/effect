@@ -52,13 +52,13 @@ describe.concurrent("TMap", () => {
     it("toMap", async () => {
       const elems = new Map<string, number>([["a", 1], ["b", 2]])
       const tx = Do(($) => {
-        const tmap = $(TMap.fromIterable(Chunk.from(elems).map(Tuple.fromNative)))
-        const map = $(tmap.toMap.map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
+        const tmap = $(TMap.fromIterable(Chunk.from(elems)))
+        const map = $(tmap.toMap.map(Chunk.from))
 
         return hasSameElements(
           map,
           Equivalence.tuple(Equivalence.string, Equivalence.number),
-          Chunk.from(elems).map(Tuple.fromNative)
+          Chunk.from(elems)
         )
       })
       const result = await tx.commit.unsafeRunPromise()
@@ -69,8 +69,8 @@ describe.concurrent("TMap", () => {
     it("merge", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1)))
-        const a = $(tmap.merge("a", 2, (_) => _.get(0) + _.get(1)))
-        const b = $(tmap.merge("b", 2, (_) => _.get(0) + _.get(1)))
+        const a = $(tmap.merge("a", 2, (_) => _[0] + _[1]))
+        const b = $(tmap.merge("b", 2, (_) => _[0] + _[1]))
 
         return a === 3 && b === 2
       })
@@ -83,7 +83,7 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
 
-        $(tmap.transform((kv) => Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2)))
+        $(tmap.transform((kv) => Tuple(kv[0].replaceAll("a", "b"), kv[1] * 2)))
 
         const res = $(tmap.toList)
 
@@ -108,7 +108,7 @@ describe.concurrent("TMap", () => {
           )
         )
 
-        $(tmap.transform((kv) => Tuple(new HashContainer(kv.get(0).i * -2), kv.get(1) * 2)))
+        $(tmap.transform((kv) => Tuple(new HashContainer(kv[0].i * -2), kv[1] * 2)))
 
         const res = $(tmap.toList)
 
@@ -131,7 +131,7 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
 
-        $(tmap.transform((kv) => Tuple("key", kv.get(1) * 2)))
+        $(tmap.transform((kv) => Tuple("key", kv[1] * 2)))
 
         const res = $(tmap.toList)
 
@@ -150,9 +150,7 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
 
-        $(tmap.transformSTM((kv) =>
-          STM.succeed(Tuple(kv.get(0).replaceAll("a", "b"), kv.get(1) * 2))
-        ))
+        $(tmap.transformSTM((kv) => STM.succeed(Tuple(kv[0].replaceAll("a", "b"), kv[1] * 2))))
 
         const res = $(tmap.toList)
 
@@ -171,7 +169,7 @@ describe.concurrent("TMap", () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
 
-        $(tmap.transformSTM((kv) => STM.succeed(Tuple("key", kv.get(1) * 2))))
+        $(tmap.transformSTM((kv) => STM.succeed(Tuple("key", kv[1] * 2))))
 
         const res = $(tmap.toList)
 
@@ -252,12 +250,12 @@ describe.concurrent("TMap", () => {
         $(tmap.updateWith("c", (v) => Maybe.some(3)))
         $(tmap.updateWith("d", (v) => Maybe.none))
 
-        const res = $(tmap.toMap.map(Chunk.from).map((_) => _.map(Tuple.fromNative)))
+        const res = $(tmap.toMap.map(Chunk.from))
 
         return hasSameElements(
           res,
           Equivalence.tuple(Equivalence.string, Equivalence.number),
-          Chunk.from(new Map([["a", 2], ["c", 3]])).map(Tuple.fromNative)
+          Chunk.from(new Map([["a", 2], ["c", 3]]))
         )
       })
       const result = await tx.commit.unsafeRunPromise()

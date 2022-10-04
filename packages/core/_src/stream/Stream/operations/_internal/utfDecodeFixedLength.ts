@@ -29,9 +29,7 @@ function readThenTransduce<R, E>(
 ): Channel<R, E, Chunk<number>, unknown, E, Chunk<string>, unknown> {
   return Channel.readWith(
     (received: Chunk<number>) => {
-      const {
-        tuple: [string, buffered]
-      } = process(buffer, received, charset, fixedLength)
+      const [string, buffered] = process(buffer, received, charset, fixedLength)
       return (
         Channel.write(string).flatMap(() => readThenTransduce<R, E>(buffered, charset, fixedLength))
       )
@@ -46,18 +44,16 @@ function process(
   received: Chunk<number>,
   charset: Charset,
   fixedLength: number
-): Tuple<[Chunk<string>, Chunk<number>]> {
+): readonly [Chunk<string>, Chunk<number>] {
   const bytes = buffered + received
   const remainder = bytes.length % fixedLength
 
   if (remainder === 0) {
-    return Tuple(stringChunkFrom(bytes, charset), emptyByteChunk)
+    return [stringChunkFrom(bytes, charset), emptyByteChunk]
   }
   if (bytes.length > fixedLength) {
-    const {
-      tuple: [fullChunk, rest]
-    } = bytes.splitAt(bytes.length - remainder)
-    return Tuple(stringChunkFrom(fullChunk, charset), rest)
+    const [fullChunk, rest] = bytes.splitAt(bytes.length - remainder)
+    return [stringChunkFrom(fullChunk, charset), rest]
   }
-  return Tuple(emptyStringChunk, bytes.materialize)
+  return [emptyStringChunk, bytes.materialize]
 }

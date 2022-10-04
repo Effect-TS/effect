@@ -6,7 +6,7 @@
  * @tsplus pipeable effect/core/stm/TMap findAllSTM
  */
 export function findAllSTM<K, V, R, E, A>(
-  pf: (kv: Tuple<[K, V]>) => STM<R, Maybe<E>, A>
+  pf: (kv: readonly [K, V]) => STM<R, Maybe<E>, A>
 ) {
   return (self: TMap<K, V>): STM<R, E, Chunk<A>> =>
     self.foldSTM(

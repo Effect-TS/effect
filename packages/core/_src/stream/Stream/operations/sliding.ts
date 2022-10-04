@@ -37,7 +37,7 @@ function reader<E, A>(
   return Channel.readWithCause(
     (input: Chunk<A>) =>
       Channel.write(
-        input.zipWithIndex.collect(({ tuple: [a, index] }) => {
+        input.zipWithIndex.collect(([a, index]) => {
           queue.put(a)
 
           const currentIndex = queueSize + index + 1

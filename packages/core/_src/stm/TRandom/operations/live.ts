@@ -1,12 +1,11 @@
 import { TRandomSym } from "@effect/core/stm/TRandom/definition"
-import { Tuple } from "@tsplus/stdlib/data/Tuple"
-import type { PCGRandomState } from "@tsplus/stdlib/utilities/RandomPCG"
+import type { PCGRandomState } from "@tsplus/stdlib/io/Random"
 
 /**
  * @tsplus static effect/core/stm/TRandom.Ops default
  */
 export const defaultTRandom =
-  TRef.make(new RandomPCG((Math.random() * 4294967296) >>> 0).getState()).map((_) =>
+  TRef.make(new PCGRandom((Math.random() * 4294967296) >>> 0).getState()).map((_) =>
     new LiveTRandom(_)
   ).commit
 
@@ -15,33 +14,33 @@ export const defaultTRandom =
  */
 export const live = Layer.fromEffect(TRandom.Tag, defaultTRandom)
 
-function rndInt(state: PCGRandomState): Tuple<[number, PCGRandomState]> {
-  const prng = new RandomPCG()
+function rndInt(state: PCGRandomState): readonly [number, PCGRandomState] {
+  const prng = new PCGRandom()
 
   prng.setState(state)
 
-  return Tuple(prng.integer(0), prng.getState())
+  return [prng.integer(0), prng.getState()]
 }
 
 function rndIntBetween(
   low: number,
   high: number
-): (state: PCGRandomState) => Tuple<[number, PCGRandomState]> {
+): (state: PCGRandomState) => readonly [number, PCGRandomState] {
   return (state: PCGRandomState) => {
-    const prng = new RandomPCG()
+    const prng = new PCGRandom()
 
     prng.setState(state)
 
-    return Tuple(prng.integer(high - low) + low, prng.getState())
+    return [prng.integer(high - low) + low, prng.getState()]
   }
 }
 
-function rndNumber(state: PCGRandomState): Tuple<[number, PCGRandomState]> {
-  const prng = new RandomPCG()
+function rndNumber(state: PCGRandomState): readonly [number, PCGRandomState] {
+  const prng = new PCGRandom()
 
   prng.setState(state)
 
-  return Tuple(prng.number(), prng.getState())
+  return [prng.number(), prng.getState()]
 }
 
 export class LiveTRandom implements TRandom {
@@ -50,7 +49,7 @@ export class LiveTRandom implements TRandom {
   constructor(readonly state: TRef<PCGRandomState>) {
   }
 
-  withState<A>(f: (state: PCGRandomState) => Tuple<[A, PCGRandomState]>): STM<never, never, A> {
+  withState<A>(f: (state: PCGRandomState) => readonly [A, PCGRandomState]): STM<never, never, A> {
     return this.state.modify(f)
   }
 

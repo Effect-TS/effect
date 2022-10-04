@@ -14,19 +14,19 @@ export function delays<State, Env, In, Out>(
     self
       .step(now, input, state)
       .flatMap((
-        { tuple: [state, _, decision] }
-      ): Effect<never, never, Tuple<[State, Duration, Decision]>> => {
+        [state, _, decision]
+      ): Effect<never, never, readonly [State, Duration, Decision]> => {
         switch (decision._tag) {
           case "Done": {
-            return Effect.succeed(Tuple(state, (0).millis, decision))
+            return Effect.succeed([state, (0).millis, decision] as const)
           }
           case "Continue": {
             return Effect.succeed(
-              Tuple(
+              [
                 state,
                 new DurationInternal(decision.intervals.start - now),
                 decision
-              )
+              ] as const
             )
           }
         }

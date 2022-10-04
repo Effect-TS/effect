@@ -25,7 +25,7 @@ function reader<R, E, S, In>(
   return Channel.readWith(
     (chunk: Chunk<In>) =>
       Channel.fromEffect(foldChunkSplitEffect(z, chunk, cont, f)).flatMap(
-        ({ tuple: [nextS, leftovers] }) =>
+        ([nextS, leftovers]) =>
           leftovers.fold(reader(nextS, cont, f), (leftover) => Channel.write(leftover).as(nextS))
       ),
     (err) => Channel.fail(err),
@@ -38,7 +38,7 @@ function foldChunkSplitEffect<R, E, S, In>(
   chunk: Chunk<In>,
   cont: Predicate<S>,
   f: (s: S, input: In) => Effect<R, E, S>
-): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
+): Effect<R, E, readonly [S, Maybe<Chunk<In>>]> {
   return foldEffectInternal(z, chunk, cont, f, 0, chunk.length)
 }
 
@@ -49,13 +49,13 @@ function foldEffectInternal<R, E, S, In>(
   f: (s: S, input: In) => Effect<R, E, S>,
   index: number,
   length: number
-): Effect<R, E, Tuple<[S, Maybe<Chunk<In>>]>> {
+): Effect<R, E, readonly [S, Maybe<Chunk<In>>]> {
   if (index === length) {
-    return Effect.succeed(Tuple(z, Maybe.none))
+    return Effect.succeed([z, Maybe.none])
   }
   return f(z, chunk.unsafeGet(index)).flatMap((z1) =>
     cont(z1)
       ? foldEffectInternal<R, E, S, In>(z1, chunk, cont, f, index + 1, length)
-      : Effect.succeed(Tuple(z1, Maybe.some(chunk.drop(index + 1))))
+      : Effect.succeed([z1, Maybe.some(chunk.drop(index + 1))])
   )
 }

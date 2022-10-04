@@ -1,5 +1,5 @@
 export function bufferSignal<R, E, A>(
-  effect: Effect<Scope, never, Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>>,
+  effect: Effect<Scope, never, Queue<readonly [Take<E, A>, Deferred<never, void>]>>,
   channel: Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>
 ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, void> {
   return Channel.unwrapScoped(
@@ -15,7 +15,7 @@ export function bufferSignal<R, E, A>(
 }
 
 function producer<E, A>(
-  queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
+  queue: Queue<readonly [Take<E, A>, Deferred<never, void>]>,
   ref: Ref<Deferred<never, void>>
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
   return Channel.readWith(
@@ -23,7 +23,7 @@ function producer<E, A>(
       Channel.fromEffect(
         Do(($) => {
           const deferred = $(Deferred.make<never, void>())
-          const added = $(queue.offer(Tuple(Take.chunk(input), deferred)))
+          const added = $(queue.offer([Take.chunk(input), deferred] as const))
           $(Effect.when(added, ref.set(deferred)))
         })
       ).zipRight(producer(queue, ref)),
@@ -33,7 +33,7 @@ function producer<E, A>(
 }
 
 function consumer<E, A>(
-  queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>
+  queue: Queue<readonly [Take<E, A>, Deferred<never, void>]>
 ): Channel<never, unknown, unknown, unknown, E, Chunk<A>, void> {
   const process: Channel<
     never,
@@ -44,7 +44,7 @@ function consumer<E, A>(
     Chunk<A>,
     void
   > = Channel.fromEffect(queue.take).flatMap(
-    ({ tuple: [take, deferred] }) =>
+    ([take, deferred]) =>
       Channel.fromEffect(deferred.succeed(undefined)).flatMap(() =>
         take.fold(
           Channel.unit,
@@ -57,7 +57,7 @@ function consumer<E, A>(
 }
 
 function terminate<E, A>(
-  queue: Queue<Tuple<[Take<E, A>, Deferred<never, void>]>>,
+  queue: Queue<readonly [Take<E, A>, Deferred<never, void>]>,
   ref: Ref<Deferred<never, void>>,
   take: Take<E, A>
 ): Channel<never, E, Chunk<A>, unknown, never, never, unknown> {
@@ -66,7 +66,7 @@ function terminate<E, A>(
       const latch = $(ref.get)
       $(latch.await)
       const deferred = $(Deferred.make<never, void>())
-      $(queue.offer(Tuple(take, deferred)))
+      $(queue.offer([take, deferred]))
       $(ref.set(deferred))
       $(deferred.await)
     })

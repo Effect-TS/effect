@@ -5,8 +5,5 @@
  * @tsplus pipeable effect/core/stm/TMap transformValues
  */
 export function transformValues<V>(f: (v: V) => V) {
-  return <K>(self: TMap<K, V>): STM<never, never, void> =>
-    self.transform(
-      (kv) => Tuple(kv.get(0), f(kv.get(1)))
-    )
+  return <K>(self: TMap<K, V>): STM<never, never, void> => self.transform((kv) => [kv[0], f(kv[1])])
 }

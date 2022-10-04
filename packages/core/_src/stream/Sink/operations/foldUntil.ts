@@ -12,8 +12,8 @@ export function foldUntil<In, S>(
   f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.fold(
-    Tuple(z, 0),
-    (tuple) => tuple.get(1) < max,
-    ({ tuple: [o, count] }, i: In) => Tuple(f(o, i), count + 1)
-  ).map((tuple) => tuple.get(0))
+    [z, 0 as number] as const,
+    (tuple) => tuple[1] < max,
+    ([o, count], i: In) => [f(o, i), count + 1] as const
+  ).map((tuple) => tuple[0])
 }

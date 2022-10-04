@@ -3,10 +3,10 @@ import { RandomSym } from "@effect/core/io/Random/definition"
 export class LiveRandom implements Random {
   readonly [RandomSym]: RandomSym = RandomSym
 
-  readonly PRNG: RandomPCG
+  readonly PRNG: PCGRandom
 
   constructor(readonly seed: number) {
-    this.PRNG = new RandomPCG(seed)
+    this.PRNG = new PCGRandom(seed)
   }
 
   get next(): Effect<never, never, number> {
