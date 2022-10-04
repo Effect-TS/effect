@@ -9,17 +9,19 @@ import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/Int
 export function findSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
   return (self: TArray<A>): STM<never, E, Maybe<A>> => {
     concreteTArray(self)
-    const init = Tuple(Maybe.empty<A>(), 0)
-    const cont = (s: Tuple<[Maybe<A>, number]>) => s.get(0).isNone() && s.get(1) < self.chunk.length
+    const init = [Maybe.empty<A>(), 0 as number] as const
+    const cont = (s: readonly [Maybe<A>, number]) => s[0].isNone() && s[1] < self.chunk.length
     return STM.iterate(
       init,
       cont
     )((s) => {
-      const index = s.get(1)
+      const index = s[1]
       return self.chunk
         .unsafeGet(index)!
         .get
-        .flatMap((a) => f(a).map((result) => Tuple(result ? Maybe.some(a) : Maybe.none, index + 1)))
-    }).map((tuple) => tuple.get(0))
+        .flatMap((a) =>
+          f(a).map((result) => [result ? Maybe.some(a) : Maybe.none, index + 1] as const)
+        )
+    }).map((tuple) => tuple[0])
   }
 }

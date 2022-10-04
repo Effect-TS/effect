@@ -13,15 +13,15 @@ export function foldEffect<Out, Env1, Z>(
 ) {
   return <State, Env, In>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State, Z]>, Env | Env1, In, Z> =>
-    makeWithState(Tuple(self.initial, z), (now, input, { tuple: [s, z] }) =>
+  ): Schedule<readonly [State, Z], Env | Env1, In, Z> =>
+    makeWithState([self.initial, z] as const, (now, input, [s, z]) =>
       self
         .step(now, input, s)
         .flatMap((
-          { tuple: [s, out, decision] }
-        ): Effect<Env | Env1, never, Tuple<[Tuple<[State, Z]>, Z, Decision]>> =>
+          [s, out, decision]
+        ): Effect<Env | Env1, never, readonly [readonly [State, Z], Z, Decision]> =>
           decision._tag === "Done"
-            ? Effect.succeed(Tuple(Tuple(s, z), z, decision))
-            : f(z, out).map((z2) => Tuple(Tuple(s, z2), z, decision))
+            ? Effect.succeed([[s, z], z, decision])
+            : f(z, out).map((z2) => [[s, z2], z, decision])
         ))
 }

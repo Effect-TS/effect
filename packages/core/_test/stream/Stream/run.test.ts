@@ -74,8 +74,8 @@ describe.concurrent("Stream", () => {
 
       const { collectAndCheck, finalState } = await program.unsafeRunPromise()
 
-      assert.isTrue(collectAndCheck.get(0) == Chunk(1, 1, 1))
-      assert.isFalse(collectAndCheck.get(1))
+      assert.isTrue(collectAndCheck[0] == Chunk(1, 1, 1))
+      assert.isFalse(collectAndCheck[1])
       assert.isTrue(finalState)
     })
   })

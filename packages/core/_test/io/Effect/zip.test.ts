@@ -4,11 +4,11 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const result = $(
           Effect.sync(1)
-            .zipFlatten(Effect.unit)
+            .zip(Effect.unit)
             .zipFlatten(Effect.sync("test"))
             .zipFlatten(Effect.sync(true))
         )
-        assert.isTrue(result == Tuple(1, undefined, "test", true))
+        assert.isTrue(Equals.equals(result, Tuple(1, undefined, "test", true)))
       }).unsafeRunPromise())
   })
 
@@ -37,7 +37,7 @@ describe.concurrent("Effect", () => {
         const result = $(
           Effect.sync(1)
             .zipPar(Effect.sync(2))
-            .flatMap((tuple) => Effect.sync(tuple.get(0) + tuple.get(1)))
+            .flatMap((tuple) => Effect.sync(tuple[0] + tuple[1]))
             .map((n) => n === 3)
         )
         assert.isTrue(result)
@@ -50,7 +50,7 @@ describe.concurrent("Effect", () => {
             ? Effect.sync(0)
             : Effect.sync(1)
               .zipPar(Effect.sync(2))
-              .flatMap((tuple) => countdown(n - 1).map((y) => tuple.get(0) + tuple.get(1) + y))
+              .flatMap((tuple) => countdown(n - 1).map((y) => tuple[0] + tuple[1] + y))
         }
         const result = $(countdown(50))
         assert.strictEqual(result, 150)
@@ -70,8 +70,8 @@ describe.concurrent("Effect", () => {
         const right = latch3.succeed(undefined).as(42)
         $((latch2.await > latch3.await > latch1.succeed(undefined)).fork)
         const result = $(left.fork.zipPar(right))
-        const leftInnerFiber = result.get(0)
-        const rightResult = result.get(1)
+        const leftInnerFiber = result[0]
+        const rightResult = result[1]
         const leftResult = $(leftInnerFiber.await)
         const interrupted = $(ref.get)
         assert.isFalse(interrupted)

@@ -9,19 +9,19 @@ export function fromPush<R, E, In, L, Z>(
   push: Effect<
     R | Scope,
     never,
-    (input: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
+    (input: Maybe<Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk<L>], void>
   >
 ): Sink<R, E, In, L, Z> {
   return new SinkInternal(Channel.unwrapScoped(push.map(pull)))
 }
 
 function pull<R, E, In, L, Z>(
-  push: (option: Maybe<Chunk<In>>) => Effect<R, Tuple<[Either<E, Z>, Chunk<L>]>, void>
+  push: (option: Maybe<Chunk<In>>) => Effect<R, readonly [Either<E, Z>, Chunk<L>], void>
 ): Channel<R, never, Chunk<In>, unknown, E, Chunk<L>, Z> {
   return Channel.readWith(
     (input: Chunk<In>) =>
       Channel.fromEffect(push(Maybe.some(input))).foldChannel(
-        ({ tuple: [either, leftovers] }) =>
+        ([either, leftovers]) =>
           either.fold(
             (e) => Channel.write(leftovers).flatMap(() => Channel.fail(e)),
             (z) => Channel.write(leftovers).flatMap(() => Channel.succeed(z))
@@ -31,7 +31,7 @@ function pull<R, E, In, L, Z>(
     (err) => Channel.fail(err),
     () =>
       Channel.fromEffect(push(Maybe.none)).foldChannel(
-        ({ tuple: [either, leftovers] }) =>
+        ([either, leftovers]) =>
           either.fold(
             (e) => Channel.write(leftovers).flatMap(() => Channel.fail(e)),
             (z) => Channel.write(leftovers).flatMap(() => Channel.succeed(z))

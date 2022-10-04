@@ -52,19 +52,17 @@ function zipWithChunks<A, A2, A3>(
   leftChunk: Chunk<A>,
   rightChunk: Chunk<A2>,
   f: (a: A, a2: A2) => A3
-): Tuple<[Chunk<A3>, State<A, A2>]> {
-  const {
-    tuple: [out, either]
-  } = zipChunks(leftChunk, rightChunk, f)
+): readonly [Chunk<A3>, State<A, A2>] {
+  const [out, either] = zipChunks(leftChunk, rightChunk, f)
   return either.fold(
     (leftChunk) =>
       leftChunk.isEmpty
-        ? Tuple(out, new PullBoth())
-        : Tuple(out, new PullRight(leftChunk)),
+        ? [out, new PullBoth()]
+        : [out, new PullRight(leftChunk)],
     (rightChunk) =>
       rightChunk.isEmpty
-        ? Tuple(out, new PullBoth())
-        : Tuple(out, new PullLeft(rightChunk))
+        ? [out, new PullBoth()]
+        : [out, new PullLeft(rightChunk)]
   )
 }
 
@@ -77,12 +75,12 @@ function pull<A, A2, A3>(
     state: State<A, A2>,
     pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
     pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
-  ): Effect<R | R2, never, Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>> => {
+  ): Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>> => {
     switch (state._tag) {
       case "DrainLeft": {
         return pullLeft.foldEffect(
           (err) => Effect.succeed(Exit.fail(err)),
-          (leftChunk) => Effect.succeed(Exit.succeed(Tuple(leftChunk.map(left), new DrainLeft())))
+          (leftChunk) => Effect.succeed(Exit.succeed([leftChunk.map(left), new DrainLeft()]))
         )
       }
       case "DrainRight": {
@@ -90,7 +88,7 @@ function pull<A, A2, A3>(
           (err) => Effect.succeed(Exit.fail(err)),
           (rightChunk) =>
             Effect.succeed(
-              Exit.succeed(Tuple(rightChunk.map(right), new DrainRight()))
+              Exit.succeed([rightChunk.map(right), new DrainRight()])
             )
         )
       }
@@ -100,7 +98,7 @@ function pull<A, A2, A3>(
           .zipPar(pullRight.unsome)
           .foldEffect(
             (err) => Effect.succeed(Exit.fail(Maybe.some(err))),
-            ({ tuple: [l, r] }) => {
+            ([l, r]) => {
               if (l._tag === "Some" && r._tag === "Some") {
                 const leftChunk = l.value
                 const rightChunk = r.value
@@ -125,11 +123,11 @@ function pull<A, A2, A3>(
                 }
               } else if (l._tag === "Some" && r._tag === "None") {
                 return Effect.succeed(
-                  Exit.succeed(Tuple(l.value.map(left), new DrainLeft()))
+                  Exit.succeed([l.value.map(left), new DrainLeft()])
                 )
               } else if (l._tag === "None" && r._tag === "Some") {
                 return Effect.succeed(
-                  Exit.succeed(Tuple(r.value.map(right), new DrainRight()))
+                  Exit.succeed([r.value.map(right), new DrainRight()])
                 )
               } else {
                 return Effect.succeed(Exit.fail(Maybe.none))
@@ -141,11 +139,11 @@ function pull<A, A2, A3>(
         return pullLeft.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
-                Exit.succeed(Tuple(state.rightChunk.map(right), new DrainRight()))
+              Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
+                Exit.succeed([state.rightChunk.map(right), new DrainRight()])
               ),
               (err) =>
-                Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+                Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
                   Exit.fail(Maybe.some(err))
                 )
             ),
@@ -167,11 +165,11 @@ function pull<A, A2, A3>(
         return pullRight.foldEffect(
           (option) =>
             option.fold(
-              Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
-                Exit.succeed(Tuple(state.leftChunk.map(left), new DrainLeft()))
+              Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
+                Exit.succeed([state.leftChunk.map(left), new DrainLeft()])
               ),
               (err) =>
-                Effect.succeed<Exit<Maybe<E | E2>, Tuple<[Chunk<A3>, State<A, A2>]>>>(
+                Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
                   Exit.fail(Maybe.some(err))
                 )
             ),

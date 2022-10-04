@@ -37,7 +37,7 @@ function go<R, E, R2, E2, R3, E3, In, S>(
     (chunk: Chunk<In>) =>
       Channel.fromEffect(
         fold(chunk, s, costFn, max, decompose, f, dirty, cost, 0)
-      ).flatMap(({ tuple: [nextS, nextCost, nextDirty, leftovers] }) =>
+      ).flatMap(([nextS, nextCost, nextDirty, leftovers]) =>
         leftovers.isNonEmpty
           ? Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
           : cost > max
@@ -67,9 +67,9 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
   dirty: boolean,
   cost: number,
   index: number
-): Effect<R | R2 | R3, E | E2 | E3, Tuple<[S, number, boolean, Chunk<In>]>> {
+): Effect<R | R2 | R3, E | E2 | E3, readonly [S, number, boolean, Chunk<In>]> {
   if (index === input.length) {
-    return Effect.sync(Tuple(s, cost, dirty, Chunk.empty<In>()))
+    return Effect.sync([s, cost, dirty, Chunk.empty<In>()])
   }
 
   const elem = input.unsafeGet(index)
@@ -88,13 +88,13 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
           // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
           // minimize "injury", we only allow this when we haven't added anything else
           // to the aggregate (dirty = false).
-          return f(s, elem).map((s) => Tuple(s, total, true, input.drop(index + 1)))
+          return f(s, elem).map((s) => [s, total, true, input.drop(index + 1)] as const)
         }
 
         if (decomposed.length <= 1 && dirty) {
           // If the state is dirty and `elem` cannot be decomposed, we stop folding
           // and include `elem` in the leftovers.
-          return Effect.sync(Tuple(s, cost, dirty, input.drop(index)))
+          return Effect.sync([s, cost, dirty, input.drop(index)] as const)
         }
         // `elem` got decomposed, so we will recurse with the decomposed elements pushed
         // into the chunk we're processing and see if we can aggregate further.

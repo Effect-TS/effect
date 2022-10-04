@@ -163,7 +163,7 @@ export namespace FiberRef {
      * version of `update`.
      */
     modify<B>(
-      f: (a: Value) => Tuple<[B, Value]>
+      f: (a: Value) => readonly [B, Value]
     ): Effect<never, never, B>
 
     /**
@@ -183,7 +183,7 @@ export namespace FiberRef {
     modifySome<B>(
       this: FiberRef.WithPatch<Value, Patch>,
       def: B,
-      f: (a: Value) => Maybe<Tuple<[B, Value]>>
+      f: (a: Value) => Maybe<readonly [B, Value]>
     ): Effect<never, never, B>
 
     /**

@@ -10,9 +10,9 @@ export function intersect<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
-    Tuple<[State, State1]>,
+    readonly [State, State1],
     Env | Env1,
     In & In1,
-    Tuple<[Out, Out2]>
+    readonly [Out, Out2]
   > => self.intersectWith(that, (x, y) => x.intersect(y))
 }

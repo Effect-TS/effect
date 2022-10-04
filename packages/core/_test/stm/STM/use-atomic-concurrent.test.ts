@@ -16,13 +16,16 @@ describe.concurrent("STM", () => {
 
     it("compute a `TRef` from 2 variables, increment the first `TRef` and decrement the second `TRef` in different fibers", async () => {
       const program = Effect.Do()
-        .bind("refs", () => STM.atomically(TRef.make(10000) + TRef.make(0) + TRef.make(0)))
+        .bind(
+          "refs",
+          () => STM.atomically(TRef.make(10000).zip(TRef.make(0)).zipFlatten(TRef.make(0)))
+        )
         .bind("fiber", ({ refs }) =>
           Effect.forkAll(
-            Chunk.fill(10, () => compute3RefN(99, refs.get(0), refs.get(1), refs.get(2)))
+            Chunk.fill(10, () => compute3RefN(99, refs[0], refs[1], refs[2]))
           ))
         .tap(({ fiber }) => fiber.join)
-        .flatMap(({ refs }) => refs.get(2).get.commit)
+        .flatMap(({ refs }) => refs[2].get.commit)
 
       const result = await program.unsafeRunPromise()
 

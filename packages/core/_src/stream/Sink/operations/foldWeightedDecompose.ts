@@ -39,9 +39,17 @@ function go<S, In>(
 ): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
   return Channel.readWith(
     (chunk: Chunk<In>) => {
-      const {
-        tuple: [nextS, nextCost, nextDirty, leftovers]
-      } = fold(chunk, s, costFn, decompose, f, dirty, cost, max, 0)
+      const [nextS, nextCost, nextDirty, leftovers] = fold(
+        chunk,
+        s,
+        costFn,
+        decompose,
+        f,
+        dirty,
+        cost,
+        max,
+        0
+      )
 
       if (leftovers.isNonEmpty) {
         return Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
@@ -68,9 +76,9 @@ function fold<S, In>(
   cost: number,
   max: number,
   index: number
-): Tuple<[S, number, boolean, Chunk<In>]> {
+): readonly [S, number, boolean, Chunk<In>] {
   if (index === input.length) {
-    return Tuple(s, cost, dirty, Chunk.empty<In>())
+    return [s, cost, dirty, Chunk.empty<In>()]
   }
 
   const elem = input.unsafeGet(index)
@@ -86,13 +94,13 @@ function fold<S, In>(
     // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
     // minimize "injury", we only allow this when we haven't added anything else
     // to the aggregate (dirty = false).
-    return Tuple(f(s, elem), total, true, input.drop(index + 1))
+    return [f(s, elem), total, true, input.drop(index + 1)]
   }
 
   if (decomposed.length <= 1 && dirty) {
     // If the state is dirty and `elem` cannot be decomposed, we stop folding
     // and include `elem` in the leftovers.
-    return Tuple(s, cost, dirty, input.drop(index))
+    return [s, cost, dirty, input.drop(index)]
   }
 
   // `elem` got decomposed, so we will recurse with the decomposed elements pushed

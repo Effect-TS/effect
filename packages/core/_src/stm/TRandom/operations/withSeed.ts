@@ -7,6 +7,6 @@ export function withSeed(seed: number) {
   return <R, E, A>(stm: STM<R, E, A>): STM<Exclude<R, TRandom>, E, A> =>
     stm.provideServiceSTM(
       TRandom.Tag,
-      TRef.make(new RandomPCG(seed).getState()).map((_) => new LiveTRandom(_))
+      TRef.make(new PCGRandom(seed).getState()).map((_) => new LiveTRandom(_))
     )
 }

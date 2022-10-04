@@ -10,14 +10,14 @@ const LOAD_FACTOR = .75 as const
 function resize<K, V>(
   self: TMap<K, V>,
   journal: Journal,
-  buckets: TArray<List<Tuple<[K, V]>>>,
+  buckets: TArray<List<readonly [K, V]>>,
   k: K,
   v: V
 ): void {
   concreteTArray(buckets)
   const capacity = buckets.chunk.length
   const newCapacity = capacity << 1
-  const newBuckets: Array<List<Tuple<[K, V]>>> = Array.from(
+  const newBuckets: Array<List<readonly [K, V]>> = Array.from(
     { length: newCapacity },
     () => List.nil()
   )
@@ -27,7 +27,7 @@ function resize<K, V>(
     const pairs = buckets.chunk.unsafeGet(i)!.unsafeGet(journal)
 
     for (const pair of pairs) {
-      const idx = TMap.indexOf(pair.get(0), newCapacity)
+      const idx = TMap.indexOf(pair[0], newCapacity)
 
       newBuckets[idx] = List.cons(pair, newBuckets[idx]!)
     }
@@ -36,9 +36,9 @@ function resize<K, V>(
   }
 
   const newIdx = TMap.indexOf(k, newCapacity)
-  newBuckets[newIdx] = List.cons(Tuple(k, v), newBuckets[newIdx]!)
+  newBuckets[newIdx] = List.cons([k, v], newBuckets[newIdx]!)
 
-  const newArray: Array<TRef<List<Tuple<[K, V]>>>> = new Array(newCapacity)
+  const newArray: Array<TRef<List<readonly [K, V]>>> = new Array(newCapacity)
 
   i = 0
   while (i < newCapacity) {
@@ -68,10 +68,10 @@ export function put<K, V>(k: K, v: V) {
       const capacity = buckets.chunk.length
       const idx = TMap.indexOf(k, capacity)
       const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
-      const shouldUpdate = bucket.exists((_) => Equals.equals(_.get(0), k))
+      const shouldUpdate = bucket.exists((_) => Equals.equals(_[0], k))
 
       if (shouldUpdate) {
-        const newBucket = bucket.map((kv) => Equals.equals(kv.get(0), k) ? Tuple(k, v) : kv)
+        const newBucket = bucket.map((kv) => Equals.equals(kv[0], k) ? [k, v] : kv)
         buckets.chunk.unsafeGet(idx)!.unsafeSet(newBucket, journal)
       } else {
         const newSize = self.tSize.unsafeGet(journal) + 1
@@ -81,7 +81,7 @@ export function put<K, V>(k: K, v: V) {
         if (capacity * LOAD_FACTOR < newSize) {
           resize(self, journal, buckets, k, v)
         } else {
-          const newBucket = List.cons(Tuple(k, v), bucket)
+          const newBucket = List.cons([k, v], bucket)
           buckets.chunk.unsafeGet(idx)!.unsafeSet(newBucket, journal)
         }
       }

@@ -10,6 +10,6 @@ import { partitionMap } from "@effect/core/io/Effect/operations/_internal/partit
 export function partitionPar<R, E, A, B>(
   as: Collection<A>,
   f: (a: A) => Effect<R, E, B>
-): Effect<R, never, Tuple<[Chunk<E>, Chunk<B>]>> {
+): Effect<R, never, readonly [Chunk<E>, Chunk<B>]> {
   return Effect.forEachPar(as, (a) => f(a).either).map((chunk) => partitionMap(chunk, identity))
 }

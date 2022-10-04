@@ -12,8 +12,6 @@ export function passthrough<State, Env, Input, Output>(
   return makeWithState(
     self.initial,
     (now, input, state) =>
-      self.step(now, input, state).map(({ tuple: [state, _, decision] }) =>
-        Tuple(state, input, decision)
-      )
+      self.step(now, input, state).map(([state, _, decision]) => [state, input, decision])
   )
 }

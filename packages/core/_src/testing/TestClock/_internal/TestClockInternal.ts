@@ -63,15 +63,15 @@ export class TestClockInternal extends LiveClock {
       this.clockState.modify((data) => {
         const end = data.instant + duration.millis
         if (end > data.instant) {
-          return Tuple(
+          return [
             true,
             TestClock.Data(
               data.instant,
-              data.sleeps.prepend(Tuple(end, deferred))
+              data.sleeps.prepend([end, deferred])
             )
-          )
+          ]
         }
-        return Tuple(false, data)
+        return [false, data]
       }).flatMap((shouldAwait) =>
         shouldAwait ?
           this.warningStart.zipRight(deferred.await) :
@@ -85,7 +85,7 @@ export class TestClockInternal extends LiveClock {
    * resume.
    */
   get sleeps(): Effect<never, never, List<number>> {
-    return this.clockState.get.map((data) => data.sleeps.map((_) => _.get(0)))
+    return this.clockState.get.map((data) => data.sleeps.map((_) => _[0]))
   }
 
   /**
@@ -203,7 +203,7 @@ export class TestClockInternal extends LiveClock {
   private get suspended(): Effect<never, void, HashMap<FiberId, Fiber.Status>> {
     return this.freeze
       .zip(this.live.provide(Effect.sleep((5).millis)).zipRight(this.freeze))
-      .flatMap(({ tuple: [first, last] }) =>
+      .flatMap(([first, last]) =>
         first.equals(last) ?
           Effect.succeed(first) :
           Effect.fail(void 0)
@@ -269,24 +269,24 @@ export class TestClockInternal extends LiveClock {
     return this.awaitSuspended.zipRight(
       this.clockState.modify((data) => {
         const end = f(data.instant)
-        const sorted = data.sleeps.sortWith(Ord.number.contramap((_) => _.get(0)))
+        const sorted = data.sleeps.sortWith(Ord.number.contramap((_) => _[0]))
         if (sorted.isCons()) {
-          const { tuple: [instant, deferred] } = sorted.head
+          const [instant, deferred] = sorted.head
           if (instant <= end) {
-            return Tuple(
-              Maybe.some(Tuple(end, deferred)),
+            return [
+              Maybe.some([end, deferred] as const),
               TestClock.Data(instant, sorted.tail)
-            )
+            ] as const
           }
         }
-        return Tuple(Maybe.none, TestClock.Data(end, data.sleeps))
+        return [Maybe.none, TestClock.Data(end, data.sleeps)] as const
       }).flatMap((maybe) => {
         switch (maybe._tag) {
           case "None": {
             return Effect.unit
           }
           case "Some": {
-            const { tuple: [end, deferred] } = maybe.value
+            const [end, deferred] = maybe.value
             return deferred.succeed(undefined)
               .zipRight(Effect.yieldNow)
               .zipRight(this.run(() => end))

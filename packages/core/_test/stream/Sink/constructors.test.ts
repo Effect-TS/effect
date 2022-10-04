@@ -23,8 +23,8 @@ describe.concurrent("Sink", () => {
         )
         const stream = Stream(1, 2, 3)
         const result = $(stream.run(sink))
-        assert.isTrue(result.get(0) == Chunk(1, 2, 3))
-        assert.strictEqual(result.get(1), "boom")
+        assert.isTrue(result[0] == Chunk(1, 2, 3))
+        assert.strictEqual(result[1], "boom")
       }).unsafeRunPromise())
   })
 
@@ -251,7 +251,7 @@ describe.concurrent("Sink", () => {
           )
         )
         const finalResult = $(Stream(1, 2, 3).run(sink))
-        const { tuple: [result, state] } = finalResult
+        const [result, state] = finalResult
         const finalState = $(closed.get)
         assert.strictEqual(result, 103)
         assert.isFalse(state)

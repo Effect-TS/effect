@@ -7,6 +7,6 @@ export function summaryTimestamp(
   maxSize: number,
   error: number,
   quantiles: Chunk<number>
-): Metric.Summary<Tuple<[value: number, timestamp: number]>> {
+): Metric.Summary<readonly [value: number, timestamp: number]> {
   return Metric.fromMetricKey(MetricKey.Summary(name, maxAge, maxSize, error, quantiles))
 }

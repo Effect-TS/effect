@@ -18,9 +18,9 @@ export function tuple<T extends NonEmptyArrayEffect>(
 ): Effect<
   [T[number]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
   [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
-  ForcedTuple<TupleA<T>>
+  TupleA<T>
 > {
-  return Effect.collectAll(t).map((x) => Tuple(...x)) as any
+  return Effect.collectAll(t).map((c) => c.toArray) as any
 }
 
 /**
@@ -35,7 +35,7 @@ export function tuplePar<T extends NonEmptyArrayEffect>(
 ): Effect<
   [T[number]] extends [{ [EffectURI]: { _R: (_: never) => infer R } }] ? R : never,
   [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
-  ForcedTuple<TupleA<T>>
+  TupleA<T>
 > {
-  return Effect.collectAllPar(t).map((x) => Tuple(...x)) as any
+  return Effect.collectAllPar(t).map((c) => c.toArray) as any
 }

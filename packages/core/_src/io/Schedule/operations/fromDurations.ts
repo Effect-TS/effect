@@ -13,29 +13,29 @@ export function fromDurations(
   duration: Duration,
   ...durations: Array<Duration>
 ): Schedule<
-  Tuple<[Chunk<Duration>, boolean]>,
+  readonly [Chunk<Duration>, boolean],
   never,
   unknown,
   Duration
 > {
   return makeWithState(
-    Tuple(Chunk.from([duration, ...durations]), true as boolean),
-    (now, _, { tuple: [durations, cont] }) =>
+    [Chunk.from([duration, ...durations]), true as boolean] as const,
+    (now, _, [durations, cont]) =>
       Effect.sync(() => {
         if (cont) {
           const x = durations.unsafeGet(0)!
           const interval = Interval.after(now + x.millis)
 
           if (durations.length >= 2) {
-            return Tuple(Tuple(durations.drop(1), true), x, Decision.continueWith(interval))
+            return [[durations.drop(1), true] as const, x, Decision.continueWith(interval)] as const
           }
 
           const y = durations.drop(1)
 
-          return Tuple(Tuple(y.prepend(x), false), x, Decision.continueWith(interval))
+          return [[y.prepend(x), false] as const, x, Decision.continueWith(interval)] as const
         }
 
-        return Tuple(Tuple(durations, false), (0).millis, Decision.Done)
+        return [[durations, false] as const, (0).millis, Decision.Done] as const
       })
   )
 }

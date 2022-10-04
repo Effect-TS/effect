@@ -9,8 +9,8 @@ import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
 export function mapAccum<A, B, R, E, S>(
   self: Collection<A>,
   s: S,
-  f: (s: S, a: A) => Effect<R, E, Tuple<[S, B]>>
-): Effect<R, E, Tuple<[S, Chunk<B>]>> {
+  f: (s: S, a: A) => Effect<R, E, readonly [S, B]>
+): Effect<R, E, readonly [S, Chunk<B>]> {
   return Effect.suspendSucceed(() => {
     const chunk = Chunk.from(self)
     const iterator = concreteChunkId(chunk)._arrayLikeIterator()
@@ -24,7 +24,7 @@ export function mapAccum<A, B, R, E, S>(
       while (i < length) {
         const a = array[i]!
         dest = dest.flatMap((state) =>
-          f(state, a).map(({ tuple: [s, b] }) => {
+          f(state, a).map(([s, b]) => {
             builder = builder.append(b)
             return s
           })
@@ -32,6 +32,6 @@ export function mapAccum<A, B, R, E, S>(
         i++
       }
     }
-    return dest.map((s) => Tuple(s, builder))
+    return dest.map((s) => [s, builder] as const)
   })
 }

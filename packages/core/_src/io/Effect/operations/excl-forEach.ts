@@ -162,7 +162,7 @@ function forEachParN<R, E, A, B>(
     }
 
     function worker(
-      queue: Queue<Tuple<[A, number]>>,
+      queue: Queue<readonly [A, number]>,
       array: Array<B>
     ): Effect<R, E, void> {
       return queue
@@ -171,7 +171,7 @@ function forEachParN<R, E, A, B>(
         .flatMap((_) =>
           _.fold(
             () => Effect.unit,
-            ({ tuple: [a, n] }) =>
+            ([a, n]) =>
               f(a)
                 .tap((b) =>
                   Effect.sync(() => {
@@ -184,7 +184,7 @@ function forEachParN<R, E, A, B>(
     }
 
     return Effect.sync(new Array<B>(size)).flatMap((array) =>
-      makeBoundedQueue<Tuple<[A, number]>>(size).flatMap((queue) =>
+      makeBoundedQueue<readonly [A, number]>(size).flatMap((queue) =>
         queue
           .offerAll(as0.zipWithIndex)
           .flatMap(() =>
@@ -579,33 +579,33 @@ export function releaseMapReleaseAll(
   execStrategy: ExecutionStrategy
 ): Effect<never, never, unknown> {
   return self.ref
-    .modify((s): Tuple<[Effect<never, never, unknown>, State]> => {
+    .modify((s): readonly [Effect<never, never, unknown>, State] => {
       switch (s._tag) {
         case "Exited": {
-          return Tuple(Effect.unit, s)
+          return [Effect.unit, s] as const
         }
         case "Running": {
           switch (execStrategy._tag) {
             case "Sequential": {
-              return Tuple(
+              return [
                 Effect.forEach(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
                 ).flatMap((results) => Exit.collectAll(results).getOrElse(Exit.unit)),
                 new Exited(s.nextKey, ex, s.update)
-              )
+              ] as const
             }
             case "Parallel": {
-              return Tuple(
+              return [
                 Effect.forEachPar(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
                 ).flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit)),
                 new Exited(s.nextKey, ex, s.update)
-              )
+              ] as const
             }
             case "ParallelN": {
-              return Tuple(
+              return [
                 Effect.forEachPar(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
@@ -613,7 +613,7 @@ export function releaseMapReleaseAll(
                   .flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit))
                   .withParallelism(execStrategy.n) as Effect<never, never, unknown>,
                 new Exited(s.nextKey, ex, s.update)
-              )
+              ] as const
             }
           }
         }
@@ -717,10 +717,8 @@ class QueueImpl<A> implements Queue<A> {
       const pTakers = this.queue.isEmpty
         ? unsafePollN(this.takers, as0.size)
         : Chunk.empty<Deferred<never, A>>()
-      const {
-        tuple: [forTakers, remaining]
-      } = as0.splitAt(pTakers.size)
-      pTakers.zip(forTakers).forEach(({ tuple: [taker, item] }) => {
+      const [forTakers, remaining] = as0.splitAt(pTakers.size)
+      pTakers.zip(forTakers).forEach(([taker, item]) => {
         unsafeCompleteDeferred(taker, item)
       })
       if (remaining.isEmpty) {
@@ -912,7 +910,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
    * - `boolean` indicates if it's the last item to offer (deferred should be
    *    completed once this item is added)
    */
-  private putters = MutableQueue.unbounded<Tuple<[A, Deferred<never, boolean>, boolean]>>()
+  private putters = MutableQueue.unbounded<readonly [A, Deferred<never, boolean>, boolean]>()
 
   handleSurplus(
     as: Chunk<A>,
@@ -935,7 +933,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.putters,
-      unsafePollAll(this.putters).filter(({ tuple: [, _] }) => _ !== deferred)
+      unsafePollAll(this.putters).filter(([, _]) => _ !== deferred)
     )
   }
 
@@ -948,9 +946,9 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       bs = bs.drop(1)
 
       if (bs.size === 0) {
-        this.putters.offer(Tuple(head, deferred, true))
+        this.putters.offer([head, deferred, true] as const)
       } else {
-        this.putters.offer(Tuple(head, deferred, false))
+        this.putters.offer([head, deferred, false] as const)
       }
     }
   }
@@ -965,10 +963,10 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       const putter = this.putters.poll(EmptyMutableQueue)
 
       if (putter !== EmptyMutableQueue) {
-        const offered = queue.offer(putter.get(0))
+        const offered = queue.offer(putter[0])
 
-        if (offered && putter.get(2)) {
-          unsafeCompleteDeferred(putter.get(1), true)
+        if (offered && putter[2]) {
+          unsafeCompleteDeferred(putter[1], true)
         } else if (!offered) {
           unsafeOfferAll(this.putters, unsafePollAll(this.putters).prepend(putter))
         }
@@ -989,7 +987,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
       const putters = $(Effect.sync(unsafePollAll(this.putters)))
       $(Effect.forEachPar(
         putters,
-        ({ tuple: [_, promise, lastItem] }) => lastItem ? promise.interruptAs(fiberId) : Effect.unit
+        ([_, promise, lastItem]) => lastItem ? promise.interruptAs(fiberId) : Effect.unit
       ))
     })
   }

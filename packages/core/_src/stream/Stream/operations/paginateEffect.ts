@@ -7,10 +7,10 @@
  */
 export function paginateEffect<S, R, E, A>(
   s: S,
-  f: (s: S) => Effect<R, E, Tuple<[A, Maybe<S>]>>
+  f: (s: S) => Effect<R, E, readonly [A, Maybe<S>]>
 ): Stream<R, E, A> {
   return Stream.paginateChunkEffect(
     s,
-    (s) => f(s).map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s))
+    (s) => f(s).map(([a, s]) => [Chunk.single(a), s])
   )
 }

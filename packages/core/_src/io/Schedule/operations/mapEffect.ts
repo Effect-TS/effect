@@ -16,7 +16,5 @@ export function mapEffect<Out, Env1, Out2>(
     makeWithState(self.initial, (now, input, state) =>
       self
         .step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) =>
-          f(out).map((out2) => Tuple(state, out2, decision))
-        ))
+        .flatMap(([state, out, decision]) => f(out).map((out2) => [state, out2, decision])))
 }

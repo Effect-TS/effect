@@ -12,17 +12,12 @@ export function takeMaybe<A>(self: TPriorityQueue<A>): USTM<Maybe<A>> {
     const map = self.map.unsafeGet(journal)
 
     return map.headMaybe.flatMap((tuple) => {
-      const a = tuple
-        .get(1)
-        .tail.flatMap((c) => Maybe.fromPredicate(c, (_) => _.isNonEmpty))
-      const k = tuple.get(0)
+      const a = tuple[1].tail.flatMap((c) => Maybe.fromPredicate(c, (_) => _.isNonEmpty))
+      const k = tuple[0]
 
-      self.map.unsafeSet(
-        a._tag === "None" ? map.remove(k) : map.set(k, a.value),
-        journal
-      )
+      self.map.unsafeSet(a._tag === "None" ? map.remove(k) : map.set(k, a.value), journal)
 
-      return tuple.get(1).head
+      return tuple[1].head
     })
   })
 }

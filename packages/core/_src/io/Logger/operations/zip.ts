@@ -9,9 +9,9 @@
 export function zip<Message1, Output1>(that: Logger<Message1, Output1>) {
   return <Message, Output>(
     self: Logger<Message, Output>
-  ): Logger<Message & Message1, Tuple<[Output, Output1]>> => ({
+  ): Logger<Message & Message1, readonly [Output, Output1]> => ({
     apply: (fiberId, logLevel, message, cause, context, spans, annotations) =>
-      Tuple.make(
+      [
         self.apply(
           fiberId,
           logLevel,
@@ -30,6 +30,6 @@ export function zip<Message1, Output1>(that: Logger<Message1, Output1>) {
           spans,
           annotations
         )
-      )
+      ] as const
   })
 }

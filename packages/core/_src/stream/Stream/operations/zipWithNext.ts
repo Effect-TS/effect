@@ -8,26 +8,23 @@ import {
  *
  * @tsplus getter effect/core/stream/Stream zipWithNext
  */
-export function zipWithNext<R, E, A>(self: Stream<R, E, A>): Stream<R, E, Tuple<[A, Maybe<A>]>> {
+export function zipWithNext<R, E, A>(self: Stream<R, E, A>): Stream<R, E, readonly [A, Maybe<A>]> {
   concreteStream(self)
   return new StreamInternal(self.channel >> process<E, A>(Maybe.none))
 }
 
 function process<E, A>(
   last: Maybe<A>
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<Tuple<[A, Maybe<A>]>>, void> {
+): Channel<never, E, Chunk<A>, unknown, E, Chunk<readonly [A, Maybe<A>]>, void> {
   return Channel.readWith(
     (input: Chunk<A>) => {
-      const {
-        tuple: [newLast, chunk]
-      } = input.mapAccum(last, (prev, curr) =>
-        Tuple(
-          Maybe.some(curr),
-          prev.map((a) => Tuple(a, curr))
-        ))
+      const [newLast, chunk] = input.mapAccum(
+        last,
+        (prev, curr) => [Maybe.some(curr), prev.map((a) => [a, curr] as const)] as const
+      )
       const out = chunk.collect((option) =>
         option.isSome()
-          ? Maybe.some(Tuple(option.value.get(0), Maybe.some(option.value.get(1))))
+          ? Maybe.some([option.value[0], Maybe.some(option.value[1])] as const)
           : Maybe.none
       )
       return Channel.write(out).flatMap(() => process<E, A>(newLast))
@@ -36,7 +33,7 @@ function process<E, A>(
     () =>
       last.fold(
         Channel.unit,
-        (a) => Channel.write(Chunk.single(Tuple(a, Maybe.none))).flatMap(() => Channel.unit)
+        (a) => Channel.write(Chunk.single([a, Maybe.none] as const)).flatMap(() => Channel.unit)
       )
   )
 }

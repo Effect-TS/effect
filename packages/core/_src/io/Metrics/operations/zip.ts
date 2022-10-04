@@ -5,14 +5,14 @@
 export function zip<Type2, In2, Out2>(that: Metric<Type2, In2, Out2>) {
   return <Type, In, Out>(
     self: Metric<Type, In, Out>
-  ): Metric<Tuple<[Type, Type2]>, Tuple<[In, In2]>, Tuple<[Out, Out2]>> =>
+  ): Metric<readonly [Type, Type2], readonly [In, In2], readonly [Out, Out2]> =>
     Metric(
-      Tuple(self.keyType, that.keyType),
-      (input: Tuple<[In, In2]>, extraTags) => {
-        const { tuple: [l, r] } = input
+      [self.keyType, that.keyType] as const,
+      (input: readonly [In, In2], extraTags) => {
+        const [l, r] = input
         self.unsafeUpdate(l, extraTags)
         that.unsafeUpdate(r, extraTags)
       },
-      (extraTags) => Tuple(self.unsafeValue(extraTags), that.unsafeValue(extraTags))
+      (extraTags) => [self.unsafeValue(extraTags), that.unsafeValue(extraTags)] as const
     )
 }

@@ -5,7 +5,7 @@
  * @tsplus static effect/core/stm/TMap.Aspects find
  * @tsplus pipeable effect/core/stm/TMap find
  */
-export function find<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
+export function find<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
   return (self: TMap<K, V>): STM<never, never, Maybe<A>> =>
     self.findSTM((kv) => pf(kv).fold(STM.fail(Maybe.none), STM.succeed))
 }

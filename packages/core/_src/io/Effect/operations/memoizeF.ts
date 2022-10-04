@@ -14,8 +14,8 @@ export function memoizeF<R, E, A, B>(
           return result.fold(
             Deferred.make<E, B>()
               .tap((deferred) => f(a).intoDeferred(deferred).fork)
-              .map((deferred) => Tuple(deferred, map.set(a, deferred))),
-            (deferred) => Effect.succeed(Tuple(deferred, map))
+              .map((deferred) => [deferred, map.set(a, deferred)] as const),
+            (deferred) => Effect.succeed([deferred, map] as const)
           )
         })
           .flatMap((deferred) => deferred.await)

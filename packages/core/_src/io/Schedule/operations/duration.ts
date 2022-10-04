@@ -14,11 +14,7 @@ export function duration(
   return makeWithState(true as boolean, (now, _, state) =>
     Effect.succeed(
       state
-        ? Tuple(
-          false,
-          duration,
-          Decision.continueWith(Interval.after(now + duration.millis))
-        )
-        : Tuple(false, (0).millis, Decision.Done)
+        ? [false, duration, Decision.continueWith(Interval.after(now + duration.millis))] as const
+        : [false, (0).millis, Decision.Done] as const
     ))
 }

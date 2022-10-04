@@ -19,7 +19,7 @@ export function splitWhere<In1>(f: Predicate<In1>) {
         splitter<E, In & In1>(false, ref, f)
           .pipeToOrFail(self.channel)
           .doneCollect
-          .flatMap(({ tuple: [leftovers, z] }) =>
+          .flatMap(([leftovers, z]) =>
             Channel.fromEffect(ref.get).flatMap(
               (leftover) =>
                 Channel.write(leftover + leftovers.flatten).flatMap(() => Channel.succeed(z))
@@ -45,18 +45,14 @@ function splitter<E, A>(
         if (index === -1) {
           return Channel.write(input).flatMap(() => splitter<E, A>(true, leftovers, f))
         }
-        const {
-          tuple: [left, right]
-        } = input.splitAt(index)
+        const [left, right] = input.splitAt(index)
         return Channel.write(left).flatMap(() => Channel.fromEffect(leftovers.set(right)))
       }
       const index = input.indexWhereFrom(1, f)
       if (index === -1) {
         return Channel.write(input).flatMap(() => splitter<E, A>(true, leftovers, f))
       }
-      const {
-        tuple: [left, right]
-      } = input.splitAt(Math.max(index, 1))
+      const [left, right] = input.splitAt(Math.max(index, 1))
       return Channel.write(left).flatMap(() => Channel.fromEffect(leftovers.set(right)))
     },
     (cause) => Channel.failCause(cause),

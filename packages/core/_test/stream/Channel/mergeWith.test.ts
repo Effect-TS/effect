@@ -11,9 +11,7 @@ describe.concurrent("Channel", () => {
         )
         .runCollect
 
-      const {
-        tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      const [chunk, _] = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(1, 2, 3, 4, 5, 6))
     })
@@ -41,13 +39,11 @@ describe.concurrent("Channel", () => {
         )
         .runCollect
 
-      const {
-        tuple: [chunk, result]
-      } = await program.unsafeRunPromise()
+      const [chunk, result] = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk(1, 2))
-      assert.strictEqual(result.get(0), "whatever")
-      assert.isTrue(result.get(1))
+      assert.strictEqual(result[0], "whatever")
+      assert.isTrue(result[1])
     })
 
     it("handles polymorphic failures", async () => {

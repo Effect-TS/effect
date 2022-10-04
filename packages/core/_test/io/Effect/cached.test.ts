@@ -41,7 +41,7 @@ describe.concurrent("Effect", () => {
         }
         const ref = $(Ref.make(0))
         const tuple = $(incrementAndGet(ref).cachedInvalidate((60).minutes))
-        const { tuple: [cached, invalidate] } = tuple
+        const [cached, invalidate] = tuple
         const a = $(cached)
         $(TestClock.adjust((59).minutes))
         const b = $(cached)

@@ -5,5 +5,5 @@
  * @tsplus static effect/core/stream/Stream.Ops iterate
  */
 export function iterate<A>(a: A, f: (a: A) => A): Stream<never, never, A> {
-  return Stream.unfold(a, (a) => Maybe.some(Tuple(a, f(a))))
+  return Stream.unfold(a, (a) => Maybe.some([a, f(a)]))
 }

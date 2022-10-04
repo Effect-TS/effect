@@ -22,12 +22,12 @@ export function zipAllSortedByKey<K, R2, E2, A, A2>(
 ) {
   return <R, E>(
     self: SortedByKey<R, E, K, A>
-  ): Stream<R | R2, E | E2, Tuple<[K, Tuple<[A, A2]>]>> =>
+  ): Stream<R | R2, E | E2, readonly [K, readonly [A, A2]]> =>
     self.zipAllSortedByKeyWith(
       ord,
       that,
-      (a) => Tuple(a, defaultRight),
-      (b) => Tuple(defaultLeft, b),
-      (a, b) => Tuple(a, b)
+      (a) => [a, defaultRight] as const,
+      (b) => [defaultLeft, b] as const,
+      (a, b) => [a, b] as const
     )
 }

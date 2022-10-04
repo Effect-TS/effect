@@ -8,7 +8,7 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  */
 export function withDuration<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-): Sink<R, E, In, L, Tuple<[Z, Duration]>> {
+): Sink<R, E, In, L, readonly [Z, Duration]> {
   return self.summarized(Clock.currentTime, (start, end) => new DurationInternal(end - start))
 }
 
@@ -18,5 +18,5 @@ export function withDuration<R, E, In, L, Z>(
  * @tsplus static effect/core/stream/Sink.Aspects timed
  */
 export function timed(): Sink<never, never, unknown, never, Duration> {
-  return Sink.drain().timed.map((tuple) => tuple.get(1))
+  return Sink.drain().timed.map((tuple) => tuple[1])
 }

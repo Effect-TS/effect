@@ -38,9 +38,7 @@ function processChunk<R, E, A>(
   chunk: Chunk<Exit<Maybe<E>, A>>,
   cont: Channel<R, E, Chunk<Exit<Maybe<E>, A>>, unknown, E, Chunk<A>, unknown>
 ): Channel<R, E, Chunk<Exit<Maybe<E>, A>>, unknown, E, Chunk<A>, unknown> {
-  const {
-    tuple: [toEmit, rest]
-  } = chunk.splitWhere((exit) => !exit.isSuccess())
+  const [toEmit, rest] = chunk.splitWhere((exit) => !exit.isSuccess())
   const next = rest.head.fold(cont, (exit) =>
     exit.fold(
       (cause) =>

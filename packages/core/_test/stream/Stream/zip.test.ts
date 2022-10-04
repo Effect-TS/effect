@@ -353,7 +353,7 @@ describe.concurrent("Stream", () => {
       const program = Effect.struct({
         result0: stream.zipWithPreviousAndNext.runCollect,
         result1: (Stream(Maybe.none) + stream.map(Maybe.some))
-          .zipFlatten(stream)
+          .zip(stream)
           .zipFlatten(stream.drop(1).map(Maybe.some) + Stream(Maybe.none))
           .runCollect
       })

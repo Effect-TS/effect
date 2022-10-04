@@ -521,14 +521,14 @@ function stepLoop<A>(
   stack: List<Cause<A>>,
   parallel: HashSet<Cause<A>>,
   sequential: List<Cause<A>>
-): Tuple<[HashSet<Cause<A>>, List<Cause<A>>]> {
+): readonly [HashSet<Cause<A>>, List<Cause<A>>] {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     realCause(cause)
     switch (cause._tag) {
       case "Empty": {
         if (stack.length === 0) {
-          return Tuple(parallel, sequential)
+          return [parallel, sequential] as const
         } else {
           cause = stack.unsafeHead!
           const tail = stack.unsafeTail
@@ -575,7 +575,7 @@ function stepLoop<A>(
       }
       default: {
         if (stack.length === 0) {
-          return Tuple(parallel.add(cause), sequential)
+          return [parallel.add(cause), sequential] as const
         } else {
           parallel = parallel.add(cause)
           cause = stack.unsafeHead!
@@ -593,7 +593,7 @@ function stepLoop<A>(
  * Takes one step in evaluating a cause, returning a set of causes that fail
  * in parallel and a list of causes that fail sequentially after those causes.
  */
-function step<A>(self: Cause<A>): Tuple<[HashSet<Cause<A>>, List<Cause<A>>]> {
+function step<A>(self: Cause<A>): readonly [HashSet<Cause<A>>, List<Cause<A>>] {
   return stepLoop(self, List.empty(), HashSet(), List.empty())
 }
 
@@ -603,15 +603,11 @@ function flattenCauseLoop<A>(
 ): List<HashSet<Cause<A>>> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    const {
-      tuple: [parallel, sequential]
-    } = causes.reduce(
-      Tuple(HashSet.empty<Cause<A>>(), List.empty<Cause<A>>()),
-      ({ tuple: [parallel, sequential] }, cause) => {
-        const {
-          tuple: [set, seq]
-        } = step(cause)
-        return Tuple(parallel.union(set), sequential + seq)
+    const [parallel, sequential] = causes.reduce(
+      [HashSet.empty<Cause<A>>(), List.empty<Cause<A>>()] as const,
+      ([parallel, sequential], cause) => {
+        const [set, seq] = step(cause)
+        return [parallel.union(set), sequential + seq]
       }
     )
     const updated = parallel.size > 0 ? flattened.prepend(parallel) : flattened

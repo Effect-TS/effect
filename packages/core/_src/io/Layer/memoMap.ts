@@ -7,7 +7,7 @@ import { constant } from "@tsplus/stdlib/data/Function"
 export class MemoMap {
   constructor(
     readonly ref: Ref.Synchronized<
-      Map<Layer<any, any, any>, Tuple<[Effect<never, any, any>, Scope.Finalizer]>>
+      Map<Layer<any, any, any>, readonly [Effect<never, any, any>, Scope.Finalizer]>
     >
   ) {}
 
@@ -25,13 +25,11 @@ export class MemoMap {
 
       switch (inMap._tag) {
         case "Some": {
-          const {
-            tuple: [acquire, release]
-          } = inMap.value
+          const [acquire, release] = inMap.value
 
           const cached: Effect<never, E, Env<ROut>> =
-            (acquire as Effect<never, E, Tuple<[Env<ROut>, FiberRefs]>>)
-              .flatMap(({ tuple: [b, refs] }) => Effect.inheritFiberRefs(refs).as(b))
+            (acquire as Effect<never, E, readonly [Env<ROut>, FiberRefs]>)
+              .flatMap(([b, refs]) => Effect.inheritFiberRefs(refs).as(b))
               .onExit((exit) =>
                 exit.fold(
                   () => Effect.unit,
@@ -39,12 +37,12 @@ export class MemoMap {
                 )
               )
 
-          return Effect.succeed(Tuple(cached, map))
+          return Effect.succeed([cached, map] as const)
         }
         case "None": {
           return Do(($) => {
             const observers = $(Ref.Synchronized.make(0))
-            const deferred = $(Deferred.make<E, Tuple<[Env<ROut>, FiberRefs]>>())
+            const deferred = $(Deferred.make<E, readonly [Env<ROut>, FiberRefs]>())
             const finalizerRef = $(
               Ref.Synchronized.make<Scope.Finalizer>(() => constant(Effect.unit))
             )
@@ -53,7 +51,9 @@ export class MemoMap {
                 .bindValue("outerScope", () => scope)
                 .bind("innerScope", () => Scope.make)
                 .flatMap(({ innerScope, outerScope }) =>
-                  restore(layer.withScope(innerScope).flatMap((f) => f(this) + Effect.getFiberRefs))
+                  restore(
+                    layer.withScope(innerScope).flatMap((f) => f(this).zip(Effect.getFiberRefs))
+                  )
                     .exit
                     .flatMap((exit) => {
                       switch (exit._tag) {
@@ -67,7 +67,7 @@ export class MemoMap {
                         case "Success": {
                           return finalizerRef.set((exit) =>
                             Effect.whenEffect(
-                              observers.modify((n) => Tuple(n === 1, n - 1)),
+                              observers.modify((n) => [n === 1, n - 1] as const),
                               innerScope.close(exit)
                             )
                           )
@@ -78,13 +78,13 @@ export class MemoMap {
                               )
                             )
                             .zipRight(deferred.succeed(exit.value))
-                            .as(exit.value.get(0))
+                            .as(exit.value[0])
                         }
                       }
                     })
                 )
             )
-            const memoized = Tuple(
+            const memoized = [
               deferred
                 .await
                 .onExit((exit) =>
@@ -94,8 +94,8 @@ export class MemoMap {
                   )
                 ),
               (e: Exit<unknown, unknown>) => finalizerRef.get.flatMap((fin) => fin(e))
-            )
-            return Tuple(resource, layer.isFresh ? map : map.set(layer, memoized))
+            ] as const
+            return [resource, layer.isFresh ? map : map.set(layer, memoized)] as const
           })
         }
       }
@@ -108,7 +108,7 @@ export class MemoMap {
  */
 export function makeMemoMap(): Effect<never, never, MemoMap> {
   return Ref.Synchronized.make<
-    Map<Layer<any, any, any>, Tuple<[Effect<never, any, any>, Scope.Finalizer]>>
+    Map<Layer<any, any, any>, readonly [Effect<never, any, any>, Scope.Finalizer]>
   >(new Map()).flatMap((r) => Effect.sync(new MemoMap(r)))
 }
 

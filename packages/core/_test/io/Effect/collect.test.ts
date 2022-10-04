@@ -13,7 +13,7 @@ describe.concurrent("Effect", () => {
         const op = counter.getAndUpdate((n) => n + 1)
         const ops3 = Effect.collectAllPar(List(op, op, op))
         const result = $(ops3.zipPar(ops3))
-        assert.isFalse(result.get(0) == result.get(1))
+        assert.isFalse(result[0] == result[1])
       }).unsafeRunPromise())
   })
 

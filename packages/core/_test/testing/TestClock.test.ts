@@ -102,7 +102,7 @@ describe.concurrent("TestClock", () => {
           .zipLeft(deferred.succeed(undefined))
           .zipPar(deferred.await.zipRight(effect))
       )
-      assert.isTrue(result == Tuple(1000, 2000))
+      assert.isTrue(Equals.equals(result, Tuple(1000, 2000)))
     }))
 
   it.effect("works with Stream", () =>

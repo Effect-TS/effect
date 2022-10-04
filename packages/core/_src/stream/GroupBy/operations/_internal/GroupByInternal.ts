@@ -13,7 +13,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
 
   constructor(
     readonly stream: Stream<R, E, A>,
-    readonly key: (a: A) => Effect<R, E, Tuple<[K, V]>>,
+    readonly key: (a: A) => Effect<R, E, readonly [K, V]>,
     readonly buffer: number
   ) {}
 
@@ -26,12 +26,12 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
-      ({ tuple: [key, queue] }) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe),
+      ([key, queue]) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe),
       this.buffer
     )
   }
 
-  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
     return Stream.unwrapScoped(
       Do(($) => {
         const decider = $(
@@ -39,7 +39,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
         )
         const out = $(
           Effect.acquireRelease(
-            Queue.bounded<Exit<Maybe<E>, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>>>(
+            Queue.bounded<Exit<Maybe<E>, readonly [K, Dequeue<Exit<Maybe<E>, V>>]>>(
               this.buffer
             ),
             (queue) => queue.shutdown
@@ -49,7 +49,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
         const add = $(
           this.stream.mapEffect(this.key).distributedWithDynamic(
             this.buffer,
-            ({ tuple: [k, v] }) => decider.await.flatMap((f) => f(k, v)),
+            ([k, v]) => decider.await.flatMap((f) => f(k, v)),
             (exit) => out.offer(exit)
           )
         )
@@ -60,15 +60,15 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
                 .map((map) => map.get(k))
                 .flatMap((option) =>
                   option.fold(
-                    add.flatMap(({ tuple: [id, queue] }) =>
+                    add.flatMap(([id, queue]) =>
                       (
                         ref.update((map) => map.set(k, id)) >
                           out.offer(
                             Exit.succeed(
-                              Tuple(
+                              [
                                 k,
-                                mapDequeue(queue, (exit) => exit.map((_) => _.get(1)))
-                              )
+                                mapDequeue(queue, (exit) => exit.map((_) => _[1]))
+                              ] as const
                             )
                           )
                       ).as((n: number) => n === id)
@@ -110,49 +110,43 @@ export function concreteGroupBy<R, E, K, V, A>(
 export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A> {
   constructor(
     stream: Stream<R, E, A>,
-    key: (a: A) => Effect<R, E, Tuple<[K, V]>>,
+    key: (a: A) => Effect<R, E, readonly [K, V]>,
     buffer: number,
     readonly n: number
   ) {
     super(stream, key, buffer)
   }
 
-  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
     return super
       .grouped()
       .zipWithIndex
       .filterEffect((elem) => {
-        const {
-          tuple: [
-            {
-              tuple: [_, queue]
-            },
-            i
-          ]
-        } = elem
+        const [
+          [_, queue],
+          i
+        ] = elem
         return i < this.n
           ? Effect.succeed(elem).as(true)
           : queue.shutdown.as(false)
       })
-      .map((tuple) => tuple.get(0))
+      .map((tuple) => tuple[0])
   }
 }
 
 export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A> {
   constructor(
     stream: Stream<R, E, A>,
-    key: (a: A) => Effect<R, E, Tuple<[K, V]>>,
+    key: (a: A) => Effect<R, E, readonly [K, V]>,
     buffer: number,
     readonly f: Predicate<K>
   ) {
     super(stream, key, buffer)
   }
 
-  grouped(): Stream<R, E, Tuple<[K, Dequeue<Exit<Maybe<E>, V>>]>> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
     return super.grouped().filterEffect((elem) => {
-      const {
-        tuple: [k, queue]
-      } = elem
+      const [k, queue] = elem
       return this.f(k)
         ? Effect.succeed(elem).as(true)
         : queue.shutdown.as(false)

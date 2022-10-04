@@ -24,7 +24,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.secondOfMinute(1), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expected = new Date(new Date(originOffset).setSeconds(1))
@@ -68,7 +68,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.minuteOfHour(1), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expected = new Date(new Date(originOffset).setMinutes(1))
@@ -111,7 +111,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.hourOfDay(1), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expected = new Date(new Date(originOffset).setHours(1))
@@ -154,7 +154,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.dayOfWeek(2), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expectedTuesday = new Date(nextDay(originOffset, 2))
@@ -196,7 +196,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.dayOfMonth(2), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expectedBefore = new Date(new Date(originOffset).setDate(2))
@@ -221,7 +221,7 @@ describe.concurrent("Schedule", () => {
 
         const result = $(
           runManually(Schedule.dayOfMonth(30), input)
-            .map((output) => output.get(0).map((tuple) => tuple.get(0)))
+            .map((output) => output[0].map((tuple) => tuple[0]))
         )
 
         const expected = List(new Date(originOffset).setMonth(2, 30))

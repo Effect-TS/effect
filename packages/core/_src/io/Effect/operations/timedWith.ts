@@ -7,6 +7,6 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  * @tsplus pipeable effect/core/io/Effect timedWith
  */
 export function timedWith<R1, E1>(milliseconds: Effect<R1, E1, number>) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, Tuple<[Duration, A]>> =>
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E | E1, readonly [Duration, A]> =>
     self.summarized(milliseconds, (start, end) => new DurationInternal(end - start))
 }

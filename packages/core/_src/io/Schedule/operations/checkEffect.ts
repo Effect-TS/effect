@@ -18,17 +18,17 @@ export function checkEffect<In, Out, Env1>(
     makeWithState(self.initial, (now, input, state) =>
       self
         .step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) => {
+        .flatMap(([state, out, decision]) => {
           switch (decision._tag) {
             case "Done": {
-              return Effect.succeed(Tuple(state, out, Decision.Done))
+              return Effect.succeed([state, out, Decision.Done] as const)
             }
             case "Continue": {
               return test(input, out).map((cont) => {
                 if (cont) {
-                  return Tuple(state, out, decision)
+                  return [state, out, decision] as const
                 }
-                return Tuple(state, out, Decision.Done)
+                return [state, out, Decision.Done] as const
               })
             }
           }

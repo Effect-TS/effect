@@ -1564,17 +1564,17 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
    * version of `update`.
    */
   modify<B>(
-    f: (a: Value) => Tuple<[B, Value]>
+    f: (a: Value) => readonly [B, Value]
   ): Effect<never, never, B> {
     return Effect.withFiberRuntime((state) => {
-      const { tuple: [b, a] } = f(state.getFiberRef(this))
+      const [b, a] = f(state.getFiberRef(this))
       state.setFiberRef(this, a)
       return Effect.succeed(b)
     })
   }
 
   get get(): Effect<never, never, Value> {
-    return this.modify((a) => Tuple(a, a))
+    return this.modify((a) => [a, a] as const)
   }
 
   get delete(): Effect<never, never, void> {
@@ -1592,21 +1592,21 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     this: FiberRef.WithPatch<Value, Patch>,
     value: Value
   ): Effect<never, never, Value> {
-    return this.modify((v) => Tuple(v, value))
+    return this.modify((v) => [v, value] as const)
   }
 
   getAndUpdate(
     this: FiberRef.WithPatch<Value, Patch>,
     f: (a: Value) => Value
   ): Effect<never, never, Value> {
-    return this.modify((v) => Tuple(v, f(v)))
+    return this.modify((v) => [v, f(v)] as const)
   }
 
   getAndUpdateSome(
     this: FiberRef.WithPatch<Value, Patch>,
     pf: (a: Value) => Maybe<Value>
   ): Effect<never, never, Value> {
-    return this.modify((v) => Tuple(v, pf(v).getOrElse(v)))
+    return this.modify((v) => [v, pf(v).getOrElse(v)] as const)
   }
 
   getWith<R, E, B>(
@@ -1656,22 +1656,22 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     this: FiberRef.WithPatch<Value, Patch>,
     f: (a: Value) => Value
   ): Effect<never, never, void> {
-    return this.modify((v) => Tuple(undefined, f(v)))
+    return this.modify((v) => [undefined, f(v)] as const)
   }
 
   set(
     this: FiberRef.WithPatch<Value, Patch>,
     value: Value
   ): Effect<never, never, void> {
-    return this.modify(() => Tuple(undefined, value))
+    return this.modify(() => [undefined, value] as const)
   }
 
   modifySome<B>(
     this: FiberRef.WithPatch<Value, Patch>,
     def: B,
-    f: (a: Value) => Maybe<Tuple<[B, Value]>>
+    f: (a: Value) => Maybe<readonly [B, Value]>
   ): Effect<never, never, B> {
-    return this.modify((v) => f(v).getOrElse(Tuple(def, v)))
+    return this.modify((v) => f(v).getOrElse([def, v] as const))
   }
 
   updateAndGet(
@@ -1680,7 +1680,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
   ): Effect<never, never, Value> {
     return this.modify((v) => {
       const result = f(v)
-      return Tuple(result, result)
+      return [result, result] as const
     })
   }
 
@@ -1688,7 +1688,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
     this: FiberRef.WithPatch<Value, Patch>,
     pf: (a: Value) => Maybe<Value>
   ): Effect<never, never, void> {
-    return this.modify((v) => Tuple(undefined, pf(v).getOrElse(v)))
+    return this.modify((v) => [undefined, pf(v).getOrElse(v)] as const)
   }
 
   /**
@@ -1702,7 +1702,7 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
   ): Effect<never, never, Value> {
     return this.modify((v) => {
       const result = pf(v).getOrElse(v)
-      return Tuple(result, result)
+      return [result, result] as const
     })
   }
 }

@@ -105,7 +105,7 @@ export class HistogramKey extends BaseMetricKeyType<number, MetricState.Histogra
   }
 }
 
-export class SummaryKey extends BaseMetricKeyType<Tuple<[number, number]>, MetricState.Summary> {
+export class SummaryKey extends BaseMetricKeyType<readonly [number, number], MetricState.Summary> {
   readonly [SummaryKeySym]: SummaryKeySym = SummaryKeySym
 
   constructor(

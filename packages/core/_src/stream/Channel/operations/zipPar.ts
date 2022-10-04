@@ -16,7 +16,7 @@ export function zipPar<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDon
     InDone & InDone1,
     OutErr | OutErr1,
     OutElem | OutElem1,
-    Tuple<[OutDone, OutDone1]>
+    readonly [OutDone, OutDone1]
   > =>
     self.mergeWith(
       that,

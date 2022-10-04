@@ -12,7 +12,7 @@ import {
  */
 export function mapAccumEffect<A, R2, E2, A2, S>(
   s: S,
-  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
+  f: (s: S, a: A) => Effect<R2, E2, readonly [S, A2]>
 ) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A2> => {
     concreteStream(self)
@@ -22,7 +22,7 @@ export function mapAccumEffect<A, R2, E2, A2, S>(
 
 function accumulator<A, R2, E2, A2, S>(
   s: S,
-  f: (s: S, a: A) => Effect<R2, E2, Tuple<[S, A2]>>
+  f: (s: S, a: A) => Effect<R2, E2, readonly [S, A2]>
 ): Channel<R2, unknown, Chunk<A>, unknown, E2, Chunk<A2>, unknown> {
   return Channel.readWith(
     (chunk: Chunk<A>) =>
@@ -34,10 +34,8 @@ function accumulator<A, R2, E2, A2, S>(
               outputChunk.append(out)
             })
 
-          return Effect.reduce(chunk, s, (s, a) =>
-            f(s, a).flatMap(({ tuple: [s, a2] }) =>
-              emit(a2).as(s)
-            )).fold(
+          return Effect.reduce(chunk, s, (s, a) => f(s, a).flatMap(([s, a2]) => emit(a2).as(s)))
+            .fold(
               (failure) => {
                 const partialResult = outputChunk.build()
                 return partialResult.isNonEmpty

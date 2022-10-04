@@ -9,7 +9,7 @@ export function andThen<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
-    Tuple<[State, State1, boolean]>,
+    readonly [State, State1, boolean],
     Env | Env1,
     In & In1,
     Out | Out2

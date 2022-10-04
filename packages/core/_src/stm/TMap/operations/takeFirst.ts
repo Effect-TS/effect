@@ -7,7 +7,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  * @tsplus static effect/core/stm/TMap.Aspects takeFirst
  * @tsplus pipeable effect/core/stm/TMap takeFirst
  */
-export function takeFirst<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
+export function takeFirst<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
   return (self: TMap<K, V>): STM<never, never, A> => {
     concreteTMap(self)
     return STM.Effect<never, Maybe<A>>((journal) => {
@@ -27,7 +27,7 @@ export function takeFirst<K, V, A>(pf: (kv: Tuple<[K, V]>) => Maybe<A>) {
         const recreate = bucket.exists((_) => pf(_).isSome())
 
         if (recreate) {
-          let newBucket = List.empty<Tuple<[K, V]>>()
+          let newBucket = List.empty<readonly [K, V]>()
 
           for (const pair of bucket) {
             result = pf(pair)

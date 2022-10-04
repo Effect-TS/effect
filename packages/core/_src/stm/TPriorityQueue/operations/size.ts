@@ -7,5 +7,5 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
  */
 export function size<A>(self: TPriorityQueue<A>): USTM<number> {
   concreteTPriorityQueue(self)
-  return self.map.modify((map) => Tuple(map.size, map))
+  return self.map.modify((map) => [map.size, map])
 }

@@ -36,7 +36,7 @@ export const defaultLogger: Logger<string, string> = {
       output = output + " "
 
       let first = true
-      for (const { tuple: [key, value] } of annotations) {
+      for (const [key, value] of annotations) {
         if (first) {
           first = false
         } else {

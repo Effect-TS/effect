@@ -11,7 +11,7 @@ export function utf8Decode<R, E>(
   return self.via(
     utfDecodeDetectingBom<R, E>(3, (bom) =>
       bom.corresponds(Utf8, (a, b) => a === b)
-        ? Tuple(Chunk.empty(), utf8DecodeNoBom)
-        : Tuple(bom, utf8DecodeNoBom))
+        ? [Chunk.empty(), utf8DecodeNoBom]
+        : [bom, utf8DecodeNoBom])
   )
 }

@@ -59,14 +59,14 @@ export class MVarInternal<A> {
    * A slight variation on `update` that allows a value to be returned (`b`) in
    * addition to the modified value of the `MVar`.
    */
-  modify<B>(f: (a: A) => Tuple<[B, A]>): Effect<never, never, B> {
+  modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
     return this._content.get.collect((maybe) => {
       if (maybe.isSome()) {
-        const { tuple: [b, newA] } = f(maybe.value)
-        return Maybe.some(Tuple(b, Maybe.some(newA)))
+        const [b, newA] = f(maybe.value)
+        return Maybe.some([b, Maybe.some(newA)] as const)
       }
       return Maybe.none
-    }).flatMap(({ tuple: [b, newA] }) => this._content.set(newA).as(b)).commit
+    }).flatMap(([b, newA]) => this._content.set(newA).as(b)).commit
   }
 
   /**

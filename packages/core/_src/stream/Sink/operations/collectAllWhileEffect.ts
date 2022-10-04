@@ -7,9 +7,9 @@
 export function collectAllWhileEffect<R, E, In>(
   p: (input: In) => Effect<R, E, boolean>
 ): Sink<R, E, In, In, Chunk<In>> {
-  return Sink.foldEffect<R, E, In, Tuple<[List<In>, boolean]>>(
-    Tuple(List.empty<In>(), true),
-    (tuple) => tuple.get(1),
-    ({ tuple: [as, _] }, a) => p(a).map((b) => (b ? Tuple(as.prepend(a), true) : Tuple(as, false)))
-  ).map(({ tuple: [inputs, _] }) => Chunk.from(inputs.reverse))
+  return Sink.foldEffect<R, E, In, readonly [List<In>, boolean]>(
+    [List.empty<In>(), true as boolean] as const,
+    (tuple) => tuple[1],
+    ([as, _], a) => p(a).map((b) => (b ? [as.prepend(a), true] as const : [as, false] as const))
+  ).map(([inputs, _]) => Chunk.from(inputs.reverse))
 }

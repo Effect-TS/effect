@@ -633,7 +633,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@effect/core@workspace:packages/core"
   dependencies:
-    "@tsplus/stdlib": ^0.2.6
+    "@tsplus/stdlib": ^0.2.8
   languageName: unknown
   linkType: soft
 
@@ -933,10 +933,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsplus/stdlib@npm:0.2.6, @tsplus/stdlib@npm:^0.2.6":
-  version: 0.2.6
-  resolution: "@tsplus/stdlib@npm:0.2.6"
-  checksum: d93aaccebb30b0d3e82a9b8142632ca7bbb7e5fad28808872ef43f5ca0c54cfc1aadad81044ef4c0831d6c5397601c703a529721991a023da99928fa42a2a2cf
+"@tsplus/stdlib@npm:0.2.8, @tsplus/stdlib@npm:^0.2.8":
+  version: 0.2.8
+  resolution: "@tsplus/stdlib@npm:0.2.8"
+  checksum: f0754a386a92732920c09fdfa50818dc2c3b7e3dc3fed9185cbca85c0f3781799f1a64513384bf12408399b6b2e3f9a8ddd055bcb53ca4742f6ebbbef1b3bae5
   languageName: node
   linkType: hard
 
@@ -2610,7 +2610,7 @@ __metadata:
     "@effect-ts/core": ^0.60.4
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
     "@tsplus/installer": 0.0.140
-    "@tsplus/stdlib": 0.2.6
+    "@tsplus/stdlib": 0.2.8
     "@types/node": ^18.7.21
     "@types/rimraf": ^3.0.2
     "@typescript-eslint/eslint-plugin": ^5.38.0

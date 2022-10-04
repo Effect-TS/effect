@@ -8,7 +8,7 @@ export function validateParDiscard<R, E, A, X>(
   as: Collection<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, Chunk<E>, void> {
-  return Effect.partitionPar(as, f).flatMap(({ tuple: [es, _] }) =>
+  return Effect.partitionPar(as, f).flatMap(([es, _]) =>
     es.isEmpty
       ? Effect.unit
       : Effect.fail(es)

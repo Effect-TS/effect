@@ -6,10 +6,10 @@
  * @tsplus pipeable effect/core/io/Exit zipPar
  */
 export function zipPar<E2, A2>(that: Exit<E2, A2>) {
-  return <E, A>(self: Exit<E, A>): Exit<E | E2, Tuple<[A, A2]>> =>
+  return <E, A>(self: Exit<E, A>): Exit<E | E2, readonly [A, A2]> =>
     self.zipWith(
       that,
-      (a, b) => Tuple(a, b),
+      (a, b) => [a, b] as const,
       Cause.both
     )
 }

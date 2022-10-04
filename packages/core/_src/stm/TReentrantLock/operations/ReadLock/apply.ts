@@ -6,5 +6,5 @@ import { InternalReadLock } from "@effect/core/stm/TReentrantLock/operations/_in
 export function apply(fiberId: FiberId, count: number): TReentrantLock.ReadLock {
   return count <= 0 ?
     TReentrantLock.ReadLock.empty() :
-    new InternalReadLock(HashMap(Tuple(fiberId, count)))
+    new InternalReadLock(HashMap([fiberId, count]))
 }

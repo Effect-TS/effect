@@ -38,9 +38,7 @@ describe.concurrent("Channel", () => {
         )
       })
 
-      const {
-        tuple: [before, after]
-      } = await program.unsafeRunPromise()
+      const [before, after] = await program.unsafeRunPromise()
 
       assert.isTrue(
         before == Chunk(
@@ -76,9 +74,7 @@ describe.concurrent("Channel", () => {
         return conduit.runCollect.zipFlatten(events.get)
       })
 
-      const {
-        tuple: [elements, _, events]
-      } = await program.unsafeRunPromise()
+      const [elements, _, events] = await program.unsafeRunPromise()
 
       assert.isTrue(
         events == Chunk(

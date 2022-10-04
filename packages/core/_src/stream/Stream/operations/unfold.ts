@@ -3,6 +3,6 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops unfold
  */
-export function unfold<S, A>(s: S, f: (s: S) => Maybe<Tuple<[A, S]>>): Stream<never, never, A> {
-  return Stream.unfoldChunk(s, (s) => f(s).map(({ tuple: [a, s] }) => Tuple(Chunk.single(a), s)))
+export function unfold<S, A>(s: S, f: (s: S) => Maybe<readonly [A, S]>): Stream<never, never, A> {
+  return Stream.unfoldChunk(s, (s) => f(s).map(([a, s]) => [Chunk.single(a), s]))
 }

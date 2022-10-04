@@ -17,21 +17,24 @@ import {
  */
 export function hourOfDay(
   hour: number
-): Schedule<Tuple<[number, number]>, never, unknown, number> {
-  return makeWithState(Tuple(Number.MIN_SAFE_INTEGER, 0), (now, _, state) => {
-    if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
-      return Effect.dieSync(
-        new IllegalArgumentException(
-          `Invalid argument in: hourOfDay(${hour}). Must be in range 0...23`
+): Schedule<readonly [number, number], never, unknown, number> {
+  return makeWithState(
+    [Number.MIN_SAFE_INTEGER, 0] as readonly [number, number],
+    (now, _, state) => {
+      if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
+        return Effect.dieSync(
+          new IllegalArgumentException(
+            `Invalid argument in: hourOfDay(${hour}). Must be in range 0...23`
+          )
         )
-      )
+      }
+      const [end0, n] = state
+      const now0 = Math.max(end0, now)
+      const hour0 = nextHour(now0, hour)
+      const start = Math.max(beginningOfHour(hour0), now0)
+      const end = endOfHour(hour0)
+      const interval = Interval(start, end)
+      return Effect.succeed([[end, n + 1] as const, n, Decision.continueWith(interval)] as const)
     }
-    const { tuple: [end0, n] } = state
-    const now0 = Math.max(end0, now)
-    const hour0 = nextHour(now0, hour)
-    const start = Math.max(beginningOfHour(hour0), now0)
-    const end = endOfHour(hour0)
-    const interval = Interval(start, end)
-    return Effect.succeed(Tuple(Tuple(end, n + 1), n, Decision.continueWith(interval)))
-  })
+  )
 }

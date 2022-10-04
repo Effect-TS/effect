@@ -19,5 +19,5 @@ export function groupByKey<A, K>(
   buffer = 16
 ) {
   return <R, E>(self: Stream<R, E, A>): GroupBy<R, E, K, A, A> =>
-    self.groupBy((a) => Effect.succeed(Tuple(f(a), a)), buffer)
+    self.groupBy((a) => Effect.succeed([f(a), a]), buffer)
 }

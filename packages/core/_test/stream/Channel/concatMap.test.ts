@@ -12,7 +12,7 @@ describe.concurrent("Channel", () => {
             .concatMap((i) => Channel.writeAll(i, i))
             .runCollect
         )
-        assert.isTrue(result.get(0) == Chunk(1, 1, 2, 2, 3, 3))
+        assert.isTrue(result[0] == Chunk(1, 1, 2, 2, 3, 3))
       }).unsafeRunPromise())
 
     it("complex", () =>
@@ -26,7 +26,7 @@ describe.concurrent("Channel", () => {
             .runCollect
         )
         assert.isTrue(
-          result.get(0) == Chunk(
+          result[0] == Chunk(
             new Second(new First(1)),
             new Second(new First(1)),
             new Second(new First(1)),
@@ -47,7 +47,7 @@ describe.concurrent("Channel", () => {
           () => reader.flatMap(() => reader)
         )
         const result = $((source >> readers).runCollect)
-        assert.isTrue(result.get(0) == Chunk(1, 2, 3, 4))
+        assert.isTrue(result[0] == Chunk(1, 2, 3, 4))
       }).unsafeRunPromise())
 
     it("downstream failure", () =>
@@ -73,7 +73,7 @@ describe.concurrent("Channel", () => {
             return conduit.zip(events.get)
           })
         )
-        const { tuple: [exit, events] } = result
+        const [exit, events] = result
         assert.isTrue(exit == Exit.fail("error"))
         assert.isTrue(events == Chunk("Acquired", "Released"))
       }).unsafeRunPromiseExit())
@@ -126,7 +126,7 @@ describe.concurrent("Channel", () => {
             )
             .runCollect
         )
-        const { tuple: [chunk, { tuple: [list1, list2] }] } = result
+        const [chunk, [list1, list2]] = result
         assert.isTrue(chunk == Chunk(1, 2, 3))
         assert.isTrue(list1 == List("Inner-1", "Inner-2", "Inner-3"))
         assert.isTrue(list2 == List("Outer-0"))
@@ -166,7 +166,7 @@ describe.concurrent("Channel", () => {
                 )
             )
             .runCollect
-            .map((tuple) => tuple.get(0).compact)
+            .map((tuple) => tuple[0].compact)
         )
         assert.isTrue(
           result == Chunk(
@@ -215,7 +215,7 @@ describe.concurrent("Channel", () => {
                 )
             )
             .runCollect
-            .map((tuple) => tuple.get(0).compact)
+            .map((tuple) => tuple[0].compact)
         )
         assert.isTrue(
           result == Chunk(

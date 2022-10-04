@@ -11,7 +11,7 @@ describe.concurrent("Channel", () => {
             (data) =>
               Ref.make(List.from(data))
                 .zip(Ref.make(List.empty<number>()))
-                .flatMap(({ tuple: [source, dest] }) => {
+                .flatMap(([source, dest]) => {
                   const twoWriters = refWriter(dest).mergeWith(
                     refWriter(dest),
                     () => MergeDecision.awaitConst(Effect.unit),
@@ -36,7 +36,7 @@ describe.concurrent("Channel", () => {
                 })
           )
         )
-        const { tuple: [missing, surplus] } = result
+        const [missing, surplus] = result
         assert.strictEqual(missing.size, 0)
         assert.strictEqual(surplus.size, 0)
       }).unsafeRunPromise())
@@ -50,7 +50,7 @@ describe.concurrent("Channel", () => {
             (data) =>
               Ref.make(List.from(data))
                 .zip(Ref.make(List.empty<number>()))
-                .flatMap(({ tuple: [source, dest] }) => {
+                .flatMap(([source, dest]) => {
                   const twoWriters = (mapper(f) >> refWriter(dest)).mergeWith(
                     mapper(f) >> refWriter(dest),
                     () => MergeDecision.awaitConst(Effect.unit),
@@ -76,7 +76,7 @@ describe.concurrent("Channel", () => {
                 })
           )
         )
-        const { tuple: [missing, surplus] } = result
+        const [missing, surplus] = result
         assert.strictEqual(missing.size, 0)
         assert.strictEqual(surplus.size, 0)
       }).unsafeRunPromise())

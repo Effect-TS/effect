@@ -41,7 +41,7 @@ class HubImpl<A> implements Hub<A> {
   constructor(
     readonly hub: AtomicHub<A>,
     readonly subscribers: MutableHashSet<
-      Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>
+      readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]
     >,
     readonly scope: Scope.Closeable,
     readonly shutdownHook: Deferred<never, void>,
@@ -138,7 +138,7 @@ class HubImpl<A> implements Hub<A> {
  */
 export function unsafeMakeHub<A>(
   hub: AtomicHub<A>,
-  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
   scope: Scope.Closeable,
   shutdownHook: Deferred<never, void>,
   shutdownFlag: AtomicBoolean,

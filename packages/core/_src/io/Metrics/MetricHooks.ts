@@ -45,7 +45,7 @@ export function frequency(_key: MetricKey.Frequency): MetricHook.Frequency {
     values.set(word, slotCount + 1)
   }
 
-  const snapshot = () => HashMap(...Array.from(values.entries()).map(([k, v]) => Tuple(k, v)))
+  const snapshot = () => HashMap(...Array.from(values.entries()).map(([k, v]) => [k, v] as const))
 
   return MetricHook(update, () => MetricState.Frequency(snapshot()))
 }
@@ -100,15 +100,15 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
     }
   }
 
-  const getBuckets = (): Chunk<Tuple<[number, number]>> => {
-    const builder = Chunk.builder<Tuple<[number, number]>>()
+  const getBuckets = (): Chunk<readonly [number, number]> => {
+    const builder = Chunk.builder<readonly [number, number]>()
     let i = 0
     let cumulated = 0
     while (i != size) {
       const boundary = boundaries[i]!
       const value = values[i]!
       cumulated = cumulated + value
-      builder.append(Tuple(boundary, cumulated))
+      builder.append([boundary, cumulated] as const)
       i = i + 1
     }
     return builder.build()
@@ -126,7 +126,7 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
 export function summary(key: MetricKey.Summary): MetricHook.Summary {
   const { error, maxAge, maxSize, quantiles } = key.keyType
   const sortedQuantiles = quantiles.sort(Ord.number)
-  const values = Array<Tuple<[number, number]>>(maxSize)
+  const values = Array<readonly [number, number]>(maxSize)
 
   let head = 0
   let count = 0
@@ -135,7 +135,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk<Tuple<[number, Maybe<number>]>> => {
+  const snapshot = (now: number): Chunk<readonly [number, Maybe<number>]> => {
     const builder = Chunk.builder<number>()
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
@@ -153,7 +153,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
     while (i !== maxSize - 1) {
       const item = values[i]
       if (item != null) {
-        const { tuple: [t, v] } = item
+        const [t, v] = item
         const age = new DurationInternal(now - t)
         if (age.millis >= 0 && age <= maxAge) {
           builder.append(v)
@@ -168,7 +168,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
     if (maxSize > 0) {
       head = head + 1
       const target = head % maxSize
-      values[target] = Tuple(timestamp, value)
+      values[target] = [timestamp, value] as const
     }
     count = count + 1
     sum = sum + value
@@ -181,7 +181,7 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
   }
 
   return MetricHook(
-    ({ tuple: [value, timestamp] }) => observe(value, timestamp),
+    ([value, timestamp]) => observe(value, timestamp),
     () => MetricState.Summary(error, snapshot(Date.now()), count, min, max, sum)
   )
 }
@@ -212,7 +212,7 @@ function calculateQuantiles(
   error: number,
   sortedQuantiles: Chunk<number>,
   sortedSamples: Chunk<number>
-): Chunk<Tuple<[number, Maybe<number>]>> {
+): Chunk<readonly [number, Maybe<number>]> {
   // The number of samples examined
   const sampleCount = sortedSamples.length
 
@@ -248,7 +248,7 @@ function calculateQuantiles(
     }
   )
 
-  return resolved.map((rq) => Tuple(rq.quantile, rq.value))
+  return resolved.map((rq) => [rq.quantile, rq.value] as const)
 }
 
 /**
@@ -286,7 +286,7 @@ function resolveQuantile(
   // Taking into account the elements consumed from the samples so far and the
   // number of same elements at the beginning of the chunk, calculate the number
   // of elements we would have if we selected the current head as result
-  const candConsumed = consumed + sameHead.get(0).length
+  const candConsumed = consumed + sameHead[0].length
   const candError = Math.abs(candConsumed - desired)
 
   // If we haven't got enough elements yet, recurse
@@ -297,7 +297,7 @@ function resolveQuantile(
       rest.head,
       candConsumed,
       quantile,
-      sameHead.get(1)
+      sameHead[1]
     )
   }
 
@@ -317,7 +317,7 @@ function resolveQuantile(
         rest.head,
         candConsumed,
         quantile,
-        sameHead.get(1)
+        sameHead[1]
       )
     }
     case "Some": {
@@ -329,7 +329,7 @@ function resolveQuantile(
           rest.head,
           candConsumed,
           quantile,
-          sameHead.get(1)
+          sameHead[1]
         )
       }
       return new ResolvedQuantile(

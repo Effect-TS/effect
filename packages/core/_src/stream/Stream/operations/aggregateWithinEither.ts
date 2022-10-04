@@ -43,7 +43,7 @@ export function aggregateWithinEither<A, R2, E2, A2, S, R3, B, C>(
         schedule.driver,
         Ref.make(false)
       )
-    ).flatMap(({ tuple: [handoff, sinkEndReason, sinkLeftovers, scheduleDriver, consumed] }) => {
+    ).flatMap(([handoff, sinkEndReason, sinkLeftovers, scheduleDriver, consumed]) => {
       const handoffProducer: Channel<
         never,
         E | E2,
@@ -153,7 +153,7 @@ function handleSide<S, R, R2, E, A, A2, B, C>(
   consumed: Ref<boolean>,
   handoffProducer: Channel<never, E, Chunk<A>, unknown, never, never, unknown>,
   handoffConsumer: Channel<never, unknown, unknown, unknown, E, Chunk<A | A2>, void>,
-  forkSink: Effect<Scope | R, never, Fiber.Runtime<E, Tuple<[Chunk<Chunk<A2>>, B]>>>,
+  forkSink: Effect<Scope | R, never, Fiber.Runtime<E, readonly [Chunk<Chunk<A2>>, B]>>,
   leftovers: Chunk<Chunk<A | A2>>,
   b: B,
   c: Maybe<C>
@@ -231,7 +231,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
   consumed: Ref<boolean>,
   handoffProducer: Channel<never, E2, Chunk<A>, unknown, never, never, unknown>,
   handoffConsumer: Channel<never, unknown, unknown, unknown, E2, Chunk<A | A2>, void>,
-  sinkFiber: Fiber.Runtime<E2, Tuple<[Chunk<Chunk<A | A2>>, B]>>,
+  sinkFiber: Fiber.Runtime<E2, readonly [Chunk<Chunk<A | A2>>, B]>,
   scheduleFiber: Fiber.Runtime<Maybe<never>, C>
 ): Channel<
   R2 | R3,
@@ -257,7 +257,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
       scheduleFiber.join,
       (sinkExit, scheduleFiber) =>
         scheduleFiber.interrupt >
-          Effect.done(sinkExit).map(({ tuple: [leftovers, b] }) =>
+          Effect.done(sinkExit).map(([leftovers, b]) =>
             handleSide(
               sink,
               handoff,
@@ -280,7 +280,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
               () =>
                 handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd)).forkDaemon
                   .zipRight(
-                    sinkFiber.join.map(({ tuple: [leftovers, b] }) =>
+                    sinkFiber.join.map(([leftovers, b]) =>
                       handleSide(
                         sink,
                         handoff,
@@ -299,7 +299,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
                   ),
               (cause) =>
                 handoff.offer(HandoffSignal.Halt(cause)).forkDaemon >
-                  sinkFiber.join.map(({ tuple: [leftovers, b] }) =>
+                  sinkFiber.join.map(([leftovers, b]) =>
                     handleSide(
                       sink,
                       handoff,
@@ -318,7 +318,7 @@ function scheduledAggregator<S, R2, R3, E2, A, A2, B, C>(
             ),
           (c) =>
             handoff.offer(HandoffSignal.End(SinkEndReason.ScheduleEnd)).forkDaemon >
-              sinkFiber.join.map(({ tuple: [leftovers, b] }) =>
+              sinkFiber.join.map(([leftovers, b]) =>
                 handleSide(
                   sink,
                   handoff,

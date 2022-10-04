@@ -18,7 +18,7 @@ export function get<K>(k: K) {
       const idx = TMap.indexOf(k, buckets.chunk.length)
       const bucket = buckets.chunk.unsafeGet(idx)!.unsafeGet(journal)
 
-      return bucket.find((_) => Equals.equals(_.get(0), k)).map((_) => _.get(1))
+      return bucket.find((_) => Equals.equals(_[0], k)).map((_) => _[1])
     })
   }
 }

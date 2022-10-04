@@ -9,9 +9,9 @@ export function toChunk<A>(self: TPriorityQueue<A>): USTM<Chunk<A>> {
   concreteTPriorityQueue(self)
   return self.map.modify((sortedMap) => {
     const builder = Chunk.builder<Chunk<A>>()
-    for (const { tuple: [, as] } of sortedMap) {
+    for (const [, as] of sortedMap) {
       builder.append(as)
     }
-    return Tuple(builder.build().flatten, sortedMap)
+    return [builder.build().flatten, sortedMap]
   })
 }

@@ -12,9 +12,9 @@ export function resetWhen<Out>(f: Predicate<Out>) {
     makeWithState(self.initial, (now, input, state) =>
       self
         .step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) =>
+        .flatMap(([state, out, decision]) =>
           f(out)
             ? self.step(now, input, self.initial)
-            : Effect.succeed(Tuple(state, out, decision))
+            : Effect.succeed([state, out, decision])
         ))
 }

@@ -9,6 +9,6 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
 export function forEach<A, R, E>(f: (a: A) => STM<R, E, void>) {
   return (self: TSet<A>): STM<R, E, void> => {
     concreteTSet(self)
-    return self.tmap.foldSTM(undefined as void, (_, kv) => f(kv.get(0)))
+    return self.tmap.foldSTM(undefined as void, (_, kv) => f(kv[0]))
   }
 }

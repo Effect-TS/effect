@@ -17,7 +17,7 @@ export function takeUpTo(max: number) {
         throw new STMInterruptException(fiberId)
       }
 
-      const { tuple: [toTake, remaining] } = queue.splitAt(max)
+      const [toTake, remaining] = queue.splitAt(max)
       self.ref.unsafeSet(remaining, journal)
 
       return Chunk.from(toTake)

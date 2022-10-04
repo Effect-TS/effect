@@ -7,9 +7,7 @@ describe.concurrent("Channel", () => {
         .reduce(Channel.write<number>(1), (channel, n) => channel.mapOut((_) => _ + n))
         .runCollect
 
-      const {
-        tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      const [chunk, _] = await program.unsafeRunPromise()
 
       assert.strictEqual(chunk.unsafeHead, Chunk.range(1, N).reduce(1, (a, b) => a + b))
     })
@@ -24,9 +22,7 @@ describe.concurrent("Channel", () => {
         )
         .runCollect
 
-      const {
-        tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      const [chunk, _] = await program.unsafeRunPromise()
 
       assert.strictEqual(chunk.unsafeHead, N)
     })
@@ -38,9 +34,7 @@ describe.concurrent("Channel", () => {
         .reduce(Channel.write<number>(0), (channel, n) => channel.flatMap(() => Channel.write(n)))
         .runCollect
 
-      const {
-        tuple: [chunk, _]
-      } = await program.unsafeRunPromise()
+      const [chunk, _] = await program.unsafeRunPromise()
 
       assert.isTrue(chunk == Chunk.range(0, N))
     })

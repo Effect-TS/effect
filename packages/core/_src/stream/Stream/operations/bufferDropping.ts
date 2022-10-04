@@ -19,7 +19,7 @@ import {
 export function bufferDropping(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
     const queue = Effect.acquireRelease(
-      Queue.dropping<Tuple<[Take<E, A>, Deferred<never, void>]>>(capacity),
+      Queue.dropping<readonly [Take<E, A>, Deferred<never, void>]>(capacity),
       (queue) => queue.shutdown
     )
     const stream = self.via(Stream.$.rechunk(1))

@@ -14,19 +14,19 @@ export function replace(key: number, finalizer: Scope.Finalizer) {
       .modify((s) => {
         switch (s._tag) {
           case "Exited": {
-            return Tuple(
+            return [
               finalizer(s.exit).map(() => Maybe.none),
               new Exited(s.nextKey, s.exit, s.update)
-            )
+            ] as const
           }
           case "Running": {
             const finalizers = s.finalizers()
             const oldFinalizer = Maybe.fromNullable(finalizers.get(key))
             const newFinalizers = finalizers.set(key, finalizer)
-            return Tuple(
+            return [
               Effect.succeed(oldFinalizer),
               new Running(s.nextKey, newFinalizers, s.update)
-            )
+            ] as const
           }
         }
       })

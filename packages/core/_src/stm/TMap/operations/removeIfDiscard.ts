@@ -7,7 +7,7 @@ import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/Interna
  * @tsplus static effect/core/stm/TMap.Aspects removeIfDiscard
  * @tsplus pipeable effect/core/stm/TMap removeIfDiscard
  */
-export function removeIfDiscard<K, V>(f: (kv: Tuple<[K, V]>) => boolean) {
+export function removeIfDiscard<K, V>(f: (kv: readonly [K, V]) => boolean) {
   return (self: TMap<K, V>): STM<never, never, void> => {
     concreteTMap(self)
     return STM.Effect((journal) => {
@@ -22,7 +22,7 @@ export function removeIfDiscard<K, V>(f: (kv: Tuple<[K, V]>) => boolean) {
 
       while (i < capacity) {
         const bucket = buckets.chunk.unsafeGet(i)!.unsafeGet(journal)
-        let newBucket = List.empty<Tuple<[K, V]>>()
+        let newBucket = List.empty<readonly [K, V]>()
 
         for (const pair of bucket) {
           if (!f(pair)) {

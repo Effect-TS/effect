@@ -3,7 +3,7 @@ describe.concurrent("Stream", () => {
     it("allows repeated runs without hanging", async () => {
       const stream = Stream.fromCollection(Chunk.empty<number>())
         .partitionEither((i) => Effect.succeed(i % 2 === 0 ? Either.left(i) : Either.right(i)))
-        .map(({ tuple: [evens, odds] }) => evens.mergeEither(odds))
+        .map(([evens, odds]) => evens.mergeEither(odds))
         .flatMap((stream) => stream.runCollect)
       const program = Effect.collectAll(
         Chunk.range(0, 50).map(() => Effect.scoped(stream))
@@ -22,7 +22,7 @@ describe.concurrent("Stream", () => {
               ? Effect.succeed(Either.left(i))
               : Effect.succeed(Either.right(i))
           )
-          .flatMap(({ tuple: [evens, odds] }) =>
+          .flatMap(([evens, odds]) =>
             Effect.struct({
               evens: evens.runCollect,
               odds: odds.runCollect
@@ -45,7 +45,7 @@ describe.concurrent("Stream", () => {
               ? Effect.succeed(Either.left(i))
               : Effect.succeed(Either.right(i))
           )
-          .flatMap(({ tuple: [evens, odds] }) =>
+          .flatMap(([evens, odds]) =>
             Effect.struct({
               evens: evens.runCollect.either,
               odds: odds.runCollect.either
@@ -69,7 +69,7 @@ describe.concurrent("Stream", () => {
                 : Effect.succeed(Either.right(i)),
             1
           )
-          .flatMap(({ tuple: [evens, odds] }) =>
+          .flatMap(([evens, odds]) =>
             Effect.Do()
               .bind("ref", () => Ref.make<List<number>>(List.empty()))
               .bind("latch", () => Deferred.make<never, void>())

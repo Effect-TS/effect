@@ -4,7 +4,7 @@
  * @tsplus static effect/core/io/Schedule.Ops collectAll
  */
 export function collectAll<A>(): Schedule<
-  Tuple<[void, Chunk<A>]>,
+  readonly [void, Chunk<A>],
   never,
   A,
   Chunk<A>

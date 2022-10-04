@@ -107,9 +107,9 @@ function runManuallyLoop<State, Env, In, Out>(
   if (inputs.isNil()) {
     return Effect.succeed(Tuple(acc.reverse, Maybe.none))
   }
-  const { tuple: [offset, input] } = inputs.head
+  const [offset, input] = inputs.head
   const rest = inputs.tail
-  return schedule.step(offset, input, state).flatMap(({ tuple: [state, out, decision] }) => {
+  return schedule.step(offset, input, state).flatMap(([state, out, decision]) => {
     switch (decision._tag) {
       case "Done": {
         return Effect.succeed(Tuple(acc.reverse, Maybe.some(out)))

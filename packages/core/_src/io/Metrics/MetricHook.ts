@@ -20,7 +20,7 @@ export declare namespace MetricHook {
   export type Gauge = MetricHook<number, MetricState.Gauge>
   export type Frequency = MetricHook<string, MetricState.Frequency>
   export type Histogram = MetricHook<number, MetricState.Histogram>
-  export type Summary = MetricHook<Tuple<[number, number]>, MetricState.Summary>
+  export type Summary = MetricHook<readonly [number, number], MetricState.Summary>
 }
 
 /**

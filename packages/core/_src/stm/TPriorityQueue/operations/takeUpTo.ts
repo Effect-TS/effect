@@ -13,12 +13,12 @@ export function takeUpTo(n: number) {
       const entries = map.entries
       const builder = Chunk.builder<Chunk<A>>()
       let updated = map
-      let e: IteratorResult<Tuple<[A, Chunk<A>]>>
+      let e: IteratorResult<readonly [A, Chunk<A>]>
       let i = 0
 
       while (!(e = entries.next()).done && i < n) {
-        const { tuple: [a, as] } = e.value
-        const { tuple: [l, r] } = as.splitAt(n - i)
+        const [a, as] = e.value
+        const [l, r] = as.splitAt(n - i)
 
         builder.append(l)
 
@@ -31,7 +31,7 @@ export function takeUpTo(n: number) {
         i += l.size
       }
 
-      return Tuple(builder.build().flatten, updated)
+      return [builder.build().flatten, updated] as const
     })
   }
 }

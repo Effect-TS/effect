@@ -27,19 +27,17 @@ function writer<R, E, A, R2, E2>(
   return Channel.readWithCause(
     (chunk: Chunk<A>) =>
       Channel.fromEffect(
-        Effect.reduce(chunk, Tuple(last, Chunk.empty<A>()), ({ tuple: [option, as] }, a) =>
+        Effect.reduce(chunk, [last, Chunk.empty<A>()] as const, ([option, as], a) =>
           option.fold(
-            Effect.succeed(Tuple(Maybe.some(a), as.append(a))),
+            Effect.succeed([Maybe.some(a), as.append(a)] as const),
             (value) =>
               f(value, a).map((b) =>
-                b ? Tuple(Maybe.some(a), as) : Tuple(Maybe.some(a), as.append(a))
+                b ? [Maybe.some(a), as] as const : [Maybe.some(a), as.append(a)] as const
               )
           ))
       ).flatMap(
-        ({ tuple: [newLast, newChunk] }) =>
-          Channel.write(newChunk).flatMap(() =>
-            writer<R, E, A, R2, E2>(newLast, f)
-          )
+        ([newLast, newChunk]) =>
+          Channel.write(newChunk).flatMap(() => writer<R, E, A, R2, E2>(newLast, f))
       ),
     (cause) => Channel.failCause(cause),
     () => Channel.unit

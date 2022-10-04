@@ -5,9 +5,7 @@ describe.concurrent("Channel", () => {
         .map((n) => n + 1)
         .runCollect
 
-      const {
-        tuple: [chunk, z]
-      } = await program.unsafeRunPromise()
+      const [chunk, z] = await program.unsafeRunPromise()
 
       assert.isTrue(chunk.isEmpty)
       assert.strictEqual(z, 2)

@@ -7,9 +7,9 @@
 export function collectAllWhile<In>(
   p: Predicate<In>
 ): Sink<never, never, In, In, Chunk<In>> {
-  return Sink.fold<In, Tuple<[List<In>, boolean]>>(
-    Tuple(List.empty<In>(), true),
-    (tuple) => tuple.get(1),
-    ({ tuple: [as, _] }, a) => (p(a) ? Tuple(as.prepend(a), true) : Tuple(as, false))
-  ).map(({ tuple: [inputs, _] }) => Chunk.from(inputs.reverse))
+  return Sink.fold<In, readonly [List<In>, boolean]>(
+    [List.empty<In>(), true as boolean] as const,
+    (tuple) => tuple[1],
+    ([as, _], a) => (p(a) ? [as.prepend(a), true] as const : [as, false] as const)
+  ).map(([inputs, _]) => Chunk.from(inputs.reverse))
 }

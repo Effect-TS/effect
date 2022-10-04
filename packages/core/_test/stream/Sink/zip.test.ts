@@ -7,8 +7,8 @@ describe.concurrent("Sink", () => {
         const sink = Sink.head().zip(Sink.succeed("hello"))
         const stream = Stream(1, 2, 3)
         const result = $(stream.run(sink))
-        assert.isTrue(result.get(0) == Maybe.some(1))
-        assert.strictEqual(result.get(1), "hello")
+        assert.isTrue(result[0] == Maybe.some(1))
+        assert.strictEqual(result[1], "hello")
       }).unsafeRunPromise())
   })
 

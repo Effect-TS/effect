@@ -3,7 +3,7 @@ describe.concurrent("TMap", () => {
     it("retainIf", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
-        const removed = $(tmap.retainIf((kv) => Equals.equals(kv.get(0), "aa")))
+        const removed = $(tmap.retainIf((kv) => Equals.equals(kv[0], "aa")))
         const a = $(tmap.contains("a"))
         const aa = $(tmap.contains("aa"))
         const aaa = $(tmap.contains("aaa"))
@@ -22,7 +22,7 @@ describe.concurrent("TMap", () => {
     it("retainIfDiscard", async () => {
       const tx = Do(($) => {
         const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
-        $(tmap.retainIfDiscard((kv) => Equals.equals(kv.get(0), "aa")))
+        $(tmap.retainIfDiscard((kv) => Equals.equals(kv[0], "aa")))
         const a = $(tmap.contains("a"))
         const aa = $(tmap.contains("aa"))
         const aaa = $(tmap.contains("aaa"))

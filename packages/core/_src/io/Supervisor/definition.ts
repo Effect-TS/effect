@@ -70,7 +70,7 @@ export abstract class Supervisor<T> {
    * the function of the specified supervisor, producing a tuple of the outputs
    * produced by both supervisors.
    */
-  zip<B>(right: Supervisor<B>): Supervisor<Tuple<[T, B]>> {
+  zip<B>(right: Supervisor<B>): Supervisor<readonly [T, B]> {
     return new Zip(this, right)
   }
 }
@@ -113,7 +113,7 @@ export class ProxySupervisor<T> extends Supervisor<T> {
   }
 }
 
-export class Zip<T0, T1> extends Supervisor<Tuple<[T0, T1]>> {
+export class Zip<T0, T1> extends Supervisor<readonly [T0, T1]> {
   constructor(
     readonly left: Supervisor<T0>,
     readonly right: Supervisor<T1>
@@ -121,7 +121,7 @@ export class Zip<T0, T1> extends Supervisor<Tuple<[T0, T1]>> {
     super()
   }
 
-  get value(): Effect<never, never, Tuple<[T0, T1]>> {
+  get value(): Effect<never, never, readonly [T0, T1]> {
     return this.left.value.zip(this.right.value)
   }
 

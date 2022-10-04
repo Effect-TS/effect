@@ -21,9 +21,7 @@ function splitInternal<R, E, A>(
   input: Chunk<A>,
   f: Predicate<A>
 ): Channel<R, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
-  const {
-    tuple: [chunk, remaining]
-  } = (leftovers + input).splitWhere(f)
+  const [chunk, remaining] = (leftovers + input).splitWhere(f)
   return chunk.isEmpty || remaining.isEmpty
     ? loop<R, E, A>(chunk + remaining.drop(1), f)
     : Channel.write(Chunk.single(chunk)).flatMap(() =>

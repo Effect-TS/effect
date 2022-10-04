@@ -11,5 +11,5 @@
  */
 export function crossLeft<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>
-    self.cross(that).map((tuple) => tuple.get(0))
+    self.cross(that).map((tuple) => tuple[0])
 }

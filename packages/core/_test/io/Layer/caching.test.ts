@@ -40,8 +40,8 @@ describe.concurrent("Layer", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.strictEqual(result.get(0).value, 1)
-      assert.strictEqual(result.get(1).value, 1)
+      assert.strictEqual(result[0].value, 1)
+      assert.strictEqual(result[1].value, 1)
     })
   })
 })

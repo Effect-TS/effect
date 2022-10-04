@@ -15,24 +15,22 @@ export function intersectWith<State1, Env1, In1, Out2>(
   f: (x: Intervals, y: Intervals) => Intervals
 ) {
   return <State, Env, In, Out>(self: Schedule<State, Env, In, Out>): Schedule<
-    Tuple<[State, State1]>,
+    readonly [State, State1],
     Env | Env1,
     In & In1,
-    Tuple<[Out, Out2]>
+    readonly [Out, Out2]
   > =>
-    makeWithState(Tuple(self.initial, that.initial), (now, input, state) => {
-      const left = self.step(now, input, state.get(0))
-      const right = that.step(now, input, state.get(1))
+    makeWithState([self.initial, that.initial] as const, (now, input, state) => {
+      const left = self.step(now, input, state[0])
+      const right = that.step(now, input, state[1])
 
       return left
-        .zipWith(right, (a, b) => Tuple(a, b))
+        .zipWith(right, (a, b) => [a, b] as const)
         .flatMap(
-          ({
-            tuple: [
-              { tuple: [lState, out, lDecision] },
-              { tuple: [rState, out2, rDecision] }
-            ]
-          }) => {
+          ([
+            [lState, out, lDecision],
+            [rState, out2, rDecision]
+          ]) => {
             if (lDecision._tag === "Continue" && rDecision._tag === "Continue") {
               return intersectWithLoop(
                 self,
@@ -48,7 +46,7 @@ export function intersectWith<State1, Env1, In1, Out2>(
               )
             }
             return Effect.succeed(
-              Tuple(Tuple(lState, rState), Tuple.make(out, out2), Decision.Done)
+              [[lState, rState] as const, [out, out2] as const, Decision.Done] as const
             )
           }
         )
@@ -69,32 +67,32 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
 ): Effect<
   Env | Env1,
   never,
-  Tuple<[Tuple<[State, State1]>, Tuple<[Out, Out2]>, Decision]>
+  readonly [readonly [State, State1], readonly [Out, Out2], Decision]
 > {
   const combined = f(lInterval, rInterval)
 
   if (combined.isNonEmpty) {
     return Effect.succeed(
-      Tuple(
-        Tuple(lState, rState),
-        Tuple.make(out, out2),
+      [
+        [lState, rState],
+        [out, out2],
         Decision.Continue(combined)
-      )
+      ]
     )
   }
 
   if (lInterval.lessThan(rInterval)) {
     return self
       .step(lInterval.end, input, lState)
-      .flatMap(({ tuple: [lState, out, decision] }) => {
+      .flatMap(([lState, out, decision]) => {
         switch (decision._tag) {
           case "Done": {
             return Effect.succeed(
-              Tuple(
-                Tuple(lState, rState),
-                Tuple.make(out, out2),
+              [
+                [lState, rState],
+                [out, out2],
                 Decision.Done
-              )
+              ]
             )
           }
           case "Continue": {
@@ -117,15 +115,15 @@ function intersectWithLoop<State, State1, Env, In, Out, Env1, In1, Out2>(
 
   return that
     .step(rInterval.end, input, rState)
-    .flatMap(({ tuple: [rState, out2, decision] }) => {
+    .flatMap(([rState, out2, decision]) => {
       switch (decision._tag) {
         case "Done": {
           return Effect.succeed(
-            Tuple(
-              Tuple(lState, rState),
-              Tuple.make(out, out2),
+            [
+              [lState, rState],
+              [out, out2],
               Decision.Done
-            )
+            ]
           )
         }
         case "Continue": {

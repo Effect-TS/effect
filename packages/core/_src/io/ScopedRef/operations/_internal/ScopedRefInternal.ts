@@ -1,21 +1,21 @@
 import { ScopedRefURI } from "@effect/core/io/ScopedRef/definition"
 
 export class ScopedRefInternal<A> implements ScopedRef<A> {
-  constructor(readonly ref: Ref.Synchronized<Tuple<[Scope.Closeable, A]>>) {}
+  constructor(readonly ref: Ref.Synchronized<readonly [Scope.Closeable, A]>) {}
   readonly [ScopedRefURI] = {
     _A: (_: never) => _
   }
 
   get get(): Effect<never, never, A> {
-    return this.ref.get.map((tuple) => tuple.get(1))
+    return this.ref.get.map((tuple) => tuple[1])
   }
 
   get close(): Effect<never, never, void> {
-    return this.ref.get.flatMap(({ tuple: [scope, _] }) => scope.close(Exit.unit))
+    return this.ref.get.flatMap(([scope, _]) => scope.close(Exit.unit))
   }
 
   set<R, E>(this: this, acquire: Effect<Scope | R, E, A>): Effect<R, E, void> {
-    return this.ref.modifyEffect(({ tuple: [oldScope, a] }) =>
+    return this.ref.modifyEffect(([oldScope, a]) =>
       Effect.uninterruptibleMask(({ restore }) =>
         Do(($) => {
           const newScope = $(Scope.make)
@@ -27,12 +27,13 @@ export class ScopedRefInternal<A> implements ScopedRef<A> {
           return $(exit.fold(
             (cause) =>
               newScope.close(Exit.unit).ignore.as(
-                Tuple(
+                [
                   Effect.failCause(cause) as unknown as Effect<never, never, void>,
-                  Tuple(oldScope, a)
-                )
+                  [oldScope, a] as const
+                ] as const
               ),
-            (a) => oldScope.close(Exit.unit).ignore.as(Tuple(Effect.unit, Tuple(newScope, a)))
+            (a) =>
+              oldScope.close(Exit.unit).ignore.as([Effect.unit, [newScope, a] as const] as const)
           ))
         })
       )

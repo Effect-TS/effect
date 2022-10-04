@@ -8,11 +8,11 @@ import {
  */
 export function exposeLeftover<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>
-): Sink<R, E, In, L, Tuple<[Z, Chunk<L>]>> {
+): Sink<R, E, In, L, readonly [Z, Chunk<L>]> {
   concreteSink(self)
   return new SinkInternal(
     self.channel
       .doneCollect
-      .map(({ tuple: [chunks, z] }) => Tuple(z, chunks.flatten))
+      .map(([chunks, z]) => [z, chunks.flatten])
   )
 }

@@ -7,9 +7,6 @@
  * @tsplus pipeable effect/core/testing/Gen zip
  */
 export function zip<R2, A2>(that: Gen<R2, A2>) {
-  return <R, A>(self: Gen<R, A>): Gen<R | R2, Tuple<[A, A2]>> =>
-    self.zipWith(
-      that,
-      (a, b) => Tuple(a, b)
-    )
+  return <R, A>(self: Gen<R, A>): Gen<R | R2, readonly [A, A2]> =>
+    self.zipWith(that, (a, b) => [a, b])
 }

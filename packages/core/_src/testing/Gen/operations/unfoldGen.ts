@@ -6,7 +6,7 @@
  */
 export function unfoldGen<S, R, A>(
   s: S,
-  f: (s: S) => Gen<R, Tuple<[S, A]>>
+  f: (s: S) => Gen<R, readonly [S, A]>
 ): Gen<R | Sized, List<A>> {
   return Gen.small((n) => Gen.unfoldGenN(n, s, f))
 }

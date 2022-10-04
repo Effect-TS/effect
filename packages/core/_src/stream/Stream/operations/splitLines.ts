@@ -35,25 +35,23 @@ function next<E>(
           // entire previous leftover, as it doesn't contain a newline.
           const continueFrom = inCRLF && carry.length > 0 ? carry.length - 1 : carry.length
 
-          const {
-            tuple: [sliceStart, _, midCRLF]
-          } = Chunk.from(concatenated)
+          const [sliceStart, _, midCRLF] = Chunk.from(concatenated)
             .zipWithIndex
             .drop(continueFrom)
             .reduce(
-              Tuple(0, false, inCRLF),
+              [0 as number, false as boolean, inCRLF] as const,
               (
-                { tuple: [sliceStart, skipNext, midCRLF] },
-                { tuple: [char, index] }
+                [sliceStart, skipNext, midCRLF],
+                [char, index]
               ) => {
                 if (skipNext) {
-                  return Tuple(sliceStart, false, false)
+                  return [sliceStart, false, false] as const
                 }
 
                 switch (char) {
                   case "\n": {
                     buffer.append(concatenated.substring(sliceStart, index))
-                    return Tuple(index + 1, false, midCRLF)
+                    return [index + 1, false, midCRLF] as const
                   }
                   case "\r": {
                     if (
@@ -61,15 +59,15 @@ function next<E>(
                       concatenated[index + 1] === "\n"
                     ) {
                       buffer.append(concatenated.substring(sliceStart, index))
-                      return Tuple(index + 2, true, false)
+                      return [index + 2, true, false] as const
                     }
                     if (index === concatenated.length - 1) {
-                      return Tuple(sliceStart, false, true)
+                      return [sliceStart, false, true] as const
                     }
-                    return Tuple(sliceStart, false, false)
+                    return [sliceStart, false, false] as const
                   }
                   default: {
-                    return Tuple(sliceStart, false, midCRLF)
+                    return [sliceStart, false, midCRLF] as const
                   }
                 }
               }

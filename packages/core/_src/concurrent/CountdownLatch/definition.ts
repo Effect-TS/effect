@@ -68,12 +68,12 @@ export class CountdownLatchInternal {
   get countDown(): Effect<never, never, void> {
     return this._count.modify((n) => {
       if (n === 0) {
-        return Tuple(Effect.unit, 0)
+        return [Effect.unit, 0] as const
       }
       if (n === 1) {
-        return Tuple(this._waiters.succeed(undefined), 0)
+        return [this._waiters.succeed(undefined), 0] as const
       }
-      return Tuple(Effect.unit, n - 1)
+      return [Effect.unit, n - 1] as const
     }).flatten.unit
   }
 

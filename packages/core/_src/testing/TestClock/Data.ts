@@ -6,7 +6,7 @@
  */
 export interface Data {
   readonly instant: number
-  readonly sleeps: List<Tuple<[number, Deferred<never, void>]>>
+  readonly sleeps: List<readonly [number, Deferred<never, void>]>
 }
 
 /**
@@ -15,7 +15,7 @@ export interface Data {
 export interface DataOps {
   (
     instant: number,
-    sleeps: List<Tuple<[number, Deferred<never, void>]>>
+    sleeps: List<readonly [number, Deferred<never, void>]>
   ): Data
 }
 /**

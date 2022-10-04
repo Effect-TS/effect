@@ -23,7 +23,7 @@ function runLoop<State, Env, In, Out>(
   const nextInputs = inputs.tail
   return self
     .step(now, input, state)
-    .flatMap(({ tuple: [state, out, decision] }) => {
+    .flatMap(([state, out, decision]) => {
       switch (decision._tag) {
         case "Done": {
           return Effect.sync(acc.append(out))

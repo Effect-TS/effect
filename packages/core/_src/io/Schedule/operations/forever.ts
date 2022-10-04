@@ -15,13 +15,13 @@ export function forever<State, Env, In, Out>(
       now: number,
       input: In,
       state: State
-    ): Effect<Env, never, Tuple<[State, Out, Decision]>> {
+    ): Effect<Env, never, readonly [State, Out, Decision]> {
       return self
         .step(now, input, state)
-        .flatMap(({ tuple: [state, out, decision] }) =>
+        .flatMap(([state, out, decision]) =>
           decision._tag === "Done"
             ? step(now, input, self.initial)
-            : Effect.succeed(Tuple(state, out, decision))
+            : Effect.succeed([state, out, decision])
         )
     }
     return step(now, input, state)

@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+      assert.isTrue(Equals.equals(result, Tuple(Chunk(1), Chunk(2), Chunk(3))))
     })
 
     it("infinite bandwidth", async () => {
@@ -91,8 +91,8 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result.get(0) < 1000)
-      assert.isTrue(result.get(1) == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+      assert.isTrue(result[0] < 1000)
+      assert.isTrue(Equals.equals(result[1], Tuple(Chunk(1), Chunk(2), Chunk(3))))
     })
 
     it("with burst", async () => {
@@ -129,7 +129,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Tuple(Chunk(1), Chunk(2), Chunk(3)))
+      assert.isTrue(Equals.equals(result, Tuple(Chunk(1), Chunk(2), Chunk(3))))
     })
   })
 })

@@ -18,7 +18,7 @@ function equalShrinks<A, B>(
   left: Stream<never, never, Maybe<Sample<never, A>>>,
   right: Stream<never, never, Maybe<Sample<never, B>>>
 ): Effect<never, never, boolean> {
-  return left.zip(right).mapEffect(({ tuple: [left, right] }) => {
+  return left.zip(right).mapEffect(([left, right]) => {
     if (left.isSome() && right.isSome()) {
       return equalSamples(left.value, right.value)
     }

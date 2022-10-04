@@ -8,9 +8,9 @@
  * @tsplus pipeable effect/core/io/RuntimeFiber zip
  */
 export function zip<E2, A2>(that: Fiber<E2, A2>) {
-  return <E, A>(self: Fiber<E, A>): Fiber<E | E2, Tuple<[A, A2]>> =>
+  return <E, A>(self: Fiber<E, A>): Fiber<E | E2, readonly [A, A2]> =>
     self.zipWith(
       that,
-      (a, b) => Tuple(a, b)
+      (a, b) => [a, b] as const
     )
 }

@@ -32,7 +32,7 @@ export class MetricRegistry {
 
   snapshot(): HashSet<MetricPair.Untyped> {
     const result: Array<MetricPair.Untyped> = []
-    for (const { tuple: [key, hook] } of this.map) {
+    for (const [key, hook] of this.map) {
       result.push(MetricPair.unsafeMake(key, hook.get()))
     }
     return HashSet.from(result)

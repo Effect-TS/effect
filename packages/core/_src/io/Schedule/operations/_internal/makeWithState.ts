@@ -13,7 +13,7 @@ export class ScheduleWithStateInternal<State, Env, In, Out> {
       now: number,
       input: In,
       state: State
-    ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
+    ) => Effect<Env, never, readonly [State, Out, Decision]>
   ) {}
 }
 
@@ -23,7 +23,7 @@ export function makeWithState<State, Env, In, Out>(
     now: number,
     input: In,
     state: State
-  ) => Effect<Env, never, Tuple<[State, Out, Decision]>>
+  ) => Effect<Env, never, readonly [State, Out, Decision]>
 ): Schedule<State, Env, In, Out> {
   return new ScheduleWithStateInternal(initial, step)
 }

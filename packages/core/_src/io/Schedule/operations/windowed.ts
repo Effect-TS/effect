@@ -19,27 +19,25 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  */
 export function windowed(
   interval: Duration
-): Schedule<Tuple<[Maybe<number>, number]>, never, unknown, number> {
+): Schedule<readonly [Maybe<number>, number], never, unknown, number> {
   const millis = interval.millis
   return makeWithState(
-    Tuple(Maybe.empty(), 0),
-    (now, _, { tuple: [option, n] }) =>
+    [Maybe.empty(), 0] as readonly [Maybe<number>, number],
+    (now, _, [option, n]) =>
       Effect.succeed(
         option.fold(
-          () =>
-            Tuple(
-              Tuple(Maybe.some(now), n + 1),
-              n,
-              Decision.continueWith(Interval.after(now + millis))
-            ),
-          (startMillis) =>
-            Tuple(
-              Tuple(Maybe.some(startMillis), n + 1),
-              n,
-              Decision.continueWith(
-                Interval.after(now + (millis - ((now - startMillis) % millis)))
-              )
+          () => [
+            [Maybe.some(now), n + 1],
+            n,
+            Decision.continueWith(Interval.after(now + millis))
+          ],
+          (startMillis) => [
+            [Maybe.some(startMillis), n + 1],
+            n,
+            Decision.continueWith(
+              Interval.after(now + (millis - ((now - startMillis) % millis)))
             )
+          ]
         )
       )
   )

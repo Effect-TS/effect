@@ -21,7 +21,7 @@ describe.concurrent("Channel", () => {
           .flatMap((i) => Channel.write(new Whatever(i)))
         const conduit = left.pipeTo(right.zipRight(right).zipRight(right).zipRight(right))
         const result = $(conduit.runCollect)
-        const { tuple: [chunk, _] } = result
+        const [chunk, _] = result
         const expected = Chunk(new Whatever(1), new Whatever(2), new Whatever(3), new Whatever(4))
         assert.isTrue(chunk == expected)
       }).unsafeRunPromise())
@@ -50,7 +50,7 @@ describe.concurrent("Channel", () => {
           .pipeTo(channel)
 
         const result = $(conduit.runCollect)
-        const { tuple: [chunk, list] } = result
+        const [chunk, list] = result
         assert.isTrue(chunk == Chunk(1, 1, 2, 2))
         assert.isTrue(list == Chunk(2, 2, 1, 1))
       }).unsafeRunPromise())

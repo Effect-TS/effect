@@ -29,7 +29,7 @@ describe.concurrent("Sink", () => {
         )
         const stream = Stream.fromChunks(...chunks)
         const result = $(stream.run(sink))
-        const { tuple: [head, count] } = result
+        const [head, count] = result
         assert.isTrue(head == chunks.flatten.head)
         assert.strictEqual(
           count + head.fold(0, () => 1),

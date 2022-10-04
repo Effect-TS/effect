@@ -15,7 +15,7 @@ import type { Maybe } from "@tsplus/stdlib/data/Maybe"
  */
 export function makeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
   strategy: Strategy<A>
 ): Effect<never, never, Dequeue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
@@ -41,7 +41,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
   constructor(
     readonly hub: AtomicHub<A>,
     readonly subscribers: MutableHashSet<
-      Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>
+      readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]
     >,
     readonly subscription: Subscription<A>,
     readonly pollers: MutableQueue<Deferred<never, A>>,
@@ -61,7 +61,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
         const deferred = Deferred.unsafeMake<never, A>(state.id)
         return Effect.suspendSucceed(() => {
           this.pollers.offer(deferred)
-          this.subscribers.add(Tuple(this.subscription, this.pollers))
+          this.subscribers.add([this.subscription, this.pollers] as const)
           this.strategy.unsafeCompletePollers(
             this.hub,
             this.subscribers,
@@ -182,7 +182,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
  */
 export function unsafeMakeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: MutableHashSet<Tuple<[Subscription<A>, MutableQueue<Deferred<never, A>>]>>,
+  subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
   subscription: Subscription<A>,
   pollers: MutableQueue<Deferred<never, A>>,
   shutdownHook: Deferred<never, void>,

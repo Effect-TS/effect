@@ -45,7 +45,7 @@ function loop<E, A, R2, E2>(
       Channel.unwrap(
         costFn(input)
           .zip(Clock.currentTime)
-          .map(({ tuple: [weight, current] }) => {
+          .map(([weight, current]) => {
             const elapsed = current - timestamp
             const cycles = elapsed / duration.millis
             const sum = tokens + cycles * units

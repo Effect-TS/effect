@@ -18,7 +18,7 @@ export function untilOutputEffect<R2, E2, Z>(
     concreteSink(self)
     return new SinkInternal(
       Channel.fromEffect(Ref.make(Chunk.empty<In>()).zip(Ref.make(false))).flatMap(
-        ({ tuple: [leftoversRef, upstreamDoneRef] }) => {
+        ([leftoversRef, upstreamDoneRef]) => {
           const upstreamMarker: Channel<
             never,
             never,
@@ -43,7 +43,7 @@ export function untilOutputEffect<R2, E2, Z>(
             Maybe<Z>
           > = self.channel.doneCollect.foldChannel(
             (err) => Channel.fail(err),
-            ({ tuple: [leftovers, doneValue] }) =>
+            ([leftovers, doneValue]) =>
               Channel.fromEffect(f(doneValue)).flatMap(
                 (satisfied) =>
                   Channel.fromEffect(leftoversRef.set(leftovers.flatten)).flatMap(() =>

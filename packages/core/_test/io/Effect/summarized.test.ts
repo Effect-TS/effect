@@ -5,7 +5,7 @@ describe.concurrent("Effect", () => {
         const counter = $(Ref.make(0))
         const increment = counter.updateAndGet((n) => n + 1)
         const result = $(increment.summarized(increment, (start, end) => Tuple(start, end)))
-        const { tuple: [{ tuple: [start, end] }, value] } = result
+        const [[start, end], value] = result
         assert.strictEqual(start, 1)
         assert.strictEqual(value, 2)
         assert.strictEqual(end, 3)

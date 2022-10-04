@@ -10,5 +10,5 @@ export function composeUsing<State1, Env1, In2, In>(
 ) {
   return <State, Env, Out>(
     self: Schedule<State, Env, In, Out>
-  ): Schedule<Tuple<[State1, State]>, Env | Env1, In2, Out> => that >> self
+  ): Schedule<readonly [State1, State], Env | Env1, In2, Out> => that >> self
 }
