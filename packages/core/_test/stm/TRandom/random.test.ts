@@ -6,8 +6,8 @@ function getRnd(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
-const ints = Chunk.makeBy(100, (_) => Tuple(_, _ + getRndInteger(1, 1000)))
-const numbers = Chunk.makeBy(100, (_) => Tuple(_, _ + getRnd(1, 1000)))
+const ints = Chunk.makeBy(100, (_) => [_, _ + getRndInteger(1, 1000)] as const)
+const numbers = Chunk.makeBy(100, (_) => [_, _ + getRnd(1, 1000)] as const)
 
 describe.concurrent("TRandom", () => {
   describe.concurrent("locks", () => {

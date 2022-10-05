@@ -1,11 +1,13 @@
 describe.concurrent("Stream", () => {
   describe.concurrent("paginate", () => {
     it("simple example", async () => {
-      const s = Tuple(0, List(1, 2, 3))
+      const s = [0 as number, List(1, 2, 3)] as const
       const program = Stream.paginate(
         s,
         ([x, list]) =>
-          list.isNil() ? Tuple(x, Maybe.none) : Tuple(x, Maybe.some(Tuple(list.head, list.tail)))
+          list.isNil() ?
+            [x, Maybe.none] as const :
+            [x, Maybe.some([list.head, list.tail] as const)] as const
       ).runCollect
 
       const result = await program.unsafeRunPromise()
@@ -16,13 +18,13 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("paginateEffect", () => {
     it("simple example", async () => {
-      const s = Tuple(0, List(1, 2, 3))
+      const s = [0, List(1, 2, 3)] as readonly [number, List<number>]
       const program = Stream.paginateEffect(
         s,
         ([x, list]) =>
           list.isNil() ?
-            Effect.sync(Tuple(x, Maybe.none)) :
-            Effect.sync(Tuple(x, Maybe.some(Tuple(list.head, list.tail))))
+            Effect.sync([x, Maybe.none] as const) :
+            Effect.sync([x, Maybe.some([list.head, list.tail] as const)] as const)
       ).runCollect
 
       const result = await program.unsafeRunPromise()
@@ -33,17 +35,17 @@ describe.concurrent("Stream", () => {
 
   describe.concurrent("paginateChunk", () => {
     it("paginateChunk", async () => {
-      const s = Tuple(Chunk.single(0), List(1, 2, 3, 4, 5))
+      const s = [Chunk.single(0), List(1, 2, 3, 4, 5)] as const
       const pageSize = 2
       const program = Stream.paginateChunk(
         s,
         ([x, list]) =>
           list.isNil() ?
-            Tuple(x, Maybe.none) :
-            Tuple(
+            [x, Maybe.none] as const :
+            [
               x,
-              Maybe.some(Tuple(Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize))))
-            )
+              Maybe.some([Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize))] as const)
+            ] as const
       ).runCollect
 
       const result = await program.unsafeRunPromise()
@@ -53,18 +55,18 @@ describe.concurrent("Stream", () => {
   })
 
   it("paginateChunkEffect", async () => {
-    const s = Tuple(Chunk.single(0), List(1, 2, 3, 4, 5))
+    const s = [Chunk.single(0), List(1, 2, 3, 4, 5)] as const
     const pageSize = 2
     const program = Stream.paginateChunkEffect(
       s,
       ([x, list]) =>
         list.isNil() ?
-          Effect.sync(Tuple(x, Maybe.none)) :
+          Effect.sync([x, Maybe.none] as const) :
           Effect.sync(
-            Tuple(
+            [
               x,
-              Maybe.some(Tuple(Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize))))
-            )
+              Maybe.some([Chunk.from(list.take(pageSize)), List.from(list.skip(pageSize))] as const)
+            ] as const
           )
     ).runCollect
 

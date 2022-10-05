@@ -46,7 +46,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) =>
           Stream(1, 1, 1, 1, 1).runForEachWhile((a) =>
-            ref.modify((sum) => sum >= expected ? Tuple(false, sum) : Tuple(true, sum + a))
+            ref.modify((sum) => sum >= expected ? [false, sum] as const : [true, sum + a] as const)
           )
         )
         .flatMap(({ ref }) => ref.get)
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
         .bind("ref", () => Ref.make(0))
         .tap(({ ref }) =>
           Stream.fromCollection(Chunk.fill(1000, () => 1)).runForEachWhile((a) =>
-            ref.modify((sum) => sum >= expected ? Tuple(false, sum) : Tuple(true, sum + a))
+            ref.modify((sum) => sum >= expected ? [false, sum] as const : [true, sum + a] as const)
           )
         )
         .flatMap(({ ref }) => ref.get)

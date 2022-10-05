@@ -153,12 +153,12 @@ describe.concurrent("Stream", () => {
     it("simple example", () =>
       Do(($) => {
         const sink = Sink.fold(
-          Tuple(List.empty<number>(), true),
+          [List.empty<number>(), true as boolean] as const,
           (tuple) => tuple[1],
           (acc, el: number) =>
             el === 1
-              ? Tuple(acc[0].prepend(el), true)
-              : Tuple(acc[0].prepend(el), false)
+              ? [acc[0].prepend(el), true] as const
+              : [acc[0].prepend(el), false] as const
         ).map((tuple) => tuple[0])
 
         const schedule = Schedule.spaced((30).minutes)

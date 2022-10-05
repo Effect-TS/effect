@@ -122,7 +122,7 @@ describe.concurrent("Channel", () => {
             .concatMapWith(
               (i) => Channel.write(i).as(List(`Inner-${i}`)),
               (a: List<string>, b) => a + b,
-              (a, b) => Tuple(a, b)
+              (a, b) => [a, b] as const
             )
             .runCollect
         )
@@ -138,14 +138,14 @@ describe.concurrent("Channel", () => {
           Channel.writeAll(1, 2, 3, 4)
             .concatMapWithCustom(
               (x) =>
-                Channel.writeAll(
-                  Maybe.some(Tuple(x, 1)),
+                Channel.writeAll<Maybe<readonly [number, number]>>(
+                  Maybe.some([x, 1]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 2)),
+                  Maybe.some([x, 2]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 3)),
+                  Maybe.some([x, 3]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 4))
+                  Maybe.some([x, 4])
                 ),
               constVoid,
               constVoid,
@@ -170,22 +170,22 @@ describe.concurrent("Channel", () => {
         )
         assert.isTrue(
           result == Chunk(
-            Tuple(1, 1),
-            Tuple(2, 1),
-            Tuple(3, 1),
-            Tuple(4, 1),
-            Tuple(1, 2),
-            Tuple(2, 2),
-            Tuple(3, 2),
-            Tuple(4, 2),
-            Tuple(1, 3),
-            Tuple(2, 3),
-            Tuple(3, 3),
-            Tuple(4, 3),
-            Tuple(1, 4),
-            Tuple(2, 4),
-            Tuple(3, 4),
-            Tuple(4, 4)
+            [1, 1] as const,
+            [2, 1] as const,
+            [3, 1] as const,
+            [4, 1] as const,
+            [1, 2] as const,
+            [2, 2] as const,
+            [3, 2] as const,
+            [4, 2] as const,
+            [1, 3] as const,
+            [2, 3] as const,
+            [3, 3] as const,
+            [4, 3] as const,
+            [1, 4] as const,
+            [2, 4] as const,
+            [3, 4] as const,
+            [4, 4] as const
           )
         )
       }).unsafeRunPromise())
@@ -196,14 +196,14 @@ describe.concurrent("Channel", () => {
           Channel.writeAll(1, 2, 3, 4)
             .concatMapWithCustom(
               (x) =>
-                Channel.writeAll(
-                  Maybe.some(Tuple(x, 1)),
+                Channel.writeAll<Maybe<readonly [number, number]>>(
+                  Maybe.some([x, 1]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 2)),
+                  Maybe.some([x, 2]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 3)),
+                  Maybe.some([x, 3]),
                   Maybe.none,
-                  Maybe.some(Tuple(x, 4))
+                  Maybe.some([x, 4])
                 ),
               constVoid,
               constVoid,
@@ -219,22 +219,22 @@ describe.concurrent("Channel", () => {
         )
         assert.isTrue(
           result == Chunk(
-            Tuple(1, 1),
-            Tuple(2, 1),
-            Tuple(1, 2),
-            Tuple(3, 1),
-            Tuple(2, 2),
-            Tuple(1, 3),
-            Tuple(4, 1),
-            Tuple(3, 2),
-            Tuple(2, 3),
-            Tuple(1, 4),
-            Tuple(4, 2),
-            Tuple(3, 3),
-            Tuple(2, 4),
-            Tuple(4, 3),
-            Tuple(3, 4),
-            Tuple(4, 4)
+            [1, 1] as const,
+            [2, 1] as const,
+            [1, 2] as const,
+            [3, 1] as const,
+            [2, 2] as const,
+            [1, 3] as const,
+            [4, 1] as const,
+            [3, 2] as const,
+            [2, 3] as const,
+            [1, 4] as const,
+            [4, 2] as const,
+            [3, 3] as const,
+            [2, 4] as const,
+            [4, 3] as const,
+            [3, 4] as const,
+            [4, 4] as const
           )
         )
       }).unsafeRunPromise())

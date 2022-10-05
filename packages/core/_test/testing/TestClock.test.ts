@@ -102,20 +102,22 @@ describe.concurrent("TestClock", () => {
           .zipLeft(deferred.succeed(undefined))
           .zipPar(deferred.await.zipRight(effect))
       )
-      assert.isTrue(Equals.equals(result, Tuple(1000, 2000)))
+      assert.isTrue(Equals.equals(result, [1000, 2000] as const))
     }))
 
   it.effect("works with Stream", () =>
     Do(($) => {
       const s1 = Stream.iterate(0, (n) => n + 1).schedule(Schedule.fixed((100).millis))
       const s2 = Stream.iterate(0, (n) => n + 1).schedule(Schedule.fixed((70).millis))
-      const s3 = s1.zipWithLatest(s2, (a, b) => Tuple(a, b))
-      const queue = $(Queue.unbounded<Tuple<[number, number]>>())
+      const s3 = s1.zipWithLatest(s2, (a, b) => [a, b] as const)
+      const queue = $(Queue.unbounded<readonly [number, number]>())
       $(s3.runForEach((tuple) => queue.offer(tuple)).fork)
       const fiber = $(Effect.collectAll(queue.take.replicate(4)).fork)
       $(TestClock.adjust((1).seconds))
       const result = $(fiber.join)
-      assert.isTrue(result == Chunk(Tuple(0, 0), Tuple(0, 1), Tuple(1, 1), Tuple(1, 2)))
+      assert.isTrue(
+        result == Chunk([0, 0] as const, [0, 1] as const, [1, 1] as const, [1, 2] as const)
+      )
     }))
 
   it.effect("adjustWith runs the specified effect and advances the clock", () =>

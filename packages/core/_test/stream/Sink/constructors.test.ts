@@ -16,8 +16,8 @@ describe.concurrent("Sink", () => {
     it("handles leftovers", () =>
       Do(($) => {
         const sink = Sink.failSync("boom").foldSink(
-          (err) => Sink.collectAll<number>().map((c) => Tuple(c, err)),
-          (): Sink<never, never, number, never, Tuple<[Chunk<number>, string]>> => {
+          (err) => Sink.collectAll<number>().map((c) => [c, err] as const),
+          (): Sink<never, never, number, never, readonly [Chunk<number>, string]> => {
             throw new Error("should never happen")
           }
         )
@@ -98,7 +98,7 @@ describe.concurrent("Sink", () => {
         const sink = Sink.collectAllToMap((n: number) => n % 3, (a, b) => a + b)
         const stream = Stream.range(0, 10)
         const result = $(stream.run(sink))
-        const expected = HashMap(Tuple(0, 18), Tuple(1, 12), Tuple(2, 15))
+        const expected = HashMap([0, 18] as const, [1, 12] as const, [2, 15] as const)
         assert.isTrue(result == expected)
       }).unsafeRunPromise())
   })
@@ -110,9 +110,9 @@ describe.concurrent("Sink", () => {
         const stream = Stream.fromChunk(Chunk(1, 1, 2, 2, 3, 2, 4, 5)).transduce(sink)
         const result = $(stream.runCollect)
         const expected = Chunk(
-          HashMap(Tuple(1, 2), Tuple(2, 4)),
-          HashMap(Tuple(0, 3), Tuple(2, 2)),
-          HashMap(Tuple(1, 4), Tuple(2, 5))
+          HashMap([1, 2] as const, [2, 4] as const),
+          HashMap([0, 3] as const, [2, 2] as const),
+          HashMap([1, 4] as const, [2, 5] as const)
         )
         assert.isTrue(result == expected)
       }).unsafeRunPromise())
@@ -122,7 +122,7 @@ describe.concurrent("Sink", () => {
         const sink = Sink.collectAllToMapN(3, (n: number) => n % 3, (a, b) => a + b)
         const stream = Stream.fromChunks(Chunk(0, 1, 2), Chunk(3, 4, 5), Chunk(6, 7, 8, 9))
         const result = $(stream.transduce(sink).runCollect)
-        const expected = Chunk(HashMap(Tuple(0, 18), Tuple(1, 12), Tuple(2, 15)))
+        const expected = Chunk(HashMap([0, 18] as const, [1, 12] as const, [2, 15] as const))
         assert.isTrue(result == expected)
       }).unsafeRunPromise())
 
@@ -247,7 +247,7 @@ describe.concurrent("Sink", () => {
         const effect = Effect.acquireRelease(Effect.sync(100), () => closed.set(true))
         const sink = Sink.unwrapScoped(
           effect.map((n) =>
-            Sink.count().mapEffect((cnt) => closed.get.map((cl) => Tuple(cnt + n, cl)))
+            Sink.count().mapEffect((cnt) => closed.get.map((cl) => [cnt + n, cl] as const))
           )
         )
         const finalResult = $(Stream(1, 2, 3).run(sink))

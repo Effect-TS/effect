@@ -1,5 +1,5 @@
 function pollSchedule<E, A>(): Schedule<
-  Tuple<[number, void]>,
+  readonly [number, void],
   never,
   Maybe<Exit<E, A>>,
   Maybe<Exit<E, A>>

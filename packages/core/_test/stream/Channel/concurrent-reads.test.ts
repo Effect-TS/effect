@@ -31,7 +31,7 @@ describe.concurrent("Channel", () => {
                         surplus = surplus.remove(value)
                       }
 
-                      return Tuple(missing, surplus)
+                      return [missing, surplus] as const
                     })
                 })
           )
@@ -71,7 +71,7 @@ describe.concurrent("Channel", () => {
                         surplus = surplus.remove(value)
                       }
 
-                      return Tuple(missing, surplus)
+                      return [missing, surplus] as const
                     })
                 })
           )

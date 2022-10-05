@@ -19,7 +19,7 @@ describe.concurrent("TMap", () => {
 
     it("overwrite existing element", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2)))
+        const tmap = $(TMap.make(["a", 1] as const, ["b", 2] as const))
 
         $(tmap.put("a", 10))
 
@@ -34,7 +34,7 @@ describe.concurrent("TMap", () => {
 
     it("remove existing element", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2)))
+        const tmap = $(TMap.make(["a", 1] as const, ["b", 2] as const))
 
         $(tmap.delete("a"))
 
@@ -63,7 +63,7 @@ describe.concurrent("TMap", () => {
     })
 
     it("add many keys with negative hash codes", async () => {
-      const expected = Chunk.fill(1000, (i) => Tuple(new HashContainer(-i), i)).toList
+      const expected = Chunk.fill(1000, (i) => [new HashContainer(-i), i] as const).toList
       const tx = Do(($) => {
         const tmap = $(TMap.empty<HashContainer, number>())
 
@@ -79,9 +79,9 @@ describe.concurrent("TMap", () => {
     })
 
     it("putIfAbsent", async () => {
-      const expected = List(Tuple("a", 1), Tuple("b", 2))
+      const expected = List(["a", 1] as const, ["b", 2] as const)
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1)))
+        const tmap = $(TMap.make(["a", 1] as const))
 
         $(tmap.putIfAbsent("b", 2))
         $(tmap.putIfAbsent("a", 10))

@@ -25,7 +25,7 @@ describe.concurrent("Sink", () => {
           Chunk(7, 8, 9, 10)
         )
         const sink = Sink.head<number>().flatMap((head) =>
-          Sink.count().map((count) => Tuple(head, count))
+          Sink.count().map((count) => [head, count] as const)
         )
         const stream = Stream.fromChunks(...chunks)
         const result = $(stream.run(sink))

@@ -3,7 +3,7 @@ import { hasSameElements } from "@effect/core/test/stm/TMap/test-utils"
 describe.concurrent("TMap", () => {
   describe.concurrent("lookups", () => {
     it("get existing element", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2)).flatMap((_) => _.get("a")).map((
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const).flatMap((_) => _.get("a")).map((
         _
       ) => _ == Maybe.some(1))
       const result = await tx.commit.unsafeRunPromise()
@@ -19,7 +19,7 @@ describe.concurrent("TMap", () => {
     })
 
     it("getOrElse existing element", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2))
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const)
         .flatMap((_) => _.getOrElse("a", 10))
         .map((_) => _ === 1)
       const result = await tx.commit.unsafeRunPromise()
@@ -37,7 +37,7 @@ describe.concurrent("TMap", () => {
     })
 
     it("contains existing element", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2)).flatMap((_) => _.contains("a"))
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const).flatMap((_) => _.contains("a"))
       const result = await tx.commit.unsafeRunPromise()
 
       assert.isTrue(result)
@@ -51,14 +51,14 @@ describe.concurrent("TMap", () => {
     })
 
     it("collect all elements", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)).flatMap((
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const, ["c", 3] as const).flatMap((
         _
       ) =>
         _.toList.map((_) =>
           hasSameElements(
             _,
             Equivalence.tuple(Equivalence.string, Equivalence.number),
-            List(Tuple("a", 1), Tuple("c", 3), Tuple("b", 2))
+            List(["a", 1] as const, ["c", 3] as const, ["b", 2] as const)
           )
         )
       )
@@ -68,7 +68,7 @@ describe.concurrent("TMap", () => {
     })
 
     it("collect all keys", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)).flatMap((
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const, ["c", 3] as const).flatMap((
         _
       ) =>
         _.keys.map((_) =>
@@ -85,7 +85,7 @@ describe.concurrent("TMap", () => {
     })
 
     it("collect all values", async () => {
-      const tx = TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)).flatMap((
+      const tx = TMap.make(["a", 1] as const, ["b", 2] as const, ["c", 3] as const).flatMap((
         _
       ) =>
         _.values.map((_) =>

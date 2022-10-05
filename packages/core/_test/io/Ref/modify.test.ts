@@ -8,7 +8,7 @@ describe.concurrent("Ref", () => {
     it("simple", async () => {
       const program = Effect.Do()
         .bind("ref", () => Ref.make(current))
-        .bind("v1", ({ ref }) => ref.modify(() => Tuple("hello", update)))
+        .bind("v1", ({ ref }) => ref.modify(() => ["hello", update] as const))
         .bind("v2", ({ ref }) => ref.get)
 
       const { v1, v2 } = await program.unsafeRunPromise()
@@ -23,7 +23,7 @@ describe.concurrent("Ref", () => {
       const program = Ref.make<State>(State.Active).flatMap((ref) =>
         ref.modifySome(
           "state doesn't change",
-          (state) => state.isClosed() ? Maybe.some(Tuple("active", State.Active)) : Maybe.none
+          (state) => state.isClosed() ? Maybe.some(["active", State.Active] as const) : Maybe.none
         )
       )
 
@@ -40,7 +40,7 @@ describe.concurrent("Ref", () => {
           ({ ref }) =>
             ref.modifySome("doesn't change the state", (state) =>
               state.isActive()
-                ? Maybe.some(Tuple("changed", State.Changed))
+                ? Maybe.some(["changed", State.Changed] as const)
                 : Maybe.none)
         )
         .bind(
@@ -48,9 +48,9 @@ describe.concurrent("Ref", () => {
           ({ ref }) =>
             ref.modifySome("doesn't change the state", (state) =>
               state.isActive()
-                ? Maybe.some(Tuple("changed", State.Changed))
+                ? Maybe.some(["changed", State.Changed] as const)
                 : state.isChanged()
-                ? Maybe.some(Tuple("closed", State.Closed))
+                ? Maybe.some(["closed", State.Closed] as const)
                 : Maybe.none)
         )
 

@@ -68,7 +68,7 @@ describe.concurrent("Stream", () => {
           Effect.scoped(
             stream
               .runScoped(Sink.collectAll())
-              .flatMap((r) => closed.get.map((b) => Tuple(r, b)))
+              .flatMap((r) => closed.get.map((b) => [r, b] as const))
           ))
         .bind("finalState", ({ closed }) => closed.get)
 

@@ -986,7 +986,7 @@ describe.concurrent("STM", () => {
           .bind("counter", () => TRef.make(0))
           .bindValue("increment", ({ counter }) => counter.updateAndGet((n) => n + 1))
           .flatMap(({ increment }) =>
-            increment.summarized(increment, (start, end) => Tuple(start, end))
+            increment.summarized(increment, (start, end) => [start, end] as const)
           )
           .commit
 

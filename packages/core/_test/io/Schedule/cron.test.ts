@@ -20,7 +20,7 @@ describe.concurrent("Schedule", () => {
         const afterTime = new Date(originOffset).setSeconds(3)
 
         const input = List(inTimeSecondMillis, inTimeSecond, beforeTime, afterTime)
-          .map((n) => Tuple(n, undefined))
+          .map((n) => [n, undefined] as const)
 
         const result = $(
           runManually(Schedule.secondOfMinute(1), input)
@@ -64,7 +64,7 @@ describe.concurrent("Schedule", () => {
         const afterTime = new Date(originOffset).setMinutes(3)
 
         const input = List(inTimeMinuteMillis, inTimeMinute, beforeTime, afterTime)
-          .map((n) => Tuple(n, undefined))
+          .map((n) => [n, undefined] as const)
 
         const result = $(
           runManually(Schedule.minuteOfHour(1), input)
@@ -107,7 +107,7 @@ describe.concurrent("Schedule", () => {
         const afterTime = new Date(originOffset).setHours(3)
 
         const input = List(inTimeHourSecond, inTimeHour, beforeTime, afterTime)
-          .map((n) => Tuple(n, undefined))
+          .map((n) => [n, undefined] as const)
 
         const result = $(
           runManually(Schedule.hourOfDay(1), input)
@@ -150,7 +150,7 @@ describe.concurrent("Schedule", () => {
         const wednesday = nextDay(originOffset, 3)
 
         const input = List(tuesdayHour, tuesday, monday, wednesday)
-          .map((n) => Tuple(n, undefined))
+          .map((n) => [n, undefined] as const)
 
         const result = $(
           runManually(Schedule.dayOfWeek(2), input)
@@ -192,7 +192,9 @@ describe.concurrent("Schedule", () => {
         const before = new Date(originOffset).setDate(1)
         const after = new Date(originOffset).setDate(2)
 
-        const input = List(inTimeDate1, inTimeDate2, before, after).map((n) => Tuple(n, undefined))
+        const input = List(inTimeDate1, inTimeDate2, before, after).map((n) =>
+          [n, undefined] as const
+        )
 
         const result = $(
           runManually(Schedule.dayOfMonth(2), input)
@@ -217,7 +219,7 @@ describe.concurrent("Schedule", () => {
       Do(($) => {
         const originOffset = new Date(2020, 0, 31, 0, 0, 0).getTime()
 
-        const input = List(originOffset).map((n) => Tuple(n, undefined))
+        const input = List(originOffset).map((n) => [n, undefined] as const)
 
         const result = $(
           runManually(Schedule.dayOfMonth(30), input)

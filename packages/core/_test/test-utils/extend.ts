@@ -27,9 +27,3 @@ export function scoped<E, A>(name: string, self: LazyArg<Effect<TestEnvironment 
     () => Effect.suspendSucceed(self).scoped.provideLayer(TestEnvironment).unsafeRunPromise()
   )
 }
-
-export function Tuple<As extends any[]>(...As: As): As {
-  return As
-}
-
-export type Tuple<As extends any[]> = Readonly<As>

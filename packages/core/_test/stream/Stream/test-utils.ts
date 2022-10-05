@@ -50,8 +50,8 @@ export function chunkCoordination<A>(
       queue,
       offer: ref.modify((list) =>
         list.isNil()
-          ? Tuple(List.nil(), List.nil())
-          : Tuple(list.head, list.tail)
+          ? [List.nil(), List.nil()] as const
+          : [list.head, list.tail] as const
       ).flatMap((list) => queue.offerAll(list)).unit,
       proceed: ps.offer(undefined).unit,
       awaitNext: ps.take

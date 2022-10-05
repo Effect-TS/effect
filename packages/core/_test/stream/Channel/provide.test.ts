@@ -26,7 +26,7 @@ describe.concurrent("Channel", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        Equals.equals(result, Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+        Equals.equals(result, [new NumberServiceImpl(100), new NumberServiceImpl(200)] as const)
       )
     })
 
@@ -35,7 +35,7 @@ describe.concurrent("Channel", () => {
         .emitCollect
         .mapOut((tuple) => tuple[1])
         .concatMap((n) =>
-          Channel.fromEffect(Effect.service(NumberService).map((m) => Tuple(n, m)))
+          Channel.fromEffect(Effect.service(NumberService).map((m) => [n, m] as const))
             .provideService(NumberService, new NumberServiceImpl(200))
             .flatMap((tuple) => Channel.write(tuple))
         )
@@ -45,7 +45,7 @@ describe.concurrent("Channel", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(
-        result[0] == Chunk(Tuple(new NumberServiceImpl(100), new NumberServiceImpl(200)))
+        result[0] == Chunk([new NumberServiceImpl(100), new NumberServiceImpl(200)] as const)
       )
       assert.isUndefined(result[1])
     })

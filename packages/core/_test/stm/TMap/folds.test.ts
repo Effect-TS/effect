@@ -2,7 +2,7 @@ describe.concurrent("TMap", () => {
   describe.concurrent("folds", () => {
     it("fold on non-empty map", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)))
+        const tmap = $(TMap.make(["a", 1] as const, ["b", 2] as const, ["c", 3] as const))
         const res = $(tmap.fold(0, (acc, kv) => acc + kv[1]))
 
         return res === 6
@@ -26,7 +26,7 @@ describe.concurrent("TMap", () => {
 
     it("foldSTM on non-empty map", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("b", 2), Tuple("c", 3)))
+        const tmap = $(TMap.make(["a", 1] as const, ["b", 2] as const, ["c", 3] as const))
         const res = $(tmap.foldSTM(0, (acc, kv) => STM.succeed(acc + kv[1])))
 
         return res === 6

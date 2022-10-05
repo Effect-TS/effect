@@ -16,7 +16,11 @@ describe.concurrent("Schedule", () => {
       Do(($) => {
         const schedule = Schedule.recurs(2).intersect(Schedule.exponential((1).minutes))
         const result = $(Clock.currentTime.flatMap((now) => schedule.run(now, Chunk.range(1, 10))))
-        const expected = Chunk(Tuple(0, (1).minutes), Tuple(1, (2).minutes), Tuple(2, (4).minutes))
+        const expected = Chunk(
+          [0, (1).minutes] as const,
+          [1, (2).minutes] as const,
+          [2, (4).minutes] as const
+        )
         assert.isTrue(result == expected)
       }).unsafeRunPromise())
 

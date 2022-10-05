@@ -8,7 +8,7 @@ describe.concurrent("Effect", () => {
             .zipFlatten(Effect.sync("test"))
             .zipFlatten(Effect.sync(true))
         )
-        assert.isTrue(Equals.equals(result, Tuple(1, undefined, "test", true)))
+        assert.isTrue(Equals.equals(result, [1, undefined, "test", true] as const))
       }).unsafeRunPromise())
   })
 

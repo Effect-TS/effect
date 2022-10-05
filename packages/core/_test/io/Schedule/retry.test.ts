@@ -146,9 +146,9 @@ describe.concurrent("Schedule", () => {
           s === "KeepTryingError"
         )
         const program = io.retryOrElseEither(strategy, (s, n) =>
-          TestClock.currentTime.map((now) => Tuple(new DurationInternal(now), s, n)))
+          TestClock.currentTime.map((now) => [new DurationInternal(now), s, n] as const))
         const result = $(run(program))
-        const expected = Tuple((800).millis, "GiveUpError", 4)
+        const expected = [(800).millis, "GiveUpError", 4] as const
         assert.isTrue(result == Either.left(expected))
       }))
 

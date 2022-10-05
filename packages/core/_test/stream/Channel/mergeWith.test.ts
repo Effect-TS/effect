@@ -63,7 +63,7 @@ describe.concurrent("Channel", () => {
 
       const result = await program.unsafeRunPromiseExit()
 
-      assert.isTrue(result == Exit.fail(Tuple("boom", true)))
+      assert.isTrue(result == Exit.fail(["boom", true] as const))
     })
 
     it("interrupts losing side", async () => {
