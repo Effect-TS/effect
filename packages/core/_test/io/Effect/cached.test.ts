@@ -22,7 +22,7 @@ describe.concurrent("Effect", () => {
     it("correctly handles an infinite duration time to live", () =>
       Do(($) => {
         const ref = $(Ref.make(0))
-        const getAndIncrement = ref.modify((curr) => Tuple(curr, curr + 1))
+        const getAndIncrement = ref.modify((curr) => [curr, curr + 1])
         const cached = $(getAndIncrement.cached(Duration.Infinity))
         const a = $(cached)
         const b = $(cached)

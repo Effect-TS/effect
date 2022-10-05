@@ -14,8 +14,8 @@ describe.concurrent("Metrics", () => {
 
       assert.isTrue(
         result.occurrences == HashMap(
-          Tuple("hello", 2),
-          Tuple("world", 1)
+          ["hello", 2] as const,
+          ["world", 1] as const
         )
       )
     })
@@ -32,8 +32,8 @@ describe.concurrent("Metrics", () => {
 
       assert.isTrue(
         result.occurrences == HashMap(
-          Tuple("hello", 2),
-          Tuple("world", 1)
+          ["hello", 2] as const,
+          ["world", 1] as const
         )
       )
     })
@@ -53,8 +53,8 @@ describe.concurrent("Metrics", () => {
 
       assert.isTrue(
         result.occurrences == HashMap(
-          Tuple("1", 2),
-          Tuple("100", 1)
+          ["1", 2] as const,
+          ["100", 1] as const
         )
       )
     })
@@ -75,8 +75,8 @@ describe.concurrent("Metrics", () => {
       const { r0, r1, r2 } = await program.unsafeRunPromise()
 
       assert.isTrue(r0.occurrences.isEmpty)
-      assert.isTrue(r1.occurrences == HashMap(Tuple("hello", 2)))
-      assert.isTrue(r2.occurrences == HashMap(Tuple("world", 1)))
+      assert.isTrue(r1.occurrences == HashMap(["hello", 2] as const))
+      assert.isTrue(r2.occurrences == HashMap(["world", 1] as const))
     })
   })
 })

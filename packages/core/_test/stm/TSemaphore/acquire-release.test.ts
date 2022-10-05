@@ -43,13 +43,13 @@ describe.concurrent("TSemaphore", () => {
           semaphore: TSemaphore,
           acquire: (n: number) => STM<never, never, void>,
           release: (n: number) => STM<never, never, void>
-        ): STM<never, never, Tuple<[number, number]>> {
+        ): STM<never, never, readonly [number, number]> {
           return Do(($) => {
             $(acquire(50))
             const usedCapacity = $(semaphore.available)
             $(release(capacity))
             const freeCapacity = $(semaphore.available)
-            return Tuple(usedCapacity, freeCapacity)
+            return [usedCapacity, freeCapacity] as const
           })
         }
         const semaphore = $(TSemaphore.make(capacity))

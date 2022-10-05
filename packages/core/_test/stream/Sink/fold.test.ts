@@ -99,7 +99,7 @@ describe.concurrent("Sink", () => {
               )
               .runCollect)
           .bind("result", ({ effects }) => effects.get)
-          .map(({ exit, result }) => Tuple(exit, result))
+          .map(({ exit, result }) => [exit, result] as const)
           .exit
       }
 
@@ -108,9 +108,9 @@ describe.concurrent("Sink", () => {
       const result3 = await run(double).unsafeRunPromise()
       const result4 = await run(failed).unsafeRunPromise()
 
-      assert.isTrue(result1 == Exit.succeed(Tuple(Chunk(0), List.empty())))
-      assert.isTrue(result2 == Exit.succeed(Tuple(Chunk(30), List(1))))
-      assert.isTrue(result3 == Exit.succeed(Tuple(Chunk(30), List(2, 1))))
+      assert.isTrue(result1 == Exit.succeed([Chunk(0), List.empty()] as const))
+      assert.isTrue(result2 == Exit.succeed([Chunk(30), List(1)] as const))
+      assert.isTrue(result3 == Exit.succeed([Chunk(30), List(2, 1)] as const))
       assert.isTrue(result4 == Exit.fail("ouch"))
     })
 

@@ -13,7 +13,7 @@ describe.concurrent("Deferred", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         const ref = $(Ref.make(Chunk("first error", "second error")))
-        const success = $(ref.modify((as) => Tuple(as.unsafeHead, as.unsafeTail)).flip)
+        const success = $(ref.modify((as) => [as.unsafeHead, as.unsafeTail]).flip)
         const v1 = $(deferred.await.exit)
         const v2 = $(deferred.await.exit)
         assert.isTrue(success)
@@ -25,7 +25,7 @@ describe.concurrent("Deferred", () => {
       Do(($) => {
         const deferred = $(Deferred.make<string, number>())
         const ref = $(Ref.make(Chunk("first error", "second error")))
-        const success = $(ref.modify((as) => Tuple(as.unsafeHead, as.unsafeTail)).flip)
+        const success = $(ref.modify((as) => [as.unsafeHead, as.unsafeTail]).flip)
         const v1 = $(deferred.await.exit)
         const v2 = $(deferred.await.exit)
         assert.isTrue(success)

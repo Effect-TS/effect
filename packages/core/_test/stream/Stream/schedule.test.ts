@@ -6,19 +6,19 @@ describe.concurrent("Stream", () => {
         const schedule = Schedule.fixed((100).millis)
         const stream = Stream.range(1, 9)
           .schedule(schedule)
-          .mapEffect((n) => Clock.currentTime.map((now) => Tuple(n, now - start)))
+          .mapEffect((n) => Clock.currentTime.map((now) => [n, now - start] as const))
         const fiber = $(stream.runCollect.fork)
         $(TestClock.adjust((800).millis))
         const result = $(fiber.join)
         const expected = Chunk(
-          Tuple(1, 100),
-          Tuple(2, 200),
-          Tuple(3, 300),
-          Tuple(4, 400),
-          Tuple(5, 500),
-          Tuple(6, 600),
-          Tuple(7, 700),
-          Tuple(8, 800)
+          [1, 100] as const,
+          [2, 200] as const,
+          [3, 300] as const,
+          [4, 400] as const,
+          [5, 500] as const,
+          [6, 600] as const,
+          [7, 700] as const,
+          [8, 800] as const
         )
         assert.isTrue(result == expected)
       }))

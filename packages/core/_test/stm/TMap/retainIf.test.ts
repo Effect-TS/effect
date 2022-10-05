@@ -2,7 +2,7 @@ describe.concurrent("TMap", () => {
   describe.concurrent("retainIf", () => {
     it("retainIf", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
+        const tmap = $(TMap.make(["a", 1] as const, ["aa", 2] as const, ["aaa", 3] as const))
         const removed = $(tmap.retainIf((kv) => Equals.equals(kv[0], "aa")))
         const a = $(tmap.contains("a"))
         const aa = $(tmap.contains("aa"))
@@ -10,7 +10,7 @@ describe.concurrent("TMap", () => {
 
         return a === false && aa === true && aaa === false &&
           removed.corresponds(
-            Chunk(Tuple("aaa", 3), Tuple("a", 1)),
+            Chunk(["aaa", 3] as const, ["a", 1] as const),
             Equivalence.tuple(Equivalence.string, Equivalence.number).equals
           )
       })
@@ -21,7 +21,7 @@ describe.concurrent("TMap", () => {
 
     it("retainIfDiscard", async () => {
       const tx = Do(($) => {
-        const tmap = $(TMap.make(Tuple("a", 1), Tuple("aa", 2), Tuple("aaa", 3)))
+        const tmap = $(TMap.make(["a", 1] as const, ["aa", 2] as const, ["aaa", 3] as const))
         $(tmap.retainIfDiscard((kv) => Equals.equals(kv[0], "aa")))
         const a = $(tmap.contains("a"))
         const aa = $(tmap.contains("aa"))

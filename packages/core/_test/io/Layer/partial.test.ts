@@ -29,7 +29,7 @@ describe.concurrent("Layer", () => {
       interface FooService {
         readonly ref: Ref<number>
         readonly string: string
-        readonly get: Effect<never, never, Tuple<[number, string]>>
+        readonly get: Effect<never, never, readonly [number, string]>
       }
 
       const FooTag = Tag<FooService>()
@@ -38,7 +38,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag)
           const ref = env.get(NumberRefTag)
-          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => Tuple(i, s)) })
+          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => [i, s] as const) })
         }
       )
 
@@ -64,7 +64,7 @@ describe.concurrent("Layer", () => {
       interface FooService {
         readonly ref: Ref<number>
         readonly string: string
-        readonly get: Effect<never, never, Tuple<[number, string]>>
+        readonly get: Effect<never, never, readonly [number, string]>
       }
 
       const FooTag = Tag<FooService>()
@@ -73,7 +73,7 @@ describe.concurrent("Layer", () => {
         (env) => {
           const s = env.get(StringTag)
           const ref = env.get(NumberRefTag)
-          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => Tuple(i, s)) })
+          return Env(FooTag, { ref, string: s, get: ref.get.map((i) => [i, s] as const) })
         }
       )
 
@@ -84,7 +84,7 @@ describe.concurrent("Layer", () => {
 
       const program = Effect.serviceWithEffect(FooTag, (_) => _.get)
         .flatMap(([i1, s]) =>
-          Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get).map((i2) => Tuple(i1, i2, s))
+          Effect.serviceWithEffect(NumberRefTag, (ref) => ref.get).map((i2) => [i1, i2, s] as const)
         )
         .provideLayer(layer)
 

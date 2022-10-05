@@ -30,7 +30,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(Tuple(1, "a"), Tuple(2, "b"), Tuple(3, "c")))
+      assert.isTrue(result == Chunk([1, "a"] as const, [2, "b"] as const, [3, "c"] as const))
     })
 
     it("equivalence with Chunk.zip", async () => {
@@ -103,9 +103,9 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise()
       const expected = left.flatten.zipAllWith(
         right.flatten,
-        (a, b) => Tuple(Maybe.some(a), Maybe.some(b)),
-        (a) => Tuple(Maybe.some(a), Maybe.none),
-        (b) => Tuple(Maybe.none, Maybe.some(b))
+        (a, b) => [Maybe.some(a), Maybe.some(b)] as const,
+        (a) => [Maybe.some(a), Maybe.none] as const,
+        (b) => [Maybe.none, Maybe.some(b)] as const
       )
 
       assert.isTrue(result == expected)
@@ -131,10 +131,10 @@ describe.concurrent("Stream", () => {
       const program = Effect.Do()
         .bind("left", () => Queue.unbounded<Chunk<number>>())
         .bind("right", () => Queue.unbounded<Chunk<number>>())
-        .bind("out", () => Queue.bounded<Take<never, Tuple<[number, number]>>>(1))
+        .bind("out", () => Queue.bounded<Take<never, readonly [number, number]>>(1))
         .tap(({ left, out, right }) =>
           Stream.fromChunkQueue(left)
-            .zipWithLatest(Stream.fromChunkQueue(right), (a, b) => Tuple(a, b))
+            .zipWithLatest(Stream.fromChunkQueue(right), (a, b) => [a, b] as const)
             .runIntoQueue(out)
             .fork
         )
@@ -154,8 +154,8 @@ describe.concurrent("Stream", () => {
 
       const { chunk1, chunk2 } = await program.unsafeRunPromise()
 
-      assert.isTrue(chunk1 == Chunk(Tuple(0, 0), Tuple(0, 1)))
-      assert.isTrue(chunk2 == Chunk(Tuple(1, 1), Tuple(2, 1)))
+      assert.isTrue(chunk1 == Chunk([0, 0] as const, [0, 1] as const))
+      assert.isTrue(chunk2 == Chunk([1, 1] as const, [2, 1] as const))
     })
 
     it("handle empty pulls properly - 1", async () => {
@@ -191,7 +191,7 @@ describe.concurrent("Stream", () => {
     it("handle empty pulls properly - 2", async () => {
       const program = Stream.unfold(
         0,
-        (n) => Maybe.some(Tuple(n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1))
+        (n) => Maybe.some([n < 3 ? Chunk.empty<number>() : Chunk.single(2), n + 1] as const)
       )
         .unchunks
         .forever
@@ -226,9 +226,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(1, Maybe.some(2)),
-          Tuple(2, Maybe.some(3)),
-          Tuple(3, Maybe.none)
+          [1, Maybe.some(2)] as const,
+          [2, Maybe.some(3)] as const,
+          [3, Maybe.none] as const
         )
       )
     })
@@ -246,9 +246,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(1, Maybe.some(2)),
-          Tuple(2, Maybe.some(3)),
-          Tuple(3, Maybe.none)
+          [1, Maybe.some(2)] as const,
+          [2, Maybe.some(3)] as const,
+          [3, Maybe.none] as const
         )
       )
     })
@@ -283,9 +283,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Maybe.none, 1),
-          Tuple(Maybe.some(1), 2),
-          Tuple(Maybe.some(2), 3)
+          [Maybe.none, 1] as const,
+          [Maybe.some(1), 2] as const,
+          [Maybe.some(2), 3] as const
         )
       )
     })
@@ -303,9 +303,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Maybe.none, 1),
-          Tuple(Maybe.some(1), 2),
-          Tuple(Maybe.some(2), 3)
+          [Maybe.none, 1] as const,
+          [Maybe.some(1), 2] as const,
+          [Maybe.some(2), 3] as const
         )
       )
     })
@@ -340,9 +340,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(Maybe.none, 1, Maybe.some(2)),
-          Tuple(Maybe.some(1), 2, Maybe.some(3)),
-          Tuple(Maybe.some(2), 3, Maybe.none)
+          [Maybe.none, 1, Maybe.some(2)] as const,
+          [Maybe.some(1), 2, Maybe.some(3)] as const,
+          [Maybe.some(2), 3, Maybe.none] as const
         )
       )
     })
@@ -376,9 +376,9 @@ describe.concurrent("Stream", () => {
 
       assert.isTrue(
         result == Chunk(
-          Tuple(1, "a", true),
-          Tuple(2, "b", false),
-          Tuple(3, "c", true)
+          [1, "a", true] as const,
+          [2, "b", false] as const,
+          [3, "c", true] as const
         )
       )
     })
@@ -392,7 +392,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(result == Chunk(Tuple(1, "a", true), Tuple(2, "b", false)))
+      assert.isTrue(result == Chunk([1, "a", true] as const, [2, "b", false] as const))
     })
   })
 })

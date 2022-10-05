@@ -10,10 +10,10 @@ describe.concurrent("TArray", () => {
         $(fiber.join)
         const first = $(array.get(0).commit)
         const last = $(array.get(N - 1).commit)
-        const result = Tuple(first, last)
+        const result = [first, last] as const
         assert.isTrue(
-          Equals.equals(result, Tuple("a+b+c", "a+b+c")) ||
-            Equals.equals(result, Tuple("a+c+b", "a+c+b"))
+          Equals.equals(result, ["a+b+c", "a+b+c"] as const) ||
+            Equals.equals(result, ["a+c+b", "a+c+b"] as const)
         )
       }).unsafeRunPromise())
   })
@@ -27,9 +27,12 @@ describe.concurrent("TArray", () => {
         $(fiber.join)
         const first = $(array.get(0).commit)
         const last = $(array.get(N - 1).commit)
-        const result = Tuple(first, last)
+        const result = [first, last] as const
         assert.isTrue(
-          Equals.equals(result, Tuple("a+b+c", "a+b+c") || result == Tuple("a+c+b", "a+c+b"))
+          Equals.equals(
+            result,
+            ["a+b+c", "a+b+c"] as const || result == ["a+c+b", "a+c+b"] as const
+          )
         )
       }).unsafeRunPromise())
 

@@ -4,7 +4,7 @@ describe.concurrent("Effect", () => {
       Do(($) => {
         const counter = $(Ref.make(0))
         const increment = counter.updateAndGet((n) => n + 1)
-        const result = $(increment.summarized(increment, (start, end) => Tuple(start, end)))
+        const result = $(increment.summarized(increment, (start, end) => [start, end] as const))
         const [[start, end], value] = result
         assert.strictEqual(start, 1)
         assert.strictEqual(value, 2)

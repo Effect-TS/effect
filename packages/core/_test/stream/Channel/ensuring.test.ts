@@ -34,7 +34,7 @@ describe.concurrent("Channel", () => {
         ).flatMap((eventsInManaged) =>
           events
             .get
-            .map((eventsAfterManaged) => Tuple(eventsInManaged, eventsAfterManaged))
+            .map((eventsAfterManaged) => [eventsInManaged, eventsAfterManaged] as const)
         )
       })
 

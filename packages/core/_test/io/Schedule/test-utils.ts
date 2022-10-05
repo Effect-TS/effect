@@ -23,25 +23,25 @@ export function failOn0(ref: Ref<number>): Effect<never, string, number> {
 
 export function checkDelays<State, Env>(
   schedule: Schedule<State, Env, number, Duration>
-): Effect<Env, never, Tuple<[Chunk<Duration>, Chunk<Duration>]>> {
+): Effect<Env, never, readonly [Chunk<Duration>, Chunk<Duration>]> {
   return Do(($) => {
     const now = $(Effect.sync(Date.now()))
     const input = Chunk(1, 2, 3, 4, 5)
     const actual = $(schedule.run(now, input))
     const expected = $(schedule.delays.run(now, input))
-    return Tuple(actual, expected)
+    return [actual, expected] as const
   })
 }
 
 export function checkRepetitions<State, Env>(
   schedule: Schedule<State, Env, number, number>
-): Effect<Env, never, Tuple<[Chunk<number>, Chunk<number>]>> {
+): Effect<Env, never, readonly [Chunk<number>, Chunk<number>]> {
   return Do(($) => {
     const now = $(Effect.sync(Date.now()))
     const input = Chunk(1, 2, 3, 4, 5)
     const actual = $(schedule.run(now, input))
     const expected = $(schedule.repetitions.run(now, input))
-    return Tuple(actual, expected)
+    return [actual, expected] as const
   })
 }
 
@@ -93,33 +93,33 @@ export function runCollect<State, Env, In, Out>(
 
 export function runManually<State, Env, In, Out>(
   schedule: Schedule<State, Env, In, Out>,
-  inputs: Collection<Tuple<[number, In]>>
-): Effect<Env, never, Tuple<[List<Tuple<[number, Out]>>, Maybe<Out>]>> {
+  inputs: Collection<readonly [number, In]>
+): Effect<Env, never, readonly [List<readonly [number, Out]>, Maybe<Out>]> {
   return runManuallyLoop(schedule, schedule.initial, List.from(inputs), List.nil())
 }
 
 function runManuallyLoop<State, Env, In, Out>(
   schedule: Schedule<State, Env, In, Out>,
   state: State,
-  inputs: List<Tuple<[number, In]>>,
-  acc: List<Tuple<[number, Out]>>
-): Effect<Env, never, Tuple<[List<Tuple<[number, Out]>>, Maybe<Out>]>> {
+  inputs: List<readonly [number, In]>,
+  acc: List<readonly [number, Out]>
+): Effect<Env, never, readonly [List<readonly [number, Out]>, Maybe<Out>]> {
   if (inputs.isNil()) {
-    return Effect.succeed(Tuple(acc.reverse, Maybe.none))
+    return Effect.succeed([acc.reverse, Maybe.none] as const)
   }
   const [offset, input] = inputs.head
   const rest = inputs.tail
   return schedule.step(offset, input, state).flatMap(([state, out, decision]) => {
     switch (decision._tag) {
       case "Done": {
-        return Effect.succeed(Tuple(acc.reverse, Maybe.some(out)))
+        return Effect.succeed([acc.reverse, Maybe.some(out)] as const)
       }
       case "Continue": {
         return runManuallyLoop(
           schedule,
           state,
           rest,
-          acc.prepend(Tuple(decision.intervals.start, out))
+          acc.prepend([decision.intervals.start, out] as const)
         )
       }
     }

@@ -23,7 +23,7 @@ export const DummyService: DummyServiceOps = {
  * @tsplus companion effect/core/test/io/Reloadable/Counter.Ops
  */
 export class Counter {
-  constructor(readonly ref: Ref<Tuple<[number, number]>>) {}
+  constructor(readonly ref: Ref<readonly [number, number]>) {}
 
   get dummyService(): Effect<Scope, never, DummyService> {
     return this.acquire.as({ [DummyServiceURI]: {} })
@@ -38,11 +38,15 @@ export class Counter {
   }
 
   get incrementAcquire(): Effect<never, never, number> {
-    return this.ref.modify(([acquire, release]) => Tuple(acquire + 1, Tuple(acquire + 1, release)))
+    return this.ref.modify(([acquire, release]) =>
+      [acquire + 1, [acquire + 1, release] as const] as const
+    )
   }
 
   get incrementRelease(): Effect<never, never, number> {
-    return this.ref.modify(([acquire, release]) => Tuple(release + 1, Tuple(acquire, release + 1)))
+    return this.ref.modify(([acquire, release]) =>
+      [release + 1, [acquire, release + 1] as const] as const
+    )
   }
 
   get acquire(): Effect<Scope, never, number> {
@@ -57,7 +61,7 @@ export class Counter {
  * @tsplus static effect/core/test/io/Reloadable/Counter.Ops make
  */
 export function make(): Effect<never, never, Counter> {
-  return Ref.make(Tuple(0, 0)).map((ref) => new Counter(ref))
+  return Ref.make([0, 0] as const).map((ref) => new Counter(ref))
 }
 
 //     def dummyService = acquire.as(DummyService)

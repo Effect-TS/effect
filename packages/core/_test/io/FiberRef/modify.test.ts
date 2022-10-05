@@ -6,7 +6,7 @@ describe.concurrent("FiberRef", () => {
     it("changes value", () =>
       Do(($) => {
         const fiberRef = $(FiberRef.make(initial))
-        const value1 = $(fiberRef.modify(() => Tuple(1, update)))
+        const value1 = $(fiberRef.modify(() => [1, update] as const))
         const value2 = $(fiberRef.get)
         assert.strictEqual(value1, 1)
         assert.strictEqual(value2, update)

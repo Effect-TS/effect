@@ -4,17 +4,17 @@ describe.concurrent("TMap", () => {
   describe.concurrent("factories", () => {
     it("apply", async () => {
       const tx = TMap.make(
-        Tuple("a", 1),
-        Tuple("b", 2),
-        Tuple("c", 2),
-        Tuple("b", 3)
+        ["a", 1] as const,
+        ["b", 2] as const,
+        ["c", 2] as const,
+        ["b", 3] as const
       )
         .flatMap((_) => _.toList)
         .map((_) =>
           hasSameElements(
             _,
             Equivalence.tuple(Equivalence.string, Equivalence.number),
-            List(Tuple("a", 1), Tuple("b", 3), Tuple("c", 2))
+            List(["a", 1] as const, ["b", 3] as const, ["c", 2] as const)
           )
         )
       const result = await tx.commit.unsafeRunPromise()
@@ -31,16 +31,16 @@ describe.concurrent("TMap", () => {
 
     it("fromIterable", async () => {
       const tx = TMap.fromIterable([
-        Tuple("a", 1),
-        Tuple("b", 2),
-        Tuple("c", 2),
-        Tuple("b", 3)
+        ["a", 1] as const,
+        ["b", 2] as const,
+        ["c", 2] as const,
+        ["b", 3] as const
       ])
         .flatMap((_) => _.toList).map((_) =>
           hasSameElements(
             _,
             Equivalence.tuple(Equivalence.string, Equivalence.number),
-            List(Tuple("a", 1), Tuple("c", 2), Tuple("b", 3))
+            List(["a", 1] as const, ["c", 2] as const, ["b", 3] as const)
           )
         )
       const result = await tx.commit.unsafeRunPromise()

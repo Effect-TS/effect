@@ -64,7 +64,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapAccum", () => {
     it("simple example", async () => {
       const program = Stream(1, 1, 1)
-        .mapAccum(0, (acc, el) => Tuple(acc + el, acc + el))
+        .mapAccum(0, (acc, el) => [acc + el, acc + el] as const)
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -76,7 +76,7 @@ describe.concurrent("Stream", () => {
   describe.concurrent("mapAccumEffect", () => {
     it("happy path", async () => {
       const program = Stream(1, 1, 1)
-        .mapAccumEffect(0, (acc, el) => Effect.sync(Tuple(acc + el, acc + el)))
+        .mapAccumEffect(0, (acc, el) => Effect.sync([acc + el, acc + el] as const))
         .runCollect
 
       const result = await program.unsafeRunPromise()
@@ -99,7 +99,7 @@ describe.concurrent("Stream", () => {
       const program = Stream(1, 2, 3)
         .mapAccumEffect(
           undefined,
-          (_, el) => el === 3 ? Effect.failSync("boom") : Effect.sync(Tuple(undefined, el))
+          (_, el) => el === 3 ? Effect.failSync("boom") : Effect.sync([undefined, el] as const)
         )
         .either
         .runCollect

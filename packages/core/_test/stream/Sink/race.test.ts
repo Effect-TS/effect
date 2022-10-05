@@ -6,7 +6,7 @@ describe.concurrent("Sink", () => {
       Do(($) => {
         const ints = $(Effect.unfold(0, (n) =>
           Random.nextIntBetween(0, 10).map((i) =>
-            n <= 20 ? Maybe.some(Tuple(i, n + 1)) : Maybe.none
+            n <= 20 ? Maybe.some([i, n + 1] as const) : Maybe.none
           )))
         const success1 = $(Random.nextBoolean)
         const success2 = $(Random.nextBoolean)

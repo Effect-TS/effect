@@ -14,7 +14,7 @@ describe.concurrent("Stream", () => {
         const stream1 = Stream.fromChunkQueue(queue1)
         const stream2 = Stream.fromChunkQueue(queue2)
         const stream3 = stream1
-          .zipWithLatest(stream2, (a, b) => Tuple(a, b))
+          .zipWithLatest(stream2, (a, b) => [a, b] as const)
           .interruptWhen(deferred.await)
           .take(3)
         const result = $(stream3.runDrain)
@@ -60,7 +60,7 @@ describe.concurrent("Stream", () => {
         $(queue2.offer(Chunk(4)).fork)
         const stream1 = Stream.fromChunkQueue(queue1)
         const stream2 = Stream.fromChunkQueue(queue2)
-        const stream3 = stream1.zipWithLatest(stream2, (a, b) => Tuple(a, b))
+        const stream3 = stream1.zipWithLatest(stream2, (a, b) => [a, b] as const)
           .interruptWhenDeferred(deferred)
           .take(3)
         const result = $(stream3.runDrain)

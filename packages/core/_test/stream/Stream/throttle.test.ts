@@ -50,11 +50,11 @@ describe.concurrent("Stream", () => {
                 .tap(() => queue.offer(3))
                 .bind("result3", () => pull)
                 .map(({ result1, result2, result3 }) =>
-                  Tuple(
+                  [
                     result1,
                     result2,
                     result3
-                  )
+                  ] as const
                 )
             )
         )
@@ -62,7 +62,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(Equals.equals(result, Tuple(Chunk(1), Chunk(2), Chunk(3))))
+      assert.isTrue(Equals.equals(result, [Chunk(1), Chunk(2), Chunk(3)] as const))
     })
 
     it("infinite bandwidth", async () => {
@@ -82,7 +82,7 @@ describe.concurrent("Stream", () => {
                   .bind("result3", () => pull)
                   .bind("end", () => Clock.currentTime)
                   .map(({ end, result1, result2, result3 }) =>
-                    Tuple(end - start, Tuple(result1, result2, result3))
+                    [end - start, [result1, result2, result3] as const] as const
                   )
               )
           )
@@ -92,7 +92,7 @@ describe.concurrent("Stream", () => {
       const result = await program.unsafeRunPromise()
 
       assert.isTrue(result[0] < 1000)
-      assert.isTrue(Equals.equals(result[1], Tuple(Chunk(1), Chunk(2), Chunk(3))))
+      assert.isTrue(Equals.equals(result[1], [Chunk(1), Chunk(2), Chunk(3)] as const))
     })
 
     it("with burst", async () => {
@@ -117,11 +117,11 @@ describe.concurrent("Stream", () => {
                 .tap(() => queue.offer(3))
                 .bind("result3", () => pull)
                 .map(({ result1, result2, result3 }) =>
-                  Tuple(
+                  [
                     result1,
                     result2,
                     result3
-                  )
+                  ] as const
                 )
             )
         )
@@ -129,7 +129,7 @@ describe.concurrent("Stream", () => {
 
       const result = await program.unsafeRunPromise()
 
-      assert.isTrue(Equals.equals(result, Tuple(Chunk(1), Chunk(2), Chunk(3))))
+      assert.isTrue(Equals.equals(result, [Chunk(1), Chunk(2), Chunk(3)] as const))
     })
   })
 })
