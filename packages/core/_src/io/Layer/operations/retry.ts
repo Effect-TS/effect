@@ -10,9 +10,8 @@ export function retry<S, RIn1, E, X>(schedule: Schedule<S, RIn1, E, X>) {
   return <RIn, ROut>(self: Layer<RIn, E, ROut>): Layer<RIn | RIn1, E, ROut> =>
     Layer.suspend(() => {
       const stateTag = Tag<UpdateState<S>>()
-      return Layer.succeed(stateTag, { state: schedule.initial }).flatMap((env) =>
-        loop(self, schedule, stateTag, env.get(stateTag).state)
-      )
+      return Layer.succeed(stateTag)({ state: schedule.initial })
+        .flatMap((env) => loop(self, schedule, stateTag, env.get(stateTag).state))
     })
 }
 
@@ -39,8 +38,7 @@ function update<S, RIn, E, X>(
   e: E,
   s: S
 ): Layer<RIn, E, UpdateState<S>> {
-  return Layer.fromEffect(
-    stateTag,
+  return Layer.fromEffect(stateTag)(
     Clock.currentTime.flatMap((now) =>
       schedule.step(now, e, s).flatMap(([state, _, decision]) =>
         decision._tag === "Done"

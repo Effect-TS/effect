@@ -28,7 +28,7 @@ describe.concurrent("Layer", () => {
         const fiberRef = $(FiberRef.make(0))
         const tag = Tag<number>()
         const layer1 = Layer.scopedDiscard(fiberRef.locallyScoped(1))
-        const layer2 = Layer.fromEffect(tag, fiberRef.get)
+        const layer2 = Layer.fromEffect(tag)(fiberRef.get)
         const layer3 = layer1 + (layer1 >> layer2)
         const env = $(layer3.build)
         assert.equal(env.get(tag), 1)

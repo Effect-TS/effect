@@ -3,6 +3,6 @@
  *
  * @tsplus static effect/core/io/Layer.Ops sync
  */
-export function sync<T>(tag: Tag<T>, resource: LazyArg<T>): Layer<never, never, T> {
-  return Layer.fromEffectEnvironment(Effect.sync(Env(tag, resource())))
+export function sync<T>(tag: Tag<T>): (resource: LazyArg<T>) => Layer<never, never, T> {
+  return (resource) => Layer.fromEffectEnvironment(Effect.sync(Env(tag, resource())))
 }

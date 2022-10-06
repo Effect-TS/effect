@@ -46,8 +46,8 @@ describe.concurrent("Layer", () => {
 
       const sleep = Effect.sleep((100).millis)
       const layer1 = Layer.fail("foo")
-      const layer2 = Layer.succeed(BarTag, { bar: "bar" })
-      const layer3 = Layer.succeed(BazTag, { baz: "baz" })
+      const layer2 = Layer.succeed(BarTag)({ bar: "bar" })
+      const layer3 = Layer.succeed(BazTag)({ baz: "baz" })
       const layer4 = Layer.scoped(
         ScopedTag,
         Effect.scoped(Effect.acquireRelease(sleep, () => sleep))

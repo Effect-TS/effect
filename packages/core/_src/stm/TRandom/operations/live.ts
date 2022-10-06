@@ -12,7 +12,7 @@ export const defaultTRandom =
 /**
  * @tsplus static effect/core/stm/TRandom.Ops live
  */
-export const live = Layer.fromEffect(TRandom.Tag, defaultTRandom)
+export const live = Layer.fromEffect(TRandom.Tag)(defaultTRandom)
 
 function rndInt(state: PCGRandomState): readonly [number, PCGRandomState] {
   const prng = new PCGRandom()
