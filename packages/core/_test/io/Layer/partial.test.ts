@@ -42,7 +42,7 @@ describe.concurrent("Layer", () => {
         }
       )
 
-      const provideNumberRef = Layer.fromEffect(NumberRefTag, Ref.make(10))
+      const provideNumberRef = Layer.fromEffect(NumberRefTag)(Ref.make(10))
       const provideString = Layer.fromValue(StringTag, "hi")
       const needsString = provideNumberRef >> fooBuilder
       const layer = provideString >> needsString
@@ -77,7 +77,7 @@ describe.concurrent("Layer", () => {
         }
       )
 
-      const provideNumberRef = Layer.fromEffect(NumberRefTag, Ref.make(10))
+      const provideNumberRef = Layer.fromEffect(NumberRefTag)(Ref.make(10))
       const provideString = Layer.fromValue(StringTag, "hi")
       const needsString = provideNumberRef > fooBuilder
       const layer = provideString > needsString

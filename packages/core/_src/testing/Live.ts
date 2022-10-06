@@ -44,8 +44,7 @@ export const Live: LiveOps = {
  *
  * @tsplus static effect/core/testing/Live.Ops default
  */
-export const defaultLive = Layer.fromEffect(
-  Live.Tag,
+export const defaultLive = Layer.fromEffect(Live.Tag)(
   Effect.environmentWith<never, Live>((env) => ({
     provide: (effect) =>
       effect.apply(

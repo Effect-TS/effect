@@ -13,6 +13,6 @@ const program = Do(($) => {
   return a + b + c + foo.d
 })
 
-const FooLive = Layer.sync(Foo, () => ({ d: 4 }))
+const FooLive = Layer.sync(Foo)(() => ({ d: 4 }))
 
 console.log(program.provideSomeLayer(FooLive).unsafeRunSync())

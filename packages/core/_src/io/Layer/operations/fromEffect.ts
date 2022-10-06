@@ -3,11 +3,8 @@
  *
  * @tsplus static effect/core/io/Layer.Ops fromEffect
  */
-export function fromEffect<T, R, E, T1 extends T>(
-  tag: Tag<T>,
-  effect: Effect<R, E, T1>
-): Layer<R, E, T> {
-  return Layer.fromEffectEnvironment(
-    Effect.suspendSucceed(effect).map((service) => Env(tag, service))
-  )
+export function fromEffect<T>(
+  tag: Tag<T>
+): <R, E>(effect: Effect<R, E, T>) => Layer<R, E, T> {
+  return (effect) => Layer.fromEffectEnvironment(effect.map((service) => Env(tag, service)))
 }

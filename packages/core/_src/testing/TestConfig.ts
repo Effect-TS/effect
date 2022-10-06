@@ -70,7 +70,7 @@ export function live(
     readonly shrinks: number
   }
 ): Layer<never, never, TestConfig> {
-  return Layer.succeed(TestConfig.Tag, TestConfig(params))
+  return Layer.succeed(TestConfig.Tag)(TestConfig(params))
 }
 
 /**
