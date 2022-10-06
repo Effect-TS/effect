@@ -1,5 +1,15 @@
 # @effect/core
 
+## 0.0.15
+
+### Patch Changes
+
+- [#1294](https://github.com/Effect-TS/core/pull/1294) [`2bf03b3c1`](https://github.com/Effect-TS/core/commit/2bf03b3c11b17424c887684e276650f45a087da5) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Use flatMap in place of > for channel (safety)
+
+- [#1297](https://github.com/Effect-TS/core/pull/1297) [`b1b63f1e9`](https://github.com/Effect-TS/core/commit/b1b63f1e9f09486476c9073dc964cbe31a989444) Thanks [@mattiamanzati](https://github.com/mattiamanzati)! - Kill Tuple
+
+- [#1300](https://github.com/Effect-TS/core/pull/1300) [`8091f166f`](https://github.com/Effect-TS/core/commit/8091f166fb528c4b94dd39202a8ae07ab02c8ee7) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Improve Layer Constructor Inference
+
 ## 0.0.14
 
 ### Patch Changes
