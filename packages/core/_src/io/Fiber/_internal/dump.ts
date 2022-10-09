@@ -1,8 +1,16 @@
 import type { FiberStatus } from "@effect/core/io/Fiber/status"
 
-export class Dump {
-  constructor(
-    readonly fiberId: FiberId,
-    readonly status: FiberStatus
-  ) {}
+export interface FiberDump {
+  readonly fiberId: FiberId.Runtime
+  readonly fiberStatus: FiberStatus
+}
+
+export function FiberDump(
+  fiberId: FiberId.Runtime,
+  fiberStatus: Fiber.Status
+): Fiber.Dump {
+  return {
+    fiberId,
+    fiberStatus
+  }
 }

@@ -54,7 +54,7 @@ export class None implements FiberId, Equals {
   }
 }
 
-export class RuntimeFiberId implements FiberId.Runtime, Equals {
+export class RuntimeFiberId implements Equals {
   readonly _tag = "Runtime"
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym

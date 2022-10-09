@@ -8,5 +8,6 @@ export function threadName(self: FiberId): string {
   const identifiers = Chunk.from(self.ids)
     .map((n) => `${n}`)
     .join(",")
-  return `effect-ts-fiber-${identifiers}`
+  const plural = identifiers.length > 1
+  return `effect-fiber${plural ? "s" : ""}-${identifiers}`
 }
