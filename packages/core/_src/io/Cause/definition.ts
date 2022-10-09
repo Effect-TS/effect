@@ -1,5 +1,4 @@
 // TODO:
-// - [ ] renderPretty
 // - [ ] squashTrace
 // - [ ] squashTraceWith
 

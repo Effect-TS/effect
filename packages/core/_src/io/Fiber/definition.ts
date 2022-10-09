@@ -1,3 +1,4 @@
+import type { FiberDump } from "@effect/core/io/Fiber/_internal/dump"
 import type { FiberStatus } from "@effect/core/io/Fiber/status"
 
 export const FiberSym = Symbol.for("@effect/core/io/Fiber")
@@ -32,6 +33,7 @@ export declare namespace Fiber {
   export type Runtime<E, A> = RuntimeFiber<E, A>
   export type Synthetic<E, A> = SyntheticFiber<E, A>
 
+  export type Dump = FiberDump
   export type Status = FiberStatus
 
   export interface Descriptor {
