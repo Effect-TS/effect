@@ -1,6 +1,6 @@
 /**
  * Determines whether any element of the `Collection<A>` satisfies the effectual
- * predicate `f`.
+ * predicate `f`, working sequentially.
  *
  * @tsplus static effect/core/io/Effect.Ops exists
  */
