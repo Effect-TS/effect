@@ -38,3 +38,8 @@ jobs:
           yarn test
         env:
           CI: "true"
+      - name: Bench
+        run: |
+          node packages/core/build/examples/bench/queue.js
+        env:
+          CI: "true"

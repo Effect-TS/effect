@@ -10,7 +10,10 @@ export type _A = typeof _A
  *
  * @tsplus type effect/core/stm/TQueue
  */
-export interface TQueue<A> {}
+export interface TQueue<A> {
+  readonly [TQueueSym]: TQueueSym
+  readonly [_A]: (_: A) => A
+}
 
 /**
  * @tsplus type effect/core/stm/TQueue.Ops
