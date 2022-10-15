@@ -1,6 +1,5 @@
-import { STMEffect } from "@effect/core/stm/STM/definition/primitives"
+import { emptyTodoMap, STMEffect } from "@effect/core/stm/STM/definition/primitives"
 import { Entry } from "@effect/core/stm/STM/Entry"
-import { emptyTodoMap } from "@effect/core/stm/STM/Journal"
 import { Versioned } from "@effect/core/stm/STM/Versioned"
 import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 

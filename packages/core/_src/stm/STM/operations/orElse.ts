@@ -1,5 +1,4 @@
-import { STMEffect } from "@effect/core/stm/STM/definition/primitives"
-import { prepareResetJournal } from "@effect/core/stm/STM/Journal"
+import { prepareResetJournal, STMEffect } from "@effect/core/stm/STM/definition/primitives"
 
 /**
  * Tries this effect first, and if it fails or retries, tries the other

@@ -12,7 +12,6 @@ describe.concurrent("STM", () => {
           )(() => STM.retry.orTry(tRef.getAndUpdate((n) => n + 1)))
         )
         .flatMap((tRef) => tRef.get)
-        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -88,7 +87,7 @@ describe.concurrent("STM", () => {
         acc: STM<never, number, never>
       ): Effect<never, number, never> {
         return n <= 0
-          ? acc.commit
+          ? acc
           : Effect.suspendSucceed(
             chainErrorLoop(
               n - 1,
@@ -114,7 +113,6 @@ describe.concurrent("STM", () => {
           )(() => STM.retry | tRef.getAndUpdate((n) => n + 1))
         )
         .flatMap((tRef) => tRef.get)
-        .commit
 
       const result = await program.unsafeRunPromise()
 

@@ -115,6 +115,6 @@ export function chainLoop(
   next: (_: STM<never, never, number>) => STM<never, never, number>
 ): Effect<never, never, number> {
   return n <= 0
-    ? acc.commit
+    ? acc
     : Effect.suspendSucceed(chainLoop(n - 1, next(acc), next))
 }

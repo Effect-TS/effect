@@ -1,4 +1,4 @@
-import type { Todo } from "@effect/core/stm/STM/Journal"
+import type { Todo } from "@effect/core/stm/STM/definition/primitives"
 import type { TxnId } from "@effect/core/stm/STM/TxnId"
 import type { Versioned } from "@effect/core/stm/STM/Versioned"
 import { _A, TRefSym } from "@effect/core/stm/TRef/definition"

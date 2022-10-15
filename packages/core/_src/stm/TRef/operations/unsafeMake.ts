@@ -1,4 +1,4 @@
-import { emptyTodoMap } from "@effect/core/stm/STM/Journal"
+import { emptyTodoMap } from "@effect/core/stm/STM/definition/primitives"
 import { Versioned } from "@effect/core/stm/STM/Versioned"
 import { TRefInternal } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 

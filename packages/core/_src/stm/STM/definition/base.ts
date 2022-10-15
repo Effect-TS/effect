@@ -1,16 +1,9 @@
+import type { ICommit } from "@effect/core/io/Effect/definition"
+
 export type USTM<A> = STM<never, never, A>
 
-export const STMSym = Symbol.for("@effect/core/stm/STM")
-export type STMSym = typeof STMSym
-
-export const _R = Symbol.for("@effect/core/stm/STM/R")
-export type _R = typeof _R
-
-export const _E = Symbol.for("@effect/core/stm/STM/E")
-export type _E = typeof _E
-
-export const _A = Symbol.for("@effect/core/stm/STM/A")
-export type _A = typeof _A
+export const STMTypeId = Symbol.for("@effect/core/stm/STM")
+export type STMTypeId = typeof STMTypeId
 
 /**
  * `STM<R, E, A>` represents an effect that can be performed transactionally,
@@ -48,11 +41,12 @@ export type _A = typeof _A
  *
  * @tsplus type effect/core/stm/STM
  */
-export interface STM<R, E, A> {
-  readonly [STMSym]: STMSym
-  readonly [_R]: () => R
-  readonly [_E]: () => E
-  readonly [_A]: () => A
+export interface STM<R, E, A> extends ICommit<R, E, A> {
+  readonly [STMTypeId]: {
+    readonly _R: (_: never) => R
+    readonly _E: (_: never) => E
+    readonly _A: (_: never) => A
+  }
 }
 
 /**
@@ -76,16 +70,9 @@ export interface STMAspects {}
 export function unifySTM<X extends STM<any, any, any>>(
   self: X
 ): STM<
-  [X] extends [{ [_R]: () => infer R }] ? R : never,
-  [X] extends [{ [_E]: () => infer E }] ? E : never,
-  [X] extends [{ [_A]: () => infer A }] ? A : never
+  [X] extends [{ [STMTypeId]: { _R: (_: never) => infer R } }] ? R : never,
+  [X] extends [{ [STMTypeId]: { _E: (_: never) => infer E } }] ? E : never,
+  [X] extends [{ [STMTypeId]: { _A: (_: never) => infer A } }] ? A : never
 > {
   return self
-}
-
-export class STMBase<R, E, A> implements STM<R, E, A> {
-  readonly [STMSym]: STMSym = STMSym
-  readonly [_R]!: () => R
-  readonly [_E]!: () => E
-  readonly [_A]!: () => A
 }

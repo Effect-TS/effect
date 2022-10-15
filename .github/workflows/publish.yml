@@ -38,6 +38,11 @@ jobs:
           yarn test --run
         env:
           CI: "true"
+      - name: Bench
+        run: |
+          node packages/core/build/examples/bench/queue.js
+        env:
+          CI: "true"
       - name: Create Version PR or Publish to NPM
         id: changesets
         uses: changesets/action@v1

@@ -6,8 +6,8 @@ describe.concurrent("STM", () => {
       Do(($) => {
         const list = List(1, 2, 3, 4, 5)
         const tref = $(TRef.makeCommit(0))
-        $(STM.forEach(list, (n) => tref.update((a) => a + n)).commit)
-        const result = $(tref.get.commit)
+        $(STM.forEach(list, (n) => tref.update((a) => a + n)))
+        const result = $(tref.get)
         assert.strictEqual(result, list.reduce(0, (acc, n) => acc + n))
       }).unsafeRunPromise())
 
@@ -15,8 +15,8 @@ describe.concurrent("STM", () => {
       Do(($) => {
         const chunk = Chunk(1, 2, 3, 4, 5)
         const tref = $(TRef.makeCommit(0))
-        $(STM.forEach(chunk, (n) => tref.update((a) => a + n)).commit)
-        const result = $(tref.get.commit)
+        $(STM.forEach(chunk, (n) => tref.update((a) => a + n)))
+        const result = $(tref.get)
         assert.strictEqual(result, chunk.reduce(0, (acc, n) => acc + n))
       }).unsafeRunPromise())
   })
@@ -26,8 +26,8 @@ describe.concurrent("STM", () => {
       Do(($) => {
         const input = Chunk(1, 2, 3, 4, 5)
         const tref = $(TRef.makeCommit(Chunk.empty<number>()))
-        $(STM.forEach(input, (n) => tref.update((chunk) => chunk.append(n))).commit)
-        const result = $(tref.get.commit)
+        $(STM.forEach(input, (n) => tref.update((chunk) => chunk.append(n))))
+        const result = $(tref.get)
         assert.isTrue(result == input)
       }).unsafeRunPromise())
 
@@ -35,8 +35,8 @@ describe.concurrent("STM", () => {
       Do(($) => {
         const input = List(1, 2, 3, 4, 5)
         const tref = $(TRef.makeCommit(List.empty<number>()))
-        $(STM.forEach(input, (n) => tref.update((list) => list.prepend(n))).commit)
-        const result = $(tref.get.commit)
+        $(STM.forEach(input, (n) => tref.update((list) => list.prepend(n))))
+        const result = $(tref.get)
         assert.isTrue(result == input.reverse)
       }).unsafeRunPromise())
   })
@@ -50,21 +50,21 @@ describe.concurrent("STM", () => {
         $(queue.offer(3))
         const result = $(STM.collectAll(queue.take.replicate(3)))
         assert.isTrue(result == Chunk(1, 2, 3))
-      }).commit.unsafeRunPromise())
+      }).unsafeRunPromise())
   })
 
   describe.concurrent("reduceAll", () => {
     it("should reduce all elements to a single value", () =>
       Do(($) => {
         const list = List(2, 3, 4).map(STM.succeed)
-        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b).commit)
+        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b))
         assert.strictEqual(result, 10)
       }).unsafeRunPromise())
 
     it("should handle an empty iterable", () =>
       Do(($) => {
         const list = List.empty<STM<never, never, number>>()
-        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b).commit)
+        const result = $(STM.reduceAll(STM.succeed(1), list, (a, b) => a + b))
         assert.strictEqual(result, 1)
       }).unsafeRunPromise())
   })
@@ -75,21 +75,21 @@ describe.concurrent("STM", () => {
         const zeroElement = 42
         const nonZero = 43
         const list = List.empty<STM<never, never, number>>()
-        const result = $(STM.mergeAll(list, zeroElement, () => nonZero).commit)
+        const result = $(STM.mergeAll(list, zeroElement, () => nonZero))
         assert.strictEqual(result, zeroElement)
       }).unsafeRunPromise())
 
     it("merge list using function", () =>
       Do(($) => {
         const list = List(3, 5, 7).map(STM.succeed)
-        const result = $(STM.mergeAll(list, 1, (a, b) => a + b).commit)
+        const result = $(STM.mergeAll(list, 1, (a, b) => a + b))
         assert.strictEqual(result, 1 + 3 + 5 + 7)
       }).unsafeRunPromise())
 
     it("return error if it exists in list", () =>
       Do(($) => {
         const list = List(STM.unit, STM.failSync(1))
-        const result = $(STM.mergeAll(list, undefined, constVoid).commit.exit)
+        const result = $(STM.mergeAll(list, undefined, constVoid).exit)
         assert.isTrue(result == Exit.fail(1))
       }).unsafeRunPromiseExit())
   })

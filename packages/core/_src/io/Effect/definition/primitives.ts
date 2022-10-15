@@ -16,6 +16,7 @@ export type ErasedEffect =
   | IYieldNow
   | IFailure<any>
   | ISuccess<any>
+  | ICommit<any, any, any>
 
 export class ISync<A> implements Effect<never, never, A> {
   readonly [EffectURI] = {
@@ -25,6 +26,11 @@ export class ISync<A> implements Effect<never, never, A> {
   }
   readonly _tag = "Sync"
   constructor(readonly evaluate: () => A) {}
+}
+
+export interface ICommit<R, E, A> extends Effect<R, E, A> {
+  readonly _tag: "ICommit"
+  readonly commit: Effect<R, E, A>
 }
 
 export class IAsync<R, E, A> implements Effect<R, E, A> {

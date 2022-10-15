@@ -4,7 +4,7 @@ describe.concurrent("STM", () => {
       const program = Effect.Do()
         .bind("tRef", () => TRef.makeCommit(false))
         .bind("either", ({ tRef }) => (tRef.set(true) > STM.failSync("error")).commitEither.flip)
-        .bind("value", ({ tRef }) => tRef.get.commit)
+        .bind("value", ({ tRef }) => tRef.get)
 
       const { either, value } = await program.unsafeRunPromise()
 

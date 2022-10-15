@@ -1,4 +1,4 @@
-import type { _E, _R } from "@effect/core/stm/STM/definition/base"
+import type { STMTypeId } from "@effect/core/stm/STM"
 
 type NonEmptyArraySTM = Array<STM<any, any, any>> & { readonly 0: STM<any, any, any> }
 
@@ -16,8 +16,8 @@ export function tuple<T extends NonEmptyArraySTM>(
     0: STM<any, any, any>
   }
 ): STM<
-  [T[number]] extends [{ [_R]: () => infer R }] ? R : never,
-  [T[number]] extends [{ [_E]: () => infer E }] ? E : never,
+  [T[number]] extends [{ [STMTypeId]: { _R: (_: never) => infer R } }] ? R : never,
+  [T[number]] extends [{ [STMTypeId]: { _E: (_: never) => infer E } }] ? E : never,
   TupleA<T>
 > {
   return STM.collectAll(t) as any
