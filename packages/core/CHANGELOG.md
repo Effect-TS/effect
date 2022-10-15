@@ -1,5 +1,15 @@
 # @effect/core
 
+## 0.0.16
+
+### Patch Changes
+
+- [#1306](https://github.com/Effect-TS/core/pull/1306) [`90c1cd628`](https://github.com/Effect-TS/core/commit/90c1cd628be90604b4dc6f8f7b497d9bf8d5b266) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Make STM a subtype of Effect
+
+- [#1306](https://github.com/Effect-TS/core/pull/1306) [`90c1cd628`](https://github.com/Effect-TS/core/commit/90c1cd628be90604b4dc6f8f7b497d9bf8d5b266) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Fix empty TQueue type
+
+- [#1302](https://github.com/Effect-TS/core/pull/1302) [`c76c2cbc0`](https://github.com/Effect-TS/core/commit/c76c2cbc00a4e5a0e017f10d7bfecc27c70f1329) Thanks [@IMax153](https://github.com/IMax153)! - add basic cause rendering
+
 ## 0.0.15
 
 ### Patch Changes
