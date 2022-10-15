@@ -1,4 +1,4 @@
-import type { Journal } from "@effect/core/stm/STM/Journal"
+import type { Journal } from "@effect/core/stm/STM/definition/primitives"
 import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOrMakeEntry"
 
 /**

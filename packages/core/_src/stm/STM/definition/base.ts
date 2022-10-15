@@ -1,6 +1,4 @@
-import type { Effect, ICommit } from "@effect/core/io/Effect/definition"
-import { EffectURI } from "@effect/core/io/Effect/definition"
-import { commit } from "@effect/core/stm/STM/operations/commit"
+import type { ICommit } from "@effect/core/io/Effect/definition"
 
 export type USTM<A> = STM<never, never, A>
 
@@ -77,21 +75,4 @@ export function unifySTM<X extends STM<any, any, any>>(
   [X] extends [{ [STMTypeId]: { _A: (_: never) => infer A } }] ? A : never
 > {
   return self
-}
-
-export class STMBase<R, E, A> implements STM<R, E, A> {
-  readonly _tag = "ICommit"
-  readonly [STMTypeId] = {
-    _R: (_: never): R => _,
-    _E: (_: never): E => _,
-    _A: (_: never): A => _
-  }
-  readonly [EffectURI] = {
-    _R: (_: never): R => _,
-    _E: (_: never): E => _,
-    _A: (_: never): A => _
-  }
-  get commit(): Effect<R, E, A> {
-    return commit(this)
-  }
 }
