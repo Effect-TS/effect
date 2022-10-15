@@ -31,12 +31,12 @@ export class STMDriver<R, E, A> {
     while (this.contStack && result == null) {
       const cont = this.contStack.value
       this.contStack = this.contStack.previous
-      if (cont._tag === "STMOnFailure") {
+      if (cont._stmtag === "STMOnFailure") {
         if (!isRetry) {
           result = cont.onFailure(error)
         }
       }
-      if (cont._tag === "STMOnRetry") {
+      if (cont._stmtag === "STMOnRetry") {
         if (isRetry) {
           result = cont.onRetry()
         }
@@ -64,7 +64,7 @@ export class STMDriver<R, E, A> {
       } else {
         const k = curr
         concreteSTM(k)
-        switch (k._tag) {
+        switch (k._stmtag) {
           case "STMEffect": {
             try {
               const a = k.f(this.journal, this.fiberId, this.envStack.value)

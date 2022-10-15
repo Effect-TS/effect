@@ -1,4 +1,4 @@
-import type { _E, _R } from "@effect/core/stm/STM/definition/base"
+import type { STMTypeId } from "@effect/core/stm/STM"
 
 /**
  * Applicative structure.
@@ -8,8 +8,8 @@ import type { _E, _R } from "@effect/core/stm/STM/definition/base"
 export function struct<NER extends Record<string, STM<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, STM<any, any, any>>
 ): STM<
-  [NER[keyof NER]] extends [{ [_R]: () => infer R }] ? R : never,
-  [NER[keyof NER]] extends [{ [_E]: () => infer E }] ? E : never,
+  [NER[keyof NER]] extends [{ [STMTypeId]: { _R: (_: never) => infer R } }] ? R : never,
+  [NER[keyof NER]] extends [{ [STMTypeId]: { _E: (_: never) => infer E } }] ? E : never,
   {
     [K in keyof NER]: [NER[K]] extends [STM<any, any, infer A>] ? A : never
   }

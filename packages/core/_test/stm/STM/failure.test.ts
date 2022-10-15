@@ -7,7 +7,7 @@ describe.concurrent("STM", () => {
           "either",
           ({ tRef }) => (tRef.update((n) => n + 10) > STM.failSync("error")).commit.either
         )
-        .bind("value", ({ tRef }) => tRef.get.commit)
+        .bind("value", ({ tRef }) => tRef.get)
 
       const { either, value } = await program.unsafeRunPromise()
 
@@ -22,7 +22,7 @@ describe.concurrent("STM", () => {
           "either",
           ({ tRef }) => (tRef.update((n) => n + 10) > STM.failSync("error")).commit.ignore
         )
-        .bind("value", ({ tRef }) => tRef.get.commit)
+        .bind("value", ({ tRef }) => tRef.get)
 
       const { either, value } = await program.unsafeRunPromise()
 

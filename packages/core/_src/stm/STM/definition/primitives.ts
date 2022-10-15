@@ -2,7 +2,7 @@ import { STMBase } from "@effect/core/stm/STM/definition/base"
 import type { Journal } from "@effect/core/stm/STM/Journal"
 
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
-  readonly _tag = "STMEffect"
+  readonly _stmtag = "STMEffect"
 
   constructor(readonly f: (journal: Journal, fiberId: FiberId, environment: Env<R>) => A) {
     super()
@@ -10,7 +10,7 @@ export class STMEffect<R, E, A> extends STMBase<R, E, A> {
 }
 
 export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
-  readonly _tag = "STMOnFailure"
+  readonly _stmtag = "STMOnFailure"
 
   constructor(readonly stm: STM<R, E, A>, readonly onFailure: (e: E) => STM<R, E1, A>) {
     super()
@@ -21,7 +21,7 @@ export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
 }
 
 export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
-  readonly _tag = "STMOnRetry"
+  readonly _stmtag = "STMOnRetry"
 
   constructor(readonly stm: STM<R, E, A>, readonly onRetry: Lazy<STM<R1, E1, A1>>) {
     super()
@@ -32,7 +32,7 @@ export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
 }
 
 export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
-  readonly _tag = "STMOnSuccess"
+  readonly _stmtag = "STMOnSuccess"
 
   constructor(readonly stm: STM<R, E, A>, readonly apply: (a: A) => STM<R, E, B>) {
     super()
@@ -40,7 +40,7 @@ export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
 }
 
 export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
-  readonly _tag = "STMProvide"
+  readonly _stmtag = "STMProvide"
 
   constructor(readonly stm: STM<R0, E, A>, readonly f: (env: Env<R>) => Env<R0>) {
     super()
@@ -48,7 +48,7 @@ export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
 }
 
 export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
-  readonly _tag = "STMSucceedNow"
+  readonly _stmtag = "STMSucceedNow"
 
   constructor(readonly a: A) {
     super()
@@ -56,7 +56,7 @@ export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
 }
 
 export class STMSucceed<R, E, A> extends STMBase<R, E, A> {
-  readonly _tag = "STMSucceed"
+  readonly _stmtag = "STMSucceed"
 
   constructor(readonly a: Lazy<A>) {
     super()

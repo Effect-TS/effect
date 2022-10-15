@@ -8,9 +8,8 @@ describe.concurrent("STM", () => {
           tRef1
             .get
             .flatMap((n1) => tRef2.get.map((n2) => n1 + n2))
-            .commit
             .fork)
-        .tap(({ tRef1, tRef2 }) => (tRef1.update((n) => n + 1) > tRef2.update((n) => n + 1)).commit)
+        .tap(({ tRef1, tRef2 }) => (tRef1.update((n) => n + 1) > tRef2.update((n) => n + 1)))
         .flatMap(({ sumFiber }) => sumFiber.join)
 
       const result = await program.unsafeRunPromise()

@@ -819,6 +819,10 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
             }
             break
           }
+          case "ICommit": {
+            cur = op.commit
+            break
+          }
           default: {
             absurd(op)
           }

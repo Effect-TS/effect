@@ -2,7 +2,7 @@ describe.concurrent("STM", () => {
   describe.concurrent("validate", () => {
     it("returns all errors if never valid", async () => {
       const input = Chunk.fill(10, () => 0)
-      const program = STM.validate(input, STM.fail).commit
+      const program = STM.validate(input, STM.fail)
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -11,8 +11,7 @@ describe.concurrent("STM", () => {
 
     it("accumulate errors and ignore successes", async () => {
       const input = Chunk.range(0, 9)
-      const program =
-        STM.validate(input, (n) => n % 2 === 0 ? STM.succeed(n) : STM.failSync(n)).commit
+      const program = STM.validate(input, (n) => n % 2 === 0 ? STM.succeed(n) : STM.failSync(n))
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -22,7 +21,6 @@ describe.concurrent("STM", () => {
     it("accumulate successes", async () => {
       const input = Chunk.range(0, 9)
       const program = STM.validate(input, STM.succeed)
-        .commit
 
       const result = await program.unsafeRunPromise()
 
@@ -34,7 +32,6 @@ describe.concurrent("STM", () => {
     it("returns all errors if never valid", async () => {
       const input = Chunk.fill(10, () => 0)
       const program = STM.validateFirst(input, STM.fail)
-        .commit
 
       const result = await program.unsafeRunPromiseExit()
 
@@ -51,7 +48,6 @@ describe.concurrent("STM", () => {
             (n) => counter.update((_) => _ + 1) > (n === 6 ? STM.succeed(n) : STM.failSync(n))
           ))
         .bind("count", ({ counter }) => counter.get)
-        .commit
 
       const { count, result } = await program.unsafeRunPromise()
 
@@ -62,7 +58,6 @@ describe.concurrent("STM", () => {
     it("returns errors in correct order", async () => {
       const input = Chunk(2, 4, 6, 3, 5, 6)
       const program = STM.validateFirst(input, STM.fail)
-        .commit
 
       const result = await program.unsafeRunPromiseExit()
 
