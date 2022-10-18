@@ -1,4 +1,4 @@
-import { Stackless } from "@effect/core/io/Cause/definition"
+import { Annotated } from "@effect/core/io/Cause/definition"
 
 /**
  * Remove all `Die` causes that the specified partial function is defined at,
@@ -39,6 +39,6 @@ export function stripSomeDefects(pf: (defect: unknown) => unknown) {
         }
         return Maybe.none
       },
-      (causeOption, stackless) => causeOption.map((cause) => new Stackless(cause, stackless))
+      (causeOption, annotation) => causeOption.map((cause) => new Annotated(cause, annotation))
     )
 }

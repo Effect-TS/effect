@@ -7,8 +7,9 @@ import type { Entry } from "@effect/core/stm/STM/Entry"
 import { TryCommit } from "@effect/core/stm/STM/TryCommit"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 import type { Scheduler } from "@effect/core/support/Scheduler"
+import { SingleShotGen } from "@effect/core/support/SingleShotGen"
 
-export class STMBase<R, E, A> implements STM<R, E, A> {
+export abstract class STMBase<R, E, A> implements STM<R, E, A> {
   readonly _tag = "ICommit"
   readonly [STMTypeId] = {
     _R: (_: never): R => _,
@@ -23,67 +24,116 @@ export class STMBase<R, E, A> implements STM<R, E, A> {
   get commit(): Effect<R, E, A> {
     return commit(this)
   }
+  abstract _call(trace: string | undefined): Effect<R, E, A>
+  [Symbol.iterator](): Generator<STM<R, E, A>, A, any> {
+    return new SingleShotGen<this, never>(this)
+  }
 }
 
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMEffect"
 
-  constructor(readonly f: (journal: Journal, fiberId: FiberId, environment: Env<R>) => A) {
+  constructor(
+    readonly f: (journal: Journal, fiberId: FiberId, environment: Env<R>) => A,
+    readonly trace?: string
+  ) {
     super()
+  }
+
+  _call(trace: string | undefined): Effect<R, E, A> {
+    return new STMEffect(this.f, trace)
   }
 }
 
 export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
   readonly _stmtag = "STMOnFailure"
 
-  constructor(readonly stm: STM<R, E, A>, readonly onFailure: (e: E) => STM<R, E1, A>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly onFailure: (e: E) => STM<R, E1, A>,
+    readonly trace?: string
+  ) {
     super()
   }
   apply(a: A): STM<R, E, A> {
     return new STMSucceedNow(a)
+  }
+  _call(trace: string | undefined): Effect<R, E1, A> {
+    return new STMOnFailure(this.stm, this.onFailure, trace)
   }
 }
 
 export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
   readonly _stmtag = "STMOnRetry"
 
-  constructor(readonly stm: STM<R, E, A>, readonly onRetry: Lazy<STM<R1, E1, A1>>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly onRetry: Lazy<STM<R1, E1, A1>>,
+    readonly trace?: string
+  ) {
     super()
   }
   apply(a: A): STM<R, E, A> {
     return new STMSucceedNow(a)
+  }
+  _call(trace: string | undefined): Effect<R, E, A> {
+    return new STMOnRetry(this.stm, this.onRetry, trace)
   }
 }
 
 export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
   readonly _stmtag = "STMOnSuccess"
 
-  constructor(readonly stm: STM<R, E, A>, readonly apply: (a: A) => STM<R, E, B>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly apply: (a: A) => STM<R, E, B>,
+    readonly trace?: string
+  ) {
     super()
+  }
+
+  _call(trace: string | undefined): Effect<R, E, B> {
+    return new STMOnSuccess(this.stm, this.apply, trace)
   }
 }
 
 export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMProvide"
 
-  constructor(readonly stm: STM<R0, E, A>, readonly f: (env: Env<R>) => Env<R0>) {
+  constructor(
+    readonly stm: STM<R0, E, A>,
+    readonly f: (env: Env<R>) => Env<R0>,
+    readonly trace?: string
+  ) {
     super()
+  }
+
+  _call(trace: string | undefined): Effect<R, E, A> {
+    return new STMProvide(this.stm, this.f, trace)
   }
 }
 
 export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMSucceedNow"
 
-  constructor(readonly a: A) {
+  constructor(readonly a: A, readonly trace?: string) {
     super()
+  }
+
+  _call(trace: string | undefined): Effect<R, E, A> {
+    return new STMSucceedNow(this.a, trace)
   }
 }
 
 export class STMSucceed<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMSucceed"
 
-  constructor(readonly a: Lazy<A>) {
+  constructor(readonly a: Lazy<A>, readonly trace?: string) {
     super()
+  }
+
+  _call(trace: string | undefined): Effect<R, E, A> {
+    return new STMSucceed(this.a, trace)
   }
 }
 

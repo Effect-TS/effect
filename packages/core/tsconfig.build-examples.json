@@ -1,18 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-      "outDir": "build/examples",
-      "declarationDir": "build/examples-dts",
-      "tsBuildInfoFile": "build/tsbuildinfo/examples.tsbuildinfo",
-      "tsPlusConfig": "../../tsplus.config.json",
-      "rootDir": "_examples"
+    "outDir": "build/examples",
+    "declarationDir": "build/examples-dts",
+    "tsBuildInfoFile": "build/tsbuildinfo/examples.tsbuildinfo",
+    "tsPlusConfig": "../../tsplus.config.json",
+    "rootDir": "_examples",
+    "transformers": [{ "name": "./plugins/callTrace.ts" }],
+    "module": "ES2022"
   },
-  "include": [
-      "_examples/**/*.ts"
-  ],
-  "references": [
-      {
-          "path": "./tsconfig.build.json"
-      }
-  ]
+  "include": ["_examples/**/*.ts"],
+  "references": [{ "path": "./tsconfig.build.json" }]
 }

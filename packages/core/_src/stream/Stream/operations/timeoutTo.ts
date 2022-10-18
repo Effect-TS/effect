@@ -25,7 +25,7 @@ export function timeoutTo<R2, E2, A2>(duration: Duration, that: Stream<R2, E2, A
     self
       .timeoutFailCause(Cause.die(new StreamTimeoutError()), duration)
       .catchSomeCause((cause) =>
-        cause.isDieType() && isStreamTimeoutError(cause.value)
+        cause.isDie && isStreamTimeoutError(cause.defects.head.value)
           ? Maybe.some(that)
           : Maybe.none
       )

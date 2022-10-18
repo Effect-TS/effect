@@ -35,7 +35,7 @@ export function foldLeft<E, Z>(
           current = current.left
           break
         }
-        case "Stackless": {
+        case "Annotated": {
           realCause(current.cause)
           current = current.cause
           break

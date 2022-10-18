@@ -6,5 +6,5 @@
  * @tsplus static effect/core/io/Effect.Ops dieMessage
  */
 export function dieMessage(message: string): Effect<never, never, never> {
-  return Effect.failCauseSync(Cause.stackless(Cause.die(new RuntimeError(message))))
+  return Effect.failCauseSync(Cause.die(new RuntimeError(message)))
 }

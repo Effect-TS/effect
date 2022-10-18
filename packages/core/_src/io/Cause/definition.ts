@@ -2,6 +2,8 @@
 // - [ ] squashTrace
 // - [ ] squashTraceWith
 
+import type { Continuation } from "@effect/core/io/Fiber/_internal/runtime"
+
 export const CauseSym = Symbol.for("@effect/core/io/Cause")
 export type CauseSym = typeof CauseSym
 
@@ -41,7 +43,7 @@ export type RealCause<E> =
   | Fail<E>
   | Die
   | Interrupt
-  | Stackless<E>
+  | Annotated<E>
   | Then<E>
   | Both<E>
 
@@ -85,11 +87,11 @@ export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
 }
 
 /**
- * @tsplus fluent effect/core/io/Cause isStacklessType
+ * @tsplus fluent effect/core/io/Cause isAnnotatedType
  */
-export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
+export function isAnnotatedType<E>(cause: Cause<E>): cause is Annotated<E> {
   realCause(cause)
-  return cause._tag === "Stackless"
+  return cause._tag === "Annotated"
 }
 
 /**
@@ -137,7 +139,7 @@ export class Empty implements Cause<never>, Equals {
           (a, b) => a && b
         )
       }
-      case "Stackless": {
+      case "Annotated": {
         return Eval.suspend(this.__equalsSafe(that.cause))
       }
       default: {
@@ -174,7 +176,7 @@ export class Fail<E> implements Cause<E>, Equals {
       case "Then": {
         return Eval.suspend(sym(zero)(this, that))
       }
-      case "Stackless": {
+      case "Annotated": {
         return Eval.suspend(this.__equalsSafe(that.cause))
       }
       default: {
@@ -210,7 +212,7 @@ export class Die implements Cause<never>, Equals {
       case "Then": {
         return Eval.suspend(sym(zero)(this, that))
       }
-      case "Stackless": {
+      case "Annotated": {
         return Eval.suspend(this.__equalsSafe(that.cause))
       }
       default: {
@@ -246,7 +248,7 @@ export class Interrupt implements Cause<never>, Equals {
       case "Then": {
         return Eval.suspend(sym(zero)(this, that))
       }
-      case "Stackless": {
+      case "Annotated": {
         return Eval.suspend(this.__equalsSafe(that.cause))
       }
       default: {
@@ -256,13 +258,13 @@ export class Interrupt implements Cause<never>, Equals {
   }
 }
 
-export class Stackless<E> implements Cause<E>, Equals {
-  readonly _tag = "Stackless"
+export class Annotated<E> implements Cause<E>, Equals {
+  readonly _tag = "Annotated"
 
   readonly [CauseSym]: CauseSym = CauseSym
   readonly [_E]!: () => E
 
-  constructor(readonly cause: Cause<E>, readonly stackless: boolean) {}
+  constructor(readonly cause: Cause<E>, readonly annotation: unknown) {}
 
   [Hash.sym](): number {
     return this.cause[Hash.sym]()
@@ -275,7 +277,7 @@ export class Stackless<E> implements Cause<E>, Equals {
   __equalsSafe(that: Cause<unknown>): Eval<boolean> {
     realCause(this.cause)
     realCause(that)
-    return that._tag === "Stackless"
+    return that._tag === "Annotated"
       ? this.cause.__equalsSafe(that.cause)
       : this.cause.__equalsSafe(that)
   }
@@ -302,7 +304,7 @@ export class Then<E> implements Cause<E>, Equals {
     const self = this
     return Eval.gen(function*(_) {
       realCause(that)
-      if (that._tag === "Stackless") {
+      if (that._tag === "Annotated") {
         return yield* _(self.__equalsSafe(that.cause))
       }
       return (
@@ -353,7 +355,7 @@ export class Both<E> implements Cause<E>, Equals {
     const self = this
     return Eval.gen(function*(_) {
       realCause(that)
-      if (that._tag === "Stackless") {
+      if (that._tag === "Annotated") {
         return yield* _(self.__equalsSafe(that.cause))
       }
       return (
@@ -414,17 +416,10 @@ export function interrupt(fiberId: FiberId): Cause<never> {
 }
 
 /**
- * @tsplus static effect/core/io/Cause.Ops stack
+ * @tsplus pipeable effect/core/io/Cause withAnnotation
  */
-export function stack<E>(cause: Cause<E>): Cause<E> {
-  return new Stackless(cause, false)
-}
-
-/**
- * @tsplus static effect/core/io/Cause.Ops stackless
- */
-export function stackless<E>(cause: Cause<E>): Cause<E> {
-  return new Stackless(cause, true)
+export function withAnnotation(annotation: unknown): <E>(cause: Cause<E>) => Cause<E> {
+  return (cause) => new Annotated(cause, annotation)
 }
 
 /**
@@ -469,7 +464,7 @@ export function isCause(self: unknown): self is Cause<unknown> {
  * @tsplus getter effect/core/io/Cause isEmpty
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
-  if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {
+  if (isEmptyType(cause) || (isAnnotatedType(cause) && isEmptyType(cause.cause))) {
     return true
   }
   let causes: Stack<Cause<E>> | undefined = undefined
@@ -495,7 +490,7 @@ export function isEmpty<E>(cause: Cause<E>): boolean {
         current = current.left
         break
       }
-      case "Stackless": {
+      case "Annotated": {
         realCause(current.cause)
         current = current.cause
         break
@@ -552,7 +547,7 @@ function stepLoop<A>(
             cause = new Both(new Then(left.left, right), new Then(left.right, right))
             break
           }
-          case "Stackless": {
+          case "Annotated": {
             cause = new Then(left.cause, right)
             break
           }
@@ -568,7 +563,7 @@ function stepLoop<A>(
         cause = cause.left
         break
       }
-      case "Stackless": {
+      case "Annotated": {
         cause = cause.cause
         break
       }
@@ -865,3 +860,19 @@ function commutativeBoth<E>(self: Both<E>, that: Cause<E>): Eval<boolean> {
     return false
   })
 }
+
+export const StackAnnotationTypeId: unique symbol = Symbol.for(
+  "@effect/core/io/Cause/StackAnnotation"
+)
+export type StackAnnotationTypeId = typeof StackAnnotationTypeId
+
+export class StackAnnotation {
+  readonly _id: StackAnnotationTypeId = StackAnnotationTypeId
+  constructor(
+    readonly stack: Stack<Continuation> | undefined,
+    readonly execution: Chunk<string> | undefined
+  ) {}
+}
+
+export const isStackAnnotation = (u: unknown): u is StackAnnotation =>
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === StackAnnotationTypeId

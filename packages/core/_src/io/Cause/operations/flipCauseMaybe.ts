@@ -1,10 +1,10 @@
 import {
+  Annotated,
   Both,
   Die,
   Empty,
   Fail,
   Interrupt,
-  Stackless,
   Then
 } from "@effect/core/io/Cause/definition"
 
@@ -44,6 +44,6 @@ export function flipCauseMaybe<E>(cause: Cause<Maybe<E>>): Maybe<Cause<E>> {
       }
       return Maybe.none
     },
-    (causeMaybe, stackless) => causeMaybe.map((cause) => new Stackless(cause, stackless))
+    (causeMaybe, annotation) => causeMaybe.map((cause) => new Annotated(cause, annotation))
   )
 }

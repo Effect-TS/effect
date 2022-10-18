@@ -22,7 +22,7 @@ export function orElse<E2, A2>(that: Fiber<E2, A2>) {
       ),
       children: self.children,
       inheritAll: that.inheritAll.zipRight(self.inheritAll),
-      interruptAsFork: (id) => self.interruptAs(id) > that.interruptAs(id),
+      interruptAsFork: (id) => self.interruptAs(id) > that.interruptAs(id).unit,
       poll: self.poll.zipWith(
         that.poll,
         (o1, o2) => o1.fold(Maybe.none, (_) => (_._tag === "Success" ? o1 : o2))

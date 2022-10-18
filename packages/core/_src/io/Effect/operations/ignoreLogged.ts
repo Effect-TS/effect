@@ -6,7 +6,7 @@
  * @tsplus getter effect/core/io/Effect ignoreLogged
  */
 export function ignoreLogged<R, E, A>(self: Effect<R, E, A>): Effect<R, never, void> {
-  return self.foldCause(
+  return self.foldCauseEffect(
     (cause) =>
       Effect.logDebugCauseMessage(
         "An error was silently ignored because it is not anticipated to be useful",

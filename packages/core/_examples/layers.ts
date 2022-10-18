@@ -24,8 +24,8 @@ export interface LoggerService {
 export const LoggerService = Tag<LoggerService>()
 
 export const LiveLoggerService = Layer.fromEffect(LoggerService)(
-  T.gen(function*($) {
-    const { log } = yield* $(ConsoleService)
+  T.gen(function*() {
+    const { log } = yield* Effect.service(ConsoleService)
     return {
       info: (message) => log(`info: ${message}`)
     }

@@ -1,8 +1,10 @@
-import { ISuccess } from "@effect/core/io/Effect/definition/primitives"
+import { getCallTrace, ISuccess } from "@effect/core/io/Effect/definition/primitives"
 
 /**
+ * @effect traced
  * @tsplus static effect/core/io/Exit.Ops succeed
  */
-export function succeed<A>(a: A): Exit<never, A> {
-  return new ISuccess(a)
+export const succeed: <A>(a: A) => Exit<never, A> = (a) => {
+  const trace = getCallTrace()
+  return new ISuccess(a, trace)
 }

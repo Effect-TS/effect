@@ -117,7 +117,7 @@ export class SingleProducerAsyncInput<Err, Elem, Done>
                 const [notifyConsumer, notifyConsumers] = dequeued.value
 
                 return [
-                  notifyConsumer.succeed(Either.right(el)),
+                  notifyConsumer.succeed(Either.right(el)).unit,
                   notifyConsumers.size === 0
                     ? new StateEmpty(deferred)
                     : new StateEmit(notifyConsumers)

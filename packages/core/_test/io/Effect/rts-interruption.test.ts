@@ -545,7 +545,7 @@ describe.concurrent("Effect", () => {
         const ref = $(Effect.sync(new AtomicNumber(0)))
         const effect = Effect.asyncInterrupt(() => {
           ref.incrementAndGet()
-          return Either.left(Effect.sync(ref.decrementAndGet()))
+          return Either.left(Effect.sync(ref.decrementAndGet()).unit)
         })
         $(Effect.unit.race(effect))
         const result = ref.get

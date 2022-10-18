@@ -152,9 +152,11 @@ describe.concurrent("STM", () => {
 
       assert.isTrue(
         result.isFailure() &&
-          result.cause.isDieType() &&
-          result.cause.value instanceof RuntimeError &&
-          result.cause.value.message === "dies"
+          result.cause.isDie &&
+          result.cause.defects.find((d) =>
+            d instanceof RuntimeError &&
+            d.message === "dies"
+          ).isSome()
       )
     })
 
@@ -611,9 +613,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isDieType() &&
-            result.cause.value instanceof Error &&
-            result.cause.value.message === "-1"
+            result.cause.isDie &&
+            result.cause.defects.find((d) =>
+              d instanceof Error &&
+              d.message === "-1"
+            ).isSome()
         )
       })
 
@@ -795,10 +799,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isFailType() &&
-            result.cause.value._tag === "Some" &&
-            result.cause.value.value instanceof Error &&
-            result.cause.value.value.message === "fail"
+            result.cause.isFailure && result.cause.failures.find((f) =>
+              f._tag === "Some" &&
+              f.value instanceof Error &&
+              f.value.message === "fail"
+            ).isSome()
         )
       })
 
@@ -835,9 +840,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isFailType() &&
-            result.cause.value instanceof Error &&
-            result.cause.value.message === "fail"
+            result.cause.isFailure &&
+            result.cause.failures.find((f) =>
+              f instanceof Error &&
+              f.message === "fail"
+            ).isSome()
         )
       })
     })
@@ -867,9 +874,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isFailType() &&
-            result.cause.value instanceof Error &&
-            result.cause.value.message === "fail"
+            result.cause.isFailure &&
+            result.cause.failures.find((f) =>
+              f instanceof Error &&
+              f.message === "fail"
+            ).isSome()
         )
       })
     })
@@ -890,9 +899,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isFailType() &&
-            result.cause.value instanceof Error &&
-            result.cause.value.message === "fail"
+            result.cause.isFailure &&
+            result.cause.failures.find((f) =>
+              f instanceof Error &&
+              f.message === "fail"
+            ).isSome()
         )
       })
 
@@ -904,9 +915,11 @@ describe.concurrent("STM", () => {
 
         assert.isTrue(
           result.isFailure() &&
-            result.cause.isFailType() &&
-            result.cause.value instanceof Error &&
-            result.cause.value.message === "fail"
+            result.cause.isFailure &&
+            result.cause.failures.find((f) =>
+              f instanceof Error &&
+              f.message === "fail"
+            ).isSome()
         )
       })
     })
@@ -926,8 +939,8 @@ describe.concurrent("STM", () => {
         const result = await program.unsafeRunPromiseExit()
 
         assert.isTrue(
-          result.isFailure() && result.cause.isFailType() &&
-            result.cause.value instanceof NoSuchElement
+          result.isFailure() && result.cause.isFailure &&
+            result.cause.failures.head.value instanceof NoSuchElement
         )
       })
     })

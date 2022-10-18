@@ -6,17 +6,22 @@ export const defaultLogger: Logger<string, string> = {
     const now = new Date()
     const nowMillis = now.getTime()
 
-    let output = [
+    const outputArray = [
       `timestamp=${now.toISOString()}`,
-      ` level=${logLevel.label}`,
-      ` thread=#${fiberId.threadName}`,
-      ` message="${message}"`
-    ].join("")
+      `level=${logLevel.label}`,
+      `fiber=${fiberId.threadName}`
+    ]
+
+    if (message.length > 0) {
+      outputArray.push(`message="${message}"`)
+    }
 
     if (cause != null && cause != Cause.empty) {
       // TODO(Mike/Max): implement once tracing is complete
-      // output = output + ` cause="${cause.prettyPrint()}"`
+      outputArray.push(`cause="${cause.pretty()}"`)
     }
+
+    let output = outputArray.join(" ")
 
     if (spans.length > 0) {
       output = output + " "

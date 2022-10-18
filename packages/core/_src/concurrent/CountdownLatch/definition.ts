@@ -71,7 +71,7 @@ export class CountdownLatchInternal {
         return [Effect.unit, 0] as const
       }
       if (n === 1) {
-        return [this._waiters.succeed(undefined), 0] as const
+        return [this._waiters.succeed(undefined).unit, 0] as const
       }
       return [Effect.unit, n - 1] as const
     }).flatten.unit

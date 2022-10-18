@@ -129,14 +129,15 @@ export function makeTestConsole(
           Effect.fromMaybe(state.input.head).orElseFail(
             new TestConsoleError("There is no more input left to read")
           )
-        ),
+        )
+        .unit,
     feedLines: (lines) =>
       consoleState.update((state) => ({
         ...state,
         input: List.from(lines) + state.input
       })),
     output: () => consoleState.get.map((state) => state.output),
-    outputError: () => consoleState.get.map((state) => state.outputError),
+    outputError: () => consoleState.get.map((state) => state.outputError).unit,
     clearInput: () => consoleState.update((state) => ({ ...state, input: List.empty<string>() })),
     clearOutput: () =>
       consoleState.update((state) => ({ ...state, output: ImmutableArray.empty<string>() })),

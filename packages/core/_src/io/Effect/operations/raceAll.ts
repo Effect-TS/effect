@@ -19,7 +19,7 @@ export function raceAll<R1, E1, A1>(effects: Collection<Effect<R1, E1, A1>>) {
           const fs = tail.prepend(head) as Chunk<Fiber.Runtime<E | E1, A | A1>>
           $(fs.reduce(
             Effect.unit,
-            (io, fiber) => io > fiber.await.flatMap(arbiter(fs, fiber, done, fails)).fork
+            (io, fiber) => io > fiber.await.flatMap(arbiter(fs, fiber, done, fails)).fork.unit
           ))
           const inheritAll = (res: readonly [A | A1, Fiber<E | E1, A | A1>]) =>
             res[1].inheritAll.as(res[0])

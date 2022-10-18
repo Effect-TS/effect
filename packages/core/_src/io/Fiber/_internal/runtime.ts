@@ -21,6 +21,14 @@ import { _Patch, _Value, FiberRef, FiberRefSym } from "@effect/core/io/FiberRef/
 import type { Scheduler } from "@effect/core/support/Scheduler"
 import { defaultScheduler } from "@effect/core/support/Scheduler"
 
+//
+// Tracing
+//
+
+import { isStackAnnotation, StackAnnotation } from "@effect/core/io/Cause/definition"
+import { runtimeDebug } from "@effect/core/io/Debug"
+import { RingBuffer } from "@effect/core/support/RingBuffer"
+
 export type EvaluationSignal = "Continue" | "Done" | "YieldNow"
 
 export const currentFiber = new AtomicReference<FiberRuntime<any, any> | null>(null)
@@ -58,6 +66,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
   private _fiberRefs: FiberRefs
   private _fiberId: FiberId.Runtime
   private _runtimeFlags: RuntimeFlags
+  private _executionTrace: RingBuffer<string> | undefined
   constructor(
     fiberId: FiberId.Runtime,
     fiberRefs0: FiberRefs,
@@ -669,6 +678,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
               switch (cont._tag) {
                 case "OnSuccess":
                 case "OnSuccessAndFailure": {
+                  this.logTrace(cont.trace)
                   cur = cont.successK(value)
                   break
                 }
@@ -701,12 +711,14 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
             break
           }
           case "Success": {
+            this.logTrace(op.trace)
             const oldCur = op
             const cont = this.getNextSuccessCont()
             if (cont) {
               switch (cont._tag) {
                 case "OnSuccess":
                 case "OnSuccessAndFailure": {
+                  this.logTrace(cont.trace)
                   cur = cont.successK(oldCur.value)
                   break
                 }
@@ -714,6 +726,8 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
                   this.patchRuntimeFlags(this._runtimeFlags, cont.patch)
                   if (this._runtimeFlags.interruptible && this.isInterrupted) {
                     cur = Exit.failCause(this.getInterruptedCause)
+                  } else {
+                    cur = Exit.succeed(op.value)
                   }
                   break
                 }
@@ -737,14 +751,24 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
             break
           }
           case "Failure": {
+            this.logTrace(op.trace)
             const oldCur = op
+            const cause = oldCur.cause.isAnnotatedType() && isStackAnnotation(oldCur.cause) ?
+              oldCur.cause :
+              oldCur.cause.withAnnotation(
+                new StackAnnotation(
+                  runtimeDebug.traceStackEnabledInCause ? this._stack : void 0,
+                  this._executionTrace ? this._executionTrace.toChunkReversed() : void 0
+                )
+              )
             const cont = this.getNextFailCont()
             if (cont) {
               switch (cont._tag) {
                 case "OnFailure":
                 case "OnSuccessAndFailure": {
                   if (!(this._runtimeFlags.interruptible && this.isInterrupted)) {
-                    cur = cont.failK(oldCur.cause)
+                    this.logTrace(cont.trace)
+                    cur = cont.failK(cause)
                   } else {
                     cur = Effect.failCause(oldCur.cause.stripFailures)
                   }
@@ -754,6 +778,8 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
                   this.patchRuntimeFlags(this._runtimeFlags, cont.patch)
                   if (this._runtimeFlags.interruptible && this.isInterrupted) {
                     cur = Exit.failCause(Cause.then(oldCur.cause, this.getInterruptedCause))
+                  } else {
+                    cur = Exit.failCause(cause)
                   }
                   break
                 }
@@ -762,7 +788,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
                 }
               }
             } else {
-              return oldCur
+              return Exit.failCause(cause)
             }
             break
           }
@@ -1006,6 +1032,23 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
     loggers.forEach((logger) => {
       logger.apply(this.id, logLevel, message, cause, contextMap, spans, annotations)
     })
+  }
+
+  logTrace(trace?: string) {
+    if (trace && runtimeDebug.traceEnabled && runtimeDebug.traceExecutionEnabled) {
+      if (runtimeDebug.traceExecutionLogEnabled) {
+        this.log(`Executing: ${trace}`, Cause.empty, Maybe.some(LogLevel.Debug))
+      }
+      if (runtimeDebug.traceExecutionEnabledInCause) {
+        if (!this._executionTrace) {
+          this._executionTrace = new RingBuffer<string>(runtimeDebug.traceExecutionLimit)
+        }
+        this._executionTrace.push(trace)
+      }
+      for (let i = 0; i < runtimeDebug.traceExecutionHook.length; i++) {
+        runtimeDebug.traceExecutionHook[i]!(trace)
+      }
+    }
   }
 }
 

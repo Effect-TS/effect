@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
+import { Annotated, Both, Cause, Die, Interrupt, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Discards all typed failures kept on this `Cause`.
@@ -13,6 +13,6 @@ export function stripFailures<E>(self: Cause<E>): Cause<never> {
     (fiberId) => new Interrupt(fiberId),
     (left, right) => new Then(left, right),
     (left, right) => new Both(left, right),
-    (cause, stackless) => new Stackless(cause, stackless)
+    (cause, annotation) => new Annotated(cause, annotation)
   )
 }

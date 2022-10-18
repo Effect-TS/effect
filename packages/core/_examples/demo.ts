@@ -21,4 +21,4 @@ export const program = Do(($) => {
   $(b.join)
 })
 
-program.provideSomeLayer(Logger.consoleLoggerLayer).unsafeRunSync()
+program.provideSomeLayer(Logger.layer(Logger.consoleLogger)).unsafeRunSync()

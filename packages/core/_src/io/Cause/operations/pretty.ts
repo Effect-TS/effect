@@ -1,4 +1,7 @@
-import { realCause } from "@effect/core/io/Cause/definition"
+import type { StackAnnotation } from "@effect/core/io/Cause/definition"
+import { isStackAnnotation, realCause } from "@effect/core/io/Cause/definition"
+import { runtimeDebug } from "@effect/core/io/Debug"
+import { isSpan } from "@effect/core/io/SpanTracer"
 import { Doc } from "@effect/printer/Doc"
 import { FusionDepth } from "@effect/printer/Optimize"
 import { renderPretty } from "@effect/printer/Render"
@@ -6,6 +9,12 @@ import { renderPretty } from "@effect/printer/Render"
 export interface Renderer<E = unknown> {
   readonly lineWidth: number
   readonly ribbonFraction: number
+  readonly renderSpan: boolean
+  readonly renderExecution: boolean
+  readonly renderStack: boolean
+  readonly renderSpanDepth: number
+  readonly renderExecutionDepth: number
+  readonly renderStackDepth: number
   readonly renderError: (error: E) => string[]
   readonly renderUnknown: (error: unknown) => string[]
 }
@@ -117,47 +126,138 @@ function times<A>(value: A, n: number): ReadonlyArray<A> {
   return array
 }
 
+function spanToLines(span: Span, renderer: Renderer<any>): ReadonlyArray<Doc<never>> {
+  const lines: Doc<never>[] = []
+  let current = Maybe.some(span)
+  while (current.isSome() && lines.length < renderer.renderSpanDepth) {
+    if (current.value.trace) {
+      lines.push(Doc.text(`${current.value.name} @ ${current.value.trace}`))
+    } else {
+      lines.push(Doc.text(`${current.value.name}`))
+    }
+    current = current.value.parent
+  }
+  return lines
+}
+
+function stackToLines(stack: StackAnnotation, renderer: Renderer<any>): ReadonlyArray<Doc<never>> {
+  const lines: Doc<never>[] = []
+  let current = Maybe.fromNullable(stack.stack)
+  while (current.isSome() && lines.length < renderer.renderStackDepth) {
+    switch (current.value.value._tag) {
+      case "OnSuccess":
+      case "OnFailure":
+      case "OnSuccessAndFailure": {
+        if (current.value.value.trace) {
+          lines.push(Doc.text(current.value.value.trace))
+        }
+        break
+      }
+    }
+    current = Maybe.fromNullable(current.value?.previous)
+  }
+  return lines
+}
+
+function renderSpan(span: Maybe<Span>, renderer: Renderer<any>): ReadonlyArray<Doc<never>> {
+  if (!renderer.renderSpan || span.isNone()) {
+    return []
+  }
+  const lines = spanToLines(span.value, renderer)
+  return lines.length === 0 ? [] : [
+    Doc.text("Span:"),
+    Doc.empty,
+    ...lines,
+    Doc.empty
+  ]
+}
+
+function renderStack(
+  span: Maybe<StackAnnotation>,
+  renderer: Renderer<any>
+): ReadonlyArray<Doc<never>> {
+  if (!renderer.renderStack || span.isNone()) {
+    return []
+  }
+  const lines = stackToLines(span.value, renderer)
+  return lines.length === 0 ? [] : [
+    Doc.text("Stack:"),
+    Doc.empty,
+    ...lines,
+    Doc.empty
+  ]
+}
+
+function renderExecution(
+  span: Maybe<StackAnnotation>,
+  renderer: Renderer<any>
+): ReadonlyArray<Doc<never>> {
+  if (!renderer.renderExecution || span.isNone()) {
+    return []
+  }
+  if (span.value.execution && span.value.execution.isNonEmpty) {
+    return [
+      Doc.text("Execution:"),
+      Doc.empty,
+      ...span.value.execution.take(renderer.renderExecutionDepth).map((line) => Doc.text(line)),
+      Doc.empty
+    ]
+  }
+  return []
+}
+
 function renderFail(
-  error: ReadonlyArray<Doc<never>>
-  // trace: O.Option<Trace>,
-  // traceRenderer: TraceRenderer
+  error: ReadonlyArray<Doc<never>>,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>,
+  renderer: Renderer<any>
 ): Sequential {
   return Sequential([
     Failure([
       Doc.text("A checked error was not handled."),
       Doc.empty,
-      ...error
-      // ...renderTrace(trace, traceRenderer)
+      ...error,
+      Doc.empty,
+      ...renderSpan(span, renderer),
+      ...renderStack(stack, renderer),
+      ...renderExecution(stack, renderer)
     ])
   ])
 }
 
 function renderDie(
-  error: ReadonlyArray<Doc<never>>
-  // trace: O.Option<Trace>,
-  // traceRenderer: TraceRenderer
+  error: ReadonlyArray<Doc<never>>,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>,
+  renderer: Renderer<any>
 ): Sequential {
   return Sequential([
     Failure([
       Doc.text("An unchecked error was produced."),
       Doc.empty,
-      ...error
-      // ...renderTrace(trace, traceRenderer)
+      ...error,
+      Doc.empty,
+      ...renderSpan(span, renderer),
+      ...renderStack(stack, renderer),
+      ...renderExecution(stack, renderer)
     ])
   ])
 }
 
 function renderInterrupt(
-  fiberId: FiberId
-  // trace: O.Option<Trace>,
-  // traceRenderer: TraceRenderer
+  fiberId: FiberId,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>,
+  renderer: Renderer<any>
 ): Sequential {
   const ids = Array.from(fiberId.ids).map((id) => `#${id}`).join(", ")
   return Sequential([
     Failure([
-      Doc.text(`An interrupt was produced by ${ids}.`)
-      // "",
-      // ...renderTrace(trace, traceRenderer)
+      Doc.text(`An interrupt was produced by ${ids}.`),
+      Doc.empty,
+      ...renderSpan(span, renderer),
+      ...renderStack(stack, renderer),
+      ...renderExecution(stack, renderer)
     ])
   ])
 }
@@ -216,43 +316,49 @@ function format(segment: Segment): ReadonlyArray<Doc<never>> {
 
 function linearSegments<E>(
   cause: Cause<E>,
-  renderer: Renderer<E>
+  renderer: Renderer<E>,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>
 ): Eval<ReadonlyArray<Step>> {
   realCause(cause)
   switch (cause._tag) {
     case "Then": {
-      return linearSegments(cause.left, renderer).zipWith(
-        linearSegments(cause.right, renderer),
+      return linearSegments(cause.left, renderer, span, stack).zipWith(
+        linearSegments(cause.right, renderer, span, stack),
         (left, right) => [...left, ...right]
       )
     }
     default: {
-      return causeToSequential(cause, renderer).map((sequential) => sequential.all)
+      return causeToSequential(cause, renderer, span, stack).map((sequential) => sequential.all)
     }
   }
 }
 
 function parallelSegments<E>(
   cause: Cause<E>,
-  renderer: Renderer<E>
+  renderer: Renderer<E>,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>
 ): Eval<ReadonlyArray<Sequential>> {
   realCause(cause)
   switch (cause._tag) {
     case "Both": {
-      return parallelSegments(cause.left, renderer).zipWith(
-        parallelSegments(cause.right, renderer),
+      return parallelSegments(cause.left, renderer, span, stack).zipWith(
+        parallelSegments(cause.right, renderer, span, stack),
         (left, right) => [...left, ...right]
       )
     }
     default: {
-      return causeToSequential(cause, renderer).map((sequential) => [sequential])
+      return causeToSequential(cause, renderer, span, stack).map((sequential) => [sequential])
     }
   }
 }
 
 function causeToSequential<E>(
   cause: Cause<E>,
-  renderer: Renderer<E>
+  renderer: Renderer<E>,
+  span: Maybe<Span>,
+  stack: Maybe<StackAnnotation>
 ): Eval<Sequential> {
   realCause(cause)
   switch (cause._tag) {
@@ -261,30 +367,49 @@ function causeToSequential<E>(
     }
     case "Fail": {
       return Eval.succeed(
-        renderFail(renderer.renderError(cause.value).map((line) => Doc.text(line)))
+        renderFail(
+          renderer.renderError(cause.value).map((line) => Doc.text(line)),
+          span,
+          stack,
+          renderer
+        )
       )
     }
     case "Die": {
       return Eval.succeed(
-        renderDie(renderer.renderUnknown(cause.value).map((line) => Doc.text(line)))
+        renderDie(
+          renderer.renderUnknown(cause.value).map((line) => Doc.text(line)),
+          span,
+          stack,
+          renderer
+        )
       )
     }
     case "Interrupt": {
       return Eval.succeed(
-        renderInterrupt(cause.fiberId)
+        renderInterrupt(cause.fiberId, span, stack, renderer)
       )
     }
     case "Then": {
-      return linearSegments(cause, renderer)
+      return linearSegments(cause, renderer, span, stack)
         .map((segments) => Sequential(segments))
     }
     case "Both": {
-      return parallelSegments(cause, renderer)
+      return parallelSegments(cause, renderer, span, stack)
         .map((segments) => Sequential([Parallel(segments)]))
     }
-    case "Stackless": {
-      // TODO: determine if this is correct for `Stackless` cause
-      return Eval.suspend(causeToSequential(cause.cause, renderer))
+    case "Annotated": {
+      if (isSpan(cause.annotation)) {
+        return Eval.suspend(
+          causeToSequential(cause.cause, renderer, Maybe.some(cause.annotation), stack)
+        )
+      }
+      if (isStackAnnotation(cause.annotation)) {
+        return Eval.suspend(
+          causeToSequential(cause.cause, renderer, span, Maybe.some(cause.annotation))
+        )
+      }
+      return Eval.suspend(causeToSequential(cause.cause, renderer, span, stack))
     }
   }
 }
@@ -296,6 +421,12 @@ function defaultErrorToLines(error: unknown) {
 export const defaultRenderer: Renderer = {
   lineWidth: 80,
   ribbonFraction: 1,
+  renderSpan: runtimeDebug.traceSpanEnabledInCause,
+  renderStack: runtimeDebug.traceStackEnabledInCause,
+  renderExecution: runtimeDebug.traceExecutionEnabledInCause,
+  renderSpanDepth: runtimeDebug.traceSpanLimit,
+  renderStackDepth: runtimeDebug.traceStackLimit,
+  renderExecutionDepth: runtimeDebug.traceExecutionLimit,
   renderError: defaultErrorToLines,
   renderUnknown: defaultErrorToLines
 }
@@ -304,7 +435,7 @@ function prettyDocuments<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
 ): Eval<ReadonlyArray<Doc<never>>> {
-  return causeToSequential(cause, renderer).map((sequential) => {
+  return causeToSequential(cause, renderer, Maybe.none, Maybe.none).map((sequential) => {
     if (
       sequential.all.length === 1 &&
       sequential.all[0] &&

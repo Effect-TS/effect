@@ -13,6 +13,6 @@ export function whileLoop<R, E, A>(
   check: LazyArg<boolean>,
   body: LazyArg<Effect<R, E, A>>,
   process: (a: A) => void
-): Effect<R, E, A> {
+): Effect<R, E, void> {
   return new IWhileLoop(check, body, process)
 }

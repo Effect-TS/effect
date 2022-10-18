@@ -6,7 +6,6 @@ import { IUpdateRuntimeFlagsDynamic } from "@effect/core/io/Effect/definition/pr
  *
  * @tsplus pipeable effect/core/io/Effect withRuntimeFlags
  */
-
 export function withRuntimeFlags(
   update: RuntimeFlags.Patch
 ): <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A> {

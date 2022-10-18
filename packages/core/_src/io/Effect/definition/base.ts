@@ -31,6 +31,18 @@ export interface Effect<R, E, A> {
     _E: (_: never) => E
     _A: (_: never) => A
   }
+
+  _call(trace: string | undefined): Effect<R, E, A>
+
+  [Symbol.iterator](): Generator<EffectBase<R, E, A>, A, any>
+}
+
+interface EffectBase<R, E, A> {
+  readonly [EffectURI]: {
+    _R: (_: never) => R
+    _E: (_: never) => E
+    _A: (_: never) => A
+  }
 }
 
 /**
@@ -76,6 +88,7 @@ export namespace Effect {
     readonly _tag: "EffectError"
     readonly cause: Cause<E>
   }
+  export type Base<R, E, A> = EffectBase<R, E, A>
   export type Success<T extends Effect<any, any, any>> = [T] extends
     [Effect<infer R, infer E, infer A>] ? A : never
 }

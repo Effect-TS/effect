@@ -20,14 +20,14 @@ function findSafe<E, Z>(
   }
   realCause(self)
   switch (self._tag) {
+    case "Annotated": {
+      return Eval.suspend(findSafe(self.cause, f))
+    }
     case "Both":
     case "Then": {
       return Eval.suspend(findSafe(self.left, f)).flatMap((leftResult) =>
         leftResult._tag === "Some" ? Eval.succeedNow(leftResult) : findSafe(self.right, f)
       ) as Eval<Maybe<Z>>
-    }
-    case "Stackless": {
-      return Eval.suspend(findSafe(self.cause, f))
     }
     default: {
       return Eval.succeed(result)

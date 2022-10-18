@@ -1,3 +1,5 @@
+import { getCallTrace } from "@effect/core/io/Effect/definition/primitives"
+
 /**
  * Returns a lazily constructed effect, whose construction may itself require
  * effects. The effect must not throw any exceptions. When no environment is
@@ -5,10 +7,12 @@
  * `flatten(succeed(effect))`. If you wonder if the effect throws
  * exceptions, do not use this method, use `suspend`.
  *
+ * @effect traced
  * @tsplus static effect/core/io/Effect.Ops suspendSucceed
  */
-export function suspendSucceed<R, E, A>(
+export const suspendSucceed: <R, E, A>(
   effect: LazyArg<Effect<R, E, A>>
-): Effect<R, E, A> {
-  return Effect.sync(effect).flatMap(identity)
+) => Effect<R, E, A> = (effect) => {
+  const trace = getCallTrace()
+  return Effect.sync(effect).flatMap(identity)._call(trace)
 }

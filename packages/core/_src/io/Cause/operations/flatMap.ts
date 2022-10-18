@@ -1,4 +1,4 @@
-import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Cause/definition"
+import { Annotated, Both, Cause, Die, Interrupt, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Transforms each error value in this cause to a new cause with the specified
@@ -16,7 +16,7 @@ export function flatMap<E, E1>(f: (e: E) => Cause<E1>) {
       (fiberId) => new Interrupt(fiberId),
       (left, right) => new Then(left, right),
       (left, right) => new Both(left, right),
-      (cause, stackless) => new Stackless(cause, stackless)
+      (z, annotation) => new Annotated(z, annotation)
     )
   }
 }

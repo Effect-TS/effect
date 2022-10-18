@@ -31,6 +31,10 @@ import { EmptyMutableQueue } from "@tsplus/stdlib/collections/mutable/MutableQue
 // =============================================================================
 // @effect/core
 // =============================================================================
+/**
+ * @tsplus global
+ */
+import type { Span, SpanTracer } from "@effect/core/io/SpanTracer"
 
 /**
  * @tsplus global

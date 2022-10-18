@@ -50,6 +50,6 @@ Effect.collectAllParDiscard([
   getBenchmarksQueue(),
   getBenchmarksTQueue()
 ])
-  .provideSomeLayer(Logger.consoleLoggerLayer)
+  .provideSomeLayer(Logger.layer(Logger.consoleLogger))
   .unsafeRunPromise()
   .catch(console.error)

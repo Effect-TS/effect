@@ -18,7 +18,7 @@ export class LiveClock implements Clock {
   sleep(duration: Duration): Effect<never, never, void> {
     return Effect.asyncInterrupt((cb) => {
       const canceler = globalScheduler.unsafeSchedule(() => cb(Effect.unit), duration)
-      return Either.left(Effect.sync(canceler))
+      return Either.left(Effect.sync(canceler).unit)
     })
   }
 }

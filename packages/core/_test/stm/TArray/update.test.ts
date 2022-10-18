@@ -21,11 +21,13 @@ describe.concurrent("TArray", () => {
 
       assert.isTrue(
         result.isFailure() &&
-          result.cause.isDieType() &&
-          result.cause.value instanceof IndexOutOfBounds &&
-          result.cause.value.index === -1 &&
-          result.cause.value.min === 0 &&
-          result.cause.value.max === 1
+          result.cause.isDie &&
+          result.cause.defects.find((d) =>
+            d instanceof IndexOutOfBounds &&
+            d.index === -1 &&
+            d.min === 0 &&
+            d.max === 1
+          ).isSome()
       )
     })
   })
@@ -52,11 +54,13 @@ describe.concurrent("TArray", () => {
 
       assert.isTrue(
         result.isFailure() &&
-          result.cause.isDieType() &&
-          result.cause.value instanceof IndexOutOfBounds &&
-          result.cause.value.index === -1 &&
-          result.cause.value.min === 0 &&
-          result.cause.value.max === 1
+          result.cause.isDie &&
+          result.cause.defects.find((d) =>
+            d instanceof IndexOutOfBounds &&
+            d.index === -1 &&
+            d.min === 0 &&
+            d.max === 1
+          ).isSome()
       )
     })
 

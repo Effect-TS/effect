@@ -13,7 +13,7 @@ export function fold<E, Z>(
   onInterruptCause: (fiberId: FiberId) => Z,
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
-  onStacklessCause: (z: Z, stackless: boolean) => Z
+  onAnnotated: (z: Z, annotation: unknown) => Z
 ) {
   return (self: Cause<E>): Z =>
     foldSafe(
@@ -24,7 +24,7 @@ export function fold<E, Z>(
       onInterruptCause,
       onThenCause,
       onBothCause,
-      onStacklessCause
+      onAnnotated
     ).run
 }
 
@@ -36,7 +36,7 @@ function foldSafe<E, Z>(
   onInterruptCause: (fiberId: FiberId) => Z,
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
-  onStacklessCause: (z: Z, stackless: boolean) => Z
+  onAnnotated: (z: Z, annotation: unknown) => Z
 ): Eval<Z> {
   realCause(self)
   switch (self._tag) {
@@ -62,7 +62,7 @@ function foldSafe<E, Z>(
           onInterruptCause,
           onThenCause,
           onBothCause,
-          onStacklessCause
+          onAnnotated
         )
       ).zipWith(
         Eval.suspend(
@@ -74,7 +74,7 @@ function foldSafe<E, Z>(
             onInterruptCause,
             onThenCause,
             onBothCause,
-            onStacklessCause
+            onAnnotated
           )
         ),
         (left, right) => onBothCause(left, right)
@@ -90,7 +90,7 @@ function foldSafe<E, Z>(
           onInterruptCause,
           onThenCause,
           onBothCause,
-          onStacklessCause
+          onAnnotated
         )
       ).zipWith(
         Eval.suspend(
@@ -102,13 +102,13 @@ function foldSafe<E, Z>(
             onInterruptCause,
             onThenCause,
             onBothCause,
-            onStacklessCause
+            onAnnotated
           )
         ),
         (left, right) => onThenCause(left, right)
       )
     }
-    case "Stackless": {
+    case "Annotated": {
       return Eval.suspend(
         foldSafe(
           self.cause,
@@ -118,9 +118,9 @@ function foldSafe<E, Z>(
           onInterruptCause,
           onThenCause,
           onBothCause,
-          onStacklessCause
+          onAnnotated
         )
-      ).map((z) => onStacklessCause(z, self.stackless))
+      ).map((z) => onAnnotated(z, self.annotation))
     }
   }
 }

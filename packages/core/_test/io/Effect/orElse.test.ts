@@ -22,8 +22,8 @@ describe.concurrent("orElse", () => {
         const z2 = Effect.dieSync(new Error("2"))
         const result = $(
           z1.orElse(z2).catchAllCause((cause) =>
-            cause.isDieType()
-              ? Effect.sync((cause.value as Error).message === "2")
+            cause.isDie
+              ? Effect.sync((cause.defects.head.value as Error).message === "2")
               : Effect.sync(false)
           )
         )
@@ -36,8 +36,8 @@ describe.concurrent("orElse", () => {
         const z2 = Effect.failSync(new Error("2"))
         const result = $(
           z1.orElse(z2).catchAllCause((cause) =>
-            cause.isFailType()
-              ? Effect.sync((cause.value as Error).message === "2")
+            cause.isFailure
+              ? Effect.sync(cause.failures.head.value!.message === "2")
               : Effect.sync(false)
           )
         )

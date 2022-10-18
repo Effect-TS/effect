@@ -3,6 +3,9 @@
   "references": [
     {
       "path": "packages/core"
+    },
+    {
+      "path": "./tsconfig.plugins.json"
     }
   ]
 }

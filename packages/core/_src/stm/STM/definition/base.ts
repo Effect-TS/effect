@@ -1,4 +1,4 @@
-import type { ICommit } from "@effect/core/io/Effect/definition"
+import type { Effect, ICommit } from "@effect/core/io/Effect/definition"
 
 export type USTM<A> = STM<never, never, A>
 
@@ -47,6 +47,19 @@ export interface STM<R, E, A> extends ICommit<R, E, A> {
     readonly _E: (_: never) => E
     readonly _A: (_: never) => A
   }
+  [Symbol.iterator](): Generator<STMBase<R, E, A>, A, any>
+}
+
+interface STMBase<R, E, A> extends Effect.Base<R, E, A> {
+  readonly [STMTypeId]: {
+    readonly _R: (_: never) => R
+    readonly _E: (_: never) => E
+    readonly _A: (_: never) => A
+  }
+}
+
+export namespace STM {
+  export type Base<R, E, A> = STMBase<R, E, A>
 }
 
 /**

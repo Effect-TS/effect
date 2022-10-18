@@ -46,10 +46,12 @@ describe.concurrent("Schedule", () => {
         const input = List(Date.now())
         const exit = $(runCollect(Schedule.secondOfMinute(60), input).exit)
         assert.isTrue(
-          exit.isFailure() && exit.cause.isDieType() &&
-            exit.cause.value instanceof IllegalArgumentException &&
-            exit.cause.value.message ==
-              "Invalid argument in: secondOfMinute(60). Must be in range 0...59"
+          exit.isFailure() &&
+            exit.cause.defects.find((d) =>
+              d instanceof IllegalArgumentException &&
+              d.message ==
+                "Invalid argument in: secondOfMinute(60). Must be in range 0...59"
+            ).isSome()
         )
       }))
 
@@ -90,10 +92,12 @@ describe.concurrent("Schedule", () => {
         const input = List(Date.now())
         const exit = $(runCollect(Schedule.minuteOfHour(60), input).exit)
         assert.isTrue(
-          exit.isFailure() && exit.cause.isDieType() &&
-            exit.cause.value instanceof IllegalArgumentException &&
-            exit.cause.value.message ==
-              "Invalid argument in: minuteOfHour(60). Must be in range 0...59"
+          exit.isFailure() &&
+            exit.cause.defects.find((d) =>
+              d instanceof IllegalArgumentException &&
+              d.message ==
+                "Invalid argument in: minuteOfHour(60). Must be in range 0...59"
+            ).isSome()
         )
       }))
 
@@ -133,10 +137,12 @@ describe.concurrent("Schedule", () => {
         const input = List(Date.now())
         const exit = $(runCollect(Schedule.hourOfDay(24), input).exit)
         assert.isTrue(
-          exit.isFailure() && exit.cause.isDieType() &&
-            exit.cause.value instanceof IllegalArgumentException &&
-            exit.cause.value.message ==
-              "Invalid argument in: hourOfDay(24). Must be in range 0...23"
+          exit.isFailure() &&
+            exit.cause.defects.find((d) =>
+              d instanceof IllegalArgumentException &&
+              d.message ==
+                "Invalid argument in: hourOfDay(24). Must be in range 0...23"
+            ).isSome()
         )
       }))
 
@@ -176,10 +182,12 @@ describe.concurrent("Schedule", () => {
         const input = List(Date.now())
         const exit = $(runCollect(Schedule.dayOfWeek(8), input).exit)
         assert.isTrue(
-          exit.isFailure() && exit.cause.isDieType() &&
-            exit.cause.value instanceof IllegalArgumentException &&
-            exit.cause.value.message ==
-              "Invalid argument in: dayOfWeek(8). Must be in range 1 (Monday)...7 (Sunday)"
+          exit.isFailure() &&
+            exit.cause.defects.find((d) =>
+              d instanceof IllegalArgumentException &&
+              d.message ==
+                "Invalid argument in: dayOfWeek(8). Must be in range 1 (Monday)...7 (Sunday)"
+            ).isSome()
         )
       }))
 
@@ -236,10 +244,12 @@ describe.concurrent("Schedule", () => {
         const input = List(Date.now())
         const exit = $(runCollect(Schedule.dayOfMonth(32), input).exit)
         assert.isTrue(
-          exit.isFailure() && exit.cause.isDieType() &&
-            exit.cause.value instanceof IllegalArgumentException &&
-            exit.cause.value.message ==
-              "Invalid argument in: dayOfMonth(32). Must be in range 1...31"
+          exit.isFailure() &&
+            exit.cause.defects.find((d) =>
+              d instanceof IllegalArgumentException &&
+              d.message ==
+                "Invalid argument in: dayOfMonth(32). Must be in range 1...31"
+            ).isSome()
         )
       }))
   })

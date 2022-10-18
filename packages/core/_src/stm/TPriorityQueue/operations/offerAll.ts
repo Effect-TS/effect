@@ -16,6 +16,6 @@ export function offerAll<A>(values: Collection<A>) {
           (map, a) => map.set(a, Chunk.single(a))
         )
       )
-      .as(STM.unit)
+      .unit
   }
 }

@@ -9,6 +9,8 @@ import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operatio
 export function offer<A>(value: A) {
   return (self: TPriorityQueue<A>): STM<never, never, void> => {
     concreteTPriorityQueue(self)
-    return self.map.getAndUpdate((map) => map.set(value, Chunk.single(value))).map(() => STM.unit)
+    return self.map
+      .getAndUpdate((map) => map.set(value, Chunk.single(value)))
+      .flatMap(() => STM.unit)
   }
 }

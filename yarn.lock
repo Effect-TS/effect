@@ -685,6 +685,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fp-ts/core@npm:^0.0.5":
+  version: 0.0.5
+  resolution: "@fp-ts/core@npm:0.0.5"
+  checksum: cad176a6ccdc69d04ccf8d187dfa52e2c20c300689aa5ddaa0d68f3cc437652e3110613044fb2c7aa12c443754f9cec56072e86197ae8cd39d5a32bb252f3609
+  languageName: node
+  linkType: hard
+
+"@fp-ts/data@npm:^0.0.4":
+  version: 0.0.4
+  resolution: "@fp-ts/data@npm:0.0.4"
+  dependencies:
+    "@fp-ts/core": ^0.0.5
+  checksum: 524bf9d864842ae3524d1618c1035cf2d05c42324e399a2a83d9340244d7a22663995d8d12e99b40fff571103a2d9507c35799c2b6de26b99f0ff901aaabc0cc
+  languageName: node
+  linkType: hard
+
 "@gar/promisify@npm:^1.0.1":
   version: 1.1.3
   resolution: "@gar/promisify@npm:1.1.3"
@@ -2618,6 +2634,8 @@ __metadata:
     "@changesets/cli": ^2.25.0
     "@effect-ts/build-utils": 0.40.5
     "@effect-ts/core": ^0.60.4
+    "@fp-ts/core": ^0.0.5
+    "@fp-ts/data": ^0.0.4
     "@repo-tooling/eslint-plugin-dprint": ^0.0.4
     "@tsplus/installer": 0.0.147
     "@tsplus/stdlib": 0.2.8

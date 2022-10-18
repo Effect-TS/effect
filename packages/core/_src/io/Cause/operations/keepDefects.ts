@@ -1,4 +1,4 @@
-import { Both, Die, Stackless, Then } from "@effect/core/io/Cause/definition"
+import { Annotated, Both, Die, Then } from "@effect/core/io/Cause/definition"
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only
@@ -42,6 +42,6 @@ export function keepDefects<E>(self: Cause<E>): Maybe<Cause<never>> {
       }
       throw new Error("Bug")
     },
-    (causeMaybe, stackless) => causeMaybe.map((cause) => new Stackless(cause, stackless))
+    (causeMaybe, annotation) => causeMaybe.map((cause) => new Annotated(cause, annotation))
   )
 }
