@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@effect/printer": "*",
-    "@tsplus/stdlib": "^0.2.6"
+    "@fp-ts/data": "^0.0.3"
   },
   "config": {
     "side": [],

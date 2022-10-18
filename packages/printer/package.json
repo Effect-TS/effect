@@ -34,7 +34,8 @@
     }
   },
   "dependencies": {
-    "@tsplus/stdlib": "^0.2.6"
+    "@fp-ts/core": "^0.0.5",
+    "@fp-ts/data": "^0.0.3"
   },
   "config": {
     "side": [],
