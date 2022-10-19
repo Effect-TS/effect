@@ -10,14 +10,14 @@
     "directory": "dist"
   },
   "scripts": {
-    "clean": "yarn org:rimraf build tsbuildinfo dist",
-    "build-cjs": "yarn org:babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "yarn org:babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "yarn org:build-utils pack-v3",
-    "build-pack": "yarn org:tsc -b tsconfig.json && yarn org:concurrently \"yarn build-cjs\" \"yarn build-mjs\" && yarn build-post",
-    "lint": "yarn org:eslint . --ext .ts,.tsx",
-    "autofix": "yarn lint --fix",
-    "tc": "yarn org:tsc --noEmit"
+    "clean": "rimraf build tsbuildinfo dist",
+    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
+    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
+    "build-post": "build-utils pack-v3",
+    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "pnpm lint --fix",
+    "tc": "tsc --noEmit"
   },
   "exports": {
     ".": {
