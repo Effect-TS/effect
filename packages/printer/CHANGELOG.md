@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.1.0
+
+### Minor Changes
+
+- [#350](https://github.com/Effect-TS/printer/pull/350) [`76ba0ae`](https://github.com/Effect-TS/printer/commit/76ba0aecec95230f3727965abbb888414d219c35) Thanks [@IMax153](https://github.com/IMax153)! - remove tsplus/stdlib in favor of fp-ts/data
+
 ## 0.0.4
 
 ### Patch Changes
