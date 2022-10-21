@@ -1,3 +1,6 @@
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
+
 export const MVarSym = Symbol.for("@effect/core/concurrent/MVar")
 export type MVarSym = typeof MVarSym
 
@@ -37,9 +40,9 @@ export interface MVarAspects {}
 export class MVarInternal<A> {
   readonly [MVarSym]: MVarSym = MVarSym
 
-  private _content: TRef<Maybe<A>>
+  private _content: TRef<Option.Option<A>>
 
-  constructor(content: TRef<Maybe<A>>) {
+  constructor(content: TRef<Option.Option<A>>) {
     this._content = content
   }
 
@@ -52,7 +55,7 @@ export class MVarInternal<A> {
    * operation. Use `tryTake` instead if possible.
    */
   get isEmpty(): Effect<never, never, boolean> {
-    return this._content.get.map((maybe) => maybe.isNone()).commit
+    return this._content.get.map(Option.isNone).commit
   }
 
   /**
@@ -60,12 +63,12 @@ export class MVarInternal<A> {
    * addition to the modified value of the `MVar`.
    */
   modify<B>(f: (a: A) => readonly [B, A]): Effect<never, never, B> {
-    return this._content.get.collect((maybe) => {
-      if (maybe.isSome()) {
-        const [b, newA] = f(maybe.value)
-        return Maybe.some([b, Maybe.some(newA)] as const)
+    return this._content.get.collect((option) => {
+      if (Option.isSome(option)) {
+        const [b, newA] = f(option.value)
+        return Option.some([b, Option.some(newA)] as const)
       }
-      return Maybe.none
+      return Option.none
     }).flatMap(([b, newA]) => this._content.set(newA).as(b)).commit
   }
 
@@ -76,8 +79,8 @@ export class MVarInternal<A> {
   put(value: A): Effect<never, never, void> {
     return this._content
       .get
-      .collect((maybe) => maybe.isNone() ? Maybe.some(undefined) : Maybe.none)
-      .zipRight(this._content.set(Maybe.some(value)))
+      .collect((option) => Option.isNone(option) ? Option.some(undefined) : Option.none)
+      .zipRight(this._content.set(Option.some(value)))
       .commit
   }
 
@@ -95,12 +98,15 @@ export class MVarInternal<A> {
    * value taken.
    */
   swap(value: A): Effect<never, never, A> {
-    return Do(($) => {
-      const ref = $(this._content.get)
-      return $(ref.fold(
-        STM.retry,
-        (other) => this._content.set(Maybe.some(value)).as(other)
-      ))
+    return this._content.get.flatMap((option) => {
+      switch (option._tag) {
+        case "None": {
+          return STM.retry
+        }
+        case "Some": {
+          return this._content.set(Option.some(value)).as(option.value)
+        }
+      }
     }).commit
   }
 
@@ -111,7 +117,7 @@ export class MVarInternal<A> {
   get take(): Effect<never, never, A> {
     return this._content.get
       .collect(identity)
-      .flatMap((a) => this._content.set(Maybe.none).as(a))
+      .flatMap((a) => this._content.set(Option.none).as(a))
       .commit
   }
 
@@ -121,12 +127,16 @@ export class MVarInternal<A> {
    * `false` otherwise.
    */
   tryPut(value: A): Effect<never, never, boolean> {
-    return this._content.get.flatMap((maybe) =>
-      maybe.fold(
-        this._content.set(Maybe.some(value)).as(true),
-        () => STM.succeed(false)
-      )
-    ).commit
+    return this._content.get.flatMap((option) => {
+      switch (option._tag) {
+        case "None": {
+          return this._content.set(Option.some(value)).as(true)
+        }
+        case "Some": {
+          return STM.succeed(false)
+        }
+      }
+    }).commit
   }
 
   /**
@@ -134,7 +144,7 @@ export class MVarInternal<A> {
    * immediately, with `None` if the `MVar` was empty, or `Some(x)` if the
    * `MVar` was full with contents.
    */
-  get tryRead(): Effect<never, never, Maybe<A>> {
+  get tryRead(): Effect<never, never, Option.Option<A>> {
     return this._content.get.commit
   }
 
@@ -143,12 +153,15 @@ export class MVarInternal<A> {
    * with `None` if the `MVar` was empty, or `Some(x)` if the `MVar` was full
    * with contents. After `tryTake`, the `MVar` is left empty.
    */
-  get tryTake(): Effect<never, never, Maybe<A>> {
+  get tryTake(): Effect<never, never, Option.Option<A>> {
     return Do(($) => {
       const content = $(this._content.get)
-      return $(content.fold(
-        STM.succeed(Maybe.none),
-        (value) => this._content.set(Maybe.none).zipRight(STM.succeed(Maybe.some(value)))
+      return $(pipe(
+        content,
+        Option.match(
+          () => STM.succeed(Option.none),
+          (value) => this._content.set(Option.none).zipRight(STM.succeed(Option.some(value)))
+        )
       ))
     }).commit
   }
@@ -158,10 +171,10 @@ export class MVarInternal<A> {
    */
   update(f: (a: A) => A): Effect<never, never, void> {
     return this._content.get
-      .collect((maybe) =>
-        maybe.isSome() ?
-          Maybe.some(Maybe.some(f(maybe.value))) :
-          Maybe.none
+      .collect((option) =>
+        Option.isSome(option) ?
+          Option.some(Option.some(f(option.value))) :
+          Option.none
       )
       .flatMap((value) => this._content.set(value))
       .commit

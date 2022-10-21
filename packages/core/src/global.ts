@@ -1,36 +1,4 @@
-/**
- * @tsplus global
- */
 import "@effect/core"
-/**
- * @tsplus global
- */
-import "@tsplus/stdlib/global"
-
-// =============================================================================
-// @tsplus/stdlib
-// =============================================================================
-
-/**
- * @tsplus global
- */
-import { Tag } from "@tsplus/stdlib/service/Tag"
-/**
- * @tsplus global
- */
-import { Env } from "@tsplus/stdlib/service/Env"
-/**
- * @tsplus global
- */
-import { Lazy } from "@tsplus/stdlib/data/Function"
-/**
- * @tsplus global
- */
-import { EmptyMutableQueue } from "@tsplus/stdlib/collections/mutable/MutableQueue"
-
-// =============================================================================
-// @effect/core
-// =============================================================================
 
 /**
  * @tsplus global
@@ -75,18 +43,6 @@ import { DefaultServices } from "@effect/core/io/DefaultServices/definition"
  * @tsplus global
  */
 import { Deferred } from "@effect/core/io/Deferred/definition"
-/**
- * @tsplus global
- */
-import { TDeferred } from "@effect/core/stm/TDeferred/definition"
-/**
- * @tsplus global
- */
-import { TRandom } from "@effect/core/stm/TRandom/definition"
-/**
- * @tsplus global
- */
-import { TReentrantLock } from "@effect/core/stm/TReentrantLock/definition"
 /**
  * @tsplus global
  */
@@ -146,11 +102,7 @@ import { LogSpan } from "@effect/core/io/LogSpan/definition"
 /**
  * @tsplus global
  */
-import { MetricRegistry } from "@effect/core/io/Metrics/MetricRegistry"
-/**
- * @tsplus global
- */
-import { MetricPair } from "@effect/core/io/Metrics/MetricPair"
+import { Metric } from "@effect/core/io/Metrics/definition"
 /**
  * @tsplus global
  */
@@ -162,11 +114,11 @@ import { MetricHooks } from "@effect/core/io/Metrics/MetricHooks"
 /**
  * @tsplus global
  */
-import { Metric } from "@effect/core/io/Metrics/definition"
+import { MetricKey } from "@effect/core/io/Metrics/MetricKey"
 /**
  * @tsplus global
  */
-import { MetricKey } from "@effect/core/io/Metrics/MetricKey"
+import { MetricKeyType } from "@effect/core/io/Metrics/MetricKeyType"
 /**
  * @tsplus global
  */
@@ -178,11 +130,15 @@ import { MetricListener } from "@effect/core/io/Metrics/MetricListener"
 /**
  * @tsplus global
  */
-import { MetricState } from "@effect/core/io/Metrics/MetricState"
+import { MetricPair } from "@effect/core/io/Metrics/MetricPair"
 /**
  * @tsplus global
  */
-import { MetricKeyType } from "@effect/core/io/Metrics/MetricKeyType"
+import { MetricRegistry } from "@effect/core/io/Metrics/MetricRegistry"
+/**
+ * @tsplus global
+ */
+import { MetricState } from "@effect/core/io/Metrics/MetricState"
 /**
  * @tsplus global
  */
@@ -218,11 +174,11 @@ import { Scope } from "@effect/core/io/Scope/definition"
 /**
  * @tsplus global
  */
-import { ScopedRef } from "@effect/core/io/ScopedRef/definition"
+import { ReleaseMap } from "@effect/core/io/Scope/ReleaseMap/definition"
 /**
  * @tsplus global
  */
-import { ReleaseMap } from "@effect/core/io/Scope/ReleaseMap/definition"
+import { ScopedRef } from "@effect/core/io/ScopedRef/definition"
 /**
  * @tsplus global
  */
@@ -234,11 +190,11 @@ import { STM, USTM } from "@effect/core/stm/STM/definition/base"
 /**
  * @tsplus global
  */
-import { TMap } from "@effect/core/stm/TMap/definition"
+import { TArray } from "@effect/core/stm/TArray/definition"
 /**
  * @tsplus global
  */
-import { TArray } from "@effect/core/stm/TArray/definition"
+import { TDeferred } from "@effect/core/stm/TDeferred/definition"
 /**
  * @tsplus global
  */
@@ -246,11 +202,15 @@ import { TExit } from "@effect/core/stm/TExit/definition"
 /**
  * @tsplus global
  */
-import { TPriorityQueue } from "@effect/core/stm/TPriorityQueue/definition"
+import { THub } from "@effect/core/stm/THub/definition"
 /**
  * @tsplus global
  */
-import { THub } from "@effect/core/stm/THub/definition"
+import { TMap } from "@effect/core/stm/TMap/definition"
+/**
+ * @tsplus global
+ */
+import { TPriorityQueue } from "@effect/core/stm/TPriorityQueue/definition"
 /**
  * @tsplus global
  */
@@ -258,7 +218,11 @@ import { TQueue } from "@effect/core/stm/TQueue/definition"
 /**
  * @tsplus global
  */
-import { TSet } from "@effect/core/stm/TSet/definition"
+import { TRandom } from "@effect/core/stm/TRandom/definition"
+/**
+ * @tsplus global
+ */
+import { TReentrantLock } from "@effect/core/stm/TReentrantLock/definition"
 /**
  * @tsplus global
  */
@@ -267,6 +231,10 @@ import { TRef } from "@effect/core/stm/TRef/definition"
  * @tsplus global
  */
 import { TSemaphore } from "@effect/core/stm/TSemaphore/definition"
+/**
+ * @tsplus global
+ */
+import { TSet } from "@effect/core/stm/TSet/definition"
 /**
  * @tsplus global
  */
@@ -302,6 +270,10 @@ import { Take } from "@effect/core/stream/Take/definition"
 /**
  * @tsplus global
  */
+import { LazyArg } from "@effect/core/support/LazyArg"
+/**
+ * @tsplus global
+ */
 import { Annotations } from "@effect/core/testing/Annotations/definition"
 /**
  * @tsplus global
@@ -322,14 +294,6 @@ import { Sized } from "@effect/core/testing/Sized"
 /**
  * @tsplus global
  */
-import { TestConfig } from "@effect/core/testing/TestConfig"
-/**
- * @tsplus global
- */
-import { TestEnvironment } from "@effect/core/testing/TestEnvironment"
-/**
- * @tsplus global
- */
 import { TestAnnotation } from "@effect/core/testing/TestAnnotation/definition"
 /**
  * @tsplus global
@@ -339,3 +303,19 @@ import { TestAnnotationMap } from "@effect/core/testing/TestAnnotationMap/defini
  * @tsplus global
  */
 import { TestClock } from "@effect/core/testing/TestClock/definition"
+/**
+ * @tsplus global
+ */
+import { TestConfig } from "@effect/core/testing/TestConfig"
+/**
+ * @tsplus global
+ */
+import { TestEnvironment } from "@effect/core/testing/TestEnvironment"
+/**
+ * @tsplus global
+ */
+import { Context } from "@fp-ts/data/Context"
+/**
+ * @tsplus global
+ */
+import { identity } from "@fp-ts/data/Function"

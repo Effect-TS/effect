@@ -1,12 +1,16 @@
 import { Effect, EffectURI } from "@effect/core/io/Effect/definition"
 import { STMTypeId } from "@effect/core/stm/STM/definition/base"
-import { State } from "@effect/core/stm/STM/State"
-import { TxnId } from "@effect/core/stm/STM/TxnId"
-
 import type { Entry } from "@effect/core/stm/STM/Entry"
+import { State } from "@effect/core/stm/STM/State"
 import { TryCommit } from "@effect/core/stm/STM/TryCommit"
+import { TxnId } from "@effect/core/stm/STM/TxnId"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 import type { Scheduler } from "@effect/core/support/Scheduler"
+import * as Stack from "@effect/core/support/Stack"
+import * as Either from "@fp-ts/data/Either"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashMap from "@fp-ts/data/HashMap"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
 
 export class STMBase<R, E, A> implements STM<R, E, A> {
   readonly _tag = "ICommit"
@@ -28,7 +32,13 @@ export class STMBase<R, E, A> implements STM<R, E, A> {
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMEffect"
 
-  constructor(readonly f: (journal: Journal, fiberId: FiberId, environment: Env<R>) => A) {
+  constructor(
+    readonly f: (
+      journal: Journal,
+      fiberId: FiberId,
+      environment: Context<R>
+    ) => A
+  ) {
     super()
   }
 }
@@ -36,7 +46,10 @@ export class STMEffect<R, E, A> extends STMBase<R, E, A> {
 export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
   readonly _stmtag = "STMOnFailure"
 
-  constructor(readonly stm: STM<R, E, A>, readonly onFailure: (e: E) => STM<R, E1, A>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly onFailure: (e: E) => STM<R, E1, A>
+  ) {
     super()
   }
   apply(a: A): STM<R, E, A> {
@@ -47,7 +60,10 @@ export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
 export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
   readonly _stmtag = "STMOnRetry"
 
-  constructor(readonly stm: STM<R, E, A>, readonly onRetry: Lazy<STM<R1, E1, A1>>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly onRetry: () => STM<R1, E1, A1>
+  ) {
     super()
   }
   apply(a: A): STM<R, E, A> {
@@ -58,7 +74,10 @@ export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
 export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
   readonly _stmtag = "STMOnSuccess"
 
-  constructor(readonly stm: STM<R, E, A>, readonly apply: (a: A) => STM<R, E, B>) {
+  constructor(
+    readonly stm: STM<R, E, A>,
+    readonly apply: (a: A) => STM<R, E, B>
+  ) {
     super()
   }
 }
@@ -66,7 +85,10 @@ export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
 export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMProvide"
 
-  constructor(readonly stm: STM<R0, E, A>, readonly f: (env: Env<R>) => Env<R0>) {
+  constructor(
+    readonly stm: STM<R0, E, A>,
+    readonly f: (context: Context<R>) => Context<R0>
+  ) {
     super()
   }
 }
@@ -82,7 +104,7 @@ export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
 export class STMSucceed<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMSucceed"
 
-  constructor(readonly a: Lazy<A>) {
+  constructor(readonly a: () => A) {
     super()
   }
 }
@@ -170,14 +192,20 @@ export function atomically<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
       }
       case "Suspend": {
         const txnId = TxnId()
-        const state = new AtomicReference<State<E, A>>(State.running)
+        const state = MutableRef.make<State<E, A>>(State.running)
         const io = Effect.async(
           tryCommitAsync(commitResult.journal, fiberId, self, txnId, state, env, scheduler)
         )
         return Effect.uninterruptibleMask(({ restore }) =>
           restore(io).catchAllCause((cause) => {
-            state.compareAndSet(State.running, State.interrupted)
-            const currentState = state.get
+            pipe(
+              state,
+              MutableRef.compareAndSet<State<E, A>>(
+                State.running,
+                State.interrupted
+              )
+            )
+            const currentState = MutableRef.get(state)
             return currentState._tag === "Done"
               ? Effect.done(currentState.exit)
               : Effect.failCause(cause)
@@ -238,8 +266,10 @@ export function foldSTM<E, R1, E1, A1, A, R2, E2, A2>(
   return <R>(self: STM<R, E, A>): STM<R | R1 | R2, E1 | E2, A1 | A2> =>
     self
       .map(Either.right)
-      .catchAll((e) => g(e).map(Either.left))
-      .flatMap((either) => either.fold(STM.succeed, f))
+      .catchAll<R, Either.Either<A1, A>, E, R1, E1, Either.Either<A1, never>>((e) =>
+        g(e).map(Either.left)
+      )
+      .flatMap(Either.match(STM.succeed, f))
 }
 
 /**
@@ -336,16 +366,16 @@ type Cont =
 
 export class STMDriver<R, E, A> {
   private yieldOpCount = 2048
-  private contStack: Stack<Cont> | undefined
-  private envStack: Stack<Env<unknown>>
+  private contStack: Stack.Stack<Cont> | undefined
+  private envStack: Stack.Stack<Context<unknown>>
 
   constructor(
     readonly self: STM<R, E, A>,
     readonly journal: Journal,
     readonly fiberId: FiberId,
-    r0: Env<R>
+    context: Context<R>
   ) {
-    this.envStack = new Stack(r0)
+    this.envStack = new Stack.Stack(context as Context<unknown>)
   }
 
   private unwindStack(error: unknown, isRetry: boolean): Erased | undefined {
@@ -423,25 +453,25 @@ export class STMDriver<R, E, A> {
           }
 
           case "STMOnSuccess": {
-            this.contStack = new Stack(k, this.contStack)
+            this.contStack = new Stack.Stack(k, this.contStack)
             curr = k.stm
             break
           }
 
           case "STMOnFailure": {
-            this.contStack = new Stack(k, this.contStack)
+            this.contStack = new Stack.Stack(k, this.contStack)
             curr = k.stm
             break
           }
 
           case "STMOnRetry": {
-            this.contStack = new Stack(k, this.contStack)
+            this.contStack = new Stack.Stack(k, this.contStack)
             curr = k.stm
             break
           }
 
           case "STMProvide": {
-            this.envStack = new Stack(k.f(this.envStack.value), this.envStack)
+            this.envStack = new Stack.Stack(k.f(this.envStack.value), this.envStack)
             curr = k.stm.ensuring(
               STM.sync(() => {
                 this.envStack = this.envStack.previous!
@@ -485,16 +515,16 @@ export class STMDriver<R, E, A> {
 export function tryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  state: AtomicReference<State<E, A>>,
-  env: Env<R>,
+  state: MutableRef.MutableRef<State<E, A>>,
+  context: Context<R>,
   scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
-  const value = new STMDriver(stm, journal, fiberId, env).run()
+  const value = new STMDriver(stm, journal, fiberId, context).run()
   const analysis = analyzeJournal(journal)
 
   if (analysis === "RW") {
-    state.compareAndSet(State.running, State.done(value))
+    pipe(state, MutableRef.compareAndSet(State.running, State.done(value)))
     commitJournal(journal)
   } else if (analysis === "I") {
     throw new Error("Bug: invalid journal")
@@ -522,11 +552,11 @@ export function tryCommit<R, E, A>(
 export function tryCommitSync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  env: Env<R>,
+  context: Context<R>,
   scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
-  const value = new STMDriver(stm, journal, fiberId, env).run()
+  const value = new STMDriver(stm, journal, fiberId, context).run()
   const analysis = analyzeJournal(journal)
 
   if (analysis === "RW" && value._tag === "Succeed") {
@@ -565,8 +595,8 @@ function suspendTryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
-  state: AtomicReference<State<E, A>>,
-  env: Env<R>,
+  state: MutableRef.MutableRef<State<E, A>>,
+  context: Context<R>,
   k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
   journal: Journal,
@@ -577,10 +607,10 @@ function suspendTryCommit<R, E, A>(
     addTodo(
       txnId,
       journal,
-      () => tryCommitAsync(undefined, fiberId, stm, txnId, state, env, scheduler)(k)
+      () => tryCommitAsync(undefined, fiberId, stm, txnId, state, context, scheduler)(k)
     )
     if (isInvalid(journal)) {
-      const v = tryCommit(fiberId, stm, state, env, scheduler)
+      const v = tryCommit(fiberId, stm, state, context, scheduler)
       switch (v._tag) {
         case "Done": {
           completeTryCommit(v.exit, k)
@@ -608,26 +638,36 @@ export function tryCommitAsync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
-  state: AtomicReference<State<E, A>>,
-  env: Env<R>,
+  state: MutableRef.MutableRef<State<E, A>>,
+  context: Context<R>,
   scheduler: Scheduler
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
-    if (state.get.isRunning) {
+    if (MutableRef.get(state).isRunning) {
       if (journal == null) {
-        const v = tryCommit(fiberId, stm, state, env, scheduler)
+        const v = tryCommit(fiberId, stm, state, context, scheduler)
         switch (v._tag) {
           case "Done": {
             completeTryCommit(v.exit, k)
             break
           }
           case "Suspend": {
-            suspendTryCommit(fiberId, stm, txnId, state, env, k, v.journal, v.journal, scheduler)
+            suspendTryCommit(
+              fiberId,
+              stm,
+              txnId,
+              state,
+              context,
+              k,
+              v.journal,
+              v.journal,
+              scheduler
+            )
             break
           }
         }
       } else {
-        suspendTryCommit(fiberId, stm, txnId, state, env, k, journal, journal, scheduler)
+        suspendTryCommit(fiberId, stm, txnId, state, context, k, journal, journal, scheduler)
       }
     }
   }
@@ -637,12 +677,12 @@ export type Journal = Map<TRef<unknown>, Entry>
 
 export type JournalAnalysis = "I" | "RW" | "RO"
 
-export type Todo = Lazy<unknown>
+export type Todo = () => unknown
 
 /**
  * Creates a function that can reset the journal.
  */
-export function prepareResetJournal(journal: Journal): Lazy<unknown> {
+export function prepareResetJournal(journal: Journal): () => unknown {
   const saved: Journal = new Map()
   for (const entry of journal) {
     saved.set(

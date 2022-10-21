@@ -1,4 +1,5 @@
 import { MVarInternal } from "@effect/core/concurrent/MVar/definition"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Creates an `MVar` which is initially empty.
@@ -6,5 +7,5 @@ import { MVarInternal } from "@effect/core/concurrent/MVar/definition"
  * @tsplus static effect/core/concurrent/MVar.Ops empty
  */
 export function empty<A>(): Effect<never, never, MVar<A>> {
-  return TRef.make(Maybe.empty<A>()).map((tRef) => new MVarInternal(tRef)).commit
+  return TRef.make(Option.none as Option.Option<A>).map((tRef) => new MVarInternal(tRef)).commit
 }

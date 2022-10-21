@@ -1,4 +1,5 @@
 import { MVarInternal } from "@effect/core/concurrent/MVar/definition"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Create an `MVar` which contains the supplied value.
@@ -7,5 +8,5 @@ import { MVarInternal } from "@effect/core/concurrent/MVar/definition"
  * @tsplus static effect/core/concurrent/MVar.Ops make
  */
 export function make<A>(value: A): Effect<never, never, MVar<A>> {
-  return TRef.make(Maybe.some(value)).map((tRef) => new MVarInternal(tRef)).commit
+  return TRef.make(Option.some(value)).map((tRef) => new MVarInternal(tRef)).commit
 }

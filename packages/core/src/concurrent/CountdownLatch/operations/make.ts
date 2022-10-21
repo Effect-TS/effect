@@ -1,10 +1,11 @@
 import { CountdownLatchInternal } from "@effect/core/concurrent/CountdownLatch/definition"
+import type { Option } from "@fp-ts/data/Option"
 
 /**
  * @tsplus static effect/core/concurrent/CountdownLatch.Ops __call
  * @tsplus static effect/core/concurrent/CountdownLatch.Ops make
  */
-export function make(n: number): Effect<never, Maybe<never>, CountdownLatch> {
+export function make(n: number): Effect<never, Option<never>, CountdownLatch> {
   if (n <= 0) {
     // People calling this with a negative value deserve this
     return Effect.none.flip
