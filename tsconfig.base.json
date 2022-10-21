@@ -40,16 +40,16 @@
         "removeComments": false,
         "paths": {
             "@effect/core": [
-                "./packages/core/_src/index.ts"
+                "./packages/core/src/index.ts"
             ],
             "@effect/core/test/*": [
-                "./packages/core/_test/*"
+                "./packages/core/test/*"
             ],
             "@effect/core/examples/*": [
-                "./packages/core/_examples/*"
+                "./packages/core/examples/*"
             ],
             "@effect/core/*": [
-                "./packages/core/_src/*"
+                "./packages/core/src/*"
             ],
         }
     },

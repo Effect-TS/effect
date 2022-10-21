@@ -1,6 +1,4 @@
 build/
 dist/
-scripts/merge.ts
-scripts/genp.ts
 compiler-debug/
 debug/

@@ -1,5 +1,5 @@
 tasks:
-  - init: yarn && yarn build
+  - init: pnpm install && pnpm build
 github:
   prebuilds:
     addCheck: true

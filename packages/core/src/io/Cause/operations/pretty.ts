@@ -1,7 +1,7 @@
 import { realCause } from "@effect/core/io/Cause/definition"
 import { Doc } from "@effect/printer/Doc"
 import { FusionDepth } from "@effect/printer/Optimize"
-import { renderPretty } from "@effect/printer/Render"
+import { pretty as renderPretty } from "@effect/printer/Render"
 
 export interface Renderer<E = unknown> {
   readonly lineWidth: number
@@ -173,8 +173,8 @@ function prefixBlock(
 ): ReadonlyArray<Doc<never>> {
   if (isNonEmptyArray(values)) {
     const [head, tail] = headTail(values)
-    const init = Doc.cat(prefix1, head)
-    const rest = tail.map((value) => Doc.cat(prefix2, value))
+    const init = prefix1.cat(head)
+    const rest = tail.map((value) => prefix2.cat(value))
     return [init, ...rest]
   }
   return []
@@ -187,11 +187,11 @@ function format(segment: Segment): ReadonlyArray<Doc<never>> {
     }
     case "Parallel": {
       const spaces = Doc.spaces(2)
-      const horizontalLines = Doc.cat(box.horizontal.heavy, box.horizontal.heavy)
-      const verticalSeparator = Doc.cat(spaces, box.vertical.heavy)
+      const horizontalLines = box.horizontal.heavy.cat(box.horizontal.heavy)
+      const verticalSeparator = spaces.cat(box.vertical.heavy)
 
-      const junction = Doc.cat(horizontalLines, box.branch.down.heavy)
-      const busTerminal = Doc.cat(horizontalLines, box.terminal.down.heavy)
+      const junction = horizontalLines.cat(box.branch.down.heavy)
+      const busTerminal = horizontalLines.cat(box.terminal.down.heavy)
 
       const fiberBus = Doc.hcat([...times(junction, segment.all.length - 1), busTerminal])
       const segments = segment.all.reduceRight(
@@ -322,9 +322,8 @@ function prettySafe<E>(
   renderer: Renderer<E>
 ): Eval<string> {
   return prettyDocuments(cause, renderer).map((docs) => {
-    const document = Doc.cat(
-      Doc.lineBreak,
-      Doc.concatWith(docs, (x, y) => x.appendWithLineBreak(y))
+    const document = Doc.lineBreak.cat(
+      Doc.concatWith((x, y) => x.catWithLineBreak(y))(docs)
     ).optimize(FusionDepth.Deep)
     return renderPretty(renderer.lineWidth, renderer.ribbonFraction)(document)
   })
