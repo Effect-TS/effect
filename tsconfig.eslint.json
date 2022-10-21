@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "baseUrl": "."
+  },
+  "include": [
+    "./packages/core/src/**/*.ts",
+    "./packages/core/test/**/*.ts",
+    "./packages/examples/examples/**/*.ts",
+    "./vitest.config.ts"
+  ]
+}

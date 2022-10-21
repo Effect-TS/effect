@@ -31,7 +31,6 @@ module.exports = {
           // The TypeScript configuration of dprint
           // See also https://dprint.dev/plugins/typescript/config/,
           "indentWidth": 2,
-          "lineWidth": 100,
           "semiColons": "asi",
           "quoteStyle": "alwaysDouble",
           "trailingCommas": "never",
@@ -41,6 +40,9 @@ module.exports = {
       }
     ],
     "codegen/codegen": "error",
+    "no-restricted-imports": ["error", {
+      "patterns": [".*"]
+    }],
     "no-fallthrough": "off",
     "no-irregular-whitespace": "off",
     "object-shorthand": "error",
@@ -66,7 +68,7 @@ module.exports = {
     "import/no-duplicates": "error",
     "import/no-unresolved": "off",
     "import/order": "off",
-    "simple-import-sort/imports": "off",
+    "simple-import-sort/imports": "error",
     "sort-destructure-keys/sort-destructure-keys": "error"
   }
 }

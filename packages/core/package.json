@@ -3,21 +3,24 @@
   "version": "0.0.16",
   "type": "module",
   "license": "MIT",
-  "repository": "https://github.com/Effect-TS/core.git",
-  "homepage": "https://www.matechs.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/core.git",
+    "directory": "packages/core"
+  },
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
   "scripts": {
-    "clean": "yarn org:rimraf build tsbuildinfo dist",
-    "build-cjs": "yarn org:babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "yarn org:babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "yarn org:build-utils pack-v3",
-    "build-pack": "yarn org:tsc -b tsconfig.json && yarn org:concurrently \"yarn build-cjs\" \"yarn build-mjs\" && yarn build-post",
-    "lint": "yarn org:eslint . --ext .ts,.tsx",
-    "autofix": "yarn lint --fix",
-    "tc": "yarn org:tsc --noEmit"
+    "clean": "rimraf build tsbuildinfo dist",
+    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
+    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
+    "build-post": "build-utils pack-v3",
+    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "pnpm lint --fix",
+    "tc": "tsc --noEmit"
   },
   "typesVersions": {
     "*": {
@@ -41,7 +44,7 @@
     }
   },
   "dependencies": {
-    "@effect/printer": "^0.0.4",
+    "@effect/printer": "^0.1.0",
     "@tsplus/stdlib": "^0.2.8"
   },
   "tsplus": {

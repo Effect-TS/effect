@@ -2,10 +2,11 @@
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "typescript.enablePromptUseWorkspaceTsdk": true,
-  "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
-  "explorer.sortOrder": "mixed",
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
@@ -18,32 +19,7 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
-  "files.exclude": {
-    //"**/.yarn*": true,
-    //"**/.*.js": true,
-    //"**/.swc": true,
-    //"**/.changeset": true,
-    //"**/yarn.lock": true,
-    //"**/.*rc": true,
-    //"**/.*config": true,
-    //"**/.git*": true,
-    //"**/.npmignore*": true,
-    //"**/.husky": true,
-    //"**/LICENSE.*": true,
-    //"**/lerna.json": true,
-    //"**/jest.config.js": true,
-  },
-  "prettier.disableLanguages": [
-    "javascript",
-    "javascriptreact",
-    "typescript",
-    "typescriptreact"
-  ],
-  "eslint.validate": [
-    "markdown",
-    "javascript",
-    "typescript"
-  ],
+  "eslint.validate": ["markdown", "javascript", "typescript"],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },

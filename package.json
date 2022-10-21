@@ -1,7 +1,10 @@
 {
   "name": "effect",
   "private": true,
-  "repository": "https://github.com/Effect-TS/core.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/core.git"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -9,35 +12,27 @@
     "changeset": "changeset",
     "release": "changeset publish",
     "clean": "ultra -r clean && rimraf tsconfig.tsbuildinfo",
-    "build": "ultra -r build-pack",
+    "build": "pnpm build-all && ultra -r -b build-pack",
     "build-all": "tsc -b tsconfig.json",
     "build-watch": "tsc -b tsconfig.json --watch",
-    "circular": "yarn org:madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning packages/*/build/esm packages/*/build/test packages/*/build/examples",
+    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning packages/*/build/esm packages/*/build/test packages/*/build/examples",
     "test": "vitest",
     "autofix": "ultra -r autofix",
     "lint": "ultra -r lint",
     "tc": "ultra -r tc",
-    "postinstall": "tsplus-install",
-    "org:rimraf": "cd $INIT_CWD && rimraf",
-    "org:tsc": "cd $INIT_CWD && tsc",
-    "org:eslint": "cd $INIT_CWD && eslint",
-    "org:concurrently": "cd $INIT_CWD && concurrently",
-    "org:build-utils": "cd $INIT_CWD && build-utils",
-    "org:babel": "cd $INIT_CWD && babel",
-    "org:madge": "cd $INIT_CWD && madge"
+    "postinstall": "tsplus-install"
   },
-  "packageManager": "yarn@3.2.1",
   "devDependencies": {
     "@babel/cli": "^7.19.3",
     "@babel/core": "^7.19.3",
     "@babel/plugin-transform-modules-commonjs": "^7.18.6",
     "@changesets/changelog-github": "^0.4.7",
     "@changesets/cli": "^2.25.0",
-    "@effect-ts/build-utils": "0.40.5",
+    "@effect-ts/build-utils": "0.40.3",
     "@effect-ts/core": "^0.60.4",
+    "@effect/core": "workspace:^",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@tsplus/installer": "0.0.147",
-    "@tsplus/stdlib": "0.2.8",
     "@types/node": "^18.8.3",
     "@types/rimraf": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^5.39.0",
@@ -61,7 +56,10 @@
     "vite": "3.1.6",
     "vitest": "0.14.2"
   },
-  "resolutions": {
-    "eslint-plugin-codegen": "patch:eslint-plugin-codegen@npm:0.16.1#.yarn/patches/eslint-plugin-codegen-npm-0.16.1-87770191cd"
+  "pnpm": {
+    "patchedDependencies": {
+      "@effect-ts/build-utils@0.40.3": "patches/@effect-ts__build-utils@0.40.3.patch",
+      "eslint-plugin-codegen@0.16.1": "patches/eslint-plugin-codegen@0.16.1.patch"
+    }
   }
 }
