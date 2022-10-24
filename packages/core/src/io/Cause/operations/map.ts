@@ -5,6 +5,8 @@ import { Fail } from "@effect/core/io/Cause/definition"
  *
  * @tsplus static effect/core/io/Cause.Aspects map
  * @tsplus pipeable effect/core/io/Cause map
+ * @category mapping
+ * @since 1.0.0
  */
 export function map<E, E1>(f: (e: E) => E1) {
   return (self: Cause<E>): Cause<E1> => self.flatMap((e) => new Fail(f(e)))

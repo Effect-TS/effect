@@ -6,6 +6,8 @@ import { TerminationStrategy } from "@effect/core/stream/Stream//TerminationStra
  *
  * @tsplus static effect/core/stream/Stream.Aspects mergeLeft
  * @tsplus pipeable effect/core/stream/Stream mergeLeft
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeLeft<R2, E2, A2>(
   that: Stream<R2, E2, A2>,

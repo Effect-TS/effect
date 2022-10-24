@@ -2,17 +2,20 @@
 // Fiber Failure
 // -----------------------------------------------------------------------------
 
-// TODO(Mike/Max): implementation
-// import { pretty } from "./Pretty"
-
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const FiberFailureSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/FiberFailure"
 )
 
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class FiberFailure<E> extends Error {
   readonly [FiberFailureSymbol] = "FiberFailure"
-
-  // readonly pretty = pretty(this.cause)
 
   constructor(readonly cause: Cause<E>) {
     super()
@@ -20,47 +23,46 @@ export class FiberFailure<E> extends Error {
     this.name = this[FiberFailureSymbol]
     delete this.stack
   }
+
+  get pretty(): string {
+    return this.cause.pretty()
+  }
 }
 
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
 export function isFiberFailure(u: unknown): u is FiberFailure<unknown> {
   return u instanceof Error && u[FiberFailureSymbol] === "FiberFailure"
 }
-
-// // -----------------------------------------------------------------------------
-// // Untraced
-// // -----------------------------------------------------------------------------
-
-// export const UntracedSymbol: unique symbol = Symbol.for(
-//   "@effect/core/Cause/errors/Untraced"
-// )
-
-// export class Untraced extends Error {
-//   readonly [UntracedSymbol] = "Untraced"
-
-//   constructor(message?: string) {
-//     super(message)
-//     delete this.stack
-//     this.name = this[UntracedSymbol]
-//   }
-// }
-
-// export const isUntraced = (u: unknown): u is Untraced =>
-//   u instanceof Error && u[UntracedSymbol] === "Untraced"
 
 // -----------------------------------------------------------------------------
 // Runtime
 // -----------------------------------------------------------------------------
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const RuntimeErrorSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/Runtime"
 )
 
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class RuntimeError {
   readonly [RuntimeErrorSymbol] = "RuntimeError"
 
   constructor(readonly message?: string) {}
 }
 
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
 export function isRuntime(u: unknown): u is RuntimeError {
   return u instanceof RuntimeError && u[RuntimeErrorSymbol] === "RuntimeError"
 }
@@ -69,9 +71,22 @@ export function isRuntime(u: unknown): u is RuntimeError {
 // Channel
 // -----------------------------------------------------------------------------
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const ChannelErrorSymbol = Symbol.for("@effect/core/Cause/errors/Channel")
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type ChannelErrorSymbol = typeof ChannelErrorSymbol
 
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class ChannelError<E> {
   readonly [ChannelErrorSymbol]: ChannelErrorSymbol = ChannelErrorSymbol
   constructor(readonly error: E) {}
@@ -85,10 +100,18 @@ export function isChannelError(u: unknown): u is ChannelError<unknown> {
 // Interrupted
 // -----------------------------------------------------------------------------
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const InterruptedSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/Interrupted"
 )
 
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class InterruptedException extends Error {
   readonly [InterruptedSymbol] = "InterruptedException"
 
@@ -98,6 +121,10 @@ export class InterruptedException extends Error {
   }
 }
 
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
 export function isInterruptedException(u: unknown): u is InterruptedException {
   return u instanceof Error && u[InterruptedSymbol] === "InterruptedException"
 }
@@ -106,10 +133,51 @@ export function isInterruptedException(u: unknown): u is InterruptedException {
 // Illegal State
 // -----------------------------------------------------------------------------
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const NoSuchElementExceptionSymbol: unique symbol = Symbol.for(
+  "@effect/core/Cause/errors/NoSuchElement"
+)
+
+/**
+ * @category errors
+ * @since 1.0.0
+ */
+export class NoSuchElementException extends Error {
+  readonly [NoSuchElementExceptionSymbol] = "NoSuchElementException"
+
+  constructor(message?: string) {
+    super(message)
+    this.name = this[NoSuchElementExceptionSymbol]
+  }
+}
+
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
+export function isNoSuchElementException(u: unknown): u is NoSuchElementException {
+  return u instanceof Error && u[NoSuchElementExceptionSymbol] === "NoSuchElementException"
+}
+
+// -----------------------------------------------------------------------------
+// Illegal State
+// -----------------------------------------------------------------------------
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const IllegalStateExceptionSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/IllegalState"
 )
 
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class IllegalStateException extends Error {
   readonly [IllegalStateExceptionSymbol] = "IllegalStateException"
 
@@ -119,6 +187,10 @@ export class IllegalStateException extends Error {
   }
 }
 
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
 export function isIllegalStateException(u: unknown): u is IllegalStateException {
   return u instanceof Error && u[IllegalStateExceptionSymbol] === "IllegalStateException"
 }
@@ -127,9 +199,18 @@ export function isIllegalStateException(u: unknown): u is IllegalStateException 
 // Illegal Argument
 // -----------------------------------------------------------------------------
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const IllegalArgumentExceptionSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/IllegalArgument"
 )
+
+/**
+ * @category errors
+ * @since 1.0.0
+ */
 export class IllegalArgumentException extends Error {
   readonly [IllegalArgumentExceptionSymbol] = "IllegalArgumentException"
 
@@ -139,6 +220,36 @@ export class IllegalArgumentException extends Error {
   }
 }
 
+/**
+ * @category refinements
+ * @since 1.0.0
+ */
 export function isIllegalArgumentException(u: unknown): u is IllegalArgumentException {
   return u instanceof Error && u[IllegalArgumentExceptionSymbol] === "IllegalArgumentException"
+}
+
+// -----------------------------------------------------------------------------
+// Index Out Of Bounds
+// -----------------------------------------------------------------------------
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const IndexOutOfBoundsExceptionSymbol: unique symbol = Symbol.for(
+  "@effect/core/Cause/errors/IndexOutOfBoundsException"
+)
+
+/**
+ * @category errors
+ * @since 1.0.0
+ */
+export class IndexOutOfBoundsException extends Error {
+  readonly [IndexOutOfBoundsExceptionSymbol] = "IndexOutOfBoundsException"
+
+  readonly message: string = `${this.index} is out of bounds (min ${this.min}, max ${this.max})`
+
+  constructor(readonly index: number, readonly min: number, readonly max: number) {
+    super()
+  }
 }

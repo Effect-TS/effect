@@ -2,7 +2,8 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
-import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import * as Duration from "@fp-ts/data/Duration"
 
 /**
  * Delays the chunks of this stream according to the given bandwidth
@@ -13,10 +14,12 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  *
  * @tsplus static effect/core/stream/Stream.Aspects throttleShapeEffect
  * @tsplus pipeable effect/core/stream/Stream throttleShapeEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function throttleShapeEffect<A, R2, E2>(
   units: number,
-  duration: Duration,
+  duration: Duration.Duration,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst = 0
 ) {
@@ -26,8 +29,9 @@ export function throttleShapeEffect<A, R2, E2>(
       Channel.fromEffect(Clock.currentTime)
         .flatMap(
           (timestamp) =>
-            self.channel >>
-            loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
+            self.channel.pipeTo(
+              loop<E, A, R2, E2>(units, duration, costFn, burst, units, timestamp)
+            )
         )
     )
   }
@@ -35,7 +39,7 @@ export function throttleShapeEffect<A, R2, E2>(
 
 function loop<E, A, R2, E2>(
   units: number,
-  duration: Duration,
+  duration: Duration.Duration,
   costFn: (input: Chunk<A>) => Effect<R2, E2, number>,
   burst: number,
   tokens: number,
@@ -50,13 +54,13 @@ function loop<E, A, R2, E2>(
             const elapsed = current - timestamp
             const cycles = elapsed / duration.millis
             const sum = tokens + cycles * units
-            const max = units + burst < 0 ? Number.MAX_SAFE_INTEGER : units + burst
+            const max = units + burst < 0 ? Number.POSITIVE_INFINITY : units + burst
             const available = sum < 0 ? max : Math.min(sum, max)
             const remaining = available - weight
             const waitCycles = remaining >= 0 ? 0 : -remaining / units
-            const delay = new DurationInternal(Math.floor(waitCycles * duration.millis))
+            const delay = Duration.millis(Math.floor(waitCycles * duration.millis))
 
-            return delay > (0).millis
+            return delay.millis > 0
               ? Channel.fromEffect(Clock.sleep(delay))
                 .flatMap(() => Channel.write(input))
                 .flatMap(() =>

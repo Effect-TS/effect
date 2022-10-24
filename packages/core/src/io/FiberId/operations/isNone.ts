@@ -1,28 +1,37 @@
 import type { None } from "@effect/core/io/FiberId/definition"
 import { realFiberId } from "@effect/core/io/FiberId/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as SafeEval from "@fp-ts/data/SafeEval"
 
 /**
  * Determines if the `FiberId` is a `None`.
  *
  * @tsplus fluent effect/core/io/FiberId isNone
+ * @category refinements
+ * @since 1.0.0
  */
 export function isNone(self: FiberId): self is None {
-  return isNoneSafe(self).run
+  return SafeEval.execute(isNoneSafe(self))
 }
 
-function isNoneSafe(self: FiberId): Eval<boolean> {
+function isNoneSafe(self: FiberId): SafeEval.SafeEval<boolean> {
   realFiberId(self)
   switch (self._tag) {
     case "None": {
-      return Eval.succeed(true)
+      return SafeEval.succeed(true)
     }
     case "Runtime": {
-      return Eval.succeed(false)
+      return SafeEval.succeed(false)
     }
     case "Composite": {
-      let base = Eval.succeed(true)
+      let base = SafeEval.succeed(true)
       for (const fiberId of self.fiberIds) {
-        base = Eval.suspend(isNoneSafe(fiberId)).zipWith(base, (a, b) => a && b)
+        base = SafeEval.suspend(() =>
+          pipe(
+            isNoneSafe(fiberId),
+            SafeEval.zipWith(base, (a, b) => a && b)
+          )
+        )
       }
       return base
     }

@@ -2,12 +2,17 @@ import {
   concreteSink,
   SinkInternal
 } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
 
 /**
  * @tsplus static effect/core/stream/Sink.Aspects foldSink
  * @tsplus pipeable effect/core/stream/Sink foldSink
+ * @category folding
+ * @since 1.0.0
  */
-export function foldSink_<
+export function foldSink<
   R1,
   R2,
   E,
@@ -39,24 +44,30 @@ export function foldSink_<
         },
         ([leftovers, z]) =>
           Channel.suspend(() => {
-            const leftoversRef = new AtomicReference(
-              leftovers.filter((chunk): chunk is Chunk<L1 | L2> => chunk.isNonEmpty)
+            const leftoversRef: MutableRef.MutableRef<Chunk.Chunk<Chunk.Chunk<L1 | L2>>> =
+              MutableRef.make(
+                pipe(
+                  leftovers as Chunk.Chunk<Chunk.Chunk<L1 | L2>>,
+                  Chunk.filter(Chunk.isNonEmpty)
+                )
+              )
+            const refReader = Channel.sync(() => {
+              const value = MutableRef.get(leftoversRef)
+              pipe(leftoversRef, MutableRef.set(Chunk.empty as Chunk.Chunk<Chunk.Chunk<L1 | L2>>))
+              return value
+            }).flatMap((chunk) =>
+              Channel.writeChunk(chunk as unknown as Chunk.Chunk<Chunk.Chunk<In1 & In2>>)
             )
-            const refReader = Channel.sync(
-              leftoversRef.getAndSet(Chunk.empty())
-            ).flatMap((chunk) => Channel.writeChunk(chunk as unknown as Chunk<Chunk<In1 & In2>>))
-            const passThrough = Channel.identity<never, Chunk<In1 & In2>, unknown>()
+            const passThrough = Channel.identity<never, Chunk.Chunk<In1 & In2>, unknown>()
             const result = success(z)
             concreteSink(result)
             const continuationSink = refReader.zipRight(passThrough).pipeTo(result.channel)
-            return continuationSink
-              .doneCollect
-              .flatMap(
-                ([newLeftovers, z1]) =>
-                  Channel.sync(leftoversRef.get)
-                    .flatMap((chunk) => Channel.writeChunk(chunk))
-                    .zipRight(Channel.writeChunk(newLeftovers).as(z1))
-              )
+            return continuationSink.doneCollect.flatMap(
+              ([newLeftovers, z1]) =>
+                Channel.sync(MutableRef.get(leftoversRef))
+                  .flatMap((chunk) => Channel.writeChunk(chunk))
+                  .zipRight(Channel.writeChunk(newLeftovers).as(z1))
+            )
           })
       )
     )

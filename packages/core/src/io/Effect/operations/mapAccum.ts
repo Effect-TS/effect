@@ -1,37 +1,31 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Statefully and effectfully maps over the elements of this chunk to produce
  * new elements.
  *
  * @tsplus static effect/core/io/Effect.Ops mapAccum
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapAccum<A, B, R, E, S>(
-  self: Collection<A>,
+  as: Iterable<A>,
   s: S,
   f: (s: S, a: A) => Effect<R, E, readonly [S, B]>
-): Effect<R, E, readonly [S, Chunk<B>]> {
+): Effect<R, E, readonly [S, Chunk.Chunk<B>]> {
   return Effect.suspendSucceed(() => {
-    const chunk = Chunk.from(self)
-    const iterator = concreteChunkId(chunk)._arrayLikeIterator()
-    let dest: Effect<R, E, S> = Effect.succeed(s)
-    let builder = Chunk.empty<B>()
-    let next
-    while ((next = iterator.next()) && !next.done) {
-      const array = next.value
-      const length = array.length
-      let i = 0
-      while (i < length) {
-        const a = array[i]!
-        dest = dest.flatMap((state) =>
-          f(state, a).map(([s, b]) => {
-            builder = builder.append(b)
-            return s
-          })
-        )
-        i++
-      }
+    const iterator = as[Symbol.iterator]()
+    const builder: Array<B> = []
+    let result: Effect<R, E, S> = Effect.succeed(s)
+    let next: IteratorResult<A, any>
+    while (!(next = iterator.next()).done) {
+      result = result.flatMap((state) =>
+        f(state, next.value).map(([s, b]) => {
+          builder.push(b)
+          return s
+        })
+      )
     }
-    return dest.map((s) => [s, builder] as const)
+    return result.map((s) => [s, Chunk.fromIterable(builder)] as const)
   })
 }

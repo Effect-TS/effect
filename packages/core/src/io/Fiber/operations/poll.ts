@@ -1,4 +1,5 @@
 import { realFiber } from "@effect/core/io/Fiber/definition"
+import type { Option } from "@fp-ts/data/Option"
 
 /**
  * Tentatively observes the fiber, but returns immediately if it is not
@@ -9,7 +10,7 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  */
 export function poll<E, A>(
   self: Fiber<E, A>
-): Effect<never, never, Maybe<Exit<E, A>>> {
+): Effect<never, never, Option<Exit<E, A>>> {
   realFiber(self)
   return self.poll
 }

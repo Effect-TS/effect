@@ -1,19 +1,39 @@
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+import type * as HashSet from "@fp-ts/data/HashSet"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const FiberIdSym = Symbol.for("@effect/core/io/FiberId")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type FiberIdSym = typeof FiberIdSym
 
 /**
  * @tsplus type effect/core/io/FiberId
+ * @category model
+ * @since 1.0.0
  */
-export interface FiberId extends Equals {
+export interface FiberId extends Equal.Equal {
   readonly [FiberIdSym]: FiberIdSym
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace FiberId {
   type Runtime = RuntimeFiberId
 }
 
 /**
  * @tsplus type effect/core/io/FiberId.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberIdOps {
   $: FiberIdAspects
@@ -24,6 +44,8 @@ export const FiberId: FiberIdOps = {
 
 /**
  * @tsplus type effect/core/io/FiberId.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberIdAspects {}
 
@@ -36,16 +58,17 @@ export function realFiberId(_: FiberId): asserts _ is RealFiberId {
   //
 }
 
-export class None implements FiberId, Equals {
+/** @internal */
+export class None implements FiberId, Equal.Equal {
   readonly _tag = "None"
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym;
 
-  [Hash.sym](): number {
-    return Hash.string(this._tag)
+  [Equal.symbolHash](): number {
+    return Equal.hash(this._tag)
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     if (isFiberId(that)) {
       realFiberId(that)
       return that._tag === "None"
@@ -54,7 +77,8 @@ export class None implements FiberId, Equals {
   }
 }
 
-export class RuntimeFiberId implements Equals {
+/** @internal */
+export class RuntimeFiberId implements Equal.Equal {
   readonly _tag = "Runtime"
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
@@ -64,17 +88,15 @@ export class RuntimeFiberId implements Equals {
     readonly startTimeMillis: number
   ) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(
-        Hash.number(this.id),
-        Hash.number(this.startTimeMillis)
-      )
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.id)),
+      Equal.hashCombine(Equal.hash(this.startTimeMillis))
     )
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     if (isFiberId(that)) {
       realFiberId(that)
       return this._tag === that._tag &&
@@ -85,24 +107,26 @@ export class RuntimeFiberId implements Equals {
   }
 }
 
-export class CompositeFiberId implements FiberId, Equals {
+/** @internal */
+export class CompositeFiberId implements FiberId, Equal.Equal {
   readonly _tag = "Composite"
 
   readonly [FiberIdSym]: FiberIdSym = FiberIdSym
 
-  constructor(readonly fiberIds: HashSet<FiberId.Runtime>) {}
+  constructor(readonly fiberIds: HashSet.HashSet<FiberId.Runtime>) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.fiberIds))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.fiberIds))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     if (isFiberId(that)) {
       realFiberId(that)
-      return (
-        that._tag === "Composite" &&
-        this.fiberIds == that.fiberIds
-      )
+      return that._tag === "Composite" &&
+        Equal.equals(this.fiberIds, that.fiberIds)
     }
     return false
   }
@@ -112,6 +136,8 @@ export class CompositeFiberId implements FiberId, Equals {
  * Checks if the specified unknown value is a `FiberId`.
  *
  * @tsplus static effect/core/io/FiberId.Ops isFiberId
+ * @category refinements
+ * @since 1.0.0
  */
 export function isFiberId(self: unknown): self is FiberId {
   return typeof self === "object" && self != null && FiberIdSym in self

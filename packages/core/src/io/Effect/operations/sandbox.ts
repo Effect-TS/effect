@@ -2,6 +2,8 @@
  * Exposes the full cause of failure of this effect.
  *
  * @tsplus getter effect/core/io/Effect sandbox
+ * @category mutations
+ * @since 1.0.0
  */
 export function sandbox<R, E, A>(
   self: Effect<R, E, A>

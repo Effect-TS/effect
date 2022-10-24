@@ -2,8 +2,18 @@ import type {
   HistogramBoundaries,
   HistogramBoundariesOps
 } from "@effect/core/io/Metrics/Boundaries"
+import * as HashSet from "@fp-ts/data/HashSet"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const MetricSym = Symbol.for("@effect/core/io/Metric")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type MetricSym = typeof MetricSym
 
 /**
@@ -24,18 +34,22 @@ export type MetricSym = typeof MetricSym
  *   - Summaries
  *
  * @tsplus type effect/core/io/Metrics/Metric
+ * @category model
+ * @since 1.0.0
  */
 export interface Metric<Type, In, Out> {
   readonly [MetricSym]: MetricSym
   readonly keyType: Type
-  readonly unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void
-  readonly unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
+  readonly unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel>) => void
+  readonly unsafeValue: (extraTags: HashSet.HashSet<MetricLabel>) => Out
 
   <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
 
 /**
  * @tsplus type effect/core/io/Metrics/Metric.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricOps {
   /**
@@ -44,15 +58,19 @@ export interface MetricOps {
    */
   <Type, In, Out>(
     keyType: Type,
-    unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
-    unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
+    unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel>) => void,
+    unsafeValue: (extraTags: HashSet.HashSet<MetricLabel>) => Out
   ): Metric<Type, In, Out>
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const Metric: MetricOps = function<Type, In, Out>(
   keyType: Type,
-  unsafeUpdate: (input: In, extraTags: HashSet<MetricLabel>) => void,
-  unsafeValue: (extraTags: HashSet<MetricLabel>) => Out
+  unsafeUpdate: (input: In, extraTags: HashSet.HashSet<MetricLabel>) => void,
+  unsafeValue: (extraTags: HashSet.HashSet<MetricLabel>) => Out
 ): Metric<Type, In, Out> {
   const metric: Metric<Type, In, Out> = Object.assign(
     <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -67,6 +85,9 @@ export const Metric: MetricOps = function<Type, In, Out>(
   return metric
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace Metric {
   export interface Counter<In> extends Metric<MetricKeyType.Counter, In, MetricState.Counter> {}
   export interface Gauge<In> extends Metric<MetricKeyType.Gauge, In, MetricState.Gauge> {}
@@ -97,5 +118,7 @@ export const histogramBoundaries: { readonly Boundaries: HistogramBoundariesOps 
 
 /**
  * @tsplus type effect/core/io/Metrics/Metric.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricAspects {}

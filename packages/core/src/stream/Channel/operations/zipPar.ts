@@ -3,6 +3,8 @@ import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 /**
  * @tsplus static effect/core/stream/Channel.Aspects zipPar
  * @tsplus pipeable effect/core/stream/Channel zipPar
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipPar<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>

@@ -1,12 +1,13 @@
 import { unsafeOfferAll } from "@effect/core/io/Hub/operations/_internal/unsafeOfferAll"
 import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/unsafePollAllQueue"
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import type * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
 
-/**
- * Unsafely removes the specified item from a queue.
- */
-export function unsafeRemove<A>(queue: MutableQueue<A>, a: A): void {
+/** @internal */
+export function unsafeRemove<A>(queue: MutableQueue.MutableQueue<A>, a: A): void {
   unsafeOfferAll(
     queue,
-    unsafePollAllQueue(queue).filter((_) => _ !== a)
+    pipe(unsafePollAllQueue(queue), List.filter((_) => _ !== a))
   )
 }

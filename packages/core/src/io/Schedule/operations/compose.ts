@@ -10,6 +10,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus pipeable-operator effect/core/io/Schedule >>
  * @tsplus static effect/core/io/Schedule.Aspects compose
  * @tsplus pipeable effect/core/io/Schedule compose
+ * @category mutations
+ * @since 1.0.0
  */
 export function compose<Out, State1, Env1, Out2>(
   that: Schedule<State1, Env1, Out, Out2>

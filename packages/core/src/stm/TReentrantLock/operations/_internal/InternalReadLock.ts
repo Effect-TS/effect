@@ -1,9 +1,13 @@
 import { ReadLockSym } from "@effect/core/stm/TReentrantLock/definition/ReadLock"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashMap from "@fp-ts/data/HashMap"
+import * as Option from "@fp-ts/data/Option"
 
+/** @internal */
 export class InternalReadLock implements TReentrantLock.ReadLock {
   readonly [ReadLockSym]: ReadLockSym = ReadLockSym
 
-  constructor(readonly readers: HashMap<FiberId, number>) {}
+  constructor(readonly readers: HashMap.HashMap<FiberId, number>) {}
 
   readonly writeLocks = 0
 
@@ -12,16 +16,17 @@ export class InternalReadLock implements TReentrantLock.ReadLock {
   }
 
   get readLocks(): number {
-    return Chunk.from(this.readers.values).reduce(0, (s, a) => s + a)
+    return Array.from(HashMap.values(this.readers)).reduce((s, a) => s + a, 0)
   }
 
   readLocksHeld(fiberId: FiberId): number {
-    return this.readers.get(fiberId).getOrElse(0)
+    return pipe(this.readers, HashMap.get(fiberId), Option.getOrElse(0))
   }
 }
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteReadLock(
   _: TReentrantLock.ReadLock

@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/TReentrantLock.Aspects withReadLock
  * @tsplus pipeable effect/core/stm/TReentrantLock withReadLock
+ * @category aspects
+ * @since 1.0.0
  */
 export function withReadLock<R, E, A>(effect: Effect<R, E, A>) {
   return (self: TReentrantLock): Effect<R, E, A> =>

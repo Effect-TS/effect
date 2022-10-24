@@ -2,6 +2,8 @@ import type { AsyncInputConsumer } from "@effect/core/stream/Channel/SingleProdu
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops fromInput
+ * @category conversions
+ * @since 1.0.0
  */
 export function fromInput<Err, Elem, Done>(
   input: AsyncInputConsumer<Err, Elem, Done>

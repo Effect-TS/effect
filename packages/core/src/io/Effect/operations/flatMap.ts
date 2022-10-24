@@ -7,6 +7,8 @@ import { IOnSuccess } from "@effect/core/io/Effect/definition/primitives"
  *
  * @tsplus static effect/core/io/Effect.Aspects flatMap
  * @tsplus pipeable effect/core/io/Effect flatMap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMap<A, R1, E1, B>(f: (a: A) => Effect<R1, E1, B>) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E | E1, B> => new IOnSuccess(self, f)

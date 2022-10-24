@@ -3,6 +3,8 @@
  * from the stream.
  *
  * @tsplus getter effect/core/stream/Stream mkString
+ * @category destructors
+ * @since 1.0.0
  */
 export function mkString<R, E, A>(
   self: Stream<R, E, A>

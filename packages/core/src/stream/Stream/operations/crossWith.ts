@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects crossWith
  * @tsplus pipeable effect/core/stream/Stream crossWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function crossWith<R2, E2, B, A, C>(that: Stream<R2, E2, B>, f: (a: A, b: B) => C) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, C> =>

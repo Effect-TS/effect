@@ -8,6 +8,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops acquireReleaseInterruptible
  * @tsplus fluent effect/core/io/Effect acquireReleaseInterruptible
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireReleaseInterruptible<R, E, A, R2, X>(
   acquire: Effect<R, E, A>,

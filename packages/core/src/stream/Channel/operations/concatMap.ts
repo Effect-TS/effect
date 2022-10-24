@@ -6,6 +6,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects concatMap
  * @tsplus pipeable effect/core/stream/Channel concatMap
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatMap<
   OutElem,

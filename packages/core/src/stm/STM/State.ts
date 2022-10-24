@@ -1,13 +1,31 @@
-export const STMStateSym = Symbol.for("@effect/core/stm/STM/State")
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+
+const STMStateSymbolKey = "@effect/core/stm/STM/State"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const STMStateSym = Symbol.for(STMStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMStateSym = typeof STMStateSym
 
 /**
  * @tsplus type effect/core/stm/STM/State
+ * @category model
+ * @since 1.0.0
  */
 export type State<E, A> = Done<E, A> | Interrupted | Running
 
 /**
  * @tsplus type effect/core/stm/STM/State.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface StateOps {}
 export const State: StateOps = {}
@@ -28,66 +46,93 @@ export function unifyState<X extends State<any, any>>(
 
 /**
  * @tsplus type effect/core/stm/STM/State/Done
+ * @category model
+ * @since 1.0.0
  */
-export class Done<E, A> implements Equals {
+export class Done<E, A> implements Equal.Equal {
   readonly _tag = "Done"
 
   readonly [STMStateSym]: STMStateSym = STMStateSym
 
   constructor(readonly exit: Exit<E, A>) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.exit))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(STMStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this._tag)),
+      Equal.hashCombine(Equal.hash(this.exit))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isState(that) && this[Hash.sym]() === that[Hash.sym]()
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isState(that) &&
+      that._tag === "Done" &&
+      Equal.equals(this.exit, that.exit)
   }
 }
 
 /**
  * @tsplus type effect/core/stm/STM/State/Interrupted
  */
-export class Interrupted implements Equals {
+export class Interrupted implements Equal.Equal {
   readonly _tag = "Interrupted"
 
   readonly [STMStateSym]: STMStateSym = STMStateSym;
 
-  [Hash.sym](): number {
-    return Hash.string(this._tag)
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(STMStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this._tag))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isState(that) && this[Hash.sym]() === that[Hash.sym]()
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isState(that) && that._tag === "Interrupted"
   }
 }
 
 /**
  * @tsplus type effect/core/stm/STM/State/Running
  */
-export class Running implements Equals {
+export class Running implements Equal.Equal {
   readonly _tag = "Running"
 
   readonly [STMStateSym]: STMStateSym = STMStateSym;
 
-  [Hash.sym](): number {
-    return Hash.string(this._tag)
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(STMStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this._tag))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isState(that) && this[Hash.sym]() === that[Hash.sym]()
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isState(that) && that._tag === "Running"
   }
 }
 
 /**
  * @tsplus static effect/core/stm/STM/State/Ops isState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isState(u: unknown): u is State<unknown, unknown> {
   return typeof u === "object" && u != null && STMStateSym in u
 }
 
 /**
+ * @tsplus getter effect/core/stm/STM/State isRunning
+ * @category refinements
+ * @since 1.0.0
+ */
+export function isRunning<E, A>(self: State<E, A>): self is Running {
+  return self._tag === "Running"
+}
+
+/**
  * @tsplus static effect/core/stm/STM/State.Ops done
+ * @category constructors
+ * @since 1.0.0
  */
 export function done<E, A>(exit: TExit<E, A>): State<E, A> {
   switch (exit._tag) {
@@ -111,17 +156,14 @@ export function done<E, A>(exit: TExit<E, A>): State<E, A> {
 
 /**
  * @tsplus static effect/core/stm/STM/State.Ops interrupted
+ * @category constructors
+ * @since 1.0.0
  */
 export const interrupted: State<never, never> = new Interrupted()
 
 /**
  * @tsplus static effect/core/stm/STM/State.Ops running
+ * @category constructors
+ * @since 1.0.0
  */
 export const running: State<never, never> = new Running()
-
-/**
- * @tsplus getter effect/core/stm/STM/State isRunning
- */
-export function isRunning<E, A>(self: State<E, A>): self is Running {
-  return self._tag === "Running"
-}

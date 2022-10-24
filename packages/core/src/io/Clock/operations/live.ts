@@ -1,5 +1,11 @@
 import { ClockSym, globalScheduler } from "@effect/core/io/Clock/definition"
+import type { Duration } from "@fp-ts/data/Duration"
+import * as Either from "@fp-ts/data/Either"
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export class LiveClock implements Clock {
   readonly [ClockSym]: ClockSym = ClockSym
 

@@ -1,9 +1,13 @@
+import type { Duration } from "@fp-ts/data/Duration"
+
 /**
  * Returns a new schedule with the specified effectfully computed delay added
  * before the start of each interval produced by this schedule.
  *
  * @tsplus static effect/core/io/Schedule.Aspects delayed
  * @tsplus pipeable effect/core/io/Schedule delayed
+ * @category mutations
+ * @since 1.0.0
  */
 export function delayed(f: (duration: Duration) => Duration) {
   return <State, Env, In, Out>(

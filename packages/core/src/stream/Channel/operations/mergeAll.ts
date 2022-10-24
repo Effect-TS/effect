@@ -2,6 +2,8 @@ import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy"
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops mergeAll
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeAll<
   Env,

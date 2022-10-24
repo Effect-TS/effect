@@ -7,6 +7,8 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  *
  * @tsplus static effect/core/stream/Stream.Aspects run
  * @tsplus pipeable effect/core/stream/Stream run
+ * @category destructors
+ * @since 1.0.0
  */
 export function run<A, R2, E2, Z>(sink: Sink<R2, E2, A, unknown, Z>) {
   return <R, E>(self: Stream<R, E, A>): Effect<R | R2, E | E2, Z> => {

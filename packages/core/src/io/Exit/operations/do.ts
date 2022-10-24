@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/io/Exit.Aspects bind
  * @tsplus pipeable effect/core/io/Exit bind
+ * @category do
+ * @since 1.0.0
  */
 export function bind<E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,

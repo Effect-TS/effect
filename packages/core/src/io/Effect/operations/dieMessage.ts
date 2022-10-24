@@ -4,6 +4,8 @@
  * defect has been detected in the code.
  *
  * @tsplus static effect/core/io/Effect.Ops dieMessage
+ * @category constructors
+ * @since 1.0.0
  */
 export function dieMessage(message: string): Effect<never, never, never> {
   return Effect.failCauseSync(Cause.stackless(Cause.die(new RuntimeError(message))))

@@ -15,6 +15,8 @@ import {
  * (Sunday).
  *
  * @tsplus static effect/core/io/Schedule.Ops dayOfWeek
+ * @category constructors
+ * @since 1.0.0
  */
 export function dayOfWeek(
   day: number

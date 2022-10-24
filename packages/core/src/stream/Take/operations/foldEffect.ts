@@ -1,4 +1,5 @@
 import { concreteTake } from "@effect/core/stream/Take/operations/_internal/TakeInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Effectful version of `Take.fold`.
@@ -8,6 +9,8 @@ import { concreteTake } from "@effect/core/stream/Take/operations/_internal/Take
  *
  * @tsplus static effect/core/stream/Take.Aspects foldEffect
  * @tsplus pipeable effect/core/stream/Take foldEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldEffect<R, E1, Z, E, R1, E2, A, R2, E3>(
   end: Effect<R, E1, Z>,
@@ -17,7 +20,17 @@ export function foldEffect<R, E1, Z, E, R1, E2, A, R2, E3>(
   return (self: Take<E, A>): Effect<R | R1 | R2, E1 | E2 | E3, Z> => {
     concreteTake(self)
     return self._exit.foldEffect(
-      (cause): Effect<R | R1, E1 | E2, Z> => Cause.flipCauseMaybe(cause).fold(() => end, error),
+      (cause): Effect<R | R1, E1 | E2, Z> => {
+        const option = Cause.flipCauseOption(cause)
+        switch (option._tag) {
+          case "None": {
+            return end
+          }
+          case "Some": {
+            return error(option.value)
+          }
+        }
+      },
       value
     )
   }

@@ -7,7 +7,15 @@ import {
   HistogramKey,
   SummaryKey
 } from "@effect/core/io/Metrics/MetricKeyType"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+import * as MutableHashMap from "@fp-ts/data/mutable/MutableHashMap"
+import * as Option from "@fp-ts/data/Option"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class MetricRegistry {
   private map = MutableHashMap.empty<MetricKey<MetricKeyType.Untyped>, MetricHook.Root>()
 
@@ -30,7 +38,7 @@ export class MetricRegistry {
     this.listeners.delete(listener)
   }
 
-  snapshot(): HashSet<MetricPair.Untyped> {
+  snapshot(): HashSet.HashSet<MetricPair.Untyped> {
     const result: Array<MetricPair.Untyped> = []
     for (const [key, hook] of this.map) {
       result.push(MetricPair.unsafeMake(key, hook.get()))
@@ -42,7 +50,11 @@ export class MetricRegistry {
     [typeof key["keyType"]] extends [{ [_In]: () => infer In }] ? In : never,
     [typeof key["keyType"]] extends [{ [_Out]: () => infer Out }] ? Out : never
   > {
-    const hook = this.map.get(key).value
+    const hook = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (hook == null) {
       if (key.keyType instanceof CounterKey) {
         return this.getCounter(key as unknown as MetricKey.Counter) as any
@@ -66,12 +78,22 @@ export class MetricRegistry {
   }
 
   getCounter(key: MetricKey.Counter): MetricHook.Counter {
-    let value = this.map.get(key).value
+    let value = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (value == null) {
       const updater = this.listener.unsafeUpdate(key)
       const counter = MetricHooks.counter(key).onUpdate(updater)
-      if (!this.map.has(key)) {
-        this.map.set(key, counter)
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
+        pipe(
+          this.map,
+          MutableHashMap.set(
+            key as MetricKey<MetricKeyType.Untyped>,
+            counter as MetricHook.Root
+          )
+        )
       }
       value = counter
     }
@@ -79,12 +101,22 @@ export class MetricRegistry {
   }
 
   getGauge(key: MetricKey.Gauge): MetricHook.Gauge {
-    let value = this.map.get(key).value
+    let value = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (value == null) {
       const updater = this.listener.unsafeUpdate(key)
       const gauge = MetricHooks.gauge(key, 0).onUpdate(updater)
-      if (!this.map.has(key)) {
-        this.map.set(key, gauge)
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
+        pipe(
+          this.map,
+          MutableHashMap.set(
+            key as MetricKey<MetricKeyType.Untyped>,
+            gauge as MetricHook.Root
+          )
+        )
       }
       value = gauge
     }
@@ -92,12 +124,22 @@ export class MetricRegistry {
   }
 
   getFrequency(key: MetricKey.Frequency): MetricHook.Frequency {
-    let value = this.map.get(key).value
+    let value = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (value == null) {
       const updater = this.listener.unsafeUpdate(key)
       const frequency = MetricHooks.frequency(key).onUpdate(updater)
-      if (!this.map.has(key)) {
-        this.map.set(key, frequency)
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
+        pipe(
+          this.map,
+          MutableHashMap.set(
+            key as MetricKey<MetricKeyType.Untyped>,
+            frequency as MetricHook.Root
+          )
+        )
       }
       value = frequency
     }
@@ -105,12 +147,22 @@ export class MetricRegistry {
   }
 
   getHistogram(key: MetricKey.Histogram): MetricHook.Histogram {
-    let value = this.map.get(key).value
+    let value = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (value == null) {
       const updater = this.listener.unsafeUpdate(key)
       const histogram = MetricHooks.histogram(key).onUpdate(updater)
-      if (!this.map.has(key)) {
-        this.map.set(key, histogram)
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
+        pipe(
+          this.map,
+          MutableHashMap.set(
+            key as MetricKey<MetricKeyType.Untyped>,
+            histogram as MetricHook.Root
+          )
+        )
       }
       value = histogram
     }
@@ -118,12 +170,22 @@ export class MetricRegistry {
   }
 
   getSummary(key: MetricKey.Summary): MetricHook.Summary {
-    let value = this.map.get(key).value
+    let value = pipe(
+      this.map,
+      MutableHashMap.get(key as MetricKey<MetricKeyType.Untyped>),
+      Option.toUndefined
+    )
     if (value == null) {
       const updater = this.listener.unsafeUpdate(key)
       const summary = MetricHooks.summary(key).onUpdate(updater)
-      if (!this.map.has(key)) {
-        this.map.set(key, summary)
+      if (!pipe(this.map, MutableHashMap.has(key as MetricKey<MetricKeyType.Untyped>))) {
+        pipe(
+          this.map,
+          MutableHashMap.set(
+            key as MetricKey<MetricKeyType.Untyped>,
+            summary as MetricHook.Root
+          )
+        )
       }
       value = summary
     }

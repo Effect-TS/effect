@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapEffectParUnordered
  * @tsplus pipeable effect/core/stream/Stream mapEffectParUnordered
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffectParUnordered<A, R1, E1, B>(
   n: number,

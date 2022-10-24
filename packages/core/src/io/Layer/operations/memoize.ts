@@ -5,6 +5,8 @@ import { ILayerScoped } from "@effect/core/io/Layer/definition"
  * result of this layer.
  *
  * @tsplus getter effect/core/io/Layer memoize
+ * @category mapping
+ * @since 1.0.0
  */
 export function memoize<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>

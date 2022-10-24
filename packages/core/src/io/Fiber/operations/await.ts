@@ -6,6 +6,8 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  *
  * @tsplus getter effect/core/io/Fiber await
  * @tsplus getter effect/core/io/RuntimeFiber await
+ * @category destructors
+ * @since 1.0.0
  */
 export function _await<E, A>(
   self: Fiber<E, A>

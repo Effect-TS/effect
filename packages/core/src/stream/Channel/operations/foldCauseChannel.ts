@@ -5,6 +5,8 @@ import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/prim
  *
  * @tsplus static effect/core/stream/Channel.Aspects foldCauseChannel
  * @tsplus pipeable effect/core/stream/Channel foldCauseChannel
+ * @category folding
+ * @since 1.0.0
  */
 export function foldCauseChannel<
   Env1,

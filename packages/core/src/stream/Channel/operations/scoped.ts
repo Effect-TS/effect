@@ -2,6 +2,8 @@
  * Use a scoped effect to emit an output element.
  *
  * @tsplus static effect/core/stream/Channel.Ops scoped
+ * @category constructors
+ * @since 1.0.0
  */
 export function scoped<R, E, A>(
   effect: Effect<R, E, A>

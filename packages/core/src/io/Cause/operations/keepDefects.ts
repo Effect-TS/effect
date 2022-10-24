@@ -1,47 +1,55 @@
 import { Both, Die, Stackless, Then } from "@effect/core/io/Cause/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Remove all `Fail` and `Interrupt` nodes from this `Cause`, return only
  * `Die` cause/finalizer defects.
  *
  * @tsplus getter effect/core/io/Cause keepDefects
+ * @category mutations
+ * @since 1.0.0
  */
-export function keepDefects<E>(self: Cause<E>): Maybe<Cause<never>> {
-  return self.fold<E, Maybe<Cause<never>>>(
-    Maybe.none,
-    () => Maybe.none,
-    (e) => Maybe.some(new Die(e)),
-    () => Maybe.none,
+export function keepDefects<E>(self: Cause<E>): Option.Option<Cause<never>> {
+  return self.fold<E, Option.Option<Cause<never>>>(
+    Option.none,
+    () => Option.none,
+    (e) => Option.some(new Die(e)),
+    () => Option.none,
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return Maybe.some(new Then(left.value, right.value))
+        return Option.some(new Then(left.value, right.value))
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return Maybe.some(left.value)
+        return Option.some(left.value)
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return Maybe.some(right.value)
+        return Option.some(right.value)
       }
       if (left._tag === "None" && right._tag === "None") {
-        return Maybe.none
+        return Option.none
       }
       throw new Error("Bug")
     },
     (left, right) => {
       if (left._tag === "Some" && right._tag === "Some") {
-        return Maybe.some(new Both(left.value, right.value))
+        return Option.some(new Both(left.value, right.value))
       }
       if (left._tag === "Some" && right._tag === "None") {
-        return Maybe.some(left.value)
+        return Option.some(left.value)
       }
       if (left._tag === "None" && right._tag === "Some") {
-        return Maybe.some(right.value)
+        return Option.some(right.value)
       }
       if (left._tag === "None" && right._tag === "None") {
-        return Maybe.none
+        return Option.none
       }
       throw new Error("Bug")
     },
-    (causeMaybe, stackless) => causeMaybe.map((cause) => new Stackless(cause, stackless))
+    (causeOption, stackless) =>
+      pipe(
+        causeOption,
+        Option.map((cause) => new Stackless(cause, stackless))
+      )
   )
 }

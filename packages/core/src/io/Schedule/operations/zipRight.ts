@@ -4,6 +4,8 @@
  * @tsplus pipeable-operator effect/core/io/Schedule >
  * @tsplus static effect/core/io/Schedule.Aspects zipRight
  * @tsplus pipeable effect/core/io/Schedule zipRight
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipRight<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>

@@ -7,6 +7,8 @@ import { Ensuring } from "@effect/core/stream/Channel/definition/primitives"
  *
  * @tsplus static effect/core/stream/Channel.Aspects ensuringWith
  * @tsplus pipeable effect/core/stream/Channel ensuringWith
+ * @category finalizers
+ * @since 1.0.0
  */
 export function ensuringWith<Env2, OutErr, OutDone>(
   finalizer: (e: Exit<OutErr, OutDone>) => Effect<Env2, never, unknown>

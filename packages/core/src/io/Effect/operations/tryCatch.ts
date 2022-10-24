@@ -3,6 +3,8 @@
  * thrown exceptions into typed failed effects.
  *
  * @tsplus static effect/core/io/Effect.Ops tryCatch
+ * @category constructors
+ * @since 1.0.0
  */
 export function tryCatch<E, A>(
   attempt: LazyArg<A>,

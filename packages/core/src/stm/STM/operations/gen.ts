@@ -2,6 +2,10 @@
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class GenSTM<R, E, A> {
   readonly _R!: () => R
   readonly _E!: () => E
@@ -22,6 +26,8 @@ const adapter = (_: any, __?: any) => {
  * Do simulation using Generators
  *
  * @tsplus static effect/core/stm/STM.Ops gen
+ * @category constructors
+ * @since 1.0.0
  */
 export function gen<Eff extends GenSTM<any, any, any>, AEff>(
   f: (i: { <R, E, A>(_: STM<R, E, A>): GenSTM<R, E, A> }) => Generator<Eff, AEff, any>

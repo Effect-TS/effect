@@ -1,12 +1,23 @@
 import { Versioned } from "@effect/core/stm/STM/Versioned"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const EntrySym = Symbol.for("@effect/core/stm/STM/Entry")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type EntrySym = typeof EntrySym
 
 /**
  * @tsplus type effect/core/stm/STM/Entry
  * @tsplus companion effect/core/stm/STM/Entry.Ops
+ * @category model
+ * @since 1.0.0
  */
 export class Entry {
   readonly [EntrySym]: EntrySym = EntrySym
@@ -16,6 +27,8 @@ export class Entry {
 
 /**
  * @tsplus static effect/core/stm/STM/Entry.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeEntry<A0>(tref0: TRef<A0>, isNew0: boolean): Entry {
   concreteTRef(tref0)
@@ -24,9 +37,22 @@ export function makeEntry<A0>(tref0: TRef<A0>, isNew0: boolean): Entry {
   return new Entry((f) => f(ops))
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const EntryOpsSym = Symbol.for("@effect/core/stm/STM/Entry/Ops")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type EntryOpsSym = typeof EntryOpsSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class EntryOps<S> {
   readonly [EntryOpsSym]: EntryOpsSym = EntryOpsSym
 

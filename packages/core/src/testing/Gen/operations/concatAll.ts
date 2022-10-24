@@ -4,7 +4,14 @@
  * specified generators.
  *
  * @tsplus static effect/core/testing/Gen.Ops concatAll
+ * @category constructors
+ * @since 1.0.0
  */
-export function concatAll<R, A>(gens: Collection<Gen<R, A>>): Gen<R, A> {
-  return Gen.suspend(gens.reduce(Gen.empty as Gen<R, A>, (acc, curr) => acc.concat(curr)))
+export function concatAll<R, A>(gens: Iterable<Gen<R, A>>): Gen<R, A> {
+  return Gen.suspend(
+    Array.from(gens).reduce(
+      (acc, curr) => acc.concat(curr),
+      Gen.empty as Gen<R, A>
+    )
+  )
 }

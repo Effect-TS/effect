@@ -1,7 +1,11 @@
+import type { HashMap } from "@fp-ts/data/HashMap"
+
 /**
  * A generator of maps whose size falls within the specified bounds.
  *
  * @tsplus static effect/core/testing/Gen.Ops mapOfBounded
+ * @category constructors
+ * @since 1.0.0
  */
 export function mapOfBounded<R, K, R2, V>(
   min: number,

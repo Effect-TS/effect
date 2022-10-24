@@ -1,3 +1,6 @@
+import * as Either from "@fp-ts/data/Either"
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Partition a stream using a predicate. The first stream will contain all
  * element evaluated to true and the second one will contain all element
@@ -6,11 +9,10 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects partition
  * @tsplus pipeable effect/core/stream/Stream partition
+ * @category mutations
+ * @since 1.0.0
  */
-export function partition<A>(
-  p: Predicate<A>,
-  buffer = 16
-) {
+export function partition<A>(p: Predicate<A>, buffer = 16) {
   return <R, E>(
     self: Stream<R, E, A>
   ): Effect<R | Scope, E, readonly [Stream<never, E, A>, Stream<never, E, A>]> =>

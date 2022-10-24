@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/io/Effect.Aspects onDone
  * @tsplus pipeable effect/core/io/Effect onDone
+ * @category mutations
+ * @since 1.0.0
  */
 export function onDone<E, A, R1, X1, R2, X2>(
   error: (e: E) => Effect<R1, never, X1>,

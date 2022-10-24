@@ -5,6 +5,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/TSet.Aspects forEach
  * @tsplus pipeable effect/core/stm/TSet forEach
+ * @category traversing
+ * @since 1.0.0
  */
 export function forEach<A, R, E>(f: (a: A) => STM<R, E, void>) {
   return (self: TSet<A>): STM<R, E, void> => {

@@ -5,6 +5,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/TSet.Aspects transformSTM
  * @tsplus pipeable effect/core/stm/TSet transformSTM
+ * @category mutations
+ * @since 1.0.0
  */
 export function transformSTM<A, R, E>(f: (a: A) => STM<R, E, A>) {
   return (self: TSet<A>): STM<R, E, void> => {

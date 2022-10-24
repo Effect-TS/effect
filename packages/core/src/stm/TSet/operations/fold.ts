@@ -5,6 +5,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/TSet.Aspects fold
  * @tsplus pipeable effect/core/stm/TSet fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<A, B>(zero: B, op: (acc: B, a: A) => B) {
   return (self: TSet<A>): STM<never, never, B> => {

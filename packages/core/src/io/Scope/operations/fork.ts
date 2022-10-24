@@ -6,6 +6,8 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  *
  * @tsplus getter effect/core/io/Scope fork
  * @tsplus getter effect/core/io/Scope/Closeable fork
+ * @category forking
+ * @since 1.0.0
  */
 export function fork(self: Scope): Effect<never, never, Scope.Closeable> {
   concreteScope(self)

@@ -2,10 +2,23 @@ import { LiveClock } from "@effect/core/io/Clock"
 import type { Live } from "@effect/core/testing/Live"
 import { SuspendedWarningData } from "@effect/core/testing/TestClock/_internal/SuspendedWarningData"
 import { WarningData } from "@effect/core/testing/TestClock/_internal/WarningData"
+import * as Order from "@fp-ts/core/typeclass/Order"
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Duration from "@fp-ts/data/Duration"
+import * as Equal from "@fp-ts/data/Equal"
+import { identity, pipe } from "@fp-ts/data/Function"
+import * as HashMap from "@fp-ts/data/HashMap"
+import * as List from "@fp-ts/data/List"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import * as number from "@fp-ts/data/Number"
+import * as Option from "@fp-ts/data/Option"
+import * as SortedSet from "@fp-ts/data/SortedSet"
 
 /**
  * The warning message that will be displayed if a test is using time but is
  * not advancing the `TestClock`.
+ *
+ * @internal
  */
 export const warning = "Warning: A test is using time, but is not advancing " +
   "the test clock, which may result in the test hanging. Use TestClock.adjust to " +
@@ -14,11 +27,14 @@ export const warning = "Warning: A test is using time, but is not advancing " +
 /**
  * The warning message that will be displayed if a test is advancing the clock
  * but a fiber is still running.
+ *
+ * @internal
  */
 export const suspendedWarning = "Warning: A test is advancing the test clock, " +
   "but a fiber is not suspending, which may result in the test hanging. Use " +
   "TestAspect.diagnose to identity the fiber that is not suspending."
 
+/** @internal */
 export class TestClockInternal extends LiveClock {
   constructor(
     readonly clockState: Ref<TestClock.Data>,
@@ -58,7 +74,7 @@ export class TestClockInternal extends LiveClock {
    * greater than the specified duration. Once the clock time is adjusted to
    * on or after the duration, the fiber will automatically be resumed.
    */
-  sleep(duration: Duration): Effect<never, never, void> {
+  sleep(duration: Duration.Duration): Effect<never, never, void> {
     return Deferred.make<never, void>().flatMap((deferred) =>
       this.clockState.modify((data) => {
         const end = data.instant + duration.millis
@@ -67,7 +83,7 @@ export class TestClockInternal extends LiveClock {
             true,
             TestClock.Data(
               data.instant,
-              data.sleeps.prepend([end, deferred])
+              pipe(data.sleeps, List.prepend([end, deferred] as const))
             )
           ]
         }
@@ -84,8 +100,8 @@ export class TestClockInternal extends LiveClock {
    * Returns a list of the times at which all queued effects are scheduled to
    * resume.
    */
-  get sleeps(): Effect<never, never, List<number>> {
-    return this.clockState.get.map((data) => data.sleeps.map((_) => _[0]))
+  get sleeps(): Effect<never, never, List.List<number>> {
+    return this.clockState.get.map((data) => pipe(data.sleeps, List.map((_) => _[0])))
   }
 
   /**
@@ -93,7 +109,7 @@ export class TestClockInternal extends LiveClock {
    * that were scheduled to occur on or before the new time will be run in
    * order.
    */
-  adjust(duration: Duration): Effect<never, never, void> {
+  adjust(duration: Duration.Duration): Effect<never, never, void> {
     return this.warningDone.zipRight(this.run((n) => n + duration.millis))
   }
 
@@ -102,7 +118,7 @@ export class TestClockInternal extends LiveClock {
    * that were scheduled to occur on or before the new time will be run in
    * order.
    */
-  adjustWith(duration: Duration) {
+  adjustWith(duration: Duration.Duration) {
     return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
       effect.zipParLeft(
         this.adjust(duration)
@@ -112,18 +128,25 @@ export class TestClockInternal extends LiveClock {
   /**
    * Returns a set of all fibers in this test.
    */
-  get supervisedFibers(): Effect<never, never, SortedSet<Fiber.Runtime<unknown, unknown>>> {
+  get supervisedFibers(): Effect<
+    never,
+    never,
+    SortedSet.SortedSet<Fiber.Runtime<unknown, unknown>>
+  > {
     return Effect.descriptorWith((descriptor) =>
       this.annotations.get(TestAnnotation.fibers).flatMap((either) => {
         switch (either._tag) {
           case "Left": {
-            return Effect.succeed(SortedSet.empty(Fiber.Ord))
+            return Effect.succeed(SortedSet.empty(Fiber.Order))
           }
           case "Right": {
             return Effect
-              .forEach(either.right, (ref) => Effect.sync(ref.get))
-              .map((chunk) => chunk.reduce(SortedSet.empty(Fiber.Ord), (a, b) => a.union(b)))
-              .map((set) => set.filter((fiber) => !(fiber.id.equals(descriptor.id))))
+              .forEach(either.right, (ref) => Effect.sync(MutableRef.get(ref)))
+              .map(Chunk.reduce(
+                SortedSet.empty(Fiber.Order),
+                (a, b) => pipe(a, SortedSet.union(b))
+              ))
+              .map(SortedSet.filter((fiber) => !Equal.equals(fiber.id, descriptor.id)))
           }
         }
       })
@@ -137,7 +160,7 @@ export class TestClockInternal extends LiveClock {
    * synchronize on the status of multiple fibers at the same time this
    * snapshot may not be fully consistent.
    */
-  private get freeze(): Effect<never, void, HashMap<FiberId, Fiber.Status>> {
+  private get freeze(): Effect<never, void, HashMap.HashMap<FiberId, Fiber.Status>> {
     return this.supervisedFibers.flatMap((fibers) =>
       Effect.reduce(
         fibers,
@@ -146,10 +169,14 @@ export class TestClockInternal extends LiveClock {
           fiber.status.flatMap((status) => {
             switch (status._tag) {
               case "Done": {
-                return Effect.succeed(map.set(fiber.id, status))
+                return Effect.succeed(
+                  pipe(map, HashMap.set(fiber.id as FiberId, status as Fiber.Status))
+                )
               }
               case "Suspended": {
-                return Effect.succeed(map.set(fiber.id, status))
+                return Effect.succeed(
+                  pipe(map, HashMap.set(fiber.id as FiberId, status as Fiber.Status))
+                )
               }
               default: {
                 return Effect.fail(undefined)
@@ -167,13 +194,13 @@ export class TestClockInternal extends LiveClock {
   private get warningStart(): Effect<never, never, void> {
     return this.warningState.updateSomeEffect((data) =>
       data._tag === "Start" ?
-        Maybe.some(
-          this.live.provide(Effect.logWarning(warning).delay((5).seconds))
+        Option.some(
+          this.live.provide(Effect.logWarning(warning).delay(Duration.seconds(5)))
             .interruptible
             .fork
             .map((fiber) => WarningData.Pending(fiber))
         ) :
-        Maybe.none
+        Option.none
     )
   }
 
@@ -185,13 +212,13 @@ export class TestClockInternal extends LiveClock {
     return this.warningState.updateSomeEffect((warningData) => {
       switch (warningData._tag) {
         case "Start": {
-          return Maybe.some(Effect.succeed(WarningData.Done))
+          return Option.some(Effect.succeed(WarningData.Done))
         }
         case "Pending": {
-          return Maybe.some(warningData.fiber.interrupt.as(WarningData.Done))
+          return Option.some(warningData.fiber.interrupt.as(WarningData.Done))
         }
         default: {
-          return Maybe.none
+          return Option.none
         }
       }
     })
@@ -200,11 +227,11 @@ export class TestClockInternal extends LiveClock {
   /**
    * Returns whether all descendants of this fiber are done or suspended.
    */
-  private get suspended(): Effect<never, void, HashMap<FiberId, Fiber.Status>> {
+  private get suspended(): Effect<never, void, HashMap.HashMap<FiberId, Fiber.Status>> {
     return this.freeze
-      .zip(this.live.provide(Effect.sleep((5).millis)).zipRight(this.freeze))
+      .zip(this.live.provide(Effect.sleep(Duration.millis(5))).zipRight(this.freeze))
       .flatMap(([first, last]) =>
-        first.equals(last) ?
+        Equal.equals(first, last) ?
           Effect.succeed(first) :
           Effect.fail(void 0)
       )
@@ -217,9 +244,9 @@ export class TestClockInternal extends LiveClock {
     return this.suspendedWarningStart.zipRight(
       this.suspended
         .zipWith(
-          this.live.provide(Effect.sleep((10).millis))
+          this.live.provide(Effect.sleep(Duration.millis(10)))
             .zipRight(this.suspended),
-          (a, b) => a.equals(b)
+          Equal.equals
         )
         .filterOrFail(identity, undefined)
         .eventually
@@ -233,17 +260,17 @@ export class TestClockInternal extends LiveClock {
   private get suspendedWarningStart(): Effect<never, never, void> {
     return this.suspendedWarningState.updateSomeEffect((suspendedWarningData) =>
       suspendedWarningData._tag === "Start" ?
-        Maybe.some(
+        Option.some(
           this.live.provide(
             Effect.logWarning(suspendedWarning)
               .zipRight(this.suspendedWarningState.set(SuspendedWarningData.Done))
-              .delay((5).seconds)
+              .delay(Duration.seconds(5))
           )
             .interruptible
             .fork
             .map((fiber) => SuspendedWarningData.Pending(fiber))
         ) :
-        Maybe.none
+        Option.none
     )
   }
 
@@ -254,10 +281,10 @@ export class TestClockInternal extends LiveClock {
   get suspendedWarningDone() {
     return this.suspendedWarningState.updateSomeEffect((suspendedWarningData) =>
       suspendedWarningData._tag === "Pending" ?
-        Maybe.some(
+        Option.some(
           suspendedWarningData.fiber.interrupt.as(SuspendedWarningData.Start)
         ) :
-        Maybe.none
+        Option.none
     )
   }
 
@@ -269,17 +296,23 @@ export class TestClockInternal extends LiveClock {
     return this.awaitSuspended.zipRight(
       this.clockState.modify((data) => {
         const end = f(data.instant)
-        const sorted = data.sleeps.sortWith(Ord.number.contramap((_) => _[0]))
-        if (sorted.isCons()) {
+        const sorted = pipe(
+          data.sleeps,
+          List.sortWith(pipe(
+            number.Order,
+            Order.contramap((_) => _[0])
+          ))
+        )
+        if (List.isCons(sorted)) {
           const [instant, deferred] = sorted.head
           if (instant <= end) {
             return [
-              Maybe.some([end, deferred] as const),
+              Option.some([end, deferred] as const),
               TestClock.Data(instant, sorted.tail)
             ] as const
           }
         }
-        return [Maybe.none, TestClock.Data(end, data.sleeps)] as const
+        return [Option.none, TestClock.Data(end, data.sleeps)] as const
       }).flatMap((maybe) => {
         switch (maybe._tag) {
           case "None": {

@@ -2,6 +2,8 @@
  * Determines if the `Exit` result is interrupted.
  *
  * @tsplus getter effect/core/io/Exit isInterrupted
+ * @category refinements
+ * @since 1.0.0
  */
 export function isInterrupted<E, A>(self: Exit<E, A>): boolean {
   switch (self._tag) {

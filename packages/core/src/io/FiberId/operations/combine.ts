@@ -1,4 +1,6 @@
 import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
 
 /**
  * Combine two `FiberId`s.
@@ -6,6 +8,8 @@ import { CompositeFiberId, realFiberId } from "@effect/core/io/FiberId/definitio
  * @tsplus pipeable-operator effect/core/io/FiberId +
  * @tsplus static effect/core/io/FiberId.Aspects combine
  * @tsplus pipeable effect/core/io/FiberId combine
+ * @category mutations
+ * @since 1.0.0
  */
 export function combine(that: FiberId) {
   return (self: FiberId): FiberId => {
@@ -21,10 +25,10 @@ export function combine(that: FiberId) {
             return self
           }
           case "Runtime": {
-            return new CompositeFiberId(HashSet.from([self, that]))
+            return new CompositeFiberId(HashSet.make(self, that))
           }
           case "Composite": {
-            return new CompositeFiberId(that.fiberIds.add(self))
+            return new CompositeFiberId(pipe(that.fiberIds, HashSet.add(self)))
           }
         }
       }
@@ -35,10 +39,10 @@ export function combine(that: FiberId) {
             return self
           }
           case "Runtime": {
-            return new CompositeFiberId(self.fiberIds.add(that))
+            return new CompositeFiberId(pipe(self.fiberIds, HashSet.add(that)))
           }
           case "Composite": {
-            return new CompositeFiberId(self.fiberIds.union(that.fiberIds))
+            return new CompositeFiberId(pipe(self.fiberIds, HashSet.union(that.fiberIds)))
           }
         }
       }

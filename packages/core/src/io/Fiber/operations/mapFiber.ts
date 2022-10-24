@@ -6,6 +6,8 @@
  * @tsplus static effect/core/io/RuntimeFiber.Aspects mapFiber
  * @tsplus pipeable effect/core/io/RuntimeFiber mapFiber
  * @tsplus pipeable effect/core/io/RuntimeFiber mapFiber
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapFiber<E, E1, A, B>(
   f: (a: A) => Fiber<E1, B>

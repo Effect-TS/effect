@@ -1,8 +1,10 @@
 import type { Charset } from "@effect/core/stream/Stream/operations/_internal/Charset"
+import * as Chunk from "@fp-ts/data/Chunk"
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import type { TextDecoder } from "util"
 
-export function stringChunkFrom(bytes: Chunk<number>, charset: Charset): Chunk<string> {
+/** @internal */
+export function stringChunkFrom(bytes: Chunk.Chunk<number>, charset: Charset): Chunk.Chunk<string> {
   // @ts-expect-error
   const decoder: TextDecoder = new TextDecoder(charset)
   switch (charset) {

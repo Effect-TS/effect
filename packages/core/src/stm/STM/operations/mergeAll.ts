@@ -3,11 +3,18 @@
  * sequentially.
  *
  * @tsplus static effect/core/stm/STM.Ops mergeAll
+ * @category constructors
+ * @since 1.0.0
  */
 export function mergeAll<R, E, A, B>(
-  as: Collection<STM<R, E, A>>,
+  as: Iterable<STM<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B
 ): STM<R, E, B> {
-  return STM.suspend(as.reduce(STM.succeed(zero) as STM<R, E, B>, (acc, a) => acc.zipWith(a, f)))
+  return STM.suspend(
+    Array.from(as).reduce(
+      (acc, a) => acc.zipWith(a, f),
+      STM.succeed(zero) as STM<R, E, B>
+    )
+  )
 }

@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects absorbWith
  * @tsplus pipeable effect/core/io/Effect absorbWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function absorbWith<E>(f: (e: E) => unknown) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, unknown, A> =>

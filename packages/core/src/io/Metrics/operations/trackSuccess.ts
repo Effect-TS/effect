@@ -3,6 +3,8 @@
  * the effects that it is applied to.
  *
  * @tsplus getter effect/core/io/Metrics/Metric trackSuccess
+ * @category aspects
+ * @since 1.0.0
  */
 export function trackSuccess<Type, In, Out>(self: Metric<Type, In, Out>) {
   return <R, E, A extends In>(effect: Effect<R, E, A>): Effect<R, E, A> =>

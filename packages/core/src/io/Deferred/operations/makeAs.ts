@@ -2,6 +2,8 @@
  * Makes a new `Deferred` to be completed by the fiber with the specified id.
  *
  * @tsplus static effect/core/io/Deferred.Ops makeAs
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeAs<E, A>(
   fiberId: FiberId

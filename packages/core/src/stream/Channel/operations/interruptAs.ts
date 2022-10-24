@@ -1,5 +1,7 @@
 /**
  * @tsplus static effect/core/stream/Channel.Ops interruptAs
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptAs(
   fiberId: FiberId

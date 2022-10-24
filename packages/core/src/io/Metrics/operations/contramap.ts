@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Aspects contramap
  * @tsplus pipeable effect/core/io/Metrics/Metric contramap
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramap<In, In2>(f: (input: In2) => In) {
   return <Type, Out>(self: Metric<Type, In, Out>): Metric<Type, In2, Out> =>

@@ -1,6 +1,7 @@
 import type { Scope } from "@effect/core/io/Scope/definition"
 import { ScopeSym } from "@effect/core/io/Scope/definition"
 
+/** @internal */
 export class ScopeInternal implements Scope {
   readonly [ScopeSym]: ScopeSym = ScopeSym
 
@@ -12,6 +13,7 @@ export class ScopeInternal implements Scope {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteScope(_: Scope): asserts _ is ScopeInternal {
   //

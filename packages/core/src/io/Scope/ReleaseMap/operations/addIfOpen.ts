@@ -1,5 +1,6 @@
 import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Adds a finalizer to the finalizers associated with this scope. If the
@@ -10,23 +11,25 @@ import { next } from "@effect/core/io/Scope/ReleaseMap/operations/_internal/next
  *
  * @tsplus static effect/core/io/ReleaseMap.Aspects addIfOpen
  * @tsplus pipeable effect/core/io/ReleaseMap addIfOpen
+ * @category mutations
+ * @since 1.0.0
  */
 export function addIfOpen(finalizer: Scope.Finalizer) {
-  return (self: ReleaseMap): Effect<never, never, Maybe<number>> =>
+  return (self: ReleaseMap): Effect<never, never, Option.Option<number>> =>
     self.ref
-      .modify((s) => {
-        switch (s._tag) {
+      .modify((state) => {
+        switch (state._tag) {
           case "Exited": {
             return [
-              finalizer(s.exit).map(() => Maybe.none),
-              new Exited(next(s.nextKey), s.exit, s.update)
+              finalizer(state.exit).map(() => Option.none),
+              new Exited(next(state.nextKey), state.exit, state.update)
             ] as const
           }
           case "Running": {
-            const finalizers = s.finalizers().set(s.nextKey, finalizer)
+            const finalizers = state.finalizers().set(state.nextKey, finalizer)
             return [
-              Effect.succeed(Maybe.some(s.nextKey)),
-              new Running(next(s.nextKey), finalizers, s.update)
+              Effect.succeed(Option.some(state.nextKey)),
+              new Running(next(state.nextKey), finalizers, state.update)
             ] as const
           }
         }

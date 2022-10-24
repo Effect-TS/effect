@@ -6,6 +6,8 @@ import { clamp } from "@effect/core/testing/_internal/math"
  * range but a few larger values will still be generated.
  *
  * @tsplus static effect/core/testing/Gen.Ops small
+ * @category constructors
+ * @since 1.0.0
  */
 export function small<R, A>(f: (n: number) => Gen<R, A>, min = 0): Gen<R | Sized, A> {
   const gen = Do(($) => {

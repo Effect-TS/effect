@@ -9,6 +9,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects summarized
  * @tsplus pipeable effect/core/stream/Sink summarized
+ * @category mutations
+ * @since 1.0.0
  */
 export function summarized<R1, E1, B, C>(
   summary: Effect<R1, E1, B>,

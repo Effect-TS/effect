@@ -1,3 +1,5 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Repeats this `STM` effect until its result satisfies the specified
  * predicate. **WARNING**: `repeatUntil` uses a busy loop to repeat the
@@ -13,6 +15,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects repeatUntil
  * @tsplus pipeable effect/core/stm/STM repeatUntil
+ * @category repetition
+ * @since 1.0.0
  */
 export function repeatUntil<A>(f: Predicate<A>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, A> =>

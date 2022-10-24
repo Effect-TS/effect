@@ -2,6 +2,8 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Duration } from "@fp-ts/data/Duration"
 
 /**
  * Throttles the chunks of this stream according to the given bandwidth
@@ -13,6 +15,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects throttleEnforceEffect
  * @tsplus pipeable effect/core/stream/Stream throttleEnforceEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function throttleEnforceEffect<A, R2, E2>(
   units: number,
@@ -49,7 +53,7 @@ function loop<E, A, R2, E2>(
             const elapsed = current - timestamp
             const cycles = elapsed / duration.millis
             const sum = tokens + cycles * units
-            const max = units + burst < 0 ? Number.MAX_SAFE_INTEGER : units + burst
+            const max = units + burst < 0 ? Number.POSITIVE_INFINITY : units + burst
             const available = sum < 0 ? max : Math.min(sum, max)
             return weight <= available
               ? Channel.write(input).flatMap(() =>

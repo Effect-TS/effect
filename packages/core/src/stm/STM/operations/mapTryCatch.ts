@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects mapTryCatch
  * @tsplus pipeable effect/core/stm/STM mapTryCatch
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapTryCatch<A, B, E1>(f: (a: A) => B, onThrow: (u: unknown) => E1) {
   return <R, E>(self: STM<R, E, A>): STM<R, E | E1, B> =>

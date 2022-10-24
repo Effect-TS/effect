@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops acquireUseReleaseOnError
  * @tsplus fluent effect/core/io/Effect acquireUseReleaseOnError
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireUseReleaseOnError<R, E, A, R2, E2, A2, R3, X>(
   acquire: Effect<R, E, A>,

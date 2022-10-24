@@ -6,6 +6,8 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
  *
  * @tsplus static effect/core/stm/TRef.Aspects unsafeGet
  * @tsplus pipeable effect/core/stm/TRef unsafeGet
+ * @category getters
+ * @since 1.0.0
  */
 export function unsafeGet(journal: Journal) {
   return <A>(self: TRef<A>): A => {

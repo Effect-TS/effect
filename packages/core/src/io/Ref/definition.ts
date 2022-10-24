@@ -1,10 +1,39 @@
+import type { Option } from "@fp-ts/data/Option"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const RefSym = Symbol.for("@effect/core/io/Ref")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type RefSym = typeof RefSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SynchronizedSym = Symbol.for("@effect/core/io/Ref/Synchronized")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SynchronizedSym = typeof SynchronizedSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/io/Ref/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
 /**
@@ -76,7 +105,7 @@ export interface Ref<A> {
    */
   getAndUpdateSome(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option<A>
   ): Effect<never, never, A>
 
   /**
@@ -88,7 +117,7 @@ export interface Ref<A> {
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<readonly [B, A]>
+    pf: (a: A) => Option<readonly [B, A]>
   ): Effect<never, never, B>
 
   /**
@@ -106,7 +135,7 @@ export interface Ref<A> {
    * Atomically modifies the `Ref` with the specified partial function. If the
    * function is undefined on the current value it doesn't change it.
    */
-  updateSome(this: this, pf: (a: A) => Maybe<A>): Effect<never, never, void>
+  updateSome(this: this, pf: (a: A) => Option<A>): Effect<never, never, void>
 
   /**
    * Atomically modifies the `Ref` with the specified partial function. If the
@@ -115,7 +144,7 @@ export interface Ref<A> {
    */
   updateSomeAndGet(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option<A>
   ): Effect<never, never, A>
 }
 
@@ -152,7 +181,7 @@ export declare namespace Ref {
      */
     getAndUpdateSomeEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>
+      pf: (a: A) => Option<Effect<R, E, A>>
     ): Effect<R, E, A>
 
     /**
@@ -164,7 +193,7 @@ export declare namespace Ref {
     modifySomeEffect<R, E, B>(
       this: this,
       fallback: B,
-      pf: (a: A) => Maybe<Effect<R, E, readonly [B, A]>>
+      pf: (a: A) => Option<Effect<R, E, readonly [B, A]>>
     ): Effect<R, E, B>
 
     /**
@@ -191,7 +220,7 @@ export declare namespace Ref {
      */
     updateSomeEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>
+      pf: (a: A) => Option<Effect<R, E, A>>
     ): Effect<R, E, void>
 
     /**
@@ -201,7 +230,7 @@ export declare namespace Ref {
      */
     updateSomeAndGetEffect<R, E>(
       this: this,
-      pf: (a: A) => Maybe<Effect<R, E, A>>
+      pf: (a: A) => Option<Effect<R, E, A>>
     ): Effect<R, E, A>
   }
 }

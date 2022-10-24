@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects groupBy
  * @tsplus pipeable effect/core/stream/Stream groupBy
+ * @category grouping
+ * @since 1.0.0
  */
 export function groupBy<A, R2, E2, K, V>(
   f: (a: A) => Effect<R2, E2, readonly [K, V]>,

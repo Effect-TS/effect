@@ -5,6 +5,9 @@ import {
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { SinkEndReason } from "@effect/core/stream/Stream/SinkEndReason"
+import * as Chunk from "@fp-ts/data/Chunk"
+import type { Duration } from "@fp-ts/data/Duration"
+import { pipe } from "@fp-ts/data/Function"
 
 type DebounceState<E, A> = NotStarted | Previous<A> | Current<E, A>
 
@@ -14,7 +17,7 @@ class NotStarted {
 
 class Previous<A> {
   readonly _tag = "Previous"
-  constructor(readonly fiber: Fiber<never, Chunk<A>>) {}
+  constructor(readonly fiber: Fiber<never, Chunk.Chunk<A>>) {}
 }
 
 class Current<E, A> {
@@ -36,6 +39,8 @@ class Current<E, A> {
  *
  * @tsplus static effect/core/stream/Stream.Aspects debounce
  * @tsplus pipeable effect/core/stream/Stream debounce
+ * @category mutations
+ * @since 1.0.0
  */
 export function debounce<R, E, A>(duration: Duration) {
   return (self: Stream<R, E, A>): Stream<R, E, A> =>
@@ -44,7 +49,7 @@ export function debounce<R, E, A>(duration: Duration) {
         Do(($) => {
           const handoff = $(Handoff.make<HandoffSignal<E, A>>())
 
-          function enqueue(last: Chunk<A>) {
+          function enqueue(last: Chunk.Chunk<A>) {
             return grafter(Clock.sleep(duration).as(last).fork).map((fiber) =>
               consumer(new Previous(fiber))
             )
@@ -53,20 +58,25 @@ export function debounce<R, E, A>(duration: Duration) {
           const producer: Channel<
             R,
             E,
-            Chunk<A>,
+            Chunk.Chunk<A>,
             unknown,
             E,
             never,
             unknown
           > = Channel.readWithCause(
-            (input: Chunk<A>) =>
-              input.last.fold(
-                producer,
-                (last) =>
-                  Channel.fromEffect(
-                    handoff.offer(HandoffSignal.Emit(Chunk.single(last)))
+            (input: Chunk.Chunk<A>) => {
+              const option = pipe(input, Chunk.last)
+              switch (option._tag) {
+                case "None": {
+                  return producer
+                }
+                case "Some": {
+                  return Channel.fromEffect(
+                    handoff.offer(HandoffSignal.Emit(Chunk.single(option.value)))
                   ).flatMap(() => producer)
-              ),
+                }
+              }
+            },
             (cause) => Channel.fromEffect(handoff.offer(HandoffSignal.Halt(cause))),
             () =>
               Channel.fromEffect(
@@ -76,7 +86,7 @@ export function debounce<R, E, A>(duration: Duration) {
 
           function consumer(
             state: DebounceState<E, A>
-          ): Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown> {
+          ): Channel<R, unknown, unknown, unknown, E, Chunk.Chunk<A>, unknown> {
             return Channel.unwrap((() => {
               switch (state._tag) {
                 case "NotStarted": {
@@ -132,9 +142,9 @@ export function debounce<R, E, A>(duration: Duration) {
                               return previous.interrupt.as(Channel.failCause(signal.error))
                             }
                             case "End": {
-                              return previous
-                                .join
-                                .map((chunk) => Channel.write(chunk).flatMap(() => Channel.unit))
+                              return previous.join.map((chunk) =>
+                                Channel.write(chunk).flatMap(() => Channel.unit)
+                              )
                             }
                           }
                         }
@@ -148,8 +158,9 @@ export function debounce<R, E, A>(duration: Duration) {
           concreteStream(self)
 
           return (
-            Stream.scoped((self.channel >> producer).runScoped.forkScoped) >
+            Stream.scoped(self.channel.pipeTo(producer).runScoped.forkScoped).crossRight(
               new StreamInternal(consumer(new NotStarted()))
+            )
           )
         })
       )

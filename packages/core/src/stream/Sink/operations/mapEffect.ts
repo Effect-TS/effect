@@ -8,6 +8,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects mapEffect
  * @tsplus pipeable effect/core/stream/Sink mapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffect<R2, E2, Z, Z2>(
   f: (z: Z) => Effect<R2, E2, Z2>

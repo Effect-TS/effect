@@ -270,7 +270,15 @@ import { Take } from "@effect/core/stream/Take/definition"
 /**
  * @tsplus global
  */
+import { EnforceNonEmptyRecord } from "@effect/core/support/EnforceNonEmptyRecord"
+/**
+ * @tsplus global
+ */
 import { LazyArg } from "@effect/core/support/LazyArg"
+/**
+ * @tsplus global
+ */
+import { MergeRecord } from "@effect/core/support/MergeRecord"
 /**
  * @tsplus global
  */
@@ -311,11 +319,3 @@ import { TestConfig } from "@effect/core/testing/TestConfig"
  * @tsplus global
  */
 import { TestEnvironment } from "@effect/core/testing/TestEnvironment"
-/**
- * @tsplus global
- */
-import { Context } from "@fp-ts/data/Context"
-/**
- * @tsplus global
- */
-import { identity } from "@fp-ts/data/Function"

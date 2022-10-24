@@ -1,9 +1,13 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Returns a new channel, which flattens the terminal value of this channel.
  * This function may only be called if the terminal value of this channel is
  * another channel of compatible types.
  *
  * @tsplus getter effect/core/stream/Channel flatten
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatten<
   Env,

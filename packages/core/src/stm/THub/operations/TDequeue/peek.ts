@@ -6,6 +6,8 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * queue is empty.
  *
  * @tsplus getter effect/core/stm/THub/TDequeue peek
+ * @category getters
+ * @since 1.0.0
  */
 export function peek<A>(self: THub.TDequeue<A>): STM<never, never, A> {
   concreteTDequeue(self)

@@ -12,6 +12,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects interruptWhenDeferred
  * @tsplus pipeable effect/core/stream/Stream interruptWhenDeferred
+ * @category mutations
+ * @since 1.0.0
  */
 export function interruptWhenDeferred<E2, Z>(promise: Deferred<E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E | E2, A> => {

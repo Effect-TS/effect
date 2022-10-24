@@ -15,6 +15,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects bufferSliding
  * @tsplus pipeable effect/core/stream/Stream bufferSliding
+ * @category buffering
+ * @since 1.0.0
  */
 export function bufferSliding(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {

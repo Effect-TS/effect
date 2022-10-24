@@ -1,9 +1,13 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+
 /**
  * Like `Stream.runForEachChunk`, but returns a scoped `Effect` so the
  * finalization order can be controlled.
  *
  * @tsplus static effect/core/stream/Stream.Aspects runForEachChunkScoped
  * @tsplus pipeable effect/core/stream/Stream runForEachChunkScoped
+ * @category destructors
+ * @since 1.0.0
  */
 export function runForEachChunkScoped<A, R2, E2, Z>(
   f: (chunk: Chunk<A>) => Effect<R2, E2, Z>

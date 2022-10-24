@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects summarized
  * @tsplus pipeable effect/core/io/Effect summarized
+ * @category mutations
+ * @since 1.0.0
  */
 export function summarized<R2, E2, B, C>(
   summary: Effect<R2, E2, B>,

@@ -3,6 +3,8 @@
  * its identity.
  *
  * @tsplus static effect/core/io/Effect.Ops descriptorWith
+ * @category getter
+ * @since 1.0.0
  */
 export function descriptorWith<R, E, A>(
   f: (descriptor: Fiber.Descriptor) => Effect<R, E, A>

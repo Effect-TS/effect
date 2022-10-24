@@ -4,6 +4,8 @@
  * fiber.
  *
  * @tsplus getter effect/core/stm/TReentrantLock acquireRead
+ * @category getters
+ * @since 1.0.0
  */
 export function acquireRead(self: TReentrantLock): USTM<number> {
   return self.adjustRead(1)

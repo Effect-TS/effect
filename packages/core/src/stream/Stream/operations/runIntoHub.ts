@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects runIntoHub
  * @tsplus pipeable effect/core/stream/Stream runIntoHub
+ * @category destructors
+ * @since 1.0.0
  */
 export function runIntoHub<E1, A>(hub: Hub<Take<E1, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R, E | E1, void> =>

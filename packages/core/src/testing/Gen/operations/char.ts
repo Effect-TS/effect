@@ -1,4 +1,5 @@
 import type { NumberConstraints } from "@effect/core/testing/Gen"
+import { identity } from "@fp-ts/data/Function"
 
 const gapSize = 0xdfff + 1 - 0xd800
 
@@ -6,6 +7,8 @@ const gapSize = 0xdfff + 1 - 0xd800
  * A generator of alpha characters.
  *
  * @tsplus static effect/core/testing/Gen.Ops alphaChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const alphaChar: Gen<never, string> = Gen.weighted(
   [Gen.char({ min: 65, max: 90 }), 26],
@@ -16,6 +19,8 @@ export const alphaChar: Gen<never, string> = Gen.weighted(
  * A generator of alphanumeric characters. Shrinks toward '0'.
  *
  * @tsplus static effect/core/testing/Gen.Ops alphaNumericChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const alphaNumericChar: Gen<never, string> = Gen.weighted(
   [Gen.char({ min: 48, max: 57 }), 10],
@@ -27,6 +32,8 @@ export const alphaNumericChar: Gen<never, string> = Gen.weighted(
  * A generator of US-ASCII characters. Shrinks toward '0'.
  *
  * @tsplus static effect/core/testing/Gen.Ops asciiChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const asciiChar: Gen<never, string> = _char(0x00, 0x7f, indexToPrintableIndex)
 
@@ -34,6 +41,8 @@ export const asciiChar: Gen<never, string> = _char(0x00, 0x7f, indexToPrintableI
  * A generator of base-64 characters. Shrinks towards '0'.
  *
  * @tsplus static effect/core/testing/Gen.Ops base64Char
+ * @category constructors
+ * @since 1.0.0
  */
 export const base64Char: Gen<never, string> = _char(0, 63, base64ToCharCode)
 
@@ -42,6 +51,8 @@ export const base64Char: Gen<never, string> = _char(0, 63, base64ToCharCode)
  * The shrinker will shrink toward the lower end of the range ("smallest").
  *
  * @tsplus static effect/core/testing/Gen.Ops char
+ * @category constructors
+ * @since 1.0.0
  */
 export function char(constraints: Required<NumberConstraints>): Gen<never, string> {
   return _char(constraints.min, constraints.max, identity)
@@ -51,11 +62,15 @@ export function char(constraints: Required<NumberConstraints>): Gen<never, strin
  * A generator of UTF-16 characters. Shrinks towards '\x00'.
  *
  * @tsplus static effect/core/testing/Gen.Ops char16
+ * @category constructors
+ * @since 1.0.0
  */
 export const char16: Gen<never, string> = _char(0x0000, 0xffff, indexToPrintableIndex)
 
 /**
  * @tsplus static effect/core/testing/Gen.Ops fullUnicodeChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const fullUnicodeChar: Gen<never, string> = _char(
   0x0000,
@@ -67,6 +82,8 @@ export const fullUnicodeChar: Gen<never, string> = _char(
  * A generator of numeric characters. Shrinks toward '0'.
  *
  * @tsplus static effect/core/testing/Gen.Ops numericChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const numericChar: Gen<never, string> = Gen.weighted(
   [Gen.char({ min: 48, max: 57 }), 10]
@@ -76,6 +93,8 @@ export const numericChar: Gen<never, string> = Gen.weighted(
  * A generator of hex chars(0-9,a-f,A-F).
  *
  * @tsplus static effect/core/testing/Gen.Ops hexChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const hexChar: Gen<never, string> = _char(0, 15, hexToCharCode)
 
@@ -83,6 +102,8 @@ export const hexChar: Gen<never, string> = _char(0, 15, hexToCharCode)
  * A generator of lower hex chars(0-9, a-f).
  *
  * @tsplus static effect/core/testing/Gen.Ops hexCharLower
+ * @category constructors
+ * @since 1.0.0
  */
 export const hexCharLower: Gen<never, string> = Gen.weighted(
   [_char(48, 57, hexToCharCode), 10],
@@ -93,6 +114,8 @@ export const hexCharLower: Gen<never, string> = Gen.weighted(
  * A generator of upper hex chars(0-9, A-F).
  *
  * @tsplus static effect/core/testing/Gen.Ops hexCharUpper
+ * @category constructors
+ * @since 1.0.0
  */
 export const hexCharUpper: Gen<never, string> = Gen.weighted(
   [_char(48, 57, hexToCharCode), 10],
@@ -103,6 +126,8 @@ export const hexCharUpper: Gen<never, string> = Gen.weighted(
  * A generator of printable characters. Shrinks toward '!'.
  *
  * @tsplus static effect/core/testing/Gen.Ops printableChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const printableChar: Gen<never, string> = char({ min: 0x20, max: 0x7e })
 
@@ -110,6 +135,8 @@ export const printableChar: Gen<never, string> = char({ min: 0x20, max: 0x7e })
  * A generator of Unicode characters. Shrinks toward '0'.
  *
  * @tsplus static effect/core/testing/Gen.Ops unicodeChar
+ * @category constructors
+ * @since 1.0.0
  */
 export const unicodeChar: Gen<never, string> = _char(0x0000, 0xffff - gapSize, unicodeToCharCode)
 

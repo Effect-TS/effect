@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects onError
  * @tsplus pipeable effect/core/io/Effect onError
+ * @category mutations
+ * @since 1.0.0
  */
 export function onError<E, R2, X>(
   cleanup: (cause: Cause<E>) => Effect<R2, never, X>

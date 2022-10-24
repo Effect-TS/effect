@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects whileInputEffect
  * @tsplus pipeable effect/core/io/Schedule whileInputEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function whileInputEffect<In, Env1>(
   f: (input: In) => Effect<Env1, never, boolean>

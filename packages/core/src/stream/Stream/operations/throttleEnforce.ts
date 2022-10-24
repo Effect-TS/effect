@@ -1,3 +1,6 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Duration } from "@fp-ts/data/Duration"
+
 /**
  * Throttles the chunks of this stream according to the given bandwidth
  * parameters using the token bucket algorithm. Allows for burst in the
@@ -8,6 +11,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects throttleEnforce
  * @tsplus pipeable effect/core/stream/Stream throttleEnforce
+ * @category mutations
+ * @since 1.0.0
  */
 export function throttleEnforce<A>(
   units: number,

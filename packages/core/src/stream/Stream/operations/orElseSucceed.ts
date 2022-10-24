@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects orElseSucceed
  * @tsplus pipeable effect/core/stream/Stream orElseSucceed
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orElseSucceed<A2>(a: LazyArg<A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, never, A | A2> => self | Stream.sync(a)

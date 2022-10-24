@@ -1,22 +1,32 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+
 /**
  * Runs a schedule using the provided inputs, and collects all outputs.
  *
  * @tsplus static effect/core/io/Schedule.Aspects run
  * @tsplus pipeable effect/core/io/Schedule run
+ * @category destructors
+ * @since 1.0.0
  */
-export function run<In>(now: number, input: Collection<In>) {
-  return <State, Env, Out>(self: Schedule<State, Env, In, Out>): Effect<Env, never, Chunk<Out>> =>
-    runLoop(self, now, List.from(input), self.initial, Chunk.empty<Out>())
+export function run<In>(now: number, input: Iterable<In>) {
+  return <State, Env, Out>(
+    self: Schedule<State, Env, In, Out>
+  ): Effect<Env, never, Chunk.Chunk<Out>> =>
+    runLoop(self, now, List.fromIterable(input), self.initial, List.nil()).map((list) =>
+      Chunk.fromIterable(List.reverse(list))
+    )
 }
 
 function runLoop<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>,
   now: number,
-  inputs: List<In>,
+  inputs: List.List<In>,
   state: State,
-  acc: Chunk<Out>
-): Effect<Env, never, Chunk<Out>> {
-  if (inputs.isNil()) {
+  acc: List.List<Out>
+): Effect<Env, never, List.List<Out>> {
+  if (List.isNil(inputs)) {
     return Effect.succeed(acc)
   }
   const input = inputs.head
@@ -26,7 +36,7 @@ function runLoop<State, Env, In, Out>(
     .flatMap(([state, out, decision]) => {
       switch (decision._tag) {
         case "Done": {
-          return Effect.sync(acc.append(out))
+          return Effect.sync(pipe(acc, List.prepend(out)))
         }
         case "Continue": {
           return runLoop(
@@ -34,7 +44,7 @@ function runLoop<State, Env, In, Out>(
             decision.intervals.start,
             nextInputs,
             state,
-            acc.append(out)
+            pipe(acc, List.prepend(out))
           )
         }
       }

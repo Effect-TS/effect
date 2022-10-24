@@ -4,10 +4,22 @@
  * `Take.failCause`, and the end of stream to `Take.end`.
  *
  * @tsplus static effect/core/stream/Take.Ops fromPull
+ * @category conversions
+ * @since 1.0.0
  */
 export function fromPull<R, E, A>(pull: Pull<R, E, A>): Effect<R, never, Take<E, A>> {
   return pull.foldCause(
-    (cause) => Cause.flipCauseMaybe(cause).fold(() => Take.end, Take.failCause),
+    (cause) => {
+      const option = Cause.flipCauseOption(cause)
+      switch (option._tag) {
+        case "None": {
+          return Take.end
+        }
+        case "Some": {
+          return Take.failCause(option.value)
+        }
+      }
+    },
     Take.chunk
   )
 }

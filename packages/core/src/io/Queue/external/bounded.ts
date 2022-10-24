@@ -10,6 +10,8 @@ import { makeBoundedQueue } from "@effect/core/io/Effect/operations/excl-forEach
  * `RingBuffer`.
  *
  * @tsplus static effect/core/io/Queue.Ops bounded
+ * @category constructors
+ * @since 1.0.0
  */
 export const bounded: <A>(
   requestedCapacity: number

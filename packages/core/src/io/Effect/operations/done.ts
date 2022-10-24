@@ -2,6 +2,8 @@
  * Returns an effect from a `Exit` value.
  *
  * @tsplus static effect/core/io/Effect.Ops done
+ * @category constructors
+ * @since 1.0.0
  */
 export function done<E, A>(exit: Exit<E, A>): Effect<never, E, A> {
   return exit._tag === "Success"

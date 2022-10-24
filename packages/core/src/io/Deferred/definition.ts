@@ -19,16 +19,22 @@ export type _A = typeof _A
  * higher-level concurrent or asynchronous structures.
  *
  * @tsplus type effect/core/io/Deferred
+ * @category model
+ * @since 1.0.0
  */
 export interface Deferred<E, A> extends DeferredInternal<E, A> {}
 
 /**
  * @tsplus type effect/core/io/Deferred.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface DeferredAspects {}
 
 /**
  * @tsplus type effect/core/io/Deferred.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface DeferredOps {
   readonly $: DeferredAspects

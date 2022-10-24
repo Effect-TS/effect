@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Maps over elements of the stream with the specified effectful function,
@@ -13,6 +14,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapEffectPar
  * @tsplus pipeable effect/core/stream/Stream mapEffectPar
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffectPar<A, R1, E1, B>(
   n: number,

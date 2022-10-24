@@ -5,6 +5,8 @@
  * @tsplus pipeable-operator effect/core/io/Schedule &&
  * @tsplus static effect/core/io/Schedule intersect
  * @tsplus pipeable effect/core/io/Schedule intersect
+ * @category mutations
+ * @since 1.0.0
  */
 export function intersect<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>

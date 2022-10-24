@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects tapDefect
  * @tsplus pipeable effect/core/io/Effect tapDefect
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapDefect<R2, E2, X>(
   f: (cause: Cause<never>) => Effect<R2, E2, X>

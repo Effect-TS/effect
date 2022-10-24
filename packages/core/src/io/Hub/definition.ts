@@ -7,6 +7,8 @@ export type HubSym = typeof HubSym
  * `A`.
  *
  * @tsplus type effect/core/io/Hub
+ * @category model
+ * @since 1.0.0
  */
 export interface Hub<A> extends Enqueue<A> {
   get [HubSym](): HubSym
@@ -21,7 +23,7 @@ export interface Hub<A> extends Enqueue<A> {
    * Publishes all of the specified messages to the hub, returning whether they
    * were published to the hub.
    */
-  publishAll(this: this, as: Collection<A>): Effect<never, never, boolean>
+  publishAll(this: this, as: Iterable<A>): Effect<never, never, boolean>
 
   /**
    * Subscribes to receive messages from the hub. The resulting subscription can
@@ -33,6 +35,8 @@ export interface Hub<A> extends Enqueue<A> {
 
 /**
  * @tsplus type effect/core/io/Hub.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface HubOps {
   $: HubAspects
@@ -43,5 +47,7 @@ export const Hub: HubOps = {
 
 /**
  * @tsplus type effect/core/io/Hub.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface HubAspects {}

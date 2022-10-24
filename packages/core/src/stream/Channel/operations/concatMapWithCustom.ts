@@ -13,6 +13,8 @@ import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamP
  *
  * @tsplus static effect/core/stream/Channel.Aspects concatMapWithCustom
  * @tsplus pipeable effect/core/stream/Channel concatMapWithCustom
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatMapWithCustom<
   OutElem,

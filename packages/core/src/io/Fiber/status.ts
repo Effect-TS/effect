@@ -1,41 +1,59 @@
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+
 export const FiberStatusSym = Symbol.for("@effect/core/Fiber/FiberStatus")
 export type FiberStatusSym = typeof FiberStatusSym
 
 /**
  * @tsplus type effect/core/io/Fiber/Status
+ * @category model
+ * @since 1.0.0
  */
 export type FiberStatus = Done | Running | Suspended
 
 /**
  * @tsplus type effect/core/io/Fiber/Status.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberStatusOps {}
 export const FiberStatus: FiberStatusOps = {}
 
-export class Done implements Equals {
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export class Done implements Equal.Equal {
   readonly _tag = "Done"
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym;
 
-  [Hash.sym](): number {
-    return Hash.string(this._tag)
+  [Equal.symbolHash](): number {
+    return Equal.hash(this._tag)
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     return isFiberStatus(that) && that._tag === "Done"
   }
 }
 
-export class Running implements Equals {
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export class Running implements Equal.Equal {
   readonly _tag = "Running"
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
 
   constructor(readonly runtimeFlags: RuntimeFlags) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.number(this.runtimeFlags))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.runtimeFlags))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     return (
       isFiberStatus(that) &&
       that._tag === "Running" &&
@@ -44,7 +62,11 @@ export class Running implements Equals {
   }
 }
 
-export class Suspended implements Equals {
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export class Suspended implements Equal.Equal {
   readonly _tag = "Suspended"
   readonly [FiberStatusSym]: FiberStatusSym = FiberStatusSym
 
@@ -53,28 +75,28 @@ export class Suspended implements Equals {
     readonly blockingOn: FiberId
   ) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this._tag),
-      Hash.combine(
-        Hash.number(this.runtimeFlags),
-        Hash.unknown(this.blockingOn)
-      )
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.runtimeFlags)),
+      Equal.hashCombine(Equal.hash(this.blockingOn))
     )
   }
 
-  [Equals.sym](that: unknown): boolean {
+  [Equal.symbolEqual](that: unknown): boolean {
     return (
       isFiberStatus(that) &&
       that._tag === "Suspended" &&
       this.runtimeFlags === that.runtimeFlags &&
-      this.blockingOn == that.blockingOn
+      Equal.equals(this.blockingOn, that.blockingOn)
     )
   }
 }
 
 /**
  * @tsplus static effect/core/io/Fiber/Status.Ops isFiberStatus
+ * @category refinements
+ * @since 1.0.0
  */
 export function isFiberStatus(u: unknown): u is FiberStatus {
   return typeof u === "object" && u != null && FiberStatusSym in u

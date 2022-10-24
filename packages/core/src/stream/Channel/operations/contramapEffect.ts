@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects contramapEffect
  * @tsplus pipeable effect/core/stream/Channel contramapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramapEffect<
   Env1,

@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects orDie
  * @tsplus pipeable effect/core/stream/Channel orDie
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orDie<E>(error: LazyArg<E>) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(

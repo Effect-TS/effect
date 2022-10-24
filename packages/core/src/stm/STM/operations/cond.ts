@@ -5,6 +5,8 @@
  * For effectful conditionals, see `ifSTM`.
  *
  * @tsplus static effect/core/stm/STM.Ops cond
+ * @category constructors
+ * @since 1.0.0
  */
 export function cond<E, A>(
   predicate: LazyArg<boolean>,

@@ -5,6 +5,8 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  * specified `ExecutionStrategy`.
  *
  * @tsplus static effect/core/io/Scope.Ops makeWith
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeWith(
   executionStrategy: ExecutionStrategy

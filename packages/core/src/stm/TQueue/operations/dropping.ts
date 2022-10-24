@@ -5,6 +5,8 @@
  * For best performance use capacities that are powers of two.
  *
  * @tsplus static effect/core/stm/TQueue.Ops dropping
+ * @category constructors
+ * @since 1.0.0
  */
 export function dropping<A>(
   requestedCapacity: number

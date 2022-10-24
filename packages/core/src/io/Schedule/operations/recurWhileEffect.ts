@@ -3,6 +3,8 @@
  * true.
  *
  * @tsplus static effect/core/io/Schedule.Ops recurWhileEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function recurWhileEffect<Env, A>(
   f: (a: A) => Effect<Env, never, boolean>

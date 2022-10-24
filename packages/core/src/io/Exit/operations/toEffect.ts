@@ -2,6 +2,8 @@
  * Converts the `Exit` to an `Effect`.
  *
  * @tsplus getter effect/core/io/Exit toEffect
+ * @category conversions
+ * @since 1.0.0
  */
 export function toEffect<E, A>(
   self: Exit<E, A>

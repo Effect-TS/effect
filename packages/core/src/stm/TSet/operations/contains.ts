@@ -5,6 +5,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/TSet.Aspects contains
  * @tsplus pipeable effect/core/stm/TSet contains
+ * @category elements
+ * @since 1.0.0
  */
 export function contains<A>(value: A) {
   return (self: TSet<A>): STM<never, never, boolean> => {

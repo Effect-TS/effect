@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects runForEachScoped
  * @tsplus pipeable effect/core/stream/Stream runForEachScoped
+ * @category destructors
+ * @since 1.0.0
  */
 export function runForEachScoped<A, R1, E1, Z>(
   f: (a: A) => Effect<R1, E1, Z>

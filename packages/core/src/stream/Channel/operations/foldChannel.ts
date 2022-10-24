@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects foldChannel
  * @tsplus pipeable effect/core/stream/Channel foldChannel
+ * @category folding
+ * @since 1.0.0
  */
 export function foldChannel<
   Env1,
@@ -38,10 +40,15 @@ export function foldChannel<
     OutElem | OutElem2 | OutElem1,
     OutDone2 | OutDone1
   > =>
-    self.foldCauseChannel((_) => {
-      return _.failureOrCause.fold(
-        (err) => onErr(err),
-        (cause) => Channel.failCause(cause)
-      )
+    self.foldCauseChannel((cause) => {
+      const either = cause.failureOrCause
+      switch (either._tag) {
+        case "Left": {
+          return onErr(either.left)
+        }
+        case "Right": {
+          return Channel.failCause(either.right)
+        }
+      }
     }, onSucc)
 }

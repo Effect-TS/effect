@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops scoped
  * @tsplus getter effect/core/io/Effect scoped
+ * @category scoping
+ * @since 1.0.0
  */
 export function scoped<R, E, A>(
   effect: Effect<R, E, A>

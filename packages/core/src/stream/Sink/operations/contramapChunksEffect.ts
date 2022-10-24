@@ -2,6 +2,7 @@ import {
   concreteSink,
   SinkInternal
 } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Effectfully transforms this sink's input chunks. `f` must preserve
@@ -9,6 +10,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects contramapChunksEffect
  * @tsplus pipeable effect/core/stream/Sink contramapChunksEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramapChunksEffect<In0, R2, E2, In2>(
   f: (input: Chunk<In0>) => Effect<R2, E2, Chunk<In2>>

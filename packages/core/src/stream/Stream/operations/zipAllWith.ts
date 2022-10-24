@@ -1,4 +1,7 @@
 import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipChunks"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 type State<A, A2> = DrainLeft | DrainRight | PullBoth | PullLeft<A2> | PullRight<A>
 
@@ -16,12 +19,12 @@ class PullBoth {
 
 class PullLeft<A2> {
   readonly _tag = "PullLeft"
-  constructor(readonly rightChunk: Chunk<A2>) {}
+  constructor(readonly rightChunk: Chunk.Chunk<A2>) {}
 }
 
 class PullRight<A> {
   readonly _tag = "PullRight"
-  constructor(readonly leftChunk: Chunk<A>) {}
+  constructor(readonly leftChunk: Chunk.Chunk<A>) {}
 }
 
 /**
@@ -33,6 +36,8 @@ class PullRight<A> {
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipAllWith
  * @tsplus pipeable effect/core/stream/Stream zipAllWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipAllWith<R2, E2, A2, A, A3>(
   that: Stream<R2, E2, A2>,
@@ -49,21 +54,25 @@ export function zipAllWith<R2, E2, A2, A, A3>(
 }
 
 function zipWithChunks<A, A2, A3>(
-  leftChunk: Chunk<A>,
-  rightChunk: Chunk<A2>,
+  leftChunk: Chunk.Chunk<A>,
+  rightChunk: Chunk.Chunk<A2>,
   f: (a: A, a2: A2) => A3
-): readonly [Chunk<A3>, State<A, A2>] {
+): readonly [Chunk.Chunk<A3>, State<A, A2>] {
   const [out, either] = zipChunks(leftChunk, rightChunk, f)
-  return either.fold(
-    (leftChunk) =>
-      leftChunk.isEmpty
+  switch (either._tag) {
+    case "Left": {
+      const leftChunk = either.left
+      return Chunk.isEmpty(leftChunk)
         ? [out, new PullBoth()]
-        : [out, new PullRight(leftChunk)],
-    (rightChunk) =>
-      rightChunk.isEmpty
+        : [out, new PullRight(leftChunk)]
+    }
+    case "Right": {
+      const rightChunk = either.right
+      return Chunk.isEmpty(rightChunk)
         ? [out, new PullBoth()]
         : [out, new PullLeft(rightChunk)]
-  )
+    }
+  }
 }
 
 function pull<A, A2, A3>(
@@ -73,14 +82,19 @@ function pull<A, A2, A3>(
 ) {
   return <R, E, R2, E2>(
     state: State<A, A2>,
-    pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
-    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
-  ): Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>> => {
+    pullLeft: Effect<R, Option.Option<E>, Chunk.Chunk<A>>,
+    pullRight: Effect<R2, Option.Option<E2>, Chunk.Chunk<A2>>
+  ): Effect<
+    R | R2,
+    never,
+    Exit<Option.Option<E | E2>, readonly [Chunk.Chunk<A3>, State<A, A2>]>
+  > => {
     switch (state._tag) {
       case "DrainLeft": {
         return pullLeft.foldEffect(
           (err) => Effect.succeed(Exit.fail(err)),
-          (leftChunk) => Effect.succeed(Exit.succeed([leftChunk.map(left), new DrainLeft()]))
+          (leftChunk) =>
+            Effect.succeed(Exit.succeed([pipe(leftChunk, Chunk.map(left)), new DrainLeft()]))
         )
       }
       case "DrainRight": {
@@ -88,7 +102,7 @@ function pull<A, A2, A3>(
           (err) => Effect.succeed(Exit.fail(err)),
           (rightChunk) =>
             Effect.succeed(
-              Exit.succeed([rightChunk.map(right), new DrainRight()])
+              Exit.succeed([pipe(rightChunk, Chunk.map(right)), new DrainRight()])
             )
         )
       }
@@ -97,20 +111,20 @@ function pull<A, A2, A3>(
           .unsome
           .zipPar(pullRight.unsome)
           .foldEffect(
-            (err) => Effect.succeed(Exit.fail(Maybe.some(err))),
+            (err) => Effect.succeed(Exit.fail(Option.some(err))),
             ([l, r]) => {
               if (l._tag === "Some" && r._tag === "Some") {
                 const leftChunk = l.value
                 const rightChunk = r.value
-                if (leftChunk.isEmpty && rightChunk.isEmpty) {
+                if (Chunk.isEmpty(leftChunk) && Chunk.isEmpty(rightChunk)) {
                   return pull(left, right, both)(new PullBoth(), pullLeft, pullRight)
-                } else if (leftChunk.isEmpty) {
+                } else if (Chunk.isEmpty(leftChunk)) {
                   return pull(left, right, both)(
                     new PullLeft(rightChunk),
                     pullLeft,
                     pullRight
                   )
-                } else if (rightChunk.isEmpty) {
+                } else if (Chunk.isEmpty(rightChunk)) {
                   return pull(left, right, both)(
                     new PullRight(leftChunk),
                     pullLeft,
@@ -121,40 +135,48 @@ function pull<A, A2, A3>(
                     Exit.succeed(zipWithChunks(leftChunk, rightChunk, both))
                   )
                 }
-              } else if (l._tag === "Some" && r._tag === "None") {
+              } else if (Option.isSome(l) && Option.isNone(r)) {
                 return Effect.succeed(
-                  Exit.succeed([l.value.map(left), new DrainLeft()])
+                  Exit.succeed([pipe(l.value, Chunk.map(left)), new DrainLeft()])
                 )
-              } else if (l._tag === "None" && r._tag === "Some") {
+              } else if (Option.isNone(l) && Option.isSome(r)) {
                 return Effect.succeed(
-                  Exit.succeed([r.value.map(right), new DrainRight()])
+                  Exit.succeed([pipe(r.value, Chunk.map(right)), new DrainRight()])
                 )
               } else {
-                return Effect.succeed(Exit.fail(Maybe.none))
+                return Effect.succeed(Exit.fail(Option.none))
               }
             }
           )
       }
       case "PullLeft": {
         return pullLeft.foldEffect(
-          (option) =>
-            option.fold(
-              Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
-                Exit.succeed([state.rightChunk.map(right), new DrainRight()])
-              ),
-              (err) =>
-                Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
-                  Exit.fail(Maybe.some(err))
+          (option) => {
+            switch (option._tag) {
+              case "None": {
+                return Effect.succeed<
+                  Exit<Option.Option<E | E2>, readonly [Chunk.Chunk<A3>, State<A, A2>]>
+                >(
+                  Exit.succeed([pipe(state.rightChunk, Chunk.map(right)), new DrainRight()])
                 )
-            ),
+              }
+              case "Some": {
+                return Effect.succeed<
+                  Exit<Option.Option<E | E2>, readonly [Chunk.Chunk<A3>, State<A, A2>]>
+                >(
+                  Exit.fail(option)
+                )
+              }
+            }
+          },
           (leftChunk) =>
-            leftChunk.isEmpty
+            Chunk.isEmpty(leftChunk)
               ? pull(left, right, both)(
                 new PullLeft(state.rightChunk),
                 pullLeft,
                 pullRight
               )
-              : state.rightChunk.isEmpty
+              : Chunk.isEmpty(state.rightChunk)
               ? pull(left, right, both)(new PullRight(leftChunk), pullLeft, pullRight)
               : Effect.succeed(
                 Exit.succeed(zipWithChunks(leftChunk, state.rightChunk, both))
@@ -163,24 +185,32 @@ function pull<A, A2, A3>(
       }
       case "PullRight": {
         return pullRight.foldEffect(
-          (option) =>
-            option.fold(
-              Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
-                Exit.succeed([state.leftChunk.map(left), new DrainLeft()])
-              ),
-              (err) =>
-                Effect.succeed<Exit<Maybe<E | E2>, readonly [Chunk<A3>, State<A, A2>]>>(
-                  Exit.fail(Maybe.some(err))
+          (option) => {
+            switch (option._tag) {
+              case "None": {
+                return Effect.succeed<
+                  Exit<Option.Option<E | E2>, readonly [Chunk.Chunk<A3>, State<A, A2>]>
+                >(
+                  Exit.succeed([pipe(state.leftChunk, Chunk.map(left)), new DrainLeft()])
                 )
-            ),
+              }
+              case "Some": {
+                return Effect.succeed<
+                  Exit<Option.Option<E | E2>, readonly [Chunk.Chunk<A3>, State<A, A2>]>
+                >(
+                  Exit.fail(option)
+                )
+              }
+            }
+          },
           (rightChunk) =>
-            rightChunk.isEmpty
+            Chunk.isEmpty(rightChunk)
               ? pull(left, right, both)(
                 new PullRight(state.leftChunk),
                 pullLeft,
                 pullRight
               )
-              : state.leftChunk.isEmpty
+              : Chunk.isEmpty(state.leftChunk)
               ? pull(left, right, both)(new PullLeft(rightChunk), pullLeft, pullRight)
               : Effect.succeed(
                 Exit.succeed(zipWithChunks(state.leftChunk, rightChunk, both))

@@ -6,6 +6,8 @@
  * @tsplus pipeable-operator effect/core/stream/Channel >
  * @tsplus static effect/core/stream/Channel.Aspects zipRight
  * @tsplus pipeable effect/core/stream/Channel zipRight
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipRight<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>

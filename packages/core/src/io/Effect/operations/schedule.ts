@@ -6,6 +6,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects schedule
  * @tsplus pipeable effect/core/io/Effect schedule
+ * @category scheduling
+ * @since 1.0.0
  */
 export function schedule<S, R1, A1>(schedule: Schedule<S, R1, any, A1>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A1> =>

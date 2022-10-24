@@ -5,6 +5,8 @@
  * @tsplus pipeable-operator effect/core/testing/Gen &
  * @tsplus static effect/core/testing/Gen.Aspects zip
  * @tsplus pipeable effect/core/testing/Gen zip
+ * @category zipping
+ * @since 1.0.0
  */
 export function zip<R2, A2>(that: Gen<R2, A2>) {
   return <R, A>(self: Gen<R, A>): Gen<R | R2, readonly [A, A2]> =>

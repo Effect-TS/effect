@@ -6,6 +6,8 @@ import { Exited, Running } from "@effect/core/io/Scope/ReleaseMap/_internal/Stat
  *
  * @tsplus static effect/core/io/ReleaseMap.Aspects updateAll
  * @tsplus pipeable effect/core/io/ReleaseMap updateAll
+ * @category mutations
+ * @since 1.0.0
  */
 export function updateAll(
   f: (finalizer: Scope.Finalizer) => Scope.Finalizer

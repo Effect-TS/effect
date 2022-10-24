@@ -4,6 +4,8 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
  * Checks if the hub is at capacity.
  *
  * @tsplus getter effect/core/stm/THub isFull
+ * @category getters
+ * @since 1.0.0
  */
 export function isFull<A>(self: THub<A>): USTM<boolean> {
   concreteTHub(self)

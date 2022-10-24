@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects mapOut
  * @tsplus pipeable effect/core/stream/Channel mapOut
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapOut<OutElem, OutElem2>(f: (o: OutElem) => OutElem2) {
   return <Env, InErr, InElem, InDone, OutErr, OutDone>(

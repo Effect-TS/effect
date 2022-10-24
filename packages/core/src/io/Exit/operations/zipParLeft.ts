@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects zipParLeft
  * @tsplus pipeable effect/core/io/Exit zipParLeft
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipParLeft<E2, A2>(that: Exit<E2, A2>) {
   return <E, A>(self: Exit<E, A>): Exit<E | E2, A> =>

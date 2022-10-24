@@ -5,6 +5,8 @@ import type { _In } from "@effect/core/io/Metrics/MetricKeyType"
  * being recorded, such as sending that metric to a third-party service.
  *
  * @tsplus type effect/core/io/Metrics/MetricListener
+ * @category model
+ * @since 1.0.0
  */
 export class MetricListener {
   constructor(

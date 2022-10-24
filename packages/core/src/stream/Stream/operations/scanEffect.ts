@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Statefully and effectfully maps over the elements of this stream to produce
@@ -9,6 +10,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects scanEffect
  * @tsplus pipeable effect/core/stream/Stream scanEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function scanEffect<A, S, R2, E2>(
   s: S,

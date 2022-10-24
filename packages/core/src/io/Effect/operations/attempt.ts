@@ -3,6 +3,8 @@
  * thrown exceptions into typed failed effects creating with `Effect.fail`.
  *
  * @tsplus static effect/core/io/Effect.Ops attempt
+ * @category constructors
+ * @since 1.0.0
  */
 export function attempt<A>(f: LazyArg<A>): Effect<never, unknown, A> {
   return Effect.sync(() => {

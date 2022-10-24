@@ -1,11 +1,14 @@
 import { ChannelExecutor, readUpstream } from "@effect/core/stream/Channel/ChannelExecutor"
 import type { ChannelState } from "@effect/core/stream/Channel/ChannelState"
 import { concreteChannelState } from "@effect/core/stream/Channel/ChannelState"
+import { identity } from "@fp-ts/data/Function"
 
 /**
  * Runs a channel until the end is received.
  *
  * @tsplus getter effect/core/stream/Channel runScoped
+ * @category destructors
+ * @since 1.0.0
  */
 export function runScoped<Env, InErr, InDone, OutErr, OutDone>(
   self: Channel<Env, InErr, unknown, InDone, OutErr, never, OutDone>

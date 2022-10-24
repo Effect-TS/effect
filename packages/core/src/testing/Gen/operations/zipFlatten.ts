@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/testing/Gen.Aspects zipFlatten
  * @tsplus pipeable effect/core/testing/Gen zipFlatten
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipFlatten<R2, A2>(that: Gen<R2, A2>) {
   return <R, A extends ReadonlyArray<any>>(self: Gen<R, A>): Gen<R | R2, readonly [...A, A2]> =>

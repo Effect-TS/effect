@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * If this stream is empty, produce the specified element or chunk of elements,
@@ -9,18 +10,20 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects defaultIfEmpty
  * @tsplus pipeable effect/core/stream/Stream defaultIfEmpty
+ * @category mutations
+ * @since 1.0.0
  */
 export function defaultIfEmpty<R1, E1, A1>(
   stream: Stream<R1, E1, A1>
 ): <R, E, A>(self: Stream<R, E, A>) => Stream<R | R1, E | E1, A | A1>
 export function defaultIfEmpty<A1>(
-  chunk: Chunk<A1>
+  chunk: Chunk.Chunk<A1>
 ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A | A1>
 export function defaultIfEmpty<A1>(
   value: A1
 ): <R, E, A>(self: Stream<R, E, A>) => Stream<R, E, A | A1>
 export function defaultIfEmpty<R, E, E1, A, A1>(
-  emptyValue: A1 | Chunk<A1> | Stream<never, E1, A1>
+  emptyValue: A1 | Chunk.Chunk<A1> | Stream<never, E1, A1>
 ) {
   return (self: Stream<R, E, A>): Stream<R, E | E1, A | A1> => {
     if (Chunk.isChunk(emptyValue)) {
@@ -48,7 +51,7 @@ function defaultIfEmptyValue<R, E, A, A1>(
  */
 function defaultIfEmptyChunk<R, E, A, A1>(
   self: Stream<R, E, A>,
-  chunk: Chunk<A1>
+  chunk: Chunk.Chunk<A1>
 ): Stream<R, E, A | A1> {
   return defaultIfEmptyStream(self, new StreamInternal(Channel.write(chunk)))
 }
@@ -63,16 +66,18 @@ function defaultIfEmptyStream<R, R1, E, E1, A, A1>(
   const writer: Channel<
     R1,
     E,
-    Chunk<A>,
+    Chunk.Chunk<A>,
     unknown,
     E | E1,
-    Chunk<A | A1>,
+    Chunk.Chunk<A | A1>,
     any
   > = Channel.readWith(
-    (input: Chunk<A>) =>
-      input.isEmpty
+    (input: Chunk.Chunk<A>) =>
+      Chunk.isEmpty(input)
         ? writer
-        : Channel.write(input).flatMap(() => Channel.identity<E | E1, Chunk<A | A1>, unknown>()),
+        : Channel.write(input).flatMap(() =>
+          Channel.identity<E | E1, Chunk.Chunk<A | A1>, unknown>()
+        ),
     (e) => Channel.fail(e),
     () => {
       concreteStream(stream)
@@ -82,5 +87,5 @@ function defaultIfEmptyStream<R, R1, E, E1, A, A1>(
 
   concreteStream(self)
 
-  return new StreamInternal(self.channel >> writer)
+  return new StreamInternal(self.channel.pipeTo(writer))
 }

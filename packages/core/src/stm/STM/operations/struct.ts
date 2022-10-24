@@ -4,6 +4,8 @@ import type { STMTypeId } from "@effect/core/stm/STM"
  * Applicative structure.
  *
  * @tsplus static effect/core/stm/STM.Ops struct
+ * @category constructors
+ * @since 1.0.0
  */
 export function struct<NER extends Record<string, STM<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> & Record<string, STM<any, any, any>>

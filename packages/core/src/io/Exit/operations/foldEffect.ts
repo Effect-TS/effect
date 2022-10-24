@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects foldEffect
  * @tsplus pipeable effect/core/io/Exit foldEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldEffect<E, A, R1, E1, A1, R2, E2, A2>(
   failed: (cause: Cause<E>) => Effect<R1, E1, A1>,

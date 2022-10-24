@@ -11,6 +11,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects ensuring
  * @tsplus pipeable effect/core/io/Effect ensuring
+ * @category finalizers
+ * @since 1.0.0
  */
 export function ensuring<R1, X>(finalizer: Effect<R1, never, X>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>

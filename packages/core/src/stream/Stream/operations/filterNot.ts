@@ -1,9 +1,14 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Refinement"
+
 /**
  * Filters this stream by the specified predicate, removing all elements for
  * which the predicate evaluates to true.
  *
  * @tsplus static effect/core/stream/Stream.Aspects filterNot
  * @tsplus pipeable effect/core/stream/Stream filterNot
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterNot<A, B extends A>(
   f: Refinement<A, B>

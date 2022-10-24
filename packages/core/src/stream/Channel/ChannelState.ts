@@ -1,16 +1,45 @@
 import type { ErasedExecutor } from "@effect/core/stream/Channel/ChannelExecutor"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const ChannelStateSym = Symbol.for("@effect/core/stream/Channel/ChannelState")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type ChannelStateSym = typeof ChannelStateSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _R = Symbol.for("@effect/core/stream/Channel/ChannelState/R")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _R = typeof _R
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _E = Symbol.for("@effect/core/stream/Channel/ChannelState/E")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _E = typeof _E
 
 /**
  * @tsplus type effect/core/stream/Channel/State
+ * @category model
+ * @since 1.0.0
  */
 export interface ChannelState<R, E> {
   readonly [ChannelStateSym]: ChannelStateSym
@@ -18,6 +47,9 @@ export interface ChannelState<R, E> {
   readonly [_E]: () => E
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace ChannelState {
   type Done = ChannelStateDone
   type Emit = ChannelStateEmit
@@ -25,20 +57,33 @@ export declare namespace ChannelState {
   type Read<R, E> = ChannelStateRead<R, E>
 }
 
+/** @internal */
 export abstract class ChannelStateBase<R, E> implements ChannelState<R, E> {
   readonly [ChannelStateSym]: ChannelStateSym = ChannelStateSym
   readonly [_R]!: (_: R) => void
   readonly [_E]!: () => E
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ChannelStateDone extends ChannelStateBase<unknown, never> {
   readonly _tag = "Done"
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ChannelStateEmit extends ChannelStateBase<unknown, never> {
   readonly _tag = "Emit"
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ChannelStateEffect<R, E> extends ChannelStateBase<R, E> {
   readonly _tag = "Effect"
   constructor(readonly effect: Effect<R, E, unknown>) {
@@ -46,6 +91,10 @@ export class ChannelStateEffect<R, E> extends ChannelStateBase<R, E> {
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ChannelStateRead<R, E> extends ChannelStateBase<R, E> {
   readonly _tag = "Read"
   constructor(
@@ -60,6 +109,8 @@ export class ChannelStateRead<R, E> extends ChannelStateBase<R, E> {
 
 /**
  * @tsplus type effect/core/stream/Channel/State.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ChannelStateOps {}
 export const ChannelState: ChannelStateOps = {}
@@ -78,6 +129,7 @@ export function unifyChannelState<X extends ChannelState<any, any>>(
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteChannelState<R, E>(
   _: ChannelState<R, E>
@@ -92,16 +144,22 @@ export function concreteChannelState<R, E>(
 
 /**
  * @tsplus static effect/core/stream/Channel/State.Ops Done
+ * @category constructors
+ * @since 1.0.0
  */
 export const channelStateDone: ChannelState<unknown, never> = new ChannelStateDone()
 
 /**
  * @tsplus static effect/core/stream/Channel/State.Ops Emit
+ * @category constructors
+ * @since 1.0.0
  */
 export const channelStateEmit: ChannelState<unknown, never> = new ChannelStateEmit()
 
 /**
  * @tsplus static effect/core/stream/Channel/State.Ops Effect
+ * @category constructors
+ * @since 1.0.0
  */
 export function channelStateEffect<R, E>(
   effect: Effect<R, E, unknown>
@@ -111,6 +169,8 @@ export function channelStateEffect<R, E>(
 
 /**
  * @tsplus static effect/core/stream/Channel/State.Ops Read
+ * @category constructors
+ * @since 1.0.0
  */
 export function channelStateRead<R, _E>(
   upstream: ErasedExecutor<R>,
@@ -123,6 +183,8 @@ export function channelStateRead<R, _E>(
 
 /**
  * @tsplus fluent effect/core/stream/Channel/State effectOrUnit
+ * @category mutations
+ * @since 1.0.0
  */
 export function effectOrUnit<R, E>(
   self: ChannelState<R, E>
@@ -133,6 +195,8 @@ export function effectOrUnit<R, E>(
 
 /**
  * @tsplus fluent effect/core/stream/Channel/State effectOrUndefinedIgnored
+ * @category mutations
+ * @since 1.0.0
  */
 export function effectOrUndefinedIgnored<R, E>(
   self: ChannelState<R, E>

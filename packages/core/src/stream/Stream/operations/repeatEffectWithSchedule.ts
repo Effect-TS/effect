@@ -1,8 +1,12 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Creates a stream from an effect producing a value of type `A`, which is
  * repeated using the specified schedule.
  *
  * @tsplus static effect/core/stream/Stream.Ops repeatEffectWithSchedule
+ * @category repetition
+ * @since 1.0.0
  */
 export function repeatEffectWithSchedule<S, R, E, A>(
   effect: Effect<R, E, A>,
@@ -14,7 +18,7 @@ export function repeatEffectWithSchedule<S, R, E, A>(
       Stream.unfoldEffect(a, (a) =>
         driver.next(a).foldEffect(
           (e) => Effect.succeed(e),
-          () => effect.map((nextA) => Maybe.some([nextA, nextA] as const))
+          () => effect.map((nextA) => Option.some([nextA, nextA] as const))
         ))
   )
 }

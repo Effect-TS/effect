@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects bind
  * @tsplus pipeable effect/core/stream/Channel bind
+ * @category do
+ * @since 1.0.0
  */
 export function bind<
   N extends string,
@@ -35,6 +37,8 @@ export function bind<
 /**
  * @tsplus static effect/core/stream/Channel.Aspects bindValue
  * @tsplus pipeable effect/core/stream/Channel bindValue
+ * @category do
+ * @since 1.0.0
  */
 export function bindValue<
   N extends string,
@@ -59,6 +63,8 @@ export function bindValue<
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops Do
+ * @category do
+ * @since 1.0.0
  */
 export function Do(): Channel<never, unknown, unknown, unknown, never, never, {}> {
   return Channel.fromEffect(Effect.succeed({}))

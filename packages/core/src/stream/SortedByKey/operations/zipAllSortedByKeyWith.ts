@@ -1,3 +1,9 @@
+import type { Order } from "@fp-ts/core/typeclass/Order"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
+
+/** @internal */
 type State<K, A, B> =
   | DrainLeft
   | DrainRight
@@ -5,26 +11,31 @@ type State<K, A, B> =
   | PullLeft<K, B>
   | PullRight<K, A>
 
-export class DrainLeft {
+/** @internal */
+class DrainLeft {
   readonly _tag = "DrainLeft"
 }
 
-export class DrainRight {
+/** @internal */
+class DrainRight {
   readonly _tag = "DrainRight"
 }
 
-export class PullBoth {
+/** @internal */
+class PullBoth {
   readonly _tag = "PullBoth"
 }
 
-export class PullLeft<K, B> {
+/** @internal */
+class PullLeft<K, B> {
   readonly _tag = "PullLeft"
-  constructor(readonly rightChunk: Chunk<readonly [K, B]>) {}
+  constructor(readonly rightChunk: Chunk.Chunk<readonly [K, B]>) {}
 }
 
-export class PullRight<K, A> {
+/** @internal */
+class PullRight<K, A> {
   readonly _tag = "PullRight"
-  constructor(readonly leftChunk: Chunk<readonly [K, A]>) {}
+  constructor(readonly leftChunk: Chunk.Chunk<readonly [K, A]>) {}
 }
 
 /**
@@ -42,9 +53,11 @@ export class PullRight<K, A> {
  * @tsplus pipeable effect/core/stream/SortedByKey zipAllSortedByKeyWith
  * @tsplus static effect/core/stream/Stream.Aspects zipAllSortedByKeyWith
  * @tsplus pipeable effect/core/stream/Stream zipAllSortedByKeyWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
-  ord: Ord<K>,
+  order: Order<K>,
   that: SortedByKey<R2, E2, K, A2>,
   left: (a: A) => C1,
   right: (b: A2) => C2,
@@ -55,12 +68,15 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
   ): Stream<R | R2, E | E2, readonly [K, C1 | C2 | C3]> => {
     const pull = (
       state: State<K, A, A2>,
-      pullLeft: Effect<R, Maybe<E>, Chunk<readonly [K, A]>>,
-      pullRight: Effect<R2, Maybe<E2>, Chunk<readonly [K, A2]>>
+      pullLeft: Effect<R, Option.Option<E>, Chunk.Chunk<readonly [K, A]>>,
+      pullRight: Effect<R2, Option.Option<E2>, Chunk.Chunk<readonly [K, A2]>>
     ): Effect<
       R | R2,
       never,
-      Exit<Maybe<E | E2>, readonly [Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>]>
+      Exit<
+        Option.Option<E | E2>,
+        readonly [Chunk.Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>]
+      >
     > => {
       switch (state._tag) {
         case "DrainLeft":
@@ -68,7 +84,10 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             (e) => Exit.fail(e),
             (leftChunk) =>
               Exit.succeed(
-                [leftChunk.map(([k, a]) => [k, left(a)] as const), new DrainLeft()] as const
+                [
+                  pipe(leftChunk, Chunk.map(([k, a]) => [k, left(a)] as const)),
+                  new DrainLeft()
+                ] as const
               )
           )
         case "DrainRight":
@@ -76,7 +95,10 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             (e) => Exit.fail(e),
             (rightChunk) =>
               Exit.succeed(
-                [rightChunk.map(([k, b]) => [k, right(b)] as const), new DrainRight()] as const
+                [
+                  pipe(rightChunk, Chunk.map(([k, b]) => [k, right(b)] as const)),
+                  new DrainRight()
+                ] as const
               )
           )
         case "PullBoth": {
@@ -84,48 +106,51 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
             .unsome
             .zipPar(pullRight.unsome)
             .foldEffect(
-              (e) => Effect.succeed(Exit.fail(Maybe.some(e))),
+              (e) => Effect.succeed(Exit.fail(Option.some(e))),
               ([a, b]) => {
-                if (a.isSome() && b.isSome()) {
+                if (Option.isSome(a) && Option.isSome(b)) {
                   const leftChunk = a.value
                   const rightChunk = b.value
 
-                  if (leftChunk.isEmpty && rightChunk.isEmpty) {
+                  if (Chunk.isEmpty(leftChunk) && Chunk.isEmpty(rightChunk)) {
                     return pull(new PullBoth(), pullLeft, pullRight)
-                  } else if (leftChunk.isEmpty) {
+                  } else if (Chunk.isEmpty(leftChunk)) {
                     return pull(new PullLeft(rightChunk), pullLeft, pullRight)
-                  } else if (rightChunk.isEmpty) {
+                  } else if (Chunk.isEmpty(rightChunk)) {
                     return pull(new PullRight(leftChunk), pullLeft, pullRight)
                   } else {
                     return Effect.succeed(
                       Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
                     )
                   }
-                } else if (a.isSome()) {
+                } else if (Option.isSome(a)) {
                   const leftChunk = a.value
 
-                  return leftChunk.isEmpty
-                    ? pull(new DrainLeft(), pullLeft, pullRight)
-                    : Effect.succeed(
-                      Exit.succeed(
-                        [leftChunk.map(([k, a]) => [k, left(a)] as const), new DrainLeft()] as const
-                      )
-                    )
-                } else if (b.isSome()) {
-                  const rightChunk = b.value
-
-                  return rightChunk.isEmpty
+                  return Chunk.isEmpty(leftChunk)
                     ? pull(new DrainLeft(), pullLeft, pullRight)
                     : Effect.succeed(
                       Exit.succeed(
                         [
-                          rightChunk.map(([k, b]) => [k, right(b)]),
+                          pipe(leftChunk, Chunk.map(([k, a]) => [k, left(a)] as const)),
+                          new DrainLeft()
+                        ] as const
+                      )
+                    )
+                } else if (Option.isSome(b)) {
+                  const rightChunk = b.value
+
+                  return Chunk.isEmpty(rightChunk)
+                    ? pull(new DrainLeft(), pullLeft, pullRight)
+                    : Effect.succeed(
+                      Exit.succeed(
+                        [
+                          pipe(rightChunk, Chunk.map(([k, b]) => [k, right(b)])),
                           new DrainRight()
                         ] as const
                       )
                     )
                 } else {
-                  return Effect.succeed(Exit.fail(Maybe.none))
+                  return Effect.succeed(Exit.fail(Option.none))
                 }
               }
             )
@@ -134,20 +159,23 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
           const rightChunk = state.rightChunk
 
           return pullLeft.foldEffect(
-            (option) =>
-              option.fold(
-                (): Effect<
-                  never,
-                  never,
-                  Exit<Maybe<E>, [Chunk<readonly [K, C2]>, DrainRight]>
-                > =>
-                  Effect.succeed(
-                    Exit.succeed([rightChunk.map(([k, b]) => [k, right(b)]), new DrainRight()])
-                  ),
-                (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
-              ),
+            (option) => {
+              switch (option._tag) {
+                case "None": {
+                  return Effect.succeed(
+                    Exit.succeed([
+                      pipe(rightChunk, Chunk.map(([k, b]) => [k, right(b)])),
+                      new DrainRight()
+                    ])
+                  )
+                }
+                case "Some": {
+                  return Effect.succeed(Exit.fail(Option.some(option.value)))
+                }
+              }
+            },
             (leftChunk) =>
-              leftChunk.isEmpty
+              Chunk.isEmpty(leftChunk)
                 ? pull(new PullLeft(rightChunk), pullLeft, pullRight)
                 : Effect.succeed(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
@@ -158,25 +186,25 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
           const leftChunk = state.leftChunk
 
           return pullRight.foldEffect(
-            (option) =>
-              option.fold(
-                (): Effect<
-                  never,
-                  never,
-                  Exit<Maybe<E2>, readonly [Chunk<readonly [K, C1]>, DrainLeft]>
-                > =>
-                  Effect.succeed(
+            (option) => {
+              switch (option._tag) {
+                case "None": {
+                  return Effect.succeed(
                     Exit.succeed(
                       [
-                        leftChunk.map(([k, a]) => [k, left(a)] as const),
+                        pipe(leftChunk, Chunk.map(([k, a]) => [k, left(a)] as const)),
                         new DrainLeft()
                       ] as const
                     )
-                  ),
-                (e) => Effect.succeed(Exit.fail(Maybe.some(e)))
-              ),
+                  )
+                }
+                case "Some": {
+                  return Effect.succeed(Exit.fail(Option.some(option.value)))
+                }
+              }
+            },
             (rightChunk) =>
-              rightChunk.isEmpty
+              Chunk.isEmpty(rightChunk)
                 ? pull(new PullRight(leftChunk), pullLeft, pullRight)
                 : Effect.succeed(
                   Exit.succeed(mergeSortedByKeyChunk(leftChunk, rightChunk))
@@ -187,92 +215,92 @@ export function zipAllSortedByKeyWith<K, R2, E2, A2, A, C1, C2, C3>(
     }
 
     function mergeSortedByKeyChunk(
-      leftChunk: Chunk<readonly [K, A]>,
-      rightChunk: Chunk<readonly [K, A2]>
-    ): readonly [Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>] {
-      const builder = Chunk.builder<readonly [K, C1 | C2 | C3]>()
+      leftChunk: Chunk.Chunk<readonly [K, A]>,
+      rightChunk: Chunk.Chunk<readonly [K, A2]>
+    ): readonly [Chunk.Chunk<readonly [K, C1 | C2 | C3]>, State<K, A, A2>] {
+      const builder: Array<readonly [K, C1 | C2 | C3]> = []
       let state: State<K, A, A2> | undefined
       let leftIndex = 0
       let rightIndex = 0
-      let leftTuple = leftChunk.unsafeGet(leftIndex)
-      let rightTuple = rightChunk.unsafeGet(rightIndex)
+      let leftTuple = pipe(leftChunk, Chunk.unsafeGet(leftIndex))
+      let rightTuple = pipe(rightChunk, Chunk.unsafeGet(rightIndex))
       let k1 = leftTuple[0]
       let a = leftTuple[1]
       let k2 = rightTuple[0]
       let b = rightTuple[1]
       let loop = true
 
-      const hasNext = <T>(c: Chunk<T>, index: number) => index < c.size - 1
+      const hasNext = <T>(c: Chunk.Chunk<T>, index: number) => index < c.length - 1
 
       while (loop) {
-        const compare = ord.compare(k1, k2)
+        const compare = order.compare(k2)(k1)
 
         if (compare === 0) {
-          builder.append([k1, both(a, b)] as const)
+          builder.push([k1, both(a, b)] as const)
 
           if (hasNext(leftChunk, leftIndex) && hasNext(rightChunk, rightIndex)) {
             leftIndex += 1
             rightIndex += 1
-            leftTuple = leftChunk.unsafeGet(leftIndex)
-            rightTuple = rightChunk.unsafeGet(rightIndex)
+            leftTuple = pipe(leftChunk, Chunk.unsafeGet(leftIndex))
+            rightTuple = pipe(rightChunk, Chunk.unsafeGet(rightIndex))
             k1 = leftTuple[0]
             a = leftTuple[1]
             k2 = rightTuple[0]
             b = rightTuple[1]
           } else if (hasNext(leftChunk, leftIndex)) {
-            state = new PullRight(leftChunk.drop(leftIndex + 1))
+            state = new PullRight(pipe(leftChunk, Chunk.drop(leftIndex + 1)))
             loop = false
           } else if (hasNext(rightChunk, rightIndex)) {
-            state = new PullLeft(rightChunk.drop(rightIndex + 1))
+            state = new PullLeft(pipe(rightChunk, Chunk.drop(rightIndex + 1)))
             loop = false
           } else {
             state = new PullBoth()
             loop = false
           }
         } else if (compare < 0) {
-          builder.append([k1, left(a)])
+          builder.push([k1, left(a)])
 
           if (hasNext(leftChunk, leftIndex)) {
             leftIndex += 1
-            leftTuple = leftChunk.unsafeGet(leftIndex)
+            leftTuple = pipe(leftChunk, Chunk.unsafeGet(leftIndex))
             k1 = leftTuple[0]
             a = leftTuple[1]
           } else {
-            const rightBuilder = Chunk.builder<readonly [K, A2]>()
-            rightBuilder.append(rightTuple)
+            const rightBuilder: Array<readonly [K, A2]> = []
+            rightBuilder.push(rightTuple)
 
             while (hasNext(rightChunk, rightIndex)) {
               rightIndex += 1
-              rightTuple = rightChunk.unsafeGet(rightIndex)
-              rightBuilder.append(rightTuple)
-              state = new PullLeft(rightBuilder.build())
+              rightTuple = pipe(rightChunk, Chunk.unsafeGet(rightIndex))
+              rightBuilder.push(rightTuple)
+              state = new PullLeft(Chunk.unsafeFromArray(rightBuilder))
               loop = false
             }
           }
         } else {
-          builder.append([k2, right(b)])
+          builder.push([k2, right(b)])
 
           if (hasNext(rightChunk, rightIndex)) {
             rightIndex += 1
-            rightTuple = rightChunk.unsafeGet(rightIndex)
+            rightTuple = pipe(rightChunk, Chunk.unsafeGet(rightIndex))
             k2 = rightTuple[0]
             b = rightTuple[1]
           } else {
-            const leftBuilder = Chunk.builder<readonly [K, A]>()
-            leftBuilder.append(leftTuple)
+            const leftBuilder: Array<readonly [K, A]> = []
+            leftBuilder.push(leftTuple)
 
             while (hasNext(leftChunk, leftIndex)) {
               leftIndex += 1
-              leftTuple = leftChunk.unsafeGet(leftIndex)
-              leftBuilder.append(leftTuple)
-              state = new PullRight(leftBuilder.build())
+              leftTuple = pipe(leftChunk, Chunk.unsafeGet(leftIndex))
+              leftBuilder.push(leftTuple)
+              state = new PullRight(Chunk.unsafeFromArray(leftBuilder))
               loop = false
             }
           }
         }
       }
 
-      return [builder.build(), state!]
+      return [Chunk.unsafeFromArray(builder), state!]
     }
 
     return self.combineChunks(that, new PullBoth(), pull)

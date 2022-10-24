@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects onError
  * @tsplus pipeable effect/core/stream/Stream onError
+ * @category mutations
+ * @since 1.0.0
  */
 export function onError<E, R2, Z>(
   cleanup: (cause: Cause<E>) => Effect<R2, never, Z>

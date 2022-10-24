@@ -5,6 +5,8 @@ import { InternalTReentrantLock } from "@effect/core/stm/TReentrantLock/operatio
  *
  * @tsplus static effect/core/stm/TReentrantLock.Ops __call
  * @tsplus static effect/core/stm/TReentrantLock.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function make(): USTM<TReentrantLock> {
   return TRef.make<TReentrantLock.Lock>(TReentrantLock.ReadLock.empty()).map((_) =>

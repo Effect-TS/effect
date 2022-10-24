@@ -8,6 +8,8 @@ import type { Driver } from "@effect/core/io/Schedule"
  *
  * @tsplus static effect/core/io/Effect.Aspects scheduleFrom
  * @tsplus pipeable effect/core/io/Effect scheduleFrom
+ * @category scheduling
+ * @since 1.0.0
  */
 export function scheduleFrom<S, R1, A, A1>(a: A, schedule: Schedule<S, R1, A, A1>) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R1, E, A1> =>

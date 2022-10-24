@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects tapBoth
  * @tsplus pipeable effect/core/stm/STM tapBoth
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapBoth<E, R2, E2, X, A, R3, E3, X1>(
   f: (e: E) => STM<R2, E2, X>,

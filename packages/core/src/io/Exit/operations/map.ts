@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects map
  * @tsplus pipeable effect/core/io/Exit map
+ * @category mapping
+ * @since 1.0.0
  */
 export function map<A, B>(f: (a: A) => B) {
   return <E>(self: Exit<E, A>): Exit<E, B> => {

@@ -6,6 +6,8 @@ import { STMOnRetry } from "@effect/core/stm/STM/definition/primitives"
  *
  * @tsplus static effect/core/stm/STM.Aspects orTry
  * @tsplus pipeable effect/core/stm/STM orTry
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orTry<R1, E1, A1>(that: LazyArg<STM<R1, E1, A1>>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E | E1, A | A1> => new STMOnRetry(self, that)

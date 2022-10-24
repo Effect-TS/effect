@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Sink.Aspects zipPar
  * @tsplus pipeable effect/core/stream/Sink zipPar
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipPar<R1, E1, In1, L1, Z1>(
   that: Sink<R1, E1, In1, L1, Z1>

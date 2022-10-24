@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects mapTryCatch
  * @tsplus pipeable effect/core/io/Effect mapTryCatch
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapTryCatch<A, B, E1>(
   f: (a: A) => B,

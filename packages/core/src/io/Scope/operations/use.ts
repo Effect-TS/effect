@@ -5,6 +5,8 @@
  * interruption.
  *
  * @tsplus pipeable effect/core/io/Scope/Closeable use
+ * @category destructors
+ * @since 1.0.0
  */
 export function use<R, E, A>(effect: Effect<R, E, A>) {
   return (self: Scope.Closeable): Effect<Exclude<R, Scope>, E, A> =>

@@ -8,6 +8,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects mapError
  * @tsplus pipeable effect/core/stream/Sink mapError
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapError<E, E2>(f: (z: E) => E2) {
   return <R, In, L, Z>(self: Sink<R, E, In, L, Z>): Sink<R, E2, In, L, Z> => {

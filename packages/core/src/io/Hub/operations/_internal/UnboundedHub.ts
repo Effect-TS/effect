@@ -1,5 +1,6 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
 import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 class Node<A> {
   constructor(
@@ -9,6 +10,7 @@ class Node<A> {
   ) {}
 }
 
+/** @internal */
 export class UnboundedHub<A> implements AtomicHub<A> {
   publisherHead = new Node<A>(null, 0, null)
   publisherIndex = 0
@@ -41,11 +43,11 @@ export class UnboundedHub<A> implements AtomicHub<A> {
     return true
   }
 
-  publishAll(as: Collection<A>): Chunk<A> {
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
     for (const a of as) {
       this.publish(a)
     }
-    return Chunk.empty()
+    return Chunk.empty
   }
 
   get size(): number {
@@ -141,8 +143,8 @@ class UnboundedHubSubscription<A> implements Subscription<A> {
     return polled
   }
 
-  pollUpTo(n: number): Chunk<A> {
-    let builder = Chunk.empty<A>()
+  pollUpTo(n: number): Chunk.Chunk<A> {
+    const builder: Array<A> = []
     const default_ = null
     let i = 0
 
@@ -151,12 +153,12 @@ class UnboundedHubSubscription<A> implements Subscription<A> {
       if (a === default_) {
         i = n
       } else {
-        builder = builder.append(a)
+        builder.push(a)
         i += 1
       }
     }
 
-    return builder
+    return Chunk.fromIterable(builder)
   }
 
   get size() {

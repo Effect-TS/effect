@@ -1,18 +1,24 @@
-const someFatal = Maybe.some(LogLevel.Fatal)
-const someError = Maybe.some(LogLevel.Error)
-const someWarning = Maybe.some(LogLevel.Warning)
-const someTrace = Maybe.some(LogLevel.Trace)
-const someInfo = Maybe.some(LogLevel.Info)
-const someDebug = Maybe.some(LogLevel.Debug)
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as Option from "@fp-ts/data/Option"
+
+const someFatal = Option.some(LogLevel.Fatal)
+const someError = Option.some(LogLevel.Error)
+const someWarning = Option.some(LogLevel.Warning)
+const someTrace = Option.some(LogLevel.Trace)
+const someInfo = Option.some(LogLevel.Info)
+const someDebug = Option.some(LogLevel.Debug)
 
 /**
  * Logs the specified message at the current log level.
  *
  * @tsplus static effect/core/io/Effect.Ops log
+ * @category logging
+ * @since 1.0.0
  */
 export function log(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
-    fiberState.log(message, Cause.empty, Maybe.none)
+    fiberState.log(message, Cause.empty, Option.none)
     return Effect.unit
   })
 }
@@ -21,6 +27,8 @@ export function log(message: string): Effect<never, never, void> {
  * Logs the specified message at the debug log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logDebug
+ * @category logging
+ * @since 1.0.0
  */
 export function logDebug(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -33,6 +41,8 @@ export function logDebug(message: string): Effect<never, never, void> {
  * Logs the specified cause at the debug log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logDebugCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logDebugCause<E>(cause: Cause<E>): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -45,6 +55,8 @@ export function logDebugCause<E>(cause: Cause<E>): Effect<never, never, void> {
  * Logs the specified message and cause at the debug log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logDebugCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logDebugCauseMessage<E>(
   message: string,
@@ -60,6 +72,8 @@ export function logDebugCauseMessage<E>(
  * Logs the specified message at the error log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logError
+ * @category logging
+ * @since 1.0.0
  */
 export function logError(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -72,6 +86,8 @@ export function logError(message: string): Effect<never, never, void> {
  * Logs the specified cause at the error log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logErrorCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logErrorCause<E>(cause: Cause<E>): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -84,6 +100,8 @@ export function logErrorCause<E>(cause: Cause<E>): Effect<never, never, void> {
  * Logs the specified message and cause at the error log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logErrorCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logErrorCauseMessage<E>(
   message: string,
@@ -99,6 +117,8 @@ export function logErrorCauseMessage<E>(
  * Logs the specified message at the fatal log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logFatal
+ * @category logging
+ * @since 1.0.0
  */
 export function logFatal(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -111,6 +131,8 @@ export function logFatal(message: string): Effect<never, never, void> {
  * Logs the specified cause at the fatal log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logFatalCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logFatalCause<E>(
   cause: Cause<E>
@@ -125,6 +147,8 @@ export function logFatalCause<E>(
  * Logs the specified message and cause at the fatal log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logFatalCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logFatalCauseMessage<E>(
   message: string,
@@ -140,6 +164,8 @@ export function logFatalCauseMessage<E>(
  * Logs the specified message at the informational log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logInfo
+ * @category logging
+ * @since 1.0.0
  */
 export function logInfo(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -152,6 +178,8 @@ export function logInfo(message: string): Effect<never, never, void> {
  * Logs the specified cause at the informational log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logInfoCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logInfoCause<E>(cause: Cause<E>): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -164,6 +192,8 @@ export function logInfoCause<E>(cause: Cause<E>): Effect<never, never, void> {
  * Logs the specified message and cause at the informational log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logInfoCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logInfoCauseMessage<E>(
   message: string,
@@ -179,6 +209,8 @@ export function logInfoCauseMessage<E>(
  * Logs the specified message at the warning log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logWarning
+ * @category logging
+ * @since 1.0.0
  */
 export function logWarning(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -191,6 +223,8 @@ export function logWarning(message: string): Effect<never, never, void> {
  * Logs the specified cause at the warning log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logWarningCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logWarningCause<E>(
   cause: Cause<E>
@@ -205,6 +239,8 @@ export function logWarningCause<E>(
  * Logs the specified message and cause at the warning log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logWarningCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logWarningCauseMessage<E>(
   message: string,
@@ -220,6 +256,8 @@ export function logWarningCauseMessage<E>(
  * Logs the specified message at the trace log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logTrace
+ * @category logging
+ * @since 1.0.0
  */
 export function logTrace(message: string): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -232,6 +270,8 @@ export function logTrace(message: string): Effect<never, never, void> {
  * Logs the specified cause at the trace log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logTraceCause
+ * @category logging
+ * @since 1.0.0
  */
 export function logTraceCause<E>(cause: Cause<E>): Effect<never, never, void> {
   return Effect.withFiberRuntime((fiberState) => {
@@ -244,6 +284,8 @@ export function logTraceCause<E>(cause: Cause<E>): Effect<never, never, void> {
  * Logs the specified message and cause at the trace log level.
  *
  * @tsplus static effect/core/io/Effect.Ops logTraceCauseMessage
+ * @category logging
+ * @since 1.0.0
  */
 export function logTraceCauseMessage<E>(
   message: string,
@@ -259,6 +301,8 @@ export function logTraceCauseMessage<E>(
  * Adjusts the label for the current logging span.
  *
  * @tsplus static effect/core/io/Effect.Ops logSpan
+ * @category logging
+ * @since 1.0.0
  */
 export function logSpan(label: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -267,7 +311,7 @@ export function logSpan(label: string) {
         Effect.suspendSucceed(() => {
           const logSpan = LogSpan(label, now)
           return effect.apply(
-            FiberRef.currentLogSpan.locally(stack.prepend(logSpan))
+            FiberRef.currentLogSpan.locally(pipe(stack, List.prepend(logSpan)))
           )
         })
       )
@@ -278,6 +322,8 @@ export function logSpan(label: string) {
  * Annotates each log in this effect with the specified log annotation.
  *
  * @tsplus static effect/core/io/Effect.Ops logAnnotate
+ * @category logging
+ * @since 1.0.0
  */
 export function logAnnotate(key: string, value: string) {
   return <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> =>
@@ -287,7 +333,7 @@ export function logAnnotate(key: string, value: string) {
         Effect.suspendSucceed(() =>
           effect.apply(
             FiberRef.currentLogAnnotations.locally(
-              annotations.set(key, value)
+              (annotations as Map<string, string>).set(key, value)
             )
           )
         )
@@ -298,7 +344,9 @@ export function logAnnotate(key: string, value: string) {
  * Retrieves the log annotations associated with the current scope.
  *
  * @tsplus static effect/core/io/Effect.Ops logAnnotations
+ * @category logging
+ * @since 1.0.0
  */
-export function logAnnotations(): Effect<never, never, ImmutableMap<string, string>> {
+export function logAnnotations(): Effect<never, never, ReadonlyMap<string, string>> {
   return FiberRef.currentLogAnnotations.get
 }

@@ -2,6 +2,7 @@
 // Seconds
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export function beginningOfSecond(now: number): number {
   const date = new Date(now)
   return new Date(
@@ -15,11 +16,13 @@ export function beginningOfSecond(now: number): number {
   ).getTime()
 }
 
+/** @internal */
 export function endOfSecond(now: number): number {
   const date = new Date(beginningOfSecond(now))
   return date.setSeconds(date.getSeconds() + 1)
 }
 
+/** @internal */
 export function nextSecond(now: number, second: number): number {
   const date = new Date(now)
   if (date.getSeconds() === second) {
@@ -37,6 +40,7 @@ export function nextSecond(now: number, second: number): number {
 // Minutes
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export function beginningOfMinute(now: number): number {
   const date = new Date(now)
   return new Date(
@@ -50,14 +54,16 @@ export function beginningOfMinute(now: number): number {
   ).getTime()
 }
 
+/** @internal */
 export function endOfMinute(now: number): number {
   const date = new Date(beginningOfMinute(now))
   return date.setMinutes(date.getMinutes() + 1)
 }
 
+/** @internal */
 export function nextMinute(now: number, minute: number): number {
   const date = new Date(now)
-  if (date.getMinutes() == minute) {
+  if (date.getMinutes() === minute) {
     return now
   }
   if (date.getMinutes() < minute) {
@@ -72,6 +78,7 @@ export function nextMinute(now: number, minute: number): number {
 // Hours
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export function beginningOfHour(now: number): number {
   const date = new Date(now)
   return new Date(
@@ -85,14 +92,16 @@ export function beginningOfHour(now: number): number {
   ).getTime()
 }
 
+/** @internal */
 export function endOfHour(now: number): number {
   const date = new Date(beginningOfHour(now))
   return date.setHours(date.getHours() + 1)
 }
 
+/** @internal */
 export function nextHour(now: number, hour: number): number {
   const date = new Date(now)
-  if (date.getHours() == hour) {
+  if (date.getHours() === hour) {
     return now
   }
   if (date.getHours() < hour) {
@@ -107,6 +116,7 @@ export function nextHour(now: number, hour: number): number {
 // Days
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export function beginningOfDay(now: number): number {
   const date = new Date(now)
   return new Date(
@@ -120,11 +130,13 @@ export function beginningOfDay(now: number): number {
   ).getTime()
 }
 
+/** @internal */
 export function endOfDay(now: number): number {
   const date = new Date(beginningOfDay(now))
   return date.setDate(date.getDate() + 1)
 }
 
+/** @internal */
 export function nextDay(now: number, dayOfWeek: number): number {
   const date = new Date(now)
   if (date.getDay() === dayOfWeek) {
@@ -133,6 +145,7 @@ export function nextDay(now: number, dayOfWeek: number): number {
   return date.setDate(date.getDate() + ((7 + dayOfWeek - date.getDay()) % 7))
 }
 
+/** @internal */
 export function nextDayOfMonth(now: number, day: number): number {
   const date = new Date(now)
   if (date.getDate() === day) {
@@ -144,6 +157,7 @@ export function nextDayOfMonth(now: number, day: number): number {
   return findNextMonth(now, day, 1)
 }
 
+/** @internal */
 export function findNextMonth(now: number, day: number, months: number): number {
   const d = new Date(now)
   const tmp1 = new Date(d.setDate(day))

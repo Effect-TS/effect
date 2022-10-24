@@ -1,7 +1,12 @@
+import type { HashSet } from "@fp-ts/data/HashSet"
+
 /**
  * @tsplus type effect/core/io/Metrics/MetricClient.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricClientOps {}
+
 /**
  * A `MetricClient` provides the functionality to consume metrics produced by
  * Effect applications. `MetricClient` supports two ways of consuming metrics,
@@ -17,6 +22,9 @@ export interface MetricClientOps {}
  * `MetricClient` is a lower level interface and is intended to be used by
  * implementers of integrations with third party metrics services but not by end
  * users.
+ *
+ * @category constructors
+ * @since 1.0.0
  */
 export const MetricClient: MetricClientOps = {}
 
@@ -24,6 +32,8 @@ export const MetricClient: MetricClientOps = {}
  * Unsafely installs the specified metric listener.
  *
  * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeInstallListener
+ * @category mutations
+ * @since 1.0.0
  */
 export function unsafeInstallListener(listener: MetricListener): void {
   Metric.registry.installListener(listener)
@@ -33,6 +43,8 @@ export function unsafeInstallListener(listener: MetricListener): void {
  * Unsafely removes the specified metric listener.
  *
  * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeInstallListener
+ * @category mutations
+ * @since 1.0.0
  */
 export function unsafeRemoveListener(listener: MetricListener): void {
   Metric.registry.removeListener(listener)
@@ -42,6 +54,8 @@ export function unsafeRemoveListener(listener: MetricListener): void {
  * Unsafely captures a snapshot of all metrics recorded by the application.
  *
  * @tsplus static effect/core/io/Metrics/MetricClient.Ops unsafeSnapshot
+ * @category elements
+ * @since 1.0.0
  */
 export function unsafeSnapshot(): HashSet<MetricPair.Untyped> {
   return Metric.registry.snapshot()

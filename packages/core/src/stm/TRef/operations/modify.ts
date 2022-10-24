@@ -6,6 +6,8 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
  *
  * @tsplus static effect/core/stm/TRef.Aspects modify
  * @tsplus pipeable effect/core/stm/TRef modify
+ * @category mutations
+ * @since 1.0.0
  */
 export function modify<A, B>(f: (a: A) => readonly [B, A]) {
   return (self: TRef<A>): STM<never, never, B> =>

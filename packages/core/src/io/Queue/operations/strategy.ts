@@ -1,19 +1,25 @@
 import { unsafeCompleteTakers } from "@effect/core/io/Queue/operations/_internal/unsafeCompleteTakers"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
+import type { MutableRef } from "@fp-ts/data/mutable/MutableRef"
 
 /**
  * @tsplus type effect/core/io/Queue/Strategy
+ * @category model
+ * @since 1.0.0
  */
 export interface Strategy<A> {
   readonly handleSurplus: (
-    as: Chunk<A>,
-    queue: MutableQueue<A>,
-    takers: MutableQueue<Deferred<never, A>>,
-    isShutdown: AtomicBoolean
+    as: Chunk.Chunk<A>,
+    queue: MutableQueue.MutableQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred<never, A>>,
+    isShutdown: MutableRef<boolean>
   ) => Effect<never, never, boolean>
 
   readonly unsafeOnQueueEmptySpace: (
-    queue: MutableQueue<A>,
-    takers: MutableQueue<Deferred<never, A>>
+    queue: MutableQueue.MutableQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred<never, A>>
   ) => void
 
   readonly surplusSize: number
@@ -23,22 +29,28 @@ export interface Strategy<A> {
 
 /**
  * @tsplus type effect/core/io/Queue/Strategy.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface StrategyOps {}
 export const Strategy: StrategyOps = {}
 
+/**
+ * @category  model
+ * @since 1.0.0
+ */
 export class DroppingStrategy<A> implements Strategy<A> {
   // Do nothing, drop the surplus
   handleSurplus(
-    _as: Chunk<A>,
-    _queue: MutableQueue<A>,
-    _takers: MutableQueue<Deferred<never, A>>,
-    _isShutdown: AtomicBoolean
+    _as: Chunk.Chunk<A>,
+    _queue: MutableQueue.MutableQueue<A>,
+    _takers: MutableQueue.MutableQueue<Deferred<never, A>>,
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.succeed(false)
   }
 
-  unsafeOnQueueEmptySpace(_queue: MutableQueue<A>): void {
+  unsafeOnQueueEmptySpace(_queue: MutableQueue.MutableQueue<A>): void {
     //
   }
 
@@ -51,12 +63,16 @@ export class DroppingStrategy<A> implements Strategy<A> {
   }
 }
 
+/**
+ * @category  model
+ * @since 1.0.0
+ */
 export class SlidingStrategy<A> implements Strategy<A> {
   handleSurplus(
-    as: Chunk<A>,
-    queue: MutableQueue<A>,
-    takers: MutableQueue<Deferred<never, A>>,
-    _isShutdown: AtomicBoolean
+    as: Chunk.Chunk<A>,
+    queue: MutableQueue.MutableQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred<never, A>>,
+    _isShutdown: MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.sync(() => {
       this.unsafeSlidingOffer(queue, as)
@@ -65,7 +81,7 @@ export class SlidingStrategy<A> implements Strategy<A> {
     })
   }
 
-  unsafeOnQueueEmptySpace(_queue: MutableQueue<A>): void {
+  unsafeOnQueueEmptySpace(_queue: MutableQueue.MutableQueue<A>): void {
     //
   }
 
@@ -77,18 +93,18 @@ export class SlidingStrategy<A> implements Strategy<A> {
     return Effect.unit
   }
 
-  private unsafeSlidingOffer(queue: MutableQueue<A>, as: Chunk<A>) {
+  private unsafeSlidingOffer(queue: MutableQueue.MutableQueue<A>, as: Chunk.Chunk<A>) {
     let bs = as
-    while (bs.size > 0) {
-      if (queue.capacity === 0) {
+    while (bs.length > 0) {
+      if (MutableQueue.capacity(queue) === 0) {
         return
       }
 
       // Poll 1 and retry
-      queue.poll(EmptyMutableQueue)
+      pipe(queue, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
 
-      if (queue.offer(bs.unsafeGet(0))) {
-        bs = bs.drop(1)
+      if (pipe(queue, MutableQueue.offer(pipe(bs, Chunk.unsafeGet(0))))) {
+        bs = pipe(bs, Chunk.drop(1))
       }
     }
   }
@@ -96,6 +112,8 @@ export class SlidingStrategy<A> implements Strategy<A> {
 
 /**
  * @tsplus static effect/core/io/Queue/Strategy.Ops Sliding
+ * @category constructors
+ * @since 1.0.0
  */
 export function slidingStrategy<A>() {
   return new SlidingStrategy<A>()
@@ -103,6 +121,8 @@ export function slidingStrategy<A>() {
 
 /**
  * @tsplus static effect/core/io/Queue/Strategy.Ops Dropping
+ * @category constructors
+ * @since 1.0.0
  */
 export function dropppingStrategy<A>() {
   return new DroppingStrategy<A>()

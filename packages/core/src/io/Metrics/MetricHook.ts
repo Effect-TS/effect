@@ -1,5 +1,7 @@
 /**
  * @tsplus type effect/core/io/Metrics/MetricHook
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricHook<In, Out> {
   readonly update: (input: In) => void
@@ -8,10 +10,15 @@ export interface MetricHook<In, Out> {
 
 /**
  * @tsplus type effect/core/io/Metrics/MetricHook.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricHookOps {}
 export const MetricHook: MetricHookOps = {}
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace MetricHook {
   export type Root = MetricHook<any, MetricState.Untyped>
   export type Untyped = MetricHook<any, any>
@@ -25,6 +32,8 @@ export declare namespace MetricHook {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHook.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<In, Out>(
   update: (input: In) => void,
@@ -39,6 +48,8 @@ export function make<In, Out>(
 /**
  * @tsplus static effect/core/io/Metrics/MetricHook.Aspects onUpdate
  * @tsplus pipeable effect/core/io/Metrics/MetricHook onUpdate
+ * @category mutations
+ * @since 1.0.0
  */
 export function onUpdate<In, Out>(
   f: (input: In) => void

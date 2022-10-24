@@ -1,5 +1,7 @@
 /**
  * @tsplus static effect/core/stream/Channel.Ops identity
+ * @category constructors
+ * @since 1.0.0
  */
 export function identity<Err, Elem, Done>(): Channel<
   never,

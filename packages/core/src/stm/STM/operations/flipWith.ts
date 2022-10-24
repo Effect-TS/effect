@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects flipWith
  * @tsplus pipeable effect/core/stm/STM flipWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function flipWith<R, E, A, R2, E2, A2>(
   f: (stm: STM<R, A, E>) => STM<R2, A2, E2>

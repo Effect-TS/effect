@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects mkStringAffixes
  * @tsplus pipeable effect/core/stream/Stream mkStringAffixes
+ * @category destructors
+ * @since 1.0.0
  */
 export function mkStringAffixes(
   start: string,

@@ -7,15 +7,19 @@ import { unsafeRemove } from "@effect/core/io/Hub/operations/_internal/unsafeRem
 import type { Strategy } from "@effect/core/io/Hub/operations/strategy"
 import { _In, _Out, QueueSym } from "@effect/core/io/Queue/definition"
 import { unsafePollAll } from "@effect/core/io/Queue/operations/_internal/unsafePollAll"
-import { Chunk } from "@tsplus/stdlib/collections/Chunk"
-import type { Maybe } from "@tsplus/stdlib/data/Maybe"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableHashSet from "@fp-ts/data/mutable/MutableHashSet"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import type { Option } from "@fp-ts/data/Option"
 
-/**
- * Creates a subscription with the specified strategy.
- */
+/** @internal */
 export function makeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
+  subscribers: MutableHashSet.MutableHashSet<
+    readonly [Subscription<A>, MutableQueue.MutableQueue<Deferred<never, A>>]
+  >,
   strategy: Strategy<A>
 ): Effect<never, never, Dequeue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
@@ -25,7 +29,7 @@ export function makeSubscription<A>(
       hub.subscribe(),
       MutableQueue.unbounded<Deferred<never, A>>(),
       deferred,
-      new AtomicBoolean(false),
+      MutableRef.make(false),
       strategy
     )
   )
@@ -40,35 +44,35 @@ class SubscriptionImpl<A> implements Dequeue<A> {
   }
   constructor(
     readonly hub: AtomicHub<A>,
-    readonly subscribers: MutableHashSet<
-      readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]
+    readonly subscribers: MutableHashSet.MutableHashSet<
+      readonly [Subscription<A>, MutableQueue.MutableQueue<Deferred<never, A>>]
     >,
     readonly subscription: Subscription<A>,
-    readonly pollers: MutableQueue<Deferred<never, A>>,
+    readonly pollers: MutableQueue.MutableQueue<Deferred<never, A>>,
     readonly shutdownHook: Deferred<never, void>,
-    readonly shutdownFlag: AtomicBoolean,
+    readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: Strategy<A>
   ) {}
   get take(): Effect<never, never, A> {
     return Effect.withFiberRuntime((state) => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
-      const message = this.pollers.isEmpty
-        ? this.subscription.poll(EmptyMutableQueue)
-        : EmptyMutableQueue
-      if (message === EmptyMutableQueue) {
+      const message = MutableQueue.isEmpty(this.pollers)
+        ? this.subscription.poll(MutableQueue.EmptyMutableQueue)
+        : MutableQueue.EmptyMutableQueue
+      if (message === MutableQueue.EmptyMutableQueue) {
         const deferred = Deferred.unsafeMake<never, A>(state.id)
         return Effect.suspendSucceed(() => {
-          this.pollers.offer(deferred)
-          this.subscribers.add([this.subscription, this.pollers] as const)
+          pipe(this.pollers, MutableQueue.offer(deferred))
+          pipe(this.subscribers, MutableHashSet.add([this.subscription, this.pollers] as const))
           this.strategy.unsafeCompletePollers(
             this.hub,
             this.subscribers,
             this.subscription,
             this.pollers
           )
-          return this.shutdownFlag.get ? Effect.interrupt : deferred.await
+          return MutableRef.get(this.shutdownFlag) ? Effect.interrupt : deferred.await
         }).onInterrupt(() => Effect.sync(unsafeRemove(this.pollers, deferred)))
       } else {
         this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
@@ -76,26 +80,26 @@ class SubscriptionImpl<A> implements Dequeue<A> {
       }
     })
   }
-  get takeAll(): Effect<never, never, Chunk<A>> {
+  get takeAll(): Effect<never, never, Chunk.Chunk<A>> {
     return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
-      const as = this.pollers.isEmpty
+      const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollAllSubscription(this.subscription)
-        : Chunk.empty<A>()
+        : Chunk.empty
       this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
       return Effect.succeed(as)
     })
   }
-  takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>> {
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk.Chunk<A>> {
     return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
-      const as = this.pollers.isEmpty
+      const as = MutableQueue.isEmpty(this.pollers)
         ? unsafePollN(this.subscription, max)
-        : Chunk.empty<A>()
+        : Chunk.empty
       this.strategy.unsafeOnHubEmptySpace(this.hub, this.subscribers)
       return Effect.succeed(as)
     })
@@ -104,8 +108,8 @@ class SubscriptionImpl<A> implements Dequeue<A> {
     self: Dequeue<A>,
     min: number,
     max: number,
-    acc: Chunk<A>
-  ): Effect<never, never, Chunk<A>> {
+    acc: Chunk.Chunk<A>
+  ): Effect<never, never, Chunk.Chunk<A>> {
     if (max < min) {
       return Effect.succeed(acc)
     }
@@ -113,7 +117,7 @@ class SubscriptionImpl<A> implements Dequeue<A> {
       const remaining = min - bs.length
 
       if (remaining === 1) {
-        return self.take.map((b) => (acc + bs).append(b))
+        return self.take.map((b) => pipe(acc, Chunk.concat(bs), Chunk.append(b)))
       }
 
       if (remaining > 1) {
@@ -122,29 +126,29 @@ class SubscriptionImpl<A> implements Dequeue<A> {
             self,
             remaining - 1,
             max - bs.length - 1,
-            (acc + bs).append(b)
+            pipe(acc, Chunk.concat(bs), Chunk.append(b))
           )
         )
       }
 
-      return Effect.succeed(acc + bs)
+      return Effect.succeed(pipe(acc, Chunk.concat(bs)))
     })
   }
-  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<A>> {
-    return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty()))
+  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk.Chunk<A>> {
+    return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty))
   }
-  takeN(this: this, n: number): Effect<never, never, Chunk<A>> {
+  takeN(this: this, n: number): Effect<never, never, Chunk.Chunk<A>> {
     return this.takeBetween(n, n)
   }
-  get poll(): Effect<never, never, Maybe<A>> {
-    return this.takeUpTo(1).map((chunk) => chunk.head)
+  get poll(): Effect<never, never, Option<A>> {
+    return this.takeUpTo(1).map(Chunk.head)
   }
   get capacity(): number {
     return this.hub.capacity
   }
   get size(): Effect<never, never, number> {
     return Effect.suspendSucceed(
-      this.shutdownFlag.get
+      MutableRef.get(this.shutdownFlag)
         ? Effect.interrupt
         : Effect.succeed(this.subscription.size)
     )
@@ -153,11 +157,11 @@ class SubscriptionImpl<A> implements Dequeue<A> {
     return this.shutdownHook.await
   }
   get isShutdown(): Effect<never, never, boolean> {
-    return Effect.sync(this.shutdownFlag.get)
+    return Effect.sync(MutableRef.get(this.shutdownFlag))
   }
   get shutdown(): Effect<never, never, void> {
     return Effect.withFiberRuntime<never, never, void>((state) => {
-      this.shutdownFlag.set(true)
+      pipe(this.shutdownFlag, MutableRef.set(true))
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
         Effect.forEachPar(
@@ -177,16 +181,19 @@ class SubscriptionImpl<A> implements Dequeue<A> {
   }
 }
 
-/**
- * Unsafely creates a subscription with the specified strategy.
- */
+/** @internal */
 export function unsafeMakeSubscription<A>(
   hub: AtomicHub<A>,
-  subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
+  subscribers: MutableHashSet.MutableHashSet<
+    readonly [
+      Subscription<A>,
+      MutableQueue.MutableQueue<Deferred<never, A>>
+    ]
+  >,
   subscription: Subscription<A>,
-  pollers: MutableQueue<Deferred<never, A>>,
+  pollers: MutableQueue.MutableQueue<Deferred<never, A>>,
   shutdownHook: Deferred<never, void>,
-  shutdownFlag: AtomicBoolean,
+  shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: Strategy<A>
 ): Dequeue<A> {
   return new SubscriptionImpl(

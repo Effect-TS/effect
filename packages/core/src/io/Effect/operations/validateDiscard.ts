@@ -1,16 +1,21 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as List from "@fp-ts/data/List"
+
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors, discarding
  * the successes.
  *
  * @tsplus static effect/core/io/Effect.Ops validateDiscard
+ * @category validation
+ * @since 1.0.0
  */
 export function validateDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>
-): Effect<R, Chunk<E>, void> {
+): Effect<R, Chunk.Chunk<E>, void> {
   return Effect.partition(as, f).flatMap(([es, _]) =>
-    es.isEmpty
+    List.isNil(es)
       ? Effect.unit
-      : Effect.fail(es)
+      : Effect.fail(Chunk.fromIterable(es))
   )
 }

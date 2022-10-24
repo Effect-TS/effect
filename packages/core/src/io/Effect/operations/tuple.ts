@@ -1,8 +1,7 @@
 import type { EffectURI } from "@effect/core/io/Effect/definition/base"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/NonEmptyReadonlyArray"
 
-type NonEmptyArrayEffect = Array<Effect<any, any, any>> & { readonly 0: Effect<any, any, any> }
-
-export type TupleA<T extends NonEmptyArrayEffect> = {
+export type TupleA<T extends NonEmptyReadonlyArray<Effect<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [Effect<any, any, infer A>] ? A : never
 }
 
@@ -10,8 +9,10 @@ export type TupleA<T extends NonEmptyArrayEffect> = {
  * Like `forEach` + `identity` with a tuple type.
  *
  * @tsplus static effect/core/io/Effect.Ops tuple
+ * @category constructors
+ * @since 1.0.0
  */
-export function tuple<T extends NonEmptyArrayEffect>(
+export function tuple<T extends NonEmptyReadonlyArray<Effect<any, any, any>>>(
   ...t: T & {
     0: Effect<any, any, any>
   }
@@ -20,15 +21,17 @@ export function tuple<T extends NonEmptyArrayEffect>(
   [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   TupleA<T>
 > {
-  return Effect.collectAll(t).map((c) => c.toArray) as any
+  return Effect.collectAll(t).map((chunk) => Array.from(chunk)) as any
 }
 
 /**
  * Like tuple but parallel, same as `forEachPar` + `identity` with a tuple type.
  *
  * @tsplus static effect/core/io/Effect.Ops tuplePar
+ * @category constructors
+ * @since 1.0.0
  */
-export function tuplePar<T extends NonEmptyArrayEffect>(
+export function tuplePar<T extends NonEmptyReadonlyArray<Effect<any, any, any>>>(
   ...t: T & {
     0: Effect<any, any, any>
   }
@@ -37,5 +40,5 @@ export function tuplePar<T extends NonEmptyArrayEffect>(
   [T[number]] extends [{ [EffectURI]: { _E: (_: never) => infer E } }] ? E : never,
   TupleA<T>
 > {
-  return Effect.collectAllPar(t).map((c) => c.toArray) as any
+  return Effect.collectAllPar(t).map((chunk) => Array.from(chunk)) as any
 }

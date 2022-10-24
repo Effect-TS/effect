@@ -7,6 +7,8 @@
  *
  * @tsplus getter effect/core/io/Fiber join
  * @tsplus getter effect/core/io/RuntimeFiber join
+ * @category destructors
+ * @since 1.0.0
  */
 export function join<E, A>(self: Fiber<E, A>): Effect<never, E, A> {
   return self.await.flatten.zipLeft(self.inheritAll)

@@ -4,6 +4,8 @@
  * elements are equal.
  *
  * @tsplus getter effect/core/stream/Stream changes
+ * @category mutations
+ * @since 1.0.0
  */
 export function changes<R, E, A>(
   self: Stream<R, E, A>

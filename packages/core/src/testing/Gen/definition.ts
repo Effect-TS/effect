@@ -1,10 +1,39 @@
+import type { Option } from "@fp-ts/data/Option"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const GenSym = Symbol.for("@effect/core/testing/Gen")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type GenSym = typeof GenSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const GenEnvSym = Symbol.for("@effect/core/testing/Gen.R")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type GenEnvSym = typeof GenEnvSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const GenValueSym = Symbol.for("@effect/core/testing/Gen.A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type GenValueSym = typeof GenValueSym
 
 /**
@@ -12,23 +41,32 @@ export type GenValueSym = typeof GenValueSym
  * environment `R`. Generators may be random or deterministic.
  *
  * @tsplus type effect/core/testing/Gen
+ * @category model
+ * @since 1.0.0
  */
 export interface Gen<R, A> {
   readonly [GenSym]: GenSym
   readonly [GenEnvSym]: () => R
   readonly [GenValueSym]: () => A
-  readonly sample: Stream<R, never, Maybe<Sample<R, A>>>
+  readonly sample: Stream<R, never, Option<Sample<R, A>>>
 }
 
 /**
  * @tsplus type effect/core/testing/Gen.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface GenOps {
-  <R, A>(sample: Stream<R, never, Maybe<Sample<R, A>>>): Gen<R, A>
+  <R, A>(sample: Stream<R, never, Option<Sample<R, A>>>): Gen<R, A>
   readonly $: GenAspects
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const Gen: GenOps = Object.assign(
-  <R, A>(sample: Stream<R, never, Maybe<Sample<R, A>>>): Gen<R, A> => ({
+  <R, A>(sample: Stream<R, never, Option<Sample<R, A>>>): Gen<R, A> => ({
     [GenSym]: GenSym,
     [GenEnvSym]: undefined as any,
     [GenValueSym]: undefined as any,
@@ -38,6 +76,8 @@ export const Gen: GenOps = Object.assign(
 
 /**
  * @tsplus type effect/core/testing/Gen.Aspects
+ * @category models
+ * @since 1.0.0
  */
 export interface GenAspects {}
 
@@ -53,20 +93,36 @@ export function unifyGen<X extends Gen<any, any>>(
   return self
 }
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export interface LengthConstraints {
   readonly minLength?: number
   readonly maxLength?: number
 }
 
-export interface EquivalenceConstraint<A> {
-  readonly equivalence?: Equivalence<A>
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface EqualsConstraint<A> {
+  readonly equals: (a: A, b: A) => boolean
 }
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export interface DateConstraints {
   readonly min?: Date
   readonly max?: Date
 }
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export interface ObjectConstraints {
   readonly maxDepth?: number
   readonly maxKeys?: number
@@ -79,11 +135,19 @@ export interface ObjectConstraints {
   readonly withTypedArray?: boolean
 }
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export interface NumberConstraints {
   readonly min?: number
   readonly max?: number
 }
 
+/**
+ * @category models
+ * @since 1.0.0
+ */
 export interface FloatConstraints {
   readonly noDefaultInfinity?: boolean
   readonly noNaN?: boolean

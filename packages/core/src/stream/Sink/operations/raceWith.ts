@@ -3,6 +3,8 @@ import {
   concreteSink,
   SinkInternal
 } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Either } from "@fp-ts/data/Either"
 
 /**
  * Runs both sinks in parallel on the input, using the specified merge
@@ -10,6 +12,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects raceWith
  * @tsplus pipeable effect/core/stream/Sink raceWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function raceWith<R1, E1, In1, L1, Z1, E, Z, Z2>(
   that: Sink<R1, E1, In1, L1, Z1>,
@@ -26,7 +30,11 @@ export function raceWith<R1, E1, In1, L1, Z1, E, Z, Z2>(
         const reader = Channel.toHub(hub)
         concreteSink(self)
         concreteSink(that)
-        const writer = (c1 >> self.channel).mergeWith(c2 >> that.channel, leftDone, rightDone)
+        const writer = c1.pipeTo(self.channel).mergeWith(
+          c2.pipeTo(that.channel),
+          leftDone,
+          rightDone
+        )
         const channel = reader.mergeWith(
           writer,
           () => MergeDecision.await((exit) => Effect.done(exit)),

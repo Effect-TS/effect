@@ -4,6 +4,8 @@ import type { EffectURI } from "@effect/core/io/Effect/definition/base"
  * Applicative structure.
  *
  * @tsplus static effect/core/io/Effect.Ops struct
+ * @category constructors
+ * @since 1.0.0
  */
 export function struct<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>
@@ -30,6 +32,8 @@ export function struct<NER extends Record<string, Effect<any, any, any>>>(
  * Applicative structure processed in parallel.
  *
  * @tsplus static effect/core/io/Effect.Ops structPar
+ * @category constructors
+ * @since 1.0.0
  */
 export function structPar<NER extends Record<string, Effect<any, any, any>>>(
   r: EnforceNonEmptyRecord<NER> | Record<string, Effect<any, any, any>>

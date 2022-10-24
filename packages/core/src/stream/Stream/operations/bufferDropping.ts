@@ -15,6 +15,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects bufferDropping
  * @tsplus pipeable effect/core/stream/Stream bufferDropping
+ * @category buffering
+ * @since 1.0.0
  */
 export function bufferDropping(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {

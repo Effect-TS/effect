@@ -13,6 +13,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects groupByKey
  * @tsplus pipeable effect/core/stream/Stream groupByKey
+ * @category grouping
+ * @since 1.0.0
  */
 export function groupByKey<A, K>(
   f: (a: A) => K,

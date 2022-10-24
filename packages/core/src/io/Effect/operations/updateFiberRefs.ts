@@ -3,6 +3,8 @@
  * specified function.
  *
  * @tsplus static effect/core/io/Effect.Ops updateFiberRefs
+ * @category constructors
+ * @since 1.0.0
  */
 export function updateFiberRefs(
   f: (fiberId: FiberId.Runtime, fiberRefs: FiberRefs) => FiberRefs

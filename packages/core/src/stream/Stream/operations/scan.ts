@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects scan
  * @tsplus pipeable effect/core/stream/Stream scan
+ * @category mutations
+ * @since 1.0.0
  */
 export function scan<S, A>(s: S, f: (s: S, a: A) => S) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, S> =>

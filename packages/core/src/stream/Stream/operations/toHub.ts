@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects toHub
  * @tsplus pipeable effect/core/stream/Stream toHub
+ * @category destructors
+ * @since 1.0.0
  */
 export function toHub(capacity: number) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Hub<Take<E, A>>> =>

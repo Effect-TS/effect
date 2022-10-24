@@ -2,6 +2,7 @@ import { STMRetryException } from "@effect/core/stm/STM"
 import { InternalReadLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalReadLock"
 import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalTReentrantLock"
 import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalWriteLock"
+import * as Equal from "@fp-ts/data/Equal"
 
 /**
  * Acquires a write lock. The transaction will suspend until no other fibers
@@ -9,6 +10,8 @@ import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_i
  * held by this fiber.
  *
  * @tsplus getter effect/core/stm/TReentrantLock acquireWrite
+ * @category getters
+ * @since 1.0.0
  */
 export function acquireWrite(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)
@@ -24,7 +27,7 @@ export function acquireWrite(self: TReentrantLock): USTM<number> {
       return 1
     }
 
-    if (lock instanceof InternalWriteLock && fiberId == lock.fiberId) {
+    if (lock instanceof InternalWriteLock && Equal.equals(fiberId, lock.fiberId)) {
       self.data.unsafeSet(
         TReentrantLock.WriteLock(lock.writeLocks + 1, lock.readLocks, fiberId),
         journal

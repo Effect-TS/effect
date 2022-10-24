@@ -4,6 +4,8 @@ import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operatio
  * Retrieves the number of acquired read locks for this fiber.
  *
  * @tsplus getter effect/core/stm/TReentrantLock fiberReadLocks
+ * @category getters
+ * @since 1.0.0
  */
 export function fiberReadLocks(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)

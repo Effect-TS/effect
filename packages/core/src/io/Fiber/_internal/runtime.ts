@@ -20,11 +20,30 @@ import { Done, Running, Suspended } from "@effect/core/io/Fiber/status"
 import { _Patch, _Value, FiberRef, FiberRefSym } from "@effect/core/io/FiberRef/definition"
 import type { Scheduler } from "@effect/core/support/Scheduler"
 import { defaultScheduler } from "@effect/core/support/Scheduler"
+import { Stack } from "@effect/core/support/Stack"
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Context from "@fp-ts/data/Context"
+import * as Differ from "@fp-ts/data/Differ"
+import * as ContextPatch from "@fp-ts/data/Differ/ContextPatch"
+import * as HashSetPatch from "@fp-ts/data/Differ/HashSetPatch"
+import * as Either from "@fp-ts/data/Either"
+import { identity, pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+import * as List from "@fp-ts/data/List"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import * as Option from "@fp-ts/data/Option"
 
+/** @internal */
 export type EvaluationSignal = "Continue" | "Done" | "YieldNow"
 
-export const currentFiber = new AtomicReference<FiberRuntime<any, any> | null>(null)
+/**
+ * @category references
+ * @since 1.0.0
+ */
+export const currentFiber = MutableRef.make<FiberRuntime<any, any> | null>(null)
 
+/** @internal */
 export type Continuation =
   | IOnSuccess<any, any, any, any, any, any>
   | IOnSuccessAndFailure<any, any, any, any, any, any, any, any, any>
@@ -32,6 +51,7 @@ export type Continuation =
   | IWhileLoop<any, any, any>
   | RevertFlags
 
+/** @internal */
 export class RevertFlags {
   readonly _tag = "RevertFlags"
   constructor(readonly patch: RuntimeFlags.Patch) {}
@@ -50,6 +70,7 @@ const fiberLifetimes = Metric.histogram(
   Metric.Histogram.Boundaries.exponential(1, 2, 100)
 )
 
+/** @internal */
 export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
   readonly [FiberSym]!: FiberSym
   readonly [_E]!: () => E
@@ -125,7 +146,10 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
   }
 
   tell(message: FiberMessage) {
-    this._queue.offer(message)
+    pipe(
+      this._queue,
+      MutableQueue.offer(message)
+    )
     if (!this._running) {
       this._running = true
       this.drainQueueLaterOnExecutor()
@@ -136,7 +160,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
    * Retrieves the immediate children of the fiber.
    */
   get children() {
-    return this.ask((fiber) => Chunk.from(fiber.getChildren))
+    return this.ask((fiber) => Chunk.fromIterable(fiber.getChildren))
   }
 
   /**
@@ -196,7 +220,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
    */
   get poll() {
     return Effect.sync(
-      this._exitValue !== null ? Maybe.some(this._exitValue!) : Maybe.none
+      this._exitValue !== null ? Option.some(this._exitValue!) : Option.none
     )
   }
 
@@ -301,24 +325,24 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
     while (recurse) {
       let evaluationSignal: EvaluationSignal = "Continue"
       if (this._runtimeFlags.isEnabled(RuntimeFlags.CurrentFiber)) {
-        currentFiber.set(this)
+        pipe(currentFiber, MutableRef.set(this as FiberRuntime<any, any> | null))
       }
       try {
         while (evaluationSignal === "Continue") {
-          evaluationSignal = this._queue.isEmpty ?
+          evaluationSignal = MutableQueue.isEmpty(this._queue) ?
             "Done" :
-            this.evaluateMessageWhileSuspended(this._queue.poll(null)!)
+            this.evaluateMessageWhileSuspended(pipe(this._queue, MutableQueue.poll(null))!)
         }
       } finally {
         this._running = false
         if (this._runtimeFlags.isEnabled(RuntimeFlags.CurrentFiber)) {
-          currentFiber.set(null)
+          pipe(currentFiber, MutableRef.set(null as FiberRuntime<any, any> | null))
         }
       }
       // Maybe someone added something to the queue between us checking, and us
       // giving up the drain. If so, we need to restart the draining, but only
       // if we beat everyone else to the restart:
-      if (!this._queue.isEmpty && !this._running) {
+      if (!MutableQueue.isEmpty(this._queue) && !this._running) {
         this._running = true
         if (evaluationSignal === "YieldNow") {
           this.drainQueueLaterOnExecutor()
@@ -357,8 +381,8 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
     cur0: Effect<any, any, any>
   ) {
     let cur = cur0
-    while (!this._queue.isEmpty) {
-      const message = this._queue.poll(void 0)!
+    while (!MutableQueue.isEmpty(this._queue)) {
+      const message = pipe(this._queue, MutableQueue.poll(void 0))!
       switch (message._tag) {
         case "InterruptSignal": {
           this.processNewInterruptSignal(message.cause)
@@ -514,7 +538,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
           if (interruption !== null) {
             effect = interruption.flatMap(() => exit)
           } else {
-            if (this._queue.isEmpty) {
+            if (MutableQueue.isEmpty(this._queue)) {
               // No more messages to process, so we will allow the fiber to end life:
               this.setExitValue(exit)
             } else {
@@ -575,9 +599,12 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
 
     this.reportExitValue(exit)
 
-    this._observers.forEach((observer) => {
-      observer(exit)
-    })
+    pipe(
+      this._observers,
+      List.forEach((observer) => {
+        observer(exit)
+      })
+    )
   }
 
   /**
@@ -605,7 +632,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
    * '''NOTE''': This method must be invoked by the fiber itself.
    */
   removeObserver(observer: (exit: Exit<E, A>) => void) {
-    this._observers = this._observers.filter((o) => o !== observer)
+    this._observers = pipe(this._observers, List.filter((o) => o !== observer))
   }
 
   /**
@@ -851,9 +878,9 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
   patchRuntimeFlags(oldRuntimeFlags: RuntimeFlags, patch: RuntimeFlags.Patch) {
     const newRuntimeFlags = oldRuntimeFlags.patch(patch)
     if (patch.isEnabled(RuntimeFlags.CurrentFiber)) {
-      currentFiber.set(this)
+      pipe(currentFiber, MutableRef.set(this as FiberRuntime<any, any> | null))
     } else if (patch.isDisabled(RuntimeFlags.CurrentFiber)) {
-      currentFiber.set(null)
+      pipe(currentFiber, MutableRef.set(null as FiberRuntime<any, any> | null))
     }
     this._runtimeFlags = newRuntimeFlags
     return newRuntimeFlags
@@ -951,7 +978,7 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
         // for spinning up the fiber if there were new messages added to
         // the queue between the completion of the effect and the transition
         // to the not running state.
-        if (!this._queue.isEmpty) {
+        if (!MutableQueue.isEmpty(this._queue)) {
           this.drainQueueLaterOnExecutor()
         }
       }
@@ -994,18 +1021,21 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
   log(
     message: string,
     cause: Cause<any>,
-    overrideLogLevel: Maybe<LogLevel>
+    overrideLogLevel: Option.Option<LogLevel>
   ) {
-    const logLevel = overrideLogLevel.isSome() ?
+    const logLevel = Option.isSome(overrideLogLevel) ?
       overrideLogLevel.value :
       this.getFiberRef(FiberRef.currentLogLevel)
     const spans = this.getFiberRef(FiberRef.currentLogSpan)
     const annotations = this.getFiberRef(FiberRef.currentLogAnnotations)
     const loggers = this.getLoggers
     const contextMap = this.getFiberRefs
-    loggers.forEach((logger) => {
-      logger.apply(this.id, logLevel, message, cause, contextMap, spans, annotations)
-    })
+    pipe(
+      loggers,
+      HashSet.forEach((logger) => {
+        logger.apply(this.id, logLevel, message, cause, contextMap, spans, annotations)
+      })
+    )
   }
 }
 
@@ -1015,9 +1045,11 @@ export class FiberRuntime<E, A> implements Fiber.Runtime<E, A> {
  * Unsafely makes a new `Deferred`.
  *
  * @tsplus static effect/core/io/Deferred.Ops unsafeMake
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMakeDeferred<E, A>(fiberId: FiberId): Deferred<E, A> {
-  return new DeferredInternal(new AtomicReference(DeferredState.pending([])), fiberId)
+  return new DeferredInternal(MutableRef.make(DeferredState.pending([])), fiberId)
 }
 
 function interruptJoiner<E, A>(
@@ -1025,20 +1057,24 @@ function interruptJoiner<E, A>(
   joiner: (a: Effect<never, E, A>) => void
 ): Effect<never, never, void> {
   return Effect.sync(() => {
-    const state = self.state.get
+    const state = MutableRef.get(self.state)
     if (state._tag === "Pending") {
-      self.state.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)))
+      pipe(
+        self.state,
+        MutableRef.set(DeferredState.pending(state.joiners.filter((j) => j !== joiner)))
+      )
     }
   })
 }
 
+/** @internal */
 export class DeferredInternal<E, A> {
   readonly [DeferredSym]: DeferredSym = DeferredSym
   readonly [_E]!: () => E
   readonly [_A]!: () => A
 
   constructor(
-    readonly state: AtomicReference<DeferredState<E, A>>,
+    readonly state: MutableRef.MutableRef<DeferredState<E, A>>,
     readonly blockingOn: FiberId
   ) {}
 
@@ -1048,14 +1084,17 @@ export class DeferredInternal<E, A> {
    */
   get await(): Effect<never, E, A> {
     return Effect.asyncInterruptBlockingOn((k) => {
-      const state = this.state.get
+      const state = MutableRef.get(this.state)
 
       switch (state._tag) {
         case "Done": {
           return Either.right(state.value)
         }
         case "Pending": {
-          this.state.set(DeferredState.pending([k, ...state.joiners]))
+          pipe(
+            this.state,
+            MutableRef.set(DeferredState.pending([k, ...state.joiners]))
+          )
           return Either.left(interruptJoiner(this, k))
         }
       }
@@ -1085,13 +1124,13 @@ export class DeferredInternal<E, A> {
     effect: Effect<never, E, A>
   ): Effect<never, never, boolean> {
     return Effect.sync(() => {
-      const state = this.state.get
+      const state = MutableRef.get(this.state)
       switch (state._tag) {
         case "Done": {
           return false
         }
         case "Pending": {
-          this.state.set(DeferredState.done(effect))
+          pipe(this.state, MutableRef.set(DeferredState.done(effect)))
           state.joiners.forEach((f) => {
             f(effect)
           })
@@ -1178,22 +1217,22 @@ export class DeferredInternal<E, A> {
    * already been completed with a value or an error and false otherwise.
    */
   get isDone(): Effect<never, never, boolean> {
-    return Effect.sync(this.state.get._tag === "Done")
+    return Effect.sync(MutableRef.get(this.state)._tag === "Done")
   }
 
   /**
    * Checks for completion of this `Deferred`. Returns the result effect if this
    * deferred has already been completed or a `None` otherwise.
    */
-  get poll(): Effect<never, never, Maybe<Effect<never, E, A>>> {
+  get poll(): Effect<never, never, Option.Option<Effect<never, E, A>>> {
     return Effect.sync(() => {
-      const state = this.state.get
+      const state = MutableRef.get(this.state)
       switch (state._tag) {
         case "Pending": {
-          return Maybe.none
+          return Option.none
         }
         case "Done": {
-          return Maybe.some(state.value)
+          return Option.some(state.value)
         }
       }
     })
@@ -1217,14 +1256,12 @@ export class DeferredInternal<E, A> {
    * Unsafe version of `done`.
    */
   unsafeDone<E, A>(this: Deferred<E, A>, effect: Effect<never, E, A>): void {
-    const state = this.state.get
+    const state = MutableRef.get(this.state)
     if (state._tag === "Pending") {
-      this.state.set(DeferredState.done(effect))
-      Array.from(state.joiners)
-        .reverse()
-        .forEach((f) => {
-          f(effect)
-        })
+      pipe(this.state, MutableRef.set(DeferredState.done(effect)))
+      Array.from(state.joiners).reverse().forEach((f) => {
+        f(effect)
+      })
     }
   }
 }
@@ -1235,6 +1272,8 @@ export class DeferredInternal<E, A> {
  * returned effect terminates, the forked fiber will continue running.
  *
  * @tsplus getter effect/core/io/Effect forkDaemon
+ * @category forking
+ * @since 1.0.0
  */
 export function forkDaemon<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> {
   return self.fork.daemonChildren
@@ -1245,9 +1284,11 @@ export function forkDaemon<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fib
  * workflow.
  *
  * @tsplus getter effect/core/io/Effect daemonChildren
+ * @category supervision
+ * @since 1.0.0
  */
 export function daemonChildren<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
-  return self.apply(FiberRef.forkScopeOverride.locally(Maybe.some(FiberScope.global)))
+  return self.apply(FiberRef.forkScopeOverride.locally(Option.some(FiberScope.global)))
 }
 
 /**
@@ -1272,6 +1313,8 @@ export function daemonChildren<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> 
  * behavior is not desired, you may use the `forkDaemon` or `forkIn` methods.
  *
  * @tsplus getter effect/core/io/Effect fork
+ * @category forking
+ * @since 1.0.0
  */
 export function fork<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Runtime<E, A>> {
   return Effect.withFiberRuntime<R, never, Fiber.Runtime<E, A>>((state, status) =>
@@ -1279,6 +1322,10 @@ export function fork<R, E, A>(self: Effect<R, E, A>): Effect<R, never, Fiber.Run
   )
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export function unsafeFork<R, E, A, E2, B>(
   effect: Effect<R, E, A>,
   parentFiber: FiberRuntime<E2, B>,
@@ -1289,6 +1336,10 @@ export function unsafeFork<R, E, A, E2, B>(
   return childFiber
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export function unsafeForkUnstarted<R, E, A, E2, B>(
   effect: Effect<R, E, A>,
   parentFiber: FiberRuntime<E2, B>,
@@ -1298,20 +1349,23 @@ export function unsafeForkUnstarted<R, E, A, E2, B>(
   const parentFiberRefs = parentFiber.getFiberRefs
   const childFiberRefs = parentFiberRefs.forkAs(childId)
   const childFiber = new FiberRuntime<E, A>(childId, childFiberRefs, parentRuntimeFlags)
-  const childEnvironment = childFiberRefs.getOrDefault(FiberRef.currentEnvironment)
+  const childEnvironment = childFiberRefs.getOrDefault(
+    FiberRef.currentEnvironment as unknown as FiberRef<Context.Context<R>>
+  )
   const supervisor = childFiber.getSupervisor
 
   supervisor.onStart(
     childEnvironment,
     effect,
-    Maybe.some(parentFiber),
+    Option.some(parentFiber),
     childFiber
   )
 
   childFiber.addObserver(exit => supervisor.onEnd(exit, childFiber))
 
-  const parentScope = parentFiber.getFiberRef(FiberRef.forkScopeOverride).getOrElse(
-    parentFiber.scope
+  const parentScope = pipe(
+    parentFiber.getFiberRef(FiberRef.forkScopeOverride),
+    Option.getOrElse(parentFiber.scope)
   )
 
   parentScope.add(parentRuntimeFlags, childFiber)
@@ -1321,19 +1375,19 @@ export function unsafeForkUnstarted<R, E, A, E2, B>(
 
 /**
  * Used to restore the inherited interruptibility
+ *
+ * @category model
+ * @since 1.0.0
  */
 export interface InterruptStatusRestore {
-  readonly restore: <R, E, A>(
-    effect: Effect<R, E, A>
-  ) => Effect<R, E, A>
+  readonly restore: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
 }
 
+/** @internal */
 export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
   constructor(readonly flag: InterruptStatus) {}
 
-  restore = <R, E, A>(
-    effect: Effect<R, E, A>
-  ): Effect<R, E, A> => {
+  restore = <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A> => {
     return effect.interruptStatus(this.flag)
   }
 }
@@ -1346,6 +1400,8 @@ export class InterruptStatusRestoreImpl implements InterruptStatusRestore {
  * Returns an effect that is interrupted by the current fiber
  *
  * @tsplus static effect/core/io/Effect.Ops interrupt
+ * @category interruption
+ * @since 1.0.0
  */
 export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(fiberId))
 
@@ -1357,6 +1413,8 @@ export const interrupt = Effect.fiberId.flatMap((fiberId) => Effect.interruptAs(
  *
  * @tsplus static effect/core/io/Effect.Aspects interruptStatus
  * @tsplus pipeable effect/core/io/Effect interruptStatus
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptStatus(flag: LazyArg<InterruptStatus>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> =>
@@ -1380,6 +1438,8 @@ export function interruptStatus(flag: LazyArg<InterruptStatus>) {
  * exactly what you are doing. Instead, you should use `uninterruptibleMask`.
  *
  * @tsplus getter effect/core/io/Effect interruptible
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptible<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
   return new IUpdateRuntimeFlagsInterruptible(self)
@@ -1394,6 +1454,8 @@ export function interruptible<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
  * interruption of an inner effect that has been made interruptible).
  *
  * @tsplus getter effect/core/io/Effect uninterruptible
+ * @category interruption
+ * @since 1.0.0
  */
 export function uninterruptible<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> {
   return new IUpdateRuntimeFlagsUninterruptible(self)
@@ -1404,6 +1466,8 @@ export function uninterruptible<R, E, A>(self: Effect<R, E, A>): Effect<R, E, A>
  * specified callback.
  *
  * @tsplus static effect/core/io/Effect.Ops checkInterruptible
+ * @category interruption
+ * @since 1.0.0
  */
 export function checkInterruptible<R, E, A>(
   f: (interruptStatus: InterruptStatus) => Effect<R, E, A>
@@ -1419,6 +1483,8 @@ export function checkInterruptible<R, E, A>(
  * effect is composed into.
  *
  * @tsplus static effect/core/io/Effect.Ops interruptibleMask
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>
@@ -1432,6 +1498,8 @@ export function interruptibleMask<R, E, A>(
  * effect is composed into.
  *
  * @tsplus static effect/core/io/Effect.Ops uninterruptibleMask
+ * @category interruption
+ * @since 1.0.0
  */
 export function uninterruptibleMask<R, E, A>(
   f: (statusRestore: InterruptStatusRestore) => Effect<R, E, A>
@@ -1453,6 +1521,8 @@ export function uninterruptibleMask<R, E, A>(
  * See timeout and race for other applications.
  *
  * @tsplus getter effect/core/io/Effect disconnect
+ * @category interruption
+ * @since 1.0.0
  */
 export function disconnect<R, E, A>(
   self: Effect<R, E, A>
@@ -1472,9 +1542,11 @@ export function disconnect<R, E, A>(
  *
  * @tsplus static effect/core/io/Effect.Aspects onInterrupt
  * @tsplus pipeable effect/core/io/Effect onInterrupt
+ * @category interruption
+ * @since 1.0.0
  */
 export function onInterrupt<R2, X>(
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, never, X>
+  cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, never, X>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E, A> =>
     Effect.uninterruptibleMask(({ restore }) =>
@@ -1488,24 +1560,17 @@ export function onInterrupt<R2, X>(
     )
 }
 
-// final def onInterrupt[R1 <: R](cleanup: Set[FiberId] => URIO[R1, Any])(implicit trace: Trace): ZIO[R1, E, A] =
-// ZIO.uninterruptibleMask { restore =>
-//   restore(self).foldCauseZIO(
-//     cause =>
-//       if (cause.isInterrupted) cleanup(cause.interruptors) *> ZIO.refailCause(cause) else ZIO.refailCause(cause),
-//     a => ZIO.succeedNow(a)
-//   )
-// }
-
 /**
  * Calls the specified function, and runs the effect it returns, if this
  * effect is interrupted (allows for expanding error).
  *
  * @tsplus static effect/core/io/Effect.Aspects onInterruptPolymorphic
  * @tsplus pipeable effect/core/io/Effect onInterruptPolymorphic
+ * @category interruption
+ * @since 1.0.0
  */
 export function onInterruptPolymorphic<R2, E2, X>(
-  cleanup: (interruptors: HashSet<FiberId>) => Effect<R2, E2, X>
+  cleanup: (interruptors: HashSet.HashSet<FiberId>) => Effect<R2, E2, X>
 ) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>
     Effect.uninterruptibleMask(({ restore }) =>
@@ -1526,6 +1591,8 @@ export function onInterruptPolymorphic<R2, E2, X>(
  * Returns an effect that is interrupted as if by the specified fiber.
  *
  * @tsplus static effect/core/io/Effect.Ops interruptAs
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptAs(fiberId: FiberId) {
   return Effect.failCause(Cause.interrupt(fiberId))
@@ -1538,6 +1605,8 @@ export function interruptAs(fiberId: FiberId) {
  *
  * @tsplus static effect/core/io/Effect.Aspects intoDeferred
  * @tsplus pipeable effect/core/io/Effect intoDeferred
+ * @category interruption
+ * @since 1.0.0
  */
 export function intoDeferred<E, A>(deferred: Deferred<E, A>) {
   return <R>(self: Effect<R, E, A>): Effect<R, never, boolean> =>
@@ -1548,6 +1617,7 @@ export function intoDeferred<E, A>(deferred: Deferred<E, A>) {
     )
 }
 
+/** @internal */
 export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value, Patch> {
   readonly [FiberRefSym]: FiberRefSym = FiberRefSym
   readonly [_Value]!: Value
@@ -1608,9 +1678,9 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   getAndUpdateSome(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>
+    pf: (a: Value) => Option.Option<Value>
   ): Effect<never, never, Value> {
-    return this.modify((v) => [v, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [v, pipe(pf(v), Option.getOrElse(v))] as const)
   }
 
   getWith<R, E, B>(
@@ -1673,9 +1743,9 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
   modifySome<B>(
     this: FiberRef.WithPatch<Value, Patch>,
     def: B,
-    f: (a: Value) => Maybe<readonly [B, Value]>
+    f: (a: Value) => Option.Option<readonly [B, Value]>
   ): Effect<never, never, B> {
-    return this.modify((v) => f(v).getOrElse([def, v] as const))
+    return this.modify((v) => pipe(f(v), Option.getOrElse([def, v] as const)))
   }
 
   updateAndGet(
@@ -1690,9 +1760,9 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
   updateSome(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>
+    pf: (a: Value) => Option.Option<Value>
   ): Effect<never, never, void> {
-    return this.modify((v) => [undefined, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [undefined, pipe(pf(v), Option.getOrElse(v))] as const)
   }
 
   /**
@@ -1702,10 +1772,10 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
    */
   updateSomeAndGet(
     this: FiberRef.WithPatch<Value, Patch>,
-    pf: (a: Value) => Maybe<Value>
+    pf: (a: Value) => Option.Option<Value>
   ): Effect<never, never, Value> {
     return this.modify((v) => {
-      const result = pf(v).getOrElse(v)
+      const result = pipe(pf(v), Option.getOrElse(v))
       return [result, result] as const
     })
   }
@@ -1713,18 +1783,20 @@ export class FiberRefInternal<Value, Patch> implements FiberRef.WithPatch<Value,
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops unsafeMakePatch
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMakePatch<Value0, Patch0>(
   initial: Value0,
-  differ: Differ<Value0, Patch0>,
+  differ: Differ.Differ<Value0, Patch0>,
   fork0: Patch0,
   join0: (oldV: Value0, newV: Value0) => Value0 = (_, n) => n
 ): FiberRef.WithPatch<Value0, Patch0> {
   return new FiberRefInternal<Value0, Patch0>(
     initial,
-    differ.diff,
-    differ.combine,
-    (patch) => (old) => differ.patch(patch, old),
+    (oldValue, newValue) => pipe(differ, Differ.diff(oldValue, newValue)),
+    (first, second) => pipe(differ, Differ.combine(first, second)),
+    (patch) => (old) => pipe(differ, Differ.patch(patch, old)),
     fork0,
     join0
   )
@@ -1743,6 +1815,8 @@ export function concreteFiberRef<Value, Patch>(
  * Creates a new `FiberRef` with given initial value.
  *
  * @tsplus static effect/core/io/FiberRef.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<A>(
   initial: A,
@@ -1756,14 +1830,16 @@ export function make<A>(
 
 /**
  * Creates a new `FiberRef` with specified initial value of the environment,
- * using `Service.Env.Patch` to combine updates to the environment in a
+ * using  a `Differ.Context.Patch` to combine updates to the environment in a
  * compositional manner.
  *
  * @tsplus static effect/core/io/FiberRef.Ops makeEnvironment
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeEnvironment<A>(
-  initial: Service.Env<A>
-): Effect<Scope, never, FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>>> {
+  initial: Context.Context<A>
+): Effect<Scope, never, FiberRef.WithPatch<Context.Context<A>, ContextPatch.ContextPatch<A, A>>> {
   return FiberRef.makeWith(FiberRef.unsafeMakeEnvironment(initial))
 }
 
@@ -1771,14 +1847,16 @@ export function makeEnvironment<A>(
  * Creates a new `FiberRef` to hold Set values
  *
  * @tsplus static effect/core/io/FiberRef.Ops unsafeMakeHashSet
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMakeHashSet<A>(
-  initial: HashSet<A>
+  initial: HashSet.HashSet<A>
 ) {
   return FiberRef.unsafeMakePatch(
     initial,
     Differ.hashSet(),
-    Differ.HashSet.empty()
+    HashSetPatch.empty()
   )
 }
 
@@ -1788,10 +1866,12 @@ export function unsafeMakeHashSet<A>(
  * way.
  *
  * @tsplus static effect/core/io/FiberRef.Ops makePatch
+ * @category constructors
+ * @since 1.0.0
  */
 export function makePatch<Value0, Patch0>(
   initial: Value0,
-  differ: Differ<Value0, Patch0>,
+  differ: Differ.Differ<Value0, Patch0>,
   fork0: Patch0,
   join0: (oldV: Value0, newV: Value0) => Value0 = (_, n) => n
 ): Effect<Scope, never, FiberRef.WithPatch<Value0, Patch0>> {
@@ -1802,6 +1882,8 @@ export function makePatch<Value0, Patch0>(
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops makeWith
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeWith<Value, Patch>(
   ref: FiberRef.WithPatch<Value, Patch>
@@ -1814,6 +1896,8 @@ export function makeWith<Value, Patch>(
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops unsafeMake
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMake<A>(
   initial: A,
@@ -1830,19 +1914,23 @@ export function unsafeMake<A>(
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops unsafeMakeEnvironment
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMakeEnvironment<A>(
-  initial: Service.Env<A>
-): FiberRef.WithPatch<Service.Env<A>, Service.Patch<A, A>> {
+  initial: Context.Context<A>
+): FiberRef.WithPatch<Context.Context<A>, ContextPatch.ContextPatch<A, A>> {
   return unsafeMakePatch(
     initial,
     Differ.environment(),
-    Service.Patch.empty()
+    ContextPatch.empty()
   )
 }
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops unsafeMakeSupervisor
+ * @category constructors
+ * @since 1.0.0
  */
 export function unsafeMakeSupervisor(
   initial: Supervisor<any>
@@ -1863,6 +1951,8 @@ export function unsafeMakeSupervisor(
  * depend on the `Exit` value that the scope is closed with.
  *
  * @tsplus static effect/core/io/Effect.Ops addFinalizerExit
+ * @category finalizers
+ * @since 1.0.0
  */
 export function addFinalizerExit<R, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect<R, never, X>
@@ -1880,6 +1970,8 @@ export function addFinalizerExit<R, X>(
  *
  * @tsplus static effect/core/io/Effect.Ops acquireReleaseExit
  * @tsplus fluent effect/core/io/Effect acquireReleaseExit
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireReleaseExit<R, E, A, R2, X>(
   acquire: Effect<R, E, A>,
@@ -1898,6 +1990,8 @@ export function acquireReleaseExit<R, E, A, R2, X>(
  *
  * @tsplus static effect/core/io/Effect.Ops acquireRelease
  * @tsplus fluent effect/core/io/Effect acquireRelease
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireRelease<R, E, A, R2, X>(
   acquire: Effect<R, E, A>,
@@ -1910,18 +2004,28 @@ export function acquireRelease<R, E, A, R2, X>(
  * Accesses the whole environment of the effect.
  *
  * @tsplus static effect/core/io/Effect.Ops environment
+ * @category environment
+ * @since 1.0.0
  */
-export function environment<R>(): Effect<R, never, Env<R>> {
-  return Effect.suspendSucceed(FiberRef.currentEnvironment.get as Effect<never, never, Env<R>>)
+export function environment<R>(): Effect<R, never, Context.Context<R>> {
+  return Effect.suspendSucceed(
+    FiberRef.currentEnvironment.get as Effect<never, never, Context.Context<R>>
+  )
 }
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentEnvironment
+ * @category fiberRefs
+ * @since 1.0.0
  */
-export const currentEnvironment: FiberRef<Env<never>> = FiberRef.unsafeMake(Env.empty)
+export const currentEnvironment: FiberRef<Context.Context<never>> = FiberRef.unsafeMake(
+  Context.empty()
+)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentSupervisor
+ * @category fiberRefs
+ * @since 1.0.0
  */
 export const currentSupervisor: FiberRef<Supervisor<any>> = FiberRef.unsafeMakeSupervisor(
   Supervisor.none
@@ -1929,43 +2033,59 @@ export const currentSupervisor: FiberRef<Supervisor<any>> = FiberRef.unsafeMakeS
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentScheduler
+ * @category fiberRefs
+ * @since 1.0.0
  */
 export const currentScheduler: FiberRef<Scheduler> = FiberRef.unsafeMake(defaultScheduler)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogAnnotations
+ * @category fiberRefs
+ * @since 1.0.0
  */
-export const currentLogAnnotations: FiberRef<ImmutableMap<string, string>> = FiberRef.unsafeMake(
-  ImmutableMap.empty()
+export const currentLogAnnotations: FiberRef<ReadonlyMap<string, string>> = FiberRef.unsafeMake(
+  new Map() as ReadonlyMap<string, string>
 )
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogLevel
+ * @category fiberRefs
+ * @since 1.0.0
  */
 export const currentLogLevel: FiberRef<LogLevel> = FiberRef.unsafeMake(LogLevel.Info)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLogSpan
+ * @category fiberRefs
+ * @since 1.0.0
  */
-export const currentLogSpan: FiberRef<List<LogSpan>> = FiberRef.unsafeMake(List.empty<LogSpan>())
+export const currentLogSpan: FiberRef<List.List<LogSpan>> = FiberRef.unsafeMake(
+  List.empty<LogSpan>()
+)
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentParallelism
+ * @category fiberRefs
+ * @since 1.0.0
  */
-export const currentParallelism: FiberRef<Maybe<number>> = FiberRef.unsafeMake(
-  Maybe.empty<number>()
+export const currentParallelism: FiberRef<Option.Option<number>> = FiberRef.unsafeMake(
+  Option.none as Option.Option<number>
 )
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops forkScopeOverride
+ * @category fiberRefs
+ * @since 1.0.0
  */
-export const forkScopeOverride: FiberRef<Maybe<FiberScope>> = FiberRef.unsafeMake(
-  Maybe.none,
-  () => Maybe.empty<FiberScope>()
+export const forkScopeOverride: FiberRef<Option.Option<FiberScope>> = FiberRef.unsafeMake(
+  Option.none,
+  () => Option.none as Option.Option<FiberScope>
 )
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops interruptedCause
+ * @category fiberRefs
+ * @since 1.0.0
  */
 export const interruptedCause: FiberRef<Cause<never>> = FiberRef.unsafeMake(
   Cause.empty,
@@ -1979,11 +2099,13 @@ export const interruptedCause: FiberRef<Cause<never>> = FiberRef.unsafeMake(
  *
  * @tsplus static effect/core/io/Effect.Aspects provideEnvironment
  * @tsplus pipeable effect/core/io/Effect provideEnvironment
+ * @category environment
+ * @since 1.0.0
  */
-export function provideEnvironment<R>(environment: Env<R>) {
+export function provideEnvironment<R>(environment: Context.Context<R>) {
   return <E, A>(self: Effect<R, E, A>): Effect<never, E, A> =>
     (self as Effect<never, E, A>).apply(
-      FiberRef.currentEnvironment.locally(environment as Env<never>)
+      FiberRef.currentEnvironment.locally(environment as Context.Context<never>)
     )
 }
 
@@ -1991,6 +2113,8 @@ export function provideEnvironment<R>(environment: Env<R>) {
  * Returns the current scope.
  *
  * @tsplus static effect/core/io/Effect.Ops scope
+ * @category scoping
+ * @since 1.0.0
  */
 export const scope: Effect<Scope, never, Scope> = Effect.service(Scope.Tag)
 
@@ -2001,8 +2125,10 @@ export const scope: Effect<Scope, never, Scope> = Effect.service(Scope.Tag)
  * objects.
  *
  * @tsplus static effect/core/io/Effect.Ops service
+ * @category environment
+ * @since 1.0.0
  */
-export function service<T>(tag: Tag<T>): Effect<T, never, T> {
+export function service<T>(tag: Context.Tag<T>): Effect<T, never, T> {
   return Effect.serviceWithEffect(tag, Effect.succeed)
 }
 
@@ -2014,22 +2140,26 @@ export function service<T>(tag: Tag<T>): Effect<T, never, T> {
  * objects.
  *
  * @tsplus static effect/core/io/Effect.Ops serviceWithEffect
+ * @category environment
+ * @since 1.0.0
  */
 export function serviceWithEffect<T, R, E, A>(
-  tag: Tag<T>,
+  tag: Context.Tag<T>,
   f: (a: T) => Effect<R, E, A>
 ): Effect<R | T, E, A> {
   return Effect.suspendSucceed(
-    FiberRef.currentEnvironment.get.flatMap((env) => f(env.unsafeGet(tag)))
+    FiberRef.currentEnvironment.get.flatMap((env) => f(pipe(env, Context.unsafeGet(tag))))
   )
 }
 
 /**
  * @tsplus static effect/core/io/FiberRef.Ops currentLoggers
+ * @category fiberRefs
+ * @since 1.0.0
  */
 export const currentLoggers: FiberRef.WithPatch<
-  HashSet<Logger<string, any>>,
-  Differ.HashSet.Patch<Logger<string, any>>
+  HashSet.HashSet<Logger<string, any>>,
+  HashSetPatch.HashSetPatch<Logger<string, any>>
 > = FiberRef.unsafeMakeHashSet(HashSet.empty())
 
 /**
@@ -2056,6 +2186,8 @@ export const currentLoggers: FiberRef.WithPatch<
  *
  * @tsplus static effect/core/io/Effect.Ops acquireUseRelease
  * @tsplus fluent effect/core/io/Effect acquireUseRelease
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireUseRelease<R, E, A, R2, E2, A2, R3, X>(
   acquire: Effect<R, E, A>,
@@ -2074,6 +2206,8 @@ export function acquireUseRelease<R, E, A, R2, E2, A2, R3, X>(
  *
  * @tsplus static effect/core/io/Effect.Ops acquireUseReleaseExit
  * @tsplus fluent effect/core/io/Effect acquireUseReleaseExit
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
   acquire: Effect<R, E, A>,
@@ -2113,11 +2247,13 @@ export function acquireUseReleaseExit<R, E, A, R2, E2, A2, R3, X>(
  * function must be called at most once.
  *
  * @tsplus static effect/core/io/Effect.Ops asyncInterrupt
+ * @category async
+ * @since 1.0.0
  */
 export function asyncInterrupt<R, E, A>(
   register: (
     callback: (_: Effect<R, E, A>) => void
-  ) => Either<Effect<R, never, void>, Effect<R, E, A>>
+  ) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>
 ): Effect<R, E, A> {
   return asyncInterruptBlockingOn(register, FiberId.none)
 }
@@ -2138,11 +2274,13 @@ export function asyncInterrupt<R, E, A>(
  * provide better diagnostics.
  *
  * @tsplus static effect/core/io/Effect.Ops asyncInterruptBlockingOn
+ * @category async
+ * @since 1.0.0
  */
 export function asyncInterruptBlockingOn<R, E, A>(
   register: (
     callback: (_: Effect<R, E, A>) => void
-  ) => Either<Effect<R, never, void>, Effect<R, E, A>>,
+  ) => Either.Either<Effect<R, never, void>, Effect<R, E, A>>,
   blockingOn: FiberId
 ): Effect<R, E, A> {
   return Effect.suspendSucceed(() => {
@@ -2150,7 +2288,7 @@ export function asyncInterruptBlockingOn<R, E, A>(
     return Effect.asyncBlockingOn<R, E, A>(
       (resume) => {
         const result = register(resume)
-        if (result.isRight()) {
+        if (Either.isRight(result)) {
           resume(result.right)
         } else {
           cancelerRef = result.left

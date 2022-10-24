@@ -5,6 +5,8 @@
  * @tsplus pipeable-operator effect/core/io/Logger +
  * @tsplus static effect/core/io/Logger.Aspects zip
  * @tsplus pipeable effect/core/io/Logger zip
+ * @category zipping
+ * @since 1.0.0
  */
 export function zip<Message1, Output1>(that: Logger<Message1, Output1>) {
   return <Message, Output>(

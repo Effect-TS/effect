@@ -2,7 +2,12 @@ import type { Effect } from "@effect/core/io/Effect/definition/base"
 import { EffectURI } from "@effect/core/io/Effect/definition/base"
 import type { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
 import type { Running } from "@effect/core/io/Fiber/status"
+import * as Equal from "@fp-ts/data/Equal"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type ErasedEffect =
   | ISync<any>
   | IAsync<any, any, any>
@@ -18,6 +23,10 @@ export type ErasedEffect =
   | ISuccess<any>
   | ICommit<any, any, any>
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ISync<A> implements Effect<never, never, A> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -28,11 +37,19 @@ export class ISync<A> implements Effect<never, never, A> {
   constructor(readonly evaluate: () => A) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface ICommit<R, E, A> extends Effect<R, E, A> {
   readonly _tag: "ICommit"
   readonly commit: Effect<R, E, A>
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IAsync<R, E, A> implements Effect<R, E, A> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -46,6 +63,10 @@ export class IAsync<R, E, A> implements Effect<R, E, A> {
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IOnSuccessAndFailure<R, E, A, R1, E1, B, R2, E2, C>
   implements Effect<R | R1 | R2, E1 | E2, B | C>
 {
@@ -62,6 +83,10 @@ export class IOnSuccessAndFailure<R, E, A, R1, E1, B, R2, E2, C>
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IOnSuccess<R, E, A, R1, E1, B> implements Effect<R | R1, E | E1, B> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -75,6 +100,10 @@ export class IOnSuccess<R, E, A, R1, E1, B> implements Effect<R | R1, E | E1, B>
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IOnFailure<R, E, A, R1, E1, B> implements Effect<R | R1, E1, A | B> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -88,6 +117,10 @@ export class IOnFailure<R, E, A, R1, E1, B> implements Effect<R | R1, E1, A | B>
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IUpdateRuntimeFlags implements Effect<never, never, void> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -100,6 +133,10 @@ export class IUpdateRuntimeFlags implements Effect<never, never, void> {
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IUpdateRuntimeFlagsDynamic<R, E, A> implements Effect<R, E, A> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -113,6 +150,10 @@ export class IUpdateRuntimeFlagsDynamic<R, E, A> implements Effect<R, E, A> {
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IUpdateRuntimeFlagsInterruptible<R, E, A>
   implements IUpdateRuntimeFlagsDynamic<R, E, A>
 {
@@ -129,6 +170,10 @@ export class IUpdateRuntimeFlagsInterruptible<R, E, A>
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IUpdateRuntimeFlagsUninterruptible<R, E, A>
   implements IUpdateRuntimeFlagsDynamic<R, E, A>
 {
@@ -145,6 +190,10 @@ export class IUpdateRuntimeFlagsUninterruptible<R, E, A>
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IStateful<R, E, A> implements Effect<R, E, A> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -157,6 +206,10 @@ export class IStateful<R, E, A> implements Effect<R, E, A> {
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IWhileLoop<R, E, A> implements Effect<R, E, void> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -171,6 +224,10 @@ export class IWhileLoop<R, E, A> implements Effect<R, E, void> {
   ) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IYieldNow implements Effect<never, never, void> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -180,6 +237,10 @@ export class IYieldNow implements Effect<never, never, void> {
   readonly _tag = "YieldNow"
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class IFailure<E> implements Effect<never, E, never> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -188,14 +249,18 @@ export class IFailure<E> implements Effect<never, E, never> {
   }
   readonly _tag = "Failure"
   constructor(readonly cause: Cause<E>) {}
-  [Hash.sym](): number {
-    return Hash.unknown(this.cause)
+  [Equal.symbolHash](): number {
+    return Equal.hash(this.cause)
   }
-  [Equals.sym](that: unknown): boolean {
-    return that instanceof IFailure && Equals.equals(this.cause, that.cause)
+  [Equal.symbolEqual](that: unknown): boolean {
+    return that instanceof IFailure && Equal.equals(this.cause, that.cause)
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ISuccess<A> implements Effect<never, never, A> {
   readonly [EffectURI] = {
     _R: (_: never) => _,
@@ -204,10 +269,10 @@ export class ISuccess<A> implements Effect<never, never, A> {
   }
   readonly _tag = "Success"
   constructor(readonly value: A) {}
-  [Hash.sym](): number {
-    return Hash.unknown(this.value)
+  [Equal.symbolHash](): number {
+    return Equal.hash(this.value)
   }
-  [Equals.sym](that: unknown): boolean {
-    return that instanceof ISuccess && Equals.equals(this.value, that.value)
+  [Equal.symbolEqual](that: unknown): boolean {
+    return that instanceof ISuccess && Equal.equals(this.value, that.value)
   }
 }

@@ -8,6 +8,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects mapErrorCause
  * @tsplus pipeable effect/core/io/Effect mapErrorCause
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapErrorCause<E, E2>(f: (cause: Cause<E>) => Cause<E2>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E2, A> =>

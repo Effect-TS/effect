@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects mapErrorCause
  * @tsplus pipeable effect/core/stream/Channel mapErrorCause
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapErrorCause<OutErr, OutErr2>(
   f: (cause: Cause<OutErr>) => Cause<OutErr2>

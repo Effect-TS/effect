@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects runForEachWhile
  * @tsplus pipeable effect/core/stream/Stream runForEachWhile
+ * @category destructors
+ * @since 1.0.0
  */
 export function runForEachWhile<A, R2, E2, Z>(
   f: (a: A) => Effect<R2, E2, boolean>

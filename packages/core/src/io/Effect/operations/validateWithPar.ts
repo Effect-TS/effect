@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects validateWithPar
  * @tsplus pipeable effect/core/io/Effect validateWithPar
+ * @category validation
+ * @since 1.0.0
  */
 export function validateWithPar<A, R1, E1, B, C>(
   that: Effect<R1, E1, B>,

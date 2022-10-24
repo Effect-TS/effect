@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects zipWith
  * @tsplus pipeable effect/core/io/Exit zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<E, E1, A, B, C>(
   that: Exit<E1, B>,

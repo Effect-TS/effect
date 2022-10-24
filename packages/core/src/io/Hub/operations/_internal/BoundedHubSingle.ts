@@ -1,6 +1,9 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
 import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
+/** @internal */
 export class BoundedHubSingle<A> implements AtomicHub<A> {
   publisherIndex = 0
   subscriberCount = 0
@@ -31,17 +34,17 @@ export class BoundedHubSingle<A> implements AtomicHub<A> {
     return true
   }
 
-  publishAll(as: Collection<A>): Chunk<A> {
-    const list = Chunk.from(as)
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
+    const chunk = Chunk.fromIterable(as)
 
-    if (list.isEmpty) {
-      return Chunk.empty()
+    if (Chunk.isEmpty(chunk)) {
+      return Chunk.empty
     }
 
-    if (this.publish(list.unsafeHead!)) {
-      return list.drop(1)
+    if (this.publish(Chunk.unsafeHead(chunk))) {
+      return pipe(chunk, Chunk.drop(1))
     } else {
-      return list
+      return chunk
     }
   }
 
@@ -97,9 +100,9 @@ class BoundedHubSingleSubscription<A> implements Subscription<A> {
     return a
   }
 
-  pollUpTo(n: number): Chunk<A> {
+  pollUpTo(n: number): Chunk.Chunk<A> {
     if (this.isEmpty || n < 1) {
-      return Chunk.empty()
+      return Chunk.empty
     }
 
     const a = this.self.value

@@ -3,6 +3,8 @@ import { isChannelError } from "@effect/core/io/Cause/errors"
 /**
  * @tsplus static effect/core/stream/Channel.Aspects pipeToOrFail
  * @tsplus pipeable effect/core/stream/Channel pipeToOrFail
+ * @category mutations
+ * @since 1.0.0
  */
 export function pipeToOrFail<
   Env2,

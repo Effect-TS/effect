@@ -1,5 +1,8 @@
 import { STMInterruptException, STMRetryException } from "@effect/core/stm/STM"
 import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/InternalTQueue"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
+import * as Queue from "@fp-ts/data/Queue"
 
 /**
  * Offers a value to the queue, returning whether the value was offered to the
@@ -7,6 +10,8 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  *
  * @tsplus static effect/core/stm/TQueue.Aspects offer
  * @tsplus pipeable effect/core/stm/TQueue offer
+ * @category mutations
+ * @since 1.0.0
  */
 export function offer<A>(value: A) {
   return (self: TQueue<A>): STM<never, never, boolean> => {
@@ -18,8 +23,8 @@ export function offer<A>(value: A) {
         throw new STMInterruptException(fiberId)
       }
 
-      if (queue.size < self.capacity) {
-        self.ref.unsafeSet(queue.append(value), journal)
+      if (Queue.length(queue) < self.capacity) {
+        self.ref.unsafeSet(pipe(queue, Queue.enqueue(value)), journal)
         return true
       }
       switch (self.strategy) {
@@ -28,10 +33,10 @@ export function offer<A>(value: A) {
         case TQueue.Dropping:
           return false
         case TQueue.Sliding: {
-          const dequeue = queue.dequeue
+          const dequeue = pipe(queue, Queue.dequeue)
 
-          if (dequeue.isSome()) {
-            self.ref.unsafeSet(queue.append(value), journal)
+          if (Option.isSome(dequeue)) {
+            self.ref.unsafeSet(pipe(queue, Queue.enqueue(value)), journal)
           }
           return true
         }

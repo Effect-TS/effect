@@ -1,18 +1,24 @@
 import { concreteTArray } from "@effect/core/stm/TArray/operations/_internal/InternalTArray"
 import { concreteTMap } from "@effect/core/stm/TMap/operations/_internal/InternalTMap"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { identity, pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Takes all matching values, or retries until there is at least one.
  *
  * @tsplus static effect/core/stm/TMap.Aspects takeSome
  * @tsplus pipeable effect/core/stm/TMap takeSome
+ * @category mutations
+ * @since 1.0.0
  */
-export function takeSome<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
-  return (self: TMap<K, V>): STM<never, never, Chunk<A>> => { // todo: rewrite to NonEmptyChunk<A>
+export function takeSome<K, V, A>(pf: (kv: readonly [K, V]) => Option.Option<A>) {
+  return (self: TMap<K, V>): STM<never, never, Chunk.Chunk<A>> => { // todo: rewrite to NonEmptyChunk<A>
     concreteTMap(self)
-    return STM.Effect<never, Maybe<Chunk<A>>>((journal) => {
+    return STM.Effect<never, Option.Option<Chunk.Chunk<A>>>((journal) => {
       const buckets = self.tBuckets.unsafeGet(journal)
-      const chunkBuilder = Chunk.builder<A>()
+      const builder: Array<A> = []
 
       concreteTArray(buckets)
 
@@ -22,25 +28,29 @@ export function takeSome<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
       let newSize = 0
 
       while (i < capacity) {
-        const bucket = buckets.chunk.unsafeGet(i)!.unsafeGet(journal)
-        const recreate = bucket.exists((_) => pf(_).isSome())
+        const bucket = pipe(buckets.chunk, Chunk.unsafeGet(i)).unsafeGet(journal)
+        const recreate = pipe(
+          bucket,
+          List.findFirst((entry) => Option.isSome(pf(entry))),
+          Option.isSome
+        )
 
         if (recreate) {
           let newBucket = List.empty<readonly [K, V]>()
 
           for (const pair of bucket) {
             const result = pf(pair)
-            if (result.isSome()) {
-              chunkBuilder.append(result.value)
+            if (Option.isSome(result)) {
+              builder.push(result.value)
             } else {
-              newBucket = newBucket.prepend(pair)
+              newBucket = pipe(newBucket, List.prepend(pair))
               newSize += 1
             }
           }
 
-          buckets.chunk.unsafeGet(i)!.unsafeSet(newBucket, journal)
+          pipe(buckets.chunk, Chunk.unsafeGet(i)).unsafeSet(newBucket, journal)
         } else {
-          newSize += bucket.length
+          newSize += Array.from(bucket).length
         }
 
         i += 1
@@ -48,8 +58,10 @@ export function takeSome<K, V, A>(pf: (kv: readonly [K, V]) => Maybe<A>) {
 
       self.tSize.unsafeSet(newSize, journal)
 
-      return Maybe.fromPredicate(chunkBuilder.build(), (_) => _.size > 0)
-    })
-      .continueOrRetry(identity)
+      if (builder.length > 0) {
+        return Option.some(Chunk.fromIterable(builder))
+      }
+      return Option.none
+    }).continueOrRetry(identity)
   }
 }

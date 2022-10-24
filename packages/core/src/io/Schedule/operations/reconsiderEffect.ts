@@ -1,6 +1,7 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import type { Interval } from "@effect/core/io/Schedule/Interval"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import type { Either } from "@fp-ts/data/Either"
 
 /**
  * Returns a new schedule that effectfully reconsiders every decision made by
@@ -9,6 +10,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects reconsiderEffect
  * @tsplus pipeable effect/core/io/Schedule reconsiderEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function reconsiderEffect<State, Out, Env1, Out2>(
   f: (
@@ -23,18 +26,28 @@ export function reconsiderEffect<State, Out, Env1, Out2>(
       (now, input, state) =>
         self.step(now, input, state).flatMap(([state, out, decision]) =>
           decision._tag === "Done"
-            ? f(state, out, decision).map((either) =>
-              either.fold(
-                (out2) => [state, out2, Decision.Done] as const,
-                ([out2]) => [state, out2, Decision.Done] as const
-              )
-            )
-            : f(state, out, decision).map((either) =>
-              either.fold(
-                (out2) => [state, out2, Decision.Done] as const,
-                ([out2, interval]) => [state, out2, Decision.continueWith(interval)] as const
-              )
-            )
+            ? f(state, out, decision).map((either) => {
+              switch (either._tag) {
+                case "Left": {
+                  return [state, either.left, Decision.Done] as const
+                }
+                case "Right": {
+                  const [out2] = either.right
+                  return [state, out2, Decision.Done] as const
+                }
+              }
+            })
+            : f(state, out, decision).map((either) => {
+              switch (either._tag) {
+                case "Left": {
+                  return [state, either.left, Decision.Done] as const
+                }
+                case "Right": {
+                  const [out2, interval] = either.right
+                  return [state, out2, Decision.continueWith(interval)] as const
+                }
+              }
+            })
         )
     )
 }

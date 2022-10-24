@@ -3,6 +3,8 @@
  * function.
  *
  * @tsplus static effect/core/io/Schedule.Ops fromFunction
+ * @category constructors
+ * @since 1.0.0
  */
 export function fromFunction<A, B>(
   f: (a: A) => B

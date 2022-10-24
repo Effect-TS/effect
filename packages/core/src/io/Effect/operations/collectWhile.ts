@@ -1,39 +1,49 @@
-import { ArrTypeId, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import type * as Option from "@fp-ts/data/Option"
 
 /**
  * Transforms all elements of the chunk for as long as the specified partial
  * function is defined.
  *
  * @tsplus static effect/core/io/Effect.Ops collectWhile
+ * @category constructors
+ * @since 1.0.0
  */
 export function collectWhile<A, R, E, B>(
-  self: Collection<A>,
-  f: (a: A) => Maybe<Effect<R, E, B>>
-): Effect<R, E, Chunk<B>> {
-  const chunk = Chunk.from(self)
-  concreteChunk(chunk)
-  switch (chunk._typeId) {
-    case SingletonTypeId: {
-      return f(chunk.a).fold(
-        () => Effect.succeed(Chunk.empty()),
-        (b) => b.map(Chunk.single)
-      )
-    }
-    case ArrTypeId: {
-      const array = chunk._arrayLike()
-      let dest: Effect<R, E, Chunk<B>> = Effect.succeed(Chunk.empty<B>())
-      for (let i = 0; i < array.length; i++) {
-        const rhs = f(array[i]!)
-        if (rhs.isSome()) {
-          dest = dest.zipWith(rhs.value, (a, b) => a.append(b))
-        } else {
-          return dest
-        }
+  as: Iterable<A>,
+  f: (a: A) => Option.Option<Effect<R, E, B>>
+): Effect<R, E, Chunk.Chunk<B>> {
+  const array = Array.from(as)
+  // Break out early if the input is empty
+  if (array.length === 0) {
+    return Effect.succeed(Chunk.empty)
+  }
+  // Break out early if there is only one element in the list
+  if (array.length === 1) {
+    const option = f(array[0]!)
+    switch (option._tag) {
+      case "None": {
+        return Effect.succeed(Chunk.empty)
       }
-      return dest
-    }
-    default: {
-      return collectWhile(chunk._materialize(), f)
+      case "Some": {
+        return option.value.map(Chunk.single)
+      }
     }
   }
+  // Otherwise setup our intermediate result
+  let result: Effect<R, E, List.List<B>> = Effect.succeed(List.empty())
+  for (let i = array.length - 1; i >= 0; i--) {
+    const option = f(array[i]!)
+    switch (option._tag) {
+      case "None": {
+        return result.map(Chunk.fromIterable)
+      }
+      case "Some": {
+        result = result.zipWith(option.value, (bs, b) => pipe(bs, List.prepend(b)))
+      }
+    }
+  }
+  return result.map(Chunk.fromIterable)
 }

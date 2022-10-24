@@ -1,6 +1,7 @@
 import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
 import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives"
 import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Returns a new channel whose outputs are fed to the specified factory
@@ -12,6 +13,8 @@ import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullSt
  *
  * @tsplus static effect/core/stream/Channel.Aspects concatMapWith
  * @tsplus pipeable effect/core/stream/Channel concatMapWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatMapWith<
   OutElem,
@@ -56,7 +59,7 @@ export function concatMapWith<
     >(
       g,
       h,
-      () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
+      () => UpstreamPullStrategy.PullAfterNext(Option.none),
       () => ChildExecutorDecision.Continue,
       () => self,
       f

@@ -1,3 +1,5 @@
+import * as Either from "@fp-ts/data/Either"
+
 /**
  * Repeats each element of the stream using the provided schedule. When the
  * schedule is finished, then the output of the schedule will be emitted into
@@ -8,12 +10,14 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects repeatElementsEither
  * @tsplus pipeable effect/core/stream/Stream repeatElementsEither
+ * @category repetition
+ * @since 1.0.0
  */
 export function repeatElementsEither<S, R2, B>(schedule: Schedule<S, R2, unknown, B>) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, Either<B, A>> =>
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, Either.Either<B, A>> =>
     self.repeatElementsWith(
       schedule,
-      (a) => Either.rightW(a),
-      (b) => Either.leftW(b)
+      (a) => Either.right(a),
+      (b) => Either.left(b)
     )
 }

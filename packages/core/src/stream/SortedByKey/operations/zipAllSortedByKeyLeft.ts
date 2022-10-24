@@ -1,3 +1,6 @@
+import type { Order } from "@fp-ts/core/typeclass/Order"
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Zips this stream that is sorted by distinct keys and the specified stream
  * that is sorted by distinct keys to produce a new stream that is sorted by
@@ -12,12 +15,14 @@
  * @tsplus pipeable effect/core/stream/SortedByKey zipAllSortedByKeyLeft
  * @tsplus static effect/core/stream/Stream.Aspects zipAllSortedByKeyLeft
  * @tsplus pipeable effect/core/stream/Stream zipAllSortedByKeyLeft
+ * @category mutations
+ * @since 1.0.0
  */
 export function zipAllSortedByKeyLeft<K, R2, E2, A2, A>(
-  ord: Ord<K>,
+  order: Order<K>,
   that: SortedByKey<R2, E2, K, A2>,
   def: A
 ) {
   return <R, E>(self: SortedByKey<R, E, K, A>): Stream<R | R2, E | E2, readonly [K, A]> =>
-    self.zipAllSortedByKeyWith(ord, that, identity, () => def, (a, _) => a)
+    self.zipAllSortedByKeyWith(order, that, identity, () => def, (a, _) => a)
 }

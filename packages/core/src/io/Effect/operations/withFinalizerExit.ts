@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects withFinalizerExit
  * @tsplus pipeable effect/core/io/Effect withFinalizerExit
+ * @category aspects
+ * @since 1.0.0
  */
 export function withFinalizerExit<R2, X>(
   finalizer: (exit: Exit<unknown, unknown>) => Effect<R2, never, X>

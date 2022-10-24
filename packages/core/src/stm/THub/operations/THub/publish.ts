@@ -8,6 +8,8 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/THub.Aspects publish
  * @tsplus pipeable effect/core/stm/THub publish
+ * @category mutations
+ * @since 1.0.0
  */
 export function publish<A>(value: A) {
   return (self: THub<A>): STM<never, never, boolean> => {

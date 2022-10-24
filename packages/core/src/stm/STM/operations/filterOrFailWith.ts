@@ -1,8 +1,13 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Refinement"
+
 /**
  * Fails with `failWith` if the predicate fails.
  *
  * @tsplus static effect/core/stm/STM.Aspects filterOrFailWith
  * @tsplus pipeable effect/core/stm/STM filterOrFailWith
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterOrFailWith<A, B extends A, E1>(
   f: Refinement<A, B>,

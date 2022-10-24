@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects catch
  * @tsplus pipeable effect/core/io/Effect catch
+ * @category alternatives
+ * @since 1.0.0
  */
 export function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
   tag: N,

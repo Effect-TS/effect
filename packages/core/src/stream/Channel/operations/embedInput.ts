@@ -6,6 +6,8 @@ import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProdu
  *
  * @tsplus static effect/core/stream/Channel.Aspects embedInput
  * @tsplus pipeable effect/core/stream/Channel embedInput
+ * @category mutations
+ * @since 1.0.0
  */
 export function embedInput<InErr, InElem, InDone>(
   input: AsyncInputProducer<InErr, InElem, InDone>

@@ -15,6 +15,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects aggregate
  * @tsplus pipeable effect/core/stream/Stream aggregate
+ * @category aggregating
+ * @since 1.0.0
  */
 export function aggregate<R, E, A, R2, E2, A2, B>(
   sink: Sink<R2, E | E2, A | A2, A2, B>

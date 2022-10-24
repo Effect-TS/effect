@@ -14,6 +14,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects flatMapParSwitch
  * @tsplus pipeable effect/core/stream/Stream flatMapParSwitch
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMapParSwitch<R2, E2, A, B>(
   n: number,

@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Aspects fromConst
  * @tsplus pipeable effect/core/io/Metrics/Metric fromConst
+ * @category constructors
+ * @since 1.0.0
  */
 export function fromConst<In>(input: LazyArg<In>) {
   return <Type, Out>(self: Metric<Type, In, Out>): Metric<Type, unknown, Out> =>

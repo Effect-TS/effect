@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects dimap
  * @tsplus pipeable effect/core/io/Schedule dimap
+ * @category mapping
+ * @since 1.0.0
  */
 export function dimap<In, Out, In2, Out2>(
   f: (in2: In2) => In,

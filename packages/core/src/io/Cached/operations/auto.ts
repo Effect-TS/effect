@@ -6,6 +6,8 @@
  * constructor.
  *
  * @tsplus static effect/core/io/Cached.Ops auto
+ * @category constructors
+ * @since 1.0.0
  */
 export function auto<R, Error, Resource, State, Env, In, Out>(
   acquire: Effect<R, Error, Resource>,

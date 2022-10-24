@@ -1,6 +1,7 @@
 import type { Scope } from "@effect/core/io/Scope/definition"
 import { CloseableScopeSym, ScopeSym } from "@effect/core/io/Scope/definition"
 
+/** @internal */
 export class CloseableScopeInternal implements Scope.Closeable {
   readonly [ScopeSym]: ScopeSym = ScopeSym
   readonly [CloseableScopeSym]: CloseableScopeSym = CloseableScopeSym
@@ -14,6 +15,7 @@ export class CloseableScopeInternal implements Scope.Closeable {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteCloseableScope(_: Scope): asserts _ is CloseableScopeInternal {
   //

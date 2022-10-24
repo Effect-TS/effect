@@ -6,5 +6,7 @@ import { IYieldNow } from "@effect/core/io/Effect/definition/primitives"
  * overhead.
  *
  * @tsplus static effect/core/io/Effect.Ops yieldNow
+ * @category constructors
+ * @since 1.0.0
  */
 export const yieldNow: Effect<never, never, void> = new IYieldNow()

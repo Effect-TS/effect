@@ -1,3 +1,6 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as List from "@fp-ts/data/List"
+
 /**
  * Feeds elements of type `A` to `f` and accumulates all errors in error
  * channel or successes in success channel.
@@ -6,14 +9,16 @@
  * will be lost. To retain all information please use `partition`.
  *
  * @tsplus static effect/core/stm/STM.Ops validate
+ * @category validation
+ * @since 1.0.0
  */
 export function validate<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => STM<R, E, B>
-): STM<R, Chunk<E>, Chunk<B>> {
+): STM<R, Chunk.Chunk<E>, Chunk.Chunk<B>> {
   return STM.partition(as, f).flatMap(([es, bs]) =>
-    es.isEmpty
-      ? STM.succeed(Chunk.from(bs))
-      : STM.fail(es)
+    List.isNil(es)
+      ? STM.succeed(Chunk.fromIterable(bs))
+      : STM.fail(Chunk.fromIterable(es))
   )
 }

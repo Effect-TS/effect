@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects scanReduce
  * @tsplus pipeable effect/core/stream/Stream scanReduce
+ * @category mutations
+ * @since 1.0.0
  */
 export function scanReduce<A, A2 extends A>(
   f: (a2: A2, a: A) => A2

@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects orDieWith
  * @tsplus pipeable effect/core/stm/STM orDieWith
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orDieWith<E>(f: (e: E) => unknown) {
   return <R, A>(self: STM<R, E, A>): STM<R, never, A> =>

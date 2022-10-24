@@ -10,6 +10,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects ensuring
  * @tsplus pipeable effect/core/io/Schedule ensuring
+ * @category finalizers
+ * @since 1.0.0
  */
 export function ensuring<X>(finalizer: Effect<never, never, X>) {
   return <State, Env, In, Out>(

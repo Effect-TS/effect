@@ -11,6 +11,8 @@ import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
  *
  * @tsplus static effect/core/stream/Channel.Aspects interruptWhen
  * @tsplus pipeable effect/core/stream/Channel interruptWhen
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptWhen<
   Env1,

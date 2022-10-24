@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects repeatUntilEffect
  * @tsplus pipeable effect/core/io/Effect repeatUntilEffect
+ * @category repetititon
+ * @since 1.0.0
  */
 export function repeatUntilEffect<A, R1>(
   f: (a: A) => Effect<R1, never, boolean>

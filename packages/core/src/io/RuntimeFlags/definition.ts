@@ -3,11 +3,16 @@ import type { RuntimeFlagsPatch } from "@effect/core/io/RuntimeFlags/patch/defin
 
 /**
  * @tsplus type effect/core/io/RuntimeFlags
+ * @category model
+ * @since 1.0.0
  */
 export type RuntimeFlags = number & {
   readonly RuntimeFlags: unique symbol
 }
 
+/**
+ * @since 1.0.0
+ */
 export namespace RuntimeFlags {
   export type Patch = RuntimeFlagsPatch
   /**
@@ -20,6 +25,8 @@ export namespace RuntimeFlags {
 
 /**
  * @tsplus type effect/core/io/RuntimeFlags.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface RuntimeFlagsOps {
   /**
@@ -93,6 +100,10 @@ export interface RuntimeFlagsOps {
   (...flags: RuntimeFlags.Flag[]): RuntimeFlags
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const RuntimeFlags: RuntimeFlagsOps = Object.assign(
   function(...flags: RuntimeFlags.Flag[]): RuntimeFlags {
     return (flags.reduce((a, b) => a | b, 0)) as RuntimeFlags

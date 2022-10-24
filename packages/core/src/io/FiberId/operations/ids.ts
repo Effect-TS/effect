@@ -1,27 +1,35 @@
 import { realFiberId } from "@effect/core/io/FiberId/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+import * as SafeEval from "@fp-ts/data/SafeEval"
 
 /**
  * Get the set of identifiers for this `FiberId`.
  *
  * @tsplus getter effect/core/io/FiberId ids
+ * @category destructors
+ * @since 1.0.0
  */
-export function ids(self: FiberId): HashSet<number> {
-  return idsSafe(self).run
+export function ids(self: FiberId): HashSet.HashSet<number> {
+  return SafeEval.execute(idsSafe(self))
 }
 
-function idsSafe(self: FiberId): Eval<HashSet<number>> {
+function idsSafe(self: FiberId): SafeEval.SafeEval<HashSet.HashSet<number>> {
   realFiberId(self)
   switch (self._tag) {
     case "None": {
-      return Eval.succeed(HashSet())
+      return SafeEval.succeed(HashSet.empty())
     }
     case "Runtime": {
-      return Eval.succeed(HashSet.from([self.id]))
+      return SafeEval.succeed(HashSet.from([self.id]))
     }
     case "Composite": {
-      let base = Eval.succeed(HashSet.empty<number>())
+      let base = SafeEval.succeed(HashSet.empty<number>())
       for (const fiberId of self.fiberIds) {
-        base = Eval.suspend(idsSafe(fiberId)).zipWith(base, (a, b) => a.union(b))
+        base = pipe(
+          SafeEval.suspend(() => idsSafe(fiberId)),
+          SafeEval.zipWith(base, (a, b) => pipe(a, HashSet.union(b)))
+        )
       }
       return base
     }

@@ -3,6 +3,7 @@ import {
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrategy"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Sends all elements emitted by this stream to the specified sink in addition
@@ -10,6 +11,8 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  *
  * @tsplus static effect/core/stream/Stream.Aspects tapSink
  * @tsplus pipeable effect/core/stream/Stream tapSink
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapSink<R2, E2, A, X, Z>(sink: Sink<R2, E2, A, X, Z>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>

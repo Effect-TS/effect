@@ -1,5 +1,9 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * @tsplus static effect/core/testing/Sample.Ops shrinkBigInt
+ * @category constructors
+ * @since 1.0.0
  */
 export function shrinkBigInt(smallest: bigint) {
   return (a: bigint): Sample<never, bigint> =>
@@ -8,11 +12,11 @@ export function shrinkBigInt(smallest: bigint) {
       Stream.unfold(smallest, (min) => {
         const mid = min + (max - min) / BigInt(2)
         if (mid === max) {
-          return Maybe.none
+          return Option.none
         } else if (bigIntAbs(max - mid) === BigInt(1)) {
-          return Maybe.some([mid, max])
+          return Option.some([mid, max])
         } else {
-          return Maybe.some([mid, mid])
+          return Option.some([mid, mid])
         }
       })
     ])

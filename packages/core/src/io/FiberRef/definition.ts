@@ -1,13 +1,49 @@
+import type { Option } from "@fp-ts/data/Option"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const FiberRefSym = Symbol.for("@effect/core/io/FiberRef")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type FiberRefSym = typeof FiberRefSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _Value = Symbol.for("@effect/core/io/FiberRef/Value")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _Value = typeof _Value
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _Patch = Symbol.for("@effect/core/io/FiberRef/Patch")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _Patch = typeof _Patch
 
+/**
+ * @since 1.0.0
+ */
 export namespace FiberRef {
+  /**
+   * @category model
+   * @since 1.0.0
+   */
   export interface WithPatch<Value, Patch> {
     /**
      * Type Identifier
@@ -82,7 +118,7 @@ export namespace FiberRef {
     readonly fork: Patch
 
     /**
-     * Atomically modifies the `XFiberRef` with the specified function and
+     * Atomically modifies the `FiberRef` with the specified function and
      * returns the old value.
      */
     getAndUpdate(
@@ -91,13 +127,13 @@ export namespace FiberRef {
     ): Effect<never, never, Value>
 
     /**
-     * Atomically modifies the `XFiberRef` with the specified function and returns
+     * Atomically modifies the `FiberRef` with the specified function and returns
      * the old value. If the function is `None` for the current value it doesn't
      * change it.
      */
     getAndUpdateSome(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>
+      pf: (a: Value) => Option<Value>
     ): Effect<never, never, Value>
 
     /**
@@ -183,7 +219,7 @@ export namespace FiberRef {
     modifySome<B>(
       this: FiberRef.WithPatch<Value, Patch>,
       def: B,
-      f: (a: Value) => Maybe<readonly [B, Value]>
+      f: (a: Value) => Option<readonly [B, Value]>
     ): Effect<never, never, B>
 
     /**
@@ -201,7 +237,7 @@ export namespace FiberRef {
      */
     updateSome(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>
+      pf: (a: Value) => Option<Value>
     ): Effect<never, never, void>
 
     /**
@@ -211,7 +247,7 @@ export namespace FiberRef {
      */
     updateSomeAndGet(
       this: FiberRef.WithPatch<Value, Patch>,
-      pf: (a: Value) => Maybe<Value>
+      pf: (a: Value) => Option<Value>
     ): Effect<never, never, Value>
   }
 }
@@ -226,11 +262,15 @@ export namespace FiberRef {
  * merged.
  *
  * @tsplus type effect/core/io/FiberRef
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberRef<Value> extends FiberRef.WithPatch<Value, any> {}
 
 /**
  * @tsplus type effect/core/io/FiberRef.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberRefOps {
   $: FiberRefAspects
@@ -241,5 +281,7 @@ export const FiberRef: FiberRefOps = {
 
 /**
  * @tsplus type effect/core/io/FiberRef.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberRefAspects {}

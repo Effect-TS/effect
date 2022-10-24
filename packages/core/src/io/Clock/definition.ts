@@ -1,10 +1,14 @@
-import { constFalse } from "@tsplus/stdlib/data/Function"
+import { Tag } from "@fp-ts/data/Context"
+import type { Duration } from "@fp-ts/data/Duration"
+import { constFalse } from "@fp-ts/data/Function"
 
 export const ClockSym = Symbol.for("@effect/core/io/Clock")
 export type ClockSym = typeof ClockSym
 
 /**
  * @tsplus type effect/core/io/Clock
+ * @category model
+ * @since 1.0.0
  */
 export interface Clock {
   readonly [ClockSym]: ClockSym
@@ -20,6 +24,8 @@ export interface Clock {
 
 /**
  * @tsplus type effect/core/io/Clock.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ClockOps {
   Scheduler: SchedulerOps
@@ -32,19 +38,32 @@ export const Clock: ClockOps = {
 
 /**
  * @tsplus type effect/core/io/Clock.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface ClockAspects {}
 
 /**
  * @tsplus type effect/core/io/Clock/Scheduler.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface SchedulerOps {}
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace Clock {
-  export type CancelToken = Lazy<boolean>
+  /**
+   * @category model
+   * @since 1.0.0
+   */
+  export type CancelToken = () => boolean
 
   /**
    * @tsplus type effect/core/io/Clock/Scheduler
+   * @category model
+   * @since 1.0.0
    */
   export interface Scheduler {
     readonly unsafeSchedule: (task: () => void, duration: Duration) => CancelToken
@@ -53,11 +72,15 @@ export declare namespace Clock {
 
 /**
  * @tsplus static effect/core/io/Clock.Ops MAX_TIMER_MILLIS
+ * @category constants
+ * @since 1.0.0
  */
 export const MAX_TIMER_MILLIS = 2 ** 31 - 1
 
 /**
  * @tsplus static effect/core/io/Clock/Scheduler.Ops globalScheduler
+ * @category constructors
+ * @since 1.0.0
  */
 export const globalScheduler: Clock.Scheduler = {
   unsafeSchedule(task: () => void, duration: Duration): Clock.CancelToken {

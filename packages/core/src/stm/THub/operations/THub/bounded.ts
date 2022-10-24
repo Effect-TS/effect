@@ -4,6 +4,8 @@
  * pressure to publishers if the hub is at capacity.
  *
  * @tsplus static effect/core/stm/THub.Ops bounded
+ * @category constructors
+ * @since 1.0.0
  */
 export function bounded<A>(
   requestedCapacity: number

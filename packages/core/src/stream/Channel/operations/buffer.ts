@@ -1,9 +1,13 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Creates a channel backed by a buffer. When the buffer is empty, the channel
  * will simply passthrough its input as output. However, when the buffer is
  * non-empty, the value inside the buffer will be passed along as output.
  *
  * @tsplus static effect/core/stream/Channel.Ops buffer
+ * @category constructors
+ * @since 1.0.0
  */
 export function buffer<InElem, InErr, InDone>(
   empty: InElem,

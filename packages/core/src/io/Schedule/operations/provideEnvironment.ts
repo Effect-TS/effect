@@ -1,4 +1,5 @@
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import type { Context } from "@fp-ts/data/Context"
 
 /**
  * Returns a new schedule with its environment provided to it, so the
@@ -6,8 +7,10 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects provideEnvironment
  * @tsplus pipeable effect/core/io/Schedule provideEnvironment
+ * @category environment
+ * @since 1.0.0
  */
-export function provideEnvironment<R>(environment: Env<R>) {
+export function provideEnvironment<R>(environment: Context<R>) {
   return <State, In, Out>(self: Schedule<State, R, In, Out>): Schedule<State, never, In, Out> =>
     makeWithState(
       self.initial,

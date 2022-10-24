@@ -2,16 +2,17 @@
  * Loops with the specified effectual function purely for its effects. The
  * moral equivalent of:
  *
- * ```typescript
+ * @example
  * var s = initial
  *
  * while (cont(s)) {
  *   body(s)
  *   s = inc(s)
  * }
- * ```
  *
  * @tsplus static effect/core/io/Effect.Ops loopDiscard
+ * @category constructors
+ * @since 1.0.0
  */
 export function loopDiscard<Z>(
   initial: Z,

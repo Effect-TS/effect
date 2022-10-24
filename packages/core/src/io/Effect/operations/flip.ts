@@ -3,6 +3,8 @@
  * use all methods on the error channel, possibly before flipping back.
  *
  * @tsplus getter effect/core/io/Effect flip
+ * @category mutations
+ * @since 1.0.0
  */
 export function flip<R, E, A>(self: Effect<R, E, A>): Effect<R, A, E> {
   return self.foldEffect(Effect.succeed, Effect.fail)

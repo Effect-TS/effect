@@ -1,10 +1,14 @@
 import { STMInterruptException, STMRetryException } from "@effect/core/stm/STM"
 import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/InternalTQueue"
+import * as Option from "@fp-ts/data/Option"
+import * as Queue from "@fp-ts/data/Queue"
 
 /**
  * Takes a value from the queue.
  *
  * @tsplus getter effect/core/stm/TQueue take
+ * @category mutations
+ * @since 1.0.0
  */
 export function take<A>(self: TQueue<A>): USTM<A> {
   concreteTQueue(self)
@@ -15,9 +19,9 @@ export function take<A>(self: TQueue<A>): USTM<A> {
       throw new STMInterruptException(fiberId)
     }
 
-    const item = queue.dequeue
+    const item = Queue.dequeue(queue)
 
-    if (item.isSome()) {
+    if (Option.isSome(item)) {
       const [a, queue] = item.value
 
       self.ref.unsafeSet(queue, journal)

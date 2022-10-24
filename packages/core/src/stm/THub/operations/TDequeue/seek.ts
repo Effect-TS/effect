@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stm/THub/TDequeue.Aspects seek
  * @tsplus pipeable effect/core/stm/THub/TDequeue seek
+ * @category mutations
+ * @since 1.0.0
  */
 export function seek<A>(f: (a: A) => boolean) {
   return (self: THub.TDequeue<A>): STM<never, never, A> =>

@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Layer.Aspects toRuntime
  * @tsplus fluent effect/core/io/Layer toRuntime
+ * @category conversions
+ * @since 1.0.0
  */
 export function toRuntime<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>

@@ -5,6 +5,8 @@
  * @tsplus pipeable.operator effect/core/stm/STM <
  * @tsplus static effect/core/stm/STM.Aspects zipLeft
  * @tsplus pipeable effect/core/stm/STM zipLeft
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipLeft<R1, E1, A1>(that: STM<R1, E1, A1>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E | E1, A> => self.zipWith(that, (a, _) => a)

@@ -1,9 +1,32 @@
+import * as Context from "@fp-ts/data/Context"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const ScopeSym = Symbol.for("@effect/core/io/Scope")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type ScopeSym = typeof ScopeSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const CloseableScopeSym = Symbol.for("@effect/core/io/Scope/Closeable")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type CloseableScopeSym = typeof CloseableScopeSym
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace Scope {
   type Finalizer = (exit: Exit<unknown, unknown>) => Effect<never, never, unknown>
   type Closeable = CloseableScope
@@ -16,6 +39,8 @@ export declare namespace Scope {
  * have been added to the scope.
  *
  * @tsplus type effect/core/io/Scope
+ * @category model
+ * @since 1.0.0
  */
 export interface Scope {
   readonly [ScopeSym]: ScopeSym
@@ -23,6 +48,8 @@ export interface Scope {
 
 /**
  * @tsplus type effect/core/io/Scope/Closeable
+ * @category model
+ * @since 1.0.0
  */
 export interface CloseableScope extends Scope {
   readonly [CloseableScopeSym]: CloseableScopeSym
@@ -30,17 +57,21 @@ export interface CloseableScope extends Scope {
 
 /**
  * @tsplus type effect/core/io/Scope.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ScopeOps {
   $: ScopeAspects
-  Tag: Tag<Scope>
+  Tag: Context.Tag<Scope>
 }
 export const Scope: ScopeOps = {
   $: {},
-  Tag: Tag<Scope>()
+  Tag: Context.Tag<Scope>()
 }
 
 /**
  * @tsplus type effect/core/io/Scope.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface ScopeAspects {}

@@ -1,5 +1,7 @@
 /**
  * @tsplus static effect/core/stream/Channel.Ops acquireUseReleaseExit
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireUseReleaseExit<
   Env,

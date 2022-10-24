@@ -1,6 +1,8 @@
 import { _A } from "@effect/core/stm/THub/definition"
 import { TDequeueSym } from "@effect/core/stm/THub/definition/TDequeue"
+import type { HashSet } from "@fp-ts/data/HashSet"
 
+/** @internal */
 export class InternalTDequeue<A> implements THub.TDequeue<A> {
   readonly [TDequeueSym]: TDequeueSym = TDequeueSym
   readonly [_A]!: () => A
@@ -17,6 +19,7 @@ export class InternalTDequeue<A> implements THub.TDequeue<A> {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteTDequeue<A>(
   _: THub.TDequeue<A>

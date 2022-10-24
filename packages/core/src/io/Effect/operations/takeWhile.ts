@@ -1,37 +1,31 @@
-import { concreteChunkId } from "@tsplus/stdlib/collections/Chunk"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Takes all elements so long as the effectual predicate returns true.
  *
  * @tsplus static effect/core/io/Effect.Ops takeWhile
+ * @category constructors
+ * @since 1.0.0
  */
 export function takeWhileEffect<R, E, A>(
-  self: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
-): Effect<R, E, Chunk<A>> {
+): Effect<R, E, Chunk.Chunk<A>> {
   return Effect.suspendSucceed(() => {
-    const chunk = Chunk.from(self)
-    const iterator = concreteChunkId(chunk)._arrayLikeIterator()
-    let next
+    const iterator = as[Symbol.iterator]()
+    const builder: Array<A> = []
+    let next: IteratorResult<A, any>
     let taking: Effect<R, E, boolean> = Effect.succeed(true)
-    let builder = Chunk.empty<A>()
-    while ((next = iterator.next()) && !next.done) {
-      const array = next.value
-      const len = array.length
-      let i = 0
-      while (i < len) {
-        const a = array[i]!
-        taking = taking.flatMap((d) =>
-          (d ? f(a) : Effect.succeed(false)).map((b) => {
-            if (b) {
-              builder = builder.append(a)
-            }
-            return b
-          })
-        )
-        i++
-      }
+    while (!(next = iterator.next()).done) {
+      taking = taking.flatMap((d) =>
+        (d ? f(next.value) : Effect.succeed(false)).map((b) => {
+          if (b) {
+            builder.push(next.value)
+          }
+          return b
+        })
+      )
     }
-    return taking.map(() => builder)
+    return taking.map(() => Chunk.fromIterable(builder))
   })
 }

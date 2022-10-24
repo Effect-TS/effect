@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Sink.Aspects filterInputEffect
  * @tsplus pipeable effect/core/stream/Sink filterInputEffect
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterInputEffect<R2, E2, In, In1 extends In>(
   p: (input: In1) => Effect<R2, E2, boolean>

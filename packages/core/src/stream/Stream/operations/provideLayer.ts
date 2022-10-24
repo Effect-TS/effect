@@ -8,6 +8,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects provideLayer
  * @tsplus pipeable effect/core/stream/Stream provideLayer
+ * @category environment
+ * @since 1.0.0
  */
 export function provideLayer<R, E, A>(layer: Layer<R, E, A>) {
   return <E1, A1>(self: Stream<A, E1, A1>): Stream<R, E | E1, A1> => {

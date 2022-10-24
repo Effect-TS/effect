@@ -4,9 +4,9 @@
  * error does not result from interruption.
  *
  * @tsplus static effect/core/io/Fiber.Ops joinAll
+ * @category destructors
+ * @since 1.0.0
  */
-export function joinAll<E, A>(
-  fibers: Collection<Fiber<E, A>>
-): Effect<never, E, void> {
+export function joinAll<E, A>(fibers: Iterable<Fiber<E, A>>): Effect<never, E, void> {
   return Fiber.collectAll(fibers).join.unit
 }

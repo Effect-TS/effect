@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/TMap.Aspects foldSTM
  * @tsplus pipeable effect/core/stm/TMap foldSTM
+ * @category folding
+ * @since 1.0.0
  */
 export function foldSTM<K, V, R, E, A>(
   zero: A,

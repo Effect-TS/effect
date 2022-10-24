@@ -1,11 +1,15 @@
 import { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
 import { ConcatAll } from "@effect/core/stream/Channel/definition/primitives"
 import { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
+import { identity } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Concat sequentially a channel of channels.
  *
  * @tsplus static effect/core/stream/Channel.Ops concatAllWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatAllWith<
   Env,
@@ -57,7 +61,7 @@ export function concatAllWith<
   >(
     f,
     g,
-    () => UpstreamPullStrategy.PullAfterNext(Maybe.none),
+    () => UpstreamPullStrategy.PullAfterNext(Option.none),
     () => ChildExecutorDecision.Continue,
     () => channels,
     identity

@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects zipParLeft
  * @tsplus pipeable effect/core/stream/Channel zipParLeft
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipParLeft<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>

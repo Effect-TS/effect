@@ -1,4 +1,6 @@
 import { concreteReadLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalReadLock"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashMap from "@fp-ts/data/HashMap"
 
 /**
  * Determines if there is no other holder of read locks aside from the
@@ -8,10 +10,14 @@ import { concreteReadLock } from "@effect/core/stm/TReentrantLock/operations/_in
  *
  * @tsplus static effect/core/stm/TReentrantLock/ReadLock.Aspects noOtherHolder
  * @tsplus pipeable effect/core/stm/TReentrantLock/ReadLock noOtherHolder
+ * @category mutations
+ * @since 1.0.0
  */
 export function noOtherHolder(fiberId: FiberId) {
   return (self: TReentrantLock.ReadLock): boolean => {
     concreteReadLock(self)
-    return self.readers.isEmpty || (self.readers.size === 1 && self.readers.has(fiberId))
+    return HashMap.isEmpty(self.readers) ||
+      (HashMap.size(self.readers) === 1 &&
+        pipe(self.readers, HashMap.has(fiberId)))
   }
 }

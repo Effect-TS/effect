@@ -3,15 +3,20 @@ import {
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { RingBufferNew } from "@effect/core/support/RingBufferNew"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Emits a sliding window of `n` elements.
  *
  * @tsplus static effect/core/stream/Stream.Aspects sliding
  * @tsplus pipeable effect/core/stream/Stream sliding
+ * @category mutations
+ * @since 1.0.0
  */
 export function sliding(chunkSize: number, stepSize = 1) {
-  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk<A>> => {
+  return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, Chunk.Chunk<A>> => {
     if (chunkSize <= 0 || stepSize <= 0) {
       return Stream.dieSync(
         new IllegalArgumentException(
@@ -22,7 +27,7 @@ export function sliding(chunkSize: number, stepSize = 1) {
     return Stream.sync(new RingBufferNew<A>(chunkSize)).flatMap((queue) => {
       concreteStream(self)
       return new StreamInternal(
-        self.channel >> reader<E, A>(chunkSize, stepSize, queue, 0)
+        self.channel.pipeTo(reader<E, A>(chunkSize, stepSize, queue, 0))
       )
     })
   }
@@ -33,19 +38,20 @@ function reader<E, A>(
   stepSize: number,
   queue: RingBufferNew<A>,
   queueSize: number
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
+): Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<Chunk.Chunk<A>>, unknown> {
   return Channel.readWithCause(
-    (input: Chunk<A>) =>
+    (input: Chunk.Chunk<A>) =>
       Channel.write(
-        input.zipWithIndex.collect(([a, index]) => {
-          queue.put(a)
-
-          const currentIndex = queueSize + index + 1
-
-          return currentIndex < chunkSize || (currentIndex - chunkSize) % stepSize > 0
-            ? Maybe.none
-            : Maybe.some(queue.toChunk())
-        })
+        pipe(
+          Chunk.zipWithIndex(input),
+          Chunk.filterMap(([a, index]) => {
+            queue.put(a)
+            const currentIndex = queueSize + index + 1
+            return currentIndex < chunkSize || (currentIndex - chunkSize) % stepSize > 0
+              ? Option.none
+              : Option.some(queue.toChunk())
+          })
+        )
       ).flatMap(() => reader<E, A>(chunkSize, stepSize, queue, queueSize + input.length)),
     (cause) =>
       emitOnStreamEnd<E, A>(
@@ -64,11 +70,11 @@ function emitOnStreamEnd<E, A>(
   stepSize: number,
   queue: RingBufferNew<A>,
   queueSize: number,
-  channelEnd: Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown>
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<Chunk<A>>, unknown> {
+  channelEnd: Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<Chunk.Chunk<A>>, unknown>
+): Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<Chunk.Chunk<A>>, unknown> {
   if (queueSize < chunkSize) {
     const items = queue.toChunk()
-    const result = items.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(items)
+    const result = Chunk.isEmpty(items) ? Chunk.empty : Chunk.single(items)
     return Channel.write(result).flatMap(() => channelEnd)
   }
 
@@ -79,8 +85,8 @@ function emitOnStreamEnd<E, A>(
   }
 
   const leftovers = queueSize - (lastEmitIndex - chunkSize + stepSize)
-  const lastItems = queue.toChunk().takeRight(leftovers)
-  const result = lastItems.isEmpty ? Chunk.empty<Chunk<A>>() : Chunk.single(lastItems)
+  const lastItems = pipe(queue.toChunk(), Chunk.takeRight(leftovers))
+  const result = Chunk.isEmpty(lastItems) ? Chunk.empty : Chunk.single(lastItems)
 
   return Channel.write(result).flatMap(() => channelEnd)
 }

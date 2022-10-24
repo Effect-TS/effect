@@ -4,7 +4,9 @@
  *
  * @tsplus static effect/core/stm/TArray.Aspects indexOf
  * @tsplus pipeable effect/core/stm/TArray indexOf
+ * @category elements
+ * @since 1.0.0
  */
-export function indexOf<A>(equivalence: Equivalence<A>, value: A) {
-  return (self: TArray<A>): STM<never, never, number> => self.indexOfFrom(equivalence, value, 0)
+export function indexOf<A>(value: A) {
+  return (self: TArray<A>): STM<never, never, number> => self.indexOfFrom(value, 0)
 }

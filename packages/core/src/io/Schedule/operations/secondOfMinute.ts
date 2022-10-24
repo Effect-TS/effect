@@ -15,6 +15,8 @@ import {
  * NOTE: `second` parameter is validated lazily. Must be in range 0...59.
  *
  * @tsplus static effect/core/io/Schedule.Ops secondOfMinute
+ * @category constructors
+ * @since 1.0.0
  */
 export function secondOfMinute(
   second: number

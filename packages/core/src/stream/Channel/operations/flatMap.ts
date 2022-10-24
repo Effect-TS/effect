@@ -9,6 +9,8 @@ import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/prim
  *
  * @tsplus static effect/core/stream/Channel.Aspects flatMap
  * @tsplus pipeable effect/core/stream/Channel flatMap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMap<
   OutDone,

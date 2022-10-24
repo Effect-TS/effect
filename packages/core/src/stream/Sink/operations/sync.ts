@@ -4,6 +4,8 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * A sink that immediately ends with the specified value.
  *
  * @tsplus static effect/core/stream/Sink.Ops sync
+ * @category constructors
+ * @since 1.0.0
  */
 export function sync<Z>(z: LazyArg<Z>): Sink<never, never, unknown, never, Z> {
   return new SinkInternal(Channel.sync(z))

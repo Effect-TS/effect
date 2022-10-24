@@ -7,6 +7,8 @@ import { ContinuationK, Fold } from "@effect/core/stream/Channel/definition/prim
  *
  * @tsplus static effect/core/stream/Channel.Aspects catchAllCause
  * @tsplus pipeable effect/core/stream/Channel catchAllCause
+ * @category alternatives
+ * @since 1.0.0
  */
 export function catchAllCause<
   Env1,

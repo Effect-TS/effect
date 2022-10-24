@@ -1,3 +1,10 @@
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Grafter {
   <R, E, A>(effect: Effect<R, E, A>): Effect<R, E, A>
 }
@@ -11,13 +18,15 @@ export interface Grafter {
  * effectively extending their lifespans into the parent scope.
  *
  * @tsplus static effect/core/io/Effect.Ops transplant
+ * @category mutations
+ * @since 1.0.0
  */
 export function transplant<R, E, A>(
   f: (grafter: Grafter) => Effect<R, E, A>
 ): Effect<R, E, A> {
   return Effect.withFiberRuntime<R, E, A>((state) => {
     const scopeOverride = state.getFiberRef(FiberRef.forkScopeOverride)
-    const scope = scopeOverride.getOrElse(state.scope)
-    return f(FiberRef.forkScopeOverride.locally(Maybe.some(scope)))
+    const scope = pipe(scopeOverride, Option.getOrElse(state.scope))
+    return f(FiberRef.forkScopeOverride.locally(Option.some(scope)))
   })
 }

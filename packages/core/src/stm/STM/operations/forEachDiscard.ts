@@ -6,9 +6,11 @@
  * the list of results.
  *
  * @tsplus static effect/core/stm/STM.Ops forEachDiscard
+ * @category traversing
+ * @since 1.0.0
  */
 export function forEachDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => STM<R, E, X>
 ): STM<R, E, void> {
   return STM.suspend(loop(as[Symbol.iterator](), f))

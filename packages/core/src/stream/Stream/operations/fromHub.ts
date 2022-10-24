@@ -7,6 +7,8 @@ import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
  *   Maximum number of queued elements to put in one chunk in the stream.
  *
  * @tsplus static effect/core/stream/Stream.Ops fromHub
+ * @category conversions
+ * @since 1.0.0
  */
 export function fromHub<A>(
   hub: Hub<A>,

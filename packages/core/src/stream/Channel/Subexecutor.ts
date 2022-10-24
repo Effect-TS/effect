@@ -2,12 +2,25 @@ import type { ErasedChannel, ErasedExecutor } from "@effect/core/stream/Channel/
 import type { ChildExecutorDecision } from "@effect/core/stream/Channel/ChildExecutorDecision"
 import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
 import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
+import { pipe } from "@fp-ts/data/Function"
+import * as Queue from "@fp-ts/data/Queue"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SubexecutorSym = Symbol.for("@effect/core/stream/Channel/Subexecutor")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SubexecutorSym = typeof SubexecutorSym
 
 /**
  * @tsplus type effect/core/stream/Channel/Subexecutor
+ * @category model
+ * @since 1.0.0
  */
 export interface Subexecutor<R> {
   readonly [SubexecutorSym]: SubexecutorSym
@@ -17,6 +30,8 @@ export interface Subexecutor<R> {
 
 /**
  * @tsplus type effect/core/stream/Channel/Subexecutor.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface SubexecutorOps {}
 export const Subexecutor: SubexecutorOps = {}
@@ -24,6 +39,9 @@ export const Subexecutor: SubexecutorOps = {}
 /**
  * Execute upstreamExecutor and for each emitted element, spawn a child
  * channel and continue with processing it by `PullFromChild`.
+
+ * @category model
+ * @since 1.0.0
  */
 export class PullFromUpstream<R> implements Subexecutor<R> {
   readonly _tag = "PullFromUpstream"
@@ -34,7 +52,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
     readonly upstreamExecutor: ErasedExecutor<R>,
     readonly createChild: (_: unknown) => ErasedChannel<R>,
     readonly lastDone: unknown,
-    readonly activeChildExecutors: ImmutableQueue<PullFromChild<R> | undefined>,
+    readonly activeChildExecutors: Queue.Queue<PullFromChild<R> | undefined>,
     readonly combineChildResults: (x: unknown, y: unknown) => unknown,
     readonly combineWithChildResult: (x: unknown, y: unknown) => unknown,
     readonly onPull: (_: UpstreamPullRequest<unknown>) => UpstreamPullStrategy<unknown>,
@@ -43,22 +61,27 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
 
   close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
-    const fins = this.activeChildExecutors
-      .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
-      .append(fin1)
-    const result = fins.reduce(
-      undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
-      (acc, next) => {
-        if (acc != null && next != null) {
-          return acc.zipWith(next.exit, (a, b) => a > b)
-        } else if (acc != null) {
-          return acc
-        } else if (next != null) {
-          return next.exit
-        } else {
-          return undefined
+    const fins = pipe(
+      this.activeChildExecutors,
+      Queue.map((child) => (child != null ? child.childExecutor.close(exit) : undefined)),
+      Queue.enqueue(fin1)
+    )
+    const result = pipe(
+      fins,
+      Queue.reduce(
+        undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
+        (acc, next) => {
+          if (acc != null && next != null) {
+            return acc.zipWith(next.exit, (a, b) => a > b)
+          } else if (acc != null) {
+            return acc
+          } else if (next != null) {
+            return next.exit
+          } else {
+            return undefined
+          }
         }
-      }
+      )
     )
     return result == null ?
       result :
@@ -70,7 +93,7 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
       this.upstreamExecutor,
       this.createChild,
       this.lastDone,
-      this.activeChildExecutors.append(child),
+      pipe(this.activeChildExecutors, Queue.enqueue(child)),
       this.combineChildResults,
       this.combineWithChildResult,
       this.onPull,
@@ -82,6 +105,9 @@ export class PullFromUpstream<R> implements Subexecutor<R> {
 /**
  * Execute the childExecutor and on each emitted value, decide what to do by
  * `onEmit`.
+ *
+ * @category model
+ * @since 1.0.0
  */
 export class PullFromChild<R> implements Subexecutor<R> {
   readonly _tag = "PullFromChild"
@@ -125,7 +151,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
   constructor(
     readonly upstreamExecutor: ErasedExecutor<R>,
     readonly lastDone: unknown,
-    readonly activeChildExecutors: ImmutableQueue<PullFromChild<R> | undefined>,
+    readonly activeChildExecutors: Queue.Queue<PullFromChild<R> | undefined>,
     readonly upstreamDone: Exit<unknown, unknown>,
     readonly combineChildResults: (x: unknown, y: unknown) => unknown,
     readonly combineWithChildResult: (x: unknown, y: unknown) => unknown,
@@ -134,23 +160,28 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
 
   close(exit: Exit<unknown, unknown>): Effect<R, never, unknown> | undefined {
     const fin1 = this.upstreamExecutor.close(exit)
-    const fins = this.activeChildExecutors
-      .map((child) => (child != null ? child.childExecutor.close(exit) : undefined))
-      .append(fin1)
+    const fins = pipe(
+      this.activeChildExecutors,
+      Queue.map((child) => (child != null ? child.childExecutor.close(exit) : undefined)),
+      Queue.enqueue(fin1)
+    )
 
-    return fins.reduce(
-      undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
-      (acc, next) => {
-        if (acc != null && next != null) {
-          return acc.zipWith(next.exit, (a, b) => a > b)
-        } else if (acc != null) {
-          return acc
-        } else if (next != null) {
-          return next.exit
-        } else {
-          return undefined
+    return pipe(
+      fins,
+      Queue.reduce(
+        undefined as Effect<R, never, Exit<unknown, unknown>> | undefined,
+        (acc, next) => {
+          if (acc != null && next != null) {
+            return acc.zipWith(next.exit, (a, b) => a > b)
+          } else if (acc != null) {
+            return acc
+          } else if (next != null) {
+            return next.exit
+          } else {
+            return undefined
+          }
         }
-      }
+      )
     )
   }
 
@@ -158,7 +189,7 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
     return new DrainChildExecutors(
       this.upstreamExecutor,
       this.lastDone,
-      this.activeChildExecutors.append(child),
+      pipe(this.activeChildExecutors, Queue.enqueue(child)),
       this.upstreamDone,
       this.combineChildResults,
       this.combineWithChildResult,
@@ -167,6 +198,10 @@ export class DrainChildExecutors<R> implements Subexecutor<R> {
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class Emit<R> implements Subexecutor<R> {
   readonly _tag = "Emit"
 
@@ -199,12 +234,14 @@ export function concreteSubexecutor<R>(
 
 /**
  * @tsplus static effect/core/stream/Channel/Subexecutor.Ops PullFromUpstream
+ * @category constructors
+ * @since 1.0.0
  */
 export function pullFromUpstream<R>(
   upstreamExecutor: ErasedExecutor<R>,
   createChild: (_: unknown) => ErasedChannel<R>,
   lastDone: unknown,
-  activeChildExecutors: ImmutableQueue<PullFromChild<R> | undefined>,
+  activeChildExecutors: Queue.Queue<PullFromChild<R> | undefined>,
   combineChildResults: (x: unknown, y: unknown) => unknown,
   combineWithChildResult: (x: unknown, y: unknown) => unknown,
   onPull: (_: UpstreamPullRequest<unknown>) => UpstreamPullStrategy<unknown>,
@@ -224,6 +261,8 @@ export function pullFromUpstream<R>(
 
 /**
  * @tsplus static effect/core/stream/Channel/Subexecutor.Ops PullFromChild
+ * @category constructors
+ * @since 1.0.0
  */
 export function pullFromChild<R>(
   childExecutor: ErasedExecutor<R>,
@@ -235,11 +274,13 @@ export function pullFromChild<R>(
 
 /**
  * @tsplus static effect/core/stream/Channel/Subexecutor.Ops DrainChildExecutors
+ * @category constructors
+ * @since 1.0.0
  */
 export function drainChildExecutors<R>(
   upstreamExecutor: ErasedExecutor<R>,
   lastDone: unknown,
-  activeChildExecutors: ImmutableQueue<PullFromChild<R> | undefined>,
+  activeChildExecutors: Queue.Queue<PullFromChild<R> | undefined>,
   upstreamDone: Exit<unknown, unknown>,
   combineChildResults: (x: unknown, y: unknown) => unknown,
   combineWithChildResult: (x: unknown, y: unknown) => unknown,
@@ -258,6 +299,8 @@ export function drainChildExecutors<R>(
 
 /**
  * @tsplus static effect/core/stream/Channel/Subexecutor.Ops Emit
+ * @category constructors
+ * @since 1.0.0
  */
 export function emit<R>(value: unknown, next: Subexecutor<R>): Subexecutor<R> {
   return new Emit(value, next)

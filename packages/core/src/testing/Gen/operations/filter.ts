@@ -1,3 +1,6 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Refinement"
+
 /**
  * Filters the values produced by this generator, discarding any values that
  * do not meet the specified predicate. Using `filter` can reduce test
@@ -7,6 +10,8 @@
  *
  * @tsplus static effect/core/testing/Gen.Aspects filter
  * @tsplus pipeable effect/core/testing/Gen filter
+ * @category filtering
+ * @since 1.0.0
  */
 export function filter<A, B extends A>(
   f: Refinement<A, B>
@@ -15,10 +20,5 @@ export function filter<A>(
   f: Predicate<A>
 ): <R>(self: Gen<R, A>) => Gen<R, A>
 export function filter<A>(f: Predicate<A>) {
-  return <R>(self: Gen<R, A>): Gen<R, A> =>
-    self.flatMap((a) =>
-      f(a) ?
-        Gen.constant(a) :
-        Gen.empty
-    )
+  return <R>(self: Gen<R, A>): Gen<R, A> => self.flatMap((a) => f(a) ? Gen.constant(a) : Gen.empty)
 }

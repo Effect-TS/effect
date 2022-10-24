@@ -11,6 +11,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects foldEffect
  * @tsplus pipeable effect/core/io/Effect foldEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldEffect<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (e: E) => Effect<R2, E2, A2>,
@@ -18,7 +20,17 @@ export function foldEffect<E, A, R2, E2, A2, R3, E3, A3>(
 ) {
   return <R>(self: Effect<R, E, A>): Effect<R | R2 | R3, E2 | E3, A2 | A3> =>
     self.foldCauseEffect(
-      (cause) => cause.failureOrCause.fold(failure, Effect.failCause),
+      (cause) => {
+        const either = cause.failureOrCause
+        switch (either._tag) {
+          case "Left": {
+            return failure(either.left)
+          }
+          case "Right": {
+            return Effect.failCause(either.right)
+          }
+        }
+      },
       success
     )
 }

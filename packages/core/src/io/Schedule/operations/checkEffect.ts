@@ -8,6 +8,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects checkEffect
  * @tsplus pipeable effect/core/io/Schedule checkEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function checkEffect<In, Out, Env1>(
   test: (input: In, output: Out) => Effect<Env1, never, boolean>

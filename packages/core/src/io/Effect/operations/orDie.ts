@@ -1,8 +1,12 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Translates effect failure into death of the fiber, making all failures
  * unchecked and not a part of the type of the effect.
  *
  * @tsplus getter effect/core/io/Effect orDie
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orDie<R, E, A>(self: Effect<R, E, A>): Effect<R, never, A> {
   return self.orDieWith(identity)

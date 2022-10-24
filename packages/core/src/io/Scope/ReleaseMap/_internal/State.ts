@@ -1,5 +1,7 @@
+/** @internal */
 export type State = Exited | Running
 
+/** @internal */
 export class Exited {
   readonly _tag = "Exited"
   constructor(
@@ -9,6 +11,7 @@ export class Exited {
   ) {}
 }
 
+/** @internal */
 export class Running {
   readonly _tag = "Running"
   constructor(

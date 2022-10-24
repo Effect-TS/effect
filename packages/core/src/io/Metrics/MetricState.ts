@@ -1,22 +1,97 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+import type { HashMap } from "@fp-ts/data/HashMap"
+import type { Option } from "@fp-ts/data/Option"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const MetricStateSym = Symbol.for("@effect/core/io/Metrics/MetricState")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type MetricStateSym = typeof MetricStateSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _Type = Symbol.for("@effect/core/io/Metrics/MetricState/Type")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _Type = typeof _Type
 
-export const CounterStateSym = Symbol.for("@effect/core/io/Metrics/MetricState/Counter")
+const CounterStateSymbolKey = "@effect/core/io/Metrics/MetricState/Counter"
+const GaugeStateSymbolKey = "@effect/core/io/Metrics/MetricState/Gauge"
+const FrequencyStateSymbolKey = "@effect/core/io/Metrics/MetricState/Frequency"
+const HistogramStateSymbolKey = "@effect/core/io/Metrics/MetricState/Histogram"
+const SummaryStateSymbolKey = "@effect/core/io/Metrics/MetricState/Summary"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const CounterStateSym = Symbol.for(CounterStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type CounterStateSym = typeof CounterStateSym
 
-export const GaugeStateSym = Symbol.for("@effect/core/io/Metrics/MetricState/Gauge")
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const GaugeStateSym = Symbol.for(GaugeStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type GaugeStateSym = typeof GaugeStateSym
 
-export const FrequencyStateSym = Symbol.for("@effect/core/io/Metrics/MetricState/Frequency")
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const FrequencyStateSym = Symbol.for(FrequencyStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type FrequencyStateSym = typeof FrequencyStateSym
 
-export const HistogramStateSym = Symbol.for("@effect/core/io/Metrics/MetricState/Histogram")
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const HistogramStateSym = Symbol.for(HistogramStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type HistogramStateSym = typeof HistogramStateSym
 
-export const SummaryStateSym = Symbol.for("@effect/core/io/Metrics/MetricState/Summary")
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const SummaryStateSym = Symbol.for(SummaryStateSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SummaryStateSym = typeof SummaryStateSym
 
 /**
@@ -25,12 +100,17 @@ export type SummaryStateSym = typeof SummaryStateSym
  * This phantom type parameter is used to tie keys to their expected states.
  *
  * @tsplus type effect/core/io/Metrics/MetricState
+ * @category model
+ * @since 1.0.0
  */
-export interface MetricState<Type> extends Equals {
+export interface MetricState<Type> extends Equal.Equal {
   readonly [MetricStateSym]: MetricStateSym
   readonly [_Type]: (_: Type) => void
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace MetricState {
   export type Untyped = MetricState<any>
 
@@ -47,14 +127,19 @@ export declare namespace MetricState {
 export interface MetricStateOps {}
 export const MetricState: MetricStateOps = {}
 
+/** @internal */
 export abstract class BaseMetricState<Type> implements MetricState<Type> {
   readonly [MetricStateSym]: MetricStateSym = MetricStateSym
   readonly [_Type]!: (_: Type) => void
 
-  abstract [Hash.sym](): number
-  abstract [Equals.sym](u: unknown): boolean
+  abstract [Equal.symbolEqual](that: unknown): boolean
+  abstract [Equal.symbolHash](): number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class CounterState extends BaseMetricState<MetricKeyType.Counter> {
   readonly [CounterStateSym]: CounterStateSym = CounterStateSym
 
@@ -62,18 +147,22 @@ export class CounterState extends BaseMetricState<MetricKeyType.Counter> {
     super()
   }
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string("@effect/core/io/Metrics/MetricState/Counter"),
-      Hash.number(this.count)
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(CounterStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this.count))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
+  [Equal.symbolEqual](u: unknown): boolean {
     return isCounterState(u) && this.count === u.count
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class GaugeState extends BaseMetricState<MetricKeyType.Gauge> {
   readonly [GaugeStateSym]: GaugeStateSym = GaugeStateSym
 
@@ -81,18 +170,22 @@ export class GaugeState extends BaseMetricState<MetricKeyType.Gauge> {
     super()
   }
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string("@effect/core/io/Metrics/MetricState/Gauge"),
-      Hash.number(this.value)
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(GaugeStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this.value))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
+  [Equal.symbolEqual](u: unknown): boolean {
     return isGaugeState(u) && this.value === u.value
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class FrequencyState extends BaseMetricState<MetricKeyType.Frequency> {
   readonly [FrequencyStateSym]: FrequencyStateSym = FrequencyStateSym
 
@@ -100,18 +193,22 @@ export class FrequencyState extends BaseMetricState<MetricKeyType.Frequency> {
     super()
   }
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string("@effect/core/io/Metrics/MetricState/Frequency"),
-      Hash.iterator(this.occurrences[Symbol.iterator]())
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(FrequencyStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this.occurrences))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
-    return isFrequencyState(u) && this.occurrences == u.occurrences
+  [Equal.symbolEqual](u: unknown): boolean {
+    return isFrequencyState(u) && Equal.equals(this.occurrences, u.occurrences)
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class HistogramState extends BaseMetricState<MetricKeyType.Histogram> {
   readonly [HistogramStateSym]: HistogramStateSym = HistogramStateSym
 
@@ -125,25 +222,20 @@ export class HistogramState extends BaseMetricState<MetricKeyType.Histogram> {
     super()
   }
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string("@effect/core/io/Metrics/MetricState/Histogram"),
-      Hash.combine(
-        Hash.unknown(this.buckets),
-        Hash.combine(
-          Hash.number(this.count),
-          Hash.combine(
-            Hash.number(this.min),
-            Hash.combine(Hash.number(this.max), Hash.number(this.sum))
-          )
-        )
-      )
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(HistogramStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this.buckets)),
+      Equal.hashCombine(Equal.hash(this.count)),
+      Equal.hashCombine(Equal.hash(this.min)),
+      Equal.hashCombine(Equal.hash(this.max)),
+      Equal.hashCombine(Equal.hash(this.sum))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
+  [Equal.symbolEqual](u: unknown): boolean {
     return isHistogramState(u) &&
-      this.buckets == u.buckets &&
+      Equal.equals(this.buckets, u.buckets) &&
       this.count === u.count &&
       this.min === u.min &&
       this.max === u.max &&
@@ -151,12 +243,16 @@ export class HistogramState extends BaseMetricState<MetricKeyType.Histogram> {
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
   readonly [SummaryStateSym]: SummaryStateSym = SummaryStateSym
 
   constructor(
     readonly error: number,
-    readonly quantiles: Chunk<readonly [number, Maybe<number>]>,
+    readonly quantiles: Chunk<readonly [number, Option<number>]>,
     readonly count: number,
     readonly min: number,
     readonly max: number,
@@ -165,29 +261,22 @@ export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
     super()
   }
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string("@effect/core/io/Metrics/MetricState/Summary"),
-      Hash.combine(
-        Hash.number(this.error),
-        Hash.combine(
-          Hash.unknown(this.quantiles),
-          Hash.combine(
-            Hash.number(this.count),
-            Hash.combine(
-              Hash.number(this.min),
-              Hash.combine(Hash.number(this.max), Hash.number(this.sum))
-            )
-          )
-        )
-      )
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(SummaryStateSymbolKey),
+      Equal.hashCombine(Equal.hash(this.error)),
+      Equal.hashCombine(Equal.hash(this.quantiles)),
+      Equal.hashCombine(Equal.hash(this.count)),
+      Equal.hashCombine(Equal.hash(this.min)),
+      Equal.hashCombine(Equal.hash(this.max)),
+      Equal.hashCombine(Equal.hash(this.sum))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
+  [Equal.symbolEqual](u: unknown): boolean {
     return isSummaryState(u) &&
       this.error === u.error &&
-      this.quantiles == u.quantiles &&
+      Equal.equals(this.quantiles, u.quantiles) &&
       this.count === u.count &&
       this.min === u.min &&
       this.max === u.max &&
@@ -197,6 +286,8 @@ export class SummaryState extends BaseMetricState<MetricKeyType.Summary> {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Counter
+ * @category constructors
+ * @since 1.0.0
  */
 export function counter(count: number): MetricState.Counter {
   return new CounterState(count)
@@ -204,6 +295,8 @@ export function counter(count: number): MetricState.Counter {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Gauge
+ * @category constructors
+ * @since 1.0.0
  */
 export function gauge(value: number): MetricState.Gauge {
   return new GaugeState(value)
@@ -211,6 +304,8 @@ export function gauge(value: number): MetricState.Gauge {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Frequency
+ * @category constructors
+ * @since 1.0.0
  */
 export function frequency(occurrences: HashMap<string, number>): MetricState.Frequency {
   return new FrequencyState(occurrences)
@@ -218,6 +313,8 @@ export function frequency(occurrences: HashMap<string, number>): MetricState.Fre
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Histogram
+ * @category constructors
+ * @since 1.0.0
  */
 export function histogram(
   buckets: Chunk<readonly [number, number]>,
@@ -231,10 +328,12 @@ export function histogram(
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops Summary
+ * @category constructors
+ * @since 1.0.0
  */
 export function summary(
   error: number,
-  quantiles: Chunk<readonly [number, Maybe<number>]>,
+  quantiles: Chunk<readonly [number, Option<number>]>,
   count: number,
   min: number,
   max: number,
@@ -245,6 +344,8 @@ export function summary(
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops isCounterState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isCounterState(u: unknown): u is MetricState.Counter {
   return typeof u === "object" && u != null && CounterStateSym in u
@@ -252,6 +353,8 @@ export function isCounterState(u: unknown): u is MetricState.Counter {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops isGaugeState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isGaugeState(u: unknown): u is MetricState.Gauge {
   return typeof u === "object" && u != null && GaugeStateSym in u
@@ -259,6 +362,8 @@ export function isGaugeState(u: unknown): u is MetricState.Gauge {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops isFrequencyState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isFrequencyState(u: unknown): u is MetricState.Frequency {
   return typeof u === "object" && u != null && FrequencyStateSym in u
@@ -266,6 +371,8 @@ export function isFrequencyState(u: unknown): u is MetricState.Frequency {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops isHistogramState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isHistogramState(u: unknown): u is MetricState.Histogram {
   return typeof u === "object" && u != null && HistogramStateSym in u
@@ -273,6 +380,8 @@ export function isHistogramState(u: unknown): u is MetricState.Histogram {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricState.Ops isSummaryState
+ * @category refinements
+ * @since 1.0.0
  */
 export function isSummaryState(u: unknown): u is MetricState.Summary {
   return typeof u === "object" && u != null && SummaryStateSym in u

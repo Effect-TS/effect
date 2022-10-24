@@ -6,6 +6,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects retry
  * @tsplus pipeable effect/core/io/Effect retry
+ * @category retrying
+ * @since 1.0.0
  */
 export function retry<S, R1, E, B>(policy: Schedule<S, R1, E, B>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>

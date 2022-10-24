@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Ops acquireRelease
  * @tsplus fluent effect/core/stream/Stream acquireRelease
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireRelease<R, E, A, R2, Z>(
   acquire: Effect<R, E, A>,

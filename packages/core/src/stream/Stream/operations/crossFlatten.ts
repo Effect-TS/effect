@@ -2,6 +2,8 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * Composes this stream with the specified stream to create a cartesian
@@ -12,6 +14,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects crossFlatten
  * @tsplus pipeable effect/core/stream/Stream crossFlatten
+ * @category mutations
+ * @since 1.0.0
  */
 export function crossFlatten<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A extends ReadonlyArray<any>>(
@@ -21,7 +25,9 @@ export function crossFlatten<R2, E2, A2>(that: Stream<R2, E2, A2>) {
     return new StreamInternal(
       self.channel.concatMap((a) => {
         concreteStream(that)
-        return that.channel.mapOut((b) => a.flatMap((a) => b.map((b) => [...a, b])))
+        return that.channel.mapOut((b) =>
+          pipe(a, Chunk.flatMap((a) => pipe(b, Chunk.map((b) => [...a, b]))))
+        )
       })
     )
   }

@@ -1,4 +1,5 @@
 import type { Emit } from "@effect/core/stream/Stream/Emit"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -6,14 +7,16 @@ import type { Emit } from "@effect/core/stream/Stream/Emit"
  * of the stream, by setting it to `None`.
  *
  * @tsplus static effect/core/stream/Stream.Ops async
+ * @category async
+ * @since 1.0.0
  */
 export function _async<R, E, A>(
   register: (emit: Emit<R, E, A, void>) => void,
   outputBuffer = 16
 ): Stream<R, E, A> {
-  return Stream.asyncMaybe((callback) => {
+  return Stream.asyncOption((callback) => {
     register(callback)
-    return Maybe.none
+    return Option.none
   }, outputBuffer)
 }
 

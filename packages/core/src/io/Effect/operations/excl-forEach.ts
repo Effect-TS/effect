@@ -9,9 +9,12 @@ import { unsafeRemove } from "@effect/core/io/Queue/operations/_internal/unsafeR
 import type { Strategy } from "@effect/core/io/Queue/operations/strategy"
 import type { State } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
 import { Exited } from "@effect/core/io/Scope/ReleaseMap/_internal/State"
-import { ArrTypeId, Chunk, concreteChunk, SingletonTypeId } from "@tsplus/stdlib/collections/Chunk"
-import type { Collection } from "@tsplus/stdlib/collections/Collection"
-import { Maybe } from "@tsplus/stdlib/data/Maybe"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { identity, pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import * as Option from "@fp-ts/data/Option"
 
 // -----------------------------------------------------------------------------
 // forEach
@@ -27,15 +30,15 @@ import { Maybe } from "@tsplus/stdlib/data/Maybe"
  * @tsplus static effect/core/io/Effect.Ops forEach
  */
 export function forEach<A, R, E, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(() => {
     const acc: B[] = []
     return Effect.forEachDiscard(as, (a) =>
       f(a).map((b) => {
         acc.push(b)
-      })).map(() => Chunk.from(acc))
+      })).map(() => Chunk.fromIterable(acc))
   })
 }
 
@@ -51,9 +54,9 @@ export function forEach<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachWithIndex
  */
 export function forEachWithIndex<A, R, E, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A, i: number) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(() => {
     let index = 0
     const acc: B[] = []
@@ -61,7 +64,7 @@ export function forEachWithIndex<A, R, E, B>(
       f(a, index).map((b) => {
         acc.push(b)
         index++
-      })).map(() => Chunk.from(acc))
+      })).map(() => Chunk.fromIterable(acc))
   })
 }
 
@@ -79,7 +82,7 @@ export function forEachWithIndex<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachDiscard
  */
 export function forEachDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.suspendSucceed(
@@ -108,15 +111,19 @@ function forEachDiscardLoop<R, E, A, X>(
  * @tsplus static effect/core/io/Effect.Ops forEachPar
  */
 export function forEachPar<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
-  return Effect.parallelismWith((option) =>
-    option.fold(
-      () => forEachParUnbounded(as, f),
-      (n) => forEachParN(as, n, f)
-    )
-  )
+): Effect<R, E, Chunk.Chunk<B>> {
+  return Effect.parallelismWith((option) => {
+    switch (option._tag) {
+      case "None": {
+        return forEachParUnbounded(as, f)
+      }
+      case "Some": {
+        return forEachParN(as, option.value, f)
+      }
+    }
+  })
 }
 
 /**
@@ -124,41 +131,41 @@ export function forEachPar<R, E, A, B>(
  * and returns the results in a new `Chunk<B>`.
  */
 function forEachParUnbounded<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(
     Effect.succeed<Array<B>>([]).flatMap((array) =>
       forEachParUnboundedDiscard(
-        as.map((a, n) => [a, n] as [A, number]),
+        Array.from(as).map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a)).flatMap((b) =>
             Effect.sync(() => {
               array[n] = b
             })
           )
-      ).map(() => Chunk.from(array))
+      ).map(() => Chunk.fromIterable(array))
     )
   )
 }
 
 function forEachParN<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
-  return Effect.suspendSucceed<R, E, Chunk<B>>(() => {
+): Effect<R, E, Chunk.Chunk<B>> {
+  return Effect.suspendSucceed<R, E, Chunk.Chunk<B>>(() => {
     if (n < 1) {
       return Effect.dieMessage(
         `Unexpected nonpositive value "${n}" passed to foreachParN`
       )
     }
 
-    const as0 = Chunk.from(as)
-    const size = as0.size
+    const as0 = Chunk.fromIterable(as)
+    const size = as0.length
 
     if (size === 0) {
-      return Effect.succeed(Chunk.empty())
+      return Effect.succeed(Chunk.empty)
     }
 
     function worker(
@@ -167,29 +174,31 @@ function forEachParN<R, E, A, B>(
     ): Effect<R, E, void> {
       return queue
         .takeUpTo(1)
-        .map((_) => _.head)
-        .flatMap((_) =>
-          _.fold(
-            () => Effect.unit,
-            ([a, n]) =>
-              f(a)
-                .tap((b) =>
-                  Effect.sync(() => {
-                    array[n] = b
-                  })
-                )
-                .flatMap(() => worker(queue, array))
-          )
-        )
+        .map((chunk) => Chunk.head(chunk))
+        .flatMap((option) => {
+          switch (option._tag) {
+            case "None": {
+              return Effect.unit
+            }
+            case "Some": {
+              const [a, n] = option.value
+              return f(a).tap((b) =>
+                Effect.sync(() => {
+                  array[n] = b
+                })
+              ).flatMap(() => worker(queue, array))
+            }
+          }
+        })
     }
 
     return Effect.sync(new Array<B>(size)).flatMap((array) =>
       makeBoundedQueue<readonly [A, number]>(size).flatMap((queue) =>
         queue
-          .offerAll(as0.zipWithIndex)
+          .offerAll(Chunk.zipWithIndex(as0))
           .flatMap(() =>
             forEachParUnboundedDiscard(worker(queue, array).replicate(n), identity).map(
-              () => Chunk.from(array)
+              () => Chunk.fromIterable(array)
             )
           )
       )
@@ -209,20 +218,20 @@ function forEachParN<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachParWithIndex
  */
 export function forEachParWithIndex<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A, i: number) => Effect<R, E, B>
-): Effect<R, E, Chunk<B>> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(
     Effect.sync<B[]>([]).flatMap((array) =>
       Effect.forEachParDiscard(
-        as.map((a, n) => [a, n] as [A, number]),
+        Array.from(as).map((a, n) => [a, n] as [A, number]),
         ([a, n]) =>
           Effect.suspendSucceed(f(a, n)).flatMap((b) =>
             Effect.sync(() => {
               array[n] = b
             })
           )
-      ).map(() => Chunk.from(array))
+      ).map(() => Chunk.fromIterable(array))
     )
   )
 }
@@ -244,24 +253,28 @@ export function forEachParWithIndex<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops forEachParDiscard
  */
 export function forEachParDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
-  return Effect.parallelismWith((option) =>
-    option.fold(
-      () => forEachParUnboundedDiscard(as, f),
-      (n) => forEachParNDiscard(as, n, f)
-    )
-  )
+  return Effect.parallelismWith((option) => {
+    switch (option._tag) {
+      case "None": {
+        return forEachParUnboundedDiscard(as, f)
+      }
+      case "Some": {
+        return forEachParNDiscard(as, option.value, f)
+      }
+    }
+  })
 }
 
 function forEachParUnboundedDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.suspendSucceed<R, E, void>(() => {
-    const bs = Chunk.from(as)
-    const size = bs.size
+    const bs = Chunk.fromIterable(as)
+    const size = bs.length
 
     if (size === 0) {
       return Effect.unit
@@ -269,7 +282,7 @@ function forEachParUnboundedDiscard<R, E, A, X>(
 
     return Effect.uninterruptibleMask(({ restore }) => {
       const deferred = Deferred.unsafeMake<void, void>(FiberId.none)
-      const ref = new AtomicNumber(0)
+      const ref = MutableRef.make(0)
 
       return Effect.transplant((graft) =>
         Effect.forEach(bs, (a) =>
@@ -277,7 +290,10 @@ function forEachParUnboundedDiscard<R, E, A, X>(
             restore(Effect.suspendSucceed(f(a))).foldCauseEffect(
               (cause) => deferred.fail(undefined) > Effect.failCause(cause),
               () => {
-                if (ref.incrementAndGet() === size) {
+                let value = MutableRef.get(ref)
+                pipe(ref, MutableRef.set(value + 1))
+                value = MutableRef.get(ref)
+                if (value === size) {
                   deferred.unsafeDone(Effect.unit)
                   return Effect.unit
                 } else {
@@ -308,13 +324,13 @@ function forEachParUnboundedDiscard<R, E, A, X>(
 }
 
 function forEachParNDiscard<R, E, A, X>(
-  as: Collection<A>,
+  as: Iterable<A>,
   n: number,
   f: (a: A) => Effect<R, E, X>
 ): Effect<R, E, void> {
   return Effect.suspendSucceed(() => {
-    const bs = Chunk.from(as)
-    const size = bs.size
+    const bs = Chunk.fromIterable(as)
+    const size = bs.length
 
     if (size === 0) {
       return Effect.unit
@@ -323,13 +339,17 @@ function forEachParNDiscard<R, E, A, X>(
     function worker(queue: Queue<A>): Effect<R, E, void> {
       return queue
         .takeUpTo(1)
-        .map((chunk) => chunk.head)
-        .flatMap((option) =>
-          option.fold(
-            () => Effect.unit,
-            (a) => f(a).flatMap(() => worker(queue))
-          )
-        )
+        .map(Chunk.head)
+        .flatMap((option) => {
+          switch (option._tag) {
+            case "None": {
+              return Effect.unit
+            }
+            case "Some": {
+              return f(option.value).flatMap(() => worker(queue))
+            }
+          }
+        })
     }
 
     return makeBoundedQueue<A>(size).flatMap((queue) =>
@@ -351,10 +371,10 @@ function forEachParNDiscard<R, E, A, X>(
  * @tsplus static effect/core/io/Effect.Ops forEachExec
  */
 export function forEachExec<R, E, A, B>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, B>,
   strategy: ExecutionStrategy
-): Effect<R, E, Chunk<B>> {
+): Effect<R, E, Chunk.Chunk<B>> {
   return Effect.suspendSucceed(() => {
     switch (strategy._tag) {
       case "Parallel": {
@@ -380,7 +400,7 @@ export function forEachExec<R, E, A, B>(
  *
  * @tsplus static effect/core/io/Effect.Ops collectAll
  */
-export function collectAll<R, E, A>(as: Collection<Effect<R, E, A>>) {
+export function collectAll<R, E, A>(as: Iterable<Effect<R, E, A>>) {
   return Effect.forEach(as, identity)
 }
 
@@ -395,8 +415,8 @@ export function collectAll<R, E, A>(as: Collection<Effect<R, E, A>>) {
  * @tsplus static effect/core/io/Effect.Ops collectAllPar
  */
 export function collectAllPar<R, E, A>(
-  as: Collection<Effect<R, E, A>>
-): Effect<R, E, Chunk<A>> {
+  as: Iterable<Effect<R, E, A>>
+): Effect<R, E, Chunk.Chunk<A>> {
   return Effect.forEachPar(as, identity)
 }
 
@@ -411,7 +431,7 @@ export function collectAllPar<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllDiscard
  */
 export function collectAllDiscard<R, E, A>(
-  as: Collection<Effect<R, E, A>>
+  as: Iterable<Effect<R, E, A>>
 ): Effect<R, E, void> {
   return Effect.forEachDiscard(as, identity)
 }
@@ -427,7 +447,7 @@ export function collectAllDiscard<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllParDiscard
  */
 export function collectAllParDiscard<R, E, A>(
-  as: Collection<Effect<R, E, A>>
+  as: Iterable<Effect<R, E, A>>
 ): Effect<R, E, void> {
   return Effect.forEachParDiscard(as, identity)
 }
@@ -443,10 +463,10 @@ export function collectAllParDiscard<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllWith
  */
 export function collectAllWith<R, E, A, B>(
-  as: Collection<Effect<R, E, A>>,
-  pf: (a: A) => Maybe<B>
-): Effect<R, E, Chunk<B>> {
-  return Effect.collectAll(as).map((chunk) => chunk.collect(pf))
+  as: Iterable<Effect<R, E, A>>,
+  pf: (a: A) => Option.Option<B>
+): Effect<R, E, Chunk.Chunk<B>> {
+  return Effect.collectAll(as).map(Chunk.filterMap(pf))
 }
 
 // -----------------------------------------------------------------------------
@@ -460,10 +480,10 @@ export function collectAllWith<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops collectAllWithPar
  */
 export function collectAllWithPar<R, E, A, B>(
-  as: Collection<Effect<R, E, A>>,
-  pf: (a: A) => Maybe<B>
-): Effect<R, E, Chunk<B>> {
-  return Effect.collectAllPar(as).map((chunk) => chunk.collect(pf))
+  as: Iterable<Effect<R, E, A>>,
+  pf: (a: A) => Option.Option<B>
+): Effect<R, E, Chunk.Chunk<B>> {
+  return Effect.collectAllPar(as).map(Chunk.filterMap(pf))
 }
 
 // -----------------------------------------------------------------------------
@@ -477,33 +497,35 @@ export function collectAllWithPar<R, E, A, B>(
  * @tsplus static effect/core/io/Effect.Ops collectAllWithEffect
  */
 export function collectAllWithEffect<A, R, E, B>(
-  self: Collection<A>,
-  f: (a: A) => Maybe<Effect<R, E, B>>
-): Effect<R, E, Chunk<B>> {
-  const chunk = Chunk.from(self)
-  concreteChunk(chunk)
-  switch (chunk._typeId) {
-    case SingletonTypeId: {
-      return f(chunk.a).fold(
-        () => Effect.succeed(Chunk.empty()),
-        (b) => b.map(Chunk.single)
-      )
-    }
-    case ArrTypeId: {
-      const array = chunk._arrayLike()
-      let dest: Effect<R, E, Chunk<B>> = Effect.succeed(Chunk.empty<B>())
-      for (let i = 0; i < array.length; i++) {
-        const rhs = f(array[i]!)
-        if (rhs.isSome()) {
-          dest = dest.zipWith(rhs.value, (a, b) => a.append(b))
-        }
+  as: Iterable<A>,
+  f: (a: A) => Option.Option<Effect<R, E, B>>
+): Effect<R, E, Chunk.Chunk<B>> {
+  const array = Array.from(as)
+  // Break out early if there are no elements
+  if (array.length === 0) {
+    return Effect.succeed(Chunk.empty)
+  }
+  // Break out early if there is only one element
+  if (array.length === 1) {
+    const option = f(array[0]!)
+    switch (option._tag) {
+      case "None": {
+        return Effect.succeed(Chunk.empty)
       }
-      return dest
-    }
-    default: {
-      return collectAllWithEffect(chunk._materialize(), f)
+      case "Some": {
+        return option.value.map(Chunk.single)
+      }
     }
   }
+  // Otherwise create the intermediate result structure
+  let result: Effect<R, E, List.List<B>> = Effect.succeed(List.empty<B>())
+  for (let i = array.length - 1; i >= 0; i--) {
+    const option = f(array[i]!)
+    if (option._tag === "Some") {
+      result = result.zipWith(option.value, (list, b) => pipe(list, List.prepend(b)))
+    }
+  }
+  return result.map(Chunk.fromIterable)
 }
 
 // -----------------------------------------------------------------------------
@@ -516,11 +538,11 @@ export function collectAllWithEffect<A, R, E, B>(
  * @tsplus static effect/core/io/Effect.Ops collectAllSuccesses
  */
 export function collectAllSuccesses<R, E, A>(
-  as: Collection<Effect<R, E, A>>
-): Effect<R, never, Chunk<A>> {
+  as: Iterable<Effect<R, E, A>>
+): Effect<R, never, Chunk.Chunk<A>> {
   return Effect.collectAllWith(
-    as.map((effect) => effect.exit),
-    (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
+    Array.from(as).map((effect) => effect.exit),
+    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
   )
 }
 
@@ -534,11 +556,11 @@ export function collectAllSuccesses<R, E, A>(
  * @tsplus static effect/core/io/Effect.Ops collectAllSuccessesPar
  */
 export function collectAllSuccessesPar<R, E, A>(
-  as: Collection<Effect<R, E, A>>
-): Effect<R, never, Chunk<A>> {
+  as: Iterable<Effect<R, E, A>>
+): Effect<R, never, Chunk.Chunk<A>> {
   return Effect.collectAllWithPar(
-    as.map((effect) => effect.exit),
-    (exit) => (exit._tag === "Success" ? Maybe.some(exit.value) : Maybe.none)
+    Array.from(as).map((effect) => effect.exit),
+    (exit) => (exit._tag === "Success" ? Option.some(exit.value) : Option.none)
   )
 }
 
@@ -552,8 +574,8 @@ export function collectAllSuccessesPar<R, E, A>(
  * a catchable error, _if_ that error does not result from interruption.
  */
 export function fiberJoinAll<E, A>(
-  as: Collection<Fiber<E, A>>
-): Effect<never, E, Chunk<A>> {
+  as: Iterable<Fiber<E, A>>
+): Effect<never, E, Chunk.Chunk<A>> {
   return fiberWaitAll(as).flatten.tap(() => Effect.forEach(as, (fiber) => fiber.inheritAll))
 }
 
@@ -561,8 +583,8 @@ export function fiberJoinAll<E, A>(
  * Awaits on all fibers to be completed, successfully or not.
  */
 export function fiberWaitAll<E, A>(
-  as: Collection<Fiber<E, A>>
-): Effect<never, never, Exit<E, Chunk<A>>> {
+  as: Iterable<Fiber<E, A>>
+): Effect<never, never, Exit<E, Chunk.Chunk<A>>> {
   return Effect.forEachPar(as, (fiber) => fiber.await.flatten).exit
 }
 
@@ -591,7 +613,7 @@ export function releaseMapReleaseAll(
                 Effect.forEach(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
-                ).flatMap((results) => Exit.collectAll(results).getOrElse(Exit.unit)),
+                ).flatMap((results) => pipe(Exit.collectAll(results), Option.getOrElse(Exit.unit))),
                 new Exited(s.nextKey, ex, s.update)
               ] as const
             }
@@ -600,7 +622,9 @@ export function releaseMapReleaseAll(
                 Effect.forEachPar(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
-                ).flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit)),
+                ).flatMap((results) =>
+                  pipe(Exit.collectAllPar(results), Option.getOrElse(Exit.unit))
+                ),
                 new Exited(s.nextKey, ex, s.update)
               ] as const
             }
@@ -610,7 +634,9 @@ export function releaseMapReleaseAll(
                   Array.from(s.finalizers()).reverse(),
                   ([_, f]) => s.update(f)(ex).exit
                 )
-                  .flatMap((results) => Exit.collectAllPar(results).getOrElse(Exit.unit))
+                  .flatMap((results) =>
+                    pipe(Exit.collectAllPar(results), Option.getOrElse(Exit.unit))
+                  )
                   .withParallelism(execStrategy.n) as Effect<never, never, unknown>,
                 new Exited(s.nextKey, ex, s.update)
               ] as const
@@ -635,7 +661,7 @@ export function makeBoundedQueue<A>(
 }
 
 export function createQueue<A>(
-  queue: MutableQueue<A>,
+  queue: MutableQueue.MutableQueue<A>,
   strategy: Strategy<A>
 ): Effect<never, never, Queue<A>> {
   return Deferred.make<never, void>().map((deferred) =>
@@ -643,7 +669,7 @@ export function createQueue<A>(
       queue,
       MutableQueue.unbounded(),
       deferred,
-      new AtomicBoolean(false),
+      MutableRef.make(false),
       strategy
     )
   )
@@ -663,22 +689,25 @@ class QueueImpl<A> implements Queue<A> {
   }
 
   constructor(
-    readonly queue: MutableQueue<A>,
-    readonly takers: MutableQueue<Deferred<never, A>>,
+    readonly queue: MutableQueue.MutableQueue<A>,
+    readonly takers: MutableQueue.MutableQueue<Deferred<never, A>>,
     readonly shutdownHook: Deferred<never, void>,
-    readonly shutdownFlag: AtomicBoolean,
+    readonly shutdownFlag: MutableRef.MutableRef<boolean>,
     readonly strategy: Strategy<A>
   ) {}
 
   offer(this: this, a: A): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
       let noRemaining: boolean
-      if (this.queue.isEmpty) {
-        const taker = this.takers.poll(EmptyMutableQueue)
-        if (taker !== EmptyMutableQueue) {
+      if (MutableQueue.isEmpty(this.queue)) {
+        const taker = pipe(
+          this.takers,
+          MutableQueue.poll(MutableQueue.EmptyMutableQueue)
+        )
+        if (taker !== MutableQueue.EmptyMutableQueue) {
           unsafeCompleteDeferred(taker, a)
           noRemaining = true
         } else {
@@ -691,7 +720,7 @@ class QueueImpl<A> implements Queue<A> {
         return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
-      const succeeded = this.queue.offer(a)
+      const succeeded = pipe(this.queue, MutableQueue.offer(a))
       unsafeCompleteTakers(
         this.strategy,
         this.queue,
@@ -708,20 +737,24 @@ class QueueImpl<A> implements Queue<A> {
     })
   }
 
-  offerAll(this: this, as: Collection<A>): Effect<never, never, boolean> {
+  offerAll(this: this, as: Iterable<A>): Effect<never, never, boolean> {
     return Effect.suspendSucceed(() => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
-      const as0 = Chunk.from(as)
-      const pTakers = this.queue.isEmpty
-        ? unsafePollN(this.takers, as0.size)
-        : Chunk.empty<Deferred<never, A>>()
-      const [forTakers, remaining] = as0.splitAt(pTakers.size)
-      pTakers.zip(forTakers).forEach(([taker, item]) => {
-        unsafeCompleteDeferred(taker, item)
-      })
-      if (remaining.isEmpty) {
+      const as0 = Chunk.fromIterable(as)
+      const pTakers = MutableQueue.isEmpty(this.queue)
+        ? Chunk.fromIterable(unsafePollN(this.takers, as0.length))
+        : Chunk.empty
+      const [forTakers, remaining] = pipe(as0, Chunk.splitAt(pTakers.length))
+      pipe(
+        pTakers,
+        Chunk.zip(forTakers),
+        Chunk.forEach(([taker, item]) => {
+          unsafeCompleteDeferred(taker, item)
+        })
+      )
+      if (Chunk.isEmpty(remaining)) {
         return Effect.succeed(true)
       }
       // Not enough takers, offer to the queue
@@ -731,10 +764,10 @@ class QueueImpl<A> implements Queue<A> {
         this.queue,
         this.takers
       )
-      return surplus.isEmpty
+      return List.isNil(surplus)
         ? Effect.succeed(true)
         : this.strategy.handleSurplus(
-          surplus,
+          Chunk.fromIterable(surplus),
           this.queue,
           this.takers,
           this.shutdownFlag
@@ -743,14 +776,18 @@ class QueueImpl<A> implements Queue<A> {
   }
 
   get capacity(): number {
-    return (this.queue as MutableQueue<unknown>).capacity
+    return MutableQueue.capacity(this.queue)
   }
 
   get size(): Effect<never, never, number> {
     return Effect.suspendSucceed(
-      this.shutdownFlag.get
+      MutableRef.get(this.shutdownFlag)
         ? Effect.interrupt
-        : Effect.succeed(this.queue.size - this.takers.size + this.strategy.surplusSize)
+        : Effect.succeed(
+          MutableQueue.length(this.queue) -
+            MutableQueue.length(this.takers) +
+            this.strategy.surplusSize
+        )
     )
   }
 
@@ -759,12 +796,12 @@ class QueueImpl<A> implements Queue<A> {
   }
 
   get isShutdown(): Effect<never, never, boolean> {
-    return Effect.sync(this.shutdownFlag.get)
+    return Effect.sync(MutableRef.get(this.shutdownFlag))
   }
 
   get shutdown(): Effect<never, never, void> {
     return Effect.withFiberRuntime<never, never, void>((state) => {
-      this.shutdownFlag.set(true)
+      pipe(this.shutdownFlag, MutableRef.set(true))
       return Effect.whenEffect(
         this.shutdownHook.succeed(undefined),
         Effect.forEachParDiscard(
@@ -785,11 +822,11 @@ class QueueImpl<A> implements Queue<A> {
 
   get take(): Effect<never, never, A> {
     return Effect.withFiberRuntime((state) => {
-      if (this.shutdownFlag.get) {
+      if (MutableRef.get(this.shutdownFlag)) {
         return Effect.interrupt
       }
-      const item = this.queue.poll(EmptyMutableQueue)
-      if (item !== EmptyMutableQueue) {
+      const item = pipe(this.queue, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
+      if (item !== MutableQueue.EmptyMutableQueue) {
         this.strategy.unsafeOnQueueEmptySpace(
           this.queue,
           this.takers
@@ -802,13 +839,13 @@ class QueueImpl<A> implements Queue<A> {
         // - Clean up resources in case of interruption
         const deferred = Deferred.unsafeMake<never, A>(state.id)
         return Effect.suspendSucceed(() => {
-          this.takers.offer(deferred)
+          pipe(this.takers, MutableQueue.offer(deferred))
           unsafeCompleteTakers(
             this.strategy,
             this.queue,
             this.takers
           )
-          return this.shutdownFlag.get ? Effect.interrupt : deferred.await
+          return MutableRef.get(this.shutdownFlag) ? Effect.interrupt : deferred.await
         }).onInterrupt(() => {
           return Effect.sync(
             unsafeRemove(this.takers, deferred)
@@ -818,21 +855,21 @@ class QueueImpl<A> implements Queue<A> {
     })
   }
 
-  get takeAll(): Effect<never, never, Chunk<A>> {
+  get takeAll(): Effect<never, never, Chunk.Chunk<A>> {
     return Effect.suspendSucceed(() =>
-      this.shutdownFlag.get
+      MutableRef.get(this.shutdownFlag)
         ? Effect.interrupt
         : Effect.sync(() => {
           const as = unsafePollAll(this.queue)
           this.strategy.unsafeOnQueueEmptySpace(this.queue, this.takers)
-          return as
+          return Chunk.fromIterable(as)
         })
     )
   }
 
-  takeUpTo(this: this, max: number): Effect<never, never, Chunk<A>> {
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk.Chunk<A>> {
     return Effect.suspendSucceed(() =>
-      (this.shutdownFlag as AtomicBoolean).get
+      MutableRef.get(this.shutdownFlag)
         ? Effect.interrupt
         : Effect.sync(() => {
           const as = unsafePollN(this.queue, max)
@@ -840,7 +877,7 @@ class QueueImpl<A> implements Queue<A> {
             this.queue,
             this.takers
           )
-          return as
+          return Chunk.fromIterable(as)
         })
     )
   }
@@ -849,8 +886,8 @@ class QueueImpl<A> implements Queue<A> {
     self: Dequeue<A>,
     min: number,
     max: number,
-    acc: Chunk<A>
-  ): Effect<never, never, Chunk<A>> {
+    acc: Chunk.Chunk<A>
+  ): Effect<never, never, Chunk.Chunk<A>> {
     if (max < min) {
       return Effect.succeed(acc)
     }
@@ -858,7 +895,7 @@ class QueueImpl<A> implements Queue<A> {
       const remaining = min - bs.length
 
       if (remaining === 1) {
-        return self.take.map((b) => (acc + bs).append(b))
+        return self.take.map((b) => pipe(acc, Chunk.concat(bs), Chunk.append(b)))
       }
 
       if (remaining > 1) {
@@ -867,33 +904,33 @@ class QueueImpl<A> implements Queue<A> {
             self,
             remaining - 1,
             max - bs.length - 1,
-            (acc + bs).append(b)
+            pipe(acc, Chunk.concat(bs), Chunk.append(b))
           )
         )
       }
 
-      return Effect.succeed(acc + bs)
+      return Effect.succeed(pipe(acc, Chunk.concat(bs)))
     })
   }
 
-  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<A>> {
-    return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty()))
+  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk.Chunk<A>> {
+    return Effect.suspendSucceed(this.takeRemainderLoop(this, min, max, Chunk.empty))
   }
 
-  takeN(this: this, n: number): Effect<never, never, Chunk<A>> {
+  takeN(this: this, n: number): Effect<never, never, Chunk.Chunk<A>> {
     return this.takeBetween(n, n)
   }
 
-  get poll(): Effect<never, never, Maybe<A>> {
-    return this.takeUpTo(1).map((chunk) => chunk.head)
+  get poll(): Effect<never, never, Option.Option<A>> {
+    return this.takeUpTo(1).map(Chunk.head)
   }
 }
 
 export function unsafeCreateQueue<A>(
-  queue: MutableQueue<A>,
-  takers: MutableQueue<Deferred<never, A>>,
+  queue: MutableQueue.MutableQueue<A>,
+  takers: MutableQueue.MutableQueue<Deferred<never, A>>,
   shutdownHook: Deferred<never, void>,
-  shutdownFlag: AtomicBoolean,
+  shutdownFlag: MutableRef.MutableRef<boolean>,
   strategy: Strategy<A>
 ): Queue<A> {
   return new QueueImpl(queue, takers, shutdownHook, shutdownFlag, strategy)
@@ -913,10 +950,10 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   private putters = MutableQueue.unbounded<readonly [A, Deferred<never, boolean>, boolean]>()
 
   handleSurplus(
-    as: Chunk<A>,
-    queue: MutableQueue<A>,
-    takers: MutableQueue<Deferred<never, A>>,
-    isShutdown: AtomicBoolean
+    as: Chunk.Chunk<A>,
+    queue: MutableQueue.MutableQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred<never, A>>,
+    isShutdown: MutableRef.MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.withFiberRuntime((state) => {
       const deferred = Deferred.unsafeMake<never, boolean>(state.id)
@@ -925,7 +962,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
         this.unsafeOffer(as, deferred)
         this.unsafeOnQueueEmptySpace(queue, takers)
         unsafeCompleteTakers(this, queue, takers)
-        return isShutdown.get ? Effect.interrupt : deferred.await
+        return MutableRef.get(isShutdown) ? Effect.interrupt : deferred.await
       }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }
@@ -933,42 +970,36 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.putters,
-      unsafePollAll(this.putters).filter(([, _]) => _ !== deferred)
+      pipe(unsafePollAll(this.putters), List.filter(([, _]) => _ !== deferred))
     )
   }
 
-  unsafeOffer(as: Chunk<A>, deferred: Deferred<never, boolean>): void {
+  unsafeOffer(as: Chunk.Chunk<A>, deferred: Deferred<never, boolean>): void {
     let bs = as
-
-    while (bs.size > 0) {
-      const head = bs.unsafeGet(0)!
-
-      bs = bs.drop(1)
-
-      if (bs.size === 0) {
-        this.putters.offer([head, deferred, true] as const)
+    while (bs.length > 0) {
+      const head = pipe(bs, Chunk.unsafeGet(0))
+      bs = pipe(bs, Chunk.drop(1))
+      if (bs.length === 0) {
+        pipe(this.putters, MutableQueue.offer([head, deferred, true as boolean] as const))
       } else {
-        this.putters.offer([head, deferred, false] as const)
+        pipe(this.putters, MutableQueue.offer([head, deferred, false as boolean] as const))
       }
     }
   }
 
   unsafeOnQueueEmptySpace(
-    queue: MutableQueue<A>,
-    takers: MutableQueue<Deferred<never, A>>
+    queue: MutableQueue.MutableQueue<A>,
+    takers: MutableQueue.MutableQueue<Deferred<never, A>>
   ): void {
     let keepPolling = true
-
-    while (keepPolling && !queue.isFull) {
-      const putter = this.putters.poll(EmptyMutableQueue)
-
-      if (putter !== EmptyMutableQueue) {
-        const offered = queue.offer(putter[0])
-
+    while (keepPolling && !MutableQueue.isFull(queue)) {
+      const putter = pipe(this.putters, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
+      if (putter !== MutableQueue.EmptyMutableQueue) {
+        const offered = pipe(queue, MutableQueue.offer(putter[0]))
         if (offered && putter[2]) {
           unsafeCompleteDeferred(putter[1], true)
         } else if (!offered) {
-          unsafeOfferAll(this.putters, unsafePollAll(this.putters).prepend(putter))
+          unsafeOfferAll(this.putters, pipe(unsafePollAll(this.putters), List.prepend(putter)))
         }
         unsafeCompleteTakers(this, queue, takers)
       } else {
@@ -978,7 +1009,7 @@ export class BackPressureStrategy<A> implements Strategy<A> {
   }
 
   get surplusSize(): number {
-    return this.putters.size
+    return MutableQueue.length(this.putters)
   }
 
   get shutdown(): Effect<never, never, void> {

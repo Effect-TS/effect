@@ -5,5 +5,7 @@ export { BackPressureStrategy } from "@effect/core/io/Effect/operations/excl-for
 
 /**
  * @tsplus static effect/core/io/Queue/Strategy.Ops BackPressure
+ * @category constructors
+ * @since 1.0.0
  */
 export const backPressureStrategy: <A>() => BackPressureStrategy<A> = makeBackPressureStrategy

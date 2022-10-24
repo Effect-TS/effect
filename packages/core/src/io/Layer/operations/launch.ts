@@ -3,6 +3,8 @@
  * your entire application is a layer, such as an HTTP server.
  *
  * @tsplus getter effect/core/io/Layer launch
+ * @category conversions
+ * @since 1.0.0
  */
 export function launch<RIn, E, ROut>(self: Layer<RIn, E, ROut>): Effect<RIn, E, never> {
   return Effect.scoped(

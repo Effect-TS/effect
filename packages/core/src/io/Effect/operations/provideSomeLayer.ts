@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects provideSomeLayer
  * @tsplus pipeable effect/core/io/Effect provideSomeLayer
+ * @category environment
+ * @since 1.0.0
  */
 export function provideSomeLayer<R1, E1, A1>(layer: Layer<R1, E1, A1>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R1 | Exclude<R, A1>, E | E1, A> =>

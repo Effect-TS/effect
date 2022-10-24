@@ -5,6 +5,8 @@
  * @tsplus static effect/core/io/Scope.Aspects addFinalizer
  * @tsplus pipeable effect/core/io/Scope addFinalizer
  * @tsplus pipeable effect/core/io/Scope/Closeable addFinalizer
+ * @category mutations
+ * @since 1.0.0
  */
 export function addFinalizer(finalizer: Effect<never, never, unknown>) {
   return (self: Scope): Effect<never, never, void> => self.addFinalizerExit(() => finalizer)

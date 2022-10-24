@@ -7,6 +7,8 @@ import {
  *
  * @tsplus static effect/core/stream/SubscriptionRef.Ops make
  * @tsplus static effect/core/stream/SubscriptionRef.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<A>(
   value: LazyArg<A>

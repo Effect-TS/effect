@@ -3,6 +3,8 @@
  * an `Exit` for the completion value of the fiber.
  *
  * @tsplus getter effect/core/io/Effect exit
+ * @category getters
+ * @since 1.0.0
  */
 export function exit<R, E, A>(self: Effect<R, E, A>) {
   return self.foldCause(

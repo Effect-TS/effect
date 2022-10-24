@@ -3,6 +3,8 @@
  * closed, the queue will never again produce values and should be discarded.
  *
  * @tsplus getter effect/core/stream/Stream toQueueUnbounded
+ * @category destructors
+ * @since 1.0.0
  */
 export function toQueueUnbounded<R, E, A>(
   self: Stream<R, E, A>

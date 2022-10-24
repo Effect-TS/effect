@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Stream.Aspects bind
  * @tsplus pipeable effect/core/stream/Stream bind
+ * @category do
+ * @since 1.0.0
  */
 export function bind<N extends string, K, R2, E2, A>(
   tag: Exclude<N, keyof K>,
@@ -13,6 +15,8 @@ export function bind<N extends string, K, R2, E2, A>(
 /**
  * @tsplus static effect/core/stream/Stream.Aspects bindValue
  * @tsplus pipeable effect/core/stream/Streamj bindValue
+ * @category do
+ * @since 1.0.0
  */
 export function bindValue<N extends string, K, A>(
   tag: Exclude<N, keyof K>,
@@ -24,6 +28,8 @@ export function bindValue<N extends string, K, A>(
 
 /**
  * @tsplus static effect/core/stream/Stream.Ops Do
+ * @category do
+ * @since 1.0.0
  */
 export function Do(): Stream<never, never, {}> {
   return Stream.fromEffect(Effect.succeed({}))

@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function"
+import { constTrue } from "@fp-ts/data/Function"
 
 /**
  * Executes an effectful fold over the stream of values. Returns a scoped
@@ -6,6 +6,8 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  *
  * @tsplus static effect/core/stream/Stream.Aspects runFoldScopedEffect
  * @tsplus pipeable effect/core/stream/Stream runFoldScopedEffect
+ * @category destructors
+ * @since 1.0.0
  */
 export function runFoldScopedEffect<S, A, R2, E2>(
   s: S,

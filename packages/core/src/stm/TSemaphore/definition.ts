@@ -1,4 +1,13 @@
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const TSemaphoreSym = Symbol.for("@effect/core/stm/TSemaphore")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type TSemaphoreSym = typeof TSemaphoreSym
 
 /**
@@ -29,6 +38,8 @@ export type TSemaphoreSym = typeof TSemaphoreSym
  * synchronize on access to two different mutable variables.
  *
  * @tsplus type effect/core/stm/TSemaphore
+ * @category model
+ * @since 1.0.0
  */
 export interface TSemaphore {
   readonly [TSemaphoreSym]: TSemaphoreSym
@@ -36,6 +47,8 @@ export interface TSemaphore {
 
 /**
  * @tsplus type effect/core/stm/TSemaphore.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TSemaphoreOps {
   $: TSemaphoreAspects
@@ -46,5 +59,7 @@ export const TSemaphore: TSemaphoreOps = {
 
 /**
  * @tsplus type effect/core/stm/TSemaphore,Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface TSemaphoreAspects {}

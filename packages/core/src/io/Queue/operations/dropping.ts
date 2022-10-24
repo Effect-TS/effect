@@ -1,4 +1,5 @@
 import { Strategy } from "@effect/core/io/Queue/operations/strategy"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
 
 /**
  * Makes a new bounded queue with the dropping strategy. When the capacity of
@@ -9,6 +10,8 @@ import { Strategy } from "@effect/core/io/Queue/operations/strategy"
  * `RingBuffer`.
  *
  * @tsplus static effect/core/io/Queue.Ops dropping
+ * @category constructors
+ * @since 1.0.0
  */
 export function dropping<A>(
   requestedCapacity: number

@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects retryN
  * @tsplus pipeable effect/core/io/Effect retryN
+ * @category retrying
+ * @since 1.0.0
  */
 export function retryN(n: number) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, A> => retryNLoop(self, n)

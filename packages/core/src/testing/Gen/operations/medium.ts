@@ -6,6 +6,8 @@ import { clamp } from "@effect/core/testing/_internal/math"
  * larger sizes will be generated as well.
  *
  * @tsplus static effect/core/testing/Gen.Ops medium
+ * @category constructors
+ * @since 1.0.0
  */
 export function medium<R, A>(f: (n: number) => Gen<R, A>, min = 0): Gen<R | Sized, A> {
   const gen = Do(($) => {

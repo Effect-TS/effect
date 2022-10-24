@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects getOrElse
  * @tsplus pipeable effect/core/io/Exit getOrElse
+ * @category alternatives
+ * @since 1.0.0
  */
 export function getOrElse<E, A>(orElse: (cause: Cause<E>) => A) {
   return (self: Exit<E, A>): A => {

@@ -6,6 +6,8 @@ export type CachedURI = typeof CachedURI
  * which can be refreshed either manually or automatically.
  *
  * @tsplus type effect/core/io/Cached
+ * @category model
+ * @since 1.0.0
  */
 export interface Cached<Error, Resource> {
   readonly [CachedURI]: {
@@ -27,6 +29,8 @@ export interface Cached<Error, Resource> {
 
 /**
  * @tsplus type effect/core/io/Cached.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface CachedOps {}
 export const Cached: CachedOps = {}

@@ -6,6 +6,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects foldEffect
  * @tsplus pipeable effect/core/io/Schedule foldEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldEffect<Out, Env1, Z>(
   z: Z,

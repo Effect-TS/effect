@@ -15,11 +15,13 @@ import {
 import type { AsyncInputProducer } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
 import type { UpstreamPullRequest } from "@effect/core/stream/Channel/UpstreamPullRequest"
 import type { UpstreamPullStrategy } from "@effect/core/stream/Channel/UpstreamPullStrategy"
+import type { Context } from "@fp-ts/data/Context"
 
 // -----------------------------------------------------------------------------
 // PipeTo
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class PipeTo<
   Env,
   InErr,
@@ -34,10 +36,8 @@ export class PipeTo<
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr2, OutElem2, OutDone2> {
   readonly _tag = "PipeTo"
   constructor(
-    readonly left: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>,
-    readonly right: Lazy<
-      Channel<Env, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>
-    >
+    readonly left: () => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>,
+    readonly right: () => Channel<Env, OutErr, OutElem, OutDone, OutErr2, OutElem2, OutDone2>
   ) {
     super()
   }
@@ -47,6 +47,7 @@ export class PipeTo<
 // Read
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Read<
   Env,
   InErr,
@@ -83,6 +84,7 @@ export class Read<
 // SucceedNow
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class SucceedNow<OutDone> extends ChannelBase<
   never,
   unknown,
@@ -102,6 +104,7 @@ export class SucceedNow<OutDone> extends ChannelBase<
 // Fail
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Fail<OutErr> extends ChannelBase<
   never,
   unknown,
@@ -112,7 +115,7 @@ export class Fail<OutErr> extends ChannelBase<
   never
 > {
   readonly _tag = "Fail"
-  constructor(readonly error: Lazy<Cause<OutErr>>) {
+  constructor(readonly error: () => Cause<OutErr>) {
     super()
   }
 }
@@ -121,6 +124,7 @@ export class Fail<OutErr> extends ChannelBase<
 // FromEffect
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
   Env,
   unknown,
@@ -140,6 +144,7 @@ export class FromEffect<Env, OutErr, OutDone> extends ChannelBase<
 // Emit
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Emit<OutElem, OutDone> extends ChannelBase<
   never,
   unknown,
@@ -159,6 +164,7 @@ export class Emit<OutElem, OutDone> extends ChannelBase<
 // Succeed
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Succeed<OutDone> extends ChannelBase<
   never,
   unknown,
@@ -169,7 +175,7 @@ export class Succeed<OutDone> extends ChannelBase<
   OutDone
 > {
   readonly _tag = "Succeed"
-  constructor(readonly effect: Lazy<OutDone>) {
+  constructor(readonly effect: () => OutDone) {
     super()
   }
 }
@@ -178,6 +184,7 @@ export class Succeed<OutDone> extends ChannelBase<
 // Suspend
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Suspend<
   Env,
   InErr,
@@ -189,7 +196,7 @@ export class Suspend<
 > extends ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly _tag = "Suspend"
   constructor(
-    readonly effect: Lazy<Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>>
+    readonly effect: () => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
     super()
   }
@@ -199,6 +206,7 @@ export class Suspend<
 // Ensuring
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Ensuring<
   Env,
   InErr,
@@ -221,6 +229,7 @@ export class Ensuring<
 // ConcatAll
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class ConcatAll<
   Env,
   InErr,
@@ -241,9 +250,7 @@ export class ConcatAll<
       pr: UpstreamPullRequest<OutElem>
     ) => UpstreamPullStrategy<OutElem2>,
     readonly onEmit: (o: OutElem2) => ChildExecutorDecision,
-    readonly value: Lazy<
-      Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>
-    >,
+    readonly value: () => Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone2>,
     readonly k: (
       o: OutElem
     ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem2, OutDone>
@@ -256,6 +263,7 @@ export class ConcatAll<
 // Fold
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Fold<
   Env,
   InErr,
@@ -290,6 +298,7 @@ export class Fold<
 // Bridge
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Bridge<
   Env,
   InErr,
@@ -312,6 +321,7 @@ export class Bridge<
 // BracketOut
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
   R,
   unknown,
@@ -323,7 +333,7 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
 > {
   readonly _tag = "BracketOut"
   constructor(
-    readonly acquire: Lazy<Effect<R, E, Z>>,
+    readonly acquire: () => Effect<R, E, Z>,
     readonly finalizer: (z: Z, exit: Exit<unknown, unknown>) => Effect<R, never, unknown>
   ) {
     super()
@@ -334,6 +344,7 @@ export class BracketOut<R, E, Z, OutDone> extends ChannelBase<
 // Provide
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export class Provide<
   R,
   InErr,
@@ -345,7 +356,7 @@ export class Provide<
 > extends ChannelBase<never, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly _tag = "Provide"
   constructor(
-    readonly env: Env<R>,
+    readonly env: Context<R>,
     readonly channel: Channel<R, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   ) {
     super()
@@ -354,6 +365,7 @@ export class Provide<
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concrete<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   _: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -380,6 +392,7 @@ export function concrete<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 // Continuation
 // -----------------------------------------------------------------------------
 
+/** @internal */
 export abstract class Continuation<
   Env,
   InErr,
@@ -404,6 +417,7 @@ export abstract class Continuation<
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteContinuation<
   Env,
@@ -444,6 +458,7 @@ export function concreteContinuation<
   //
 }
 
+/** @internal */
 export class ContinuationK<
   Env,
   InErr,
@@ -492,6 +507,7 @@ export class ContinuationK<
   }
 }
 
+/** @internal */
 export class ContinuationFinalizer<Env, OutErr, OutDone> extends Continuation<
   Env,
   unknown,

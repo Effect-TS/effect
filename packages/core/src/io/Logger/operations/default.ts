@@ -1,5 +1,9 @@
+import * as List from "@fp-ts/data/List"
+
 /**
  * @tsplus static effect/core/io/Logger.Ops default
+ * @category constructors
+ * @since 1.0.0
  */
 export const defaultLogger: Logger<string, string> = {
   apply: (fiberId, logLevel, message, cause, _context, spans, annotations) => {
@@ -18,7 +22,7 @@ export const defaultLogger: Logger<string, string> = {
       // output = output + ` cause="${cause.prettyPrint()}"`
     }
 
-    if (spans.length > 0) {
+    if (List.isCons(spans)) {
       output = output + " "
 
       let first = true

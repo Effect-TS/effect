@@ -3,6 +3,8 @@
  * transaction.
  *
  * @tsplus static effect/core/stm/TRandom.Ops nextIntBetween
+ * @category getters
+ * @since 1.0.0
  */
 export function nextIntBetween(low: number, high: number): STM<TRandom, never, number> {
   return STM.serviceWithSTM(TRandom.Tag)((_) => _.nextIntBetween(low, high))

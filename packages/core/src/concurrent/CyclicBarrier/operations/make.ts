@@ -3,6 +3,8 @@ import { CyclicBarrierInternal } from "@effect/core/concurrent/CyclicBarrier/def
 /**
  * @tsplus static effect/core/concurrent/CyclicBarrier.Ops __call
  * @tsplus static effect/core/concurrent/CyclicBarrier.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function make(
   parties: number,

@@ -1,14 +1,16 @@
+import type { Context } from "@fp-ts/data/Context"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const LayerTypeId = Symbol.for("@effect/core/Layer")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type LayerTypeId = typeof LayerTypeId
-
-export const _RIn = Symbol.for("@effect/core/Layer/RIn")
-export type _RIn = typeof _RIn
-
-export const _E = Symbol.for("@effect/core/Layer/E")
-export type _E = typeof _E
-
-export const _ROut = Symbol.for("@effect/core/Layer/ROut")
-export type _ROut = typeof _ROut
 
 /**
  * A `Layer<RIn, E, ROut>` describes how to build one or more services in your
@@ -28,17 +30,21 @@ export type _ROut = typeof _ROut
  * way in Effect-TS to create services that depend on other services.
  *
  * @tsplus type effect/core/io/Layer
+ * @category model
+ * @since 1.0.0
  */
 export interface Layer<RIn, E, ROut> {
-  readonly [_RIn]: () => RIn
-  readonly [_E]: () => E
-  readonly [_ROut]: (_: ROut) => void
-
-  readonly [LayerTypeId]: LayerTypeId
+  readonly [LayerTypeId]: {
+    _RIn: (_: never) => RIn
+    _E: (_: never) => E
+    _ROut: (_: ROut) => void
+  }
 }
 
 /**
  * @tsplus type effect/core/io/Layer.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface LayerOps {
   $: LayerAspects
@@ -53,9 +59,9 @@ export const Layer: LayerOps = {
 export function unifyLayer<X extends Layer<any, any, any>>(
   self: X
 ): Layer<
-  [X] extends [{ [_RIn]: () => infer RIn }] ? RIn : never,
-  [X] extends [{ [_E]: () => infer E }] ? E : never,
-  [X] extends [{ [_ROut]: (_: infer ROut) => void }] ? ROut : never
+  [X] extends [{ [LayerTypeId]: { _RIn: (_: never) => infer RIn } }] ? RIn : never,
+  [X] extends [{ [LayerTypeId]: { _E: (_: never) => infer E } }] ? E : never,
+  [X] extends [{ [LayerTypeId]: { _ROut: (_: infer ROut) => void } }] ? ROut : never
 > {
   return self
 }
@@ -64,13 +70,6 @@ export function unifyLayer<X extends Layer<any, any, any>>(
  * @tsplus type effect/core/io/Layer.Aspects
  */
 export interface LayerAspects {}
-
-export abstract class LayerAbstract<RIn, E, ROut> implements Layer<RIn, E, ROut> {
-  readonly [_RIn]!: () => RIn
-  readonly [_E]!: () => E
-  readonly [_ROut]!: () => ROut
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
-}
 
 export type Instruction =
   | ILayerApply<any, any, any>
@@ -82,21 +81,27 @@ export type Instruction =
   | ILayerTo<any, any, any, any, any>
   | ILayerZipWithPar<any, any, any, any, any, any, any>
 
-export class ILayerApply<RIn, E, ROut> implements Layer<RIn, E, ROut> {
+function variance<A, B>(_: A): B {
+  return _ as unknown as B
+}
+
+export class ILayerApply<RIn, E, ROut> implements Layer<RIn, E, Context<ROut>> {
   readonly _tag = "LayerApply"
-  readonly [_RIn]!: () => RIn
-  readonly [_E]!: () => E
-  readonly [_ROut]!: () => ROut
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
-  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {}
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
+  constructor(readonly self: Effect<RIn, E, Context<ROut>>) {}
 }
 
 export class ILayerExtendScope<RIn, E, ROut> implements Layer<RIn | Scope, E, ROut> {
   readonly _tag = "LayerExtendScope"
-  readonly [_RIn]!: () => RIn | Scope
-  readonly [_E]!: () => E
-  readonly [_ROut]!: () => ROut
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(readonly self: Layer<RIn, E, ROut>) {}
 }
 
@@ -104,49 +109,55 @@ export class ILayerFold<RIn, E, ROut, RIn2, E2, ROut2, RIn3, E3, ROut3>
   implements Layer<RIn | RIn2 | RIn3, E2 | E3, ROut2 | ROut3>
 {
   readonly _tag = "LayerFold"
-  readonly [_RIn]!: () => RIn | RIn2 | RIn3
-  readonly [_E]!: () => E2 | E3
-  readonly [_ROut]!: () => ROut2 | ROut3
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly failure: (cause: Cause<E>) => Layer<RIn2, E2, ROut2>,
-    readonly success: (r: Env<ROut>) => Layer<RIn3, E3, ROut3>
+    readonly success: (context: Context<ROut>) => Layer<RIn3, E3, ROut3>
   ) {}
 }
 
 export class ILayerFresh<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerFresh"
-  readonly [_RIn]!: () => RIn
-  readonly [_E]!: () => E
-  readonly [_ROut]!: () => ROut
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(readonly self: Layer<RIn, E, ROut>) {}
 }
 
-export class ILayerScoped<RIn, E, ROut> extends LayerAbstract<Exclude<RIn, Scope>, E, ROut> {
+export class ILayerScoped<RIn, E, ROut> implements Layer<Exclude<RIn, Scope>, E, ROut> {
   readonly _tag = "LayerScoped"
-
-  constructor(readonly self: Effect<RIn, E, Env<ROut>>) {
-    super()
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
   }
+  constructor(readonly self: Effect<RIn, E, Context<ROut>>) {}
 }
 
 export class ILayerSuspend<RIn, E, ROut> implements Layer<RIn, E, ROut> {
   readonly _tag = "LayerSuspend"
-  readonly [_RIn]!: () => RIn
-  readonly [_E]!: () => E
-  readonly [_ROut]!: () => ROut
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(readonly self: () => Layer<RIn, E, ROut>) {}
 }
 
 export class ILayerTo<RIn, E, ROut, E1, ROut1> implements Layer<RIn, E | E1, ROut1> {
   readonly _tag = "LayerTo"
-  readonly [_RIn]!: () => RIn
-  readonly [_E]!: () => E | E1
-  readonly [_ROut]!: () => ROut1
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<ROut, E1, ROut1>
@@ -163,14 +174,15 @@ export class ILayerZipWithPar<
   ROut3
 > implements Layer<RIn | RIn1, E | E1, ROut3> {
   readonly _tag = "LayerZipWithPar"
-  readonly [_RIn]!: () => RIn | RIn1
-  readonly [_E]!: () => E | E1
-  readonly [_ROut]!: () => ROut3
-  readonly [LayerTypeId]: LayerTypeId = LayerTypeId
+  readonly [LayerTypeId] = {
+    _RIn: variance,
+    _E: variance,
+    _ROut: variance
+  }
   constructor(
     readonly self: Layer<RIn, E, ROut>,
     readonly that: Layer<RIn1, E1, ROut2>,
-    readonly f: (s: Env<ROut>, t: Env<ROut2>) => Env<ROut3>
+    readonly f: (left: Context<ROut>, right: Context<ROut2>) => Context<ROut3>
   ) {}
 }
 

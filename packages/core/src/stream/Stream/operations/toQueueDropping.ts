@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects toQueueDropping
  * @tsplus pipeable effect/core/stream/Stream toQueueDropping
+ * @category destructors
+ * @since 1.0.0
  */
 export function toQueueDropping(capacity = 2) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Dequeue<Take<E, A>>> =>

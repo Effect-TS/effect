@@ -2,10 +2,15 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as Option from "@fp-ts/data/Option"
 
-const emptyByteChunk = Chunk.empty<number>()
-const emptyStringChunk = Chunk.empty<string>()
+const emptyByteChunk: Chunk.Chunk<number> = Chunk.empty
+const emptyStringChunk: Chunk.Chunk<string> = Chunk.empty
 
+/** @internal */
 export function utf8DecodeNoBom<R, E>(
   stream: Stream<R, E, number>
 ): Stream<R, E, string> {
@@ -16,39 +21,39 @@ export function utf8DecodeNoBom<R, E>(
 }
 
 function readThenTransduce<R, E>(
-  buffer: Chunk<number>
-): Channel<R, E, Chunk<number>, unknown, E, Chunk<string>, unknown> {
+  buffer: Chunk.Chunk<number>
+): Channel<R, E, Chunk.Chunk<number>, unknown, E, Chunk.Chunk<string>, unknown> {
   return Channel.readWith(
-    (received: Chunk<number>) => {
+    (received: Chunk.Chunk<number>) => {
       const [string, buffered] = process(buffer, received)
       return Channel.write(string).flatMap(() => readThenTransduce<R, E>(buffered))
     },
     (err) => Channel.fail(err),
-    () => (buffer.isEmpty ? Channel.unit : Channel.write(stringChunkFrom(buffer)))
+    () => (Chunk.isEmpty(buffer) ? Channel.unit : Channel.write(stringChunkFrom(buffer)))
   )
 }
 
 function process(
-  buffered: Chunk<number>,
-  received: Chunk<number>
-): readonly [Chunk<string>, Chunk<number>] {
-  const bytes = buffered + received
-  const [chunk, rest] = bytes.splitAt(computeSplitIndex(bytes))
+  buffered: Chunk.Chunk<number>,
+  received: Chunk.Chunk<number>
+): readonly [Chunk.Chunk<string>, Chunk.Chunk<number>] {
+  const bytes = pipe(buffered, Chunk.concat(received))
+  const [chunk, rest] = pipe(bytes, Chunk.splitAt(computeSplitIndex(bytes)))
 
-  if (chunk.isEmpty) {
-    return [emptyStringChunk, rest.materialize]
+  if (Chunk.isEmpty(chunk)) {
+    return [emptyStringChunk, rest]
   }
-  if (rest.isEmpty) {
+  if (Chunk.isEmpty(rest)) {
     return [stringChunkFrom(chunk), emptyByteChunk]
   }
   return [stringChunkFrom(chunk), rest]
 }
 
-function stringChunkFrom(bytes: Chunk<number>): Chunk<string> {
+function stringChunkFrom(bytes: Chunk.Chunk<number>): Chunk.Chunk<string> {
   return Chunk.single(String.fromCharCode(...bytes))
 }
 
-function computeSplitIndex(chunk: Chunk<number>): number {
+function computeSplitIndex(chunk: Chunk.Chunk<number>): number {
   // There are 3 bad patterns we need to check to detect an incomplete chunk:
   // - 2/3/4 byte sequences that start on the last byte
   // - 3/4 byte sequences that start on the second-to-last byte
@@ -59,20 +64,27 @@ function computeSplitIndex(chunk: Chunk<number>): number {
 
   if (
     size >= 1 &&
-    List(is2ByteStart, is3ByteStart, is4ByteStart).find((f) => f(chunk.unsafeGet(size - 1)))
-      .isSome()
+    pipe(
+      List.make(is2ByteStart, is3ByteStart, is4ByteStart),
+      List.findFirst((f) => f(pipe(chunk, Chunk.unsafeGet(size - 1)))),
+      Option.isSome
+    )
   ) {
     return size - 1
   }
 
   if (
     size >= 2 &&
-    List(is3ByteStart, is4ByteStart).find((f) => f(chunk.unsafeGet(size - 2))).isSome()
+    pipe(
+      List.make(is3ByteStart, is4ByteStart),
+      List.findFirst((f) => f(pipe(chunk, Chunk.unsafeGet(size - 2)))),
+      Option.isSome
+    )
   ) {
     return size - 2
   }
 
-  if (size >= 3 && is4ByteStart(chunk.unsafeGet(size - 3))) {
+  if (size >= 3 && is4ByteStart(pipe(chunk, Chunk.unsafeGet(size - 3)))) {
     return size - 3
   }
 

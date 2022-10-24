@@ -1,4 +1,4 @@
-import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+import * as Duration from "@fp-ts/data/Duration"
 
 /**
  * A schedule that always recurs, but will repeat on a linear time interval,
@@ -6,11 +6,13 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  * the current duration between recurrences.
  *
  * @tsplus static effect/core/io/Schedule.Ops linear
+ * @category constructors
+ * @since 1.0.0
  */
 export function linear(
-  base: Duration
-): Schedule<number, never, unknown, Duration> {
+  base: Duration.Duration
+): Schedule<number, never, unknown, Duration.Duration> {
   return Schedule.delayed(
-    Schedule.repeatForever.map((i) => new DurationInternal(base.millis * (i + 1)))
+    Schedule.repeatForever.map((i) => Duration.millis(base.millis * (i + 1)))
   )
 }

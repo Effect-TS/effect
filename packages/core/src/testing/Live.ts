@@ -1,3 +1,5 @@
+import * as Context from "@fp-ts/data/Context"
+
 /**
  * The `Live` trait provides access to the "live" default ZIO services from
  * within ZIO Test for workflows such as printing test results to the console or
@@ -21,6 +23,8 @@
  * are re-exported in the ZIO Test package object for easy availability.
  *
  * @tsplus type effect/core/testing/Live
+ * @category model
+ * @since 1.0.0
  */
 export interface Live {
   readonly provide: <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A>
@@ -28,12 +32,14 @@ export interface Live {
 
 /**
  * @tsplus type effect/core/testing/Live.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface LiveOps {
-  readonly Tag: Tag<Live>
+  readonly Tag: Context.Tag<Live>
 }
 export const Live: LiveOps = {
-  Tag: Tag<Live>()
+  Tag: Context.Tag<Live>()
 }
 
 /**
@@ -43,12 +49,14 @@ export const Live: LiveOps = {
  * create your own environment type.
  *
  * @tsplus static effect/core/testing/Live.Ops default
+ * @category constructors
+ * @since 1.0.0
  */
 export const defaultLive = Layer.fromEffect(Live.Tag)(
   Effect.environmentWith<never, Live>((env) => ({
     provide: (effect) =>
       effect.apply(
-        DefaultServices.currentServices.locallyWith((_) => _.merge(env))
+        DefaultServices.currentServices.locallyWith(Context.merge(env))
       )
   }))
 )
@@ -57,6 +65,8 @@ export const defaultLive = Layer.fromEffect(Live.Tag)(
  * Provides a workflow with the "live" default ZIO services.
  *
  * @tsplus static effect/core/testing/Live.Ops live
+ * @category mutations
+ * @since 1.0.0
  */
 export function live<R, E, A>(effect: Effect<R, E, A>): Effect<R | Live, E, A> {
   return Effect.serviceWithEffect(Live.Tag, (live) => live.provide(effect))
@@ -67,6 +77,8 @@ export function live<R, E, A>(effect: Effect<R, E, A>): Effect<R | Live, E, A> {
  * ensuring that the workflow itself is run with the test services.
  *
  * @tsplus static effect/core/testing/Live.Ops withLive
+ * @category aspects
+ * @since 1.0.0
  */
 export function withLive<R, E, A, R2, E2, A2>(
   effect: Effect<R, E, A>,

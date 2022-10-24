@@ -1,4 +1,6 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Predicate } from "@fp-ts/data/Predicate"
 
 /**
  * A sink that folds its input chunks with the provided function, termination
@@ -7,6 +9,8 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * must preserve chunking-invariance.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldChunksEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldChunksEffect<R, E, S, In>(
   z: S,

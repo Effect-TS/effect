@@ -1,3 +1,5 @@
+import { Tag } from "@fp-ts/data/Context"
+
 /**
  * The `TestConfig` service provides access to default configuration settings
  * used by tests, including the number of times to repeat tests to ensure
@@ -6,6 +8,8 @@
  * shrinkings to minimize large failures.
  *
  * @tsplus type effect/core/testing/TestConfig
+ * @category model
+ * @since 1.0.0
  */
 export interface TestConfig {
   /**
@@ -28,6 +32,8 @@ export interface TestConfig {
 
 /**
  * @tsplus type effect/core/testing/TestConfig.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TestConfigOps {
   (params: {
@@ -54,6 +60,8 @@ export const TestConfig: TestConfigOps = Object.assign(
 
 /**
  * @tsplus type effect/core/testing/TestConfig.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface TestConfigAspects {}
 
@@ -61,6 +69,8 @@ export interface TestConfigAspects {}
  * Constructs a new `TestConfig` service with the specified settings.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops live
+ * @category constructors
+ * @since 1.0.0
  */
 export function live(
   params: {
@@ -77,6 +87,8 @@ export function live(
  * Constructs a new `TestConfig` with the default settings.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops default
+ * @category constructors
+ * @since 1.0.0
  */
 export const defaultTestConfig: Layer<never, never, TestConfig> = TestConfig.live({
   repeats: 100,
@@ -89,6 +101,8 @@ export const defaultTestConfig: Layer<never, never, TestConfig> = TestConfig.liv
  * The number of times to repeat tests to ensure they are stable.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops repeats
+ * @category getters
+ * @since 1.0.0
  */
 export const repeats: Effect<TestConfig, never, number> = Effect.serviceWith(
   TestConfig.Tag,
@@ -99,6 +113,8 @@ export const repeats: Effect<TestConfig, never, number> = Effect.serviceWith(
  * The number of times to retry flaky tests.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops retries
+ * @category getters
+ * @since 1.0.0
  */
 export const retries: Effect<TestConfig, never, number> = Effect.serviceWith(
   TestConfig.Tag,
@@ -109,6 +125,8 @@ export const retries: Effect<TestConfig, never, number> = Effect.serviceWith(
  * The number of sufficient samples to check for a random variable.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops samples
+ * @category getters
+ * @since 1.0.0
  */
 export const samples: Effect<TestConfig, never, number> = Effect.serviceWith(
   TestConfig.Tag,
@@ -119,6 +137,8 @@ export const samples: Effect<TestConfig, never, number> = Effect.serviceWith(
  * The maximum number of shrinkings to minimize large failures.
  *
  * @tsplus static effect/core/testing/TestConfig.Ops shrinks
+ * @category getters
+ * @since 1.0.0
  */
 export const shrinks: Effect<TestConfig, never, number> = Effect.serviceWith(
   TestConfig.Tag,

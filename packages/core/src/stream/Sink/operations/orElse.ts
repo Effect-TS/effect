@@ -11,6 +11,8 @@ import {
  * @tsplus pipeable-operator effect/core/stream/Sink |
  * @tsplus static effect/core/stream/Sink.Aspects orElse
  * @tsplus pipeable effect/core/stream/Sink orElse
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orElse<R1, E1, In, In1 extends In, L, L1 extends L, Z1>(
   that: LazyArg<Sink<R1, E1, In1, L1, Z1>>

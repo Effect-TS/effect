@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects mapBoth
  * @tsplus pipeable effect/core/io/Exit mapBoth
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapBoth<E, A, E1, A1>(
   onFailure: (e: E) => E1,

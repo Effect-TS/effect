@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/TArray.Aspects countSTM
  * @tsplus pipeable effect/core/stm/TArray countSTM
+ * @category elements
+ * @since 1.0.0
  */
 export function countSTM<E, A>(f: (a: A) => STM<never, E, boolean>) {
   return (self: TArray<A>): STM<never, E, number> =>

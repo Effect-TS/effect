@@ -3,6 +3,8 @@
  * success channel to their common combined type.
  *
  * @tsplus getter effect/core/stm/STM merge
+ * @category getters
+ * @since 1.0.0
  */
 export function merge<R, E, A>(self: STM<R, E, A>): STM<R, never, E | A> {
   return self.foldSTM((e) => STM.succeed(e), STM.succeed)

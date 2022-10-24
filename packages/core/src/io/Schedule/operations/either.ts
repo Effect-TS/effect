@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects either
  * @tsplus pipeable effect/core/io/Schedule either
+ * @category alternatives
+ * @since 1.0.0
  */
 export function either<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>

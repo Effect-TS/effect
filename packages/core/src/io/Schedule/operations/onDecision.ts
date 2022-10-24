@@ -8,6 +8,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects onDecision
  * @tsplus pipeable effect/core/io/Schedule onDecision
+ * @category mutations
+ * @since 1.0.0
  */
 export function onDecision<State, Out, Env1, X>(
   f: (state: State, out: Out, decision: Decision) => Effect<Env1, never, X>

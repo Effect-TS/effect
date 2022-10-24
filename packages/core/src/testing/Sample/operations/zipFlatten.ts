@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/testing/Sample.Aspects zipFlatten
  * @tsplus pipeable effect/core/testing/Sample zipFlatten
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipFlatten<R2, A2>(that: Sample<R2, A2>) {
   return <R, A extends ReadonlyArray<any>>(

@@ -1,20 +1,21 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
 import { Handoff } from "@effect/core/stream/Stream/operations/_internal/Handoff"
 import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 type Signal<E, A> = Emit<A> | Halt<E> | End
 
-export class Emit<A> {
+class Emit<A> {
   readonly _tag = "Emit"
   constructor(readonly elements: Chunk<A>) {}
 }
 
-export class Halt<E> {
+class Halt<E> {
   readonly _tag = "Halt"
   constructor(readonly error: Cause<E>) {}
 }
 
-export class End {
+class End {
   readonly _tag = "End"
 }
 
@@ -26,6 +27,8 @@ export class End {
  *
  * @tsplus static effect/core/stream/Stream.Aspects peel
  * @tsplus pipeable effect/core/stream/Stream peel
+ * @category mutations
+ * @since 1.0.0
  */
 export function peel<R2, E2, A2, Z>(sink: Sink<R2, E2, A2, A2, Z>) {
   return <R, E extends E2, A extends A2>(

@@ -7,15 +7,23 @@ import type { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
  * you can specify a custom scope to fork them on by using the `forkIn`.
  *
  * @tsplus type effect/core/io/FiberScope
+ * @category model
+ * @since 1.0.0
  */
 export type FiberScope = Global | Local
 
 /**
  * @tsplus type effect/core/io/FiberScope.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberScopeOps {}
 export const FiberScope: FiberScopeOps = {}
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface CommonScope {
   readonly fiberId: FiberId
 
@@ -25,6 +33,10 @@ export interface CommonScope {
   ) => void
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class Global implements CommonScope {
   readonly fiberId = FiberId.none
 
@@ -41,6 +53,10 @@ export class Global implements CommonScope {
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class Local implements CommonScope {
   constructor(readonly fiberId: FiberId, readonly parent: FiberRuntime<any, any>) {}
 
@@ -65,6 +81,8 @@ export class Local implements CommonScope {
  * parent fiber, because there is no parent fiber).
  *
  * @tsplus static effect/core/io/FiberScope.Ops global
+ * @category constructors
+ * @since 1.0.0
  */
 export const globalScope = new Global()
 
@@ -72,6 +90,8 @@ export const globalScope = new Global()
  * Unsafely creats a new `Scope` from a `Fiber`.
  *
  * @tsplus static effect/core/io/FiberScope.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function make(fiber: FiberRuntime<any, any>): FiberScope {
   return new Local(fiber.id, fiber)
@@ -79,5 +99,7 @@ export function make(fiber: FiberRuntime<any, any>): FiberScope {
 
 /**
  * @tsplus static effect/core/io/FiberScope.Ops _roots
+ * @category constructors
+ * @since 1.0.0
  */
 export const _roots = new Set<FiberRuntime<any, any>>()

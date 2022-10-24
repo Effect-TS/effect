@@ -1,3 +1,5 @@
+import * as HashSet from "@fp-ts/data/HashSet"
+
 // forked from https://github.com/sindresorhus/parse-ms/blob/4da2ffbdba02c6e288c08236695bdece0adca173/index.js
 // MIT License
 // Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)
@@ -13,31 +15,6 @@ function parseMs(milliseconds: number) {
     nanoseconds: roundTowardsZero(milliseconds * 1e6) % 1000
   }
 }
-
-// function dumpToString(
-//   fibers: Collection<Fiber.Runtime<unknown, unknown>>
-// ): Effect<never, never, string> {
-//   const dumps = Effect.forEach(fibers, (fiber) => fiber.dump)
-//   const now = Clock.currentTime
-//   return Effect.tuple(Clock.currentTime, dumps).map(([now, dumps]) => {
-//     const dumps = renderDumps(dumps)
-//     return "\n" + dumps
-//   })
-// }
-
-// function renderDump(dump: Fiber.Dump): Doc<never> {
-//   const status = renderStatus(dump.fiberStatus)
-//   return Doc.hcatT(
-//     Doc.text(`+---[Fiber](#${dump.fiberId.id})`),
-//     Doc.text(" Status: "),
-//     status,
-//     Doc.lineBreak
-//   )
-// }
-
-// function renderDumps(dumps: Collection<Fiber.Dump>): Doc<never> {
-//   return Doc.hcat(dumps.map((dump) => renderDump(dump)))
-// }
 
 function renderStatus(status: Fiber.Status): string {
   switch (status._tag) {
@@ -57,6 +34,8 @@ function renderStatus(status: Fiber.Status): string {
 /**
  * @tsplus static effect/core/io/Fiber.Ops pretty
  * @tsplus getter effect/core/io/Fiber pretty
+ * @category destructors
+ * @since 1.0.0
  */
 export function pretty<E, A>(self: Fiber.Runtime<E, A>): Effect<never, never, string> {
   return Effect.tuple(Clock.currentTime, self.dump).map(([now, dump]) => {
@@ -70,7 +49,7 @@ export function pretty<E, A>(self: Fiber.Runtime<E, A>): Effect<never, never, st
     const waitMsg = (function(status: Fiber.Status) {
       switch (status._tag) {
         case "Suspended":
-          return status.blockingOn.ids.size > 0
+          return HashSet.size(status.blockingOn.ids) > 0
             ? `waiting on ` + Array.from(status.blockingOn.ids).map((id) => `${id}`).join(", ")
             : ""
         default:

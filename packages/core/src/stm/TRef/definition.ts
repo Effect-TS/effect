@@ -1,7 +1,25 @@
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const TRefSym = Symbol.for("@effect/core/stm/TRef")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type TRefSym = typeof TRefSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/stm/TRef/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
 /**
@@ -17,6 +35,8 @@ export type _A = typeof _A
  * do not support concurrent access.
  *
  * @tsplus type effect/core/stm/TRef
+ * @category model
+ * @since 1.0.0
  */
 export interface TRef<A> {
   readonly [TRefSym]: TRefSym
@@ -25,6 +45,8 @@ export interface TRef<A> {
 
 /**
  * @tsplus type effect/core/stm/TRef.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TRefOps {
   $: TRefAspects
@@ -35,5 +57,7 @@ export const TRef: TRefOps = {
 
 /**
  * @tsplus type effect/core/stm/TRef.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface TRefAspects {}

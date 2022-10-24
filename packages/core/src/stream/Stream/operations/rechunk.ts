@@ -2,6 +2,9 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
 
 /**
  * Re-chunks the elements of the stream into chunks of `n` elements each. The
@@ -9,6 +12,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects rechunk
  * @tsplus pipeable effect/core/stream/Stream rechunk
+ * @category mutations
+ * @since 1.0.0
  */
 export function rechunk(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
@@ -20,31 +25,33 @@ export function rechunk(n: number) {
 function process<R, E, A>(
   rechunker: Rechunker<A>,
   target: number
-): Channel<R, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
+): Channel<R, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> {
   return Channel.readWithCause(
-    (chunk: Chunk<A>) => {
-      if (chunk.size === target && rechunker.isEmpty()) {
+    (chunk: Chunk.Chunk<A>) => {
+      if (chunk.length === target && rechunker.isEmpty()) {
         return Channel.write(chunk).flatMap(() => process<R, E, A>(rechunker, target))
       }
-      if (chunk.size > 0) {
-        let chunks = List.empty<Chunk<A>>()
-        let result: Chunk<A> | undefined = undefined
+      if (chunk.length > 0) {
+        let chunks = List.empty<Chunk.Chunk<A>>()
+        let result: Chunk.Chunk<A> | undefined = undefined
         let i = 0
 
-        while (i < chunk.size) {
-          while (i < chunk.size && result == null) {
-            result = rechunker.write(chunk.unsafeGet(i))
+        while (i < chunk.length) {
+          while (i < chunk.length && result == null) {
+            result = rechunker.write(pipe(chunk, Chunk.unsafeGet(i)))
             i = i + 1
           }
 
           if (result != null) {
-            chunks = chunks.prepend(result)
+            chunks = pipe(chunks, List.prepend(result))
             result = undefined
           }
         }
 
         return (
-          Channel.writeAll(...chunks.reverse).flatMap(() => process<R, E, A>(rechunker, target))
+          Channel.writeAll(...List.reverse(chunks)).flatMap(() =>
+            process<R, E, A>(rechunker, target)
+          )
         )
       }
       return process(rechunker, target)
@@ -55,7 +62,7 @@ function process<R, E, A>(
 }
 
 class Rechunker<A> {
-  private builder = Chunk.builder<A>()
+  private builder: Array<A> = []
   private pos = 0
 
   constructor(readonly n: number) {}
@@ -64,14 +71,14 @@ class Rechunker<A> {
     return this.pos === 0
   }
 
-  write(elem: A): Chunk<A> | undefined {
-    this.builder.append(elem)
+  write(elem: A): Chunk.Chunk<A> | undefined {
+    this.builder.push(elem)
     this.pos += 1
 
     if (this.pos === this.n) {
-      const result = this.builder.build()
+      const result = Chunk.unsafeFromArray(this.builder)
 
-      this.builder = Chunk.builder()
+      this.builder = []
       this.pos = 0
 
       return result
@@ -80,9 +87,9 @@ class Rechunker<A> {
     return undefined
   }
 
-  emitIfNotEmpty(): Channel<never, unknown, unknown, unknown, never, Chunk<A>, void> {
+  emitIfNotEmpty(): Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<A>, void> {
     if (this.pos !== 0) {
-      return Channel.write(this.builder.build())
+      return Channel.write(Chunk.unsafeFromArray(this.builder))
     } else {
       return Channel.unit
     }

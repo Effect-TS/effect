@@ -5,6 +5,8 @@ import {
 
 /**
  * @tsplus getter effect/core/stream/Sink dropLeftover
+ * @category mutations
+ * @since 1.0.0
  */
 export function dropLeftover<R, E, In, L, Z>(
   self: Sink<R, E, In, L, Z>

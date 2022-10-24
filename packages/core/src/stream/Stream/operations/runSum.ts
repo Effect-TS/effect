@@ -2,6 +2,8 @@
  * Runs the stream to a sink which sums elements, provided they are numbers.
  *
  * @tsplus getter effect/core/stream/Stream runSum
+ * @category destructors
+ * @since 1.0.0
  */
 export function runSum<R, E, A>(
   self: Stream<R, E, number>

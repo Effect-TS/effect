@@ -1,20 +1,26 @@
+import type { RandomState } from "@effect/core/stm/TRandom/definition"
 import { TRandomSym } from "@effect/core/stm/TRandom/definition"
-import type { PCGRandomState } from "@tsplus/stdlib/io/Random"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import { PCGRandom } from "@fp-ts/data/Random"
 
 /**
  * @tsplus static effect/core/stm/TRandom.Ops default
+ * @category constructors
+ * @since 1.0.0
  */
 export const defaultTRandom =
-  TRef.make(new PCGRandom((Math.random() * 4294967296) >>> 0).getState()).map((_) =>
+  TRef.make(() => new PCGRandom((Math.random() * 4294967296) >>> 0).getState()).map((_) =>
     new LiveTRandom(_)
   ).commit
 
 /**
  * @tsplus static effect/core/stm/TRandom.Ops live
+ * @category environment
+ * @since 1.0.0
  */
 export const live = Layer.fromEffect(TRandom.Tag)(defaultTRandom)
 
-function rndInt(state: PCGRandomState): readonly [number, PCGRandomState] {
+function rndInt(state: RandomState): readonly [number, RandomState] {
   const prng = new PCGRandom()
 
   prng.setState(state)
@@ -25,8 +31,8 @@ function rndInt(state: PCGRandomState): readonly [number, PCGRandomState] {
 function rndIntBetween(
   low: number,
   high: number
-): (state: PCGRandomState) => readonly [number, PCGRandomState] {
-  return (state: PCGRandomState) => {
+): (state: RandomState) => readonly [number, RandomState] {
+  return (state: RandomState) => {
     const prng = new PCGRandom()
 
     prng.setState(state)
@@ -35,7 +41,7 @@ function rndIntBetween(
   }
 }
 
-function rndNumber(state: PCGRandomState): readonly [number, PCGRandomState] {
+function rndNumber(state: RandomState): readonly [number, RandomState] {
   const prng = new PCGRandom()
 
   prng.setState(state)
@@ -46,10 +52,10 @@ function rndNumber(state: PCGRandomState): readonly [number, PCGRandomState] {
 export class LiveTRandom implements TRandom {
   readonly [TRandomSym]: TRandomSym = TRandomSym
 
-  constructor(readonly state: TRef<PCGRandomState>) {
+  constructor(readonly state: TRef<RandomState>) {
   }
 
-  withState<A>(f: (state: PCGRandomState) => readonly [A, PCGRandomState]): STM<never, never, A> {
+  withState<A>(f: (state: RandomState) => readonly [A, RandomState]): STM<never, never, A> {
     return this.state.modify(f)
   }
 
@@ -73,13 +79,13 @@ export class LiveTRandom implements TRandom {
     return this.withState(rndIntBetween(low, high))
   }
 
-  shuffle<A>(collection: Collection<A>): STM<never, never, Collection<A>> {
+  shuffle<A>(collection: Iterable<A>): STM<never, never, Chunk<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n))
   }
 }
 
 function shuffleWith<A>(
-  collection: Collection<A>,
+  collection: Iterable<A>,
   nextIntBounded: (n: number) => STM<never, never, number>
 ): STM<never, never, Chunk<A>> {
   return Do(($) => {

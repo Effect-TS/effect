@@ -1,8 +1,12 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Retries this effect until its error satisfies the specified predicate.
  *
  * @tsplus static effect/core/io/Effect.Aspects retryUntil
  * @tsplus pipeable effect/core/io/Effect retryUntil
+ * @category retrying
+ * @since 1.0.0
  */
 export function retryUntil<E>(f: Predicate<E>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R, E, A> =>

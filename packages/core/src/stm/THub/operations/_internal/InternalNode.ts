@@ -1,5 +1,6 @@
 import type { Node } from "@effect/core/stm/THub/definition/Node"
 
+/** @internal */
 export class InternalNode<A> implements Node<A> {
   constructor(
     readonly head: A,
@@ -10,6 +11,7 @@ export class InternalNode<A> implements Node<A> {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteNode<A>(
   _: Node<A>
@@ -19,6 +21,8 @@ export function concreteNode<A>(
 
 /**
  * @tsplus static effect/core/stm/THub/Node.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<A>(head: A, subscribers: number, tail: TRef<Node<A>>): Node<A> {
   return new InternalNode(head, subscribers, tail)

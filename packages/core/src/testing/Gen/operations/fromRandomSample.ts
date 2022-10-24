@@ -3,6 +3,8 @@
  * sample.
  *
  * @tsplus static effect/core/testing/Gen.Ops fromRandomSample
+ * @category constructors
+ * @since 1.0.0
  */
 export function fromRandomSample<R, A>(
   f: (random: Random) => Effect<never, never, Sample<R, A>>

@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects retryWhileEffect
  * @tsplus pipeable effect/core/io/Effect retryWhileEffect
+ * @category retrying
+ * @since 1.0.0
  */
 export function retryWhileEffect<R1, E>(
   f: (e: E) => Effect<R1, never, boolean>

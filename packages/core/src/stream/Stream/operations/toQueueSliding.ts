@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects toQueueSliding
  * @tsplus pipeable effect/core/stream/Stream toQueueSliding
+ * @category destructors
+ * @since 1.0.0
  */
 export function toQueueSliding(capacity = 2) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Dequeue<Take<E, A>>> =>

@@ -1,7 +1,7 @@
 /**
  * Iterates with the specified effectual function. The moral equivalent of:
  *
- * ```typescript
+ * @example
  * let s = initial
  *
  * while (cont(s)) {
@@ -9,9 +9,10 @@
  * }
  *
  * return s
- * ```
  *
  * @tsplus static effect/core/stm/STM.Ops iterate
+ * @category constructors
+ * @since 1.0.0
  */
 export function iterate<Z>(initial: Z, cont: (z: Z) => boolean) {
   return <R, E>(body: (z: Z) => STM<R, E, Z>): STM<R, E, Z> => {

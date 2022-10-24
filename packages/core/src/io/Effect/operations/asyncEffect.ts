@@ -3,6 +3,8 @@
  * is necessary when the effect is itself expressed in terms of an `Effect`.
  *
  * @tsplus static effect/core/io/Effect.Ops asyncEffect
+ * @category async
+ * @since 1.0.0
  */
 export function asyncEffect<R, E, A, R2, E2, X>(
   register: (callback: (_: Effect<R, E, A>) => void) => Effect<R2, E2, X>

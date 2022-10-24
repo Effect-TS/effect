@@ -8,6 +8,8 @@ import {
  * elements. Useful for sequencing effects using streams.
  *
  * @tsplus getter effect/core/stream/Stream drain
+ * @category mutations
+ * @since 1.0.0
  */
 export function drain<R, E, A>(self: Stream<R, E, A>): Stream<R, E, never> {
   concreteStream(self)

@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects eitherWith
  * @tsplus pipeable effect/core/io/Schedule eitherWith
+ * @category alternatives
+ * @since 1.0.0
  */
 export function eitherWith<State1, Env1, In1, Out2, Out, Out3>(
   that: Schedule<State1, Env1, In1, Out2>,

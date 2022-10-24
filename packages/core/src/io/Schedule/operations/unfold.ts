@@ -7,6 +7,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * iterator.
  *
  * @tsplus static effect/core/io/Schedule.Ops unfold
+ * @category constructors
+ * @since 1.0.0
  */
 export function unfold<A>(
   initial: A,

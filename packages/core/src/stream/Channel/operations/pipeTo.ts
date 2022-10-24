@@ -6,6 +6,8 @@ import { PipeTo } from "@effect/core/stream/Channel/definition/primitives"
  * @tsplus pipeable-operator effect/core/stream/Channel >>
  * @tsplus static effect/core/stream/Channel.Aspects pipeTo
  * @tsplus pipeable effect/core/stream/Channel pipeTo
+ * @category mutations
+ * @since 1.0.0
  */
 export function pipeTo<
   Env2,

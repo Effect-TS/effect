@@ -2,6 +2,8 @@ import type { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/sy
 
 /**
  * @tsplus static effect/core/stream/Sink.Ops tuple
+ * @category constructors
+ * @since 1.0.0
  */
 export function tuple<SN extends readonly Sink<any, any, any, any, any>[]>(
   ...[s1, s2, ...sinks]: SN & {

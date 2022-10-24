@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects zipFlattenPar
  * @tsplus pipeable effect/core/io/Effect zipFlattenPar
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipFlattenPar<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A extends ReadonlyArray<any>>(

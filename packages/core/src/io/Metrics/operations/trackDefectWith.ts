@@ -1,3 +1,7 @@
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+import * as List from "@fp-ts/data/List"
+
 /**
  * Returns an aspect that will update this metric with the result of applying
  * the specified function to the defect throwables of the effects that the
@@ -5,12 +9,20 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackDefectWith
  * @tsplus pipeable effect/core/io/Metrics/Metric trackDefectWith
+ * @category aspects
+ * @since 1.0.0
  */
 export function trackDefectWith<In>(f: (defect: unknown) => In) {
   return <Type, Out>(
     self: Metric<Type, In, Out>
   ): <R, E, A>(effect: Effect<R, E, A>) => Effect<R, E, A> => {
     const updater = (defect: unknown): void => self.unsafeUpdate(f(defect), HashSet.empty())
-    return (effect) => effect.tapDefect((cause) => Effect.sync(cause.defects.forEach(updater)))
+    return (effect) =>
+      effect.tapDefect((cause) =>
+        Effect.sync(pipe(
+          cause.defects,
+          List.forEach(updater)
+        ))
+      )
   }
 }

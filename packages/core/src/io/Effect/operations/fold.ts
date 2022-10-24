@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects fold
  * @tsplus pipeable effect/core/io/Effect fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<E, A, A2, A3>(
   failure: (e: E) => A2,

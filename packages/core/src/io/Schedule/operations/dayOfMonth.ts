@@ -16,6 +16,8 @@ import {
  * NOTE: `day` parameter is validated lazily. Must be in range 1...31.
  *
  * @tsplus static effect/core/io/Schedule.Ops dayOfMonth
+ * @category constructors
+ * @since 1.0.0
  */
 export function dayOfMonth(
   day: number

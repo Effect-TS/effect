@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as Option from "@fp-ts/data/Option"
 
 export const MVarSym = Symbol.for("@effect/core/concurrent/MVar")
@@ -19,11 +19,15 @@ export type MVarSym = typeof MVarSym
  * Andrew Gordon and Sigbjorn Finne.
  *
  * @tsplus type effect/core/concurrent/MVar
+ * @category model
+ * @since 1.0.0
  */
 export interface MVar<A> extends MVarInternal<A> {}
 
 /**
  * @tsplus type effect/core/concurrent/MVar.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface MVarOps {
   readonly $: MVarAspects
@@ -34,9 +38,12 @@ export const MVar: MVarOps = {
 
 /**
  * @tsplus type effect/core/concurrent/MVar.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface MVarAspects {}
 
+/** @internal */
 export class MVarInternal<A> {
   readonly [MVarSym]: MVarSym = MVarSym
 

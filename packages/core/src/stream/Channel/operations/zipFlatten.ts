@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects zipFlatten
  * @tsplus pipeable effect/core/stream/Channel zipFlatten
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipFlatten<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>

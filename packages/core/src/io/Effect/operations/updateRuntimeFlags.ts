@@ -5,6 +5,8 @@ import { IUpdateRuntimeFlags } from "@effect/core/io/Effect/definition/primitive
  * higher-performance variant, see `ZIO#withRuntimeFlags`.
  *
  * @tsplus static effect/core/io/Effect.Ops updateRuntimeFlags
+ * @category constructors
+ * @since 1.0.0
  */
 export function updateRuntimeFlags(
   patch: RuntimeFlags.Patch

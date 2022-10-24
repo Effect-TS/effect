@@ -6,6 +6,8 @@
  * @tsplus pipeable-operator effect/core/io/Layer >
  * @tsplus static effect/core/io/Layer.Aspects provideToAndMerge
  * @tsplus pipeable effect/core/io/Layer provideToAndMerge
+ * @category mutations
+ * @since 1.0.0
  */
 export function provideToAndMerge<RIn2, E2, ROut2>(that: Layer<RIn2, E2, ROut2>) {
   return <RIn, E, ROut>(

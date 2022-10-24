@@ -1,4 +1,6 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * Creates a sink that effectfully folds elements of type `In` into a
@@ -13,12 +15,14 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * than to yield a value that will cross the threshold.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldWeightedDecomposeEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldWeightedDecomposeEffect<R, E, R2, E2, R3, E3, In, S>(
   z: S,
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
-  decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
+  decompose: (input: In) => Effect<R2, E2, Chunk.Chunk<In>>,
   f: (s: S, input: In) => Effect<R3, E3, S>
 ): Sink<R | R2 | R3, E | E2 | E3, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z, costFn, max, decompose, f, false, 0)))
@@ -28,17 +32,17 @@ function go<R, E, R2, E2, R3, E3, In, S>(
   s: S,
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
-  decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
+  decompose: (input: In) => Effect<R2, E2, Chunk.Chunk<In>>,
   f: (s: S, input: In) => Effect<R3, E3, S>,
   dirty: boolean,
   cost: number
-): Channel<R | R2 | R3, E | E2 | E3, Chunk<In>, unknown, E | E2 | E3, Chunk<In>, S> {
+): Channel<R | R2 | R3, E | E2 | E3, Chunk.Chunk<In>, unknown, E | E2 | E3, Chunk.Chunk<In>, S> {
   return Channel.readWith(
-    (chunk: Chunk<In>) =>
+    (chunk: Chunk.Chunk<In>) =>
       Channel.fromEffect(
         fold(chunk, s, costFn, max, decompose, f, dirty, cost, 0)
       ).flatMap(([nextS, nextCost, nextDirty, leftovers]) =>
-        leftovers.isNonEmpty
+        Chunk.isNonEmpty(leftovers)
           ? Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
           : cost > max
           ? Channel.succeed(nextS)
@@ -48,31 +52,31 @@ function go<R, E, R2, E2, R3, E3, In, S>(
     (): Channel<
       R | R2 | R3,
       E | E2 | E3,
-      Chunk<In>,
+      Chunk.Chunk<In>,
       unknown,
       E | E2 | E3,
-      Chunk<In>,
+      Chunk.Chunk<In>,
       S
     > => Channel.succeed(s)
   )
 }
 
 function fold<R, E, R2, E2, R3, E3, In, S>(
-  input: Chunk<In>,
+  input: Chunk.Chunk<In>,
   s: S,
   costFn: (s: S, input: In) => Effect<R, E, number>,
   max: number,
-  decompose: (input: In) => Effect<R2, E2, Chunk<In>>,
+  decompose: (input: In) => Effect<R2, E2, Chunk.Chunk<In>>,
   f: (s: S, input: In) => Effect<R3, E3, S>,
   dirty: boolean,
   cost: number,
   index: number
-): Effect<R | R2 | R3, E | E2 | E3, readonly [S, number, boolean, Chunk<In>]> {
+): Effect<R | R2 | R3, E | E2 | E3, readonly [S, number, boolean, Chunk.Chunk<In>]> {
   if (index === input.length) {
-    return Effect.sync([s, cost, dirty, Chunk.empty<In>()])
+    return Effect.sync([s, cost, dirty, Chunk.empty])
   }
 
-  const elem = input.unsafeGet(index)
+  const elem = pipe(input, Chunk.unsafeGet(index))
 
   return costFn(s, elem)
     .map((addedCost) => cost + addedCost)
@@ -88,18 +92,20 @@ function fold<R, E, R2, E2, R3, E3, In, S>(
           // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
           // minimize "injury", we only allow this when we haven't added anything else
           // to the aggregate (dirty = false).
-          return f(s, elem).map((s) => [s, total, true, input.drop(index + 1)] as const)
+          return f(s, elem).map((s) =>
+            [s, total, true, pipe(input, Chunk.drop(index + 1))] as const
+          )
         }
 
         if (decomposed.length <= 1 && dirty) {
           // If the state is dirty and `elem` cannot be decomposed, we stop folding
           // and include `elem` in the leftovers.
-          return Effect.sync([s, cost, dirty, input.drop(index)] as const)
+          return Effect.sync([s, cost, dirty, pipe(input, Chunk.drop(index))] as const)
         }
         // `elem` got decomposed, so we will recurse with the decomposed elements pushed
         // into the chunk we're processing and see if we can aggregate further.
         return fold(
-          decomposed + input.drop(index + 1),
+          pipe(decomposed, Chunk.concat(pipe(input, Chunk.drop(index + 1)))),
           s,
           costFn,
           max,

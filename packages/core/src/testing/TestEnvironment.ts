@@ -1,5 +1,7 @@
 /**
  * @tsplus type effect/core/testing/TestEnvironment
+ * @category model
+ * @since 1.0.0
  */
 export type TestEnvironment =
   | Annotations
@@ -9,6 +11,8 @@ export type TestEnvironment =
 
 /**
  * @tsplus static effect/core/testing/TestEnvironment.Ops live
+ * @category environment
+ * @since 1.0.0
  */
 export const live: Layer<DefaultServices, never, TestEnvironment> = Annotations.live
   .merge(Live.default)
@@ -18,8 +22,15 @@ export const live: Layer<DefaultServices, never, TestEnvironment> = Annotations.
 
 /**
  * @tsplus type effect/core/testing/TestEnvironment.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TestEnvironmentOps extends Layer<never, never, TestEnvironment> {}
+
+/**
+ * @category environment
+ * @since 1.0.0
+ */
 export const TestEnvironment: TestEnvironmentOps = Layer
   .syncEnvironment(DefaultServices.live)
   .provideToAndMerge(live)

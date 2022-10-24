@@ -10,9 +10,9 @@ function nextPow2(n: number): number {
   return Math.max(Math.pow(2, nextPow), 2)
 }
 
+/** @internal */
 export function makeBounded<A>(requestedCapacity: number): AtomicHub<A> {
   ensureCapacity(requestedCapacity)
-
   if (requestedCapacity === 1) {
     return new BoundedHubSingle()
   } else if (nextPow2(requestedCapacity) === requestedCapacity) {

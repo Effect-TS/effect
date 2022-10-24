@@ -1,5 +1,7 @@
 import { _K, _V, TMapSym } from "@effect/core/stm/TMap/definition"
+import type { List } from "@fp-ts/data/List"
 
+/** @internal */
 export class InternalTMap<K, V> implements TMap<K, V> {
   readonly [TMapSym]: TMapSym = TMapSym
   readonly [_K]!: () => K
@@ -12,6 +14,7 @@ export class InternalTMap<K, V> implements TMap<K, V> {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteTMap<K, V>(
   _: TMap<K, V>

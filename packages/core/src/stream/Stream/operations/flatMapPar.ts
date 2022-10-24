@@ -11,6 +11,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects flatMapPar
  * @tsplus pipeable effect/core/stream/Stream flatMapPar
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMapPar<R2, E2, A, B>(
   n: number,

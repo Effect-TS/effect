@@ -4,6 +4,8 @@ import type { Option } from "@fp-ts/data/Option"
 /**
  * @tsplus static effect/core/concurrent/CountdownLatch.Ops __call
  * @tsplus static effect/core/concurrent/CountdownLatch.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function make(n: number): Effect<never, Option<never>, CountdownLatch> {
   if (n <= 0) {

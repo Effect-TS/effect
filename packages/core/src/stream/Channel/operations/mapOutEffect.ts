@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects mapOutEffect
  * @tsplus pipeable effect/core/stream/Channel mapOutEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapOutEffect<OutElem, Env1, OutErr1, OutElem1>(
   f: (o: OutElem) => Effect<Env1, OutErr1, OutElem1>

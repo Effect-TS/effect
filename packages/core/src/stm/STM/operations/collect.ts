@@ -6,6 +6,8 @@ import type * as Option from "@fp-ts/data/Option"
  * the successful values and discarding the empty cases.
  *
  * @tsplus static effect/core/stm/STM.Ops collect
+ * @category constructors
+ * @since 1.0.0
  */
 export function collect<R, E, A, B>(
   as: Iterable<A>,
@@ -19,6 +21,8 @@ export function collect<R, E, A, B>(
  *
  * @tsplus static effect/core/stm/STM.Aspects collect
  * @tsplus pipeable effect/core/stm/STM collect
+ * @category constructors
+ * @since 1.0.0
  */
 export function collectNow<A, B>(pf: (a: A) => Option.Option<B>) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, B> =>

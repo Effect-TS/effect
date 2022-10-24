@@ -2,6 +2,8 @@ import type { GenEnvSym, GenValueSym } from "@effect/core/testing/Gen"
 
 /**
  * @tsplus static effect/core/testing/Gen.Ops struct
+ * @category constructors
+ * @since 1.0.0
  */
 export function struct<NER extends Record<string, Gen<any, any>>>(
   properties: EnforceNonEmptyRecord<NER> | Record<string, Gen<any, any>>

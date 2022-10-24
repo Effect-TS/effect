@@ -4,6 +4,8 @@ import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operatio
  * Retrieves the total number of acquired read locks.
  *
  * @tsplus getter effect/core/stm/TReentrantLock readLocks
+ * @category getters
+ * @since 1.0.0
  */
 export function readLocks(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)

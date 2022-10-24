@@ -6,6 +6,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects contramapEffect
  * @tsplus pipeable effect/core/io/Schedule contramapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramapEffect<In, Env1, In2>(
   f: (in2: In2) => Effect<Env1, never, In>

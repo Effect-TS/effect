@@ -3,9 +3,11 @@
  * predicate `f`.
  *
  * @tsplus static effect/core/io/Effect.Ops forAll
+ * @category elements
+ * @since 1.0.0
  */
 export function forAll<R, E, A>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => Effect<R, E, boolean>
 ): Effect<R, E, boolean> {
   return Effect.suspendSucceed(loop(as[Symbol.iterator](), f))

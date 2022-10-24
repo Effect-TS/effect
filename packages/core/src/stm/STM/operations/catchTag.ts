@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects catchTag
  * @tsplus pipeable effect/core/stm/STM catchTag
+ * @category alternatives
+ * @since 1.0.0
  */
 export function catchTag<
   K extends E["_tag"] & string,

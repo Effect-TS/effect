@@ -1,3 +1,10 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Option from "@fp-ts/data/Option"
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export class RingBufferNew<A> {
   private array: Array<A | null>
   private size = 0
@@ -7,8 +14,8 @@ export class RingBufferNew<A> {
     this.array = Array.from({ length: capacity }, (_) => null)
   }
 
-  head(): Maybe<A> {
-    return Maybe(this.array[this.current])
+  head(): Option.Option<A> {
+    return Option.fromNullable(this.array[this.current])
   }
 
   lastorNull(): A | null {
@@ -33,7 +40,7 @@ export class RingBufferNew<A> {
     }
   }
 
-  toChunk(): Chunk<A> {
+  toChunk(): Chunk.Chunk<A> {
     const begin = this.current - this.size
     const newArray = begin < 0
       ? this.array
@@ -41,7 +48,7 @@ export class RingBufferNew<A> {
         .concat(this.array.slice(0, this.current))
       : this.array.slice(begin, this.current)
 
-    return Chunk.from(newArray) as Chunk<A>
+    return Chunk.fromIterable(newArray) as Chunk.Chunk<A>
   }
 
   private increment(): void {

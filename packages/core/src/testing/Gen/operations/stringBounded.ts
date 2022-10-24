@@ -4,6 +4,8 @@
  * @tsplus static effect/core/testing/Gen.Ops stringBounded
  * @tsplus static effect/core/testing/Gen.Aspects stringBounded
  * @tsplus pipeable effect/core/testing/Gen stringBounded
+ * @category constructors
+ * @since 1.0.0
  */
 export function stringBounded(min: number, max: number) {
   return <R>(char: Gen<R, string>): Gen<R, string> =>

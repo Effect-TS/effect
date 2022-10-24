@@ -1,5 +1,6 @@
 import { TReentrantLockSym } from "@effect/core/stm/TReentrantLock/definition"
 
+/** @internal */
 export class InternalTReentrantLock implements TReentrantLock {
   readonly [TReentrantLockSym]: TReentrantLockSym = TReentrantLockSym
 
@@ -8,6 +9,7 @@ export class InternalTReentrantLock implements TReentrantLock {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteTReentrantLock(
   _: TReentrantLock

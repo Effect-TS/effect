@@ -10,6 +10,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects catchAllCause
  * @tsplus pipeable effect/core/stream/Stream catchAllCause
+ * @category alternatives
+ * @since 1.0.0
  */
 export function catchAllCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Stream<R2, E2, A2>

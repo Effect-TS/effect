@@ -1,4 +1,4 @@
-import { constTrue } from "@tsplus/stdlib/data/Function"
+import { constTrue } from "@fp-ts/data/Function"
 
 /**
  * Executes a pure fold over the stream of values - reduces all elements in
@@ -6,6 +6,8 @@ import { constTrue } from "@tsplus/stdlib/data/Function"
  *
  * @tsplus static effect/core/stream/Stream.Aspects runFold
  * @tsplus pipeable effect/core/stream/Stream runFold
+ * @category destructors
+ * @since 1.0.0
  */
 export function runFold<S, A>(
   s: S,

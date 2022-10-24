@@ -3,6 +3,8 @@
  * result of this effect.
  *
  * @tsplus getter effect/core/io/Effect memoize
+ * @category mutations
+ * @since 1.0.0
  */
 export function memoize<R, E, A>(self: Effect<R, E, A>): Effect<never, never, Effect<R, E, A>> {
   return Do(($) => {

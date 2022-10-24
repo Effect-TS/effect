@@ -2,7 +2,11 @@ import { realCause } from "@effect/core/io/Cause/definition"
 import { Doc } from "@effect/printer/Doc"
 import { FusionDepth } from "@effect/printer/Optimize"
 import { pretty as renderPretty } from "@effect/printer/Render"
+import { pipe } from "@fp-ts/data/Function"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/NonEmptyReadonlyArray"
+import * as SafeEval from "@fp-ts/data/SafeEval"
 
+/** @internal */
 export interface Renderer<E = unknown> {
   readonly lineWidth: number
   readonly ribbonFraction: number
@@ -10,25 +14,31 @@ export interface Renderer<E = unknown> {
   readonly renderUnknown: (error: unknown) => string[]
 }
 
+/** @internal */
 export type Segment = Sequential | Parallel | Failure
 
+/** @internal */
 export type Step = Parallel | Failure
 
+/** @internal */
 export interface Failure {
   readonly _tag: "Failure"
   readonly lines: ReadonlyArray<Doc<never>>
 }
 
+/** @internal */
 export interface Parallel {
   readonly _tag: "Parallel"
   readonly all: ReadonlyArray<Sequential>
 }
 
+/** @internal */
 export interface Sequential {
   readonly _tag: "Sequential"
   readonly all: ReadonlyArray<Step>
 }
 
+/** @internal */
 export function Failure(lines: ReadonlyArray<Doc<never>>): Failure {
   return {
     _tag: "Failure",
@@ -36,6 +46,7 @@ export function Failure(lines: ReadonlyArray<Doc<never>>): Failure {
   }
 }
 
+/** @internal */
 export function Sequential(all: ReadonlyArray<Step>): Sequential {
   return {
     _tag: "Sequential",
@@ -43,15 +54,12 @@ export function Sequential(all: ReadonlyArray<Step>): Sequential {
   }
 }
 
+/** @internal */
 export function Parallel(all: ReadonlyArray<Sequential>): Parallel {
   return {
     _tag: "Parallel",
     all
   }
-}
-
-interface NonEmptyReadonlyArray<A> extends ReadonlyArray<A> {
-  readonly 0: A
 }
 
 const box = {
@@ -217,17 +225,23 @@ function format(segment: Segment): ReadonlyArray<Doc<never>> {
 function linearSegments<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): Eval<ReadonlyArray<Step>> {
+): SafeEval.SafeEval<ReadonlyArray<Step>> {
   realCause(cause)
   switch (cause._tag) {
     case "Then": {
-      return linearSegments(cause.left, renderer).zipWith(
-        linearSegments(cause.right, renderer),
-        (left, right) => [...left, ...right]
+      return pipe(
+        SafeEval.suspend(() => linearSegments(cause.left, renderer)),
+        SafeEval.zipWith(
+          SafeEval.suspend(() => linearSegments(cause.right, renderer)),
+          (left, right) => [...left, ...right]
+        )
       )
     }
     default: {
-      return causeToSequential(cause, renderer).map((sequential) => sequential.all)
+      return pipe(
+        causeToSequential(cause, renderer),
+        SafeEval.map((sequential) => sequential.all)
+      )
     }
   }
 }
@@ -235,17 +249,23 @@ function linearSegments<E>(
 function parallelSegments<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): Eval<ReadonlyArray<Sequential>> {
+): SafeEval.SafeEval<ReadonlyArray<Sequential>> {
   realCause(cause)
   switch (cause._tag) {
     case "Both": {
-      return parallelSegments(cause.left, renderer).zipWith(
-        parallelSegments(cause.right, renderer),
-        (left, right) => [...left, ...right]
+      return pipe(
+        SafeEval.suspend(() => parallelSegments(cause.left, renderer)),
+        SafeEval.zipWith(
+          SafeEval.suspend(() => parallelSegments(cause.right, renderer)),
+          (left, right) => [...left, ...right]
+        )
       )
     }
     default: {
-      return causeToSequential(cause, renderer).map((sequential) => [sequential])
+      return pipe(
+        causeToSequential(cause, renderer),
+        SafeEval.map((sequential) => [sequential])
+      )
     }
   }
 }
@@ -253,38 +273,42 @@ function parallelSegments<E>(
 function causeToSequential<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): Eval<Sequential> {
+): SafeEval.SafeEval<Sequential> {
   realCause(cause)
   switch (cause._tag) {
     case "Empty": {
-      return Eval.succeed(Sequential([]))
+      return SafeEval.succeed(Sequential([]))
     }
     case "Fail": {
-      return Eval.succeed(
+      return SafeEval.succeed(
         renderFail(renderer.renderError(cause.value).map((line) => Doc.text(line)))
       )
     }
     case "Die": {
-      return Eval.succeed(
+      return SafeEval.succeed(
         renderDie(renderer.renderUnknown(cause.value).map((line) => Doc.text(line)))
       )
     }
     case "Interrupt": {
-      return Eval.succeed(
+      return SafeEval.succeed(
         renderInterrupt(cause.fiberId)
       )
     }
     case "Then": {
-      return linearSegments(cause, renderer)
-        .map((segments) => Sequential(segments))
+      return pipe(
+        linearSegments(cause, renderer),
+        SafeEval.map((segments) => Sequential(segments))
+      )
     }
     case "Both": {
-      return parallelSegments(cause, renderer)
-        .map((segments) => Sequential([Parallel(segments)]))
+      return pipe(
+        parallelSegments(cause, renderer),
+        SafeEval.map((segments) => Sequential([Parallel(segments)]))
+      )
     }
     case "Stackless": {
       // TODO: determine if this is correct for `Stackless` cause
-      return Eval.suspend(causeToSequential(cause.cause, renderer))
+      return SafeEval.suspend(() => causeToSequential(cause.cause, renderer))
     }
   }
 }
@@ -303,30 +327,36 @@ export const defaultRenderer: Renderer = {
 function prettyDocuments<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): Eval<ReadonlyArray<Doc<never>>> {
-  return causeToSequential(cause, renderer).map((sequential) => {
-    if (
-      sequential.all.length === 1 &&
-      sequential.all[0] &&
-      sequential.all[0]._tag === "Failure"
-    ) {
-      return sequential.all[0].lines
-    }
-    const documents = format(sequential)
-    return documents.length > 0 ? [box.branch.down.light, ...documents] : documents
-  })
+): SafeEval.SafeEval<ReadonlyArray<Doc<never>>> {
+  return pipe(
+    causeToSequential(cause, renderer),
+    SafeEval.map((sequential) => {
+      if (
+        sequential.all.length === 1 &&
+        sequential.all[0] &&
+        sequential.all[0]._tag === "Failure"
+      ) {
+        return sequential.all[0].lines
+      }
+      const documents = format(sequential)
+      return documents.length > 0 ? [box.branch.down.light, ...documents] : documents
+    })
+  )
 }
 
 function prettySafe<E>(
   cause: Cause<E>,
   renderer: Renderer<E>
-): Eval<string> {
-  return prettyDocuments(cause, renderer).map((docs) => {
-    const document = Doc.lineBreak.cat(
-      Doc.concatWith((x, y) => x.catWithLineBreak(y))(docs)
-    ).optimize(FusionDepth.Deep)
-    return renderPretty(renderer.lineWidth, renderer.ribbonFraction)(document)
-  })
+): SafeEval.SafeEval<string> {
+  return pipe(
+    prettyDocuments(cause, renderer),
+    SafeEval.map((docs) => {
+      const document = Doc.lineBreak.cat(
+        Doc.concatWith((x, y) => x.catWithLineBreak(y))(docs)
+      ).optimize(FusionDepth.Deep)
+      return renderPretty(renderer.lineWidth, renderer.ribbonFraction)(document)
+    })
+  )
 }
 
 /**
@@ -336,5 +366,5 @@ function prettySafe<E>(
  * @tsplus pipeable effect/core/io/Cause pretty
  */
 export function pretty<E>(renderer: Renderer<E> = defaultRenderer) {
-  return (self: Cause<E>): string => prettySafe(self, renderer).run
+  return (self: Cause<E>): string => SafeEval.execute(prettySafe(self, renderer))
 }

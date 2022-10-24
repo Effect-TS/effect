@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects tapErrorCause
  * @tsplus pipeable effect/core/stream/Stream tapErrorCause
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapErrorCause<E, R2, E2, A2>(
   f: (cause: Cause<E>) => Effect<R2, E2, A2>

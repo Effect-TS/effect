@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects forEach
  * @tsplus pipeable effect/core/io/Exit forEach
+ * @category elements
+ * @since 1.0.0
  */
 export function forEach<A, R, E1, B>(
   f: (a: A) => Effect<R, E1, B>

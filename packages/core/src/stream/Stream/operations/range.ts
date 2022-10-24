@@ -1,11 +1,14 @@
 import { DEFAULT_CHUNK_SIZE } from "@effect/core/stream/Stream/definition"
 import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Constructs a stream from a range of integers (lower bound included, upper
  * bound not included).
  *
  * @tsplus static effect/core/stream/Stream.Ops range
+ * @category constructors
+ * @since 1.0.0
  */
 export function range(
   min: number,
@@ -19,7 +22,7 @@ function go(
   min: number,
   max: number,
   chunkSize: number
-): Channel<never, unknown, unknown, unknown, never, Chunk<number>, unknown> {
+): Channel<never, unknown, unknown, unknown, never, Chunk.Chunk<number>, unknown> {
   const remaining = max - min
   return remaining > chunkSize
     ? Channel.write(Chunk.range(min, min + chunkSize - 1)).flatMap(() =>

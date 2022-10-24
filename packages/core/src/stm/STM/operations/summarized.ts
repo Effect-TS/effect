@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects summarized
  * @tsplus pipeable effect/core/stm/STM summarized
+ * @category mutations
+ * @since 1.0.0
  */
 export function summarized<R2, E2, B, C>(
   summary: STM<R2, E2, B>,

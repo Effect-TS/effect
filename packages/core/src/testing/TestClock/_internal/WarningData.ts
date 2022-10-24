@@ -1,5 +1,6 @@
 /**
  * @tsplus type effect/core/testing/TestClock.WarningData
+ * @internal
  */
 export type WarningData = Start | Pending | Done
 
@@ -11,27 +12,32 @@ export type WarningData = Start | Pending | Done
  * adjusted the `TestClock` or the warning message has already been displayed.
  *
  * @tsplus type effect/core/testing/TestClock.WarningData.Ops
+ * @internal
  */
 export interface WarningDataOps {}
 export const WarningData: WarningDataOps = {}
 
+/** @internal */
 export interface Start {
   readonly _tag: "Start"
 }
 
+/** @internal */
 export interface Pending {
   readonly _tag: "Pending"
   readonly fiber: Fiber<Error, void>
 }
 
+/** @internal */
 export interface Done {
   readonly _tag: "Done"
 }
 
 /**
- * SState indicating that a test has not used time.
+ * State indicating that a test has not used time.
  *
  * @tsplus static effect/core/testing/TestClock.WarningData.Ops Start
+ * @internal
  */
 export const start: WarningData = {
   _tag: "Start"
@@ -43,6 +49,7 @@ export const start: WarningData = {
  * message.
  *
  * @tsplus static effect/core/testing/TestClock.WarningData.Ops Pending
+ * @internal
  */
 export function pending(fiber: Fiber<Error, void>): WarningData {
   return {
@@ -56,6 +63,7 @@ export function pending(fiber: Fiber<Error, void>): WarningData {
  * already been displayed.
  *
  * @tsplus static effect/core/testing/TestClock.WarningData.Ops Done
+ * @internal
  */
 export const done: WarningData = {
   _tag: "Done"

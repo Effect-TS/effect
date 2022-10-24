@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects tapError
  * @tsplus pipeable effect/core/stream/Stream tapError
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapError<E, R2, E2, Z>(
   f: (e: E) => Effect<R2, E2, Z>

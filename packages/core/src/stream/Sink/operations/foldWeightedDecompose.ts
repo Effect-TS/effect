@@ -1,4 +1,6 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * Creates a sink that folds elements of type `In` into a structure of type
@@ -17,12 +19,14 @@ import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/Sink
  * `Effect` value, and consequently it allows the sink to fail.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldWeightedDecompose
+ * @category folding
+ * @since 1.0.0
  */
 export function foldWeightedDecompose<S, In>(
   z: S,
   costFn: (s: S, input: In) => number,
   max: number,
-  decompose: (input: In) => Chunk<In>,
+  decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S
 ): Sink<never, never, In, In, S> {
   return Sink.suspend(new SinkInternal(go(z, costFn, decompose, f, false, 0, max)))
@@ -31,14 +35,14 @@ export function foldWeightedDecompose<S, In>(
 function go<S, In>(
   s: S,
   costFn: (s: S, input: In) => number,
-  decompose: (input: In) => Chunk<In>,
+  decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S,
   dirty: boolean,
   cost: number,
   max: number
-): Channel<never, never, Chunk<In>, unknown, never, Chunk<In>, S> {
+): Channel<never, never, Chunk.Chunk<In>, unknown, never, Chunk.Chunk<In>, S> {
   return Channel.readWith(
-    (chunk: Chunk<In>) => {
+    (chunk: Chunk.Chunk<In>) => {
       const [nextS, nextCost, nextDirty, leftovers] = fold(
         chunk,
         s,
@@ -51,7 +55,7 @@ function go<S, In>(
         0
       )
 
-      if (leftovers.isNonEmpty) {
+      if (Chunk.isNonEmpty(leftovers)) {
         return Channel.write(leftovers).flatMap(() => Channel.succeed(nextS))
       }
 
@@ -67,21 +71,21 @@ function go<S, In>(
 }
 
 function fold<S, In>(
-  input: Chunk<In>,
+  input: Chunk.Chunk<In>,
   s: S,
   costFn: (s: S, input: In) => number,
-  decompose: (input: In) => Chunk<In>,
+  decompose: (input: In) => Chunk.Chunk<In>,
   f: (s: S, input: In) => S,
   dirty: boolean,
   cost: number,
   max: number,
   index: number
-): readonly [S, number, boolean, Chunk<In>] {
+): readonly [S, number, boolean, Chunk.Chunk<In>] {
   if (index === input.length) {
-    return [s, cost, dirty, Chunk.empty<In>()]
+    return [s, cost, dirty, Chunk.empty]
   }
 
-  const elem = input.unsafeGet(index)
+  const elem = pipe(input, Chunk.unsafeGet(index))
   const total = cost + costFn(s, elem)
 
   if (total <= max) {
@@ -94,19 +98,19 @@ function fold<S, In>(
     // If `elem` cannot be decomposed, we need to cross the `max` threshold. To
     // minimize "injury", we only allow this when we haven't added anything else
     // to the aggregate (dirty = false).
-    return [f(s, elem), total, true, input.drop(index + 1)]
+    return [f(s, elem), total, true, pipe(input, Chunk.drop(index + 1))]
   }
 
   if (decomposed.length <= 1 && dirty) {
     // If the state is dirty and `elem` cannot be decomposed, we stop folding
     // and include `elem` in the leftovers.
-    return [s, cost, dirty, input.drop(index)]
+    return [s, cost, dirty, pipe(input, Chunk.drop(index))]
   }
 
   // `elem` got decomposed, so we will recurse with the decomposed elements pushed
   // into the chunk we're processing and see if we can aggregate further.
   return fold(
-    decomposed + input.drop(index + 1),
+    pipe(decomposed, Chunk.concat(pipe(input, Chunk.drop(index + 1)))),
     s,
     costFn,
     decompose,

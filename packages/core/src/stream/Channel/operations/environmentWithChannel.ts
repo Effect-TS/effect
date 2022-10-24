@@ -1,7 +1,11 @@
+import type { Context } from "@fp-ts/data/Context"
+
 /**
  * Accesses the environment of the channel in the context of a channel.
  *
  * @tsplus static effect/core/stream/Channel.Ops environmentWithChannel
+ * @category environment
+ * @since 1.0.0
  */
 export function environmentWithChannel<
   R,
@@ -13,7 +17,7 @@ export function environmentWithChannel<
   OutElem,
   OutDone
 >(
-  f: (env: Env<R>) => Channel<R1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  f: (context: Context<R>) => Channel<R1, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 ): Channel<R | R1, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   return Channel.environment<R>().flatMap(f)
 }

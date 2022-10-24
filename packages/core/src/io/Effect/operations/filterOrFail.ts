@@ -1,8 +1,13 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Refinement"
+
 /**
  * Fails with `e` if the predicate fails.
  *
  * @tsplus static effect/core/io/Effect.Aspects filterOrFail
  * @tsplus pipeable effect/core/io/Effect filterOrFail
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterOrFail<E1, A, B extends A>(
   f: Refinement<A, B>,

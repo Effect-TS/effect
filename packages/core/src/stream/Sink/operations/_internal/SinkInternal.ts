@@ -1,6 +1,8 @@
 import { SinkSym } from "@effect/core/stream/Sink/definition/base"
 import { _E, _In, _L, _R, _Z } from "@effect/core/stream/Sink/definition/symbols"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
+/** @internal */
 export class SinkInternal<R, E, In, L, Z> implements Sink<R, E, In, L, Z> {
   readonly [SinkSym]: SinkSym = SinkSym
   readonly [_R]!: () => R
@@ -16,6 +18,7 @@ export class SinkInternal<R, E, In, L, Z> implements Sink<R, E, In, L, Z> {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteSink<R, E, In, L, Z>(
   _: Sink<R, E, In, L, Z>

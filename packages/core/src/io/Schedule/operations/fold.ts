@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects fold
  * @tsplus pipeable effect/core/io/Schedule fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<Out, Z>(z: Z, f: (z: Z, out: Out) => Z) {
   return <State, Env, In>(

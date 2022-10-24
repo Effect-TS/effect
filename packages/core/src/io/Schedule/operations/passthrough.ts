@@ -5,6 +5,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Ops passthrough
  * @tsplus getter effect/core/io/Schedule passthrough
+ * @category mutations
+ * @since 1.0.0
  */
 export function passthrough<State, Env, Input, Output>(
   self: Schedule<State, Env, Input, Output>

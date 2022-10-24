@@ -6,6 +6,8 @@
  * @tsplus static effect/core/io/RuntimeFiber.Aspects zip
  * @tsplus pipeable effect/core/io/Fiber zip
  * @tsplus pipeable effect/core/io/RuntimeFiber zip
+ * @category zipping
+ * @since 1.0.0
  */
 export function zip<E2, A2>(that: Fiber<E2, A2>) {
   return <E, A>(self: Fiber<E, A>): Fiber<E | E2, readonly [A, A2]> =>

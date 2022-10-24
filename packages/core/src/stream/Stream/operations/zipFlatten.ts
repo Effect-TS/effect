@@ -6,6 +6,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipFlatten
  * @tsplus pipeable effect/core/stream/Stream zipFlatten
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipFlatten<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A extends ReadonlyArray<any>>(

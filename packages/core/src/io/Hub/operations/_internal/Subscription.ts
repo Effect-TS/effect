@@ -1,3 +1,5 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+
 export interface Subscription<A> {
   get isEmpty(): boolean
   poll<D>(default_: D): A | D

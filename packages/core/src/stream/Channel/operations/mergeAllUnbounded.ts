@@ -1,5 +1,7 @@
 /**
  * @tsplus static effect/core/stream/Channel.Ops mergeAllUnbounded
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeAllUnbounded<
   Env,

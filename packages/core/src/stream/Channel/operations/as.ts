@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects as
  * @tsplus pipeable effect/core/stream/Channel as
+ * @category mapping
+ * @since 1.0.0
  */
 export function as<OutDone2>(z2: OutDone2) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(

@@ -1,10 +1,13 @@
 import { ScopedRefURI } from "@effect/core/io/ScopedRef/definition"
+import * as Context from "@fp-ts/data/Context"
 
+/** @internal */
 export class ScopedRefInternal<A> implements ScopedRef<A> {
-  constructor(readonly ref: Ref.Synchronized<readonly [Scope.Closeable, A]>) {}
   readonly [ScopedRefURI] = {
     _A: (_: never) => _
   }
+
+  constructor(readonly ref: Ref.Synchronized<readonly [Scope.Closeable, A]>) {}
 
   get get(): Effect<never, never, A> {
     return this.ref.get.map((tuple) => tuple[1])
@@ -21,7 +24,9 @@ export class ScopedRefInternal<A> implements ScopedRef<A> {
           const newScope = $(Scope.make)
           const exit = $(
             restore(
-              acquire.provideSomeEnvironment((env: Env<R>) => env.add(Scope.Tag, newScope))
+              acquire.provideSomeEnvironment<E, A, R, Scope | R>(
+                Context.add(Scope.Tag)(newScope)
+              )
             ).exit
           )
           return $(exit.fold(

@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/STM.Aspects bind
  * @tsplus pipeable effect/core/stm/STM bind
+ * @category do
+ * @since 1.0.0
  */
 export function bind<R, E, A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -39,6 +41,8 @@ export function bind<R, E, A, K, N extends string>(
  *
  * @tsplus static effect/core/stm/STM.Aspects bindValue
  * @tsplus pipeable effect/core/stm/STM bindValue
+ * @category do
+ * @since 1.0.0
  */
 export function bindValue<A, K, N extends string>(
   tag: Exclude<N, keyof K>,
@@ -70,6 +74,8 @@ export function bindValue<A, K, N extends string>(
 
 /**
  * @tsplus static effect/core/stm/STM.Ops Do
+ * @category do
+ * @since 1.0.0
  */
 export function Do(): STM<never, never, {}> {
   return STM.succeed({})

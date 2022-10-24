@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects repeat
  * @tsplus pipeable effect/core/io/Effect repeat
+ * @category repetititon
+ * @since 1.0.0
  */
 export function repeat<S, R1, A, B>(
   schedule: Schedule<S, R1, A, B>

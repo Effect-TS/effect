@@ -1,5 +1,11 @@
 import { _In, _Out } from "@effect/core/io/Queue/definition/symbols"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Option } from "@fp-ts/data/Option"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Enqueue<A> extends CommonQueue {
   /**
    * Internal Variance Marker
@@ -24,12 +30,25 @@ export interface Enqueue<A> extends CommonQueue {
    * For Dropping Queue: uses `Dropping` Strategy, It places the values in the
    * queue but if there is no room it will not enqueue them and return false.
    */
-  offerAll(this: this, as: Collection<A>): Effect<never, never, boolean>
+  offerAll(this: this, as: Iterable<A>): Effect<never, never, boolean>
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const QueueSym = Symbol.for("@effect/core/io/Queue")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type QueueSym = typeof QueueSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface CommonQueue {
   /**
    * Internal Discriminator
@@ -70,6 +89,10 @@ export interface CommonQueue {
   get isEmpty(): Effect<never, never, boolean>
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Dequeue<A> extends CommonQueue {
   /**
    * Internal Variance Marker
@@ -104,7 +127,7 @@ export interface Dequeue<A> extends CommonQueue {
   /**
    * Take the head option of values in the queue.
    */
-  get poll(): Effect<never, never, Maybe<A>>
+  get poll(): Effect<never, never, Option<A>>
 }
 
 /**
@@ -112,11 +135,15 @@ export interface Dequeue<A> extends CommonQueue {
  * enqueued and of which elements can be dequeued.
  *
  * @tsplus type effect/core/io/Queue
+ * @category model
+ * @since 1.0.0
  */
 export interface Queue<A> extends Enqueue<A>, Dequeue<A> {}
 
 /**
  * @tsplus type effect/core/io/Queue.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface QueueOps {
   $: QueueAspects
@@ -127,5 +154,7 @@ export const Queue: QueueOps = {
 
 /**
  * @tsplus type effect/core/io/Queue.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface QueueAspects {}

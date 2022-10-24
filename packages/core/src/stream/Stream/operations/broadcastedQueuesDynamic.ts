@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects broadcastedQueuesDynamic
  * @tsplus pipeable effect/core/stream/Stream broadcastedQueuesDynamic
+ * @category broadcasting
+ * @since 1.0.0
  */
 export function broadcastedQueuesDynamic(maximumLag: number) {
   return <R, E, A>(

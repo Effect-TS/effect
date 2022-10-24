@@ -4,9 +4,21 @@ import { ReadLockOps } from "@effect/core/stm/TReentrantLock/definition/ReadLock
 import type { WriteLock as WriteLockInternal } from "@effect/core/stm/TReentrantLock/definition/WriteLock"
 import { WriteLockOps } from "@effect/core/stm/TReentrantLock/definition/WriteLock"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const TReentrantLockSym = Symbol.for("@effect/core/stm/TReentrantLock")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type TReentrantLockSym = typeof TReentrantLockSym
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace TReentrantLock {
   export interface WriteLock extends WriteLockInternal {}
   export interface ReadLock extends ReadLockInternal {}
@@ -30,11 +42,15 @@ export declare namespace TReentrantLock {
  * structures that are consumed from effectful code.
  *
  * @tsplus type effect/core/stm/TReentrantLock
+ * @category model
+ * @since 1.0.0
  */
 export interface TReentrantLock {}
 
 /**
  * @tsplus type effect/core/stm/TReentrantLock.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TReentrantLockOps {
   $: TReentrantLockAspects
@@ -49,5 +65,7 @@ export const TReentrantLock: TReentrantLockOps = {
 
 /**
  * @tsplus type effect/core/stm/TReentrantLock.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface TReentrantLockAspects {}

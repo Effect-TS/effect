@@ -1,6 +1,15 @@
 import type { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const GroupBySym = Symbol.for("@effect/core/stream/GroupBy")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type GroupBySym = typeof GroupBySym
 
 /**
@@ -9,6 +18,8 @@ export type GroupBySym = typeof GroupBySym
  * and the results will be merged in arbitrary order.
  *
  * @tsplus type effect/core/stream/GroupBy
+ * @category model
+ * @since 1.0.0
  */
 export interface GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym
@@ -21,6 +32,8 @@ export interface GroupBy<R, E, K, V, A> {
 
 /**
  * @tsplus type effect/core/stream/GroupBy.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface GroupByOps {
   $: GroupByAspects
@@ -31,7 +44,13 @@ export const GroupBy: GroupByOps = {
 
 /**
  * @tsplus type effect/core/stream/GroupBy.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface GroupByAspects {}
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type UniqueKey = number

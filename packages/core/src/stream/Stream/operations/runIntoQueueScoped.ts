@@ -1,4 +1,5 @@
 import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
@@ -6,6 +7,8 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  *
  * @tsplus static effect/core/stream/Stream.Aspects runIntoQueueScoped
  * @tsplus pipeable effect/core/stream/Stream runIntoQueueScoped
+ * @category destructors
+ * @since 1.0.0
  */
 export function runIntoQueueScoped<E1, A>(queue: Enqueue<Take<E1, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {

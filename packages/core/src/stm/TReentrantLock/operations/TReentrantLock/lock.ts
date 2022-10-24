@@ -3,7 +3,10 @@
  * without needing a distinction between readers / writers.
  *
  * See `TReentrantLock.writeLock`.
+ *
  * @tsplus getter effect/core/stm/TReentrantLock lock
+ * @category getters
+ * @since 1.0.0
  */
 export function lock(self: TReentrantLock): Effect<Scope, never, number> {
   return self.writeLock

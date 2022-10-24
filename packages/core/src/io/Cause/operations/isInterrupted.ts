@@ -1,10 +1,18 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Determines if the `Cause` contains an interruption.
  *
  * @tsplus getter effect/core/io/Cause isInterrupted
+ * @category destructors
+ * @since 1.0.0
  */
 export function isInterrupted<E>(self: Cause<E>): boolean {
-  return self
-    .find((cause) => (cause.isInterruptType() ? Maybe.some(undefined) : Maybe.none))
-    .isSome()
+  return Option.isSome(
+    self.find((cause) =>
+      cause.isInterruptType() ?
+        Option.some(undefined) :
+        Option.none
+    )
+  )
 }

@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipAll
  * @tsplus pipeable effect/core/stream/Stream zipAll
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipAll<R2, E2, A2, A>(
   that: Stream<R2, E2, A2>,

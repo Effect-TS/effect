@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/io/Metrics/Metric.Aspects mapType
  * @tsplus pipeable effect/core/io/Metrics/Metric mapType
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapType<Type, Type2>(f: (type: Type) => Type2) {
   return <In, Out>(self: Metric<Type, In, Out>): Metric<Type2, In, Out> =>

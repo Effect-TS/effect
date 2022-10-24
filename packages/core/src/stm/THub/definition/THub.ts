@@ -2,12 +2,33 @@ import type { Node as NodeInternal, NodeOps } from "@effect/core/stm/THub/defini
 import type { TDequeue as TDequeueInternal } from "@effect/core/stm/THub/definition/TDequeue"
 import { TDequeueOps } from "@effect/core/stm/THub/definition/TDequeue"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const THubSym = Symbol.for("@effect/core/stm/THub")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type THubSym = typeof THubSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/stm/THub/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace THub {
   export type Node<A> = NodeInternal<A>
   export type Strategy = BackPressure | Dropping | Sliding
@@ -19,11 +40,15 @@ export declare namespace THub {
  * the hub and subscribers can subscribe to take messages from the hub.
  *
  * @tsplus type effect/core/stm/THub
+ * @category model
+ * @since 1.0.0
  */
 export interface THub<A> {}
 
 /**
  * @tsplus type effect/core/stm/THub.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface THubOps {
   $: THubAspects
@@ -38,17 +63,31 @@ export const THub: THubOps = {
 
 /**
  * @tsplus type effect/core/stm/THub.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface THubAspects {}
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface BackPressure {
   _tag: "BackPressure"
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Dropping {
   _tag: "Dropping"
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Sliding {
   _tag: "Sliding"
 }
@@ -57,6 +96,8 @@ export interface Sliding {
  * A strategy that retries if the hub is at capacity.
  *
  * @tsplus static effect/core/stm/THub.Ops BackPressure
+ * @category constructors
+ * @since 1.0.0
  */
 export const BackPressure: THub.Strategy = {
   _tag: "BackPressure"
@@ -66,6 +107,8 @@ export const BackPressure: THub.Strategy = {
  * A strategy that drops new messages if the hub is at capacity.
  *
  * @tsplus static effect/core/stm/THub.Ops Dropping
+ * @category constructors
+ * @since 1.0.0
  */
 export const Dropping: THub.Strategy = {
   _tag: "Dropping"
@@ -75,6 +118,8 @@ export const Dropping: THub.Strategy = {
  * A strategy that drops old messages if the hub is at capacity.
  *
  * @tsplus static effect/core/stm/THub.Ops Sliding
+ * @category constructors
+ * @since 1.0.0
  */
 export const Sliding: THub.Strategy = {
   _tag: "Sliding"

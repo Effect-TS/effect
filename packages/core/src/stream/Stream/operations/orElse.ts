@@ -11,6 +11,8 @@ import {
  * @tsplus pipeable-operator effect/core/stream/Stream |
  * @tsplus static effect/core/stream/Stream.Aspects orElse
  * @tsplus pipeable effect/core/stream/Stream orElse
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orElse<R2, E2, A2>(
   that: LazyArg<Stream<R2, E2, A2>>

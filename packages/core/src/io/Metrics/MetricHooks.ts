@@ -1,13 +1,22 @@
-import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Duration from "@fp-ts/data/Duration"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashMap from "@fp-ts/data/HashMap"
+import * as number from "@fp-ts/data/Number"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * @tsplus type effect/core/io/Metrics/MetricHooks.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface MetricHooksOps {}
 export const MetricHooks: MetricHooksOps = {}
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHooks.Ops counter
+ * @category constructors
+ * @since 1.0.0
  */
 export function counter(_key: MetricKey.Counter): MetricHook.Counter {
   let sum = 0
@@ -21,6 +30,8 @@ export function counter(_key: MetricKey.Counter): MetricHook.Counter {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHooks.Ops gauge
+ * @category constructors
+ * @since 1.0.0
  */
 export function gauge(_key: MetricKey.Gauge, startAt: number): MetricHook.Gauge {
   let value = startAt
@@ -34,6 +45,8 @@ export function gauge(_key: MetricKey.Gauge, startAt: number): MetricHook.Gauge 
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHooks.Ops frequency
+ * @category constructors
+ * @since 1.0.0
  */
 export function frequency(_key: MetricKey.Frequency): MetricHook.Frequency {
   let count = 0
@@ -45,13 +58,15 @@ export function frequency(_key: MetricKey.Frequency): MetricHook.Frequency {
     values.set(word, slotCount + 1)
   }
 
-  const snapshot = () => HashMap(...Array.from(values.entries()).map(([k, v]) => [k, v] as const))
+  const snapshot = () => HashMap.from(Array.from(values.entries()).map(([k, v]) => [k, v] as const))
 
   return MetricHook(update, () => MetricState.Frequency(snapshot()))
 }
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHooks.Ops histogram
+ * @category constructors
+ * @since 1.0.0
  */
 export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
   const bounds = key.keyType.boundaries.values
@@ -64,9 +79,13 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
   let min = Number.MAX_VALUE
   let max = Number.MIN_VALUE
 
-  bounds.sort(Ord.number).mapWithIndex((i, n) => {
-    boundaries[i] = n
-  })
+  pipe(
+    bounds,
+    Chunk.sort(number.Order),
+    Chunk.mapWithIndex((i, n) => {
+      boundaries[i] = n
+    })
+  )
 
   // Insert the value into the right bucket with a binary search
   const update = (value: number) => {
@@ -100,18 +119,18 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
     }
   }
 
-  const getBuckets = (): Chunk<readonly [number, number]> => {
-    const builder = Chunk.builder<readonly [number, number]>()
+  const getBuckets = (): Chunk.Chunk<readonly [number, number]> => {
+    const builder: Array<readonly [number, number]> = []
     let i = 0
     let cumulated = 0
     while (i != size) {
       const boundary = boundaries[i]!
       const value = values[i]!
       cumulated = cumulated + value
-      builder.append([boundary, cumulated] as const)
+      builder.push([boundary, cumulated] as const)
       i = i + 1
     }
-    return builder.build()
+    return Chunk.fromIterable(builder)
   }
 
   return MetricHook(
@@ -122,10 +141,12 @@ export function histogram(key: MetricKey.Histogram): MetricHook.Histogram {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricHooks.Ops summary
+ * @category constructors
+ * @since 1.0.0
  */
 export function summary(key: MetricKey.Summary): MetricHook.Summary {
   const { error, maxAge, maxSize, quantiles } = key.keyType
-  const sortedQuantiles = quantiles.sort(Ord.number)
+  const sortedQuantiles = pipe(quantiles, Chunk.sort(number.Order))
   const values = Array<readonly [number, number]>(maxSize)
 
   let head = 0
@@ -135,8 +156,8 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
   let max = Number.MIN_VALUE
 
   // Just before the snapshot we filter out all values older than maxAge
-  const snapshot = (now: number): Chunk<readonly [number, Maybe<number>]> => {
-    const builder = Chunk.builder<number>()
+  const snapshot = (now: number): Chunk.Chunk<readonly [number, Option.Option<number>]> => {
+    const builder: Array<number> = []
     // If the buffer is not full yet it contains valid items at the 0..last
     // indices and null values at the rest of the positions.
     //
@@ -154,14 +175,18 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
       const item = values[i]
       if (item != null) {
         const [t, v] = item
-        const age = new DurationInternal(now - t)
+        const age = Duration.millis(now - t)
         if (age.millis >= 0 && age <= maxAge) {
-          builder.append(v)
+          builder.push(v)
         }
       }
       i = i + 1
     }
-    return calculateQuantiles(error, sortedQuantiles, builder.build().sort(Ord.number))
+    return calculateQuantiles(
+      error,
+      sortedQuantiles,
+      pipe(Chunk.fromIterable(builder), Chunk.sort(number.Order))
+    )
   }
 
   const observe = (value: number, timestamp: number) => {
@@ -186,6 +211,10 @@ export function summary(key: MetricKey.Summary): MetricHook.Summary {
   )
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class ResolvedQuantile {
   constructor(
     /**
@@ -196,7 +225,7 @@ export class ResolvedQuantile {
      * `Some<number>` if a value for the quantile could be found, otherwise
      * `None`.
      */
-    readonly value: Maybe<number>,
+    readonly value: Option.Option<number>,
     /**
      * How many samples have been consumed prior to this quantile.
      */
@@ -204,51 +233,57 @@ export class ResolvedQuantile {
     /**
      * The rest of the samples after the quantile has been resolved.
      */
-    readonly rest: Chunk<number>
+    readonly rest: Chunk.Chunk<number>
   ) {}
 }
 
 function calculateQuantiles(
   error: number,
-  sortedQuantiles: Chunk<number>,
-  sortedSamples: Chunk<number>
-): Chunk<readonly [number, Maybe<number>]> {
+  sortedQuantiles: Chunk.Chunk<number>,
+  sortedSamples: Chunk.Chunk<number>
+): Chunk.Chunk<readonly [number, Option.Option<number>]> {
   // The number of samples examined
   const sampleCount = sortedSamples.length
 
-  if (sortedQuantiles.isEmpty) {
-    return Chunk.empty()
+  if (Chunk.isEmpty(sortedQuantiles)) {
+    return Chunk.empty
   }
 
-  const head = sortedQuantiles.unsafeHead
-  const tail = sortedQuantiles.unsafeTail
-  const resolved = tail.reduce(
-    Chunk.single(
-      resolveQuantile(
-        error,
-        sampleCount,
-        Maybe.none,
-        0,
-        head,
-        sortedSamples
-      )
-    ),
-    (acc, quantile) => {
-      const h = acc.unsafeHead
-      return acc.append(
+  const head = Chunk.unsafeHead(sortedQuantiles)
+  const tail = pipe(sortedQuantiles, Chunk.drop(1))
+  const resolved = pipe(
+    tail,
+    Chunk.reduce(
+      Chunk.single(
         resolveQuantile(
           error,
           sampleCount,
-          h.value,
-          h.consumed,
-          quantile,
-          h.rest
+          Option.none,
+          0,
+          head,
+          sortedSamples
         )
-      )
-    }
+      ),
+      (accumulator, quantile) => {
+        const h = Chunk.unsafeHead(accumulator)
+        return pipe(
+          accumulator,
+          Chunk.append(
+            resolveQuantile(
+              error,
+              sampleCount,
+              h.value,
+              h.consumed,
+              quantile,
+              h.rest
+            )
+          )
+        )
+      }
+    )
   )
 
-  return resolved.map((rq) => [rq.quantile, rq.value] as const)
+  return pipe(resolved, Chunk.map((rq) => [rq.quantile, rq.value] as const))
 }
 
 /**
@@ -257,28 +292,28 @@ function calculateQuantiles(
 function resolveQuantile(
   error: number,
   sampleCount: number,
-  current: Maybe<number>,
+  current: Option.Option<number>,
   consumed: number,
   quantile: number,
-  rest: Chunk<number>
+  rest: Chunk.Chunk<number>
 ): ResolvedQuantile {
   // If the remaining list of samples is empty, there is nothing more to resolve
-  if (rest.isEmpty) {
-    return new ResolvedQuantile(quantile, Maybe.none, consumed, Chunk.empty())
+  if (Chunk.isEmpty(rest)) {
+    return new ResolvedQuantile(quantile, Option.none, consumed, Chunk.empty)
   }
   // If the quantile is the 100% quantile, we can take the maximum of all the
   // remaining values as the result
   if (quantile === 1) {
     return new ResolvedQuantile(
       quantile,
-      Maybe.some(rest.unsafeLast),
+      Option.some(Chunk.unsafeLast(rest)),
       consumed + rest.length,
-      Chunk.empty()
+      Chunk.empty
     )
   }
   // Split into two chunks - the first chunk contains all elements of the same
   // value as the chunk head
-  const sameHead = rest.splitWhere((n) => n > rest.unsafeHead)
+  const sameHead = pipe(rest, Chunk.splitWhere((n) => n > Chunk.unsafeHead(rest)))
   // How many elements do we want to accept for this quantile
   const desired = quantile * sampleCount
   // The error margin
@@ -294,7 +329,7 @@ function resolveQuantile(
     return resolveQuantile(
       error,
       sampleCount,
-      rest.head,
+      Chunk.head(rest),
       candConsumed,
       quantile,
       sameHead[1]
@@ -314,7 +349,7 @@ function resolveQuantile(
       return resolveQuantile(
         error,
         sampleCount,
-        rest.head,
+        Chunk.head(rest),
         candConsumed,
         quantile,
         sameHead[1]
@@ -326,7 +361,7 @@ function resolveQuantile(
         return resolveQuantile(
           error,
           sampleCount,
-          rest.head,
+          Chunk.head(rest),
           candConsumed,
           quantile,
           sameHead[1]
@@ -334,7 +369,7 @@ function resolveQuantile(
       }
       return new ResolvedQuantile(
         quantile,
-        Maybe.some(current.value),
+        Option.some(current.value),
         consumed,
         rest
       )

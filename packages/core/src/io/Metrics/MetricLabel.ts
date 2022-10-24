@@ -1,4 +1,18 @@
-export const MetricLabelSym = Symbol.for("@effect/core/io/Metrics/MetricLabel")
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+
+const MetricLabelSymbolKey = "@effect/core/io/Metrics/MetricLabel"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
+export const MetricLabelSym = Symbol.for(MetricLabelSymbolKey)
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type MetricLabelSym = typeof MetricLabelSym
 
 /**
@@ -11,23 +25,33 @@ export type MetricLabelSym = typeof MetricLabelSym
  *
  * @tsplus type effect/core/io/Metrics/MetricLabel
  * @tsplus companion effect/core/io/Metrics/MetricLabel.Ops
+ * @category model
+ * @since 1.0.0
  */
-export class MetricLabel implements Equals {
+export class MetricLabel implements Equal.Equal {
   readonly [MetricLabelSym] = MetricLabelSym
 
   constructor(readonly key: string, readonly value: string) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this.key), Hash.string(this.value))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(MetricLabelSymbolKey),
+      Equal.hashCombine(Equal.hash(this.key)),
+      Equal.hashCombine(Equal.hash(this.value))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isMetricLabel(that) && this[Hash.sym]() === that[Hash.sym]()
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isMetricLabel(that) &&
+      this.key === that.key &&
+      this.value === that.value
   }
 }
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricLabel.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make(key: string, value: string): MetricLabel {
   return new MetricLabel(key, value)
@@ -35,6 +59,8 @@ export function make(key: string, value: string): MetricLabel {
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricLabel.Ops isMetricLabel
+ * @category refinements
+ * @since 1.0.0
  */
 export function isMetricLabel(u: unknown): u is MetricLabel {
   return typeof u === "object" && u != null && MetricLabelSym in u

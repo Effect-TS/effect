@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Sink.Aspects contramapEffect
  * @tsplus pipeable effect/core/stream/Sink contramapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramapEffect<In0, R2, E2, In2>(
   f: (input: In0) => Effect<R2, E2, In2>

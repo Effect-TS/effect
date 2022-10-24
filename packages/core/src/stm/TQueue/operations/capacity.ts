@@ -4,6 +4,8 @@ import { concreteTQueue } from "@effect/core/stm/TQueue/operations/_internal/Int
  * The maximum capacity of the queue.
  *
  * @tsplus getter effect/core/stm/TQueue capacity
+ * @category getters
+ * @since 1.0.0
  */
 export function capacity<A>(self: TQueue<A>): number {
   concreteTQueue(self)

@@ -1,3 +1,5 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * A synchronous queue-like abstraction that allows a producer to offer an
  * element and wait for it to be taken, and allows a consumer to wait for an
@@ -5,18 +7,22 @@
  *
  * @tsplus type effect/core/stream/Stream/Handoff
  * @tsplus companion effect/core/stream/Stream/Handoff.Ops
+ * @internal
  */
 export class Handoff<A> {
   constructor(readonly ref: Ref<HandoffState<A>>) {}
 }
 
+/** @internal */
 export type HandoffState<A> = Empty | Full<A>
 
+/** @internal */
 export class Empty {
   readonly _tag = "Empty"
   constructor(readonly notifyConsumer: Deferred<never, void>) {}
 }
 
+/** @internal */
 export class Full<A> {
   readonly _tag = "Full"
   constructor(readonly value: A, readonly notifyProducer: Deferred<never, void>) {}
@@ -24,6 +30,7 @@ export class Full<A> {
 
 /**
  * @tsplus static effect/core/stream/Stream/Handoff.Ops make
+ * @internal
  */
 export function make<A>(): Effect<never, never, Handoff<A>> {
   return Deferred.make<never, void>()
@@ -34,6 +41,7 @@ export function make<A>(): Effect<never, never, Handoff<A>> {
 /**
  * @tsplus static effect/core/stream/Stream/Handoff.Aspects offer
  * @tsplus pipeable effect/core/stream/Stream/Handoff offer
+ * @internal
  */
 export function offer<A>(value: A) {
   return (self: Handoff<A>): Effect<never, never, void> =>
@@ -81,18 +89,19 @@ export function take<A>(self: Handoff<A>): Effect<never, never, A> {
 
 /**
  * @tsplus getter effect/core/stream/Stream/Handoff poll
+ * @internal
  */
-export function poll<A>(self: Handoff<A>): Effect<never, never, Maybe<A>> {
+export function poll<A>(self: Handoff<A>): Effect<never, never, Option.Option<A>> {
   return Deferred.make<never, void>().flatMap((deferred) =>
     self.ref
       .modify((state) => {
         switch (state._tag) {
           case "Empty": {
-            return [Effect.succeed(Maybe.none), state] as const
+            return [Effect.succeed(Option.none), state] as const
           }
           case "Full": {
             return [
-              state.notifyProducer.succeed(undefined).as(Maybe.some(state.value)),
+              state.notifyProducer.succeed(undefined).as(Option.some(state.value)),
               new Empty(deferred)
             ] as const
           }

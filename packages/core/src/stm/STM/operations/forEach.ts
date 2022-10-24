@@ -5,6 +5,8 @@ import * as Chunk from "@fp-ts/data/Chunk"
  * returns a transactional effect that produces a new `Chunk<B>`.
  *
  * @tsplus static effect/core/stm/STM.Ops forEach
+ * @category traversing
+ * @since 1.0.0
  */
 export function forEach<A, R, E, B>(
   as: Iterable<A>,

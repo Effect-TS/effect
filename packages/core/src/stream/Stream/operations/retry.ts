@@ -11,6 +11,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects retry
  * @tsplus pipeable effect/core/stream/Stream retry
+ * @category retrying
+ * @since 1.0.0
  */
 export function retry<E, S, R2, Z>(
   schedule: Schedule<S, R2, E, Z>

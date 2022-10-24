@@ -2,6 +2,8 @@
  * Returns a memoized version of the specified effectual function.
  *
  * @tsplus static effect/core/io/Effect.Ops memoize
+ * @category constructors
+ * @since 1.0.0
  */
 export function memoizeF<R, E, A, B>(
   f: (a: A) => Effect<R, E, B>
@@ -10,14 +12,13 @@ export function memoizeF<R, E, A, B>(
     (ref) =>
       (a: A) =>
         ref.modifyEffect((map) => {
-          const result = Maybe.fromNullable(map.get(a))
-          return result.fold(
-            Deferred.make<E, B>()
+          const result = map.get(a)
+          if (result == null) {
+            return Deferred.make<E, B>()
               .tap((deferred) => f(a).intoDeferred(deferred).fork)
-              .map((deferred) => [deferred, map.set(a, deferred)] as const),
-            (deferred) => Effect.succeed([deferred, map] as const)
-          )
-        })
-          .flatMap((deferred) => deferred.await)
+              .map((deferred) => [deferred, map.set(a, deferred)] as const)
+          }
+          return Effect.succeed([result, map] as const)
+        }).flatMap((deferred) => deferred.await)
   )
 }

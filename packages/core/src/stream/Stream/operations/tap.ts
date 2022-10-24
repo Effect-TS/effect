@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects tap
  * @tsplus pipeable effect/core/stream/Stream tap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tap<A, R2, E2, Z>(
   f: (a: A) => Effect<R2, E2, Z>

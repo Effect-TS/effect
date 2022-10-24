@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects whileOutputEffect
  * @tsplus pipeable effect/core/io/Schedule whileOutputEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function whileOutputEffect<Out, Env1>(
   f: (out: Out) => Effect<Env1, never, boolean>

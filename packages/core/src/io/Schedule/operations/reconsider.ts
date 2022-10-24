@@ -1,5 +1,6 @@
 import type { Decision } from "@effect/core/io/Schedule/Decision"
 import type { Interval } from "@effect/core/io/Schedule/Interval"
+import type { Either } from "@fp-ts/data/Either"
 
 /**
  * Returns a new schedule that reconsiders every decision made by this
@@ -8,6 +9,8 @@ import type { Interval } from "@effect/core/io/Schedule/Interval"
  *
  * @tsplus static effect/core/io/Schedule.Aspects reconsider
  * @tsplus pipeable effect/core/io/Schedule reconsider
+ * @category mutations
+ * @since 1.0.0
  */
 export function reconsider<State, Out, Out2>(
   f: (

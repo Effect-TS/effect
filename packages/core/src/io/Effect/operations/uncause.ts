@@ -6,6 +6,8 @@
  * This operation is the opposite of `cause`.
  *
  * @tsplus getter effect/core/io/Effect uncause
+ * @category getters
+ * @since 1.0.0
  */
 export function uncause<R, E>(
   self: Effect<R, never, Cause<E>>

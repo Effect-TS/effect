@@ -4,9 +4,9 @@
  *
  * @tsplus getter effect/core/io/Fiber scoped
  * @tsplus getter effect/core/io/RuntimeFiber scoped
+ * @category destructors
+ * @since 1.0.0
  */
-export function scoped<E, A>(
-  self: Fiber<E, A>
-): Effect<Scope, never, Fiber<E, A>> {
+export function scoped<E, A>(self: Fiber<E, A>): Effect<Scope, never, Fiber<E, A>> {
   return Effect.acquireRelease(Effect.succeed(self), (fiber) => fiber.interrupt)
 }

@@ -1,3 +1,6 @@
+import type { Duration } from "@fp-ts/data/Duration"
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Returns an effect that will timeout this effect, returning `None` if the
  * timeout elapses before the effect has produced a value; and returning
@@ -16,8 +19,10 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects timeout
  * @tsplus pipeable effect/core/io/Effect timeout
+ * @category mutations
+ * @since 1.0.0
  */
 export function timeout(duration: Duration) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Maybe<A>> =>
-    self.timeoutTo(Maybe.none, Maybe.some, duration)
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R, E, Option.Option<A>> =>
+    self.timeoutTo(Option.none, Option.some, duration)
 }

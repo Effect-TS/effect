@@ -15,11 +15,15 @@ export type CyclicBarrierSym = typeof CyclicBarrierSym
  * before any of the parties continue.
  *
  * @tsplus type effect/core/concurrent/CyclicBarrier
+ * @category model
+ * @since 1.0.0
  */
 export interface CyclicBarrier extends CyclicBarrierInternal {}
 
 /**
  * @tsplus type effect/core/concurrent/CyclicBarrier.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface CyclicBarrierOps {
   readonly $: CyclicBarrierAspects
@@ -30,9 +34,12 @@ export const CyclicBarrier: CyclicBarrierOps = {
 
 /**
  * @tsplus type effect/core/concurrent/CyclicBarrier.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface CyclicBarrierAspects {}
 
+/** @internal */
 export class CyclicBarrierInternal {
   readonly [CyclicBarrierSym]: CyclicBarrierSym = CyclicBarrierSym
 

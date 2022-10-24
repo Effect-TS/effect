@@ -1,5 +1,7 @@
 /**
  * @tsplus pipeable effect/core/io/RuntimeFlags patch
+ * @category mutations
+ * @since 1.0.0
  */
 export function patch(patch: RuntimeFlags.Patch) {
   return (self: RuntimeFlags): RuntimeFlags =>

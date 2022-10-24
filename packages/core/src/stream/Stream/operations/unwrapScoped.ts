@@ -2,6 +2,8 @@
  * Creates a stream produced from a scoped effect.
  *
  * @tsplus static effect/core/stream/Stream.Ops unwrapScoped
+ * @category constructors
+ * @since 1.0.0
  */
 export function unwrapScoped<R, E, R1, E1, A>(
   effect: Effect<R, E, Stream<R1, E1, A>>

@@ -2,6 +2,8 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 interface Pipeline<R, E, A, R2, E2, B> {
   (stream: Stream<R, E, A>): Stream<R2, E2, B>
@@ -13,29 +15,31 @@ interface Pipeline<R, E, A, R2, E2, B> {
  *
  * @tsplus static effect/core/stream/Stream.Aspects branchAfter
  * @tsplus pipeable effect/core/stream/Stream branchAfter
+ * @category mutations
+ * @since 1.0.0
  */
 export function branchAfter<R, E, A, R2, E2, B>(
   n: number,
-  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
+  f: (output: Chunk.Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, B> => {
     concreteStream(self)
     return new StreamInternal(
-      Channel.suspend(self.channel >> collecting(Chunk.empty<A>(), n, f))
+      Channel.suspend(self.channel.pipeTo(collecting(Chunk.empty, n, f)))
     )
   }
 }
 
 function collecting<R, E, A, R2, E2, B>(
-  buffer: Chunk<A>,
+  buffer: Chunk.Chunk<A>,
   n: number,
-  f: (output: Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
-): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
+  f: (output: Chunk.Chunk<A>) => Pipeline<R, E, A, R2, E2, B>
+): Channel<R | R2, E, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<B>, unknown> {
   return Channel.readWithCause(
-    (chunk: Chunk<A>) => {
-      const newBuffer = buffer + chunk
+    (chunk: Chunk.Chunk<A>) => {
+      const newBuffer = pipe(buffer, Chunk.concat(chunk))
       if (newBuffer.length >= n) {
-        const [inputs, inputs1] = newBuffer.splitAt(n)
+        const [inputs, inputs1] = pipe(newBuffer, Chunk.splitAt(n))
         const pipeline = f(inputs)
         const stream = pipeline(Stream.fromChunk(inputs1))
         concreteStream(stream)
@@ -45,7 +49,7 @@ function collecting<R, E, A, R2, E2, B>(
     },
     (cause) => Channel.failCauseSync(cause),
     () => {
-      if (buffer.isEmpty) {
+      if (Chunk.isEmpty(buffer)) {
         return Channel.unit
       }
       const pipeline = f(buffer)
@@ -58,9 +62,9 @@ function collecting<R, E, A, R2, E2, B>(
 
 function emitting<R, E, A, R2, E2, B>(
   pipeline: Pipeline<R, E, A, R2, E2, B>
-): Channel<R | R2, E, Chunk<A>, unknown, E | E2, Chunk<B>, unknown> {
+): Channel<R | R2, E, Chunk.Chunk<A>, unknown, E | E2, Chunk.Chunk<B>, unknown> {
   return Channel.readWithCause(
-    (chunk: Chunk<A>) => {
+    (chunk: Chunk.Chunk<A>) => {
       const stream = pipeline(Stream.fromChunk(chunk))
       concreteStream(stream)
       return stream.channel.flatMap(() => emitting(pipeline))

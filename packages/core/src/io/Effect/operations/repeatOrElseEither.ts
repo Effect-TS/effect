@@ -1,4 +1,6 @@
 import type { Driver } from "@effect/core/io/Schedule"
+import * as Either from "@fp-ts/data/Either"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Returns a new effect that repeats this effect according to the specified
@@ -11,15 +13,17 @@ import type { Driver } from "@effect/core/io/Schedule"
  *
  * @tsplus static effect/core/io/Effect.Aspects repeatOrElseEither
  * @tsplus pipeable effect/core/io/Effect repeatOrElseEither
+ * @category repetititon
+ * @since 1.0.0
  */
 export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
   schedule: Schedule<S, R1, A, B>,
-  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, C>
-): <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E2, Either<C, B>> {
-  return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, Either<C, B>> =>
+  orElse: (e: E, option: Option.Option<B>) => Effect<R2, E2, C>
+): <R>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E2, Either.Either<C, B>> {
+  return <R>(self: Effect<R, E, A>): Effect<R | R1 | R2, E2, Either.Either<C, B>> =>
     schedule.driver.flatMap((driver) =>
       self.foldEffect(
-        (e) => orElse(e, Maybe.none).map(Either.left),
+        (e) => orElse(e, Option.none).map(Either.left),
         (a) => repeatOrElseEitherLoop(self, driver, orElse, a)
       )
     )
@@ -28,14 +32,14 @@ export function repeatOrElseEither<S, R1, A, B, E, R2, E2, C>(
 function repeatOrElseEitherLoop<R, E, A, R1, B, R2, E2, C>(
   self: Effect<R, E, A>,
   driver: Driver<unknown, R1, A, B>,
-  orElse: (e: E, option: Maybe<B>) => Effect<R2, E2, C>,
+  orElse: (e: E, option: Option.Option<B>) => Effect<R2, E2, C>,
   value: A
-): Effect<R | R1 | R2, E2, Either<C, B>> {
+): Effect<R | R1 | R2, E2, Either.Either<C, B>> {
   return driver.next(value).foldEffect(
     () => driver.last.orDie.map(Either.right),
     (b) =>
       self.foldEffect(
-        (e) => orElse(e, Maybe.some(b)).map(Either.left),
+        (e) => orElse(e, Option.some(b)).map(Either.left),
         (a) => repeatOrElseEitherLoop(self, driver, orElse, a)
       )
   )

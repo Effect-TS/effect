@@ -1,7 +1,9 @@
-import { constVoid } from "@tsplus/stdlib/data/Function"
+import { constVoid } from "@fp-ts/data/Function"
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops concatAll
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatAll<Env, InErr, InElem, InDone, OutErr, OutElem>(
   channels: Channel<

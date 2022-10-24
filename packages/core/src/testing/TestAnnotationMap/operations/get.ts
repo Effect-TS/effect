@@ -6,12 +6,16 @@ import { concreteTestAnnotationMap } from "@effect/core/testing/TestAnnotationMa
  *
  * @tsplus static effect/core/testing/TestAnnotationMap.Aspects get
  * @tsplus pipeable effect/core/testing/TestAnnotationMap get
+ * @category mutations
+ * @since 1.0.0
  */
 export function get<V>(key: TestAnnotation<V>) {
   return (self: TestAnnotationMap): V => {
     concreteTestAnnotationMap(self)
-    return self.map
-      .get(key as TestAnnotation<unknown>)
-      .getOrElse(key.initial) as V
+    const value = self.map.get(key as TestAnnotation<unknown>)
+    if (value == null) {
+      return key.initial as V
+    }
+    return value as V
   }
 }

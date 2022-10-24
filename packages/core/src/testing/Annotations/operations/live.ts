@@ -1,7 +1,15 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import * as SortedSet from "@fp-ts/data/SortedSet"
+
 /**
  * Constructs a new `Annotations` service.
  *
  * @tsplus static effect/core/testing/Annotations.Ops live
+ * @category environment
+ * @since 1.0.0
  */
 export const live: Layer<never, never, Annotations> = Layer.scoped(
   Annotations.Tag,
@@ -12,18 +20,16 @@ export const live: Layer<never, never, Annotations> = Layer.scoped(
       fiberRef.get.map((map) => map.get(TestAnnotation.fibers)).flatMap((either) => {
         switch (either._tag) {
           case "Left": {
-            return Effect.succeed(SortedSet.empty(Fiber.Ord))
+            return Effect.succeed(SortedSet.empty(Fiber.Order))
           }
           case "Right": {
             return Effect
-              .forEach(either.right, (ref) => Effect.sync(ref.get))
-              .map((chunk) =>
-                chunk.reduce(
-                  SortedSet.empty(Fiber.Ord),
-                  (a, b) => SortedSet.from(Fiber.Ord)(a.concat(b))
-                )
-              )
-              .map((set) => set.filter((fiber) => !(fiber.id == descriptor.id)))
+              .forEach(either.right, (ref) => Effect.sync(MutableRef.get(ref)))
+              .map(Chunk.reduce(
+                SortedSet.empty(Fiber.Order),
+                (a, b) => pipe(a, SortedSet.union(b))
+              ))
+              .map(SortedSet.filter((fiber) => !Equal.equals(fiber.id, descriptor.id)))
           }
         }
       })

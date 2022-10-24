@@ -1,10 +1,14 @@
 import { realCause } from "@effect/core/io/Cause/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as SafeEval from "@fp-ts/data/SafeEval"
 
 /**
  * Folds over the cases of this cause with the specified functions.
  *
  * @tsplus static effect/core/io/Cause.Aspects fold
  * @tsplus pipeable effect/core/io/Cause fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<E, Z>(
   onEmptyCause: Z,
@@ -16,7 +20,7 @@ export function fold<E, Z>(
   onStacklessCause: (z: Z, stackless: boolean) => Z
 ) {
   return (self: Cause<E>): Z =>
-    foldSafe(
+    SafeEval.execute(foldSafe(
       self,
       onEmptyCause,
       onFailCause,
@@ -25,7 +29,7 @@ export function fold<E, Z>(
       onThenCause,
       onBothCause,
       onStacklessCause
-    ).run
+    ))
 }
 
 function foldSafe<E, Z>(
@@ -37,37 +41,26 @@ function foldSafe<E, Z>(
   onThenCause: (x: Z, y: Z) => Z,
   onBothCause: (x: Z, y: Z) => Z,
   onStacklessCause: (z: Z, stackless: boolean) => Z
-): Eval<Z> {
+): SafeEval.SafeEval<Z> {
   realCause(self)
   switch (self._tag) {
     case "Empty": {
-      return Eval.succeed(onEmptyCause)
+      return SafeEval.succeed(onEmptyCause)
     }
     case "Fail": {
-      return Eval.succeed(onFailCause(self.value))
+      return SafeEval.succeed(onFailCause(self.value))
     }
     case "Die": {
-      return Eval.succeed(onDieCause(self.value))
+      return SafeEval.succeed(onDieCause(self.value))
     }
     case "Interrupt": {
-      return Eval.succeed(onInterruptCause(self.fiberId))
+      return SafeEval.succeed(onInterruptCause(self.fiberId))
     }
     case "Both": {
-      return Eval.suspend(
-        foldSafe(
-          self.left,
-          onEmptyCause,
-          onFailCause,
-          onDieCause,
-          onInterruptCause,
-          onThenCause,
-          onBothCause,
-          onStacklessCause
-        )
-      ).zipWith(
-        Eval.suspend(
+      return pipe(
+        SafeEval.suspend(() =>
           foldSafe(
-            self.right,
+            self.left,
             onEmptyCause,
             onFailCause,
             onDieCause,
@@ -77,25 +70,28 @@ function foldSafe<E, Z>(
             onStacklessCause
           )
         ),
-        (left, right) => onBothCause(left, right)
+        SafeEval.zipWith(
+          SafeEval.suspend(() =>
+            foldSafe(
+              self.right,
+              onEmptyCause,
+              onFailCause,
+              onDieCause,
+              onInterruptCause,
+              onThenCause,
+              onBothCause,
+              onStacklessCause
+            )
+          ),
+          (left, right) => onBothCause(left, right)
+        )
       )
     }
     case "Then": {
-      return Eval.suspend(
-        foldSafe(
-          self.left,
-          onEmptyCause,
-          onFailCause,
-          onDieCause,
-          onInterruptCause,
-          onThenCause,
-          onBothCause,
-          onStacklessCause
-        )
-      ).zipWith(
-        Eval.suspend(
+      return pipe(
+        SafeEval.suspend(() =>
           foldSafe(
-            self.right,
+            self.left,
             onEmptyCause,
             onFailCause,
             onDieCause,
@@ -105,22 +101,39 @@ function foldSafe<E, Z>(
             onStacklessCause
           )
         ),
-        (left, right) => onThenCause(left, right)
+        SafeEval.zipWith(
+          SafeEval.suspend(() =>
+            foldSafe(
+              self.right,
+              onEmptyCause,
+              onFailCause,
+              onDieCause,
+              onInterruptCause,
+              onThenCause,
+              onBothCause,
+              onStacklessCause
+            )
+          ),
+          (left, right) => onThenCause(left, right)
+        )
       )
     }
     case "Stackless": {
-      return Eval.suspend(
-        foldSafe(
-          self.cause,
-          onEmptyCause,
-          onFailCause,
-          onDieCause,
-          onInterruptCause,
-          onThenCause,
-          onBothCause,
-          onStacklessCause
-        )
-      ).map((z) => onStacklessCause(z, self.stackless))
+      return pipe(
+        SafeEval.suspend(() =>
+          foldSafe(
+            self.cause,
+            onEmptyCause,
+            onFailCause,
+            onDieCause,
+            onInterruptCause,
+            onThenCause,
+            onBothCause,
+            onStacklessCause
+          )
+        ),
+        SafeEval.map((z) => onStacklessCause(z, self.stackless))
+      )
     }
   }
 }

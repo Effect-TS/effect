@@ -1,5 +1,8 @@
 import type * as D from "@effect/core/testing/TestClock/Data"
 import type * as S from "@effect/core/testing/TestClock/Sleep"
+import { Tag } from "@fp-ts/data/Context"
+import type { Duration } from "@fp-ts/data/Duration"
+import type { List } from "@fp-ts/data/List"
 
 /**
  * A `TestClock` makes it easy to deterministically and efficiently test effects
@@ -61,6 +64,8 @@ import type * as S from "@effect/core/testing/TestClock/Sleep"
  * exactly one more value is placed in the queue.
  *
  * @tsplus type effect/core/testing/TestClock
+ * @category model
+ * @since 1.0.0
  */
 export interface TestClock extends Clock {
   readonly adjust: (duration: Duration) => Effect<never, never, void>
@@ -70,6 +75,9 @@ export interface TestClock extends Clock {
   readonly sleeps: Effect<never, never, List<number>>
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace TestClock {
   export type Data = D.Data
   export type Sleep = S.Sleep
@@ -77,6 +85,8 @@ export declare namespace TestClock {
 
 /**
  * @tsplus type effect/core/testing/TestClock.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TestClockOps {
   readonly Tag: Tag<TestClock>

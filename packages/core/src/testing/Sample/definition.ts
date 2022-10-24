@@ -1,10 +1,39 @@
+import type { Option } from "@fp-ts/data/Option"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SampleSym = Symbol.for("@effect/core/testing/Sample")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SampleSym = typeof SampleSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SampleEnvSym = Symbol.for("@effect/core/testing/Sample.R")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SampleEnvSym = typeof SampleEnvSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SampleValueSym = Symbol.for("@effect/core/testing/Sample.A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SampleValueSym = typeof SampleValueSym
 
 /**
@@ -12,24 +41,33 @@ export type SampleValueSym = typeof SampleValueSym
  * of "shrinkings" used for minimization of "large" failures.
  *
  * @tsplus type effect/core/testing/Sample
+ * @category model
+ * @since 1.0.0
  */
 export interface Sample<R, A> {
   readonly [SampleSym]: SampleSym
   readonly [SampleEnvSym]: () => R
   readonly [SampleValueSym]: () => A
   readonly value: A
-  readonly shrink: Stream<R, never, Maybe<Sample<R, A>>>
+  readonly shrink: Stream<R, never, Option<Sample<R, A>>>
 }
 
 /**
  * @tsplus type effect/core/testing/Sample.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface SampleOps {
-  <R, A>(value: A, shrink: Stream<R, never, Maybe<Sample<R, A>>>): Sample<R, A>
+  <R, A>(value: A, shrink: Stream<R, never, Option<Sample<R, A>>>): Sample<R, A>
   readonly $: SampleAspects
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const Sample: SampleOps = Object.assign(
-  <R, A>(value: A, shrink: Stream<R, never, Maybe<Sample<R, A>>>): Sample<R, A> => ({
+  <R, A>(value: A, shrink: Stream<R, never, Option<Sample<R, A>>>): Sample<R, A> => ({
     [SampleSym]: SampleSym,
     [SampleEnvSym]: undefined as any,
     [SampleValueSym]: undefined as any,
@@ -43,6 +81,8 @@ export const Sample: SampleOps = Object.assign(
 
 /**
  * @tsplus type effect/core/testing/Sample.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface SampleAspects {}
 

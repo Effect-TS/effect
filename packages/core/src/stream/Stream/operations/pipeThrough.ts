@@ -9,6 +9,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects pipeThrough
  * @tsplus pipeable effect/core/stream/Stream pipeThrough
+ * @category mutations
+ * @since 1.0.0
  */
 export function pipeThrough<A, R2, E2, L, Z>(sink: Sink<R2, E2, A, L, Z>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, L> => {

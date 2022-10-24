@@ -25,11 +25,15 @@ export type CountdownLatchSym = typeof CountdownLatchSym
  * until all fibers could pass.
  *
  * @tsplus type effect/core/concurrent/CountdownLatch
+ * @category model
+ * @since 1.0.0
  */
 export interface CountdownLatch extends CountdownLatchInternal {}
 
 /**
  * @tsplus type effect/core/concurrent/CountdownLatch.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface CountdownLatchOps {
   readonly $: CountdownLatchAspects
@@ -40,9 +44,12 @@ export const CountdownLatch: CountdownLatchOps = {
 
 /**
  * @tsplus type effect/core/concurrent/CountdownLatch.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface CountdownLatchAspects {}
 
+/** @internal */
 export class CountdownLatchInternal {
   readonly [CountdownLatchSym]: CountdownLatchSym = CountdownLatchSym
 

@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects broadcastDynamic
  * @tsplus pipeable effect/core/stream/Stream broadcastDynamic
+ * @category broadcasting
+ * @since 1.0.0
  */
 export function broadcastDynamic(maximumLag: number) {
   return <R, E, A>(self: Stream<R, E, A>): Effect<R | Scope, never, Stream<never, E, A>> =>

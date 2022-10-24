@@ -7,6 +7,8 @@ import {
  * Creates a sink produced from an effect.
  *
  * @tsplus static effect/core/stream/Sink.Ops unwrap
+ * @category constructors
+ * @since 1.0.0
  */
 export function unwrap<R, E, In, L, Z>(
   effect: Effect<R, E, Sink<R, E, In, L, Z>>

@@ -6,6 +6,8 @@ import { Both, Cause, Die, Interrupt, Stackless, Then } from "@effect/core/io/Ca
  *
  * @tsplus static effect/core/io/Cause.Aspects flatMap
  * @tsplus pipeable effect/core/io/Cause flatMap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMap<E, E1>(f: (e: E) => Cause<E1>) {
   return (self: Cause<E>): Cause<E1> => {

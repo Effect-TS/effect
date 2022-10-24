@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stm/TSemaphore.Aspects withPermitsScoped
  * @tsplus pipeable effect/core/stm/TSemaphore withPermitsScoped
+ * @category aspects
+ * @since 1.0.0
  */
 export function withPermitsScoped(permits: number) {
   return (self: TSemaphore): Effect<Scope, never, void> =>

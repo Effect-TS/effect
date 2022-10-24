@@ -3,6 +3,8 @@ import {
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
 import { RingBufferNew } from "@effect/core/support/RingBufferNew"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * Drops the last specified number of elements from this stream.
@@ -12,6 +14,8 @@ import { RingBufferNew } from "@effect/core/support/RingBufferNew"
  *
  * @tsplus static effect/core/stream/Stream.Aspects dropRight
  * @tsplus pipeable effect/core/stream/Stream dropRight
+ * @category mutations
+ * @since 1.0.0
  */
 export function dropRight(n: number) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A> => {
@@ -22,18 +26,21 @@ export function dropRight(n: number) {
       const reader: Channel<
         never,
         E,
-        Chunk<A>,
+        Chunk.Chunk<A>,
         unknown,
         E,
-        Chunk<A>,
+        Chunk.Chunk<A>,
         void
       > = Channel.readWith(
-        (chunk: Chunk<A>) => {
-          const outs = chunk.collect((elem) => {
-            const head = queue.head()
-            queue.put(elem)
-            return head
-          })
+        (chunk: Chunk.Chunk<A>) => {
+          const outs = pipe(
+            chunk,
+            Chunk.filterMap((elem) => {
+              const head = queue.head()
+              queue.put(elem)
+              return head
+            })
+          )
           return Channel.write(outs).flatMap(() => reader)
         },
         (err) => Channel.fail(err),

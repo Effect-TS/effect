@@ -7,6 +7,8 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * @tsplus static effect/core/io/RuntimeFiber.Aspects fold
  * @tsplus pipeable effect/core/io/Fiber fold
  * @tsplus pipeable effect/core/io/RuntimeFiber fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<E, A, Z>(
   onRuntime: (_: Fiber.Runtime<E, A>) => Z,

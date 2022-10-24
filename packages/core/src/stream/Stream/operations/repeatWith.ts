@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Repeats the entire stream using the specified schedule. The stream will
@@ -11,6 +12,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects repeatWith
  * @tsplus pipeable effect/core/stream/Stream repeatWith
+ * @category repetition
+ * @since 1.0.0
  */
 export function repeatWith<A, S, R2, B, C1, C2>(
   schedule: Schedule<S, R2, unknown, B>,
@@ -31,7 +34,7 @@ export function repeatWith<A, S, R2, B, C1, C2>(
           unknown,
           unknown,
           E,
-          Chunk<C1 | C2>,
+          Chunk.Chunk<C1 | C2>,
           void
         > = Channel.unwrap(
           driver.next(undefined).fold(

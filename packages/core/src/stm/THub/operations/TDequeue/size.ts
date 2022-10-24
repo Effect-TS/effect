@@ -5,6 +5,8 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * The current number of values in the queue.
  *
  * @tsplus getter effect/core/stm/THub/TDequeue size
+ * @category getters
+ * @since 1.0.0
  */
 export function size<A>(self: THub.TDequeue<A>): STM<never, never, number> {
   concreteTDequeue(self)
@@ -27,7 +29,7 @@ export function size<A>(self: THub.TDequeue<A>): STM<never, never, number> {
 
         if (head != null) {
           size += 1
-          if (size == Number.MAX_SAFE_INTEGER) {
+          if (size >= Number.MAX_SAFE_INTEGER) {
             loop = false
           }
         }

@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects provideSomeLayer
  * @tsplus pipeable effect/core/stream/Channel provideSomeLayer
+ * @category environment
+ * @since 1.0.0
  */
 export function provideSomeLayer<R0, R2, OutErr2>(layer: Layer<R0, OutErr2, R2>) {
   return <R, InErr, InElem, InDone, OutErr, OutElem, OutDone>(

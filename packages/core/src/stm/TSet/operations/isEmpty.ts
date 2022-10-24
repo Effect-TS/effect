@@ -4,6 +4,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  * Tests if the map is empty or not
  *
  * @tsplus getter effect/core/stm/TSet isEmpty
+ * @category getters
+ * @since 1.0.0
  */
 export function isEmpty<A>(self: TSet<A>): USTM<boolean> {
   concreteTSet(self)

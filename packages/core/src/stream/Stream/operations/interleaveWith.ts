@@ -3,6 +3,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Combines this stream and the specified stream deterministically using the
@@ -14,6 +15,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects interleaveWith
  * @tsplus pipeable effect/core/stream/Stream interleaveWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function interleaveWith<R2, E2, A2, R3, E3>(
   that: Stream<R2, E2, A2>,

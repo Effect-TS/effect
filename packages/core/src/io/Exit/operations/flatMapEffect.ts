@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects flatMapEffect
  * @tsplus pipeable effect/core/io/Exit flatMapEffect
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMapEffect<E, A, R, E1, A1>(
   f: (a: A) => Effect<R, E1, Exit<E, A1>>

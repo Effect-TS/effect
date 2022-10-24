@@ -8,6 +8,8 @@ import { zipChunks } from "@effect/core/stream/Stream/operations/_internal/zipCh
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipWith
  * @tsplus pipeable effect/core/stream/Stream zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<R2, E2, A2, A, A3>(
   that: Stream<R2, E2, A2>,

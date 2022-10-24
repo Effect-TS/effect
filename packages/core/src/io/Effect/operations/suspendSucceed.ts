@@ -1,3 +1,5 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Returns a lazily constructed effect, whose construction may itself require
  * effects. The effect must not throw any exceptions. When no environment is
@@ -6,6 +8,8 @@
  * exceptions, do not use this method, use `suspend`.
  *
  * @tsplus static effect/core/io/Effect.Ops suspendSucceed
+ * @category constructors
+ * @since 1.0.0
  */
 export function suspendSucceed<R, E, A>(
   effect: LazyArg<Effect<R, E, A>>

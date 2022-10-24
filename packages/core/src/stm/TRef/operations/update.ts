@@ -5,6 +5,8 @@ import { getOrMakeEntry } from "@effect/core/stm/TRef/operations/_internal/getOr
  *
  * @tsplus static effect/core/stm/TRef.Aspects update
  * @tsplus pipeable effect/core/stm/TRef update
+ * @category mutations
+ * @since 1.0.0
  */
 export function update<A>(f: (a: A) => A) {
   return (self: TRef<A>): STM<never, never, void> =>

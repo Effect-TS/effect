@@ -3,6 +3,8 @@
  * queue will be shutdown once the stream is closed.
  *
  * @tsplus static effect/core/stream/Sink.Ops fromQueueWithShutdown
+ * @category conversions
+ * @since 1.0.0
  */
 export function fromQueueWithShutdown<In>(queue: Enqueue<In>): Sink<never, never, In, never, void> {
   return Sink.unwrapScoped(

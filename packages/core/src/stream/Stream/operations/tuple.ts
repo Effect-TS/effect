@@ -2,6 +2,8 @@ import type { _A, _E, _R } from "@effect/core/stream/Stream//definition"
 
 /**
  * @tsplus static effect/core/stream/Stream.Ops tuple
+ * @category constructors
+ * @since 1.0.0
  */
 export function tuple<SN extends readonly Stream<any, any, any>[]>(
   ...[s1, s2, ...streams]: SN & {

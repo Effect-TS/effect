@@ -6,6 +6,8 @@ import { concreteTSemaphore } from "@effect/core/stm/TSemaphore/operations/_inte
  *
  * @tsplus static effect/core/stm/TSemaphore.Aspects acquireN
  * @tsplus pipeable effect/core/stm/TSemaphore acquireN
+ * @category mutations
+ * @since 1.0.0
  */
 export function acquireN(n: number) {
   return (self: TSemaphore): STM<never, never, void> => {

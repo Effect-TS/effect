@@ -1,3 +1,5 @@
+import type { Option } from "@fp-ts/data/Option"
+
 /**
  * Recovers from some or all of the defects with provided partial function.
  *
@@ -8,8 +10,10 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects catchSomeDefect
  * @tsplus pipeable effect/core/io/Effect catchSomeDefect
+ * @category alternatives
+ * @since 1.0.0
  */
-export function catchSomeDefect<R2, E2, A2>(pf: (_: unknown) => Maybe<Effect<R2, E2, A2>>) {
+export function catchSomeDefect<R2, E2, A2>(pf: (_: unknown) => Option<Effect<R2, E2, A2>>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
     self
       .unrefineWith(pf, Effect.fail)

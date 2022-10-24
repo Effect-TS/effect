@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects tap
  * @tsplus pipeable effect/core/io/Effect tap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tap<A, R2, E2, X>(f: (a: A) => Effect<R2, E2, X>) {
   return <R, E>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A> =>

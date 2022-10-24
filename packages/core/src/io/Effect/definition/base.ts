@@ -24,6 +24,8 @@ export type EffectURI = typeof EffectURI
  * effects.
  *
  * @tsplus type effect/core/io/Effect
+ * @category model
+ * @since 1.0.0
  */
 export interface Effect<R, E, A> {
   readonly [EffectURI]: {
@@ -48,6 +50,8 @@ export function unifyEffect<X extends Effect<any, any, any>>(
 
 /**
  * @tsplus type effect/core/io/Effect.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface EffectOps {
   readonly $: EffectAspects
@@ -68,6 +72,8 @@ export const Effect: EffectOps = {
 
 /**
  * @tsplus type effect/core/io/Effect.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface EffectAspects {}
 
@@ -80,4 +86,8 @@ export namespace Effect {
     [Effect<infer R, infer E, infer A>] ? A : never
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type Canceler<R> = Effect<R, never, void>

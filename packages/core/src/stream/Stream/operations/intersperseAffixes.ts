@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects intersperseAffixes
  * @tsplus pipeable effect/core/stream/Stream intersperseAffixes
+ * @category mutations
+ * @since 1.0.0
  */
 export function intersperseAffixes<A2>(start: A2, middle: A2, end: A2) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R, E, A | A2> =>

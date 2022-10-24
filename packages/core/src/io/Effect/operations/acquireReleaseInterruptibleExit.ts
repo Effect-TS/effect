@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops acquireReleaseInterruptibleExit
  * @tsplus fluent effect/core/io/Effect acquireReleaseInterruptibleExit
+ * @category acquire/release
+ * @since 1.0.0
  */
 export function acquireReleaseInterruptibleExit<R, E, A, R2, X>(
   acquire: Effect<R, E, A>,

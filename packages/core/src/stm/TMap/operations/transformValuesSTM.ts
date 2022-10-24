@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/TMap.Aspects transformValuesSTM
  * @tsplus pipeable effect/core/stm/TMap transformValuesSTM
+ * @category mutations
+ * @since 1.0.0
  */
 export function transformValuesSTM<V, R, E>(f: (v: V) => STM<R, E, V>) {
   return <K>(self: TMap<K, V>): STM<R, E, void> =>

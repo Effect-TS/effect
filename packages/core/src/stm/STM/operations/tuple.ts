@@ -1,8 +1,7 @@
 import type { STMTypeId } from "@effect/core/stm/STM"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/NonEmptyReadonlyArray"
 
-type NonEmptyArraySTM = Array<STM<any, any, any>> & { readonly 0: STM<any, any, any> }
-
-export type TupleA<T extends NonEmptyArraySTM> = {
+export type TupleA<T extends NonEmptyReadonlyArray<STM<any, any, any>>> = {
   [K in keyof T]: [T[K]] extends [STM<any, any, infer A>] ? A : never
 }
 
@@ -10,8 +9,10 @@ export type TupleA<T extends NonEmptyArraySTM> = {
  * Like `forEach` + `identity` with a tuple type.
  *
  * @tsplus static effect/core/stm/STM.Ops tuple
+ * @category constructors
+ * @since 1.0.0
  */
-export function tuple<T extends NonEmptyArraySTM>(
+export function tuple<T extends NonEmptyReadonlyArray<STM<any, any, any>>>(
   ...t: T & {
     0: STM<any, any, any>
   }

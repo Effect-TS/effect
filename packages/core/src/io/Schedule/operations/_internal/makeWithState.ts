@@ -1,6 +1,7 @@
 import type { Decision } from "@effect/core/io/Schedule/Decision"
 import { _Env, _In, _Out, _State, ScheduleSym } from "@effect/core/io/Schedule/definition"
 
+/** @internal */
 export class ScheduleWithStateInternal<State, Env, In, Out> {
   readonly [ScheduleSym]: ScheduleSym = ScheduleSym
   readonly [_Env]!: () => Env
@@ -17,6 +18,7 @@ export class ScheduleWithStateInternal<State, Env, In, Out> {
   ) {}
 }
 
+/** @internal */
 export function makeWithState<State, Env, In, Out>(
   initial: State,
   step: (

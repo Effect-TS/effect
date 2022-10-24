@@ -1,13 +1,46 @@
 import type { FiberDump } from "@effect/core/io/Fiber/_internal/dump"
 import type { FiberStatus } from "@effect/core/io/Fiber/status"
+import * as order from "@fp-ts/core/typeclass/Order"
+import type * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import type * as HashSet from "@fp-ts/data/HashSet"
+import * as Number from "@fp-ts/data/Number"
+import type * as Option from "@fp-ts/data/Option"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const FiberSym = Symbol.for("@effect/core/io/Fiber")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type FiberSym = typeof FiberSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _E = Symbol.for("@effect/core/io/Fiber/E")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _E = typeof _E
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/io/Fiber/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
 /**
@@ -20,6 +53,8 @@ export type _A = typeof _A
  * which terminates the fiber, safely releasing all resources.
  *
  * @tsplus type effect/core/io/Fiber
+ * @category model
+ * @since 1.0.0
  */
 export interface Fiber<E, A> {
   readonly [FiberSym]: FiberSym
@@ -27,8 +62,12 @@ export interface Fiber<E, A> {
   readonly [_A]: () => A
 }
 
+/** @internal */
 export type RealFiber<E, A> = Fiber.Runtime<E, A> | Fiber.Synthetic<E, A>
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace Fiber {
   export type Runtime<E, A> = RuntimeFiber<E, A>
   export type Synthetic<E, A> = SyntheticFiber<E, A>
@@ -48,7 +87,7 @@ export declare namespace Fiber {
     /**
      * The set of fibers attempting to interrupt the fiber or its ancestors.
      */
-    readonly interrupters: HashSet<FiberId>
+    readonly interrupters: HashSet.HashSet<FiberId>
   }
 }
 
@@ -66,6 +105,8 @@ export function unifyFiber<X extends Fiber<any, any>>(
 
 /**
  * @tsplus type effect/core/io/Fiber.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberOps {
   $: FiberAspects
@@ -76,6 +117,8 @@ export const Fiber: FiberOps = {
 
 /**
  * @tsplus type effect/core/io/Fiber.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface FiberAspects {}
 
@@ -86,6 +129,10 @@ export function realFiber<E, A>(fiber: Fiber<E, A>): asserts fiber is RealFiber<
   //
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface BaseFiber<E, A> extends Fiber<E, A> {
   /**
    * The identity of the fiber.
@@ -101,7 +148,7 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
   /**
    * Retrieves the immediate children of the fiber.
    */
-  readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>
+  readonly children: Effect<never, never, Chunk.Chunk<Fiber.Runtime<any, any>>>
 
   /**
    * Inherits values from all `FiberRef` instances into current fiber. This
@@ -113,7 +160,7 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
    * Tentatively observes the fiber, but returns immediately if it is not
    * already done.
    */
-  readonly poll: Effect<never, never, Maybe<Exit<E, A>>>
+  readonly poll: Effect<never, never, Option.Option<Exit<E, A>>>
 
   /**
    * In the background, interrupts the fiber as if interrupted from the
@@ -128,6 +175,8 @@ export interface BaseFiber<E, A> extends Fiber<E, A> {
  * identity and a trace.
  *
  * @tsplus type effect/core/io/Fiber/Runtime
+ * @category model
+ * @since 1.0.0
  */
 export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
   readonly _tag: "RuntimeFiber"
@@ -148,6 +197,8 @@ export interface RuntimeFiber<E, A> extends BaseFiber<E, A> {
  * existing fibers.
  *
  * @tsplus type effect/core/io/Fiber/Synthetic
+ * @category model
+ * @since 1.0.0
  */
 export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
   readonly _tag = "SyntheticFiber"
@@ -159,9 +210,9 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
   constructor(
     readonly id: FiberId,
     _await: Effect<never, never, Exit<E, A>>,
-    readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>,
+    readonly children: Effect<never, never, Chunk.Chunk<Fiber.Runtime<any, any>>>,
     readonly inheritAll: Effect<never, never, void>,
-    readonly poll: Effect<never, never, Maybe<Exit<E, A>>>,
+    readonly poll: Effect<never, never, Option.Option<Exit<E, A>>>,
     readonly interruptAsFork: (fiberId: FiberId) => Effect<never, never, void>
   ) {
     this.await = _await
@@ -169,19 +220,30 @@ export class SyntheticFiber<E, A> implements BaseFiber<E, A> {
 }
 
 /**
- * @tsplus static effect/core/io/Fiber.Ops Ord
+ * @tsplus static effect/core/io/Fiber.Ops Order
+ * @category instances
+ * @since 1.0.0
  */
-export const ordFiber: Ord<Fiber.Runtime<unknown, unknown>> = Ord.tuple(Ord.number, Ord.number)
-  .contramap((fiber) =>
-    [(fiber.id as FiberId.Runtime).startTimeMillis, (fiber.id as FiberId.Runtime).id] as const
+export const Order: order.Order<Fiber.Runtime<unknown, unknown>> = pipe(
+  order.tuple(Number.Order, Number.Order),
+  order.contramap((fiber: Fiber.Runtime<unknown, unknown>) =>
+    [
+      (fiber.id as FiberId.Runtime).startTimeMillis,
+      (fiber.id as FiberId.Runtime).id
+    ] as const
   )
+)
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export function makeSynthetic<E, A>(_: {
   readonly id: FiberId
   readonly await: Effect<never, never, Exit<E, A>>
-  readonly children: Effect<never, never, Chunk<Fiber.Runtime<any, any>>>
+  readonly children: Effect<never, never, Chunk.Chunk<Fiber.Runtime<any, any>>>
   readonly inheritAll: Effect<never, never, void>
-  readonly poll: Effect<never, never, Maybe<Exit<E, A>>>
+  readonly poll: Effect<never, never, Option.Option<Exit<E, A>>>
   readonly interruptAsFork: (fiberId: FiberId) => Effect<never, never, void>
 }): Fiber<E, A> {
   return new SyntheticFiber(

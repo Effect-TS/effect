@@ -1,4 +1,19 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Duration } from "@fp-ts/data/Duration"
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const MetricKeySym = Symbol.for("@effect/core/io/Metric/MetricKey")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type MetricKeySym = typeof MetricKeySym
 
 /**
@@ -10,31 +25,37 @@ export type MetricKeySym = typeof MetricKeySym
  *
  * @tsplus type effect/core/io/Metrics/MetricKey
  * @tsplus companion effect/core/io/Metrics/MetricKey.Ops
+ * @category model
+ * @since 1.0.0
  */
-export class MetricKey<Type> implements Equals {
+export class MetricKey<Type> implements Equal.Equal {
   readonly [MetricKeySym]: MetricKeySym = MetricKeySym
 
   constructor(
     readonly name: string,
     readonly keyType: Type,
-    readonly tags: HashSet<MetricLabel> = HashSet.empty()
+    readonly tags: HashSet.HashSet<MetricLabel> = HashSet.empty()
   ) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(
-      Hash.string(this.name),
-      Hash.combine(Hash.unknown(this.keyType), Hash.unknown(this.tags))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this.name),
+      Equal.hashCombine(Equal.hash(this.keyType)),
+      Equal.hashCombine(Equal.hash(this.tags))
     )
   }
 
-  [Equals.sym](u: unknown): boolean {
+  [Equal.symbolEqual](u: unknown): boolean {
     return isMetricKey(u) &&
       this.name === u.name &&
-      Hash.unknown(this.keyType) === Hash.unknown(u.keyType) &&
-      this.tags == u.tags
+      Equal.equals(this.keyType, u.keyType) &&
+      Equal.equals(this.tags, u.tags)
   }
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace MetricKey {
   export type Untyped = MetricKey<unknown>
 
@@ -49,6 +70,8 @@ export declare namespace MetricKey {
  * Creates a metric key for a counter, with the specified name.
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Counter
+ * @category constructors
+ * @since 1.0.0
  */
 export function counter(name: string): MetricKey.Counter {
   return new MetricKey(name, MetricKeyType.Counter)
@@ -58,6 +81,8 @@ export function counter(name: string): MetricKey.Counter {
  * Creates a metric key for a gauge, with the specified name.
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Gauge
+ * @category constructors
+ * @since 1.0.0
  */
 export function gauge(name: string): MetricKey.Gauge {
   return new MetricKey(name, MetricKeyType.Gauge)
@@ -68,6 +93,8 @@ export function gauge(name: string): MetricKey.Gauge {
  * name.
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Frequency
+ * @category constructors
+ * @since 1.0.0
  */
 export function frequency(name: string): MetricKey.Frequency {
   return new MetricKey(name, MetricKeyType.Frequency)
@@ -77,6 +104,8 @@ export function frequency(name: string): MetricKey.Frequency {
  * Creates a metric key for a histogram, with the specified name and boundaries.
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Histogram
+ * @category constructors
+ * @since 1.0.0
  */
 export function histogram(
   name: string,
@@ -90,6 +119,8 @@ export function histogram(
  * maxSize, error, and quantiles.
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops Summary
+ * @category constructors
+ * @since 1.0.0
  */
 export function summary(
   name: string,
@@ -106,11 +137,13 @@ export function summary(
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Aspects tagged
  * @tsplus pipeable effect/core/io/Metrics/MetricKey tagged
+ * @category constructors
+ * @since 1.0.0
  */
 export function tagged(key: string, value: string) {
   return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
     self.taggedWithLabelSet(
-      HashSet(MetricLabel(key, value))
+      HashSet.make(MetricLabel(key, value))
     )
 }
 
@@ -119,8 +152,10 @@ export function tagged(key: string, value: string) {
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Aspects taggedWithLabels
  * @tsplus pipeable effect/core/io/Metrics/MetricKey taggedWithLabels
+ * @category constructors
+ * @since 1.0.0
  */
-export function taggedWithLabels(extraTags: Collection<MetricLabel>) {
+export function taggedWithLabels(extraTags: Iterable<MetricLabel>) {
   return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
     self.taggedWithLabelSet(HashSet.from(extraTags))
 }
@@ -130,16 +165,20 @@ export function taggedWithLabels(extraTags: Collection<MetricLabel>) {
  *
  * @tsplus static effect/core/io/Metrics/MetricKey.Aspects taggedWithLabelSet
  * @tsplus pipeable effect/core/io/Metrics/MetricKey taggedWithLabelSet
+ * @category constructors
+ * @since 1.0.0
  */
-export function taggedWithLabelSet(extraTags: HashSet<MetricLabel>) {
+export function taggedWithLabelSet(extraTags: HashSet.HashSet<MetricLabel>) {
   return <Type>(self: MetricKey<Type>): MetricKey<Type> =>
-    extraTags.size === 0 ?
+    HashSet.size(extraTags) === 0 ?
       self :
-      new MetricKey(self.name, self.keyType, self.tags.union(extraTags))
+      new MetricKey(self.name, self.keyType, pipe(self.tags, HashSet.union(extraTags)))
 }
 
 /**
  * @tsplus static effect/core/io/Metrics/MetricKey.Ops isMetricKey
+ * @category refinements
+ * @since 1.0.0
  */
 export function isMetricKey(u: unknown): u is MetricKey<unknown> {
   return typeof u === "object" && u != null && MetricKeySym in u

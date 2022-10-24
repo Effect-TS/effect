@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects mapEffect
  * @tsplus pipeable effect/core/stream/Channel mapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffect<
   Env1,

@@ -7,6 +7,8 @@ import { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
  *
  * @tsplus static effect/core/stream/Sink.Aspects zipWithPar
  * @tsplus pipeable effect/core/stream/Sink zipWithPar
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWithPar<R1, E1, In1, L1, Z, Z1, Z2>(
   that: Sink<R1, E1, In1, L1, Z1>,

@@ -6,6 +6,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * state when this schedule is done.
  *
  * @tsplus getter effect/core/io/Schedule forever
+ * @category constructors
+ * @since 1.0.0
  */
 export function forever<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

@@ -8,6 +8,8 @@ import { IAsync } from "@effect/core/io/Effect/definition/primitives"
  * The callback function `Effect<R, E, A> => any` must be called at most once.
  *
  * @tsplus static effect/core/io/Effect.Ops async
+ * @category asyc
+ * @since 1.0.0
  */
 export function _async<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void
@@ -28,6 +30,8 @@ export { _async as async }
  * provide better diagnostics.
  *
  * @tsplus static effect/core/io/Effect.Ops asyncBlockingOn
+ * @category async
+ * @since 1.0.0
  */
 export function asyncBlockingOn<R, E, A>(
   register: (callback: (_: Effect<R, E, A>) => void) => void,

@@ -4,6 +4,8 @@ import { SynchronizedInternal } from "@effect/core/io/Ref/operations/_internal/S
  * Creates a new `Ref` with the specified value.
  *
  * @tsplus static effect/core/io/Ref.Ops make
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeRef<A>(
   value: LazyArg<A>
@@ -16,6 +18,8 @@ export function makeRef<A>(
  *
  * @tsplus static effect/core/io/Ref/Synchronized.Ops make
  * @tsplus static effect/core/io/Ref/Synchronized.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function makeSynchronized<A>(
   value: LazyArg<A>

@@ -3,6 +3,8 @@
  * to be run when the scope is closed.
  *
  * @tsplus static effect/core/io/Effect.Ops addFinalizer
+ * @category finalizers
+ * @since 1.0.0
  */
 export function addFinalizer<R, X>(
   finalizer: Effect<R, never, X>

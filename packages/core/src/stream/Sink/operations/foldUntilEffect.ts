@@ -5,6 +5,8 @@
  * Like `foldWeightedEffect`, but with a constant cost function of 1.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldUntilEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldUntilEffect<R, E, In, S>(
   z: S,

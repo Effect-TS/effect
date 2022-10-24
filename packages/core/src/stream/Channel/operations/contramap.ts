@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects contramap
  * @tsplus pipeable effect/core/stream/Channel.Aspects contramap
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramap<InDone0, InDone>(f: (a: InDone0) => InDone) {
   return <Env, InErr, InElem, OutErr, OutElem, OutDone>(

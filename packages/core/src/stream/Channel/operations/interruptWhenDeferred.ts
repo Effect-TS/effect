@@ -8,6 +8,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects interruptWhenDeferred
  * @tsplus pipeable effect/core/stream/Channel interruptWhenDeferred
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptWhenDeferred<
   OutErr1,

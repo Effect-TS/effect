@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects catchAll
  * @tsplus pipeable effect/core/stream/Channel catchAll
+ * @category alternatives
+ * @since 1.0.0
  */
 export function catchAll<
   Env1,
@@ -27,10 +29,15 @@ export function catchAll<
     OutElem | OutElem1,
     OutDone | OutDone1
   > =>
-    self.catchAllCause((cause) =>
-      cause.failureOrCause.fold(
-        (outErr) => f(outErr),
-        (cause) => Channel.failCause(cause)
-      )
-    )
+    self.catchAllCause((cause) => {
+      const either = cause.failureOrCause
+      switch (either._tag) {
+        case "Left": {
+          return f(either.left)
+        }
+        case "Right": {
+          return Channel.failCause(either.right)
+        }
+      }
+    })
 }

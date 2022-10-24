@@ -5,6 +5,8 @@ import { STMEffect, STMRetryException } from "@effect/core/stm/STM/definition/pr
  * transactional variables have changed.
  *
  * @tsplus static effect/core/stm/STM.Ops retry
+ * @category retrying
+ * @since 1.0.0
  */
 export const retry: STM<never, never, never> = new STMEffect(() => {
   throw new STMRetryException()

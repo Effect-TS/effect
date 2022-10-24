@@ -1,9 +1,13 @@
+import type { Duration } from "@fp-ts/data/Duration"
+
 /**
  * Creates a timer metric, based on a histogram, which keeps track of
  * durations in milliseconds. The unit of time will automatically be added to
  * the metric as a tag (i.e. `"time_unit: milliseconds"`).
  *
  * @tsplus static effect/core/io/Metrics/Metric.Ops timer
+ * @category constructors
+ * @since 1.0.0
  */
 export function timer(
   name: string

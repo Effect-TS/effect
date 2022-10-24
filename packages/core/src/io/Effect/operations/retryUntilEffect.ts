@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects retryUntilEffect
  * @tsplus pipeable effect/core/io/Effect retryUntilEffect
+ * @category retrying
+ * @since 1.0.0
  */
 export function retryUntilEffect<R1, E>(f: (e: E) => Effect<R1, never, boolean>) {
   return <R, A>(self: Effect<R, E, A>): Effect<R | R1, E, A> =>

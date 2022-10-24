@@ -7,6 +7,8 @@ import { ILayerExtendScope } from "@effect/core/io/Layer/definition"
  * effect depends on is closed.
  *
  * @tsplus getter effect/core/io/Layer extendScope
+ * @category mutations
+ * @since 1.0.0
  */
 export function extendScope<RIn, E, ROut>(
   self: Layer<RIn, E, ROut>

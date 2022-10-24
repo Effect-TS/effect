@@ -7,6 +7,8 @@
  * @tsplus static effect/core/io/RuntimeFiber.Aspects zipLeft
  * @tsplus pipeable effect/core/io/Fiber zipLeft
  * @tsplus pipeable effect/core/io/RuntimeFiber zipLeft
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipLeft<E2, A2>(that: Fiber<E2, A2>) {
   return <E, A>(self: Fiber<E, A>): Fiber<E | E2, A> =>

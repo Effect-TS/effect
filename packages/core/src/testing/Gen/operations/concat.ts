@@ -6,10 +6,10 @@
  * @tsplus pipeable-operator effect/core/testing/Gen +
  * @tsplus static effect/core/testing/Gen.Aspects concat
  * @tsplus pipeable effect/core/testing/Gen concat
+ * @category mutations
+ * @since 1.0.0
  */
 export function concat<R2, A2>(that: Gen<R2, A2>) {
   return <R, A>(self: Gen<R, A>): Gen<R | R2, A | A2> =>
-    Gen<R | R2, A | A2>(
-      self.sample.concat(that.sample)
-    )
+    Gen<R | R2, A | A2>(self.sample.concat(that.sample))
 }

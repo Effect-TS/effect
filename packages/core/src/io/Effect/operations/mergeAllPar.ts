@@ -10,9 +10,11 @@
  * more than once for some of `in` elements during effect execution.
  *
  * @tsplus static effect/core/io/Effect.Ops mergeAllPar
+ * @category constructors
+ * @since 1.0.0
  */
 export function mergeAllPar<R, E, A, B>(
-  as: Collection<Effect<R, E, A>>,
+  as: Iterable<Effect<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B
 ): Effect<R, E, B> {

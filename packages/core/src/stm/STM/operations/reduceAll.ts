@@ -3,11 +3,13 @@
  * sequentially.
  *
  * @tsplus static effect/core/stm/STM.Ops reduceAll
+ * @category constructors
+ * @since 1.0.0
  */
 export function reduceAll<R, E, A>(
-  a: STM<R, E, A>,
-  as: Collection<STM<R, E, A>>,
+  zero: STM<R, E, A>,
+  as: Iterable<STM<R, E, A>>,
   f: (acc: A, a: A) => A
 ): STM<R, E, A> {
-  return STM.suspend(as.reduce(a, (acc, a) => acc.zipWith(a, f)))
+  return STM.suspend(Array.from(as).reduce((acc, a) => acc.zipWith(a, f), zero))
 }

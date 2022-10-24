@@ -4,6 +4,8 @@
  * @tsplus pipeable-operator effect/core/io/Schedule <<
  * @tsplus static effect/core/io/Schedule.Aspects composeUsing
  * @tsplus pipeable effect/core/io/Schedule composeUsing
+ * @category mutations
+ * @since 1.0.0
  */
 export function composeUsing<State1, Env1, In2, In>(
   that: Schedule<State1, Env1, In2, In>

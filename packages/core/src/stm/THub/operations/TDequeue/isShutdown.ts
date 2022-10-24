@@ -4,6 +4,8 @@ import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/Int
  * Checks whether the queue is shut down.
  *
  * @tsplus getter effect/core/stm/THub/TDequeue isShutdown
+ * @category getters
+ * @since 1.0.0
  */
 export function isShutdown<A>(self: THub.TDequeue<A>): STM<never, never, boolean> {
   concreteTDequeue(self)

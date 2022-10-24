@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/stream/Channel.Aspects orDieWith
  * @tsplus pipeable effect/core/stream/Channel orDieWith
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orDieWith<OutErr>(f: (e: OutErr) => unknown) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(

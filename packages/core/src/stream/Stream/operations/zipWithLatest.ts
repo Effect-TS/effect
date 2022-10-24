@@ -1,3 +1,7 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import type { Option } from "@fp-ts/data/Option"
+
 /**
  * Zips the two streams so that when a value is emitted by either of the two
  * streams, it is combined with the latest value from the other stream to
@@ -9,6 +13,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipWithLatest
  * @tsplus pipeable effect/core/stream/Stream zipWithLatest
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWithLatest<R2, E2, A2, A, A3>(
   that: Stream<R2, E2, A2>,
@@ -20,65 +26,81 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
         const left = $(self.toPull.map(pullNonEmpty))
         const right = $(that.toPull.map(pullNonEmpty))
         return $(
-          Stream.fromEffectMaybe(
+          Stream.fromEffectOption(
             left.raceWith<
               R,
-              Maybe<E>,
-              Chunk<A>,
+              Option<E>,
+              Chunk.Chunk<A>,
               R2,
-              Maybe<E2>,
-              Chunk<A2>,
+              Option<E2>,
+              Chunk.Chunk<A2>,
               never,
-              Maybe<E | E2>,
-              readonly [Chunk<A>, Chunk<A2>, boolean],
+              Option<E | E2>,
+              readonly [Chunk.Chunk<A>, Chunk.Chunk<A2>, boolean],
               never,
-              Maybe<E | E2>,
-              readonly [Chunk<A>, Chunk<A2>, boolean]
+              Option<E | E2>,
+              readonly [Chunk.Chunk<A>, Chunk.Chunk<A2>, boolean]
             >(
               right,
               (leftDone, rightFiber) =>
                 Effect.done(leftDone).zipWith(
                   rightFiber.join,
-                  (left, right) => [left, right, true] as const
+                  (left, right) => [left, right, true]
                 ),
               (rightDone, leftFiber) =>
                 Effect.done(rightDone).zipWith(
                   leftFiber.join,
-                  (right, left) => [left, right, false] as const
+                  (right, left) => [left, right, false]
                 )
             )
           )
             .flatMap(([l, r, leftFirst]) =>
               Stream.fromEffect(
-                Ref.make([l.unsafeGet(l.size - 1), r.unsafeGet(r.size - 1)] as const)
+                Ref.make(
+                  [
+                    pipe(l, Chunk.unsafeGet(l.length - 1)),
+                    pipe(r, Chunk.unsafeGet(r.length - 1))
+                  ] as const
+                )
               ).flatMap(
                 (latest) =>
                   Stream.fromChunk(
                     leftFirst
-                      ? r.map((a2) => f(l.unsafeGet(l.size - 1), a2))
-                      : l.map((a) => f(a, r.unsafeGet(r.size - 1)))
-                  ) +
-                  Stream.repeatEffectMaybe(left)
-                    .mergeEither(Stream.repeatEffectMaybe(right))
-                    .mapEffect((either) =>
-                      either.fold(
-                        (leftChunk) =>
-                          latest.modify(([_, rightLatest]) =>
-                            [
-                              leftChunk.map((a) => f(a, rightLatest)),
-                              [leftChunk.unsafeGet(leftChunk.size - 1), rightLatest] as const
-                            ] as const
-                          ),
-                        (rightChunk) =>
-                          latest.modify(([leftLatest, _]) =>
-                            [
-                              rightChunk.map((a2) => f(leftLatest, a2)),
-                              [leftLatest, rightChunk.unsafeGet(rightChunk.size - 1)] as const
-                            ] as const
-                          )
-                      )
-                    )
-                    .flatMap((chunk) => Stream.fromChunk(chunk))
+                      ? pipe(r, Chunk.map((a2) => f(pipe(l, Chunk.unsafeGet(l.length - 1)), a2)))
+                      : pipe(l, Chunk.map((a) => f(a, pipe(r, Chunk.unsafeGet(r.length - 1)))))
+                  ).concat(
+                    Stream.repeatEffectOption(left)
+                      .mergeEither(Stream.repeatEffectOption(right))
+                      .mapEffect((either) => {
+                        switch (either._tag) {
+                          case "Left": {
+                            const leftChunk = either.left
+                            return latest.modify(([_, rightLatest]) =>
+                              [
+                                pipe(leftChunk, Chunk.map((a) => f(a, rightLatest))),
+                                [
+                                  pipe(leftChunk, Chunk.unsafeGet(leftChunk.length - 1)),
+                                  rightLatest
+                                ] as const
+                              ] as const
+                            )
+                          }
+                          case "Right": {
+                            const rightChunk = either.right
+                            return latest.modify(([leftLatest, _]) =>
+                              [
+                                pipe(rightChunk, Chunk.map((a2) => f(leftLatest, a2))),
+                                [
+                                  leftLatest,
+                                  pipe(rightChunk, Chunk.unsafeGet(rightChunk.length - 1))
+                                ] as const
+                              ] as const
+                            )
+                          }
+                        }
+                      })
+                      .flatMap((chunk) => Stream.fromChunk(chunk))
+                  )
               )
             )
             .toPull
@@ -88,7 +110,7 @@ export function zipWithLatest<R2, E2, A2, A, A3>(
 }
 
 function pullNonEmpty<R, E, A>(
-  pull: Effect<R, Maybe<E>, Chunk<A>>
-): Effect<R, Maybe<E>, Chunk<A>> {
-  return pull.flatMap((chunk) => chunk.isEmpty ? pullNonEmpty(pull) : Effect.succeed(chunk))
+  pull: Effect<R, Option<E>, Chunk.Chunk<A>>
+): Effect<R, Option<E>, Chunk.Chunk<A>> {
+  return pull.flatMap((chunk) => Chunk.isEmpty(chunk) ? pullNonEmpty(pull) : Effect.succeed(chunk))
 }

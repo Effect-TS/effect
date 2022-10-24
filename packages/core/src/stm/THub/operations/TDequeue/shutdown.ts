@@ -1,9 +1,13 @@
 import { concreteTDequeue } from "@effect/core/stm/THub/operations/_internal/InternalTDequeue"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
 
 /**
  * Shuts down the queue.
  *
  * @tsplus getter effect/core/stm/THub/TDequeue shutdown
+ * @category destructors
+ * @since 1.0.0
  */
 export function shutdown<A>(self: THub.TDequeue<A>): STM<never, never, void> {
   concreteTDequeue(self)
@@ -40,7 +44,10 @@ export function shutdown<A>(self: THub.TDequeue<A>): STM<never, never, void> {
       const currentSubscriberCount = self.subscriberCount.unsafeGet(journal)
       self.subscriberCount.unsafeSet(currentSubscriberCount - 1, journal)
 
-      self.subscribers.unsafeSet(self.subscribers.unsafeGet(journal) - self.subscriberHead, journal)
+      self.subscribers.unsafeSet(
+        pipe(self.subscribers.unsafeGet(journal), HashSet.remove(self.subscriberHead)),
+        journal
+      )
     }
   })
 }

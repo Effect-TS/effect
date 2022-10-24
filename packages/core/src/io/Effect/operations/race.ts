@@ -1,3 +1,5 @@
+import * as Either from "@fp-ts/data/Either"
+
 /**
  * Returns an effect that races this effect with the specified effect,
  * returning the first successful `A` from the faster side. If one effect
@@ -5,13 +7,14 @@
  * effect will fail with some error.
  *
  * Note that both effects are disconnected before being raced. This means that
- * interruption of the loser will always be performed in the background. This
- * is a change in behavior compared to ZIO 2.0. If this behavior is not
- * desired, you can use [[Effect#raceWith]], which will not disconnect or
- * interrupt losers.
+ * interruption of the loser will always be performed in the background. If this
+ * behavior is not desired, you can use `Effect.raceWith`, which will not
+ * disconnect or interrupt losers.
  *
  * @tsplus static effect/core/io/Effect.Aspects race
  * @tsplus pipeable effect/core/io/Effect race
+ * @category mutations
+ * @since 1.0.0
  */
 export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
@@ -26,6 +29,8 @@ export function race<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  *
  * @tsplus static effect/core/io/Effect.Aspects raceAwait
  * @tsplus pipeable effect/core/io/Effect raceAwait
+ * @category mutations
+ * @since 1.0.0
  */
 export function raceAwait<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, A | A2> =>
@@ -56,9 +61,11 @@ export function raceAwait<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  *
  * @tsplus static effect/core/io/Effect.Aspects raceEither
  * @tsplus pipeable effect/core/io/Effect raceEither
+ * @category mutations
+ * @since 1.0.0
  */
 export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
-  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Either<A, A2>> =>
+  return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E | E2, Either.Either<A, A2>> =>
     self.map(Either.left).race(that.map(Either.right))
 }
 
@@ -76,6 +83,8 @@ export function raceEither<R2, E2, A2>(that: Effect<R2, E2, A2>) {
  *
  * @tsplus static effect/core/io/Effect.Aspects raceFirst
  * @tsplus pipeable effect/core/io/Effect raceFirst
+ * @category mutations
+ * @since 1.0.0
  */
 export function raceFirst<R2, E2, A2>(that: Effect<R2, E2, A2>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R2, E2 | E, A2 | A> =>

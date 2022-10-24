@@ -2,6 +2,8 @@ import { ContinuationK, Read } from "@effect/core/stream/Channel/definition/prim
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops readOrFail
+ * @category constructors
+ * @since 1.0.0
  */
 export function readOrFail<In, E>(
   e: E

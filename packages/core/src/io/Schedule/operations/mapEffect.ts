@@ -6,6 +6,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects mapEffect
  * @tsplus pipeable effect/core/io/Schedule mapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffect<Out, Env1, Out2>(
   f: (out: Out) => Effect<Env1, never, Out2>

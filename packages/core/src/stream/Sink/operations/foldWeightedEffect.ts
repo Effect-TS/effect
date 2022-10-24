@@ -1,3 +1,5 @@
+import * as Chunk from "@fp-ts/data/Chunk"
+
 /**
  * Creates a sink that effectfully folds elements of type `In` into a
  * structure of type `S`, until `max` worth of elements (determined by the
@@ -8,6 +10,8 @@
  * that can handle these cases.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldWeightedEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldWeightedEffect<R, E, R2, E2, In, S>(
   z: S,

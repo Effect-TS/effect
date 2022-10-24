@@ -5,10 +5,10 @@
  *
  * @tsplus static effect/core/stm/TQueue.Aspects seek
  * @tsplus pipeable effect/core/stm/TQueue seek
+ * @category mutations
+ * @since 1.0.0
  */
 export function seek<A>(f: (a: A) => boolean) {
   return (self: TQueue<A>): STM<never, never, A> =>
-    self.take.flatMap(
-      (b) => f(b) ? STM.succeed(b) : self.seek(f)
-    )
+    self.take.flatMap((b) => f(b) ? STM.succeed(b) : self.seek(f))
 }

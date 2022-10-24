@@ -1,3 +1,5 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Returns an effect that performs the outer effect first, followed by the
  * inner effect, yielding the value of the inner effect.
@@ -6,6 +8,8 @@
  *
  * @tsplus static effect/core/io/Effect.Ops flatten
  * @tsplus getter effect/core/io/Effect flatten
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatten<R, E, R1, E1, A>(
   self: Effect<R, E, Effect<R1, E1, A>>

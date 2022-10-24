@@ -1,9 +1,13 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+
 /**
  * Effectfully transforms both input chunks and result of this sink using the
  * provided functions. `f` and `g` must preserve chunking-invariance.
  *
  * @tsplus static effect/core/stream/Sink.Aspects dimapChunksEffect
  * @tsplus pipeable effect/core/stream/Sink dimapChunksEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function dimapChunksEffect<R2, E2, In, In1, Z, Z1>(
   f: (input: Chunk<In1>) => Effect<R2, E2, Chunk<In>>,

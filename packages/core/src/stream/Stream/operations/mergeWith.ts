@@ -14,6 +14,8 @@ import { TerminationStrategy } from "@effect/core/stream/Stream/TerminationStrat
  *
  * @tsplus static effect/core/stream/Stream.Aspects mergeWith
  * @tsplus pipeable effect/core/stream/Stream mergeWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeWith<R2, E2, A, A2, A3>(
   that: Stream<R2, E2, A2>,

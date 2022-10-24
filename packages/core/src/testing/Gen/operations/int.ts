@@ -5,6 +5,8 @@ import type { NumberConstraints } from "@effect/core/testing/Gen/definition"
  * shrinker will shrink toward the lower end of the range ("smallest").
  *
  * @tsplus static effect/core/testing/Gen.Ops int
+ * @category constructors
+ * @since 1.0.0
  */
 export function int(constraints: NumberConstraints = {}): Gen<never, number> {
   return Gen.fromEffectSample(

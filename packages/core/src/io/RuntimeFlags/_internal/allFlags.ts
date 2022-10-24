@@ -1,5 +1,6 @@
 import type { RuntimeFlags } from "@effect/core/io/RuntimeFlags/definition"
 
+/** @internal */
 export const allFlags = {
   None: 0 as RuntimeFlags.Flag,
   Interruption: 1 << 0 as RuntimeFlags.Flag,
@@ -12,6 +13,7 @@ export const allFlags = {
   CooperativeYielding: 1 << 7 as RuntimeFlags.Flag
 } as const
 
+/** @internal */
 export function renderFlag(a: RuntimeFlags.Flag): string {
   return Object.entries(allFlags).find(([_, b]) => a === b)![0]
 }

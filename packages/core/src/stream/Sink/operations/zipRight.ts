@@ -4,6 +4,8 @@
  * @tsplus pipeable-operator effect/core/stream/Sink >
  * @tsplus static effect/core/stream/Sink zipRight
  * @tsplus pipeable effect/core/stream/Sink zipRight
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipRight<R1, E1, In, In1 extends In, L, L1 extends L, Z1>(
   that: Sink<R1, E1, In1, L1, Z1>

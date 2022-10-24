@@ -3,6 +3,8 @@
  *
  * @tsplus getter effect/core/stream/Stream runDrain
  * @tsplus static effect/core/stream/Stream.Aspects runDrain
+ * @category destructors
+ * @since 1.0.0
  */
 export function runDrain<R, E, A>(
   self: Stream<R, E, A>

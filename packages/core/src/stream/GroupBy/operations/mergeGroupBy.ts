@@ -6,6 +6,8 @@ import { concreteGroupBy } from "@effect/core/stream/GroupBy/operations/_interna
  *
  * @tsplus static effect/core/stream/GroupBy.Aspects mergeGroupBy
  * @tsplus pipeable effect/core/stream/GroupBy mergeGroupBy
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeGroupBy<R, E, K, V, A, R1, E1, A1>(
   f: (k: K, stream: Stream<never, E, V>) => Stream<R1, E1, A1>

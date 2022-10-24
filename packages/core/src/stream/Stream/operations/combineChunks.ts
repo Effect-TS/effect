@@ -3,6 +3,8 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Option } from "@fp-ts/data/Option"
 
 /**
  * Combines the chunks from this stream and the specified stream by repeatedly
@@ -13,15 +15,17 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects combineChunks
  * @tsplus pipeable effect/core/stream/Stream combineChunks
+ * @category mutations
+ * @since 1.0.0
  */
 export function combineChunks<R, E, A, R2, E2, A2, S, A3>(
   that: Stream<R2, E2, A2>,
   s: S,
   f: (
     s: S,
-    pullLeft: Effect<R, Maybe<E>, Chunk<A>>,
-    pullRight: Effect<R2, Maybe<E2>, Chunk<A2>>
-  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [Chunk<A3>, S]>>
+    pullLeft: Effect<R, Option<E>, Chunk<A>>,
+    pullRight: Effect<R2, Option<E2>, Chunk<A2>>
+  ) => Effect<R | R2, never, Exit<Option<E | E2>, readonly [Chunk<A3>, S]>>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(
@@ -32,9 +36,9 @@ export function combineChunks<R, E, A, R2, E2, A2, S, A3>(
           const latchL = $(Handoff.make<void>())
           const latchR = $(Handoff.make<void>())
           concreteStream(self)
-          $((self.channel >> producer(left, latchL)).runScoped.forkScoped)
+          $(self.channel.pipeTo(producer(left, latchL)).runScoped.forkScoped)
           concreteStream(that)
-          $((that.channel >> producer(right, latchR)).runScoped.forkScoped)
+          $(that.channel.pipeTo(producer(right, latchR)).runScoped.forkScoped)
           const pullLeft = latchL.offer(undefined)
             .zipRight(left.take.flatMap((take) => take.done))
           const pullRight = latchR.offer(undefined)

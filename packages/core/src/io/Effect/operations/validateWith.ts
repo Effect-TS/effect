@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects validateWith
  * @tsplus pipeable effect/core/io/Effect validateWith
+ * @category validation
+ * @since 1.0.0
  */
 export function validateWith<A, R1, E1, B, C>(
   that: Effect<R1, E1, B>,

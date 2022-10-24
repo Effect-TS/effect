@@ -2,12 +2,16 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * Statefully maps over the elements of this stream to produce new elements.
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapAccum
  * @tsplus pipeable effect/core/stream/Stream mapAccum
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapAccum<A, S, A1>(s: S, f: (s: S, a: A) => readonly [S, A1]) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A1> => {
@@ -19,10 +23,10 @@ export function mapAccum<A, S, A1>(s: S, f: (s: S, a: A) => readonly [S, A1]) {
 function accumulator<E, A, S, A1>(
   current: S,
   f: (s: S, a: A) => readonly [S, A1]
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<A1>, void> {
+): Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A1>, void> {
   return Channel.readWith(
-    (input: Chunk<A>) => {
-      const [nextS, a1s] = input.mapAccum(current, f)
+    (input: Chunk.Chunk<A>) => {
+      const [nextS, a1s] = pipe(input, Chunk.mapAccum(current, f))
       return Channel.write(a1s).flatMap(() => accumulator<E, A, S, A1>(nextS, f))
     },
     (err: E) => Channel.fail(err),

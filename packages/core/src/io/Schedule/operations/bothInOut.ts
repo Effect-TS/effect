@@ -8,6 +8,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  * @tsplus pipeable-operator effect/core/io/Schedule **
  * @tsplus static effect/core/io/Schedule.Aspects bothInOut
  * @tsplus pipeable effect/core/io/Schedule bothInOut
+ * @category mutations
+ * @since 1.0.0
  */
 export function bothInOut<State1, Env1, In2, Out2>(
   that: Schedule<State1, Env1, In2, Out2>

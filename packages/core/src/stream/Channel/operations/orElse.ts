@@ -6,6 +6,8 @@
  * @tsplus pipeable-operator effect/core/stream/Channel |
  * @tsplus static effect/core/stream/Channel.Aspects orElse
  * @tsplus pipeable effect/core/stream/Channel orElse
+ * @category alternatives
+ * @since 1.0.0
  */
 export function orElse<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>(
   that: LazyArg<Channel<Env1, InErr1, InElem1, InDone1, OutErr1, OutElem1, OutDone1>>

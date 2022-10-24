@@ -8,13 +8,19 @@
  *
  * @tsplus static effect/core/io/ReleaseMap.Aspects add
  * @tsplus pipeable effect/core/io/ReleaseMap add
+ * @category mutations
+ * @since 1.0.0
  */
 export function add(finalizer: Scope.Finalizer) {
   return (self: ReleaseMap): Effect<never, never, Scope.Finalizer> =>
-    self.addIfOpen(finalizer).map((_) =>
-      _.fold(
-        (): Scope.Finalizer => () => Effect.unit,
-        (k): Scope.Finalizer => (e) => self.release(k, e)
-      )
-    )
+    self.addIfOpen(finalizer).map((option) => {
+      switch (option._tag) {
+        case "None": {
+          return () => Effect.unit
+        }
+        case "Some": {
+          return (exit) => self.release(option.value, exit)
+        }
+      }
+    })
 }

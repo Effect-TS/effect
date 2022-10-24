@@ -1,7 +1,10 @@
 import type { _In, _Out } from "@effect/core/io/Metrics/MetricKeyType"
+import type { HashSet } from "@fp-ts/data/HashSet"
 
 /**
  * @tsplus static effect/core/io/Metrics/Metric.Ops fromMetricKey
+ * @category constructors
+ * @since 1.0.0
  */
 export function fromMetricKey<Type extends MetricKeyType<any, any>>(
   key: MetricKey<Type>

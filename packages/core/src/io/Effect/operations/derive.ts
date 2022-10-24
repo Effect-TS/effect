@@ -1,3 +1,9 @@
+import type * as Context from "@fp-ts/data/Context"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type ShapeFn<T> = Pick<
   T,
   {
@@ -9,6 +15,10 @@ export type ShapeFn<T> = Pick<
   }[keyof T]
 >
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type ShapeCn<T> = Pick<
   T,
   {
@@ -16,6 +26,10 @@ export type ShapeCn<T> = Pick<
   }[keyof T]
 >
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type DerivedLifted<
   T,
   Fns extends keyof ShapeFn<T>,
@@ -37,9 +51,11 @@ export type DerivedLifted<
 
 /**
  * @tsplus static effect/core/io/Effect.Ops deriveLifted
+ * @category derivation
+ * @since 1.0.0
  */
 export function deriveLifted<T>(
-  S: Tag<T>
+  S: Context.Tag<T>
 ): <
   Fns extends keyof ShapeFn<T> = never,
   Cns extends keyof ShapeCn<T> = never,
@@ -68,15 +84,21 @@ export function deriveLifted<T>(
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type DerivedAccessM<T, Gens extends keyof T> = {
   [k in Gens]: <R_, E_, A_>(f: (_: T[k]) => Effect<R_, E_, A_>) => Effect<R_ | T, E_, A_>
 }
 
 /**
  * @tsplus static effect/core/io/Effect.Ops deriveAccessEffect
+ * @category derivation
+ * @since 1.0.0
  */
 export function deriveAccessEffect<T>(
-  S: Tag<T>
+  S: Context.Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccessM<T, Gens> {
   return (generics) => {
     const ret = {} as any
@@ -89,15 +111,21 @@ export function deriveAccessEffect<T>(
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type DerivedAccess<T, Gens extends keyof T> = {
   [k in Gens]: <A_>(f: (_: T[k]) => A_) => Effect<T, never, A_>
 }
 
 /**
  * @tsplus static effect/core/io/Effect.Ops deriveAccess
+ * @category derivation
+ * @since 1.0.0
  */
 export function deriveAccess<T>(
-  S: Tag<T>
+  S: Context.Tag<T>
 ): <Gens extends keyof T = never>(generics: Gens[]) => DerivedAccess<T, Gens> {
   return (generics) => {
     const ret = {} as any

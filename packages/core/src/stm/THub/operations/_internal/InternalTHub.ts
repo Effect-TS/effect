@@ -1,5 +1,7 @@
 import { _A, THubSym } from "@effect/core/stm/THub/definition"
+import type { HashSet } from "@fp-ts/data/HashSet"
 
+/** @internal */
 export class InternalTHub<A> implements THub<A> {
   readonly [THubSym]: THubSym = THubSym
   readonly [_A]!: () => A
@@ -17,6 +19,7 @@ export class InternalTHub<A> implements THub<A> {
 
 /**
  * @tsplus macro remove
+ * @internal
  */
 export function concreteTHub<A>(
   _: THub<A>

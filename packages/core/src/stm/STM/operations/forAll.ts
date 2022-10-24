@@ -3,9 +3,11 @@
  * predicate `f`.
  *
  * @tsplus static effect/core/stm/STM.Ops forAll
+ * @category traversing
+ * @since 1.0.0
  */
 export function forAll<R, E, A>(
-  as: Collection<A>,
+  as: Iterable<A>,
   f: (a: A) => STM<R, E, boolean>
 ): STM<R, E, boolean> {
   return STM.suspend(loop(as[Symbol.iterator](), f))

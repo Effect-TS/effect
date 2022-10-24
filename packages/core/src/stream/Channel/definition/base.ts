@@ -10,7 +10,16 @@ import {
   _OutErr2
 } from "@effect/core/stream/Channel/definition/symbols"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const ChannelSym = Symbol.for("@effect/core/stream/Channel")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type ChannelSym = typeof ChannelSym
 
 /**
@@ -37,6 +46,8 @@ export type ChannelSym = typeof ChannelSym
  *    function that makes the other channels can be composed into a channel.
  *
  * @tsplus type effect/core/stream/Channel
+ * @category model
+ * @since 1.0.0
  */
 export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
   readonly [ChannelSym]: ChannelSym
@@ -51,6 +62,8 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
 
 /**
  * @tsplus type effect/core/stream/Channel.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ChannelOps {
   $: ChannelAspects
@@ -61,6 +74,8 @@ export const Channel: ChannelOps = {
 
 /**
  * @tsplus type effect/core/stream/Channel.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface ChannelAspects {}
 
@@ -81,6 +96,7 @@ export function unifyChannel<X extends Channel<any, any, any, any, any, any, any
   return self
 }
 
+/** @internal */
 export abstract class ChannelBase<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   implements Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 {

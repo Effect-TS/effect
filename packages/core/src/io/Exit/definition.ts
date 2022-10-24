@@ -1,22 +1,31 @@
 import type { IFailure, ISuccess } from "@effect/core/io/Effect/definition/primitives"
-
-/**
- * @tsplus type effect/core/io/Exit/Success
- */
-export interface Success<A> extends ISuccess<A>, Equals {}
-
-/**
- * @tsplus type effect/core/io/Exit/Failure
- */
-export interface Failure<E> extends IFailure<E>, Equals {}
+import type * as Equal from "@fp-ts/data/Equal"
 
 /**
  * @tsplus type effect/core/io/Exit
+ * @category model
+ * @since 1.0.0
  */
 export type Exit<E, A> = Success<A> | Failure<E>
 
 /**
+ * @tsplus type effect/core/io/Exit/Success
+ * @category model
+ * @since 1.0.0
+ */
+export interface Success<A> extends ISuccess<A>, Equal.Equal {}
+
+/**
+ * @tsplus type effect/core/io/Exit/Failure
+ * @category model
+ * @since 1.0.0
+ */
+export interface Failure<E> extends IFailure<E>, Equal.Equal {}
+
+/**
  * @tsplus type effect/core/io/Exit.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ExitOps {
   $: ExitAspects
@@ -27,6 +36,8 @@ export const Exit: ExitOps = {
 
 /**
  * @tsplus type effect/core/io/Exit.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface ExitAspects {}
 

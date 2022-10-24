@@ -1,8 +1,13 @@
-// TODO:
-// - [ ] squashTrace
-// - [ ] squashTraceWith
+import type * as _pretty from "@effect/core/io/Cause/operations/pretty"
+import { Stack } from "@effect/core/support/Stack"
+import * as Equal from "@fp-ts/data/Equal"
+import { pipe } from "@fp-ts/data/Function"
+import * as HashSet from "@fp-ts/data/HashSet"
+import * as List from "@fp-ts/data/List"
+import * as SafeEval from "@fp-ts/data/SafeEval"
 
-export const CauseSym = Symbol.for("@effect/core/io/Cause")
+const CauseSymbolKey = "@effect/core/io/Cause"
+export const CauseSym = Symbol.for(CauseSymbolKey)
 export type CauseSym = typeof CauseSym
 
 export const _E = Symbol.for("@effect/core/io/Cause/E")
@@ -10,20 +15,33 @@ export type _E = typeof _E
 
 /**
  * @tsplus type effect/core/io/Cause
+ * @category model
+ * @since 1.0.0
  */
-export interface Cause<E> extends Equals {
+export interface Cause<E> extends Equal.Equal {
   readonly [CauseSym]: CauseSym
   readonly [_E]: () => E
 }
 
 /**
+ * @since 1.0.0
+ */
+export declare namespace Cause {
+  export type Renderer = _pretty.Renderer
+}
+
+/**
  * @tsplus type effect/core/io/Cause.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface CauseOps {}
 export const Cause: CauseOps = {}
 
 /**
  * @tsplus type effect/core/io/Cause.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface CauseAspects {}
 
@@ -36,6 +54,10 @@ export function unifyCause<X extends Cause<any>>(
   return self
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type RealCause<E> =
   | Empty
   | Fail<E>
@@ -54,6 +76,8 @@ export function realCause<E>(cause: Cause<E>): asserts cause is RealCause<E> {
 
 /**
  * @tsplus fluent effect/core/io/Cause isEmptyType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
   realCause(cause)
@@ -62,6 +86,8 @@ export function isEmptyType<E>(cause: Cause<E>): cause is Empty {
 
 /**
  * @tsplus fluent effect/core/io/Cause isDieType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isDieType<E>(cause: Cause<E>): cause is Die {
   realCause(cause)
@@ -70,6 +96,8 @@ export function isDieType<E>(cause: Cause<E>): cause is Die {
 
 /**
  * @tsplus fluent effect/core/io/Cause isFailType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
   realCause(cause)
@@ -78,6 +106,8 @@ export function isFailType<E>(cause: Cause<E>): cause is Fail<E> {
 
 /**
  * @tsplus fluent effect/core/io/Cause isInterruptType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
   realCause(cause)
@@ -86,6 +116,8 @@ export function isInterruptType<E>(cause: Cause<E>): cause is Interrupt {
 
 /**
  * @tsplus fluent effect/core/io/Cause isStacklessType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
   realCause(cause)
@@ -94,6 +126,8 @@ export function isStacklessType<E>(cause: Cause<E>): cause is Stackless<E> {
 
 /**
  * @tsplus fluent effect/core/io/Cause isThenType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
   realCause(cause)
@@ -102,53 +136,56 @@ export function isThenType<E>(cause: Cause<E>): cause is Then<E> {
 
 /**
  * @tsplus fluent effect/core/io/Cause isBothType
+ * @category refinements
+ * @since 1.0.0
  */
 export function isBothType<E>(cause: Cause<E>): cause is Both<E> {
   realCause(cause)
   return cause._tag === "Both"
 }
 
-export class Empty implements Cause<never>, Equals {
+export class Empty implements Cause<never>, Equal.Equal {
   readonly _tag = "Empty"
 
   readonly [CauseSym]: CauseSym = CauseSym
   readonly [_E]!: () => never;
 
-  [Hash.sym](): number {
+  [Equal.symbolHash](): number {
     return _emptyHash
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     realCause(that)
     switch (that._tag) {
       case "Empty": {
-        return Eval.succeed(true)
+        return SafeEval.succeed(true)
       }
       case "Both":
       case "Then": {
-        return Eval.suspend(
-          this.__equalsSafe(that.left)
-        ).zipWith(
-          Eval.suspend(this.__equalsSafe(that.right)),
-          (a, b) => a && b
+        return pipe(
+          SafeEval.suspend(() => this.__equalsSafe(that.left)),
+          SafeEval.zipWith(
+            SafeEval.suspend(() => this.__equalsSafe(that.right)),
+            (a, b) => a && b
+          )
         )
       }
       case "Stackless": {
-        return Eval.suspend(this.__equalsSafe(that.cause))
+        return SafeEval.suspend(() => this.__equalsSafe(that.cause))
       }
       default: {
-        return Eval.succeed(false)
+        return SafeEval.succeed(false)
       }
     }
   }
 }
 
 export interface Fail<E> extends Cause<E> {}
-export class Fail<E> implements Cause<E>, Equals {
+export class Fail<E> implements Cause<E>, Equal.Equal {
   readonly _tag = "Fail"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -156,35 +193,38 @@ export class Fail<E> implements Cause<E>, Equals {
 
   constructor(readonly value: E) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.value))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.value))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     realCause(that)
     switch (that._tag) {
       case "Fail": {
-        return Eval.succeed(Equals.equals(this.value, that.value))
+        return SafeEval.succeed(Equal.equals(this.value, that.value))
       }
       case "Both":
       case "Then": {
-        return Eval.suspend(sym(zero)(this, that))
+        return SafeEval.suspend(() => sym(zero)(this, that))
       }
       case "Stackless": {
-        return Eval.suspend(this.__equalsSafe(that.cause))
+        return SafeEval.suspend(() => this.__equalsSafe(that.cause))
       }
       default: {
-        return Eval.succeed(false)
+        return SafeEval.succeed(false)
       }
     }
   }
 }
 
-export class Die implements Cause<never>, Equals {
+export class Die implements Cause<never>, Equal.Equal {
   readonly _tag = "Die"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -192,35 +232,38 @@ export class Die implements Cause<never>, Equals {
 
   constructor(readonly value: unknown) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.value))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.value))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     realCause(that)
     switch (that._tag) {
       case "Die": {
-        return Eval.succeed(Equals.equals(this.value, that.value))
+        return SafeEval.succeed(Equal.equals(this.value, that.value))
       }
       case "Both":
       case "Then": {
-        return Eval.suspend(sym(zero)(this, that))
+        return SafeEval.suspend(() => sym(zero)(this, that))
       }
       case "Stackless": {
-        return Eval.suspend(this.__equalsSafe(that.cause))
+        return SafeEval.suspend(() => this.__equalsSafe(that.cause))
       }
       default: {
-        return Eval.succeed(false)
+        return SafeEval.succeed(false)
       }
     }
   }
 }
 
-export class Interrupt implements Cause<never>, Equals {
+export class Interrupt implements Cause<never>, Equal.Equal {
   readonly _tag = "Interrupt"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -228,35 +271,38 @@ export class Interrupt implements Cause<never>, Equals {
 
   constructor(readonly fiberId: FiberId) {}
 
-  [Hash.sym](): number {
-    return Hash.combine(Hash.string(this._tag), Hash.unknown(this.fiberId))
+  [Equal.symbolHash](): number {
+    return pipe(
+      Equal.hash(this._tag),
+      Equal.hashCombine(Equal.hash(this.fiberId))
+    )
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     realCause(that)
     switch (that._tag) {
       case "Interrupt": {
-        return Eval.succeed(Equals.equals(this.fiberId, that.fiberId))
+        return SafeEval.succeed(Equal.equals(this.fiberId, that.fiberId))
       }
       case "Both":
       case "Then": {
-        return Eval.suspend(sym(zero)(this, that))
+        return SafeEval.suspend(() => sym(zero)(this, that))
       }
       case "Stackless": {
-        return Eval.suspend(this.__equalsSafe(that.cause))
+        return SafeEval.suspend(() => this.__equalsSafe(that.cause))
       }
       default: {
-        return Eval.succeed(false)
+        return SafeEval.succeed(false)
       }
     }
   }
 }
 
-export class Stackless<E> implements Cause<E>, Equals {
+export class Stackless<E> implements Cause<E>, Equal.Equal {
   readonly _tag = "Stackless"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -264,15 +310,15 @@ export class Stackless<E> implements Cause<E>, Equals {
 
   constructor(readonly cause: Cause<E>, readonly stackless: boolean) {}
 
-  [Hash.sym](): number {
-    return this.cause[Hash.sym]()
+  [Equal.symbolHash](): number {
+    return this.cause[Equal.symbolHash]()
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     realCause(this.cause)
     realCause(that)
     return that._tag === "Stackless"
@@ -281,7 +327,7 @@ export class Stackless<E> implements Cause<E>, Equals {
   }
 }
 
-export class Then<E> implements Cause<E>, Equals {
+export class Then<E> implements Cause<E>, Equal.Equal {
   readonly _tag = "Then"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -289,18 +335,18 @@ export class Then<E> implements Cause<E>, Equals {
 
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 
-  [Hash.sym](): number {
+  [Equal.symbolHash](): number {
     return hashCode(this)
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
-    return Eval.gen(function*(_) {
+    return SafeEval.gen(function*(_) {
       realCause(that)
       if (that._tag === "Stackless") {
         return yield* _(self.__equalsSafe(that.cause))
@@ -314,12 +360,12 @@ export class Then<E> implements Cause<E>, Equals {
     })
   }
 
-  private eq(that: Cause<unknown>): Eval<boolean> {
+  private eq(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     realCause(that)
     if (that._tag === "Then") {
-      return Eval.gen(function*(_) {
+      return SafeEval.gen(function*(_) {
         realCause(self.left)
         realCause(self.right)
         return (
@@ -328,11 +374,11 @@ export class Then<E> implements Cause<E>, Equals {
         )
       })
     }
-    return Eval.succeed(false)
+    return SafeEval.succeed(false)
   }
 }
 
-export class Both<E> implements Cause<E>, Equals {
+export class Both<E> implements Cause<E>, Equal.Equal {
   readonly _tag = "Both"
 
   readonly [CauseSym]: CauseSym = CauseSym
@@ -340,18 +386,18 @@ export class Both<E> implements Cause<E>, Equals {
 
   constructor(readonly left: Cause<E>, readonly right: Cause<E>) {}
 
-  [Hash.sym](): number {
+  [Equal.symbolHash](): number {
     return hashCode(this)
   }
 
-  [Equals.sym](that: unknown): boolean {
-    return isCause(that) && this.__equalsSafe(that).run
+  [Equal.symbolEqual](that: unknown): boolean {
+    return isCause(that) && SafeEval.execute(this.__equalsSafe(that))
   }
 
-  __equalsSafe(that: Cause<unknown>): Eval<boolean> {
+  __equalsSafe(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
-    return Eval.gen(function*(_) {
+    return SafeEval.gen(function*(_) {
       realCause(that)
       if (that._tag === "Stackless") {
         return yield* _(self.__equalsSafe(that.cause))
@@ -366,12 +412,12 @@ export class Both<E> implements Cause<E>, Equals {
     })
   }
 
-  private eq(that: Cause<unknown>): Eval<boolean> {
+  private eq(that: Cause<unknown>): SafeEval.SafeEval<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this
     realCause(that)
     if (that._tag === "Both") {
-      return Eval.gen(function*(_) {
+      return SafeEval.gen(function*(_) {
         realCause(self.left)
         realCause(self.right)
         return (
@@ -380,7 +426,7 @@ export class Both<E> implements Cause<E>, Equals {
         )
       })
     }
-    return Eval.succeed(false)
+    return SafeEval.succeed(false)
   }
 }
 // -----------------------------------------------------------------------------
@@ -389,11 +435,15 @@ export class Both<E> implements Cause<E>, Equals {
 
 /**
  * @tsplus static effect/core/io/Cause.Ops empty
+ * @category constructors
+ * @since 1.0.0
  */
 export const empty: Cause<never> = new Empty()
 
 /**
  * @tsplus static effect/core/io/Cause.Ops die
+ * @category constructors
+ * @since 1.0.0
  */
 export function die(defect: unknown): Cause<never> {
   return new Die(defect)
@@ -401,6 +451,8 @@ export function die(defect: unknown): Cause<never> {
 
 /**
  * @tsplus static effect/core/io/Cause.Ops fail
+ * @category constructors
+ * @since 1.0.0
  */
 export function fail<E>(error: E): Cause<E> {
   return new Fail(error)
@@ -408,6 +460,8 @@ export function fail<E>(error: E): Cause<E> {
 
 /**
  * @tsplus static effect/core/io/Cause.Ops interrupt
+ * @category constructors
+ * @since 1.0.0
  */
 export function interrupt(fiberId: FiberId): Cause<never> {
   return new Interrupt(fiberId)
@@ -415,6 +469,8 @@ export function interrupt(fiberId: FiberId): Cause<never> {
 
 /**
  * @tsplus static effect/core/io/Cause.Ops stack
+ * @category constructors
+ * @since 1.0.0
  */
 export function stack<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, false)
@@ -422,6 +478,8 @@ export function stack<E>(cause: Cause<E>): Cause<E> {
 
 /**
  * @tsplus static effect/core/io/Cause.Ops stackless
+ * @category constructors
+ * @since 1.0.0
  */
 export function stackless<E>(cause: Cause<E>): Cause<E> {
   return new Stackless(cause, true)
@@ -430,13 +488,15 @@ export function stackless<E>(cause: Cause<E>): Cause<E> {
 /**
  * @tsplus operator effect/core/io/Cause +
  * @tsplus static effect/core/io/Cause.Ops then
+ * @category constructors
+ * @since 1.0.0
  */
 export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   return isEmpty(left) ?
     right :
     isEmpty(right) ?
     left :
-    left.equals(right) ?
+    Equal.equals(left, right) ?
     left :
     new Then<E1 | E2>(left, right)
 }
@@ -444,6 +504,8 @@ export function combineSeq<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 
 /**
  * @tsplus operator effect/core/io/Cause &
  * @tsplus static effect/core/io/Cause.Ops both
+ * @category constructors
+ * @since 1.0.0
  */
 export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 | E2> {
   // TODO(Mike/Max): discuss this, because ZIO does not flatten empty causes here
@@ -458,6 +520,8 @@ export function combinePar<E1, E2>(left: Cause<E1>, right: Cause<E2>): Cause<E1 
  * Determines if the provided value is a `Cause`.
  *
  * @tsplus fluent effect/core/io/Cause isCause
+ * @category refinements
+ * @since 1.0.0
  */
 export function isCause(self: unknown): self is Cause<unknown> {
   return typeof self === "object" && self != null && CauseSym in self
@@ -467,6 +531,8 @@ export function isCause(self: unknown): self is Cause<unknown> {
  * Determines if the `Cause` is empty.
  *
  * @tsplus getter effect/core/io/Cause isEmpty
+ * @category destructors
+ * @since 1.0.0
  */
 export function isEmpty<E>(cause: Cause<E>): boolean {
   if (isEmptyType(cause) || (isStacklessType(cause) && isEmptyType(cause.cause))) {
@@ -513,25 +579,24 @@ export function isEmpty<E>(cause: Cause<E>): boolean {
   return true
 }
 
-const _emptyHash = Hash.optimize(Hash.random())
+const _emptyHash = Equal.hashOptimize(Equal.hashRandom({ CauseSymbolKey }))
 
 function stepLoop<A>(
   cause: Cause<A>,
-  stack: List<Cause<A>>,
-  parallel: HashSet<Cause<A>>,
-  sequential: List<Cause<A>>
-): readonly [HashSet<Cause<A>>, List<Cause<A>>] {
+  stack: List.List<Cause<A>>,
+  parallel: HashSet.HashSet<Cause<A>>,
+  sequential: List.List<Cause<A>>
+): readonly [HashSet.HashSet<Cause<A>>, List.List<Cause<A>>] {
   // eslint-disable-next-line no-constant-condition
   while (1) {
     realCause(cause)
     switch (cause._tag) {
       case "Empty": {
-        if (stack.length === 0) {
+        if (List.isNil(stack)) {
           return [parallel, sequential] as const
         } else {
-          cause = stack.unsafeHead!
-          const tail = stack.unsafeTail
-          stack = tail == null ? List.nil() : tail
+          cause = stack.head
+          stack = stack.tail == null ? List.nil() : stack.tail
         }
         break
       }
@@ -558,13 +623,13 @@ function stepLoop<A>(
           }
           default: {
             cause = left
-            sequential = sequential.prepend(right)
+            sequential = pipe(sequential, List.prepend(right))
           }
         }
         break
       }
       case "Both": {
-        stack = stack.prepend(cause.right)
+        stack = pipe(stack, List.prepend(cause.right))
         cause = cause.left
         break
       }
@@ -573,13 +638,12 @@ function stepLoop<A>(
         break
       }
       default: {
-        if (stack.length === 0) {
-          return [parallel.add(cause), sequential] as const
+        if (List.isNil(stack)) {
+          return [pipe(parallel, HashSet.add<Cause<A>>(cause)), sequential] as const
         } else {
-          parallel = parallel.add(cause)
-          cause = stack.unsafeHead!
-          const tail = stack.unsafeTail
-          stack = tail == null ? List.nil() : tail
+          parallel = pipe(parallel, HashSet.add<Cause<A>>(cause))
+          cause = stack.head
+          stack = stack.tail == null ? List.nil() : stack.tail
           break
         }
       }
@@ -592,26 +656,29 @@ function stepLoop<A>(
  * Takes one step in evaluating a cause, returning a set of causes that fail
  * in parallel and a list of causes that fail sequentially after those causes.
  */
-function step<A>(self: Cause<A>): readonly [HashSet<Cause<A>>, List<Cause<A>>] {
-  return stepLoop(self, List.empty(), HashSet(), List.empty())
+function step<A>(self: Cause<A>): readonly [HashSet.HashSet<Cause<A>>, List.List<Cause<A>>] {
+  return stepLoop(self, List.empty(), HashSet.empty(), List.empty())
 }
 
 function flattenCauseLoop<A>(
-  causes: List<Cause<A>>,
-  flattened: List<HashSet<Cause<A>>>
-): List<HashSet<Cause<A>>> {
+  causes: List.List<Cause<A>>,
+  flattened: List.List<HashSet.HashSet<Cause<A>>>
+): List.List<HashSet.HashSet<Cause<A>>> {
   // eslint-disable-next-line no-constant-condition
   while (1) {
-    const [parallel, sequential] = causes.reduce(
-      [HashSet.empty<Cause<A>>(), List.empty<Cause<A>>()] as const,
-      ([parallel, sequential], cause) => {
-        const [set, seq] = step(cause)
-        return [parallel.union(set), sequential + seq]
-      }
+    const [parallel, sequential] = pipe(
+      causes,
+      List.reduce(
+        [HashSet.empty<Cause<A>>(), List.empty<Cause<A>>()] as const,
+        ([parallel, sequential], cause) => {
+          const [set, seq] = step(cause)
+          return [pipe(parallel, HashSet.union(set)), pipe(sequential, List.concat(seq))]
+        }
+      )
     )
-    const updated = parallel.size > 0 ? flattened.prepend(parallel) : flattened
-    if (sequential.length === 0) {
-      return updated.reverse
+    const updated = HashSet.size(parallel) > 0 ? pipe(flattened, List.prepend(parallel)) : flattened
+    if (List.isNil(sequential)) {
+      return List.reverse(updated)
     } else {
       causes = sequential
       flattened = updated
@@ -625,30 +692,29 @@ function flattenCauseLoop<A>(
  * causes that fail in parallel and sequential sets represent causes that fail
  * after each other.
  */
-function flattenCause<E>(self: Cause<E>): List<HashSet<Cause<E>>> {
-  return flattenCauseLoop(List(self), List.empty())
+function flattenCause<E>(self: Cause<E>): List.List<HashSet.HashSet<Cause<E>>> {
+  return flattenCauseLoop(List.of(self), List.empty())
 }
 
 function hashCode<E>(self: Cause<E>): number {
   const flat = flattenCause(self)
-  const size = flat.length
-  let head
-  if (size === 0) {
+  let head: HashSet.HashSet<unknown>
+  if (List.isNil(flat)) {
     return _emptyHash
-  } else if (size === 1 && (head = flat.unsafeHead!) && head.size === 1) {
-    return List.from(head).unsafeHead![Hash.sym]()
+  } else if (List.isNil(flat.tail) && (head = flat.head) && HashSet.size(head)) {
+    return List.cons(head, List.nil()).head[Equal.symbolHash]()
   } else {
-    return flat[Hash.sym]()
+    return flat[Equal.symbolHash]()
   }
 }
 
 function sym<E>(
-  f: (a: Cause<E>, b: Cause<E>) => Eval<boolean>
-): (a: Cause<E>, b: Cause<E>) => Eval<boolean> {
-  return (l, r) => f(l, r).zipWith(f(r, l), (a, b) => a || b)
+  f: (a: Cause<E>, b: Cause<E>) => SafeEval.SafeEval<boolean>
+): (a: Cause<E>, b: Cause<E>) => SafeEval.SafeEval<boolean> {
+  return (l, r) => pipe(f(l, r), SafeEval.zipWith(f(r, l), (a, b) => a || b))
 }
 
-function zero<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
+function zero<E>(self: Cause<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
   if (isThenType(self) && isEmptyType(self.right)) {
     realCause(self.left)
     return self.left.__equalsSafe(that)
@@ -665,11 +731,11 @@ function zero<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
     realCause(self.right)
     return self.right.__equalsSafe(that)
   }
-  return Eval.succeedNow(false)
+  return SafeEval.succeed(false)
 }
 
-function associativeThen<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
-  return Eval.gen(function*(_) {
+function associativeThen<E>(self: Cause<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
+  return SafeEval.gen(function*(_) {
     if (
       isThenType(self) &&
       isThenType(self.left) &&
@@ -697,8 +763,8 @@ function associativeThen<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
   })
 }
 
-function distributiveThen<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
-  return Eval.gen(function*(_) {
+function distributiveThen<E>(self: Cause<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
+  return SafeEval.gen(function*(_) {
     if (
       isThenType(self) &&
       isBothType(self.right) &&
@@ -761,8 +827,8 @@ function distributiveThen<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
   })
 }
 
-function associativeBoth<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
-  return Eval.gen(function*(_) {
+function associativeBoth<E>(self: Cause<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
+  return SafeEval.gen(function*(_) {
     if (
       isBothType(self) &&
       isBothType(self.left) &&
@@ -790,8 +856,8 @@ function associativeBoth<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
   })
 }
 
-function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
-  return Eval.gen(function*(_) {
+function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
+  return SafeEval.gen(function*(_) {
     if (
       isBothType(self) &&
       isThenType(self.left) &&
@@ -852,8 +918,8 @@ function distributiveBoth<E>(self: Cause<E>, that: Cause<E>): Eval<boolean> {
   })
 }
 
-function commutativeBoth<E>(self: Both<E>, that: Cause<E>): Eval<boolean> {
-  return Eval.gen(function*(_) {
+function commutativeBoth<E>(self: Both<E>, that: Cause<E>): SafeEval.SafeEval<boolean> {
+  return SafeEval.gen(function*(_) {
     if (isBothType(that)) {
       realCause(self.left)
       realCause(self.right)

@@ -1,15 +1,21 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Returns a version of this logger that only logs messages when the log level
  * satisfies the specified predicate.
  *
  * @tsplus static effect/core/io/Logger.Aspects filterLogLevel
  * @tsplus pipeable effect/core/io/Logger filterLogLevel
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterLogLevel(f: (logLevel: LogLevel) => boolean) {
-  return <Message, Output>(self: Logger<Message, Output>): Logger<Message, Maybe<Output>> => ({
+  return <Message, Output>(
+    self: Logger<Message, Output>
+  ): Logger<Message, Option.Option<Output>> => ({
     apply: (fiberId, logLevel, message, cause, context, spans, annotations) => {
       return f(logLevel)
-        ? Maybe.some(
+        ? Option.some(
           self.apply(
             fiberId,
             logLevel,
@@ -20,7 +26,7 @@ export function filterLogLevel(f: (logLevel: LogLevel) => boolean) {
             annotations
           )
         )
-        : Maybe.none
+        : Option.none
     }
   })
 }

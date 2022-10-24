@@ -1,10 +1,13 @@
 import { InternalTHub } from "@effect/core/stm/THub/operations/_internal/InternalTHub"
+import * as HashSet from "@fp-ts/data/HashSet"
 
 /**
  * Creates a hub with the specified strategy.
  *
  * @tsplus static effect/core/stm/THub.Ops make
  * @tsplus static effect/core/stm/THub.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<A>(
   requestedCapacity: number,

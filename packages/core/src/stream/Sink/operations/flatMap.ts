@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Sink.Aspects flatMap
  * @tsplus pipeable effect/core/stream/Sink flatMap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMap<R1, E1, In, In1 extends In, L, L1 extends L, Z, Z1>(
   f: (z: Z) => Sink<R1, E1, In1, L1, Z1>

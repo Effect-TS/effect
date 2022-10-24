@@ -9,6 +9,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects unionWith
  * @tsplus pipeable effect/core/io/Schedule unionWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function unionWith<State1, Env1, In1, Out2>(
   that: Schedule<State1, Env1, In1, Out2>,

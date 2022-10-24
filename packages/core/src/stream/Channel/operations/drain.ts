@@ -3,6 +3,8 @@
  * channel and ignores them, then terminates with the upstream result value.
  *
  * @tsplus getter effect/core/stream/Channel drain
+ * @category mutations
+ * @since 1.0.0
  */
 export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -13,5 +15,5 @@ export function drain<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
       (cause) => Channel.failCause(cause),
       Channel.succeed
     )
-  return self >> drainer
+  return self.pipeTo(drainer)
 }

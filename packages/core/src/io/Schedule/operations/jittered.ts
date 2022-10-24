@@ -1,4 +1,4 @@
-import { DurationInternal } from "@tsplus/stdlib/data/Duration"
+import * as Duration from "@fp-ts/data/Duration"
 
 /**
  * Returns a new schedule that randomly modifies the size of the intervals of
@@ -9,6 +9,8 @@ import { DurationInternal } from "@tsplus/stdlib/data/Duration"
  *
  * @tsplus static effect/core/io/Schedule.Aspects jittered
  * @tsplus pipeable effect/core/io/Schedule jittered
+ * @category constructors
+ * @since 1.0.0
  */
 export function jittered(min: number, max: number) {
   return <State, Env, In, Out>(
@@ -18,7 +20,7 @@ export function jittered(min: number, max: number) {
       Random.next.map((random) => {
         const d = duration.millis
         const jittered = d * min * (1 - random) + d * max * random
-        return new DurationInternal(jittered)
+        return Duration.millis(jittered)
       })
     )
 }
@@ -31,6 +33,8 @@ export function jittered(min: number, max: number) {
  * interval size`.
  *
  * @tsplus getter effect/core/io/Schedule jitteredDefault
+ * @category constructors
+ * @since 1.0.0
  */
 export function jitteredDefault<State, Env, In, Out>(
   self: Schedule<State, Env, In, Out>

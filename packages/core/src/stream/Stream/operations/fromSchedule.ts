@@ -4,9 +4,11 @@
  * schedule, continuing for as long as the schedule continues.
  *
  * @tsplus static effect/core/stream/Stream.Ops fromSchedule
+ * @category conversions
+ * @since 1.0.0
  */
 export function fromSchedule<S, R, A>(schedule: Schedule<S, R, unknown, A>): Stream<R, never, A> {
   return Stream.unwrap(
-    schedule.driver.map((driver) => Stream.repeatEffectMaybe(driver.next(undefined)))
+    schedule.driver.map((driver) => Stream.repeatEffectOption(driver.next(undefined)))
   )
 }

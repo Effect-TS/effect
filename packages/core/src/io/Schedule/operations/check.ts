@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects check
  * @tsplus pipeable effect/core/io/Schedule check
+ * @category mutations
+ * @since 1.0.0
  */
 export function check<In, Out>(test: (input: In, output: Out) => boolean) {
   return <State, Env>(self: Schedule<State, Env, In, Out>): Schedule<State, Env, In, Out> =>

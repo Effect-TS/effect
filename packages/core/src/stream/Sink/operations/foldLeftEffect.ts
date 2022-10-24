@@ -1,10 +1,12 @@
-import { constTrue } from "@tsplus/stdlib/data/Function"
+import { constTrue } from "@fp-ts/data/Function"
 
 /**
  * A sink that effectfully folds its inputs with the provided function and
  * initial state.
  *
  * @tsplus static effect/core/stream/Sink.Ops foldLeftEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldLeftEffect<R, E, In, S>(
   z: S,

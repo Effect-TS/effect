@@ -6,6 +6,8 @@ import { IOnSuccessAndFailure } from "@effect/core/io/Effect/definition/primitiv
  *
  * @tsplus static effect/core/io/Effect.Aspects foldCauseEffect
  * @tsplus pipeable effect/core/io/Effect foldCauseEffect
+ * @category folding
+ * @since 1.0.0
  */
 export function foldCauseEffect<E, A, R2, E2, A2, R3, E3, A3>(
   failure: (cause: Cause<E>) => Effect<R2, E2, A2>,

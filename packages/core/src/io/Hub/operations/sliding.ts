@@ -9,6 +9,8 @@ import { Strategy } from "@effect/core/io/Hub/operations/strategy"
  * For best performance use capacities that are powers of two.
  *
  * @tsplus static effect/core/io/Hub.Ops sliding
+ * @category constructors
+ * @since 1.0.0
  */
 export function sliding<A>(requestedCapacity: number): Effect<never, never, Hub<A>> {
   return Effect.sync(makeBounded<A>(requestedCapacity)).flatMap((atomicHub) =>

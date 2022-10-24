@@ -1,7 +1,25 @@
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const TPriorityQueueSym = Symbol.for("@effect/core/stm/TPriorityQueue")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type TPriorityQueueSym = typeof TPriorityQueueSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/stm/TPriorityQueue/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
 /**
@@ -12,6 +30,8 @@ export type _A = typeof _A
  * be taken from the queue is not guaranteed.
  *
  * @tsplus type effect/core/stm/TPriorityQueue
+ * @category model
+ * @since 1.0.0
  */
 export interface TPriorityQueue<A> {
   readonly [TPriorityQueueSym]: TPriorityQueueSym
@@ -20,6 +40,8 @@ export interface TPriorityQueue<A> {
 
 /**
  * @tsplus type effect/core/stm/TPriorityQueue.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface TPriorityQueueOps {
   $: TPriorityQueueAspects
@@ -30,5 +52,7 @@ export const TPriorityQueue: TPriorityQueueOps = {
 
 /**
  * @tsplus type effect/core/stm/TPriorityQueue.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface TPriorityQueueAspects {}

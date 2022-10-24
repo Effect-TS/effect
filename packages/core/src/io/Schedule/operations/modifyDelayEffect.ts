@@ -1,6 +1,7 @@
 import { Decision } from "@effect/core/io/Schedule/Decision"
 import { Interval } from "@effect/core/io/Schedule/Interval"
 import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/makeWithState"
+import type { Duration } from "@fp-ts/data/Duration"
 
 /**
  * Returns a new schedule that modifies the delay using the specified
@@ -8,6 +9,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects modifyDelayEffect
  * @tsplus pipeable effect/core/io/Schedule modifyDelayEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function modifyDelayEffect<Out, Env1>(
   f: (out: Out, duration: Duration) => Effect<Env1, never, Duration>

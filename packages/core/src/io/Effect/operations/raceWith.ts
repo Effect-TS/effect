@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects raceWith
  * @tsplus pipeable effect/core/io/Effect raceWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function raceWith<E, A, R1, E1, A1, R2, E2, A2, R3, E3, A3>(
   that: Effect<R1, E1, A1>,

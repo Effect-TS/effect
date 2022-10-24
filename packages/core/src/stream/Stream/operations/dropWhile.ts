@@ -2,6 +2,9 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import type { Predicate } from "@fp-ts/data/Predicate"
 
 /**
  * Creates a pipeline that drops elements while the specified predicate
@@ -9,6 +12,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects dropWhile
  * @tsplus pipeable effect/core/stream/Stream dropWhile
+ * @category mutations
+ * @since 1.0.0
  */
 export function dropWhile<A>(f: Predicate<A>) {
   return <R, E>(self: Stream<R, E, A>): Stream<R, E, A> => {
@@ -19,13 +24,13 @@ export function dropWhile<A>(f: Predicate<A>) {
 
 function dropWhileInternal<E, A>(
   f: Predicate<A>
-): Channel<never, E, Chunk<A>, unknown, E, Chunk<A>, unknown> {
+): Channel<never, E, Chunk.Chunk<A>, unknown, E, Chunk.Chunk<A>, unknown> {
   return Channel.readWith(
-    (chunk: Chunk<A>) => {
-      const out = chunk.dropWhile(f)
-      return out.isEmpty
+    (chunk: Chunk.Chunk<A>) => {
+      const out = pipe(chunk, Chunk.dropWhile(f))
+      return Chunk.isEmpty(out)
         ? dropWhileInternal<E, A>(f)
-        : Channel.write(out).flatMap(() => Channel.identity<E, Chunk<A>, unknown>())
+        : Channel.write(out).flatMap(() => Channel.identity<E, Chunk.Chunk<A>, unknown>())
     },
     (err) => Channel.fail(err),
     (out) => Channel.succeed(out)

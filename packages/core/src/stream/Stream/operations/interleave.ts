@@ -6,6 +6,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects interleave
  * @tsplus pipeable effect/core/stream/Stream interleave
+ * @category mutations
+ * @since 1.0.0
  */
 export function interleave<R2, E2, A2>(that: Stream<R2, E2, A2>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A | A2> =>

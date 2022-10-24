@@ -1,7 +1,8 @@
-import { Effect } from "@effect/core/io/Effect"
 import { _A, RefSym, SynchronizedSym } from "@effect/core/io/Ref/definition"
-import type { Maybe } from "@tsplus/stdlib/data/Maybe"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
+/** @internal */
 export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
   get [RefSym](): RefSym {
     return RefSym
@@ -28,17 +29,30 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
   getAndUpdateEffect<R, E>(this: this, f: (a: A) => Effect<R, E, A>): Effect<R, E, A> {
     return this.modifyEffect((v) => f(v).map((result) => [v, result] as const))
   }
-  getAndUpdateSomeEffect<R, E>(this: this, pf: (a: A) => Maybe<Effect<R, E, A>>): Effect<R, E, A> {
-    return this.modifyEffect(v =>
-      pf(v).getOrElse(Effect.succeed(v)).map((result) => [v, result] as const)
-    )
+  getAndUpdateSomeEffect<R, E>(
+    this: this,
+    pf: (a: A) => Option.Option<Effect<R, E, A>>
+  ): Effect<R, E, A> {
+    return this.modifyEffect(v => {
+      const result = pf(v)
+      switch (result._tag) {
+        case "None": {
+          return Effect.succeed([v, v] as const)
+        }
+        case "Some": {
+          return result.value.map((a) => [v, a] as const)
+        }
+      }
+    })
   }
   modifySomeEffect<R, E, B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<Effect<R, E, readonly [B, A]>>
+    pf: (a: A) => Option.Option<Effect<R, E, readonly [B, A]>>
   ): Effect<R, E, B> {
-    return this.modifyEffect(v => pf(v).getOrElse(Effect.succeed([fallback, v] as const)))
+    return this.modifyEffect(v =>
+      pipe(pf(v), Option.getOrElse(Effect.succeed([fallback, v] as const)))
+    )
   }
   updateEffect<R, E>(this: this, f: (a: A) => Effect<R, E, A>): Effect<R, E, void> {
     return this.modifyEffect(v => f(v).map(result => [undefined as void, result] as const))
@@ -46,15 +60,37 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
   updateAndGetEffect<R, E>(this: this, f: (a: A) => Effect<R, E, A>): Effect<R, E, A> {
     return this.modifyEffect(v => f(v).map(result => [result, result] as const))
   }
-  updateSomeEffect<R, E>(this: this, pf: (a: A) => Maybe<Effect<R, E, A>>): Effect<R, E, void> {
-    return this.modifyEffect(v =>
-      pf(v).getOrElse(Effect.succeed(v)).map(result => [undefined as void, result] as const)
-    )
+  updateSomeEffect<R, E>(
+    this: this,
+    pf: (a: A) => Option.Option<Effect<R, E, A>>
+  ): Effect<R, E, void> {
+    return this.modifyEffect(v => {
+      const result = pf(v)
+      switch (result._tag) {
+        case "None": {
+          return Effect.succeed([undefined, v] as const)
+        }
+        case "Some": {
+          return result.value.map((a) => [undefined, a] as const)
+        }
+      }
+    })
   }
-  updateSomeAndGetEffect<R, E>(this: this, pf: (a: A) => Maybe<Effect<R, E, A>>): Effect<R, E, A> {
-    return this.modifyEffect(v =>
-      pf(v).getOrElse(Effect.succeed(v)).map(result => [result, result] as const)
-    )
+  updateSomeAndGetEffect<R, E>(
+    this: this,
+    pf: (a: A) => Option.Option<Effect<R, E, A>>
+  ): Effect<R, E, A> {
+    return this.modifyEffect(v => {
+      const result = pf(v)
+      switch (result._tag) {
+        case "None": {
+          return Effect.succeed([v, v] as const)
+        }
+        case "Some": {
+          return result.value.map((a) => [a, a] as const)
+        }
+      }
+    })
   }
   get get(): Effect<never, never, A> {
     return this.ref.get
@@ -73,16 +109,16 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
   }
   getAndUpdateSome(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, A> {
-    return this.modify((v) => [v, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [v, pipe(pf(v), Option.getOrElse(v))] as const)
   }
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<readonly [B, A]>
+    pf: (a: A) => Option.Option<readonly [B, A]>
   ): Effect<never, never, B> {
-    return this.modify((v) => pf(v).getOrElse([fallback, v] as const))
+    return this.modify((v) => pipe(pf(v), Option.getOrElse([fallback, v] as const)))
   }
   update(this: this, f: (a: A) => A): Effect<never, never, void> {
     return this.modify((v) => [undefined as void, f(v)] as const)
@@ -96,16 +132,16 @@ export class SynchronizedInternal<A> implements Ref.Synchronized<A> {
   }
   updateSome(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, void> {
-    return this.modify((v) => [undefined as void, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [undefined as void, pipe(pf(v), Option.getOrElse(v))] as const)
   }
   updateSomeAndGet(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, A> {
     return this.modify(v => {
-      const result = pf(v).getOrElse(v)
+      const result = pipe(pf(v), Option.getOrElse(v))
       return [result, result] as const
     })
   }

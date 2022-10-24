@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects drainFork
  * @tsplus pipeable effect/core/stream/Stream drainFork
+ * @category mutations
+ * @since 1.0.0
  */
 export function drainFork<R2, E2, Z>(other: Stream<R2, E2, Z>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>

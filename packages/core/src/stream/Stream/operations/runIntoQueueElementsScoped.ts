@@ -1,4 +1,7 @@
 import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Like `Stream.runIntoQueue`, but provides the result as a scoped effect to
@@ -6,36 +9,42 @@ import { concreteStream } from "@effect/core/stream/Stream/operations/_internal/
  *
  * @tsplus static effect/core/stream/Stream.Aspects runIntoQueueElementsScoped
  * @tsplus pipeable effect/core/stream/Stream runIntoQueueElementsScoped
+ * @category destructors
+ * @since 1.0.0
  */
-export function runIntoQueueElementsScoped<E1, A>(queue: Enqueue<Exit<Maybe<E1>, A>>) {
+export function runIntoQueueElementsScoped<E1, A>(queue: Enqueue<Exit<Option.Option<E1>, A>>) {
   return <R, E extends E1>(self: Stream<R, E, A>): Effect<R | Scope, E | E1, void> => {
     const writer: Channel<
       R,
       E,
-      Chunk<A>,
+      Chunk.Chunk<A>,
       unknown,
       E,
-      Exit<Maybe<E | E1>, A>,
+      Exit<Option.Option<E | E1>, A>,
       unknown
     > = Channel.readWith(
-      (input: Chunk<A>) =>
-        input.reduce(
-          Channel.unit as Channel<
-            R,
-            E,
-            Chunk<A>,
-            unknown,
-            E,
-            Exit<Maybe<E | E1>, A>,
-            unknown
-          >,
-          (channel, a) => channel.flatMap(() => Channel.write(Exit.succeed(a)))
+      (input: Chunk.Chunk<A>) =>
+        pipe(
+          input,
+          Chunk.reduce(
+            Channel.unit as Channel<
+              R,
+              E,
+              Chunk.Chunk<A>,
+              unknown,
+              E,
+              Exit<Option.Option<E | E1>, A>,
+              unknown
+            >,
+            (channel, a) => channel.flatMap(() => Channel.write(Exit.succeed(a)))
+          )
         ).flatMap(() => writer),
-      (err) => Channel.write(Exit.fail(Maybe.some(err))),
-      () => Channel.write(Exit.fail(Maybe.none))
+      (err) => Channel.write(Exit.fail(Option.some(err))),
+      () => Channel.write(Exit.fail(Option.none))
     )
     concreteStream(self)
-    return (self.channel >> writer)
+    return self.channel
+      .pipeTo(writer)
       .mapOutEffect((take) => queue.offer(take))
       .drain
       .runScoped

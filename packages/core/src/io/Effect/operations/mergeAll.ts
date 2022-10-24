@@ -3,11 +3,16 @@
  * sequentially.
  *
  * @tsplus static effect/core/io/Effect.Ops mergeAll
+ * @category constructors
+ * @since 1.0.0
  */
 export function mergeAll<R, E, A, B>(
-  as: Collection<Effect<R, E, A>>,
+  as: Iterable<Effect<R, E, A>>,
   zero: B,
   f: (b: B, a: A) => B
 ): Effect<R, E, B> {
-  return as.reduce(Effect.succeed(zero) as Effect<R, E, B>, (acc, a) => acc.zipWith(a, f))
+  return Array.from(as).reduce(
+    (acc, a) => acc.zipWith(a, f),
+    Effect.succeed(zero) as Effect<R, E, B>
+  )
 }

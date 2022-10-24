@@ -5,6 +5,8 @@
  *
  * @tsplus getter effect/core/io/Fiber interruptFork
  * @tsplus getter effect/core/io/RuntimeFiber interruptFork
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptFork<E, A>(
   self: Fiber<E, A>

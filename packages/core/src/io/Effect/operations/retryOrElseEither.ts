@@ -1,4 +1,5 @@
 import type { Driver } from "@effect/core/io/Schedule"
+import * as Either from "@fp-ts/data/Either"
 
 /**
  * Retries with the specified schedule, until it fails, and then both the
@@ -7,14 +8,16 @@ import type { Driver } from "@effect/core/io/Schedule"
  *
  * @tsplus static effect/core/io/Effect.Aspects retryOrElseEither
  * @tsplus pipeable effect/core/io/Effect retryOrElseEither
+ * @category retrying
+ * @since 1.0.0
  */
 export function retryOrElseEither<S, R1, E extends E3, A1, R2, E2, A2, E3>(
   policy: Schedule<S, R1, E3, A1>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>
-): <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, Either<A2, A>> {
+): <R, A>(self: Effect<R, E, A>) => Effect<R | R1 | R2, E | E2, Either.Either<A2, A>> {
   return <R, A>(
     self: Effect<R, E, A>
-  ): Effect<R | R1 | R2, E | E2, Either<A2, A>> =>
+  ): Effect<R | R1 | R2, E | E2, Either.Either<A2, A>> =>
     policy.driver.flatMap((driver) => retryOrElseEitherLoop(self, driver, orElse))
 }
 
@@ -22,7 +25,7 @@ function retryOrElseEitherLoop<R, E, A, R1, A1, R2, E2, A2>(
   self: Effect<R, E, A>,
   driver: Driver<unknown, R1, E, A1>,
   orElse: (e: E, out: A1) => Effect<R2, E2, A2>
-): Effect<R | R1 | R2, E | E2, Either<A2, A>> {
+): Effect<R | R1 | R2, E | E2, Either.Either<A2, A>> {
   return self.map(Either.right).catchAll((e) =>
     driver.next(e).foldEffect(
       () => driver.last.orDie.flatMap((out) => orElse(e, out).map(Either.left)),

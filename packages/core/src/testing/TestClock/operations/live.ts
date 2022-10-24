@@ -7,6 +7,8 @@ import { WarningData } from "@effect/core/testing/TestClock/_internal/WarningDat
  * Constructs a new `TestClock`.
  *
  * @tsplus static effect/core/testing/TestClock.Ops live
+ * @category environment
+ * @since 1.0.0
  */
 export function live(data: TestClock.Data): Layer<Annotations | Live, never, TestClock> {
   return Layer.scoped(

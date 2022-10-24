@@ -1,3 +1,8 @@
+import type { NoSuchElementException } from "@effect/core/io/Cause"
+import * as Context from "@fp-ts/data/Context"
+import * as Either from "@fp-ts/data/Either"
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * inspired by https://github.com/tusharmath/qio/pull/22 (revised)
  */
@@ -28,7 +33,7 @@ function adapter(_: any, __?: any) {
       Effect.fromEither(_)
     )
   }
-  if (Maybe.isMaybe(_)) {
+  if (Option.isOption(_)) {
     if (__ && typeof __ === "function") {
       return new GenEffect(
         _._tag === "None" ? Effect.failSync(() => __()) : Effect.sync(() => _.value)
@@ -36,25 +41,25 @@ function adapter(_: any, __?: any) {
     }
     return new GenEffect(Effect.getOrFail(_))
   }
-  if (Tag.is(_)) {
+  if (Context.isTag(_)) {
     return new GenEffect(Effect.service(_))
   }
   return new GenEffect(_)
 }
 
 export interface Adapter {
-  <A>(_: Tag<A>): GenEffect<A, never, A>
-  <E, A>(_: Maybe<A>, onNone: () => E): GenEffect<
+  <A>(_: Context.Tag<A>): GenEffect<A, never, A>
+  <E, A>(_: Option.Option<A>, onNone: () => E): GenEffect<
     unknown,
     E,
     A
   >
-  <A>(_: Maybe<A>): GenEffect<
+  <A>(_: Option.Option<A>): GenEffect<
     unknown,
-    NoSuchElement,
+    NoSuchElementException,
     A
   >
-  <E, A>(_: Either<E, A>): GenEffect<never, E, A>
+  <E, A>(_: Either.Either<E, A>): GenEffect<never, E, A>
   <R, E, A>(_: Effect<R, E, A>): GenEffect<R, E, A>
 }
 

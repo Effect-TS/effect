@@ -3,12 +3,18 @@ import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subs
 import { unsafeCompleteDeferred } from "@effect/core/io/Hub/operations/_internal/unsafeCompleteDeferred"
 import { unsafeOfferAll } from "@effect/core/io/Hub/operations/_internal/unsafeOfferAll"
 import { unsafePollAllQueue } from "@effect/core/io/Hub/operations/_internal/unsafePollAllQueue"
-
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as MutableHashSet from "@fp-ts/data/mutable/MutableHashSet"
+import * as MutableQueue from "@fp-ts/data/mutable/MutableQueue"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
 /**
  * A `Strategy<A>` describes the protocol for how publishers and subscribers
  * will communicate with each other through the hub.
  *
  * @tsplus type effect/core/io/Hub/Strategy
+ * @category model
+ * @since 1.0.0
  */
 export interface Strategy<A> {
   /**
@@ -17,9 +23,14 @@ export interface Strategy<A> {
    */
   readonly handleSurplus: (
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
-    as: Collection<A>,
-    isShutdown: AtomicBoolean
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
+    as: Iterable<A>,
+    isShutdown: MutableRef.MutableRef<boolean>
   ) => Effect<never, never, boolean>
 
   /**
@@ -33,7 +44,12 @@ export interface Strategy<A> {
    */
   readonly unsafeOnHubEmptySpace: (
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ) => void
 
   /**
@@ -43,9 +59,14 @@ export interface Strategy<A> {
    */
   readonly unsafeCompletePollers: (
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
     subscription: Subscription<A>,
-    pollers: MutableQueue<Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred<never, A>>
   ) => void
 
   /**
@@ -54,12 +75,16 @@ export interface Strategy<A> {
    */
   readonly unsafeCompleteSubscribers: (
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [Subscription<A>, MutableQueue.MutableQueue<Deferred<never, A>>]
+    >
   ) => void
 }
 
 /**
  * @tsplus type effect/core/io/Hub/Strategy.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface StrategyOps {}
 export const Strategy: StrategyOps = {}
@@ -67,44 +92,59 @@ export const Strategy: StrategyOps = {}
 abstract class BaseStrategy<A> implements Strategy<A> {
   abstract handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
-    as: Collection<A>,
-    isShutdown: AtomicBoolean
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
+    as: Iterable<A>,
+    isShutdown: MutableRef.MutableRef<boolean>
   ): Effect<never, never, boolean>
 
   abstract shutdown: Effect<never, never, void>
 
   abstract unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ): void
 
   unsafeCompletePollers(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
     subscription: Subscription<A>,
-    pollers: MutableQueue<Deferred<never, A>>
+    pollers: MutableQueue.MutableQueue<Deferred<never, A>>
   ): void {
     let keepPolling = true
 
     while (keepPolling && !subscription.isEmpty) {
-      const poller = pollers.poll(EmptyMutableQueue)!
+      const poller = pipe(pollers, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
 
-      if (poller === EmptyMutableQueue) {
+      if (poller === MutableQueue.EmptyMutableQueue) {
         const subPollerPair = [subscription, pollers] as const
 
-        subscribers.remove(subPollerPair)
+        pipe(subscribers, MutableHashSet.remove(subPollerPair))
 
-        if (pollers.isEmpty) {
+        if (MutableQueue.isEmpty(pollers)) {
           keepPolling = false
         } else {
-          subscribers.add(subPollerPair)
+          pipe(subscribers, MutableHashSet.add(subPollerPair))
         }
       } else {
-        const pollResult = subscription.poll(EmptyMutableQueue)
+        const pollResult = subscription.poll(MutableQueue.EmptyMutableQueue)
 
-        if (pollResult == EmptyMutableQueue) {
-          unsafeOfferAll(pollers, unsafePollAllQueue(pollers).prepend(poller))
+        if (pollResult === MutableQueue.EmptyMutableQueue) {
+          unsafeOfferAll(pollers, pipe(unsafePollAllQueue(pollers), List.prepend(poller)))
         } else {
           unsafeCompleteDeferred(poller, pollResult)
           this.unsafeOnHubEmptySpace(hub, subscribers)
@@ -115,7 +155,12 @@ abstract class BaseStrategy<A> implements Strategy<A> {
 
   unsafeCompleteSubscribers(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ): void {
     for (
       const [subscription, pollers] of subscribers
@@ -131,16 +176,25 @@ abstract class BaseStrategy<A> implements Strategy<A> {
  * published to the hub while they are subscribed. However, it creates the
  * risk that a slow subscriber will slow down the rate at which messages
  * are published and received by other subscribers.
+ *
+ * @category model
+ * @since 1.0.0
  */
 export class BackPressure<A> extends BaseStrategy<A> {
-  publishers: MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> = MutableQueue
-    .unbounded()
+  publishers: MutableQueue.MutableQueue<readonly [A, Deferred<never, boolean>, boolean]> =
+    MutableQueue
+      .unbounded()
 
   handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
-    as: Collection<A>,
-    isShutdown: AtomicBoolean
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
+    as: Iterable<A>,
+    isShutdown: MutableRef.MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.withFiberRuntime((state) => {
       const deferred: Deferred<never, boolean> = Deferred.unsafeMake<never, boolean>(state.id)
@@ -150,34 +204,39 @@ export class BackPressure<A> extends BaseStrategy<A> {
         this.unsafeOnHubEmptySpace(hub, subscribers)
         this.unsafeCompleteSubscribers(hub, subscribers)
 
-        return isShutdown.get ? Effect.interrupt : deferred.await
+        return MutableRef.get(isShutdown) ? Effect.interrupt : deferred.await
       }).onInterrupt(() => Effect.sync(this.unsafeRemove(deferred)))
     })
   }
 
   get shutdown(): Effect<never, never, void> {
-    return Effect.Do()
-      .bind("fiberId", () => Effect.fiberId)
-      .bind("publishers", () => Effect.sync(unsafePollAllQueue(this.publishers)))
-      .tap(({ fiberId, publishers }) =>
-        Effect.forEachParDiscard(
-          publishers,
-          ([_, deferred, last]) => last ? deferred.interruptAs(fiberId) : Effect.unit
-        )
+    return Do(($) => {
+      const fiberId = $(Effect.fiberId)
+      const publishers = $(Effect.sync(unsafePollAllQueue(this.publishers)))
+      return $(
+        Effect.forEachParDiscard(publishers, ([_, deferred, last]) =>
+          last ?
+            deferred.interruptAs(fiberId) :
+            Effect.unit).unit
       )
-      .unit
+    })
   }
 
   unsafeOnHubEmptySpace(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ): void {
     let keepPolling = true
 
     while (keepPolling && !hub.isFull) {
-      const publisher = this.publishers.poll(EmptyMutableQueue)!
+      const publisher = pipe(this.publishers, MutableQueue.poll(MutableQueue.EmptyMutableQueue))
 
-      if (publisher === EmptyMutableQueue) {
+      if (publisher === MutableQueue.EmptyMutableQueue) {
         keepPolling = false
       } else {
         const published = hub.publish(publisher[0])
@@ -187,7 +246,7 @@ export class BackPressure<A> extends BaseStrategy<A> {
         } else if (!published) {
           unsafeOfferAll(
             this.publishers,
-            unsafePollAllQueue(this.publishers).prepend(publisher)
+            pipe(unsafePollAllQueue(this.publishers), List.prepend(publisher))
           )
         }
         this.unsafeCompleteSubscribers(hub, subscribers)
@@ -195,24 +254,24 @@ export class BackPressure<A> extends BaseStrategy<A> {
     }
   }
 
-  private unsafeOffer(as: Collection<A>, deferred: Deferred<never, boolean>): void {
+  private unsafeOffer(as: Iterable<A>, deferred: Deferred<never, boolean>): void {
     const it = as[Symbol.iterator]()
     let curr = it.next()
 
     if (!curr.done) {
       let next
       while ((next = it.next()) && !next.done) {
-        this.publishers.offer([curr.value, deferred, false] as const)
+        pipe(this.publishers, MutableQueue.offer([curr.value, deferred, false as boolean] as const))
         curr = next
       }
-      this.publishers.offer([curr.value, deferred, true] as const)
+      pipe(this.publishers, MutableQueue.offer([curr.value, deferred, true as boolean] as const))
     }
   }
 
   private unsafeRemove(deferred: Deferred<never, boolean>): void {
     unsafeOfferAll(
       this.publishers,
-      unsafePollAllQueue(this.publishers).filter(([_, a]) => a !== deferred)
+      pipe(unsafePollAllQueue(this.publishers), List.filter(([_, a]) => a !== deferred))
     )
   }
 }
@@ -224,13 +283,21 @@ export class BackPressure<A> extends BaseStrategy<A> {
  * subscriber will slow down the rate at which messages are received by
  * other subscribers and that subscribers may not receive all messages
  * published to the hub while they are subscribed.
+ *
+ * @category model
+ * @since 1.0.0
  */
 export class Dropping<A> extends BaseStrategy<A> {
   handleSurplus(
     _hub: AtomicHub<A>,
-    _subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
-    _as: Collection<A>,
-    _isShutdown: AtomicBoolean
+    _subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
+    _as: Iterable<A>,
+    _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.succeed(false)
   }
@@ -239,7 +306,12 @@ export class Dropping<A> extends BaseStrategy<A> {
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
-    _subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    _subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ): void {
     //
   }
@@ -251,9 +323,12 @@ export class Dropping<A> extends BaseStrategy<A> {
  * the rate at which messages are published and received by other
  * subscribers. However, it creates the risk that a slow subscriber will
  * not receive some messages published to the hub while it is subscribed.
+ *
+ * @category model
+ * @since 1.0.0
  */
 export class Sliding<A> extends BaseStrategy<A> {
-  private unsafeSlidingPublish(hub: AtomicHub<A>, as: Collection<A>): void {
+  private unsafeSlidingPublish(hub: AtomicHub<A>, as: Iterable<A>): void {
     const it = as[Symbol.iterator]()
     let next = it.next()
 
@@ -274,9 +349,14 @@ export class Sliding<A> extends BaseStrategy<A> {
 
   handleSurplus(
     hub: AtomicHub<A>,
-    subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>,
-    as: Collection<A>,
-    _isShutdown: AtomicBoolean
+    subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >,
+    as: Iterable<A>,
+    _isShutdown: MutableRef.MutableRef<boolean>
   ): Effect<never, never, boolean> {
     return Effect.sync(() => {
       this.unsafeSlidingPublish(hub, as)
@@ -289,7 +369,12 @@ export class Sliding<A> extends BaseStrategy<A> {
 
   unsafeOnHubEmptySpace(
     _hub: AtomicHub<A>,
-    _subscribers: MutableHashSet<readonly [Subscription<A>, MutableQueue<Deferred<never, A>>]>
+    _subscribers: MutableHashSet.MutableHashSet<
+      readonly [
+        Subscription<A>,
+        MutableQueue.MutableQueue<Deferred<never, A>>
+      ]
+    >
   ): void {
     //
   }
@@ -297,6 +382,8 @@ export class Sliding<A> extends BaseStrategy<A> {
 
 /**
  * @tsplus static effect/core/io/Hub/Strategy.Ops BackPressure
+ * @category constructors
+ * @since 1.0.0
  */
 export function backPressureStrategy<A>(): Strategy<A> {
   return new BackPressure<A>()
@@ -304,6 +391,8 @@ export function backPressureStrategy<A>(): Strategy<A> {
 
 /**
  * @tsplus static effect/core/io/Hub/Strategy.Ops Dropping
+ * @category constructors
+ * @since 1.0.0
  */
 export function droppingStrategy<A>(): Strategy<A> {
   return new Dropping<A>()
@@ -311,6 +400,8 @@ export function droppingStrategy<A>(): Strategy<A> {
 
 /**
  * @tsplus static effect/core/io/Hub/Strategy.Ops Sliding
+ * @category constructors
+ * @since 1.0.0
  */
 export function slidingStrategy<A>(): Strategy<A> {
   return new Sliding<A>()

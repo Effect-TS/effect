@@ -3,6 +3,8 @@
  * satisfied, otherwise returns an empty stream.
  *
  * @tsplus static effect/core/stream/Stream.Ops whenEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function whenEffect<R, E, R1, E1, A>(
   b: Effect<R, E, boolean>,

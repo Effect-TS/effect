@@ -1,15 +1,25 @@
 import { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
 import { StagedScheduler } from "@effect/core/support/Scheduler"
-import { constVoid } from "@tsplus/stdlib/data/Function"
+import type { Context } from "@fp-ts/data/Context"
+import { constVoid, identity } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class AsyncFiber<E, A> {
   readonly _tag = "AsyncFiber"
   constructor(readonly fiber: FiberRuntime<E, A>) {}
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class Runtime<R> {
   constructor(
-    readonly environment: Env<R>,
+    readonly environment: Context<R>,
     readonly runtimeFlags: RuntimeFlags,
     readonly fiberRefs: FiberRefs
   ) {}
@@ -21,7 +31,7 @@ export class Runtime<R> {
       .updateAs(
         fiberId,
         FiberRef.currentEnvironment,
-        this.environment as Env<never>
+        this.environment as Context<never>
       )
 
     const context = new FiberRuntime<E, A>(
@@ -33,7 +43,7 @@ export class Runtime<R> {
     const supervisor = context.getSupervisor
 
     if (supervisor != Supervisor.none) {
-      supervisor.onStart(this.environment, effect, Maybe.none, context)
+      supervisor.onStart(this.environment, effect, Option.none, context)
 
       context.addObserver(exit => supervisor.onEnd(exit, context))
     }
@@ -55,7 +65,7 @@ export class Runtime<R> {
       .updateAs(
         fiberId,
         FiberRef.currentEnvironment,
-        this.environment as Env<never>
+        this.environment as Context<never>
       )
 
     const context = new FiberRuntime<E, A>(
@@ -67,7 +77,7 @@ export class Runtime<R> {
     const supervisor = context.getSupervisor
 
     if (supervisor != Supervisor.none) {
-      supervisor.onStart(this.environment, effect, Maybe.none, context)
+      supervisor.onStart(this.environment, effect, Option.none, context)
 
       context.addObserver(exit => supervisor.onEnd(exit, context))
     }
@@ -105,7 +115,7 @@ export class Runtime<R> {
       .updateAs(
         fiberId,
         FiberRef.currentEnvironment,
-        this.environment as Env<never>
+        this.environment as Context<never>
       )
       .updateAs(
         fiberId,
@@ -122,7 +132,7 @@ export class Runtime<R> {
     const supervisor = context.getSupervisor
 
     if (supervisor != Supervisor.none) {
-      supervisor.onStart(this.environment, effect, Maybe.none, context)
+      supervisor.onStart(this.environment, effect, Option.none, context)
 
       context.addObserver(exit => supervisor.onEnd(exit, context))
     }

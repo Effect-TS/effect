@@ -4,9 +4,11 @@
  * in cases where the results of the forked fibers are not needed.
  *
  * @tsplus static effect/core/io/Effect.Ops forkAllDiscard
+ * @category forking
+ * @since 1.0.0
  */
 export function forkAllDiscard<R, E, A>(
-  effects: Collection<Effect<R, E, A>>
+  effects: Iterable<Effect<R, E, A>>
 ): Effect<R, never, void> {
   return Effect.forEachDiscard(effects, (effect) => effect.fork)
 }

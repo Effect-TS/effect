@@ -4,6 +4,8 @@ import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operatio
  * Computes the number of write locks held by fibers.
  *
  * @tsplus getter effect/core/stm/TReentrantLock writeLocks
+ * @category getters
+ * @since 1.0.0
  */
 export function writeLocks(self: TReentrantLock): USTM<number> {
   concreteTReentrantLock(self)

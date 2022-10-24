@@ -15,6 +15,8 @@ import {
  * NOTE: `minute` parameter is validated lazily. Must be in range 0...59.
  *
  * @tsplus static effect/core/io/Schedule.Ops minuteOfHour
+ * @category constructors
+ * @since 1.0.0
  */
 export function minuteOfHour(
   minute: number

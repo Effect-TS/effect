@@ -1,6 +1,9 @@
 import type { AtomicHub } from "@effect/core/io/Hub/operations/_internal/AtomicHub"
 import type { Subscription } from "@effect/core/io/Hub/operations/_internal/Subscription"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
 
+/** @internal */
 export class BoundedHubArb<A> implements AtomicHub<A> {
   array: Array<A>
   publisherIndex = 0
@@ -40,9 +43,9 @@ export class BoundedHubArb<A> implements AtomicHub<A> {
     return true
   }
 
-  publishAll(as: Collection<A>): Chunk<A> {
-    const asArray = Chunk.from(as)
-    const n = asArray.size
+  publishAll(as: Iterable<A>): Chunk.Chunk<A> {
+    const asArray = Chunk.fromIterable(as)
+    const n = asArray.length
     const size = this.publisherIndex - this.subscribersIndex
     const available = this.capacity - size
     const forHub = Math.min(n, available)
@@ -55,14 +58,14 @@ export class BoundedHubArb<A> implements AtomicHub<A> {
     const publishAllIndex = this.publisherIndex + forHub
 
     while (this.publisherIndex !== publishAllIndex) {
-      const a = asArray.unsafeGet(iteratorIndex++)
+      const a = pipe(asArray, Chunk.unsafeGet(iteratorIndex++))
       const index = this.publisherIndex % this.capacity
       this.array[index] = a
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
     }
 
-    return asArray.drop(iteratorIndex - 1)
+    return pipe(asArray, Chunk.drop(iteratorIndex - 1))
   }
 
   get size(): number {
@@ -127,9 +130,9 @@ class BoundedHubArbSubscription<A> implements Subscription<A> {
     return default_
   }
 
-  pollUpTo(n: number): Chunk<A> {
+  pollUpTo(n: number): Chunk.Chunk<A> {
     if (this.unsubscribed) {
-      return Chunk.empty()
+      return Chunk.empty
     }
 
     this.subscriberIndex = Math.max(this.subscriberIndex, this.self.subscribersIndex)
@@ -137,10 +140,10 @@ class BoundedHubArbSubscription<A> implements Subscription<A> {
     const toPoll = Math.min(n, size)
 
     if (toPoll <= 0) {
-      return Chunk.empty()
+      return Chunk.empty
     }
 
-    const builder = Chunk.builder<A>()
+    const builder: Array<A> = []
     const pollUpToIndex = this.subscriberIndex + toPoll
 
     while (this.subscriberIndex !== pollUpToIndex) {
@@ -154,11 +157,11 @@ class BoundedHubArbSubscription<A> implements Subscription<A> {
         this.self.subscribersIndex += 1
       }
 
-      builder.append(a)
+      builder.push(a)
       this.subscriberIndex += 1
     }
 
-    return builder.build()
+    return Chunk.fromIterable(builder)
   }
 
   get size() {

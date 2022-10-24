@@ -1,3 +1,5 @@
+import * as Either from "@fp-ts/data/Either"
+
 // `setTimeout` is limited to take delays which are 32-bit values
 const MAX_SET_TIMEOUT_VALUE = 2 ** 31 - 1
 
@@ -6,6 +8,8 @@ const MAX_SET_TIMEOUT_VALUE = 2 ** 31 - 1
  * `while(true) {}`, only without the wasted CPU cycles.
  *
  * @tsplus static effect/core/io/Effect.Ops never
+ * @category constructors
+ * @since 1.0.0
  */
 export const never: Effect<never, never, never> = Effect.asyncInterrupt<never, never, never>(() => {
   const interval = setInterval(() => {

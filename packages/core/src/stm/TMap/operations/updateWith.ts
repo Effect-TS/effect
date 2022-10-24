@@ -1,3 +1,5 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Updates the mapping for the specified key with the specified function,
  * which takes the current value of the key as an input, if it exists, and
@@ -7,10 +9,19 @@
  *
  * @tsplus static effect/core/stm/TMap.Aspects updateWith
  * @tsplus pipeable effect/core/stm/TMap updateWith
+ * @category mutations
+ * @since 1.0.0
  */
-export function updateWith<K, V>(k: K, f: (v: Maybe<V>) => Maybe<V>) {
-  return (self: TMap<K, V>): STM<never, never, Maybe<V>> =>
-    self.get(k).flatMap((_) =>
-      f(_).fold(self.delete(k).as(Maybe.empty<V>()), (v) => self.put(k, v).as(Maybe.some(v)))
-    )
+export function updateWith<K, V>(k: K, f: (v: Option.Option<V>) => Option.Option<V>) {
+  return (self: TMap<K, V>): STM<never, never, Option.Option<V>> =>
+    self.get(k).flatMap((option) => {
+      switch (option._tag) {
+        case "None": {
+          return self.delete(k).as(Option.none)
+        }
+        case "Some": {
+          return self.put(k, option.value).as(Option.some(option.value))
+        }
+      }
+    })
 }

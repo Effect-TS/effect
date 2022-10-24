@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapBoth
  * @tsplus pipeable effect/core/stream/Stream mapBoth
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapBoth<E, E2, A, A2>(
   f: (e: E) => E2,

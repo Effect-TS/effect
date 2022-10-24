@@ -1,5 +1,9 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * @tsplus static effect/core/testing/Sample.Ops shrinkFractional
+ * @category constructors
+ * @since 1.0.0
  */
 export function shrinkFractional(smallest: number) {
   return (a: number): Sample<never, number> =>
@@ -8,11 +12,11 @@ export function shrinkFractional(smallest: number) {
       Stream.unfold(smallest, (min) => {
         const mid = min + (max - min) / 2
         if (mid === max) {
-          return Maybe.none
+          return Option.none
         } else if (Math.abs(max - mid) < 0.001) {
-          return Maybe.some([min, max])
+          return Option.some([min, max])
         } else {
-          return Maybe.some([mid, mid])
+          return Option.some([mid, mid])
         }
       })
     ])

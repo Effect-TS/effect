@@ -1,5 +1,6 @@
 import { CachedURI } from "@effect/core/io/Cached/definition"
 
+/** @internal */
 export class CachedInternal<Error, Resource> implements Cached<Error, Resource> {
   readonly [CachedURI] = {
     _Error: (_: never) => _,

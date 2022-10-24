@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects map
  * @tsplus pipeable effect/core/stream/Channel map
+ * @category mapping
+ * @since 1.0.0
  */
 export function map<OutDone, OutDone2>(f: (out: OutDone) => OutDone2) {
   return <Env, InErr, InElem, InDone, OutErr, OutElem>(

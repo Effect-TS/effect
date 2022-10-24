@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects bind
  * @tsplus pipeable effect/core/io/Effect bind
+ * @category do
+ * @since 1.0.0
  */
 export function bind<N extends string, K, R2, E2, A>(
   tag: Exclude<N, keyof K>,
@@ -63,6 +65,8 @@ export function bindValue<N extends string, K, A>(tag: Exclude<N, keyof K>, f: (
 
 /**
  * @tsplus static effect/core/io/Effect.Ops Do
+ * @category do
+ * @since 1.0.0
  */
 export function Do(): Effect<never, never, {}> {
   return Effect.succeed({})

@@ -1,8 +1,12 @@
+import * as Option from "@fp-ts/data/Option"
+
 /**
  * Maps the success value of this effect to an optional value.
  *
  * @tsplus getter effect/core/io/Effect asSome
+ * @category mapping
+ * @since 1.0.0
  */
-export function asSome<R, E, A>(self: Effect<R, E, A>): Effect<R, E, Maybe<A>> {
-  return self.map(Maybe.some)
+export function asSome<R, E, A>(self: Effect<R, E, A>): Effect<R, E, Option.Option<A>> {
+  return self.map(Option.some)
 }

@@ -3,6 +3,8 @@
  * failures while `Exit.Success` values translate to stream elements.
  *
  * @tsplus getter effect/core/stream/Stream flattenExit
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flattenExit<R, E, E2, A>(
   self: Stream<R, E, Exit<E2, A>>

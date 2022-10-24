@@ -7,6 +7,8 @@ import {
  * Creates a sink produced from a scoped effect.
  *
  * @tsplus static effect/core/stream/Sink.Ops unwrapScoped
+ * @category constructors
+ * @since 1.0.0
  */
 export function unwrapScoped<R, E, In, L, Z>(
   effect: Effect<R | Scope, E, Sink<R, E, In, L, Z>>

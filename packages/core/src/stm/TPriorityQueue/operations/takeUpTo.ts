@@ -1,37 +1,42 @@
 import { concreteTPriorityQueue } from "@effect/core/stm/TPriorityQueue/operations/_internal/InternalTPriorityQueue"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import * as SortedMap from "@fp-ts/data/SortedMap"
 
 /**
  * Takes up to the specified maximum number of elements from the queue.
  *
  * @tsplus static effect/core/stm/TPriorityQueue.Aspects takeUpTo
  * @tsplus pipeable effect/core/stm/TPriorityQueue takeUpTo
+ * @category mutations
+ * @since 1.0.0
  */
 export function takeUpTo(n: number) {
-  return <A>(self: TPriorityQueue<A>): STM<never, never, Chunk<A>> => {
+  return <A>(self: TPriorityQueue<A>): STM<never, never, Chunk.Chunk<A>> => {
     concreteTPriorityQueue(self)
     return self.map.modify((map) => {
-      const entries = map.entries
-      const builder = Chunk.builder<Chunk<A>>()
+      const entries = SortedMap.entries(map)
+      const builder: Array<Chunk.Chunk<A>> = []
       let updated = map
-      let e: IteratorResult<readonly [A, Chunk<A>]>
+      let e: IteratorResult<readonly [A, Chunk.Chunk<A>]>
       let i = 0
 
       while (!(e = entries.next()).done && i < n) {
         const [a, as] = e.value
-        const [l, r] = as.splitAt(n - i)
+        const [l, r] = pipe(as, Chunk.splitAt(n - i))
 
-        builder.append(l)
+        builder.push(l)
 
-        if (r.isEmpty) {
-          updated = map.remove(a)
+        if (Chunk.isEmpty(r)) {
+          updated = pipe(map, SortedMap.remove(a))
         } else {
-          updated = map.set(a, r)
+          updated = pipe(map, SortedMap.set(a, r))
         }
 
-        i += l.size
+        i += l.length
       }
 
-      return [builder.build().flatten, updated] as const
+      return [Chunk.flatten(Chunk.fromIterable(builder)), updated] as const
     })
   }
 }

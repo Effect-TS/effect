@@ -8,6 +8,8 @@ import { CachedInternal } from "@effect/core/io/Cached/operations/_internal/Cach
  * constructor.
  *
  * @tsplus static effect/core/io/Cached.Ops manual
+ * @category constructors
+ * @since 1.0.0
  */
 export function manual<R, Error, Resource>(
   acquire: Effect<R, Error, Resource>

@@ -1,4 +1,4 @@
-import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Returns a new channel, which is the same as this one, except that all the
@@ -10,6 +10,8 @@ import type { ChunkBuilder } from "@tsplus/stdlib/collections/Chunk"
  * channels that output a large or unbounded number of values.
  *
  * @tsplus getter effect/core/stream/Channel doneCollect
+ * @category mutations
+ * @since 1.0.0
  */
 export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -20,23 +22,23 @@ export function doneCollect<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone
   InDone,
   OutErr,
   never,
-  readonly [Chunk<OutElem>, OutDone]
+  readonly [Chunk.Chunk<OutElem>, OutDone]
 > {
   return Channel.suspend(() => {
-    const builder = Chunk.builder<OutElem>()
-    return (self >> reader<Env, OutErr, OutElem, OutDone>(builder)).flatMap((z) =>
-      Channel.sync([builder.build(), z])
+    const builder: Array<OutElem> = []
+    return (self.pipeTo(reader<Env, OutErr, OutElem, OutDone>(builder))).flatMap((z) =>
+      Channel.sync([Chunk.fromIterable(builder), z])
     )
   })
 }
 
 function reader<Env, OutErr, OutElem, OutDone>(
-  builder: ChunkBuilder<OutElem>
+  builder: Array<OutElem>
 ): Channel<Env, OutErr, OutElem, OutDone, OutErr, never, OutDone> {
   return Channel.readWith(
     (outElem) =>
       Channel.sync(() => {
-        builder.append(outElem)
+        builder.push(outElem)
       }).flatMap(() => reader<Env, OutErr, OutElem, OutDone>(builder)),
     (outErr) => Channel.fail(outErr),
     (outDone) => Channel.succeed(outDone)

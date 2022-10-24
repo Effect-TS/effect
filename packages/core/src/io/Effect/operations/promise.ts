@@ -3,6 +3,8 @@
  * its result, errors will be handled using `onReject`.
  *
  * @tsplus static effect/core/io/Effect.Ops tryCatchPromise
+ * @category constructors
+ * @since 1.0.0
  */
 export function tryCatchPromise<E, A>(
   promise: LazyArg<Promise<A>>,

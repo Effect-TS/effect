@@ -1,10 +1,13 @@
 import { SinkInternal } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * A sink that executes the provided effectful function for every element fed
  * to it.
  *
  * @tsplus static effect/core/stream/Sink.Ops forEach
+ * @category traversing
+ * @since 1.0.0
  */
 export function forEach<R, E, In, Z>(
   f: (input: In) => Effect<R, E, Z>

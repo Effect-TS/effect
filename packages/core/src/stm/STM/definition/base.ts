@@ -1,8 +1,21 @@
 import type { ICommit } from "@effect/core/io/Effect/definition"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type USTM<A> = STM<never, never, A>
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const STMTypeId = Symbol.for("@effect/core/stm/STM")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMTypeId = typeof STMTypeId
 
 /**
@@ -40,6 +53,8 @@ export type STMTypeId = typeof STMTypeId
  * synchronization of Fibers and transactional data-types can be quite useful.
  *
  * @tsplus type effect/core/stm/STM
+ * @category model
+ * @since 1.0.0
  */
 export interface STM<R, E, A> extends ICommit<R, E, A> {
   readonly [STMTypeId]: {
@@ -51,6 +66,8 @@ export interface STM<R, E, A> extends ICommit<R, E, A> {
 
 /**
  * @tsplus type effect/core/stm/STM.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface STMOps {
   $: STMAspects
@@ -61,6 +78,8 @@ export const STM: STMOps = {
 
 /**
  * @tsplus type effect/core/stm/STM.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface STMAspects {}
 

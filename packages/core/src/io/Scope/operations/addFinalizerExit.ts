@@ -7,6 +7,8 @@ import { concreteScope } from "@effect/core/io/Scope/operations/_internal/ScopeI
  * @tsplus static effect/core/io/Scope.Aspects addFinalizerExit
  * @tsplus pipeable effect/core/io/Scope addFinalizerExit
  * @tsplus pipeable effect/core/io/Scope/Closeable addFinalizerExit
+ * @category mutations
+ * @since 1.0.0
  */
 export function addFinalizerExit(finalizer: Scope.Finalizer) {
   return (self: Scope): Effect<never, never, void> => {

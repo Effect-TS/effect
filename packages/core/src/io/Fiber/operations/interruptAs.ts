@@ -4,6 +4,8 @@ import { realFiber } from "@effect/core/io/Fiber/definition"
  * A fiber that is already interrupted.
  *
  * @tsplus static effect/core/io/Fiber.Ops interruptAs
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptAs(fiberId: FiberId): Fiber<never, never> {
   return Fiber.done(Exit.interrupt(fiberId))
@@ -18,6 +20,8 @@ export function interruptAs(fiberId: FiberId): Fiber<never, never> {
  * @tsplus static effect/core/io/RuntimeFiber.Aspects interruptAs
  * @tsplus pipeable effect/core/io/Fiber interruptAs
  * @tsplus pipeable effect/core/io/RuntimeFiber interruptAs
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptAsNow(fiberId: FiberId) {
   return <E, A>(self: Fiber<E, A>): Effect<never, never, Exit<E, A>> => {
@@ -35,6 +39,8 @@ export function interruptAsNow(fiberId: FiberId) {
  * @tsplus static effect/core/io/RuntimeFiber.Aspects interruptAsFork
  * @tsplus pipeable effect/core/io/Fiber interruptAsFork
  * @tsplus pipeable effect/core/io/RuntimeFiber interruptAsFork
+ * @category interruption
+ * @since 1.0.0
  */
 export function interruptAsFork(fiberId: FiberId) {
   return <E, A>(self: Fiber<E, A>): Effect<never, never, void> => {

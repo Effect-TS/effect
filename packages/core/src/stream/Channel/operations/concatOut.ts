@@ -4,6 +4,8 @@
  * that output other channels.
  *
  * @tsplus getter effect/core/stream/Channel concatOut
+ * @category mutations
+ * @since 1.0.0
  */
 export function concatOut<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
   self: Channel<

@@ -5,6 +5,8 @@ import { ILayerSuspend } from "@effect/core/io/Layer/definition"
  * creating layers that refer to themselves.
  *
  * @tsplus static effect/core/io/Layer.Ops suspend
+ * @category constructors
+ * @since 1.0.0
  */
 export function suspend<RIn, E, ROut>(
   f: LazyArg<Layer<RIn, E, ROut>>

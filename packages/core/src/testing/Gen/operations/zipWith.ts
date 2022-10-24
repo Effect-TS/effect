@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/testing/Gen.Aspects zipWith
  * @tsplus pipeable effect/core/testing/Gen zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<R2, B, A, C>(that: Gen<R2, B>, f: (a: A, b: B) => C) {
   return <R>(self: Gen<R, A>): Gen<R | R2, C> =>

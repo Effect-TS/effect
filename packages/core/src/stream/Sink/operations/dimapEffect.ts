@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/stream/Sink.Aspects dimapEffect
  * @tsplus pipeable effect/core/stream/Sink dimapEffect
+ * @category mapping
+ * @since 1.0.0
  */
 export function dimapEffect<R2, E2, In, In1, Z, Z1>(
   f: (input: In1) => Effect<R2, E2, In>,

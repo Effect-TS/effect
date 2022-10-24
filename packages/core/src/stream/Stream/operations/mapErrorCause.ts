@@ -8,6 +8,8 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapErrorCause
  * @tsplus pipeable effect/core/stream/Stream mapErrorCause
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapErrorCause<E, E2>(
   f: (e: Cause<E>) => Cause<E2>

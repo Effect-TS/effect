@@ -1,4 +1,13 @@
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const ScopedRefURI = Symbol.for("@effect/core/io/ScopedRef")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type ScopedRefURI = typeof ScopedRefURI
 
 /**
@@ -9,6 +18,8 @@ export type ScopedRefURI = typeof ScopedRefURI
  * for the old value whenever a new value is obtained.
  *
  * @tsplus type effect/core/io/ScopedRef
+ * @category model
+ * @since 1.0.0
  */
 export interface ScopedRef<A> {
   readonly [ScopedRefURI]: {
@@ -39,6 +50,8 @@ export interface ScopedRef<A> {
 
 /**
  * @tsplus type effect/core/io/ScopedRef.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface ScopedRefOps {}
 export const ScopedRef: ScopedRefOps = {}

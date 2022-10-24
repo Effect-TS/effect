@@ -4,6 +4,8 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
  * Checks whether the hub is shut down.
  *
  * @tsplus getter effect/core/stm/THub isShutdown
+ * @category getters
+ * @since 1.0.0
  */
 export function isShutdown<A>(self: THub<A>): USTM<boolean> {
   concreteTHub(self)

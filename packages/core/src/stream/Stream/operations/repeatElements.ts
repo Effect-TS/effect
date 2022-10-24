@@ -7,6 +7,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects repeatElements
  * @tsplus pipeable effect/core/stream/Stream repeatElements
+ * @category repetition
+ * @since 1.0.0
  */
 export function repeatElements<S, R2, B>(schedule: Schedule<S, R2, unknown, B>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R2, E, A> =>

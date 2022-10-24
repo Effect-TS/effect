@@ -2,6 +2,8 @@
  * Reads an input and continue exposing both error and completion.
  *
  * @tsplus static effect/core/stream/Channel.Ops readWith
+ * @category constructors
+ * @since 1.0.0
  */
 export function readWith<
   Env,
@@ -36,7 +38,17 @@ export function readWith<
 > {
   return Channel.readWithCause(
     input,
-    (cause) => cause.failureOrCause.fold(error, (cause) => Channel.failCause(cause)),
+    (cause) => {
+      const either = cause.failureOrCause
+      switch (either._tag) {
+        case "Left": {
+          return error(either.left)
+        }
+        case "Right": {
+          return Channel.failCause(either.right)
+        }
+      }
+    },
     done
   )
 }

@@ -4,6 +4,8 @@
  * through this schedule.
  *
  * @tsplus getter effect/core/io/Schedule second
+ * @category mutations
+ * @since 1.0.0
  */
 export function second<State, Env, In, Out, X>(
   self: Schedule<State, Env, In, Out>

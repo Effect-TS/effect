@@ -1,4 +1,6 @@
 import { Stackless } from "@effect/core/io/Cause/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Remove all `Die` causes that the specified partial function is defined at,
@@ -7,38 +9,44 @@ import { Stackless } from "@effect/core/io/Cause/definition"
  *
  * @tsplus static effect/core/io/Cause.Aspects stripSomeDefects
  * @tsplus pipeable effect/core/io/Cause stripSomeDefects
+ * @category mutations
+ * @since 1.0.0
  */
 export function stripSomeDefects(pf: (defect: unknown) => unknown) {
-  return <E>(cause: Cause<E>): Maybe<Cause<E>> =>
-    cause.fold<E, Maybe<Cause<E>>>(
-      Maybe.some(Cause.empty),
-      (e) => Maybe.some(Cause.fail(e)),
-      (t) => pf(t) ? Maybe.none : Maybe.some(Cause.die(t)),
-      (fiberId) => Maybe.some(Cause.interrupt(fiberId)),
+  return <E>(cause: Cause<E>): Option.Option<Cause<E>> =>
+    cause.fold<E, Option.Option<Cause<E>>>(
+      Option.some(Cause.empty),
+      (e) => Option.some(Cause.fail(e)),
+      (t) => pf(t) ? Option.none : Option.some(Cause.die(t)),
+      (fiberId) => Option.some(Cause.interrupt(fiberId)),
       (x, y) => {
-        if (x.isSome() && y.isSome()) {
-          return Maybe.some(Cause.then(x.value, y.value))
+        if (Option.isSome(x) && Option.isSome(y)) {
+          return Option.some(Cause.then(x.value, y.value))
         }
-        if (x.isSome() && y.isNone()) {
-          return Maybe.some(x.value)
+        if (Option.isSome(x) && Option.isNone(y)) {
+          return Option.some(x.value)
         }
-        if (x.isNone() && y.isSome()) {
-          return Maybe.some(y.value)
+        if (Option.isNone(x) && Option.isSome(y)) {
+          return Option.some(y.value)
         }
-        return Maybe.none
+        return Option.none
       },
       (x, y) => {
-        if (x.isSome() && y.isSome()) {
-          return Maybe.some(Cause.both(x.value, y.value))
+        if (Option.isSome(x) && Option.isSome(y)) {
+          return Option.some(Cause.both(x.value, y.value))
         }
-        if (x.isSome() && y.isNone()) {
-          return Maybe.some(x.value)
+        if (Option.isSome(x) && Option.isNone(y)) {
+          return Option.some(x.value)
         }
-        if (x.isNone() && y.isSome()) {
-          return Maybe.some(y.value)
+        if (Option.isNone(x) && Option.isSome(y)) {
+          return Option.some(y.value)
         }
-        return Maybe.none
+        return Option.none
       },
-      (causeOption, stackless) => causeOption.map((cause) => new Stackless(cause, stackless))
+      (causeOption, stackless) =>
+        pipe(
+          causeOption,
+          Option.map((cause) => new Stackless(cause, stackless))
+        )
     )
 }

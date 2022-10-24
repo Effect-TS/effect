@@ -1,7 +1,11 @@
 import { MergeStrategy } from "@effect/core/stream/Channel/MergeStrategy"
+import * as Either from "@fp-ts/data/Either"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * @tsplus static effect/core/stream/Channel.Ops mergeAllWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeAllWith<
   Env,
@@ -44,7 +48,7 @@ export function mergeAllWith<
       Do(($) => {
         $(Effect.addFinalizer(getChildren.flatMap(Fiber.interruptAll)))
         const queue = $(Effect.acquireRelease(
-          Queue.bounded<Effect<Env, OutErr | OutErr1, Either<OutDone, OutElem>>>(
+          Queue.bounded<Effect<Env, OutErr | OutErr1, Either.Either<OutDone, OutElem>>>(
             bufferSize
           ),
           (queue) => queue.shutdown
@@ -53,27 +57,45 @@ export function mergeAllWith<
           Queue.unbounded<Deferred<never, void>>(),
           (queue) => queue.shutdown
         ))
-        const lastDone = $(Ref.make<Maybe<OutDone>>(Maybe.none))
+        const lastDone = $(Ref.make<Option.Option<OutDone>>(Option.none))
         const errorSignal = $(Deferred.make<never, void>())
         const permits = $(TSemaphore.makeCommit(n))
         const pull = $(channels.toPull)
         const evaluatePull = (
-          pull: Effect<Env | Env1, OutErr | OutErr1, Either<OutDone, OutElem>>
+          pull: Effect<Env | Env1, OutErr | OutErr1, Either.Either<OutDone, OutElem>>
         ) =>
           pull
-            .flatMap((either) =>
-              either.fold(
-                (done) => Effect.succeed(Maybe.some(done)),
-                (out) => queue.offer(Effect.succeed(Either.right(out))).as(Maybe.none)
-              )
-            )
-            .repeatUntil((option) => option.isSome())
-            .flatMap((option) =>
-              option.fold(Effect.unit, (outDone) =>
-                lastDone.update((_) =>
-                  _.fold(Maybe.some(outDone), (lastDone) => Maybe.some(f(lastDone, outDone)))
-                ))
-            )
+            .flatMap((either) => {
+              switch (either._tag) {
+                case "Left": {
+                  return Effect.succeed(Option.some(either.left))
+                }
+                case "Right": {
+                  return queue.offer(Effect.succeed(Either.right(either.right))).as(Option.none)
+                }
+              }
+            })
+            .repeatUntil(Option.isSome)
+            .flatMap((option) => {
+              switch (option._tag) {
+                case "None": {
+                  return Effect.unit
+                }
+                case "Some": {
+                  const outDone = option.value
+                  return lastDone.update((option) => {
+                    switch (option._tag) {
+                      case "None": {
+                        return Option.some(outDone)
+                      }
+                      case "Some": {
+                        return Option.some(f(option.value, outDone))
+                      }
+                    }
+                  })
+                }
+              }
+            })
             .catchAllCause(
               (cause) =>
                 queue.offer(Effect.failCause(cause)).zipRight(
@@ -81,90 +103,81 @@ export function mergeAllWith<
                 )
             )
         $(
-          pull
-            .foldCauseEffect(
-              (cause) =>
-                getChildren
-                  .flatMap(Fiber.interruptAll)
-                  .zipRight(queue.offer(Effect.failCause(cause)).as(false)),
-              (either) =>
-                either.fold(
-                  (outDone) =>
-                    errorSignal.await.raceWith(
-                      permits.withPermits(n)(Effect.unit),
-                      (_, permitAcquisition) =>
-                        getChildren
-                          .flatMap(Fiber.interruptAll)
-                          .zipRight(permitAcquisition.interrupt.as(false)),
-                      (_, failureAwait) =>
-                        failureAwait.interrupt >
-                          lastDone.get.flatMap((option) =>
-                            option.fold(
-                              queue.offer(Effect.succeed(Either.left(outDone))),
-                              (lastDone) =>
-                                queue.offer(
-                                  Effect.sync(Either.left(f(lastDone, outDone)))
-                                )
-                            )
+          pull.foldCauseEffect(
+            (cause) =>
+              getChildren
+                .flatMap(Fiber.interruptAll)
+                .zipRight(queue.offer(Effect.failCause(cause)).as(false)),
+            (either) => {
+              switch (either._tag) {
+                case "Left": {
+                  const outDone = either.left
+                  return errorSignal.await.raceWith(
+                    permits.withPermits(n)(Effect.unit),
+                    (_, permitAcquisition) =>
+                      getChildren
+                        .flatMap(Fiber.interruptAll)
+                        .zipRight(permitAcquisition.interrupt.as(false)),
+                    (_, failureAwait) =>
+                      failureAwait.interrupt.zipRight(
+                        lastDone.get.flatMap((option) => {
+                          switch (option._tag) {
+                            case "None": {
+                              return queue.offer(Effect.succeed(Either.left(outDone)))
+                            }
+                            case "Some": {
+                              return queue.offer(Effect.sync(Either.left(f(option.value, outDone))))
+                            }
+                          }
+                        })
+                      )
+                  )
+                }
+                case "Right": {
+                  const channel = either.right
+                  switch (mergeStrategy._tag) {
+                    case "BackPressure": {
+                      return Do(($) => {
+                        const latch = $(Deferred.make<never, void>())
+                        const raceIOs = Effect.scoped(
+                          channel.toPull.flatMap((pull) =>
+                            evaluatePull(pull).race(errorSignal.await)
                           )
-                    ),
-                  (channel) => {
-                    switch (mergeStrategy._tag) {
-                      case "BackPressure": {
-                        return Effect.Do()
-                          .bind("latch", () => Deferred.make<never, void>())
-                          .bindValue("raceIOs", () =>
-                            Effect.scoped(
-                              channel
-                                .toPull
-                                .flatMap((pull) => evaluatePull(pull).race(errorSignal.await))
-                            ))
-                          .tap(({ latch, raceIOs }) =>
-                            permits
-                              .withPermit(latch.succeed(undefined) > raceIOs)
-                              .fork
+                        )
+                        $(permits.withPermit(latch.succeed(undefined).zipRight(raceIOs)).fork)
+                        $(latch.await)
+                        const errored = $(errorSignal.isDone)
+                        return !errored
+                      })
+                    }
+                    case "BufferSliding": {
+                      return Do(($) => {
+                        const canceler = $(Deferred.make<never, void>())
+                        const latch = $(Deferred.make<never, void>())
+                        const size = $(cancelers.size)
+                        $(Effect.when(
+                          size >= n,
+                          cancelers.take.flatMap((deferred) => deferred.succeed(undefined))
+                        ))
+                        $(cancelers.offer(canceler))
+                        const raceIOs = Effect.scoped(
+                          channel.toPull.flatMap((pull) =>
+                            evaluatePull(pull)
+                              .race(errorSignal.await)
+                              .race(canceler.await)
                           )
-                          .tap(({ latch }) => latch.await)
-                          .bind("errored", () => errorSignal.isDone)
-                          .map(({ errored }) => !errored)
-                      }
-                      case "BufferSliding": {
-                        return Effect.Do()
-                          .bind("canceler", () => Deferred.make<never, void>())
-                          .bind("latch", () => Deferred.make<never, void>())
-                          .bind("size", () => cancelers.size)
-                          .tap(({ size }) =>
-                            Effect.when(
-                              size >= n,
-                              cancelers.take.flatMap((deferred) => deferred.succeed(undefined))
-                            )
-                          )
-                          .tap(({ canceler }) => cancelers.offer(canceler))
-                          .bindValue("raceIOs", ({ canceler }) =>
-                            Effect.scoped(
-                              channel
-                                .toPull
-                                .flatMap((pull) =>
-                                  evaluatePull(pull)
-                                    .race(errorSignal.await)
-                                    .race(canceler.await)
-                                )
-                            ))
-                          .tap(({ latch, raceIOs }) =>
-                            permits
-                              .withPermit(latch.succeed(undefined) > raceIOs)
-                              .fork
-                          )
-                          .tap(({ latch }) => latch.await)
-                          .bind("errored", () => errorSignal.isDone)
-                          .map(({ errored }) => !errored)
-                      }
+                        )
+                        $(permits.withPermit(latch.succeed(undefined).zipRight(raceIOs)).fork)
+                        $(latch.await)
+                        const errored = $(errorSignal.isDone)
+                        return !errored
+                      })
                     }
                   }
-                )
-            )
-            .repeatWhileEquals(Equivalence.boolean, true)
-            .forkScoped
+                }
+              }
+            }
+          ).repeatWhileEquals(true).forkScoped
         )
         return queue
       })
@@ -180,11 +193,16 @@ export function mergeAllWith<
       > = Channel.unwrap(
         queue.take.flatten.foldCause(
           (cause) => Channel.failCause(cause),
-          (either) =>
-            either.fold(
-              (outDone) => Channel.succeed(outDone),
-              (outElem) => Channel.write(outElem).flatMap(() => consumer)
-            )
+          (either) => {
+            switch (either._tag) {
+              case "Left": {
+                return Channel.succeed(either.left)
+              }
+              case "Right": {
+                return Channel.write(either.right).flatMap(() => consumer)
+              }
+            }
+          }
         )
       )
       return consumer

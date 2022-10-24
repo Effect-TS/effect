@@ -2,6 +2,7 @@ import type { MergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 import { concreteMergeDecision } from "@effect/core/stream/Channel/MergeDecision"
 import { MergeState } from "@effect/core/stream/Channel/MergeState"
 import { SingleProducerAsyncInput } from "@effect/core/stream/Channel/SingleProducerAsyncInput"
+import type { Either } from "@fp-ts/data/Either"
 
 /**
  * Returns a new channel, which is the merge of this channel and the specified
@@ -11,6 +12,8 @@ import { SingleProducerAsyncInput } from "@effect/core/stream/Channel/SingleProd
  *
  * @tsplus static effect/core/stream/Channel.Aspects mergeWith
  * @tsplus pipeable effect/core/stream/Channel mergeWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeWith_<
   Env1,
@@ -132,29 +135,38 @@ export function mergeWith_<
               return fiber.await.map((exit) =>
                 exit.fold(
                   (cause) => Channel.fromEffect(decision.f(Exit.failCause(cause))),
-                  (either) =>
-                    either.fold(
-                      (done) => Channel.fromEffect(decision.f(Exit.succeed(done))),
-                      (elem) => Channel.write(elem).zipRight(go(single(decision.f)))
-                    )
+                  (either) => {
+                    switch (either._tag) {
+                      case "Left": {
+                        return Channel.fromEffect(decision.f(Exit.succeed(either.left)))
+                      }
+                      case "Right": {
+                        return Channel.write(either.right).zipRight(go(single(decision.f)))
+                      }
+                    }
+                  }
                 )
               )
             }
 
             return exit.fold(
               (cause) => onDecision(done(Exit.failCause(cause))),
-              (either) =>
-                either.fold(
-                  (z) => onDecision(done(Exit.succeed(z))),
-                  (elem) =>
-                    Effect.succeed(
-                      Channel.write(elem).flatMap(() =>
+              (either) => {
+                switch (either._tag) {
+                  case "Left": {
+                    return onDecision(done(Exit.succeed(either.left)))
+                  }
+                  case "Right": {
+                    return Effect.succeed(
+                      Channel.write(either.right).flatMap(() =>
                         Channel.fromEffect(pull.forkDaemon).flatMap((leftFiber) =>
                           go(both(leftFiber, fiber))
                         )
                       )
                     )
-                )
+                  }
+                }
+              }
             )
           }
 
@@ -205,12 +217,18 @@ export function mergeWith_<
                 pullR.exit.map((exit) =>
                   exit.fold(
                     (cause) => Channel.fromEffect(state.f(Exit.failCause(cause))),
-                    (either) =>
-                      either.fold(
-                        (done) => Channel.fromEffect(state.f(Exit.succeed(done))),
-                        (elem) =>
-                          Channel.write(elem).flatMap(() => go(MergeState.LeftDone(state.f)))
-                      )
+                    (either) => {
+                      switch (either._tag) {
+                        case "Left": {
+                          return Channel.fromEffect(state.f(Exit.succeed(either.left)))
+                        }
+                        case "Right": {
+                          return Channel.write(either.right).flatMap(() =>
+                            go(MergeState.LeftDone(state.f))
+                          )
+                        }
+                      }
+                    }
                   )
                 )
               )
@@ -220,12 +238,18 @@ export function mergeWith_<
                 pullL.exit.map((exit) =>
                   exit.fold(
                     (cause) => Channel.fromEffect(state.f(Exit.failCause(cause))),
-                    (either) =>
-                      either.fold(
-                        (done) => Channel.fromEffect(state.f(Exit.succeed(done))),
-                        (elem) =>
-                          Channel.write(elem).flatMap(() => go(MergeState.RightDone(state.f)))
-                      )
+                    (either) => {
+                      switch (either._tag) {
+                        case "Left": {
+                          return Channel.fromEffect(state.f(Exit.succeed(either.left)))
+                        }
+                        case "Right": {
+                          return Channel.write(either.right).flatMap(() =>
+                            go(MergeState.RightDone(state.f))
+                          )
+                        }
+                      }
+                    }
                   )
                 )
               )

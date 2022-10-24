@@ -12,11 +12,15 @@
  *   The syslog severity level of the log level.
  *
  * @tsplus type effect/core/io/LogLevel
+ * @category model
+ * @since 1.0.0
  */
 export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 
 /**
  * @tsplus type effect/core/io/LogLevel.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface LogLevelOps {
   $: LogLevelAspects
@@ -27,9 +31,15 @@ export const LogLevel: LogLevelOps = {
 
 /**
  * @tsplus type effect/core/io/LogLevel.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface LogLevelAspects {}
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface All {
   readonly _tag: "All"
   readonly label: "ALL"
@@ -37,6 +47,10 @@ export interface All {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Fatal {
   readonly _tag: "Fatal"
   readonly label: "FATAL"
@@ -44,6 +58,10 @@ export interface Fatal {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Error {
   readonly _tag: "Error"
   readonly label: "ERROR"
@@ -51,6 +69,10 @@ export interface Error {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Warning {
   readonly _tag: "Warning"
   readonly label: "WARN"
@@ -58,6 +80,10 @@ export interface Warning {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Info {
   readonly _tag: "Info"
   readonly label: "INFO"
@@ -65,6 +91,10 @@ export interface Info {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Debug {
   readonly _tag: "Debug"
   readonly label: "DEBUG"
@@ -72,6 +102,10 @@ export interface Debug {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Trace {
   readonly _tag: "Trace"
   readonly label: "TRACE"
@@ -79,6 +113,10 @@ export interface Trace {
   readonly ordinal: number
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface None {
   readonly _tag: "None"
   readonly label: "OFF"
@@ -88,6 +126,8 @@ export interface None {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops All
+ * @category constructors
+ * @since 1.0.0
  */
 export const All: LogLevel = {
   _tag: "All",
@@ -98,6 +138,8 @@ export const All: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Fatal
+ * @category constructors
+ * @since 1.0.0
  */
 export const Fatal: LogLevel = {
   _tag: "Fatal",
@@ -108,6 +150,8 @@ export const Fatal: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Error
+ * @category constructors
+ * @since 1.0.0
  */
 export const Error: LogLevel = {
   _tag: "Error",
@@ -118,6 +162,8 @@ export const Error: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Warning
+ * @category constructors
+ * @since 1.0.0
  */
 export const Warning: LogLevel = {
   _tag: "Warning",
@@ -128,6 +174,8 @@ export const Warning: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Info
+ * @category constructors
+ * @since 1.0.0
  */
 export const Info: LogLevel = {
   _tag: "Info",
@@ -138,6 +186,8 @@ export const Info: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Debug
+ * @category constructors
+ * @since 1.0.0
  */
 export const Debug: LogLevel = {
   _tag: "Debug",
@@ -148,6 +198,8 @@ export const Debug: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops Trace
+ * @category constructors
+ * @since 1.0.0
  */
 export const Trace: LogLevel = {
   _tag: "Trace",
@@ -158,6 +210,8 @@ export const Trace: LogLevel = {
 
 /**
  * @tsplus static effect/core/io/LogLevel.Ops None
+ * @category constructors
+ * @since 1.0.0
  */
 export const None: LogLevel = {
   _tag: "None",

@@ -11,6 +11,8 @@ import {
  * @tsplus pipeable-operator effect/core/stream/Stream +
  * @tsplus static effect/core/stream/Stream.Aspects concat
  * @tsplus pipeable effect/core/stream/Stream concat
+ * @category mutations
+ * @since 1.0.0
  */
 export function concat<R1, E1, A1>(that: Stream<R1, E1, A1>) {
   return <R, E, A>(self: Stream<R, E, A>): Stream<R | R1, E | E1, A | A1> => {

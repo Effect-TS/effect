@@ -8,6 +8,8 @@ import {
  *
  * @tsplus static effect/core/stream/Sink.Aspects map
  * @tsplus pipeable effect/core/stream/Sink map
+ * @category mapping
+ * @since 1.0.0
  */
 export function map<Z, Z2>(f: (z: Z) => Z2) {
   return <R, E, In, L>(self: Sink<R, E, In, L, Z>): Sink<R, E, In, L, Z2> => {

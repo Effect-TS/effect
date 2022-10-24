@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects zipWith
  * @tsplus pipeable effect/core/stream/Channel zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<
   Env1,

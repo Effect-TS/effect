@@ -3,6 +3,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Option from "@fp-ts/data/Option"
 
 /**
  * Combines the elements from this stream and the specified stream by
@@ -16,34 +17,37 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Aspects combine
  * @tsplus pipeable effect/core/stream/Stream combine
+ * @category mutations
+ * @since 1.0.0
  */
 export function combine<R, E, A, R2, E2, A2, S, A3>(
   that: Stream<R2, E2, A2>,
   s: S,
   f: (
     s: S,
-    pullLeft: Effect<R, Maybe<E>, A>,
-    pullRight: Effect<R2, Maybe<E2>, A2>
-  ) => Effect<R | R2, never, Exit<Maybe<E | E2>, readonly [A3, S]>>
+    pullLeft: Effect<R, Option.Option<E>, A>,
+    pullRight: Effect<R2, Option.Option<E2>, A2>
+  ) => Effect<R | R2, never, Exit<Option.Option<E | E2>, readonly [A3, S]>>
 ) {
   return (self: Stream<R, E, A>): Stream<R | R2, E | E2, A3> =>
     new StreamInternal(
       Channel.unwrapScoped(
         Do(($) => {
-          const left = $(Handoff.make<Exit<Maybe<E>, A>>())
-          const right = $(Handoff.make<Exit<Maybe<E2>, A2>>())
+          const left = $(Handoff.make<Exit<Option.Option<E>, A>>())
+          const right = $(Handoff.make<Exit<Option.Option<E2>, A2>>())
           const latchL = $(Handoff.make<void>())
           const latchR = $(Handoff.make<void>())
           concreteStream(self)
           $(
-            (self.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >> producer(left, latchL))
+            self.channel.concatMap((chunk) => Channel.writeChunk(chunk))
+              .pipeTo(producer(left, latchL))
               .runScoped
               .forkScoped
           )
           concreteStream(that)
           $(
-            (that.channel.concatMap((chunk) => Channel.writeChunk(chunk)) >>
-              producer(right, latchR))
+            that.channel.concatMap((chunk) => Channel.writeChunk(chunk))
+              .pipeTo(producer(right, latchR))
               .runScoped
               .forkScoped
           )
@@ -61,7 +65,7 @@ export function combine<R, E, A, R2, E2, A2, S, A3>(
 }
 
 function producer<Err, Elem>(
-  handoff: Handoff<Exit<Maybe<Err>, Elem>>,
+  handoff: Handoff<Exit<Option.Option<Err>, Elem>>,
   latch: Handoff<void>
 ): Channel<never, Err, Elem, unknown, never, never, unknown> {
   return (
@@ -70,9 +74,9 @@ function producer<Err, Elem>(
         (value) =>
           Channel.fromEffect(handoff.offer(Exit.succeed(value)))
             .flatMap(() => producer(handoff, latch)),
-        (cause) => Channel.fromEffect(handoff.offer(Exit.failCause(cause.map(Maybe.some)))),
+        (cause) => Channel.fromEffect(handoff.offer(Exit.failCause(cause.map(Option.some)))),
         () =>
-          Channel.fromEffect(handoff.offer(Exit.fail(Maybe.none))).flatMap(() =>
+          Channel.fromEffect(handoff.offer(Exit.fail(Option.none))).flatMap(() =>
             producer(handoff, latch)
           )
       )

@@ -1,24 +1,41 @@
-import { DoublyLinkedList } from "@tsplus/stdlib/collections/mutable/DoublyLinkedList"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableList from "@fp-ts/data/mutable/MutableList"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
 
-export type Task = Lazy<void>
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export type Task = () => void
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Scheduler {
   scheduleTask(task: Task): void
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export class DefaultScheduler {
-  readonly running = new AtomicReference(false)
-  readonly tasks = new AtomicReference(new DoublyLinkedList<Task>())
+  readonly running = MutableRef.make(false)
+  readonly tasks = MutableRef.make(MutableList.empty<Task>())
   readonly promise = Promise.resolve(void 0)
 
   starveInternal(depth: number) {
-    const toRun = this.tasks.get
-    this.tasks.set(new DoublyLinkedList())
-    toRun.forEach((task) => {
-      task()
-    })
-    if (this.tasks.get.isEmpty) {
-      this.running.set(false)
+    const toRun = MutableRef.get(this.tasks)
+    pipe(this.tasks, MutableRef.set(MutableList.empty()))
+    pipe(
+      toRun,
+      MutableList.forEach((task) => {
+        task()
+      })
+    )
+    if (pipe(this.tasks, MutableRef.get, MutableList.isEmpty)) {
+      pipe(this.running, MutableRef.set(false))
     } else {
       this.starve(depth)
     }
@@ -33,9 +50,9 @@ export class DefaultScheduler {
   }
 
   scheduleTask(task: Task) {
-    this.tasks.get.add(task)
-    if (!this.running.get) {
-      this.running.set(true)
+    pipe(this.tasks, MutableRef.get, MutableList.append(task))
+    if (!MutableRef.get(this.running)) {
+      pipe(this.running, MutableRef.set(true))
       this.starve()
     }
   }
@@ -44,21 +61,21 @@ export class DefaultScheduler {
 export const defaultScheduler: Scheduler = new DefaultScheduler()
 
 export class StagedScheduler {
-  readonly tasks = new DoublyLinkedList<Task>()
-  readonly deferred = new AtomicReference(false)
+  readonly tasks = MutableList.empty<Task>()
+  readonly deferred = MutableRef.make(false)
 
   scheduleTask(task: Task) {
-    if (this.deferred.get) {
+    if (MutableRef.get(this.deferred)) {
       defaultScheduler.scheduleTask(task)
     } else {
-      this.tasks.add(task)
+      pipe(this.tasks, MutableList.append(task))
     }
   }
 
   flush() {
-    while (!this.tasks.isEmpty) {
-      this.tasks.shift()!()
+    while (!MutableList.isEmpty(this.tasks)) {
+      MutableList.shift(this.tasks)!()
     }
-    this.deferred.set(true)
+    pipe(this.deferred, MutableRef.set(true))
   }
 }

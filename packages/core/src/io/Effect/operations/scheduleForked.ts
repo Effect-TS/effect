@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects scheduleForked
  * @tsplus pipeable effect/core/io/Effect scheduleForked
+ * @category scheduling
+ * @since 1.0.0
  */
 export function scheduleForked<S, R1, A1>(schedule: Schedule<S, R1, unknown, A1>) {
   return <R, E, A>(self: Effect<R, E, A>): Effect<R | R1 | Scope, E, Fiber.Runtime<unknown, A1>> =>

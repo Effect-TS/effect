@@ -1,6 +1,10 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * @tsplus static effect/core/stream/Channel.Aspects mergeOutWith
  * @tsplus pipeable effect/core/stream/Channel mergeOutWith
+ * @category mutations
+ * @since 1.0.0
  */
 export function mergeOutWith<OutDone1>(
   n: number,

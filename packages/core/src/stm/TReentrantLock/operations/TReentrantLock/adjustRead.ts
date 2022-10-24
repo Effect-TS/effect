@@ -2,10 +2,13 @@ import { STMRetryException } from "@effect/core/stm/STM"
 import { InternalReadLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalReadLock"
 import { concreteTReentrantLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalTReentrantLock"
 import { InternalWriteLock } from "@effect/core/stm/TReentrantLock/operations/_internal/InternalWriteLock"
+import * as Equal from "@fp-ts/data/Equal"
 
 /**
  * @tsplus static effect/core/stm/TReentrantLock.Aspects adjustRead
  * @tsplus pipeable effect/core/stm/TReentrantLock adjustRead
+ * @category mutations
+ * @since 1.0.0
  */
 export function adjustRead(delta: number) {
   return (self: TReentrantLock): STM<never, never, number> => {
@@ -21,7 +24,7 @@ export function adjustRead(delta: number) {
         return res.readLocksHeld(fiberId)
       }
 
-      if (lock instanceof InternalWriteLock && lock.fiberId == fiberId) {
+      if (lock instanceof InternalWriteLock && Equal.equals(lock.fiberId, fiberId)) {
         const newTotal = lock.readLocks + delta
 
         if (newTotal < 0) {

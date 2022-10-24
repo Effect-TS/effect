@@ -2,6 +2,7 @@ import {
   concreteStream,
   StreamInternal
 } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import * as Chunk from "@fp-ts/data/Chunk"
 
 /**
  * Submerges the chunks carried by this stream into the stream's structure,
@@ -9,8 +10,10 @@ import {
  *
  * @tsplus static effect/core/stream/Stream.Ops flattenChunks
  * @tsplus getter effect/core/stream/Stream flattenChunks
+ * @category sequencing
+ * @since 1.0.0
  */
-export function flattenChunks<R, E, A>(self: Stream<R, E, Chunk<A>>): Stream<R, E, A> {
+export function flattenChunks<R, E, A>(self: Stream<R, E, Chunk.Chunk<A>>): Stream<R, E, A> {
   concreteStream(self)
-  return new StreamInternal(self.channel.mapOut((chunk) => chunk.flatten))
+  return new StreamInternal(self.channel.mapOut(Chunk.flatten))
 }

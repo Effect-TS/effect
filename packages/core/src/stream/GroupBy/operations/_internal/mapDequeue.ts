@@ -1,9 +1,10 @@
 import type { Effect } from "@effect/core/io/Effect"
 import type { Dequeue } from "@effect/core/io/Queue/definition"
 import { _Out, QueueSym } from "@effect/core/io/Queue/definition"
-import type { Chunk } from "@tsplus/stdlib/collections/Chunk"
-import type { Maybe } from "@tsplus/stdlib/data/Maybe"
+import * as Chunk from "@fp-ts/data/Chunk"
+import * as Option from "@fp-ts/data/Option"
 
+/** @internal */
 class MapDequeueImpl<A, B> implements Dequeue<B> {
   constructor(
     readonly dequeue: Dequeue<A>,
@@ -12,20 +13,20 @@ class MapDequeueImpl<A, B> implements Dequeue<B> {
   get take(): Effect<never, never, B> {
     return this.dequeue.take.map(this.f)
   }
-  get takeAll(): Effect<never, never, Chunk<B>> {
-    return this.dequeue.takeAll.map((all) => all.map(this.f))
+  get takeAll(): Effect<never, never, Chunk.Chunk<B>> {
+    return this.dequeue.takeAll.map(Chunk.map(this.f))
   }
-  takeUpTo(this: this, max: number): Effect<never, never, Chunk<B>> {
-    return this.dequeue.takeUpTo(max).map((upTo) => upTo.map(this.f))
+  takeUpTo(this: this, max: number): Effect<never, never, Chunk.Chunk<B>> {
+    return this.dequeue.takeUpTo(max).map(Chunk.map(this.f))
   }
-  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk<B>> {
-    return this.dequeue.takeBetween(min, max).map((upTo) => upTo.map(this.f))
+  takeBetween(this: this, min: number, max: number): Effect<never, never, Chunk.Chunk<B>> {
+    return this.dequeue.takeBetween(min, max).map(Chunk.map(this.f))
   }
-  takeN(this: this, n: number): Effect<never, never, Chunk<B>> {
-    return this.dequeue.takeN(n).map((upTo) => upTo.map(this.f))
+  takeN(this: this, n: number): Effect<never, never, Chunk.Chunk<B>> {
+    return this.dequeue.takeN(n).map(Chunk.map(this.f))
   }
-  get poll(): Effect<never, never, Maybe<B>> {
-    return this.dequeue.poll.map((m) => m.map(this.f))
+  get poll(): Effect<never, never, Option.Option<B>> {
+    return this.dequeue.poll.map(Option.map(this.f))
   }
   get [_Out](): (_: never) => B {
     return (a) => a

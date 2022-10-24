@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/stm/TReentrantLock.Aspects withLockScoped
  * @tsplus getter effect/core/stm/TReentrantLock withLockScoped
+ * @category aspects
+ * @since 1.0.0
  */
 
 export function withLockScoped(self: TReentrantLock) {

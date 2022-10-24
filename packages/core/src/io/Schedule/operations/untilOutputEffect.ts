@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Schedule.Aspects untilOutputEffect
  * @tsplus pipeable effect/core/io/Schedule untilOutputEffect
+ * @category mutations
+ * @since 1.0.0
  */
 export function untilOutputEffect<Out, Env1>(
   f: (out: Out) => Effect<Env1, never, boolean>

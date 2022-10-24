@@ -1,6 +1,8 @@
 /**
  * @tsplus static effect/core/io/Metrics/Metric.Aspects zip
  * @tsplus pipeable effect/core/io/Metrics/Metric zip
+ * @category zipping
+ * @since 1.0.0
  */
 export function zip<Type2, In2, Out2>(that: Metric<Type2, In2, Out2>) {
   return <Type, In, Out>(

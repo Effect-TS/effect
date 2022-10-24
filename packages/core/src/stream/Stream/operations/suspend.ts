@@ -7,6 +7,8 @@ import {
  * Returns a lazily constructed stream.
  *
  * @tsplus static effect/core/stream/Stream.Ops suspend
+ * @category constructors
+ * @since 1.0.0
  */
 export function suspend<R, E, A>(
   stream: LazyArg<Stream<R, E, A>>

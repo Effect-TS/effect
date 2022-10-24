@@ -5,6 +5,8 @@ import { concreteTHub } from "@effect/core/stm/THub/operations/_internal/Interna
  * The current number of values in the hub.
  *
  * @tsplus getter effect/core/stm/THub size
+ * @category getters
+ * @since 1.0.0
  */
 export function size<A>(self: THub<A>): USTM<number> {
   concreteTHub(self)

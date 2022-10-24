@@ -1,17 +1,31 @@
+import { pipe } from "@fp-ts/data/Function"
+import * as List from "@fp-ts/data/List"
+import * as Option from "@fp-ts/data/Option"
+import * as ReadonlyArray from "@fp-ts/data/ReadonlyArray"
+
 /**
  * @tsplus static effect/core/io/Exit.Ops collectAllPar
+ * @category constructors
+ * @since 1.0.0
  */
 export function collectAllPar<E, A>(
-  exits: Collection<Exit<E, A>>
-): Maybe<Exit<E, List<A>>> {
-  const head = exits[Symbol.iterator]().next()
-  if (!head.done && head.value) {
-    return Maybe.some(
-      exits.skip(1).reduce(
-        head.value.map((a) => List(a)),
-        (acc, el) => acc.zipWith(el, (list, a) => list.prepend(a), Cause.both)
-      )
-    )
+  exits: Iterable<Exit<E, A>>
+): Option.Option<Exit<E, List.List<A>>> {
+  const array = Array.from(exits)
+  if (array.length === 0) {
+    return Option.none
   }
-  return Maybe.none
+  const head = array[0]!
+  const tail = array.slice(1)
+  return Option.some(
+    pipe(
+      tail,
+      ReadonlyArray.reduce(head.map(List.of), (accumulator, current) =>
+        accumulator.zipWith(
+          current,
+          (list, value) => pipe(list, List.prepend(value)),
+          (causeA, causeB) => Cause.then(causeA, causeB)
+        ))
+    ).map(List.reverse)
+  )
 }

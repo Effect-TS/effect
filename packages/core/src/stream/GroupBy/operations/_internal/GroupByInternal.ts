@@ -2,7 +2,11 @@ import type { GroupBy, UniqueKey } from "@effect/core/stream/GroupBy/definition/
 import { GroupBySym } from "@effect/core/stream/GroupBy/definition/base"
 import { _A, _E, _K, _R, _V } from "@effect/core/stream/GroupBy/definition/symbols"
 import { mapDequeue } from "@effect/core/stream/GroupBy/operations/_internal/mapDequeue"
+import * as HashMap from "@fp-ts/data/HashMap"
+import type { Option } from "@fp-ts/data/Option"
+import type { Predicate } from "@fp-ts/data/Predicate"
 
+/** @internal */
 export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   readonly [GroupBySym]: GroupBySym = GroupBySym
   readonly [_R]!: (_: R) => void
@@ -26,12 +30,12 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
   ): Stream<R | R1, E | E1, A1> {
     return this.grouped().flatMapPar(
       Number.MAX_SAFE_INTEGER,
-      ([key, queue]) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitMaybe),
+      ([key, queue]) => f(key, Stream.fromQueueWithShutdown(queue).flattenExitOption),
       this.buffer
     )
   }
 
-  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Option<E>, V>>]> {
     return Stream.unwrapScoped(
       Do(($) => {
         const decider = $(
@@ -39,7 +43,7 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
         )
         const out = $(
           Effect.acquireRelease(
-            Queue.bounded<Exit<Maybe<E>, readonly [K, Dequeue<Exit<Maybe<E>, V>>]>>(
+            Queue.bounded<Exit<Option<E>, readonly [K, Dequeue<Exit<Option<E>, V>>]>>(
               this.buffer
             ),
             (queue) => queue.shutdown
@@ -57,28 +61,33 @@ export class GroupByInternal<R, E, K, V, A> implements GroupBy<R, E, K, V, A> {
           decider.succeed(
             (k: K, _: V) =>
               ref.get
-                .map((map) => map.get(k))
-                .flatMap((option) =>
-                  option.fold(
-                    add.flatMap(([id, queue]) =>
-                      (
-                        ref.update((map) => map.set(k, id)) >
-                          out.offer(
-                            Exit.succeed(
-                              [
-                                k,
-                                mapDequeue(queue, (exit) => exit.map((_) => _[1]))
-                              ] as const
+                .map(HashMap.get(k))
+                .flatMap((option) => {
+                  switch (option._tag) {
+                    case "None": {
+                      return add.flatMap(([id, queue]) =>
+                        (
+                          ref.update(HashMap.set(k, id)).zipRight(
+                            out.offer(
+                              Exit.succeed(
+                                [
+                                  k,
+                                  mapDequeue(queue, (exit) => exit.map((_) => _[1]))
+                                ] as const
+                              )
                             )
                           )
-                      ).as((n: number) => n === id)
-                    ),
-                    (id) => Effect.succeed((n: number) => n === id)
-                  )
-                )
+                        ).as((n: number) => n === id)
+                      )
+                    }
+                    case "Some": {
+                      return Effect.succeed((n: number) => n === option.value)
+                    }
+                  }
+                })
           )
         )
-        return Stream.fromQueueWithShutdown(out).flattenExitMaybe
+        return Stream.fromQueueWithShutdown(out).flattenExitOption
       })
     )
   }
@@ -117,7 +126,7 @@ export class FirstInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A>
     super(stream, key, buffer)
   }
 
-  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Option<E>, V>>]> {
     return super
       .grouped()
       .zipWithIndex
@@ -144,7 +153,7 @@ export class FilterInternal<R, E, K, V, A> extends GroupByInternal<R, E, K, V, A
     super(stream, key, buffer)
   }
 
-  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Maybe<E>, V>>]> {
+  grouped(): Stream<R, E, readonly [K, Dequeue<Exit<Option<E>, V>>]> {
     return super.grouped().filterEffect((elem) => {
       const [k, queue] = elem
       return this.f(k)

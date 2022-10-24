@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackErrorWith
  * @tsplus pipeable effect/core/io/Metrics/Metric trackErrorWith
+ * @category aspects
+ * @since 1.0.0
  */
 export function trackErrorWith<In, In2>(f: (error: In2) => In) {
   return <Type, Out>(

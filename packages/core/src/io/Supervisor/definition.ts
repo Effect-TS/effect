@@ -2,13 +2,28 @@ import { Effect } from "@effect/core/io/Effect/definition"
 import type { Exit } from "@effect/core/io/Exit/definition"
 import type { FiberRuntime } from "@effect/core/io/Fiber/_internal/runtime"
 import type { Patch as P } from "@effect/core/io/Supervisor/patch"
-import type { SortedSet } from "@tsplus/stdlib/collections/SortedSet"
-import type { Maybe } from "@tsplus/stdlib/data/Maybe"
-import type { Env } from "@tsplus/stdlib/service/Env"
+import * as Chunk from "@fp-ts/data/Chunk"
+import type { Context } from "@fp-ts/data/Context"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import type { Option } from "@fp-ts/data/Option"
+import * as SortedSet from "@fp-ts/data/SortedSet"
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const SupervisorURI = Symbol.for("@effect/core/io/Supervisor")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type SupervisorURI = typeof SupervisorURI
 
+/**
+ * @since 1.0.0
+ */
 export namespace Supervisor {
   export type Patch = P
 }
@@ -19,6 +34,8 @@ export namespace Supervisor {
  *
  * @tsplus type effect/core/io/Supervisor
  * @tsplus companion effect/core/io/Supervisor.Ops
+ * @category model
+ * @since 1.0.0
  */
 export abstract class Supervisor<T> {
   readonly [SupervisorURI]!: {
@@ -33,9 +50,9 @@ export abstract class Supervisor<T> {
   abstract get value(): Effect<never, never, T>
 
   abstract onStart<R, E, A>(
-    environment: Env<R>,
+    environment: Context<R>,
     effect: Effect<R, E, A>,
-    parent: Maybe<FiberRuntime<any, any>>,
+    parent: Option<FiberRuntime<any, any>>,
     fiber: FiberRuntime<E, A>
   ): void
 
@@ -88,9 +105,9 @@ export class ProxySupervisor<T> extends Supervisor<T> {
   }
 
   onStart<R, E, A>(
-    environment: Env<R>,
+    environment: Context<R>,
     effect: Effect<R, E, A>,
-    parent: Maybe<FiberRuntime<any, any>>,
+    parent: Option<FiberRuntime<any, any>>,
     fiber: FiberRuntime<E, A>
   ): void {
     this.underlying.onStart(environment, effect, parent, fiber)
@@ -126,9 +143,9 @@ export class Zip<T0, T1> extends Supervisor<readonly [T0, T1]> {
   }
 
   onStart<R, E, A>(
-    environment: Env<R>,
+    environment: Context<R>,
     effect: Effect<R, E, A>,
-    parent: Maybe<FiberRuntime<any, any>>,
+    parent: Option<FiberRuntime<any, any>>,
     fiber: FiberRuntime<E, A>
   ): void {
     this.left.onStart(environment, effect, parent, fiber)
@@ -156,17 +173,17 @@ export class Zip<T0, T1> extends Supervisor<readonly [T0, T1]> {
   }
 }
 
-export class Track extends Supervisor<Chunk<FiberRuntime<any, any>>> {
+export class Track extends Supervisor<Chunk.Chunk<FiberRuntime<any, any>>> {
   readonly fibers: Set<FiberRuntime<any, any>> = new Set()
 
-  get value(): Effect<never, never, Chunk<FiberRuntime<any, any>>> {
-    return Effect.sync(Chunk.from(this.fibers))
+  get value(): Effect<never, never, Chunk.Chunk<FiberRuntime<any, any>>> {
+    return Effect.sync(Chunk.fromIterable(this.fibers))
   }
 
   onStart<R, E, A>(
-    _environment: Env<R>,
+    _environment: Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Maybe<FiberRuntime<any, any>>,
+    _parent: Option<FiberRuntime<any, any>>,
     fiber: FiberRuntime<E, A>
   ): void {
     this.fibers.add(fiber)
@@ -199,9 +216,9 @@ export class Const<T> extends Supervisor<T> {
   }
 
   onStart<R, E, A>(
-    _environment: Env<R>,
+    _environment: Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Maybe<FiberRuntime<any, any>>,
+    _parent: Option<FiberRuntime<any, any>>,
     _fiber: FiberRuntime<E, A>
   ): void {
     //
@@ -229,7 +246,7 @@ export class Const<T> extends Supervisor<T> {
  *
  * @tsplus static effect/core/io/Supervisor.Ops unsafeTrack
  */
-export function unsafeTrack(): Supervisor<Chunk<FiberRuntime<any, any>>> {
+export function unsafeTrack(): Supervisor<Chunk.Chunk<FiberRuntime<any, any>>> {
   return new Track()
 }
 
@@ -258,25 +275,25 @@ export function fromEffect<A>(
  */
 export const none = fromEffect(Effect.unit)
 
-class FibersIn extends Supervisor<SortedSet<FiberRuntime<any, any>>> {
-  constructor(readonly ref: AtomicReference<SortedSet<FiberRuntime<any, any>>>) {
+class FibersIn extends Supervisor<SortedSet.SortedSet<FiberRuntime<any, any>>> {
+  constructor(readonly ref: MutableRef.MutableRef<SortedSet.SortedSet<FiberRuntime<any, any>>>) {
     super()
   }
 
-  get value(): Effect<never, never, SortedSet<FiberRuntime<any, any>>> {
-    return Effect.sync(this.ref.get)
+  get value(): Effect<never, never, SortedSet.SortedSet<FiberRuntime<any, any>>> {
+    return Effect.sync(MutableRef.get(this.ref))
   }
 
   onStart<R, E, A>(
-    _environment: Env<R>,
+    _environment: Context<R>,
     _effect: Effect<R, E, A>,
-    _parent: Maybe<FiberRuntime<any, any>>,
+    _parent: Option<FiberRuntime<any, any>>,
     fiber: FiberRuntime<E, A>
   ): void {
-    this.ref.set(this.ref.get.add(fiber))
+    pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.add(fiber))))
   }
   onEnd<E, A>(_value: Exit<E, A>, fiber: FiberRuntime<E, A>): void {
-    this.ref.set(this.ref.get.remove(fiber))
+    pipe(this.ref, MutableRef.set(pipe(MutableRef.get(this.ref), SortedSet.remove(fiber))))
   }
   onEffect<E, A>(_fiber: FiberRuntime<E, A>, _effect: Effect<any, any, any>): void {
     //
@@ -295,7 +312,7 @@ class FibersIn extends Supervisor<SortedSet<FiberRuntime<any, any>>> {
  * @tsplus static effect/core/io/Supervisor.Ops fibersIn
  */
 export function fibersIn(
-  ref: AtomicReference<SortedSet<FiberRuntime<any, any>>>
-): Effect<never, never, Supervisor<SortedSet<FiberRuntime<any, any>>>> {
+  ref: MutableRef.MutableRef<SortedSet.SortedSet<FiberRuntime<any, any>>>
+): Effect<never, never, Supervisor<SortedSet.SortedSet<FiberRuntime<any, any>>>> {
   return Effect.sync(new FibersIn(ref))
 }

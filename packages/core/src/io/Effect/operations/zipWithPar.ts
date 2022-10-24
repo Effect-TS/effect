@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects zipWithPar
  * @tsplus pipeable effect/core/io/Effect zipWithPar
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWithPar<R2, E2, A2, A, B>(
   that: Effect<R2, E2, A2>,

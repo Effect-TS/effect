@@ -2,6 +2,8 @@
  * Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
  *
  * @tsplus static effect/core/io/Effect.Ops ifEffect
+ * @category constructors
+ * @since 1.0.0
  */
 export function ifEffect<R, R1, R2, E, E1, E2, A, A1>(
   b: Effect<R, E, boolean>,

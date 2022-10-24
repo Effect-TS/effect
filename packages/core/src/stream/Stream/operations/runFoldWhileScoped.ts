@@ -1,3 +1,5 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Executes a pure fold over the stream of values. Returns a scoped value
  * that represents the scope of the stream. Stops the fold early when the
@@ -7,6 +9,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects runFoldWhileScoped
  * @tsplus pipeable effect/core/stream/Stream runFoldWhileScoped
+ * @category destructors
+ * @since 1.0.0
  */
 export function runFoldWhileScoped<S, A>(
   s: S,

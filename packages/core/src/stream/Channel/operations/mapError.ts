@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/stream/Channel.Aspects mapError
  * @tsplus pipeable effect/core/stream/Channel mapError
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapError<OutErr, OutErr2>(f: (err: OutErr) => OutErr2) {
   return <Env, InErr, InElem, InDone, OutElem, OutDone>(

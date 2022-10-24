@@ -8,6 +8,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects mapEffectPartitioned
  * @tsplus pipeable effect/core/stream/Stream mapEffectPartitioned
+ * @category mapping
+ * @since 1.0.0
  */
 export function mapEffectPartitioned<A, R2, E2, A2, K>(
   keyBy: (a: A) => K,

@@ -1,13 +1,49 @@
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const StreamSym = Symbol.for("@effect/core/stream/Stream")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type StreamSym = typeof StreamSym
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _R = Symbol.for("@effect/core/stream/Stream/R")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _R = typeof _R
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _E = Symbol.for("@effect/core/stream/Stream/E")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _E = typeof _E
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const _A = Symbol.for("@effect/core/stream/Stream/A")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type _A = typeof _A
 
 /**
@@ -28,6 +64,8 @@ export type _A = typeof _A
  * allow for rich and expressive composition of streams.
  *
  * @tsplus type effect/core/stream/Stream
+ * @category model
+ * @since 1.0.0
  */
 export interface Stream<R, E, A> {
   readonly [StreamSym]: StreamSym
@@ -36,6 +74,9 @@ export interface Stream<R, E, A> {
   readonly [_A]: () => A
 }
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace Stream {
   export type IO<E, A> = Stream<never, E, A>
   export type RIO<R, A> = Stream<R, never, A>
@@ -44,6 +85,8 @@ export declare namespace Stream {
 
 /**
  * @tsplus type effect/core/stream/Stream.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface StreamOps {
   $: StreamAspects
@@ -54,12 +97,16 @@ export const Stream: StreamOps = {
 
 /**
  * @tsplus type effect/core/stream/Stream.Aspects
+ * @category model
+ * @since 1.0.0
  */
 export interface StreamAspects {}
 
 /**
  * The default chunk size used by the various combinators and constructors of
  * `Stream`.
+ *
+ * @since 1.0.0
  */
 export const DEFAULT_CHUNK_SIZE = 4096
 
@@ -67,6 +114,8 @@ export const DEFAULT_CHUNK_SIZE = 4096
  * Determines if the provided `unknown` value is a `Stream`.
  *
  * @tsplus static effect/core/stream/Stream.Ops isStream
+ * @category refinements
+ * @since 1.0.0
  */
 export function isStream(u: unknown): u is Stream<unknown, unknown, unknown> {
   return typeof u === "object" && u != null && StreamSym in u

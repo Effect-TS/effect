@@ -5,6 +5,8 @@ import { concreteTSet } from "@effect/core/stm/TSet/operations/_internal/Interna
  *
  * @tsplus static effect/core/stm/TSet.Aspects put
  * @tsplus pipeable effect/core/stm/TSet put
+ * @category mutations
+ * @since 1.0.0
  */
 export function put<A>(value: A) {
   return (self: TSet<A>): STM<never, never, void> => {

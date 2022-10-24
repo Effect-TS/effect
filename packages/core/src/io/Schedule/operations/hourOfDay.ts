@@ -14,12 +14,14 @@ import {
  * NOTE: `hour` parameter is validated lazily. Must be in range 0...23.
  *
  * @tsplus static effect/core/io/Schedule.Ops hourOfDay
+ * @category constructors
+ * @since 1.0.0
  */
 export function hourOfDay(
   hour: number
 ): Schedule<readonly [number, number], never, unknown, number> {
   return makeWithState(
-    [Number.MIN_SAFE_INTEGER, 0] as readonly [number, number],
+    [Number.NEGATIVE_INFINITY, 0] as readonly [number, number],
     (now, _, state) => {
       if (!Number.isInteger(hour) || hour < 0 || 23 < hour) {
         return Effect.dieSync(

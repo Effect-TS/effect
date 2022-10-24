@@ -8,6 +8,8 @@ import {
  * creation.
  *
  * @tsplus static effect/core/stream/Sink.Ops suspend
+ * @category constructors
+ * @since 1.0.0
  */
 export function suspend<R, E, In, L, Z>(
   sink: LazyArg<Sink<R, E, In, L, Z>>

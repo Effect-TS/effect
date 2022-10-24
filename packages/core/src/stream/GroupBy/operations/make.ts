@@ -4,6 +4,8 @@ import { GroupByInternal } from "@effect/core/stream/GroupBy/operations/_interna
  * Constructs a new `GroupBy`.
  *
  * @tsplus static effect/core/stream/GroupBy.Ops __call
+ * @category constructors
+ * @since 1.0.0
  */
 export function make<R, E, R2, E2, K, V, A>(
   stream: Stream<R, E, A>,

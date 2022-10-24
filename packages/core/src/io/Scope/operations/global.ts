@@ -5,6 +5,8 @@ import { CloseableScopeInternal } from "@effect/core/io/Scope/operations/_intern
  * be immediately discarded and closing this scope has no effect.
  *
  * @tsplus static effect/core/io/Scope.Ops global
+ * @category constructors
+ * @since 1.0.0
  */
 export const global: Scope.Closeable = new CloseableScopeInternal(
   Scope.make,

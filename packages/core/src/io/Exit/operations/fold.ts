@@ -3,6 +3,8 @@
  *
  * @tsplus static effect/core/io/Exit.Aspects fold
  * @tsplus pipeable effect/core/io/Exit fold
+ * @category folding
+ * @since 1.0.0
  */
 export function fold<E, A, Z>(
   failed: (cause: Cause<E>) => Z,

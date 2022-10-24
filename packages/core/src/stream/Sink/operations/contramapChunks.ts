@@ -2,12 +2,15 @@ import {
   concreteSink,
   SinkInternal
 } from "@effect/core/stream/Sink/operations/_internal/SinkInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Transforms this sink's input chunks. `f` must preserve chunking-invariance.
  *
  * @tsplus static effect/core/stream/Sink.Aspects contramapChunks
  * @tsplus pipeable effect/core/stream/Sink contramapChunks
+ * @category mapping
+ * @since 1.0.0
  */
 export function contramapChunks<In, In1>(
   f: (input: Chunk<In1>) => Chunk<In>

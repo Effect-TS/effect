@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects repeatWhileEffect
  * @tsplus pipeable effect/core/io/Effect repeatWhileEffect
+ * @category repetititon
+ * @since 1.0.0
  */
 export function repeatWhileEffect<R1, A>(
   f: (a: A) => Effect<R1, never, boolean>

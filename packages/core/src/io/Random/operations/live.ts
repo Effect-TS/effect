@@ -1,5 +1,11 @@
 import { RandomSym } from "@effect/core/io/Random/definition"
+import * as Chunk from "@fp-ts/data/Chunk"
+import { PCGRandom } from "@fp-ts/data/Random"
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export class LiveRandom implements Random {
   readonly [RandomSym]: RandomSym = RandomSym
 
@@ -29,15 +35,15 @@ export class LiveRandom implements Random {
     return Effect.sync(() => this.PRNG.integer(high - low) + low)
   }
 
-  shuffle<A>(collection: Collection<A>): Effect<never, never, Collection<A>> {
+  shuffle<A>(collection: Iterable<A>): Effect<never, never, Chunk.Chunk<A>> {
     return shuffleWith(collection, (n) => this.nextIntBetween(0, n))
   }
 }
 
 function shuffleWith<A>(
-  collection: Collection<A>,
+  collection: Iterable<A>,
   nextIntBounded: (n: number) => Effect<never, never, number>
-): Effect<never, never, Collection<A>> {
+): Effect<never, never, Chunk.Chunk<A>> {
   return Effect.suspendSucceed(() => {
     return Do(($) => {
       const buffer = $(Effect.sync(() => {
@@ -59,7 +65,7 @@ function shuffleWith<A>(
         ns.push(i)
       }
       $(Effect.forEachDiscard(ns, (n) => nextIntBounded(n).flatMap((k) => swap(n - 1, k))))
-      return buffer
+      return Chunk.fromIterable(buffer)
     })
   })
 }

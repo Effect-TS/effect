@@ -1,6 +1,7 @@
 import { isFiberFailure } from "@effect/core/io/Cause/errors"
 import { Emit } from "@effect/core/stream/Stream/Emit"
 import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/StreamInternal"
+import type { Chunk } from "@fp-ts/data/Chunk"
 
 /**
  * Creates a stream from an asynchronous callback that can be called multiple
@@ -9,6 +10,8 @@ import { StreamInternal } from "@effect/core/stream/Stream/operations/_internal/
  * stream, by setting it to `None`.
  *
  * @tsplus static effect/core/stream/Stream.Ops asyncEffect
+ * @category async
+ * @since 1.0.0
  */
 export function asyncEffect<R, E, A, Z>(
   register: (emit: Emit<R, E, A, void>) => Effect<R, E, Z>,
@@ -16,51 +19,53 @@ export function asyncEffect<R, E, A, Z>(
 ): Stream<R, E, A> {
   return new StreamInternal(
     Channel.unwrapScoped(
-      Effect.Do()
-        .bind("output", () =>
-          Effect.acquireRelease(
-            Queue.bounded<Take<E, A>>(outputBuffer),
-            (queue) => queue.shutdown
-          ))
-        .bind("runtime", () => Effect.runtime<R>())
-        .tap(({ output, runtime }) =>
-          register(
-            Emit(async (k) => {
-              try {
-                runtime.unsafeRunPromise(
-                  Take.fromPull(k).flatMap((take) => output.offer(take))
-                )
-              } catch (e: unknown) {
-                if (isFiberFailure(e)) {
-                  if (!e.cause.isInterrupted) {
-                    throw e
-                  }
+      Do(($) => {
+        const output = $(Effect.acquireRelease(
+          Queue.bounded<Take<E, A>>(outputBuffer),
+          (queue) => queue.shutdown
+        ))
+        const runtime = $(Effect.runtime<R>())
+        $(register(
+          Emit(async (k) => {
+            try {
+              runtime.unsafeRunPromise(
+                Take.fromPull(k).flatMap((take) => output.offer(take))
+              )
+            } catch (e: unknown) {
+              if (isFiberFailure(e)) {
+                if (!e.cause.isInterrupted) {
+                  throw e
                 }
               }
-            })
+            }
+          })
+        ))
+        const loop: Channel<
+          never,
+          unknown,
+          unknown,
+          unknown,
+          E,
+          Chunk<A>,
+          void
+        > = Channel.unwrap(
+          output.take.flatMap((take) => take.done).fold(
+            (option) =>
+              Channel.fromEffect(output.shutdown).flatMap(() => {
+                switch (option._tag) {
+                  case "None": {
+                    return Channel.unit
+                  }
+                  case "Some": {
+                    return Channel.fail(option.value)
+                  }
+                }
+              }),
+            (a) => Channel.write(a).flatMap(() => loop)
           )
         )
-        .map(({ output }) => {
-          const loop: Channel<
-            never,
-            unknown,
-            unknown,
-            unknown,
-            E,
-            Chunk<A>,
-            void
-          > = Channel.unwrap(
-            output.take
-              .flatMap((take) => take.done)
-              .fold(
-                (maybeError) =>
-                  Channel.fromEffect(output.shutdown)
-                    .flatMap(() => maybeError.fold(Channel.unit, (e) => Channel.fail(e))),
-                (a) => Channel.write(a).flatMap(() => loop)
-              )
-          )
-          return loop
-        })
+        return loop
+      })
     )
   )
 }

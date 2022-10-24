@@ -5,6 +5,8 @@ import { concreteCloseableScope } from "@effect/core/io/Scope/operations/_intern
  * have been added to the scope.
  *
  * @tsplus pipeable effect/core/io/Scope/Closeable close
+ * @category destructors
+ * @since 1.0.0
  */
 export function close(exit: Exit<unknown, unknown>) {
   return (self: Scope.Closeable): Effect<never, never, void> => {

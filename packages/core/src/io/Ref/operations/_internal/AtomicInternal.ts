@@ -1,82 +1,90 @@
 import { _A, RefSym } from "@effect/core/io/Ref/definition"
+import { pipe } from "@fp-ts/data/Function"
+import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
+import * as Option from "@fp-ts/data/Option"
 
+/** @internal */
 export class UnsafeAPI<A> {
-  constructor(readonly value: AtomicReference<A>) {}
+  constructor(readonly value: MutableRef.MutableRef<A>) {}
 
   get get(): A {
-    return this.value.get
+    return MutableRef.get(this.value)
   }
 
   getAndSet(a: A): A {
-    const current = this.value.get
-    this.value.set(a)
+    const current = MutableRef.get(this.value)
+    pipe(this.value, MutableRef.set(a))
     return current
   }
 
   getAndUpdate(f: (a: A) => A): A {
-    const current = this.value.get
-    this.value.set(f(current))
+    const current = MutableRef.get(this.value)
+    pipe(this.value, MutableRef.set(f(current)))
     return current
   }
 
-  getAndUpdateSome(pf: (a: A) => Maybe<A>): A {
-    const current = this.value.get
-    const opt = pf(current)
-    if (opt.isSome()) {
-      this.value.set(opt.value)
+  getAndUpdateSome(pf: (a: A) => Option.Option<A>): A {
+    const current = MutableRef.get(this.value)
+    const option = pf(current)
+    if (Option.isSome(option)) {
+      pipe(this.value, MutableRef.set(option.value))
     }
     return current
   }
 
   modify<B>(f: (a: A) => readonly [B, A]): B {
-    const current = this.value.get
+    const current = MutableRef.get(this.value)
     const [b, a] = f(current)
-    this.value.set(a)
+    pipe(this.value, MutableRef.set(a))
     return b
   }
 
-  modifySome<B>(fallback: B, pf: (a: A) => Maybe<readonly [B, A]>): B {
-    const current = this.value.get
-    const tuple = pf(current).getOrElse([fallback, current] as const)
-    this.value.set(tuple[1])
+  modifySome<B>(fallback: B, pf: (a: A) => Option.Option<readonly [B, A]>): B {
+    const current = MutableRef.get(this.value)
+    const tuple = pipe(
+      pf(current),
+      Option.getOrElse([fallback, current] as const)
+    )
+    pipe(this.value, MutableRef.set(tuple[1]))
     return tuple[0]
   }
 
   set(a: A): void {
-    return this.value.set(a)
+    pipe(this.value, MutableRef.set(a))
   }
 
   update(f: (a: A) => A): void {
-    const current = this.value.get
-    this.value.set(f(current))
+    const current = MutableRef.get(this.value)
+    pipe(this.value, MutableRef.set(f(current)))
   }
 
   updateAndGet(f: (a: A) => A): A {
-    const current = this.value.get
+    const current = MutableRef.get(this.value)
     const next = f(current)
-    this.value.set(next)
+    pipe(this.value, MutableRef.set(next))
     return next
   }
 
-  updateSome(pf: (a: A) => Maybe<A>): void {
-    const current = this.value.get
-    const opt = pf(current)
-    if (opt.isSome()) {
-      this.value.set(opt.value)
+  updateSome(pf: (a: A) => Option.Option<A>): void {
+    const current = MutableRef.get(this.value)
+    const option = pf(current)
+    if (Option.isSome(option)) {
+      pipe(this.value, MutableRef.set(option.value))
     }
   }
 
-  updateSomeAndGet(pf: (a: A) => Maybe<A>): A {
-    const current = this.value.get
+  updateSomeAndGet(pf: (a: A) => Option.Option<A>): A {
+    const current = MutableRef.get(this.value)
     const next = pf(current)
-    if (next.isSome()) {
-      this.value.set(next.value)
+    if (Option.isSome(next)) {
+      pipe(this.value, MutableRef.set(next.value))
       return next.value
     }
     return current
   }
 }
 
+/** @internal */
 export class AtomicInternal<A> implements Ref<A> {
   constructor(readonly unsafe: UnsafeAPI<A>) {}
 
@@ -116,17 +124,17 @@ export class AtomicInternal<A> implements Ref<A> {
 
   getAndUpdateSome(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, A> {
-    return this.modify((v) => [v, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [v, pipe(pf(v), Option.getOrElse(v))] as const)
   }
 
   modifySome<B>(
     this: this,
     fallback: B,
-    pf: (a: A) => Maybe<readonly [B, A]>
+    pf: (a: A) => Option.Option<readonly [B, A]>
   ): Effect<never, never, B> {
-    return this.modify((v) => pf(v).getOrElse([fallback, v] as const))
+    return this.modify((v) => pipe(pf(v), Option.getOrElse([fallback, v] as const)))
   }
 
   update(this: this, f: (a: A) => A): Effect<never, never, void> {
@@ -143,17 +151,17 @@ export class AtomicInternal<A> implements Ref<A> {
 
   updateSome(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, void> {
-    return this.modify((v) => [undefined as void, pf(v).getOrElse(v)] as const)
+    return this.modify((v) => [undefined as void, pipe(pf(v), Option.getOrElse(v))] as const)
   }
 
   updateSomeAndGet(
     this: this,
-    pf: (a: A) => Maybe<A>
+    pf: (a: A) => Option.Option<A>
   ): Effect<never, never, A> {
     return this.modify(v => {
-      const result = pf(v).getOrElse(v)
+      const result = pipe(pf(v), Option.getOrElse(v))
       return [result, result] as const
     })
   }

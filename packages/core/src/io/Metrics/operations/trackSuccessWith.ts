@@ -5,6 +5,8 @@
  *
  * @tsplus static effect/core/io/Metrics/Metric.Aspects trackSuccessWith
  * @tsplus pipeable effect/core/io/Metrics/Metric trackSuccessWith
+ * @category aspects
+ * @since 1.0.0
  */
 export function trackSuccessWith<In, In2>(f: (value: In2) => In) {
   return <Type, Out>(

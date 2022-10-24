@@ -45,7 +45,8 @@
   },
   "dependencies": {
     "@effect/printer": "^0.1.0",
-    "@fp-ts/data": "^0.0.4"
+    "@fp-ts/core": "^0.0.6",
+    "@fp-ts/data": "^0.0.8"
   },
   "tsplus": {
     "typeDir": "./build/dts"

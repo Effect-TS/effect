@@ -4,6 +4,8 @@
  *
  * @tsplus static effect/core/io/Effect.Aspects zipWith
  * @tsplus pipeable effect/core/io/Effect zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<R2, E2, A2, A, B>(
   that: Effect<R2, E2, A2>,

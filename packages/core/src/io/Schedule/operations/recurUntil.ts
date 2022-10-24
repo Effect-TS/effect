@@ -1,7 +1,11 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * A schedule that recurs for until the predicate evaluates to true.
  *
  * @tsplus static effect/core/io/Schedule.Ops recurUntil
+ * @category mutations
+ * @since 1.0.0
  */
 export function recurUntil<A>(
   f: Predicate<A>

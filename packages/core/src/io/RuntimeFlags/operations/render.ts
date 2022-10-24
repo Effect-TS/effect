@@ -2,6 +2,8 @@ import { allFlags } from "@effect/core/io/RuntimeFlags/_internal/allFlags"
 
 /**
  * @tsplus getter effect/core/io/RuntimeFlags render
+ * @category destructors
+ * @since 1.0.0
  */
 export function render(flags: RuntimeFlags) {
   const active: string[] = []

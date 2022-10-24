@@ -1,9 +1,13 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+
 /**
  * Returns a new schedule that continues until the specified predicate on the
  * output evaluates to true.
  *
  * @tsplus static effect/core/io/Schedule.Aspects untilOutput
  * @tsplus pipeable effect/core/io/Schedule untilOutput
+ * @category mutations
+ * @since 1.0.0
  */
 export function untilOutput<Out>(f: Predicate<Out>) {
   return <State, Env, In>(

@@ -1,3 +1,5 @@
+import { identity } from "@fp-ts/data/Function"
+
 /**
  * Zips this stream with another point-wise, and keeps only elements from this
  * stream.
@@ -7,6 +9,8 @@
  *
  * @tsplus static effect/core/stream/Stream.Aspects zipAllLeft
  * @tsplus pipeable effect/core/stream/Stream zipAllLeft
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipAllLeft<A, R2, E2, A2>(that: Stream<R2, E2, A2>, def: A) {
   return <R, E>(self: Stream<R, E, A>): Stream<R | R2, E | E2, A> =>

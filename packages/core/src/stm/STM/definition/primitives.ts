@@ -7,11 +7,13 @@ import { TxnId } from "@effect/core/stm/STM/TxnId"
 import { concreteTRef } from "@effect/core/stm/TRef/operations/_internal/TRefInternal"
 import type { Scheduler } from "@effect/core/support/Scheduler"
 import * as Stack from "@effect/core/support/Stack"
+import type * as Context from "@fp-ts/data/Context"
 import * as Either from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as HashMap from "@fp-ts/data/HashMap"
 import * as MutableRef from "@fp-ts/data/mutable/MutableRef"
 
+/** @internal */
 export class STMBase<R, E, A> implements STM<R, E, A> {
   readonly _tag = "ICommit"
   readonly [STMTypeId] = {
@@ -29,6 +31,7 @@ export class STMBase<R, E, A> implements STM<R, E, A> {
   }
 }
 
+/** @internal */
 export class STMEffect<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMEffect"
 
@@ -36,13 +39,14 @@ export class STMEffect<R, E, A> extends STMBase<R, E, A> {
     readonly f: (
       journal: Journal,
       fiberId: FiberId,
-      environment: Context<R>
+      environment: Context.Context<R>
     ) => A
   ) {
     super()
   }
 }
 
+/** @internal */
 export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
   readonly _stmtag = "STMOnFailure"
 
@@ -57,6 +61,7 @@ export class STMOnFailure<R, E, E1, A> extends STMBase<R, E1, A> {
   }
 }
 
+/** @internal */
 export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
   readonly _stmtag = "STMOnRetry"
 
@@ -71,6 +76,7 @@ export class STMOnRetry<R, E, A, R1, E1, A1> extends STMBase<R, E, A> {
   }
 }
 
+/** @internal */
 export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
   readonly _stmtag = "STMOnSuccess"
 
@@ -82,17 +88,19 @@ export class STMOnSuccess<R, E, A, B> extends STMBase<R, E, B> {
   }
 }
 
+/** @internal */
 export class STMProvide<R0, R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMProvide"
 
   constructor(
     readonly stm: STM<R0, E, A>,
-    readonly f: (context: Context<R>) => Context<R0>
+    readonly f: (context: Context.Context<R>) => Context.Context<R0>
   ) {
     super()
   }
 }
 
+/** @internal */
 export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMSucceedNow"
 
@@ -101,6 +109,7 @@ export class STMSucceedNow<R, E, A> extends STMBase<R, E, A> {
   }
 }
 
+/** @internal */
 export class STMSucceed<R, E, A> extends STMBase<R, E, A> {
   readonly _stmtag = "STMSucceed"
 
@@ -109,9 +118,22 @@ export class STMSucceed<R, E, A> extends STMBase<R, E, A> {
   }
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const STMFailExceptionSym = Symbol.for("@effect/core/stm/STM/FailException")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMFailExceptionSym = typeof STMFailExceptionSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class STMFailException<E> {
   readonly [STMFailExceptionSym]: STMFailExceptionSym = STMFailExceptionSym
   constructor(readonly e: E) {}
@@ -119,14 +141,29 @@ export class STMFailException<E> {
 
 /**
  * @tsplus static effect/core/stm/STM.Ops isFailException
+ * @category refinements
+ * @since 1.0.0
  */
 export function isFailException(u: unknown): u is STMFailException<unknown> {
   return typeof u === "object" && u != null && STMFailExceptionSym in u
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const STMDieExceptionSym = Symbol.for("@effect/core/stm/STM/DieException")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMDieExceptionSym = typeof STMDieExceptionSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class STMDieException<E> {
   readonly [STMDieExceptionSym]: STMDieExceptionSym = STMDieExceptionSym
   constructor(readonly e: E) {}
@@ -134,14 +171,29 @@ export class STMDieException<E> {
 
 /**
  * @tsplus static effect/core/stm/STM.Ops isDieException
+ * @category refinements
+ * @since 1.0.0
  */
 export function isDieException(u: unknown): u is STMDieException<unknown> {
   return typeof u === "object" && u != null && STMDieExceptionSym in u
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const STMInterruptExceptionSym = Symbol.for("@effect/core/stm/STM/InterruptException")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMInterruptExceptionSym = typeof STMInterruptExceptionSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class STMInterruptException {
   readonly [STMInterruptExceptionSym]: STMInterruptExceptionSym = STMInterruptExceptionSym
   constructor(readonly fiberId: FiberId) {}
@@ -149,20 +201,37 @@ export class STMInterruptException {
 
 /**
  * @tsplus static effect/core/stm/STM.Ops isInterruptException
+ * @category refinements
+ * @since 1.0.0
  */
 export function isInterruptException(u: unknown): u is STMInterruptException {
   return typeof u === "object" && u != null && STMInterruptExceptionSym in u
 }
 
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export const STMRetryExceptionSym = Symbol.for("@effect/core/stm/STM/RetryException")
+
+/**
+ * @category symbol
+ * @since 1.0.0
+ */
 export type STMRetryExceptionSym = typeof STMRetryExceptionSym
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export class STMRetryException {
   readonly [STMRetryExceptionSym]: STMRetryExceptionSym = STMRetryExceptionSym
 }
 
 /**
  * @tsplus static effect/core/stm/STM.Ops isRetryException
+ * @category refinements
+ * @since 1.0.0
  */
 export function isRetryException(u: unknown): u is STMRetryException {
   return typeof u === "object" && u != null && STMRetryExceptionSym in u
@@ -172,6 +241,8 @@ export function isRetryException(u: unknown): u is STMRetryException {
  * Commits this transaction atomically.
  *
  * @tsplus getter effect/core/stm/STM commit
+ * @category destructors
+ * @since 1.0.0
  */
 export function commit<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
   return STM.atomically(self)
@@ -179,11 +250,13 @@ export function commit<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
 
 /**
  * @tsplus static effect/core/stm/STM.Ops atomically
+ * @category destructors
+ * @since 1.0.0
  */
 export function atomically<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
   return Effect.withFiberRuntime((state) => {
     const fiberId = state.id
-    const env = state.getFiberRef(FiberRef.currentEnvironment)
+    const env = state.getFiberRef(FiberRef.currentEnvironment) as Context.Context<R>
     const scheduler = state.getFiberRef(FiberRef.currentScheduler)
     const commitResult = tryCommitSync(fiberId, self, env, scheduler)
     switch (commitResult._tag) {
@@ -223,6 +296,8 @@ export function atomically<R, E, A>(self: STM<R, E, A>): Effect<R, E, A> {
  *
  * @tsplus static effect/core/stm/STM.Aspects ensuring
  * @tsplus pipeable effect/core/stm/STM ensuring
+ * @category finalizers
+ * @since 1.0.0
  */
 export function ensuring<R1, B>(finalizer: STM<R1, never, B>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E, A> =>
@@ -236,6 +311,8 @@ export function ensuring<R1, B>(finalizer: STM<R1, never, B>) {
  * Returns a value that models failure in the transaction.
  *
  * @tsplus static effect/core/stm/STM.Ops fail
+ * @category constructors
+ * @since 1.0.0
  */
 export function fail<E>(e: E): STM<never, E, never> {
   return new STMEffect(() => {
@@ -247,6 +324,8 @@ export function fail<E>(e: E): STM<never, E, never> {
  * Returns an `STM` effect that succeeds with the specified value.
  *
  * @tsplus static effect/core/stm/STM.Ops succeed
+ * @category constructors
+ * @since 1.0.0
  */
 export function succeed<A>(a: A): STM<never, never, A> {
   return new STMSucceedNow(a)
@@ -258,6 +337,8 @@ export function succeed<A>(a: A): STM<never, never, A> {
  *
  * @tsplus static effect/core/stm/STM.Aspects foldSTM
  * @tsplus pipeable effect/core/stm/STM foldSTM
+ * @category folding
+ * @since 1.0.0
  */
 export function foldSTM<E, R1, E1, A1, A, R2, E2, A2>(
   g: (e: E) => STM<R1, E1, A1>,
@@ -277,6 +358,8 @@ export function foldSTM<E, R1, E1, A1, A, R2, E2, A2>(
  *
  * @tsplus static effect/core/stm/STM.Aspects map
  * @tsplus pipeable effect/core/stm/STM map
+ * @category mapping
+ * @since 1.0.0
  */
 export function map<A, B>(f: (a: A) => B) {
   return <R, E>(self: STM<R, E, A>): STM<R, E, B> =>
@@ -292,6 +375,8 @@ export function map<A, B>(f: (a: A) => B) {
  * @tsplus pipeable-operator effect/core/stm/STM >
  * @tsplus static effect/core/stm/STM.Aspects zipRight
  * @tsplus pipeable effect/core/stm/STM zipRight
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipRight<R1, E1, A1>(that: STM<R1, E1, A1>) {
   return <R, E, A>(self: STM<R, E, A>): STM<R | R1, E | E1, A1> => self.zipWith(that, (_, b) => b)
@@ -303,6 +388,8 @@ export function zipRight<R1, E1, A1>(that: STM<R1, E1, A1>) {
  *
  * @tsplus static effect/core/stm/STM.Aspects zipWith
  * @tsplus pipeable effect/core/stm/STM zipWith
+ * @category zipping
+ * @since 1.0.0
  */
 export function zipWith<R1, E1, A1, A, A2>(that: STM<R1, E1, A1>, f: (a: A, b: A1) => A2) {
   return <R, E>(self: STM<R, E, A>): STM<R1 | R, E | E1, A2> =>
@@ -313,6 +400,8 @@ export function zipWith<R1, E1, A1, A, A2>(that: STM<R1, E1, A1>, f: (a: A, b: A
  * Returns an `STM` effect that succeeds with the specified value.
  *
  * @tsplus static effect/core/stm/STM.Ops sync
+ * @category constructors
+ * @since 1.0.0
  */
 export function sync<A>(a: LazyArg<A>): STM<never, never, A> {
   return new STMSucceed(a)
@@ -323,6 +412,8 @@ export function sync<A>(a: LazyArg<A>): STM<never, never, A> {
  *
  * @tsplus static effect/core/stm/STM.Aspects catchAll
  * @tsplus pipeable effect/core/stm/STM catchAll
+ * @category alternatives
+ * @since 1.0.0
  */
 export function catchAll<E, R1, E1, B>(f: (e: E) => STM<R1, E1, B>) {
   return <R, A>(self: STM<R, E, A>): STM<R1 | R, E1, A | B> =>
@@ -335,6 +426,8 @@ export function catchAll<E, R1, E1, B>(f: (e: E) => STM<R1, E1, B>) {
  *
  * @tsplus static effect/core/stm/STM.Aspects flatMap
  * @tsplus pipeable effect/core/stm/STM flatMap
+ * @category sequencing
+ * @since 1.0.0
  */
 export function flatMap<A, R1, E1, A2>(f: (a: A) => STM<R1, E1, A2>) {
   return <R, E>(self: STM<R, E, A>): STM<R1 | R, E | E1, A2> =>
@@ -358,24 +451,28 @@ export function concreteSTM<R, E, A>(
   //
 }
 
+/** @internal */
 type Erased = STM<unknown, unknown, unknown>
+
+/** @internal */
 type Cont =
   | STMOnFailure<unknown, unknown, unknown, unknown>
   | STMOnRetry<unknown, unknown, unknown, unknown, unknown, unknown>
   | STMOnSuccess<unknown, unknown, unknown, unknown>
 
+/** @internal */
 export class STMDriver<R, E, A> {
   private yieldOpCount = 2048
   private contStack: Stack.Stack<Cont> | undefined
-  private envStack: Stack.Stack<Context<unknown>>
+  private envStack: Stack.Stack<Context.Context<unknown>>
 
   constructor(
     readonly self: STM<R, E, A>,
     readonly journal: Journal,
     readonly fiberId: FiberId,
-    context: Context<R>
+    context: Context.Context<R>
   ) {
-    this.envStack = new Stack.Stack(context as Context<unknown>)
+    this.envStack = new Stack.Stack(context as Context.Context<unknown>)
   }
 
   private unwindStack(error: unknown, isRetry: boolean): Erased | undefined {
@@ -512,11 +609,15 @@ export class STMDriver<R, E, A> {
   }
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export function tryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   state: MutableRef.MutableRef<State<E, A>>,
-  context: Context<R>,
+  context: Context.Context<R>,
   scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
@@ -549,10 +650,11 @@ export function tryCommit<R, E, A>(
   }
 }
 
+/** @internal */
 export function tryCommitSync<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
-  context: Context<R>,
+  context: Context.Context<R>,
   scheduler: Scheduler
 ): TryCommit<E, A> {
   const journal: Journal = new Map()
@@ -584,6 +686,10 @@ export function tryCommitSync<R, E, A>(
   }
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 function completeTryCommit<R, E, A>(
   exit: Exit<E, A>,
   k: (_: Effect<R, E, A>) => unknown
@@ -591,12 +697,16 @@ function completeTryCommit<R, E, A>(
   k(Effect.done(exit))
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 function suspendTryCommit<R, E, A>(
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
   state: MutableRef.MutableRef<State<E, A>>,
-  context: Context<R>,
+  context: Context.Context<R>,
   k: (_: Effect<R, E, A>) => unknown,
   accum: Journal,
   journal: Journal,
@@ -633,13 +743,14 @@ function suspendTryCommit<R, E, A>(
   }
 }
 
+/** @internal */
 export function tryCommitAsync<R, E, A>(
   journal: Journal | undefined,
   fiberId: FiberId,
   stm: STM<R, E, A>,
   txnId: TxnId,
   state: MutableRef.MutableRef<State<E, A>>,
-  context: Context<R>,
+  context: Context.Context<R>,
   scheduler: Scheduler
 ) {
   return (k: (_: Effect<R, E, A>) => unknown) => {
@@ -673,14 +784,29 @@ export function tryCommitAsync<R, E, A>(
   }
 }
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type Journal = Map<TRef<unknown>, Entry>
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type JournalAnalysis = "I" | "RW" | "RO"
 
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export type Todo = () => unknown
 
 /**
  * Creates a function that can reset the journal.
+ *
+ * @category mutations
+ * @since 1.0.0
  */
 export function prepareResetJournal(journal: Journal): () => unknown {
   const saved: Journal = new Map()
@@ -700,6 +826,9 @@ export function prepareResetJournal(journal: Journal): () => unknown {
 
 /**
  * Commits the journal.
+ *
+ * @category mutations
+ * @since 1.0.0
  */
 export function commitJournal(journal: Journal) {
   for (const entry of journal) {
@@ -712,6 +841,9 @@ export function commitJournal(journal: Journal) {
  * read only in a single pass. Note that information on whether the
  * journal is read only will only be accurate if the journal is valid, due
  * to short-circuiting that occurs on an invalid journal.
+ *
+ * @category mutations
+ * @since 1.0.0
  */
 export function analyzeJournal(journal: Journal): JournalAnalysis {
   let val: JournalAnalysis = "RO"
@@ -724,11 +856,18 @@ export function analyzeJournal(journal: Journal): JournalAnalysis {
   return val
 }
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
 export const emptyTodoMap = HashMap.empty<TxnId, Todo>()
 
 /**
  * Atomically collects and clears all the todos from any `TRef` that
  * participated in the transaction.
+ *
+ * @category destructors
+ * @since 1.0.0
  */
 export function collectTodos(journal: Journal): Map<TxnId, Todo> {
   const allTodos: Map<TxnId, Todo> = new Map()
@@ -736,11 +875,11 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
   for (const entry of journal) {
     const tref: TRef<unknown> = entry[1].use((_) => _.tref)
     concreteTRef(tref)
-    const todos = tref.todo.get
+    const todos = MutableRef.get(tref.todo)
     for (const todo of todos) {
       allTodos.set(todo[0], todo[1])
     }
-    tref.todo.set(emptyTodoMap)
+    pipe(tref.todo, MutableRef.set(emptyTodoMap))
   }
 
   return allTodos
@@ -748,8 +887,11 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
 
 /**
  * Executes the todos in the current thread, sequentially.
+ *
+ * @category destructors
+ * @since 1.0.0
  */
-export function execTodos(todos: Map<TxnId, Todo>) {
+export function execTodos(todos: Map<TxnId, Todo>): void {
   for (const todo of todos) {
     todo[1]()
   }
@@ -757,6 +899,9 @@ export function execTodos(todos: Map<TxnId, Todo>) {
 
 /**
  * Runs all the todos.
+ *
+ * @category constructors
+ * @since 1.0.0
  */
 export function completeTodos<E, A>(
   exit: Exit<E, A>,
@@ -773,6 +918,9 @@ export function completeTodos<E, A>(
 /**
  * For the given transaction id, adds the specified todo effect to all
  * `TRef` values.
+ *
+ * @category mutations
+ * @since 1.0.0
  */
 export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boolean {
   let added = false
@@ -780,10 +928,10 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
   for (const entry of journal) {
     const tref = entry[1].use((_) => _.tref)
     concreteTRef(tref)
-    const oldTodo = tref.todo.get
-    if (!oldTodo.has(txnId)) {
-      const newTodo = oldTodo.set(txnId, todoEffect)
-      tref.todo.set(newTodo)
+    const oldTodo = MutableRef.get(tref.todo)
+    if (!pipe(oldTodo, HashMap.has(txnId))) {
+      const newTodo = pipe(oldTodo, HashMap.set(txnId, todoEffect))
+      pipe(tref.todo, MutableRef.set(newTodo))
       added = true
     }
   }
@@ -794,6 +942,9 @@ export function addTodo(txnId: TxnId, journal: Journal, todoEffect: Todo): boole
 /**
  * Finds all the new todo targets that are not already tracked in the
  * `oldJournal`.
+ *
+ * @category mutations
+ * @since 1.0.0
  */
 export function untrackedTodoTargets(
   oldJournal: Journal,
@@ -820,6 +971,9 @@ export function untrackedTodoTargets(
 
 /**
  * Determines if the journal is valid.
+ *
+ * @category getters
+ * @since 1.0.0
  */
 export function isValid(journal: Journal) {
   let valid = true
@@ -834,6 +988,9 @@ export function isValid(journal: Journal) {
 
 /**
  * Determines if the journal is invalid.
+ *
+ * @category getters
+ * @since 1.0.0
  */
 export function isInvalid(journal: Journal) {
   return !isValid(journal)

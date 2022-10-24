@@ -1,8 +1,13 @@
+import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Refinement"
+
 /**
  * Supplies `orElse` if the predicate fails.
  *
  * @tsplus static effect/core/stm/STM.Aspects filterOrElse
  * @tsplus pipeable effect/core/stm/STM filterOrElse
+ * @category filtering
+ * @since 1.0.0
  */
 export function filterOrElse<A, B extends A, R2, E2, A2>(
   f: Refinement<A, B>,

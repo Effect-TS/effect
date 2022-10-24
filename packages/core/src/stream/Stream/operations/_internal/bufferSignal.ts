@@ -1,3 +1,6 @@
+import type { Chunk } from "@fp-ts/data/Chunk"
+
+/** @internal */
 export function bufferSignal<R, E, A>(
   effect: Effect<Scope, never, Queue<readonly [Take<E, A>, Deferred<never, void>]>>,
   channel: Channel<R, unknown, unknown, unknown, E, Chunk<A>, unknown>

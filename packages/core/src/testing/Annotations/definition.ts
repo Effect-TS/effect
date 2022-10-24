@@ -1,3 +1,6 @@
+import { Tag } from "@fp-ts/data/Context"
+import type { SortedSet } from "@fp-ts/data/SortedSet"
+
 /**
  * The `Annotations` trait provides access to an annotation map that tests can
  * add arbitrary annotations to. Each annotation consists of a string
@@ -7,6 +10,8 @@
  * monad effect.
  *
  * @tsplus type effect/core/testing/Annotations
+ * @category model
+ * @since 1.0.0
  */
 export interface Annotations {
   readonly annotate: <V>(key: TestAnnotation<V>, value: V) => Effect<never, never, void>
@@ -19,6 +24,8 @@ export interface Annotations {
 
 /**
  * @tsplus type effect/core/testing/Annotations.Ops
+ * @category model
+ * @since 1.0.0
  */
 export interface AnnotationsOps {
   readonly Tag: Tag<Annotations>

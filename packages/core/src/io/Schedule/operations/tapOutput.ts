@@ -6,6 +6,8 @@ import { makeWithState } from "@effect/core/io/Schedule/operations/_internal/mak
  *
  * @tsplus static effect/core/io/Schedule.Aspects tapOutput
  * @tsplus pipeable effect/core/io/Schedule tapOutput
+ * @category sequencing
+ * @since 1.0.0
  */
 export function tapOutput<Out, Env1, X>(f: (out: Out) => Effect<Env1, never, X>) {
   return <State, Env, In>(
