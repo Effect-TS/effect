@@ -4,6 +4,9 @@ import * as glob from "glob"
 import * as path from "path"
 
 const getExportName = (name: string): string => {
+  if (name === "DSL") {
+    return "dsl"
+  }
   return name.substring(0, 1).toLowerCase() + name.substring(1)
 }
 

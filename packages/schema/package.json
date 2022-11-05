@@ -109,6 +109,7 @@
     }
   },
   "dependencies": {
-    "@fp-ts/core": "^0.0.8"
+    "@fp-ts/core": "^0.0.8",
+    "@fp-ts/data": "^0.0.9"
   }
 }
