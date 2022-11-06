@@ -27,6 +27,21 @@ export const make = <I, O, E, A>(dsl: DSL): Schema<I, O, E, A> => dsl as any
 /**
  * @since 1.0.0
  */
+export const string: Schema<unknown, string, DE.NotType, string> = make(dsl.stringDSL)
+
+/**
+ * @since 1.0.0
+ */
+export const number: Schema<unknown, number, DE.NotType, number> = make(dsl.numberDSL)
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Schema<unknown, boolean, DE.NotType, boolean> = make(dsl.booleanDSL)
+
+/**
+ * @since 1.0.0
+ */
 export const literal = <A extends dsl.Literal>(
   literal: A
 ): Schema<unknown, A, DE.NotEqual<A>, A> => make(dsl.literalDSL(literal))
@@ -35,8 +50,15 @@ export const literal = <A extends dsl.Literal>(
  * @since 1.0.0
  */
 export const readonlyArray = <I, O, E, A>(
-  self: Schema<I, O, E, A>
-): Schema<ReadonlyArray<I>, ReadonlyArray<A>, E, ReadonlyArray<A>> => make(dsl.arrayDSL(self, true))
+  item: Schema<I, O, E, A>
+): Schema<ReadonlyArray<I>, ReadonlyArray<A>, E, ReadonlyArray<A>> => make(dsl.arrayDSL(item, true))
+
+/**
+ * @since 1.0.0
+ */
+export const array = <I, O, E, A>(
+  item: Schema<I, O, E, A>
+): Schema<Array<I>, Array<A>, E, Array<A>> => make(dsl.arrayDSL(item, false))
 
 /**
  * @since 1.0.0
@@ -82,25 +104,6 @@ export const indexSignature = <I, O, E, A>(
  */
 export const or = <I, O2, E2, B>(that: Schema<I, O2, E2, B>) =>
   <O1, E1, A>(self: Schema<I, O1, E1, A>): Schema<I, O1 | O2, E1 | E2, A | B> => union(self, that)
-
-// ---------------------------------------------------
-// data
-// ---------------------------------------------------
-
-/**
- * @since 1.0.0
- */
-export const string: Schema<unknown, string, DE.NotType, string> = make(dsl.stringDSL)
-
-/**
- * @since 1.0.0
- */
-export const number: Schema<unknown, number, DE.NotType, number> = make(dsl.numberDSL)
-
-/**
- * @since 1.0.0
- */
-export const boolean: Schema<unknown, boolean, DE.NotType, boolean> = make(dsl.booleanDSL)
 
 /**
  * @since 1.0.0

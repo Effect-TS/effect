@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as DE from "@fp-ts/codec/DecodeError"
-import type { Literal } from "@fp-ts/codec/DSL"
+import type * as dsl from "@fp-ts/codec/DSL"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as T from "@fp-ts/codec/These"
@@ -49,12 +49,12 @@ export const boolean: Decoder<unknown, boolean, DE.NotType, boolean> = {
   decode: (i) => typeof i === "boolean" ? succeed(i) : fail(DE.notType("boolean", i))
 }
 
-const isEqual = <A extends Literal>(i: unknown, a: A): i is A => i === a
+const isEqual = <A extends dsl.Literal>(i: unknown, a: A): i is A => i === a
 
 /**
  * @since 1.0.0
  */
-export const literal = <A extends Literal>(
+export const literal = <A extends dsl.Literal>(
   literal: A
 ): Decoder<unknown, A, DE.NotEqual<A>, A> => ({
   schema: S.literal(literal),
@@ -66,17 +66,79 @@ export const literal = <A extends Literal>(
  */
 export const readonlyArray = <I, O, E, A>(
   item: Decoder<I, O, E, A>
-): Decoder<ReadonlyArray<I>, ReadonlyArray<A>, E, ReadonlyArray<A>> => ({
-  schema: S.readonlyArray(item.schema),
-  decode: (is) => {
-    const rights: Array<A> = []
-    for (const i of is) {
-      const result = item.decode(i)
-      if (T.isLeft(result)) {
-        return T.left(result.left)
-      }
-      rights.push(result.right)
-    }
-    return succeed(rights)
+): Decoder<ReadonlyArray<I>, ReadonlyArray<A>, E, ReadonlyArray<A>> =>
+  decoderFor(S.readonlyArray(item.schema))
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <Fields extends Record<PropertyKey, Decoder<any, any, any, any>>>(
+  fields: Fields
+): Decoder<
+  { readonly [K in keyof Fields]: Fields[K]["schema"][typeof S.schemaSym][0] },
+  { readonly [K in keyof Fields]: Fields[K]["schema"][typeof S.schemaSym][1] },
+  Fields[keyof Fields]["schema"][typeof S.schemaSym][2],
+  { readonly [K in keyof Fields]: Fields[K]["schema"][typeof S.schemaSym][3] }
+> => {
+  const keys = Object.keys(fields)
+  const schemas: any = {}
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i]
+    schemas[key] = fields[key].schema
   }
-})
+  return decoderFor(S.struct(schemas)) as any
+}
+
+/**
+ * @since 1.0.0
+ */
+export const decoderFor = <I, O, E, A>(schema: Schema<I, O, E, A>): Decoder<I, O, E, A> => {
+  return {
+    schema,
+    decode: decodeFor(schema)
+  }
+}
+
+const decodeFor = (dsl: dsl.DSL): Decoder<any, any, any, any>["decode"] => {
+  switch (dsl._tag) {
+    case "StringDSL":
+      return string.decode
+    case "NumberDSL":
+      return number.decode
+    case "BooleanDSL":
+      return boolean.decode
+    case "LiteralDSL":
+      return literal(dsl.literal).decode
+    case "ArrayDSL": {
+      const decode = decodeFor(dsl.item)
+      return (input) => {
+        const a = []
+        for (const i of input) {
+          const t = decode(i)
+          if (T.isLeft(t)) {
+            return T.left(t.left)
+          }
+          a.push(t.right)
+        }
+        return succeed(a)
+      }
+    }
+    case "StructDSL": {
+      const decodes = dsl.fields.map((f) => decodeFor(f.value))
+      return (input) => {
+        const a = {}
+        for (let i = 0; i < decodes.length; i++) {
+          const key = dsl.fields[i].key
+          const t = decodes[i](input[key])
+          if (T.isLeft(t)) {
+            return T.left(t.left)
+          }
+          a[key] = t.right
+        }
+        return succeed(a)
+      }
+    }
+  }
+  console.log(dsl._tag)
+  throw new Error(dsl._tag)
+}
