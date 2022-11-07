@@ -25,8 +25,15 @@ describe("Decoder", () => {
     expect(decoder.decode("a")).toEqual(D.fail(DE.notEqual(1, "a")))
   })
 
-  it("readonlyArray", () => {
-    const decoder = D.readonlyArray(D.string)
+  it("fromGenericArray (true)", () => {
+    const decoder = D.fromGenericArray(D.string, true)
+    expect(decoder.decode([])).toEqual(D.succeed([]))
+    expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
+    expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
+  })
+
+  it("fromGenericArray (false)", () => {
+    const decoder = D.fromGenericArray(D.string, false)
     expect(decoder.decode([])).toEqual(D.succeed([]))
     expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
     expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
@@ -34,8 +41,8 @@ describe("Decoder", () => {
 
   it("struct", () => {
     const decoder = D.struct({ a: D.string, b: D.number })
-    expect(decoder.decode({ a: 'a', b: 1 })).toEqual(D.succeed({ a: 'a', b: 1 }))
-    expect(decoder.decode({ a: 'a', b: 'a' })).toEqual(D.fail(DE.notType("number", 'a')))
-    expect(decoder.decode({ a: 1, b: 'a' })).toEqual(D.fail(DE.notType("string", 1)))
+    expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
+    expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
+    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
   })
 })

@@ -33,11 +33,6 @@ export const show = (dsl: DSL): string => {
 
 describe("Show", () => {
   describe("show", () => {
-    it("field", () => {
-      const schema = _.field("a", _.string)
-      expect(pipe(schema, show)).toEqual("{ readonly a: string }")
-    })
-
     it("struct", () => {
       const schema = _.struct({
         a: _.string,
@@ -48,10 +43,17 @@ describe("Show", () => {
       )
     })
 
-    it("readonlyArray", () => {
-      const schema = _.readonlyArray(_.string)
+    it("ReadonlyArray", () => {
+      const schema = _.array(_.string, true)
       expect(pipe(schema, show)).toEqual(
         "ReadonlyArray<string>"
+      )
+    })
+
+    it("Array", () => {
+      const schema = _.array(_.string, false)
+      expect(pipe(schema, show)).toEqual(
+        "Array<string>"
       )
     })
 
