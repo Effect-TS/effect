@@ -9,6 +9,7 @@ import type { Option } from "@fp-ts/data/Option"
  * @since 1.0.0
  */
 export type DSL =
+  | ConstructorDSL
   | StringDSL
   | NumberDSL
   | BooleanDSL
@@ -18,6 +19,24 @@ export type DSL =
   | IndexSignatureDSL
   | TupleDSL
   | UnionDSL
+
+/**
+ * @since 1.0.0
+ */
+export interface ConstructorDSL {
+  readonly _tag: "ConstructorDSL"
+  readonly name: string
+  readonly type: DSL
+}
+
+/**
+ * @since 1.0.0
+ */
+export const constructorDSL = (name: string, type: DSL): ConstructorDSL => ({
+  _tag: "ConstructorDSL",
+  name,
+  type
+})
 
 /**
  * @since 1.0.0
