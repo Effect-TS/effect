@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as codec from "@fp-ts/codec/Codec"
 import * as decodeError from "@fp-ts/codec/DecodeError"
 import * as decoder from "@fp-ts/codec/Decoder"
@@ -13,6 +14,10 @@ import * as show from "@fp-ts/codec/Show"
 import * as these from "@fp-ts/codec/These"
 
 export {
+  /**
+   * @since 1.0.0
+   */
+  arbitrary,
   /**
    * @since 1.0.0
    */
