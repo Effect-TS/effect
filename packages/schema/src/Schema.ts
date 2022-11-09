@@ -6,6 +6,7 @@ import type { DSL } from "@fp-ts/codec/DSL"
 import * as dsl from "@fp-ts/codec/DSL"
 import type * as C from "@fp-ts/data/Context"
 import type { Either } from "@fp-ts/data/Either"
+import * as O from "@fp-ts/data/Option"
 import type { Option } from "@fp-ts/data/Option"
 
 /**
@@ -55,10 +56,23 @@ export const literal = <A extends dsl.Literal>(
 /**
  * @since 1.0.0
  */
-export const array = <P, E, A, B extends boolean>(
-  item: Schema<P, E, A>,
-  readonly: B
+export const array = <B extends boolean, P, E, A>(
+  readonly: B,
+  item: Schema<P, E, A>
 ): Schema<P, E, B extends true ? ReadonlyArray<A> : Array<A>> => make(dsl.arrayDSL(item, readonly))
+
+/**
+ * @since 1.0.0
+ */
+export const tuple = <B extends boolean, Components extends ReadonlyArray<Schema<any, any, any>>>(
+  readonly: B,
+  ...components: Components
+): Schema<
+  Components[number]["P"],
+  Components[number]["E"],
+  B extends true ? { readonly [K in keyof Components]: Components[K]["A"] }
+    : { [K in keyof Components]: Components[K]["A"] }
+> => make(dsl.tupleDSL(components, O.none, readonly))
 
 /**
  * @since 1.0.0
