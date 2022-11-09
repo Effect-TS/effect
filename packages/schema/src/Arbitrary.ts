@@ -24,8 +24,8 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> => (
 export const arbitraryFor = <P>(
   _ctx: C.Context<P>
 ): <E, A>(schema: Schema<P, E, A>) => Arbitrary<A> => {
-  const f = (dsl: Meta): Arbitrary<any> => {
-    switch (dsl._tag) {
+  const f = (meta: Meta): Arbitrary<any> => {
+    switch (meta._tag) {
       case "String":
         return make((fc) => fc.string())
       case "Number":
@@ -33,35 +33,35 @@ export const arbitraryFor = <P>(
       case "Boolean":
         return make((fc) => fc.boolean())
       case "Literal":
-        return make((fc) => fc.constant(dsl.literal))
+        return make((fc) => fc.constant(meta.literal))
       case "Tuple": {
-        const arbs = dsl.components.map(f)
+        const arbs = meta.components.map(f)
         return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))
       }
       case "Union": {
-        const arbs = dsl.members.map(f)
+        const arbs = meta.members.map(f)
         return make((fc) => fc.oneof(...arbs.map((arb) => arb.arbitrary(fc))))
       }
       case "Struct": {
-        const arbs = dsl.fields.map((field) => f(field.value))
+        const arbs = meta.fields.map((field) => f(field.value))
         return make((fc) => {
           const fields = {}
           arbs.forEach((arb, i) => {
-            fields[dsl.fields[i].key] = arb.arbitrary(fc)
+            fields[meta.fields[i].key] = arb.arbitrary(fc)
           })
           return fc.record(fields)
         })
       }
       case "IndexSignature": {
-        const arb = f(dsl.value)
+        const arb = f(meta.value)
         return make((fc) => fc.dictionary(fc.string(), arb.arbitrary(fc)))
       }
       case "Array": {
-        const arb = f(dsl.item)
+        const arb = f(meta.item)
         return make((fc) => fc.array(arb.arbitrary(fc)))
       }
     }
-    throw new Error(`Unhandled ${dsl._tag}`)
+    throw new Error(`Unhandled ${meta._tag}`)
   }
   return f
 }

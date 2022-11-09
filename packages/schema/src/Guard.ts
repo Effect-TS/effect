@@ -11,60 +11,121 @@ import { pipe } from "@fp-ts/data/Function"
  * @since 1.0.0
  */
 export interface Guard<A> {
+  readonly A: A
   readonly is: (input: unknown) => input is A
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is })
+export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is }) as any
+
+/**
+ * @since 1.0.0
+ */
+export const string: Guard<string> = make((a): a is string => typeof a === "string")
+
+/**
+ * @since 1.0.0
+ */
+export const number: Guard<number> = make((a): a is number => typeof a === "number")
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Guard<boolean> = make((a): a is boolean => typeof a === "boolean")
+
+/**
+ * @since 1.0.0
+ */
+export const literal = <A extends LiteralValue>(
+  literal: A
+): Guard<A> => make((a): a is A => a === literal)
+
+/**
+ * @since 1.0.0
+ */
+export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
+  ...components: Components
+): Guard<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
+  make((a): a is { readonly [K in keyof Components]: Components[K]["A"] } =>
+    Array.isArray(a) &&
+    components.every((guard, i) => guard.is(a[i]))
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const union = <Members extends ReadonlyArray<Guard<unknown>>>(
+  ...members: Members
+): Guard<Members[number]["A"]> =>
+  make((a): a is Members[number]["A"] => members.some((guard) => guard.is(a)))
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <Fields extends Record<PropertyKey, Guard<unknown>>>(
+  fields: Fields
+): Guard<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+  const keys = Object.keys(fields)
+  const guards = keys.map((key) => fields[key])
+  return make((a): a is { readonly [K in keyof Fields]: Fields[K]["A"] } =>
+    typeof a === "object" && a != null &&
+    guards.every((guard, i) => guard.is(a[keys[i]]))
+  )
+}
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature = <A>(
+  value: Guard<A>
+): Guard<{ readonly [_: string]: A }> =>
+  make((a): a is { readonly [_: string]: A } =>
+    typeof a === "object" && a != null && Object.keys(a).every((key) => value.is(a[key]))
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const array = <A>(
+  item: Guard<A>
+): Guard<ReadonlyArray<A>> =>
+  make((a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem)))
 
 /**
  * @since 1.0.0
  */
 export const guardFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) => Guard<A> => {
-  const f = (dsl: Meta): Guard<any> => {
-    switch (dsl._tag) {
+  const f = (meta: Meta): Guard<any> => {
+    switch (meta._tag) {
       case "Constructor": {
-        const service: any = pipe(ctx, C.get(dsl.tag as any))
-        return service.is(f(dsl.type))
+        const service: any = pipe(ctx, C.get(meta.tag as any))
+        return service.is(f(meta.type))
       }
       case "String":
-        return make((a): a is string => typeof a === "string")
+        return string
       case "Number":
-        return make((a): a is number => typeof a === "number")
+        return number
       case "Boolean":
-        return make((a): a is boolean => typeof a === "boolean")
+        return boolean
       case "Literal":
-        return make((a): a is LiteralValue => a === dsl.literal)
-      case "Tuple": {
-        const guards = dsl.components.map(f)
-        return make((a: unknown): a is ReadonlyArray<unknown> =>
-          Array.isArray(a) &&
-          guards.every((guard, i) => guard.is(a[i]))
-        )
-      }
-      case "Union": {
-        const guards = dsl.members.map(f)
-        return make((a: unknown): a is unknown => guards.some((guard) => guard.is(a)))
-      }
+        return literal(meta.literal)
+      case "Tuple":
+        return tuple(...meta.components.map(f))
+      case "Union":
+        return union(...meta.members.map(f))
       case "Struct": {
-        const guards = dsl.fields.map((field) => f(field.value))
-        return make((a: unknown): a is any =>
-          typeof a === "object" && a != null &&
-          guards.every((guard, i) => guard.is(a[dsl.fields[i].key]))
-        )
+        const fields = {}
+        meta.fields.forEach((field) => {
+          fields[field.key] = f(field.value)
+        })
+        return struct(fields)
       }
-      case "IndexSignature": {
-        const guard = f(dsl.value)
-        return make((a: unknown): a is any =>
-          typeof a === "object" && a != null && Object.keys(a).every((key) => guard.is(a[key]))
-        )
-      }
-      case "Array": {
-        const guard = f(dsl.item)
-        return make((a: unknown): a is any => Array.isArray(a) && a.every((elem) => guard.is(elem)))
-      }
+      case "IndexSignature":
+        return indexSignature(f(meta.value))
+      case "Array":
+        return array(f(meta.item))
     }
   }
   return f

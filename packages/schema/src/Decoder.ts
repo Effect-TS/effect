@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as DE from "@fp-ts/codec/DecodeError"
-import type { Literal } from "@fp-ts/codec/DSL"
+import type { LiteralValue } from "@fp-ts/codec/Meta"
 import * as T from "@fp-ts/codec/These"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
@@ -48,12 +48,12 @@ export const boolean: Decoder<unknown, DE.NotType, boolean> = {
   decode: (i) => typeof i === "boolean" ? succeed(i) : fail(DE.notType("boolean", i))
 }
 
-const isEqual = <A extends Literal>(i: unknown, a: A): i is A => i === a
+const isEqual = <A extends LiteralValue>(i: unknown, a: A): i is A => i === a
 
 /**
  * @since 1.0.0
  */
-export const literal = <A extends Literal>(
+export const literal = <A extends LiteralValue>(
   literal: A
 ): Decoder<unknown, DE.NotEqual<A>, A> => ({
   decode: (i) => isEqual(i, literal) ? succeed(i) : fail(DE.notEqual(literal, i))

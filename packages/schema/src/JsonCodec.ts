@@ -23,8 +23,8 @@ export type Json =
   }
 
 const decoderFor = <P>(_ctx: C.Context<P>) => {
-  const f = (dsl: Meta): Decoder<Json, any, any> => {
-    switch (dsl._tag) {
+  const f = (meta: Meta): Decoder<Json, any, any> => {
+    switch (meta._tag) {
       case "String":
         return D.string as any
       case "Number":
@@ -32,9 +32,9 @@ const decoderFor = <P>(_ctx: C.Context<P>) => {
       case "Boolean":
         return D.boolean as any
       case "Literal":
-        return D.literal(dsl.literal) as any
+        return D.literal(meta.literal) as any
     }
-    throw new Error(`Unhandled ${dsl._tag}`)
+    throw new Error(`Unhandled ${meta._tag}`)
   }
   return <E, A>(schema: Schema<P, E, A>): Decoder<Json, E, A> => f(schema)
 }
