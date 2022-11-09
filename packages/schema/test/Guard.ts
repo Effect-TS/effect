@@ -1,16 +1,16 @@
 import * as _ from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 
+const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | "Set", E, Set<A>> =>
+  S.constructor("Set", item)
+
+const isSet = <A>(guard: _.Guard<A>): _.Guard<Set<A>> =>
+  _.make((input): input is Set<A> =>
+    input instanceof Set && Array.from(input.values()).every(guard.is)
+  )
+
 describe("Guard", () => {
   describe("guardFor", () => {
-    const set = <P, E, A>(type: S.Schema<P, E, A>): S.Schema<P | "Set", E, Set<A>> =>
-      S.constructor("Set", type)
-
-    const isSet = <A>(guard: _.Guard<A>): _.Guard<Set<A>> =>
-      _.guard((input): input is Set<A> =>
-        input instanceof Set && Array.from(input.values()).every(guard.is)
-      )
-
     const guardFor = _.guardFor({
       Set: isSet
     })
