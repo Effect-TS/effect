@@ -31,6 +31,8 @@ describe("Decoder", () => {
     expect(decoder.decode([1])).toEqual(_.fail(DE.notType("string", 1)))
   })
 
+  // TODO it("nonEmptyArray", () => {
+
   it("struct", () => {
     const decoder = _.struct({ a: _.string, b: _.number })
     expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.succeed({ a: "a", b: 1 }))

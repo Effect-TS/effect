@@ -179,7 +179,7 @@ export const indexSignature = (
 export interface Tuple {
   readonly _tag: "Tuple"
   readonly components: ReadonlyArray<Meta>
-  readonly restElement: Option<Array>
+  readonly restElement: Option<Meta>
   readonly readonly: boolean
 }
 
@@ -188,7 +188,7 @@ export interface Tuple {
  */
 export const tuple = (
   components: ReadonlyArray<Meta>,
-  restElement: Option<Array>,
+  restElement: Option<Meta>,
   readonly: boolean
 ): Tuple => ({
   _tag: "Tuple",

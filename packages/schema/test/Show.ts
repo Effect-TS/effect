@@ -68,6 +68,13 @@ describe("Show", () => {
       )
     })
 
+    it("nonEmptyArray", () => {
+      const schema = S.nonEmptyArray(true, S.string, S.number)
+      expect(showFor(schema).show(["a", 1])).toEqual(
+        "[\"a\", 1]"
+      )
+    })
+
     it("union", () => {
       const schema = S.union(S.string, S.number)
       const s = showFor(schema)

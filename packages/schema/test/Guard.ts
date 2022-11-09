@@ -105,6 +105,14 @@ describe("Guard", () => {
       expect(guard.is(["a", 1])).toEqual(false)
     })
 
+    it("nonEmptyArray", () => {
+      const schema = S.nonEmptyArray(true, S.string, S.number)
+      const guard = guardFor(schema)
+      expect(guard.is([])).toEqual(true)
+      expect(guard.is(["a"])).toEqual(true)
+      expect(guard.is(["a", 1])).toEqual(true)
+    })
+
     it("option (as structure)", () => {
       const schema = S.option(S.number)
       const guard = guardFor(schema)

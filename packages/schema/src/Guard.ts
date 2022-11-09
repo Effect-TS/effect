@@ -6,12 +6,13 @@ import type { LiteralValue, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
  */
 export interface Guard<A> {
-  readonly A: A
+  readonly A: (_: A) => void
   readonly is: (input: unknown) => input is A
 }
 
@@ -19,6 +20,11 @@ export interface Guard<A> {
  * @since 1.0.0
  */
 export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is }) as any
+
+/**
+ * @since 1.0.0
+ */
+export const empty: Guard<unknown> = make((_): _ is unknown => true)
 
 /**
  * @since 1.0.0
@@ -111,8 +117,17 @@ export const guardFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) 
         return boolean
       case "Literal":
         return literal(meta.literal)
-      case "Tuple":
-        return tuple(...meta.components.map(f))
+      case "Tuple": {
+        const components = meta.components.map(f)
+        if (O.isSome(meta.restElement)) {
+          const restElement = f(meta.restElement.value)
+          return make((a): a is any =>
+            Array.isArray(a) &&
+            a.every((a, i) => i < components.length ? components[i].is(a) : restElement.is(a))
+          )
+        }
+        return tuple(...components)
+      }
       case "Union":
         return union(...meta.members.map(f))
       case "Struct": {

@@ -47,6 +47,15 @@ describe("Arbitrary", () => {
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
+    it("tuple", () => {
+      const schema = S.tuple(true, S.string, S.number)
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    // TODO it("nonEmptyArray", () => {
+
     it("union", () => {
       const schema = S.union(S.string, S.number)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)

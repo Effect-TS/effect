@@ -4,8 +4,10 @@ import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
 
 interface SetService {
+  readonly _tag: "SetService"
   readonly show: (type: string) => string
 }
 
@@ -17,6 +19,7 @@ const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<
 export const typeRepSet = (type: string) => `Set<${type}>`
 
 interface OptionService {
+  readonly _tag: "OptionService"
   readonly show: (type: string) => string
 }
 
@@ -29,11 +32,11 @@ const option = <P, E, A>(
 export const typeRepOption = (type: string) => `Option<${type}>`
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
-  const f = (dsl: Meta): string => {
-    switch (dsl._tag) {
+  const f = (meta: Meta): string => {
+    switch (meta._tag) {
       case "Constructor": {
-        const service: any = pipe(ctx, C.get(dsl.tag as any))
-        return service.show(f(dsl.type))
+        const service: any = pipe(ctx, C.get(meta.tag as any))
+        return service.show(f(meta.type))
       }
       case "String":
         return "string"
@@ -42,23 +45,30 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
       case "Boolean":
         return "boolean"
       case "Literal":
-        return JSON.stringify(dsl.literal)
-      case "Tuple":
-        return "[" + dsl.components.map(f).join(", ") + "]"
+        return JSON.stringify(meta.literal)
+      case "Tuple": {
+        const components = meta.components
+        const restElement = pipe(
+          meta.restElement,
+          O.map((meta) => (components.length > 0 ? ", " : "") + `...${f(meta)}[]`),
+          O.getOrElse("")
+        )
+        return `${meta.readonly ? "readonly " : ""}[${components.map(f).join(", ")}${restElement}]`
+      }
       case "Union":
-        return dsl.members.map(f).join(" | ")
+        return meta.members.map(f).join(" | ")
       case "Struct":
         return "{ " +
-          dsl.fields.map((field) =>
+          meta.fields.map((field) =>
             `${field.readonly ? "readonly " : ""}${String(field.key)}${
               field.optional ? "?" : ""
             }: ${f(field.value)}`
           ).join(", ")
           + " }"
       case "IndexSignature":
-        return `{ ${dsl.readonly ? "readonly " : ""}[_: ${dsl.key}]: ${f(dsl.value)} }`
+        return `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${f(meta.value)} }`
       case "Array":
-        return `${dsl.readonly ? "Readonly" : ""}Array<${f(dsl.item)}>`
+        return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
     }
   }
   return <E, A>(schema: Schema<P, E, A>): string => f(schema)
@@ -68,9 +78,11 @@ describe("typeRepFor", () => {
   const ctx = pipe(
     C.empty(),
     C.add(SetService)({
+      _tag: "SetService",
       show: typeRepSet
     }),
     C.add(OptionService)({
+      _tag: "OptionService",
       show: typeRepOption
     })
   )
@@ -115,6 +127,13 @@ describe("typeRepFor", () => {
       )
     })
 
+    it("nonEmptyArray", () => {
+      const schema = S.nonEmptyArray(true, S.string, S.number)
+      expect(pipe(schema, show)).toEqual(
+        "readonly [string, ...number[]]"
+      )
+    })
+
     it("literal", () => {
       const schema = S.literal("a")
       expect(pipe(schema, show)).toEqual(
@@ -133,6 +152,13 @@ describe("typeRepFor", () => {
       const schema = S.union(S.string, S.number)
       expect(pipe(schema, show)).toEqual(
         "string | number"
+      )
+    })
+
+    it("tuple", () => {
+      const schema = S.tuple(true, S.string, S.number)
+      expect(pipe(schema, show)).toEqual(
+        "readonly [string, number]"
       )
     })
 

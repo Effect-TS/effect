@@ -7,6 +7,7 @@ import type { LiteralValue, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
@@ -19,6 +20,11 @@ export interface Show<A> {
  * @since 1.0.0
  */
 export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
+
+/**
+ * @since 1.0.0
+ */
+export const empty: Show<unknown> = make(() => "")
 
 /**
  * @since 1.0.0
@@ -41,8 +47,11 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
         return make((literal: LiteralValue) => JSON.stringify(literal))
       case "Tuple": {
         const shows: ReadonlyArray<Show<unknown>> = meta.components.map(f)
+        const restElement = pipe(meta.restElement, O.map(f), O.getOrElse(empty))
         return make((tuple: ReadonlyArray<unknown>) =>
-          "[" + tuple.map((c, i) => shows[i].show(c)).join(", ") + "]"
+          "[" + tuple.map((c, i) =>
+            i < shows.length ? shows[i].show(c) : restElement.show(c)
+          ).join(", ") + "]"
         )
       }
       case "Union": {

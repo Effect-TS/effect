@@ -56,7 +56,7 @@ export const literal = <A extends meta.LiteralValue>(
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<any, any, any>>>(
+export const union = <Members extends ReadonlyArray<Schema<unknown, unknown, unknown>>>(
   ...members: Members
 ): Schema<Members[number]["P"], Members[number]["E"], Members[number]["A"]> =>
   make(meta.union(members))
@@ -64,7 +64,10 @@ export const union = <Members extends ReadonlyArray<Schema<any, any, any>>>(
 /**
  * @since 1.0.0
  */
-export const tuple = <B extends boolean, Components extends ReadonlyArray<Schema<any, any, any>>>(
+export const tuple = <
+  B extends boolean,
+  Components extends ReadonlyArray<Schema<unknown, unknown, unknown>>
+>(
   readonly: B,
   ...components: Components
 ): Schema<
@@ -77,7 +80,20 @@ export const tuple = <B extends boolean, Components extends ReadonlyArray<Schema
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Schema<any, any, any>>>(
+export const nonEmptyArray = <B extends boolean, HP, HE, HA, TP, TE, TA>(
+  readonly: B,
+  head: Schema<HP, HE, HA>,
+  tail: Schema<TP, TE, TA>
+): Schema<
+  HP | TP,
+  HE | TE,
+  B extends true ? readonly [HA, ...Array<TA>] : [HA, ...Array<TA>]
+> => make(meta.tuple([head], O.some(tail), readonly))
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <Fields extends Record<PropertyKey, Schema<unknown, unknown, unknown>>>(
   fields: Fields
 ): Schema<
   Fields[keyof Fields]["P"],
