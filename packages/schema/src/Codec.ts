@@ -10,7 +10,7 @@ import type * as C from "@fp-ts/data/Context"
 /**
  * @since 1.0.0
  */
-export interface Codec<Whole> {
+export interface Codec<in out Whole> {
   readonly decoderFor: <P>(
     ctx: C.Context<P>
   ) => <E, A>(schema: Schema<P, E, A>) => Decoder<Whole, E, A>

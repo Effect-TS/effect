@@ -26,13 +26,13 @@ const decoderFor = <P>(_ctx: C.Context<P>) => {
   const f = (meta: Meta): Decoder<Json, any, any> => {
     switch (meta._tag) {
       case "String":
-        return D.string as any
+        return D.string
       case "Number":
-        return D.number as any
+        return D.number
       case "Boolean":
-        return D.boolean as any
+        return D.boolean
       case "Literal":
-        return D.literal(meta.literal) as any
+        return D.literal(meta.literal)
     }
     throw new Error(`Unhandled ${meta._tag}`)
   }

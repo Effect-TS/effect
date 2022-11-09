@@ -6,7 +6,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 interface SetService {
-  readonly show: <A>(guard: _.Show<A>) => _.Show<Set<A>>
+  readonly _tag: "SetService"
+  readonly serve: <A>(shows: [_.Show<A>]) => _.Show<Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -19,8 +20,9 @@ describe("Show", () => {
     const ctx = pipe(
       C.empty(),
       C.add(SetService)({
-        show: <A>(show: _.Show<A>): _.Show<Set<A>> =>
-          _.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
+        _tag: "SetService",
+        serve: <A>(shows: [_.Show<A>]): _.Show<Set<A>> =>
+          _.make((a) => `Set([${Array.from(a.values()).map(shows[0].show).join(", ")}])`)
       })
     )
 

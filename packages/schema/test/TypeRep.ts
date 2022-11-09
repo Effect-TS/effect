@@ -1,3 +1,4 @@
+import type * as DE from "@fp-ts/codec/DecodeError"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -8,7 +9,7 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly show: (type: string) => string
+  readonly serve: (reps: [string]) => string
 }
 
 const SetService = C.Tag<SetService>()
@@ -16,11 +17,11 @@ const SetService = C.Tag<SetService>()
 const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<A>> =>
   S.constructor(SetService, item)
 
-export const typeRepSet = (type: string) => `Set<${type}>`
+const typeRepSet = (type: [string]) => `Set<${type[0]}>`
 
 interface OptionService {
   readonly _tag: "OptionService"
-  readonly show: (type: string) => string
+  readonly serve: (type: [string]) => string
 }
 
 const OptionService = C.Tag<OptionService>()
@@ -29,14 +30,26 @@ const option = <P, E, A>(
   item: S.Schema<P, E, A>
 ): S.Schema<P | OptionService, E, Option<A>> => S.constructor(OptionService, item)
 
-export const typeRepOption = (type: string) => `Option<${type}>`
+const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
+
+interface BigIntService {
+  readonly _tag: "BigIntService"
+  readonly serve: () => string
+}
+
+const BigIntService = C.Tag<BigIntService>()
+
+const bigint: S.Schema<BigIntService, DE.NotType, bigint> = S.primitive(BigIntService)
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: any = pipe(ctx, C.get(meta.tag as any))
-        return service.show(f(meta.type))
+        const service: { serve: (reps: ReadonlyArray<string>) => string } = pipe(
+          ctx,
+          C.get(meta.tag as any)
+        ) as any
+        return service.serve(meta.metas.map(f))
       }
       case "String":
         return "string"
@@ -79,14 +92,23 @@ describe("typeRepFor", () => {
     C.empty(),
     C.add(SetService)({
       _tag: "SetService",
-      show: typeRepSet
+      serve: typeRepSet
     }),
     C.add(OptionService)({
       _tag: "OptionService",
-      show: typeRepOption
+      serve: typeRepOption
+    }),
+    C.add(BigIntService)({
+      _tag: "BigIntService",
+      serve: () => "bigint"
     })
   )
   const show = typeRepFor(ctx)
+
+  it("primitive", () => {
+    const schema = set(bigint)
+    expect(pipe(schema, show)).toEqual("Set<bigint>")
+  })
 
   it("constructor", () => {
     const schema = set(set(S.string))

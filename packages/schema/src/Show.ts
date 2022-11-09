@@ -34,8 +34,11 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
   const f = (meta: Meta): Show<any> => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: any = pipe(ctx, C.get(meta.tag as any))
-        return make((a) => service.show(f(meta.type)).show(a))
+        const service: { serve: (shows: ReadonlyArray<Show<unknown>>) => Show<unknown> } = pipe(
+          ctx,
+          C.get(meta.tag as any)
+        ) as any
+        return make((a) => service.serve(meta.metas.map(f)).show(a))
       }
       case "String":
         return make((a) => JSON.stringify(a))

@@ -106,8 +106,11 @@ export const guardFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) 
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: any = pipe(ctx, C.get(meta.tag as any))
-        return service.is(f(meta.type))
+        const service: { serve: (shows: ReadonlyArray<Guard<unknown>>) => Guard<unknown> } = pipe(
+          ctx,
+          C.get(meta.tag as any)
+        ) as any
+        return service.serve(meta.metas.map(f))
       }
       case "String":
         return string

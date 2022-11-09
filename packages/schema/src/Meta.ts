@@ -27,16 +27,16 @@ export type Meta =
 export interface Constructor {
   readonly _tag: "Constructor"
   readonly tag: C.Tag<any>
-  readonly type: Meta
+  readonly metas: ReadonlyArray<Meta>
 }
 
 /**
  * @since 1.0.0
  */
-export const constructor = (tag: C.Tag<any>, type: Meta): Constructor => ({
+export const constructor = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Constructor => ({
   _tag: "Constructor",
   tag,
-  type
+  metas
 })
 
 /**

@@ -5,7 +5,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 interface SetService {
-  readonly is: <A>(guard: _.Guard<A>) => _.Guard<Set<A>>
+  readonly _tag: "SetService"
+  readonly serve: <A>(guards: [_.Guard<A>]) => _.Guard<Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -18,9 +19,10 @@ describe("Guard", () => {
     const ctx = pipe(
       C.empty(),
       C.add(SetService)({
-        is: <A>(guard: _.Guard<A>): _.Guard<Set<A>> =>
+        _tag: "SetService",
+        serve: <A>(guards: [_.Guard<A>]): _.Guard<Set<A>> =>
           _.make((input): input is Set<A> =>
-            input instanceof Set && Array.from(input.values()).every(guard.is)
+            input instanceof Set && Array.from(input.values()).every(guards[0].is)
           )
       })
     )

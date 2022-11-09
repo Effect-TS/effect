@@ -9,7 +9,7 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Decoder<in out Whole, E, out A> {
+export interface Decoder<in Whole, E, out A> {
   readonly decode: (whole: Whole) => T.These<ReadonlyArray<E>, A>
 }
 
