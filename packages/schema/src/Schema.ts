@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import type * as DE from "@fp-ts/codec/DecodeError"
-import type { DSL } from "@fp-ts/codec/DSL"
-import * as dsl from "@fp-ts/codec/DSL"
+import type { Meta } from "@fp-ts/codec/Meta"
+import * as dsl from "@fp-ts/codec/Meta"
 import type * as C from "@fp-ts/data/Context"
 import type { Either } from "@fp-ts/data/Either"
 import * as O from "@fp-ts/data/Option"
@@ -12,7 +12,7 @@ import type { Option } from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export type Schema<P, E, A> = DSL & {
+export type Schema<P, E, A> = Meta & {
   readonly P: P
   readonly E: E
   readonly A: A
@@ -21,7 +21,7 @@ export type Schema<P, E, A> = DSL & {
 /**
  * @since 1.0.0
  */
-export const make = <P, E, A>(dsl: DSL): Schema<P, E, A> => dsl as any
+export const make = <P, E, A>(dsl: Meta): Schema<P, E, A> => dsl as any
 
 /**
  * @since 1.0.0
@@ -29,29 +29,29 @@ export const make = <P, E, A>(dsl: DSL): Schema<P, E, A> => dsl as any
 export const constructor = <S, P, E, A>(
   tag: C.Tag<S>,
   type: Schema<P, E, A>
-): Schema<P | S, E, never> => make(dsl.constructorDSL(tag, type))
+): Schema<P | S, E, never> => make(dsl.constructor(tag, type))
 
 /**
  * @since 1.0.0
  */
-export const string: Schema<never, DE.NotType, string> = make(dsl.stringDSL)
+export const string: Schema<never, DE.NotType, string> = make(dsl.string)
 
 /**
  * @since 1.0.0
  */
-export const number: Schema<never, DE.NotType, number> = make(dsl.numberDSL)
+export const number: Schema<never, DE.NotType, number> = make(dsl.number)
 
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<never, DE.NotType, boolean> = make(dsl.booleanDSL)
+export const boolean: Schema<never, DE.NotType, boolean> = make(dsl.boolean)
 
 /**
  * @since 1.0.0
  */
-export const literal = <A extends dsl.Literal>(
+export const literal = <A extends dsl.LiteralValue>(
   literal: A
-): Schema<never, DE.NotEqual<A>, A> => make(dsl.literalDSL(literal))
+): Schema<never, DE.NotEqual<A>, A> => make(dsl.literal(literal))
 
 /**
  * @since 1.0.0
@@ -59,7 +59,7 @@ export const literal = <A extends dsl.Literal>(
 export const array = <B extends boolean, P, E, A>(
   readonly: B,
   item: Schema<P, E, A>
-): Schema<P, E, B extends true ? ReadonlyArray<A> : Array<A>> => make(dsl.arrayDSL(item, readonly))
+): Schema<P, E, B extends true ? ReadonlyArray<A> : Array<A>> => make(dsl.array(item, readonly))
 
 /**
  * @since 1.0.0
@@ -72,7 +72,7 @@ export const tuple = <B extends boolean, Components extends ReadonlyArray<Schema
   Components[number]["E"],
   B extends true ? { readonly [K in keyof Components]: Components[K]["A"] }
     : { [K in keyof Components]: Components[K]["A"] }
-> => make(dsl.tupleDSL(components, O.none, readonly))
+> => make(dsl.tuple(components, O.none, readonly))
 
 /**
  * @since 1.0.0
@@ -85,8 +85,8 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any, any, any>>
   { readonly [K in keyof Fields]: Fields[K]["A"] }
 > =>
   make(
-    dsl.structDSL(
-      Object.keys(fields).map((name) => dsl.fieldDSL(name, fields[name], false, true))
+    dsl.struct(
+      Object.keys(fields).map((name) => dsl.field(name, fields[name], false, true))
     )
   )
 
@@ -96,14 +96,14 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any, any, any>>
 export const union = <Members extends ReadonlyArray<Schema<any, any, any>>>(
   ...members: Members
 ): Schema<Members[number]["P"], Members[number]["E"], Members[number]["A"]> =>
-  make(dsl.unionDSL(members))
+  make(dsl.union(members))
 
 /**
  * @since 1.0.0
  */
 export const indexSignature = <P, E, A>(
   value: Schema<P, E, A>
-): Schema<P, E, { readonly [_: string]: A }> => make(dsl.indexSignatureDSL("string", value, true))
+): Schema<P, E, { readonly [_: string]: A }> => make(dsl.indexSignature("string", value, true))
 
 /**
  * @since 1.0.0

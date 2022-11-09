@@ -1,4 +1,4 @@
-import type { DSL } from "@fp-ts/codec/DSL"
+import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
@@ -29,25 +29,25 @@ const option = <P, E, A>(
 export const typeRepOption = (type: string) => `Option<${type}>`
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
-  const f = (dsl: DSL): string => {
+  const f = (dsl: Meta): string => {
     switch (dsl._tag) {
-      case "ConstructorDSL": {
+      case "Constructor": {
         const service: any = pipe(ctx, C.get(dsl.tag as any))
         return service.show(f(dsl.type))
       }
-      case "StringDSL":
+      case "String":
         return "string"
-      case "NumberDSL":
+      case "Number":
         return "number"
-      case "BooleanDSL":
+      case "Boolean":
         return "boolean"
-      case "LiteralDSL":
+      case "Literal":
         return JSON.stringify(dsl.literal)
-      case "TupleDSL":
+      case "Tuple":
         return "[" + dsl.components.map(f).join(", ") + "]"
-      case "UnionDSL":
+      case "Union":
         return dsl.members.map(f).join(" | ")
-      case "StructDSL":
+      case "Struct":
         return "{ " +
           dsl.fields.map((field) =>
             `${field.readonly ? "readonly " : ""}${String(field.key)}${
@@ -55,9 +55,9 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
             }: ${f(field.value)}`
           ).join(", ")
           + " }"
-      case "IndexSignatureDSL":
+      case "IndexSignature":
         return `{ ${dsl.readonly ? "readonly " : ""}[_: ${dsl.key}]: ${f(dsl.value)} }`
-      case "ArrayDSL":
+      case "Array":
         return `${dsl.readonly ? "Readonly" : ""}Array<${f(dsl.item)}>`
     }
   }

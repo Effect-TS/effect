@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { DSL } from "@fp-ts/codec/DSL"
+import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import type * as C from "@fp-ts/data/Context"
 import type * as FastCheck from "fast-check"
@@ -24,25 +24,25 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> => (
 export const arbitraryFor = <P>(
   _ctx: C.Context<P>
 ): <E, A>(schema: Schema<P, E, A>) => Arbitrary<A> => {
-  const f = (dsl: DSL): Arbitrary<any> => {
+  const f = (dsl: Meta): Arbitrary<any> => {
     switch (dsl._tag) {
-      case "StringDSL":
+      case "String":
         return make((fc) => fc.string())
-      case "NumberDSL":
+      case "Number":
         return make((fc) => fc.float())
-      case "BooleanDSL":
+      case "Boolean":
         return make((fc) => fc.boolean())
-      case "LiteralDSL":
+      case "Literal":
         return make((fc) => fc.constant(dsl.literal))
-      case "TupleDSL": {
+      case "Tuple": {
         const arbs = dsl.components.map(f)
         return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))
       }
-      case "UnionDSL": {
+      case "Union": {
         const arbs = dsl.members.map(f)
         return make((fc) => fc.oneof(...arbs.map((arb) => arb.arbitrary(fc))))
       }
-      case "StructDSL": {
+      case "Struct": {
         const arbs = dsl.fields.map((field) => f(field.value))
         return make((fc) => {
           const fields = {}
@@ -52,11 +52,11 @@ export const arbitraryFor = <P>(
           return fc.record(fields)
         })
       }
-      case "IndexSignatureDSL": {
+      case "IndexSignature": {
         const arb = f(dsl.value)
         return make((fc) => fc.dictionary(fc.string(), arb.arbitrary(fc)))
       }
-      case "ArrayDSL": {
+      case "Array": {
         const arb = f(dsl.item)
         return make((fc) => fc.array(arb.arbitrary(fc)))
       }

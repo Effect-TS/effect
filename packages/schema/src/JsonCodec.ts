@@ -5,7 +5,7 @@
 import type { Codec } from "@fp-ts/codec/Codec"
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import * as D from "@fp-ts/codec/Decoder"
-import type { DSL } from "@fp-ts/codec/DSL"
+import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import type * as C from "@fp-ts/data/Context"
 
@@ -23,15 +23,15 @@ export type Json =
   }
 
 const decoderFor = <P>(_ctx: C.Context<P>) => {
-  const f = (dsl: DSL): Decoder<Json, any, any> => {
+  const f = (dsl: Meta): Decoder<Json, any, any> => {
     switch (dsl._tag) {
-      case "StringDSL":
+      case "String":
         return D.string as any
-      case "NumberDSL":
+      case "Number":
         return D.number as any
-      case "BooleanDSL":
+      case "Boolean":
         return D.boolean as any
-      case "LiteralDSL":
+      case "Literal":
         return D.literal(dsl.literal) as any
     }
     throw new Error(`Unhandled ${dsl._tag}`)

@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 
-import type { Literal } from "@fp-ts/codec/DSL"
+import type { LiteralValue } from "@fp-ts/codec/Meta"
 
 /**
  * @since 1.0.0
  */
-export interface NotEqual<A extends Literal> {
+export interface NotEqual<A extends LiteralValue> {
   readonly _tag: "NotEqual"
   readonly literal: A
   readonly actual: unknown
@@ -16,7 +16,7 @@ export interface NotEqual<A extends Literal> {
 /**
  * @since 1.0.0
  */
-export const notEqual = <A extends Literal>(
+export const notEqual = <A extends LiteralValue>(
   literal: A,
   actual: unknown
 ): NotEqual<A> => ({ _tag: "NotEqual", literal, actual })

@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { DSL, Literal } from "@fp-ts/codec/DSL"
 import { guardFor } from "@fp-ts/codec/Guard"
+import type { LiteralValue, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
@@ -25,27 +25,27 @@ export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
  */
 export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) => Show<A> => {
   const g = guardFor(ctx)
-  const f = (dsl: DSL): Show<any> => {
+  const f = (dsl: Meta): Show<any> => {
     switch (dsl._tag) {
-      case "ConstructorDSL": {
+      case "Constructor": {
         const service: any = pipe(ctx, C.get(dsl.tag as any))
         return make((a) => service.show(f(dsl.type)).show(a))
       }
-      case "StringDSL":
+      case "String":
         return make((a) => JSON.stringify(a))
-      case "NumberDSL":
+      case "Number":
         return make((a) => JSON.stringify(a))
-      case "BooleanDSL":
+      case "Boolean":
         return make((a) => JSON.stringify(a))
-      case "LiteralDSL":
-        return make((literal: Literal) => JSON.stringify(literal))
-      case "TupleDSL": {
+      case "Literal":
+        return make((literal: LiteralValue) => JSON.stringify(literal))
+      case "Tuple": {
         const shows: ReadonlyArray<Show<unknown>> = dsl.components.map(f)
         return make((tuple: ReadonlyArray<unknown>) =>
           "[" + tuple.map((c, i) => shows[i].show(c)).join(", ") + "]"
         )
       }
-      case "UnionDSL": {
+      case "Union": {
         const shows: ReadonlyArray<Show<unknown>> = dsl.members.map(f)
         const guards = dsl.members.map((member) => g(member as any))
         return make((a) => {
@@ -53,7 +53,7 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
           return shows[index].show(a)
         })
       }
-      case "StructDSL": {
+      case "Struct": {
         const shows: ReadonlyArray<Show<unknown>> = dsl.fields.map((field) => f(field.value))
         return make((a: { [_: PropertyKey]: unknown }) =>
           `{ ${
@@ -62,13 +62,13 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
           } }`
         )
       }
-      case "IndexSignatureDSL": {
+      case "IndexSignature": {
         const show = f(dsl.value)
         return make((a) =>
           `{ ${Object.keys(a).map((key) => `${String(key)}: ${show.show(a[key])}`).join(", ")} }`
         )
       }
-      case "ArrayDSL": {
+      case "Array": {
         const show = f(dsl.item)
         return make((a: ReadonlyArray<unknown>) =>
           "[" + a.map((elem) => show.show(elem)).join(", ") + "]"
