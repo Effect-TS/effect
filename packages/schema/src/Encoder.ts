@@ -5,6 +5,6 @@
 /**
  * @since 1.0.0
  */
-export interface Encoder<I, A> {
-  readonly encode: (value: A) => I
+export interface Encoder<in out Whole, in A> {
+  readonly encode: (value: A) => Whole
 }

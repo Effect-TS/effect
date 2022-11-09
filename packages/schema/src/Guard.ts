@@ -38,7 +38,7 @@ export const guardFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) 
       case "LiteralDSL":
         return make((a): a is Literal => a === dsl.literal)
       case "TupleDSL": {
-        const guards: ReadonlyArray<Guard<unknown>> = dsl.components.map(f)
+        const guards = dsl.components.map(f)
         return make((a: unknown): a is ReadonlyArray<unknown> =>
           Array.isArray(a) &&
           guards.every((guard, i) => guard.is(a[i]))

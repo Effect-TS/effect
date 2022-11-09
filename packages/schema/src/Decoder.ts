@@ -12,8 +12,8 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Decoder<I, E, A> {
-  readonly decode: (input: I) => T.These<ReadonlyArray<E>, A>
+export interface Decoder<in out Whole, E, out A> {
+  readonly decode: (whole: Whole) => T.These<ReadonlyArray<E>, A>
 }
 
 export type InputOf<D> = D extends Decoder<infer I, any, any> ? I : never
@@ -122,7 +122,7 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<any, any, any>
 /**
  * @since 1.0.0
  */
-export const decoderFor = <P extends string>(ctx: C.Context<P>) => {
+export const decoderFor = <P>(ctx: C.Context<P>) => {
   const f = (dsl: DSL): Decoder<any, any, any> => {
     switch (dsl._tag) {
       case "ConstructorDSL": {
@@ -133,10 +133,14 @@ export const decoderFor = <P extends string>(ctx: C.Context<P>) => {
         return string
       case "NumberDSL":
         return number
+      case "BooleanDSL":
+        return boolean
+      case "LiteralDSL":
+        return literal(dsl.literal)
       case "ArrayDSL":
         return readonlyArray(f(dsl.item))
     }
-    return null as any
+    throw new Error(`Unhandled ${dsl._tag}`)
   }
   return <E, A>(schema: Schema<P, E, A>): Decoder<unknown, E, A> => f(schema)
 }
