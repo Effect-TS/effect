@@ -4,6 +4,7 @@
 import type * as DE from "@fp-ts/codec/DecodeError"
 import type { DSL } from "@fp-ts/codec/DSL"
 import * as dsl from "@fp-ts/codec/DSL"
+import type * as C from "@fp-ts/data/Context"
 import type { Either } from "@fp-ts/data/Either"
 import type { Option } from "@fp-ts/data/Option"
 
@@ -24,10 +25,10 @@ export const make = <P, E, A>(dsl: DSL): Schema<P, E, A> => dsl as any
 /**
  * @since 1.0.0
  */
-export const constructor = <P, E, A>(
-  name: string,
+export const constructor = <S, P, E, A>(
+  tag: C.Tag<S>,
   type: Schema<P, E, A>
-): Schema<never, never, never> => make(dsl.constructorDSL(name, type))
+): Schema<P | S, E, never> => make(dsl.constructorDSL(tag, type))
 
 /**
  * @since 1.0.0

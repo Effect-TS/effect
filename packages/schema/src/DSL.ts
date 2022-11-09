@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as C from "@fp-ts/data/Context"
 import type { Option } from "@fp-ts/data/Option"
 
 /**
@@ -25,16 +26,16 @@ export type DSL =
  */
 export interface ConstructorDSL {
   readonly _tag: "ConstructorDSL"
-  readonly name: string
+  readonly tag: C.Tag<any>
   readonly type: DSL
 }
 
 /**
  * @since 1.0.0
  */
-export const constructorDSL = (name: string, type: DSL): ConstructorDSL => ({
+export const constructorDSL = (tag: C.Tag<any>, type: DSL): ConstructorDSL => ({
   _tag: "ConstructorDSL",
-  name,
+  tag,
   type
 })
 

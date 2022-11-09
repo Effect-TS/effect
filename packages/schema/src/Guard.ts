@@ -4,6 +4,8 @@
 
 import type { DSL } from "@fp-ts/codec/DSL"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as C from "@fp-ts/data/Context"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * @since 1.0.0
@@ -20,20 +22,20 @@ export const make = <A>(is: (input: unknown) => input is A): Guard<A> => ({ is }
 /**
  * @since 1.0.0
  */
-export const guardFor = <P extends string>(map: Record<P, any>) => {
-  const f = <A>(dsl: DSL): Guard<A> => {
+export const guardFor = <P>(ctx: C.Context<P>) => {
+  const f = (dsl: DSL): Guard<any> => {
     switch (dsl._tag) {
       case "ConstructorDSL": {
-        const constructor = map[dsl.name]
-        return constructor(f(dsl.type))
+        const service: any = pipe(ctx, C.get(dsl.tag as any))
+        return service.guard(f(dsl.type))
       }
       case "StringDSL":
-        return make<any>((input): input is string => typeof input === "string")
+        return make((input): input is string => typeof input === "string")
       case "NumberDSL":
-        return make<any>((input): input is number => typeof input === "number")
+        return make((input): input is number => typeof input === "number")
       case "UnionDSL": {
         const guards = dsl.members.map((member) => f(member))
-        return make<any>((input): input is any => guards.some((guard) => guard.is(input)))
+        return make((input): input is any => guards.some((guard) => guard.is(input)))
       }
     }
     return null as any

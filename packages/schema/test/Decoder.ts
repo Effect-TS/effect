@@ -25,8 +25,8 @@ describe("Decoder", () => {
     expect(decoder.decode("a")).toEqual(D.fail(DE.notEqual(1, "a")))
   })
 
-  it("fromGenericArray", () => {
-    const decoder = D.fromGenericArray(D.string)
+  it("readonlyArray", () => {
+    const decoder = D.readonlyArray(D.string)
     expect(decoder.decode([])).toEqual(D.succeed([]))
     expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
     expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))

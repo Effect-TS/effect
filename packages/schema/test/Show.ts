@@ -1,19 +1,39 @@
 import type { DSL } from "@fp-ts/codec/DSL"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
+import type { Option } from "@fp-ts/data/Option"
 
-const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | "Set", E, Set<A>> =>
-  S.constructor("Set", item)
+interface SetService {
+  readonly show: (type: string) => string
+}
 
-const showSet = (type: string) => `Set<${type}>`
+const SetService = C.Tag<SetService>()
 
-export const showFor = <P extends string>(map: Record<P, any>) => {
+const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<A>> =>
+  S.constructor(SetService, item)
+
+export const showSet = (type: string) => `Set<${type}>`
+
+interface OptionService {
+  readonly show: (type: string) => string
+}
+
+const OptionService = C.Tag<OptionService>()
+
+const option = <P, E, A>(
+  item: S.Schema<P, E, A>
+): S.Schema<P | OptionService, E, Option<A>> => S.constructor(OptionService, item)
+
+export const showOption = (type: string) => `Option<${type}>`
+
+export const showFor = <P>(ctx: C.Context<P>) => {
   const f = (dsl: DSL): string => {
     switch (dsl._tag) {
       case "ConstructorDSL": {
-        const constructor: (type: string) => string = map[dsl.name]
-        return constructor(f(dsl.type))
+        const service: any = pipe(ctx, C.get(dsl.tag as any))
+        return service.show(f(dsl.type))
       }
       case "StringDSL":
         return "string"
@@ -45,9 +65,16 @@ export const showFor = <P extends string>(map: Record<P, any>) => {
 }
 
 describe("Show", () => {
-  const show = showFor({
-    Set: showSet
-  })
+  const ctx = pipe(
+    C.empty(),
+    C.add(SetService)({
+      show: showSet
+    }),
+    C.add(OptionService)({
+      show: showOption
+    })
+  )
+  const show = showFor(ctx)
 
   it("constructor", () => {
     const schema = set(set(S.string))
@@ -109,10 +136,17 @@ describe("Show", () => {
       )
     })
 
-    it("option", () => {
+    it("option (as structure)", () => {
       const schema = S.option(S.string)
       expect(pipe(schema, show)).toEqual(
         "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
+      )
+    })
+
+    it("option (as constructor)", () => {
+      const schema = option(set(S.string))
+      expect(pipe(schema, show)).toEqual(
+        "Option<Set<string>>"
       )
     })
 
