@@ -2,11 +2,8 @@
  * @since 1.0.0
  */
 import * as DE from "@fp-ts/codec/DecodeError"
-import type { DSL, Literal } from "@fp-ts/codec/DSL"
-import type { Schema } from "@fp-ts/codec/Schema"
+import type { Literal } from "@fp-ts/codec/DSL"
 import * as T from "@fp-ts/codec/These"
-import * as C from "@fp-ts/data/Context"
-import { pipe } from "@fp-ts/data/Function"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
 /**
@@ -117,30 +114,4 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<any, any, any>
       return succeed(a)
     }
   } as any
-}
-
-/**
- * @since 1.0.0
- */
-export const decoderFor = <P>(ctx: C.Context<P>) => {
-  const f = (dsl: DSL): Decoder<any, any, any> => {
-    switch (dsl._tag) {
-      case "ConstructorDSL": {
-        const constructor: any = pipe(ctx, C.get(dsl.tag as any))
-        return constructor(f(dsl.type))
-      }
-      case "StringDSL":
-        return string
-      case "NumberDSL":
-        return number
-      case "BooleanDSL":
-        return boolean
-      case "LiteralDSL":
-        return literal(dsl.literal)
-      case "ArrayDSL":
-        return readonlyArray(f(dsl.item))
-    }
-    throw new Error(`Unhandled ${dsl._tag}`)
-  }
-  return <E, A>(schema: Schema<P, E, A>): Decoder<unknown, E, A> => f(schema)
 }
