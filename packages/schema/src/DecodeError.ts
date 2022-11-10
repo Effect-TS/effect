@@ -38,3 +38,15 @@ export const equal = (
   expected: LiteralValue,
   actual: unknown
 ): Equal => ({ _tag: "Equal", expected, actual })
+
+/**
+ * @since 1.0.0
+ */
+export interface NaN {
+  readonly _tag: "NaN"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const nan: NaN = { _tag: "NaN" }

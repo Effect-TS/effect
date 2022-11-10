@@ -1,8 +1,26 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as _ from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
+import { pipe } from "@fp-ts/data/Function"
+
+const nan: _.Decoder<unknown, DE.Type | DE.NaN, number> = pipe(
+  _.number,
+  _.compose(_.make((n) => Number.isNaN(n) ? T.both([DE.nan], n) : _.succeed(n)))
+)
 
 describe("Decoder", () => {
+  it("compose", () => {
+    expect(_.compose).exist
+  })
+
+  it("flatMap", () => {
+    expect(pipe(T.both(["e1"], 1), _.flatMap(() => T.right(2)))).toEqual(T.both(["e1"], 2))
+    expect(pipe(T.both(["e1"], 1), _.flatMap(() => T.left(["e2"])))).toEqual(T.left(["e1", "e2"]))
+    expect(pipe(T.both(["e1"], 1), _.flatMap(() => T.both(["e2"], 2)))).toEqual(
+      T.both(["e1", "e2"], 2)
+    )
+  })
+
   it("should allow for custom errrors", () => {
     interface SetError {
       readonly _tag: "SetError"
@@ -66,13 +84,20 @@ describe("Decoder", () => {
     expect(decoder.decode(["a"])).toEqual(_.fail(DE.type("number", undefined)))
   })
 
-  it("readonlyArray", () => {
-    const decoder = _.readonlyArray(_.string)
-    expect(decoder.decode([])).toEqual(_.succeed([]))
-    expect(decoder.decode(["a"])).toEqual(_.succeed(["a"]))
+  describe("readonlyArray", () => {
+    it("baseline", () => {
+      const decoder = _.readonlyArray(_.string)
+      expect(decoder.decode([])).toEqual(_.succeed([]))
+      expect(decoder.decode(["a"])).toEqual(_.succeed(["a"]))
 
-    expect(decoder.decode(null)).toEqual(_.fail(DE.type("Array", null)))
-    expect(decoder.decode([1])).toEqual(_.fail(DE.type("string", 1)))
+      expect(decoder.decode(null)).toEqual(_.fail(DE.type("Array", null)))
+      expect(decoder.decode([1])).toEqual(_.fail(DE.type("string", 1)))
+    })
+
+    it("using both", () => {
+      const decoder = _.readonlyArray(nan)
+      expect(decoder.decode([1, NaN, 3])).toEqual(T.both([DE.nan], [1, NaN, 3]))
+    })
   })
 
   // TODO it("nonEmptyArray", () => {

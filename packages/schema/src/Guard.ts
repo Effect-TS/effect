@@ -11,8 +11,8 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface Guard<A> {
-  readonly A: (_: A) => void
+export interface Guard<out A> {
+  readonly A: A
   readonly is: (input: unknown) => input is A
 }
 
@@ -20,11 +20,6 @@ export interface Guard<A> {
  * @since 1.0.0
  */
 export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is }) as any
-
-/**
- * @since 1.0.0
- */
-export const empty: Guard<unknown> = make((_): _ is unknown => true)
 
 /**
  * @since 1.0.0

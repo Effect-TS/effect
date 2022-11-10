@@ -15,6 +15,41 @@ const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<
   S.constructor(SetService, item)
 
 describe("Guard", () => {
+  it("tuple", () => {
+    const guard = _.tuple(_.string, _.number)
+    expect(guard.is(["a", 1])).toEqual(true)
+    expect(guard.is([1, 1])).toEqual(false)
+    expect(guard.is(["a", "b"])).toEqual(false)
+  })
+
+  it("union", () => {
+    const guard = _.union(_.string, _.number)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(true)
+  })
+
+  it("struct", () => {
+    const guard = _.struct({ a: _.string, b: _.number })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+  })
+
+  it("indexSignature", () => {
+    const guard = _.indexSignature(_.string)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ a: "a" })).toEqual(true)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ a: "a", b: 1 })).toEqual(false)
+  })
+
+  it("array", () => {
+    const guard = _.array(_.string)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is(["a"])).toEqual(true)
+    expect(guard.is(["a", 1])).toEqual(false)
+  })
+
   describe("guardFor", () => {
     const ctx = pipe(
       C.empty(),

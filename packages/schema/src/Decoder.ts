@@ -42,7 +42,8 @@ export const succeed: <A>(a: A) => T.These<never, A> = T.right
  */
 export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
 
-const flatMap = <A, E2, B>(
+/** @internal */
+export const flatMap = <A, E2, B>(
   f: (a: A) => T.These<ReadonlyArray<E2>, B>
 ) =>
   <E1>(self: T.These<ReadonlyArray<E1>, A>): T.These<ReadonlyArray<E1 | E2>, B> => {
