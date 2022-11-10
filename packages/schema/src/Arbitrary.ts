@@ -26,6 +26,8 @@ export const arbitraryFor = <P>(
 ): <E, A>(schema: Schema<P, E, A>) => Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
+      case "Constructor":
+        throw new Error(`Unhandled ${meta._tag}`)
       case "String":
         return make((fc) => fc.string())
       case "Number":
@@ -61,7 +63,6 @@ export const arbitraryFor = <P>(
         return make((fc) => fc.array(arb.arbitrary(fc)))
       }
     }
-    throw new Error(`Unhandled ${meta._tag}`)
   }
   return f
 }

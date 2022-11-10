@@ -1,6 +1,6 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as _ from "@fp-ts/codec/Decoder"
-import * as T from "@fp-ts/codec/These"
+import * as T from "@fp-ts/codec/internal/These"
 
 describe("Decoder", () => {
   it("should allow for custom errrors", () => {

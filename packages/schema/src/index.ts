@@ -11,7 +11,6 @@ import * as jsonCodec from "@fp-ts/codec/JsonCodec"
 import * as meta from "@fp-ts/codec/Meta"
 import * as schema from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
-import * as these from "@fp-ts/codec/These"
 
 export {
   /**
@@ -53,9 +52,5 @@ export {
   /**
    * @since 1.0.0
    */
-  show,
-  /**
-   * @since 1.0.0
-   */
-  these
+  show
 }

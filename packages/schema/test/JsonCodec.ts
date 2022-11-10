@@ -2,7 +2,7 @@ import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as _ from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
-import * as T from "@fp-ts/codec/These"
+import * as T from "@fp-ts/codec/internal/These"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 

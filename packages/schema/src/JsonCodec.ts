@@ -43,8 +43,17 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         return D.boolean
       case "Literal":
         return D.literal(meta.literal)
+      case "Tuple":
+        throw new Error(`Unhandled ${meta._tag}`)
+      case "Union":
+        throw new Error(`Unhandled ${meta._tag}`)
+      case "Struct":
+        throw new Error(`Unhandled ${meta._tag}`)
+      case "IndexSignature":
+        throw new Error(`Unhandled ${meta._tag}`)
+      case "Array":
+        throw new Error(`Unhandled ${meta._tag}`)
     }
-    throw new Error(`Unhandled ${meta._tag}`)
   }
   return <E, A>(schema: Schema<P, E, A>): Decoder<Json, E, A> => f(schema)
 }

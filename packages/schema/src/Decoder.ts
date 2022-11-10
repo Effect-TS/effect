@@ -3,8 +3,8 @@
  */
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
+import * as T from "@fp-ts/codec/internal/These"
 import type { LiteralValue } from "@fp-ts/codec/Meta"
-import * as T from "@fp-ts/codec/These"
 import { pipe } from "@fp-ts/data/Function"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
