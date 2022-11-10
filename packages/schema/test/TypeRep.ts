@@ -39,7 +39,7 @@ interface BigIntService {
 
 const BigIntService = C.Tag<BigIntService>()
 
-const bigint: S.Schema<BigIntService, DE.NotType, bigint> = S.primitive(BigIntService)
+const bigint: S.Schema<BigIntService, DE.Type, bigint> = S.primitive(BigIntService)
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {

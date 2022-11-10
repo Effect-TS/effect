@@ -7,7 +7,8 @@ import type { Decoder } from "@fp-ts/codec/Decoder"
 import * as D from "@fp-ts/codec/Decoder"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import type * as C from "@fp-ts/data/Context"
+import * as C from "@fp-ts/data/Context"
+import { pipe } from "@fp-ts/data/Function"
 
 /**
  * @since 1.0.0
@@ -22,9 +23,18 @@ export type Json =
     readonly [key: string]: Json
   }
 
-const decoderFor = <P>(_ctx: C.Context<P>) => {
+const decoderFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): Decoder<Json, any, any> => {
     switch (meta._tag) {
+      case "Constructor": {
+        const service: {
+          serve: (shows: ReadonlyArray<Decoder<Json, any, any>>) => Decoder<Json, any, any>
+        } = pipe(
+          ctx,
+          C.get(meta.tag as any)
+        ) as any
+        return D.make((a) => service.serve(meta.metas.map(f)).decode(a))
+      }
       case "String":
         return D.string
       case "Number":

@@ -41,24 +41,24 @@ export const constructor = <S, P, E, A>(
 /**
  * @since 1.0.0
  */
-export const string: Schema<never, DE.NotType, string> = make(meta.string)
+export const string: Schema<never, DE.Type, string> = make(meta.string)
 
 /**
  * @since 1.0.0
  */
-export const number: Schema<never, DE.NotType, number> = make(meta.number)
+export const number: Schema<never, DE.Type, number> = make(meta.number)
 
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<never, DE.NotType, boolean> = make(meta.boolean)
+export const boolean: Schema<never, DE.Type, boolean> = make(meta.boolean)
 
 /**
  * @since 1.0.0
  */
 export const literal = <A extends meta.LiteralValue>(
   literal: A
-): Schema<never, DE.NotEqual<A>, A> => make(meta.literal(literal))
+): Schema<never, DE.Equal, A> => make(meta.literal(literal))
 
 /**
  * @since 1.0.0
@@ -133,7 +133,7 @@ export const array = <B extends boolean, P, E, A>(
  */
 export const option = <P, E, A>(
   value: Schema<P, E, A>
-): Schema<P, DE.NotEqual<"None"> | DE.NotEqual<"Some"> | E, Option<A>> =>
+): Schema<P, DE.Equal | E, Option<A>> =>
   union(
     struct({ _tag: literal("None") }),
     struct({ _tag: literal("Some"), value })
@@ -145,7 +145,7 @@ export const option = <P, E, A>(
 export const either = <PL, EL, L, PR, ER, R>(
   left: Schema<PL, EL, L>,
   right: Schema<PR, ER, R>
-): Schema<PR | PL, EL | ER | DE.NotEqual<"Left"> | DE.NotEqual<"Right">, Either<L, R>> =>
+): Schema<PR | PL, EL | ER | DE.Equal, Either<L, R>> =>
   union(
     struct({ _tag: literal("Left"), left }),
     struct({ _tag: literal("Right"), right })

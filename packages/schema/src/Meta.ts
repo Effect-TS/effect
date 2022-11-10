@@ -78,7 +78,7 @@ export const boolean: Boolean = { _tag: "Boolean" }
 /**
  * @since 1.0.0
  */
-export type LiteralValue = string | number | boolean | null | undefined | symbol
+export type LiteralValue = PropertyKey | boolean | null | undefined
 
 /**
  * @since 1.0.0
