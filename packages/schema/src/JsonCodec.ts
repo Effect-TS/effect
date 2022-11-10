@@ -30,11 +30,11 @@ export const isJson = (u: unknown): u is Json =>
     isJson(u[key])
   ))
 
-const Json: Decoder<unknown, DE.Type, Json> = D.fromRefinement(isJson, (u) => DE.type("Json", u))
+const Json: Decoder<unknown, Json> = D.fromRefinement(isJson, (u) => DE.type("Json", u))
 
 const isJsonArray = (json: Json): json is ReadonlyArray<Json> => Array.isArray(json)
 
-const JsonArray: Decoder<Json, DE.Type, ReadonlyArray<Json>> = D.fromRefinement(
+const JsonArray: Decoder<Json, ReadonlyArray<Json>> = D.fromRefinement(
   isJsonArray,
   (json) => DE.type("JsonArray", json)
 )
@@ -42,24 +42,18 @@ const JsonArray: Decoder<Json, DE.Type, ReadonlyArray<Json>> = D.fromRefinement(
 export const isJsonObject = (json: Json): json is { readonly [key: string]: Json } =>
   json !== null && typeof json === "object" && (!Array.isArray(json))
 
-const JsonObject: Decoder<Json, DE.Type, { readonly [key: string]: Json }> = D.fromRefinement(
+const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefinement(
   isJsonObject,
   (json) => DE.type("JsonObject", json)
 )
 
 const decoderFor = <P>(ctx: C.Context<P>) => {
-  const f = (meta: Meta): Decoder<Json, any, any> => {
+  const f = (meta: Meta): Decoder<Json, any> => {
     switch (meta._tag) {
       case "Constructor": {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.decoder(meta.metas.map(f))
       }
-      case "String":
-        return D.string
-      case "Number":
-        return D.number
-      case "Boolean":
-        return D.boolean
       case "Literal":
         return D.literal(meta.literal)
       case "Tuple":
@@ -79,9 +73,20 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
       case "Refinement":
         return pipe(f(meta.meta), D.refinement(meta.refinement, meta.onFalse))
+      case "JSONSchema": {
+        const schema = meta.schema
+        switch (schema.type) {
+          case "string":
+            return D.string
+          case "number":
+            return D.number
+          case "boolean":
+            return D.boolean
+        }
+      }
     }
   }
-  return <E, A>(schema: Schema<P, E, A>): Decoder<Json, E, A> => f(schema)
+  return <A>(schema: Schema<P, A>): Decoder<Json, A> => f(schema)
 }
 
 /**

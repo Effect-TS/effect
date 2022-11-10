@@ -8,9 +8,9 @@ import { pipe } from "@fp-ts/data/Function"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly decoder: <E, A>(
-    decoders: [D.Decoder<_.Json, E, A>]
-  ) => D.Decoder<_.Json, SetError | E, Set<A>>
+  readonly decoder: <A>(
+    decoders: [D.Decoder<_.Json, A>]
+  ) => D.Decoder<_.Json, Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -21,7 +21,7 @@ interface SetError {
 
 const setError: SetError = { _tag: "SetError" }
 
-const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E | SetError, Set<A>> =>
+const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
   S.constructor(SetService, item)
 
 describe("JsonCodec", () => {
@@ -30,12 +30,12 @@ describe("JsonCodec", () => {
       C.empty(),
       C.add(SetService)({
         _tag: "SetService",
-        decoder: <E, A>(
-          [item]: [D.Decoder<_.Json, E, A>]
-        ): D.Decoder<_.Json, SetError | E, Set<A>> =>
+        decoder: <A>(
+          [item]: [D.Decoder<_.Json, A>]
+        ): D.Decoder<_.Json, Set<A>> =>
           D.make((u) => {
             if (!(Array.isArray(u))) {
-              return D.fail<SetError | E>({ _tag: "SetError" })
+              return D.fail(DE.custom(setError, u))
             }
             const out: Set<unknown> = new Set()
             for (let i = 0; i < u.length; i++) {
@@ -58,7 +58,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))
 
-      expect(decoder.decode(null)).toEqual(D.fail(setError))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.type("number", "a")))
     })
 

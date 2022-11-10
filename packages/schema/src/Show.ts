@@ -29,7 +29,7 @@ export const empty: Show<unknown> = make(() => "")
 /**
  * @since 1.0.0
  */
-export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) => Show<A> => {
+export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show<A> => {
   const g = guardFor(ctx)
   const f = (meta: Meta): Show<any> => {
     switch (meta._tag) {
@@ -37,12 +37,6 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.show(meta.metas.map(f))
       }
-      case "String":
-        return make((a) => JSON.stringify(a))
-      case "Number":
-        return make((a) => JSON.stringify(a))
-      case "Boolean":
-        return make((a) => JSON.stringify(a))
       case "Literal":
         return make((literal: LiteralValue) => JSON.stringify(literal))
       case "Tuple": {
@@ -85,6 +79,8 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
       }
       case "Refinement":
         return f(meta.meta)
+      case "JSONSchema":
+        return make((a) => JSON.stringify(a))
     }
   }
   return f

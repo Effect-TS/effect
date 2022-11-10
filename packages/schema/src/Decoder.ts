@@ -11,26 +11,24 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Decoder<in I, E, out A> {
+export interface Decoder<in I, out A> {
   readonly I: (_: I) => void
-  readonly E: E
   readonly A: A
-  readonly decode: (i: I) => T.These<ReadonlyArray<E>, A>
+  readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <I, E, A>(decode: Decoder<I, E, A>["decode"]): Decoder<I, E, A> =>
-  ({ decode }) as any
+export const make = <I, A>(decode: Decoder<I, A>["decode"]): Decoder<I, A> => ({ decode }) as any
 
 /**
  * @since 1.0.0
  */
-export const fromRefinement = <A, B extends A, E>(
+export const fromRefinement = <A, B extends A>(
   is: (a: A) => a is B,
-  onFalse: (a: A) => E
-): Decoder<A, E, B> => make((a) => is(a) ? succeed(a) : fail(onFalse(a)))
+  onFalse: (a: A) => DE.DecodeError
+): Decoder<A, B> => make((a) => is(a) ? succeed(a) : fail(onFalse(a)))
 
 /**
  * @since 1.0.0
@@ -66,14 +64,13 @@ export const flatMap = <A, E2, B>(
 /**
  * @since 1.0.0
  */
-export const compose = <B, E2, C>(bc: Decoder<B, E2, C>) =>
-  <A, E1>(ab: Decoder<A, E1, B>): Decoder<A, E1 | E2, C> =>
-    make((a) => pipe(ab.decode(a), flatMap(bc.decode)))
+export const compose = <B, C>(bc: Decoder<B, C>) =>
+  <A>(ab: Decoder<A, B>): Decoder<A, C> => make((a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
 /**
  * @since 1.0.0
  */
-export const string: Decoder<unknown, DE.Type, string> = fromRefinement(
+export const string: Decoder<unknown, string> = fromRefinement(
   G.string.is,
   (u) => DE.type("string", u)
 )
@@ -81,7 +78,7 @@ export const string: Decoder<unknown, DE.Type, string> = fromRefinement(
 /**
  * @since 1.0.0
  */
-export const number: Decoder<unknown, DE.Type, number> = fromRefinement(
+export const number: Decoder<unknown, number> = fromRefinement(
   G.number.is,
   (u) => DE.type("number", u)
 )
@@ -89,7 +86,7 @@ export const number: Decoder<unknown, DE.Type, number> = fromRefinement(
 /**
  * @since 1.0.0
  */
-export const boolean: Decoder<unknown, DE.Type, boolean> = fromRefinement(
+export const boolean: Decoder<unknown, boolean> = fromRefinement(
   G.boolean.is,
   (u) => DE.type("boolean", u)
 )
@@ -99,26 +96,22 @@ export const boolean: Decoder<unknown, DE.Type, boolean> = fromRefinement(
  */
 export const literal = <A extends LiteralValue>(
   literal: A
-): Decoder<unknown, DE.Equal, A> =>
+): Decoder<unknown, A> =>
   fromRefinement(
     G.literal(literal).is,
     (u) => DE.equal(literal, u)
   )
 
-const UnknownArray: Decoder<unknown, DE.Type, ReadonlyArray<unknown>> = make((u) =>
+const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>
   Array.isArray(u) ? succeed(u) : fail(DE.type("Array", u))
 )
 
 /**
  * @since 1.0.0
  */
-export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown, unknown>>>(
+export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown>>>(
   ...components: Components
-): Decoder<
-  ReadonlyArray<I>,
-  DE.Type | Components[number]["E"],
-  { readonly [K in keyof Components]: Components[K]["A"] }
-> =>
+): Decoder<ReadonlyArray<I>, { readonly [K in keyof Components]: Components[K]["A"] }> =>
   make(
     (is) => {
       const out: Array<unknown> = []
@@ -136,26 +129,19 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Decoder<unknown, unknown, unknown>>>(
+export const tuple = <Components extends ReadonlyArray<Decoder<unknown, unknown>>>(
   ...components: Components
-): Decoder<
-  unknown,
-  DE.Type | Components[number]["E"],
-  { readonly [K in keyof Components]: Components[K]["A"] }
-> =>
-  pipe(
-    UnknownArray,
-    compose(fromTuple<unknown, Components>(...components))
-  )
+): Decoder<unknown, { readonly [K in keyof Components]: Components[K]["A"] }> =>
+  pipe(UnknownArray, compose(fromTuple<unknown, Components>(...components)))
 
 /**
  * @since 1.0.0
  */
-export const fromReadonlyArray = <I, E, A>(
-  item: Decoder<I, E, A>
-): Decoder<ReadonlyArray<I>, DE.Type | E, ReadonlyArray<A>> =>
+export const fromReadonlyArray = <I, A>(
+  item: Decoder<I, A>
+): Decoder<ReadonlyArray<I>, ReadonlyArray<A>> =>
   make((is) => {
-    const es: Array<E> = []
+    const es: Array<DE.DecodeError> = []
     const as: Array<A> = []
     let isBoth = true
     for (let index = 0; index < is.length; index++) {
@@ -180,18 +166,14 @@ export const fromReadonlyArray = <I, E, A>(
 /**
  * @since 1.0.0
  */
-export const readonlyArray = <E, A>(
-  item: Decoder<unknown, E, A>
-): Decoder<unknown, DE.Type | E, ReadonlyArray<A>> =>
-  pipe(
-    UnknownArray,
-    compose(fromReadonlyArray(item))
-  )
+export const readonlyArray = <A>(
+  item: Decoder<unknown, A>
+): Decoder<unknown, ReadonlyArray<A>> => pipe(UnknownArray, compose(fromReadonlyArray(item)))
 
 /**
  * @since 1.0.0
  */
-const UnknownIndexSignature: Decoder<unknown, DE.Type, { readonly [_: string]: unknown }> = make((
+const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = make((
   u
 ) =>
   typeof u === "object" && u != null && !Array.isArray(u) ?
@@ -202,13 +184,9 @@ const UnknownIndexSignature: Decoder<unknown, DE.Type, { readonly [_: string]: u
 /**
  * @since 1.0.0
  */
-export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any, any>>>(
+export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>>>(
   fields: Fields
-): Decoder<
-  { readonly [_: string]: I },
-  DE.Type | Fields[keyof Fields]["E"],
-  { readonly [K in keyof Fields]: Fields[K]["A"] }
-> => {
+): Decoder<{ readonly [_: string]: I }, { readonly [K in keyof Fields]: Fields[K]["A"] }> => {
   const keys = Object.keys(fields)
   return make((input: { readonly [_: string]: I }) => {
     const a = {}
@@ -227,13 +205,9 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any,
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any, any>>>(
+export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>>(
   fields: Fields
-): Decoder<
-  unknown,
-  DE.Type | Fields[keyof Fields]["E"],
-  { readonly [K in keyof Fields]: Fields[K]["A"] }
-> => {
+): Decoder<unknown, { readonly [K in keyof Fields]: Fields[K]["A"] }> => {
   return pipe(
     UnknownIndexSignature,
     compose(fromStruct<unknown, Fields>(fields))
@@ -243,11 +217,11 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any, 
 /**
  * @since 1.0.0
  */
-export const union = <I, Members extends ReadonlyArray<Decoder<I, any, any>>>(
+export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ...members: Members
-): Decoder<I, Members[number]["E"], Members[number]["A"]> =>
+): Decoder<I, Members[number]["A"]> =>
   make((u) => {
-    const lefts: Array<Members[number]["E"]> = []
+    const lefts: Array<DE.DecodeError> = []
     for (const member of members) {
       const t = member.decode(u)
       if (T.isRightOrBoth(t)) {
@@ -261,9 +235,9 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any, any>>>(
 /**
  * @since 1.0.0
  */
-export const fromIndexSignature = <I, E, A>(
-  value: Decoder<I, E, A>
-): Decoder<{ readonly [_: string]: I }, DE.Type | E, { readonly [_: string]: A }> =>
+export const fromIndexSignature = <I, A>(
+  value: Decoder<I, A>
+): Decoder<{ readonly [_: string]: I }, { readonly [_: string]: A }> =>
   make(
     (ri) => {
       const out = {}
@@ -281,9 +255,9 @@ export const fromIndexSignature = <I, E, A>(
 /**
  * @since 1.0.0
  */
-export const indexSignature = <E, A>(
-  value: Decoder<unknown, E, A>
-): Decoder<unknown, DE.Type | E, { readonly [_: string]: A }> =>
+export const indexSignature = <A>(
+  value: Decoder<unknown, A>
+): Decoder<unknown, { readonly [_: string]: A }> =>
   pipe(
     UnknownIndexSignature,
     compose(fromIndexSignature(value))
@@ -292,8 +266,6 @@ export const indexSignature = <E, A>(
 /**
  * @since 1.0.0
  */
-export const refinement = <A, B extends A, E2>(refinement: (a: A) => a is B, onFalse: E2) =>
-  <I, E1>(
-    self: Decoder<I, E1, A>
-  ): Decoder<I, E1 | E2, B> =>
+export const refinement = <A, B extends A>(refinement: (a: A) => a is B, onFalse: DE.DecodeError) =>
+  <I>(self: Decoder<I, A>): Decoder<I, B> =>
     make((i) => pipe(self.decode(i), flatMap((a) => refinement(a) ? succeed(a) : fail(onFalse))))

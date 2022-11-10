@@ -13,8 +13,8 @@ import type * as C from "@fp-ts/data/Context"
 export interface Codec<in out IO> {
   readonly decoderFor: <P>(
     ctx: C.Context<P>
-  ) => <E, A>(schema: Schema<P, E, A>) => Decoder<IO, E, A>
+  ) => <A>(schema: Schema<P, A>) => Decoder<IO, A>
   readonly encoderFor: <P>(
     ctx: C.Context<P>
-  ) => <E, A>(schema: Schema<P, E, A>) => Encoder<IO, A>
+  ) => <A>(schema: Schema<P, A>) => Encoder<IO, A>
 }

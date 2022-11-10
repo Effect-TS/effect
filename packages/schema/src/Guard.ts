@@ -107,19 +107,13 @@ export const refinement = <A, B extends A>(
  */
 export const guardFor = <P>(
   ctx: C.Context<P>
-): <E, A>(schema: Schema<P, E, A>) => Guard<A> => {
+): <A>(schema: Schema<P, A>) => Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Constructor": {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.guard(meta.metas.map(f))
       }
-      case "String":
-        return string
-      case "Number":
-        return number
-      case "Boolean":
-        return boolean
       case "Literal":
         return literal(meta.literal)
       case "Tuple": {
@@ -148,6 +142,17 @@ export const guardFor = <P>(
         return array(f(meta.item))
       case "Refinement":
         return refinement(f(meta.meta), meta.refinement)
+      case "JSONSchema": {
+        const schema = meta.schema
+        switch (schema.type) {
+          case "string":
+            return string
+          case "number":
+            return number
+          case "boolean":
+            return boolean
+        }
+      }
     }
   }
   return f

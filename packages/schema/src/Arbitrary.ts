@@ -26,19 +26,13 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
  */
 export const arbitraryFor = <P>(
   ctx: C.Context<P>
-): <E, A>(schema: Schema<P, E, A>) => Arbitrary<A> => {
+): <A>(schema: Schema<P, A>) => Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
       case "Constructor": {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.arbitrary(meta.metas.map(f))
       }
-      case "String":
-        return make((fc) => fc.string())
-      case "Number":
-        return make((fc) => fc.float())
-      case "Boolean":
-        return make((fc) => fc.boolean())
       case "Literal":
         return make((fc) => fc.constant(meta.literal))
       case "Tuple": {
@@ -70,6 +64,17 @@ export const arbitraryFor = <P>(
       case "Refinement": {
         const arb = f(meta.meta)
         return make((fc) => arb.arbitrary(fc).filter(meta.refinement))
+      }
+      case "JSONSchema": {
+        const schema = meta.schema
+        switch (schema.type) {
+          case "string":
+            return make((fc) => fc.string())
+          case "number":
+            return make((fc) => fc.float())
+          case "boolean":
+            return make((fc) => fc.boolean())
+        }
       }
     }
   }

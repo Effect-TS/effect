@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as DE from "@fp-ts/codec/DecodeError"
 import type * as C from "@fp-ts/data/Context"
 import type { Option } from "@fp-ts/data/Option"
 
@@ -11,9 +12,6 @@ import type { Option } from "@fp-ts/data/Option"
  */
 export type Meta =
   | Constructor
-  | String
-  | Number
-  | Boolean
   | Literal
   | Array
   | Struct
@@ -21,6 +19,58 @@ export type Meta =
   | Tuple
   | Union
   | Refinement
+  | JSONSchema
+
+/**
+ * @since 1.0.0
+ */
+export interface JSONSchema {
+  readonly _tag: "JSONSchema"
+  readonly schema: String | Number | Boolean
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface String {
+  readonly type: "string"
+  readonly minLength?: number
+  readonly maxLength?: number
+}
+
+/**
+ * @since 1.0.0
+ */
+export const string: JSONSchema = { _tag: "JSONSchema", schema: { type: "string" } }
+
+/**
+ * @since 1.0.0
+ */
+export interface Number {
+  readonly type: "number"
+  readonly exclusiveMaximum?: number
+  readonly exclusiveMinimum?: number
+  readonly maximum?: number
+  readonly minimum?: number
+  readonly multipleOf?: number
+}
+
+/**
+ * @since 1.0.0
+ */
+export const number: JSONSchema = { _tag: "JSONSchema", schema: { type: "number" } }
+
+/**
+ * @since 1.0.0
+ */
+export interface Boolean {
+  readonly type: "boolean"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: JSONSchema = { _tag: "JSONSchema", schema: { type: "boolean" } }
 
 /**
  * @since 1.0.0
@@ -29,7 +79,7 @@ export interface Refinement {
   readonly _tag: "Refinement"
   readonly meta: Meta
   readonly refinement: (a: any) => a is any
-  readonly onFalse: unknown
+  readonly onFalse: DE.DecodeError
 }
 
 /**
@@ -38,7 +88,7 @@ export interface Refinement {
 export const refinement = (
   meta: Meta,
   refinement: (a: any) => a is any,
-  onFalse: unknown
+  onFalse: DE.DecodeError
 ): Refinement => ({ _tag: "Refinement", meta, refinement, onFalse })
 
 /**
@@ -58,42 +108,6 @@ export const constructor = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Constr
   tag,
   metas
 })
-
-/**
- * @since 1.0.0
- */
-export interface String {
-  readonly _tag: "String"
-}
-
-/**
- * @since 1.0.0
- */
-export const string: String = { _tag: "String" }
-
-/**
- * @since 1.0.0
- */
-export interface Number {
-  readonly _tag: "Number"
-}
-
-/**
- * @since 1.0.0
- */
-export const number: Number = { _tag: "Number" }
-
-/**
- * @since 1.0.0
- */
-export interface Boolean {
-  readonly _tag: "Boolean"
-}
-
-/**
- * @since 1.0.0
- */
-export const boolean: Boolean = { _tag: "Boolean" }
 
 /**
  * @since 1.0.0

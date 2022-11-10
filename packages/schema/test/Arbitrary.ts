@@ -13,7 +13,7 @@ interface SetService {
 
 const SetService = C.Tag<SetService>()
 
-const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<A>> =>
+const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
   S.constructor(SetService, item)
 
 describe("Arbitrary", () => {

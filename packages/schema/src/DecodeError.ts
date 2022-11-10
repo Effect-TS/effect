@@ -4,6 +4,33 @@
 
 import type { LiteralValue } from "@fp-ts/codec/Meta"
 
+export type DecodeError =
+  | Custom
+  | Type
+  | Equal
+  | NaN
+  | MinLength
+  | MaxLength
+  | Min
+
+/**
+ * @since 1.0.0
+ */
+export interface Custom {
+  readonly _tag: "Custom"
+  readonly meta: unknown
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const custom = (meta: unknown, actual: unknown): Custom => ({
+  _tag: "Custom",
+  meta,
+  actual
+})
+
 /**
  * @since 1.0.0
  */

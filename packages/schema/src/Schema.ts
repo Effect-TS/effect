@@ -12,74 +12,71 @@ import type { Option } from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export type Schema<P, E, A> = Meta & {
+export type Schema<P, A> = Meta & {
   readonly P: P
-  readonly E: E
   readonly A: A
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <P, E, A>(meta: Meta): Schema<P, E, A> => meta as any
+export const make = <P, A>(meta: Meta): Schema<P, A> => meta as any
 
 /**
  * @since 1.0.0
  */
 export const primitive = <S>(
   tag: C.Tag<S>
-): Schema<S, never, never> => make(meta.constructor(tag, []))
+): Schema<S, never> => make(meta.constructor(tag, []))
 
 /**
  * @since 1.0.0
  */
-export const constructor = <S, P, E, A>(
+export const constructor = <S, P, A>(
   tag: C.Tag<S>,
-  schema: Schema<P, E, A>
-): Schema<P | S, E, never> => make(meta.constructor(tag, [schema]))
+  schema: Schema<P, A>
+): Schema<P | S, never> => make(meta.constructor(tag, [schema]))
 
 /**
  * @since 1.0.0
  */
-export const string: Schema<never, DE.Type, string> = make(meta.string)
+export const string: Schema<never, string> = make(meta.string)
 
 /**
  * @since 1.0.0
  */
-export const number: Schema<never, DE.Type, number> = make(meta.number)
+export const number: Schema<never, number> = make(meta.number)
 
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<never, DE.Type, boolean> = make(meta.boolean)
+export const boolean: Schema<never, boolean> = make(meta.boolean)
 
 /**
  * @since 1.0.0
  */
 export const literal = <A extends meta.LiteralValue>(
   literal: A
-): Schema<never, DE.Equal, A> => make(meta.literal(literal))
+): Schema<never, A> => make(meta.literal(literal))
 
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<unknown, unknown, unknown>>>(
+export const union = <Members extends ReadonlyArray<Schema<unknown, unknown>>>(
   ...members: Members
-): Schema<Members[number]["P"], Members[number]["E"], Members[number]["A"]> =>
-  make(meta.union(members))
+): Schema<Members[number]["P"], Members[number]["A"]> => make(meta.union(members))
 
 /**
  * @since 1.0.0
  */
 export const tuple = <
   B extends boolean,
-  Components extends ReadonlyArray<Schema<unknown, unknown, unknown>>
+  Components extends ReadonlyArray<Schema<unknown, unknown>>
 >(
   readonly: B,
   ...components: Components
 ): Schema<
   Components[number]["P"],
-  Components[number]["E"],
   B extends true ? { readonly [K in keyof Components]: Components[K]["A"] }
     : { [K in keyof Components]: Components[K]["A"] }
 > => make(meta.tuple(components, O.none, readonly))
@@ -87,24 +84,22 @@ export const tuple = <
 /**
  * @since 1.0.0
  */
-export const nonEmptyArray = <B extends boolean, HP, HE, HA, TP, TE, TA>(
+export const nonEmptyArray = <B extends boolean, HP, HA, TP, TA>(
   readonly: B,
-  head: Schema<HP, HE, HA>,
-  tail: Schema<TP, TE, TA>
+  head: Schema<HP, HA>,
+  tail: Schema<TP, TA>
 ): Schema<
   HP | TP,
-  HE | TE,
   B extends true ? readonly [HA, ...Array<TA>] : [HA, ...Array<TA>]
 > => make(meta.tuple([head], O.some(tail), readonly))
 
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Schema<unknown, unknown, unknown>>>(
+export const struct = <Fields extends Record<PropertyKey, Schema<unknown, unknown>>>(
   fields: Fields
 ): Schema<
   Fields[keyof Fields]["P"],
-  Fields[keyof Fields]["E"],
   { readonly [K in keyof Fields]: Fields[K]["A"] }
 > =>
   make(
@@ -116,68 +111,66 @@ export const struct = <Fields extends Record<PropertyKey, Schema<unknown, unknow
 /**
  * @since 1.0.0
  */
-export const indexSignature = <P, E, A>(
-  value: Schema<P, E, A>
-): Schema<P, E, { readonly [_: string]: A }> => make(meta.indexSignature("string", value, true))
+export const indexSignature = <P, A>(
+  value: Schema<P, A>
+): Schema<P, { readonly [_: string]: A }> => make(meta.indexSignature("string", value, true))
 
 /**
  * @since 1.0.0
  */
-export const array = <B extends boolean, P, E, A>(
+export const array = <B extends boolean, P, A>(
   readonly: B,
-  item: Schema<P, E, A>
-): Schema<P, E, B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item, readonly))
+  item: Schema<P, A>
+): Schema<P, B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item, readonly))
 
 /**
  * @since 1.0.0
  */
-export const refinement = <P, E1, A, B extends A, E2>(
-  schema: Schema<P, E1, A>,
+export const refinement = <P, A, B extends A>(
+  schema: Schema<P, A>,
   refinement: (a: A) => a is B,
-  onFalse: E2
-): Schema<P, E1 | E2, B> => make(meta.refinement(schema, refinement, onFalse))
+  onFalse: DE.DecodeError
+): Schema<P, B> => make(meta.refinement(schema, refinement, onFalse))
 
 /**
  * @since 1.0.0
  */
-export const filter = <P, E1, A, E2>(
-  schema: Schema<P, E1, A>,
+export const filter = <P, A>(
+  schema: Schema<P, A>,
   predicate: (a: A) => boolean,
-  onFalse: E2
-): Schema<P, E1 | E2, A> => refinement(schema, (a): a is A => predicate(a), onFalse)
+  onFalse: DE.DecodeError
+): Schema<P, A> => refinement(schema, (a): a is A => predicate(a), onFalse)
 
 /**
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
-  <P, E, A extends { length: number }>(
-    schema: Schema<P, E, A>
-  ): Schema<P, E | DE.MinLength, A> =>
-    filter(schema, (a) => a.length >= minLength, DE.minLength(minLength))
+  <P, A extends { length: number }>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => filter(schema, (a) => a.length >= minLength, DE.minLength(minLength))
 
 /**
  * @since 1.0.0
  */
 export const maxLength = (maxLength: number) =>
-  <P, E, A extends { length: number }>(
-    schema: Schema<P, E, A>
-  ): Schema<P, E | DE.MaxLength, A> =>
-    filter(schema, (a) => a.length <= maxLength, DE.maxLength(maxLength))
+  <P, A extends { length: number }>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => filter(schema, (a) => a.length <= maxLength, DE.maxLength(maxLength))
 
 /**
  * @since 1.0.0
  */
 export const min = (min: number) =>
-  <P, E, A extends number>(
-    schema: Schema<P, E, A>
-  ): Schema<P, E | DE.Min, A> => filter(schema, (a) => a >= min, DE.min(min))
+  <P, A extends number>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => filter(schema, (a) => a >= min, DE.min(min))
 
 /**
  * @since 1.0.0
  */
-export const option = <P, E, A>(
-  value: Schema<P, E, A>
-): Schema<P, DE.Equal | E, Option<A>> =>
+export const option = <P, A>(
+  value: Schema<P, A>
+): Schema<P, Option<A>> =>
   union(
     struct({ _tag: literal("None") }),
     struct({ _tag: literal("Some"), value })
@@ -186,10 +179,10 @@ export const option = <P, E, A>(
 /**
  * @since 1.0.0
  */
-export const either = <PL, EL, L, PR, ER, R>(
-  left: Schema<PL, EL, L>,
-  right: Schema<PR, ER, R>
-): Schema<PR | PL, EL | ER | DE.Equal, Either<L, R>> =>
+export const either = <PL, L, PR, R>(
+  left: Schema<PL, L>,
+  right: Schema<PR, R>
+): Schema<PR | PL, Either<L, R>> =>
   union(
     struct({ _tag: literal("Left"), left }),
     struct({ _tag: literal("Right"), right })

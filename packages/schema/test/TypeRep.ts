@@ -1,4 +1,3 @@
-import type * as DE from "@fp-ts/codec/DecodeError"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -14,7 +13,7 @@ interface SetService {
 
 const SetService = C.Tag<SetService>()
 
-const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<A>> =>
+const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
   S.constructor(SetService, item)
 
 const typeRepSet = (type: [string]) => `Set<${type[0]}>`
@@ -26,9 +25,9 @@ interface OptionService {
 
 const OptionService = C.Tag<OptionService>()
 
-const option = <P, E, A>(
-  item: S.Schema<P, E, A>
-): S.Schema<P | OptionService, E, Option<A>> => S.constructor(OptionService, item)
+const option = <P, A>(
+  item: S.Schema<P, A>
+): S.Schema<P | OptionService, Option<A>> => S.constructor(OptionService, item)
 
 const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
 
@@ -39,7 +38,7 @@ interface BigIntService {
 
 const BigIntService = C.Tag<BigIntService>()
 
-const bigint: S.Schema<BigIntService, DE.Type, bigint> = S.primitive(BigIntService)
+const bigint: S.Schema<BigIntService, bigint> = S.primitive(BigIntService)
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
@@ -48,12 +47,6 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.rep(meta.metas.map(f))
       }
-      case "String":
-        return "string"
-      case "Number":
-        return "number"
-      case "Boolean":
-        return "boolean"
       case "Literal":
         return JSON.stringify(meta.literal)
       case "Tuple": {
@@ -81,9 +74,11 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
       case "Refinement":
         return f(meta.meta)
+      case "JSONSchema":
+        return meta.schema.type
     }
   }
-  return <E, A>(schema: Schema<P, E, A>): string => f(schema)
+  return <A>(schema: Schema<P, A>): string => f(schema)
 }
 
 describe("typeRepFor", () => {

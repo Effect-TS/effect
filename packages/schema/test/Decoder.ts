@@ -3,7 +3,7 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
 import { pipe } from "@fp-ts/data/Function"
 
-const nan: D.Decoder<unknown, DE.Type | DE.NaN, number> = pipe(
+const nan: D.Decoder<unknown, number> = pipe(
   D.number,
   D.compose(D.make((n) => Number.isNaN(n) ? T.both([DE.nan], n) : D.succeed(n)))
 )
@@ -26,12 +26,12 @@ describe("Decoder", () => {
       readonly _tag: "SetError"
     }
     const setError: SetError = { _tag: "SetError" }
-    const set = <E, A>(
-      item: D.Decoder<unknown, E, A>
-    ): D.Decoder<unknown, SetError | E, Set<A>> =>
+    const set = <A>(
+      item: D.Decoder<unknown, A>
+    ): D.Decoder<unknown, Set<A>> =>
       D.make((u) => {
         if (!(u instanceof Set)) {
-          return D.fail<SetError | E>(setError)
+          return D.fail(DE.custom(setError, u))
         }
         const out: Set<unknown> = new Set()
         for (const v of u.values()) {
@@ -47,7 +47,7 @@ describe("Decoder", () => {
     expect(decoder.decode(new Set())).toEqual(D.succeed(new Set()))
     expect(decoder.decode(new Set([1, 2, 3]))).toEqual(D.succeed(new Set([1, 2, 3])))
 
-    expect(decoder.decode(null)).toEqual(D.fail(setError))
+    expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
     expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.type("number", "a")))
   })
 
