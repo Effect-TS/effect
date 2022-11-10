@@ -140,34 +140,37 @@ export const refinement = <P, E1, A, B extends A, E2>(
 /**
  * @since 1.0.0
  */
-export interface MinLength<N extends number> {
-  readonly _MinLength: N
-}
+export const filter = <P, E1, A, E2>(
+  schema: Schema<P, E1, A>,
+  predicate: (a: A) => boolean,
+  onFalse: E2
+): Schema<P, E1 | E2, A> => refinement(schema, (a): a is A => predicate(a), onFalse)
 
 /**
  * @since 1.0.0
  */
-export const minLength = <N extends number>(minLength: N) =>
-  <P, E, A extends string>(
+export const minLength = (minLength: number) =>
+  <P, E, A extends { length: number }>(
     schema: Schema<P, E, A>
-  ): Schema<P, E | DE.MinLength<N>, A & MinLength<N>> =>
-    refinement(schema, (a): a is A & MinLength<N> => a.length >= minLength, DE.minLength(minLength))
+  ): Schema<P, E | DE.MinLength, A> =>
+    filter(schema, (a) => a.length >= minLength, DE.minLength(minLength))
 
 /**
  * @since 1.0.0
  */
-export interface MaxLength<N extends number> {
-  readonly _MaxLength: N
-}
-
-/**
- * @since 1.0.0
- */
-export const maxLength = <N extends number>(maxLength: N) =>
-  <P, E, A extends string>(
+export const maxLength = (maxLength: number) =>
+  <P, E, A extends { length: number }>(
     schema: Schema<P, E, A>
-  ): Schema<P, E | DE.MaxLength<N>, A & MaxLength<N>> =>
-    refinement(schema, (a): a is A & MaxLength<N> => a.length <= maxLength, DE.maxLength(maxLength))
+  ): Schema<P, E | DE.MaxLength, A> =>
+    filter(schema, (a) => a.length <= maxLength, DE.maxLength(maxLength))
+
+/**
+ * @since 1.0.0
+ */
+export const min = (min: number) =>
+  <P, E, A extends number>(
+    schema: Schema<P, E, A>
+  ): Schema<P, E | DE.Min, A> => filter(schema, (a) => a >= min, DE.min(min))
 
 /**
  * @since 1.0.0

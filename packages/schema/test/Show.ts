@@ -16,6 +16,10 @@ const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<
   S.constructor(SetService, item)
 
 describe("Show", () => {
+  it("empty", () => {
+    expect(_.empty).exist
+  })
+
   describe("showFor", () => {
     const ctx = pipe(
       C.empty(),
@@ -106,6 +110,13 @@ describe("Show", () => {
       const schema = S.array(true, S.string)
       expect(showFor(schema).show(["a", "b"])).toEqual(
         "[\"a\", \"b\"]"
+      )
+    })
+
+    it("refinement", () => {
+      const schema = pipe(S.string, S.minLength(2))
+      expect(showFor(schema).show("a")).toEqual(
+        "\"a\""
       )
     })
 

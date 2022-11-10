@@ -54,15 +54,15 @@ export const nan: NaN = { _tag: "NaN" }
 /**
  * @since 1.0.0
  */
-export interface MinLength<N extends number> {
+export interface MinLength {
   readonly _tag: "MinLength"
-  readonly minLength: N
+  readonly minLength: number
 }
 
 /**
  * @since 1.0.0
  */
-export const minLength = <N extends number>(minLength: N): MinLength<N> => ({
+export const minLength = (minLength: number): MinLength => ({
   _tag: "MinLength",
   minLength
 })
@@ -70,15 +70,31 @@ export const minLength = <N extends number>(minLength: N): MinLength<N> => ({
 /**
  * @since 1.0.0
  */
-export interface MaxLength<N extends number> {
+export interface MaxLength {
   readonly _tag: "MaxLength"
-  readonly maxLength: N
+  readonly maxLength: number
 }
 
 /**
  * @since 1.0.0
  */
-export const maxLength = <N extends number>(maxLength: N): MaxLength<N> => ({
+export const maxLength = (maxLength: number): MaxLength => ({
   _tag: "MaxLength",
   maxLength
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Min {
+  readonly _tag: "Min"
+  readonly min: number
+}
+
+/**
+ * @since 1.0.0
+ */
+export const min = (min: number): Min => ({
+  _tag: "Min",
+  min
 })

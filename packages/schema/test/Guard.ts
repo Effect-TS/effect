@@ -158,15 +158,31 @@ describe("Guard", () => {
       expect(guard.is(O.some("a"))).toEqual(false)
     })
 
-    it("refinement", () => {
-      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+    it("minLength", () => {
+      const schema = pipe(S.string, S.minLength(1))
       const guard = guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
       expect(guard.is("aa")).toEqual(true)
-      expect(guard.is("aaa")).toEqual(true)
-      expect(guard.is("aaaa")).toEqual(true)
 
-      expect(guard.is("a")).toEqual(false)
-      expect(guard.is("aaaaa")).toEqual(false)
+      expect(guard.is("")).toEqual(false)
+    })
+
+    it("maxLength", () => {
+      const schema = pipe(S.string, S.maxLength(1))
+      const guard = guardFor(schema)
+      expect(guard.is("")).toEqual(true)
+      expect(guard.is("a")).toEqual(true)
+
+      expect(guard.is("aa")).toEqual(false)
+    })
+
+    it("min", () => {
+      const schema = pipe(S.number, S.min(1))
+      const guard = guardFor(schema)
+      expect(guard.is(1)).toEqual(true)
+      expect(guard.is(2)).toEqual(true)
+
+      expect(guard.is(0)).toEqual(false)
     })
   })
 })
