@@ -62,6 +62,17 @@ describe("JsonCodec", () => {
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.type("number", "a")))
     })
 
+    it("isJson", () => {
+      expect(_.isJson(null)).toEqual(true)
+      expect(_.isJson("a")).toEqual(true)
+      expect(_.isJson(1)).toEqual(true)
+      expect(_.isJson(true)).toEqual(true)
+      expect(_.isJson([])).toEqual(true)
+      expect(_.isJson([1])).toEqual(true)
+      expect(_.isJson({})).toEqual(true)
+      expect(_.isJson({ a: 1 })).toEqual(true)
+    })
+
     it("string", () => {
       const schema = S.string
       const decoder = decoderFor(schema)
@@ -89,6 +100,59 @@ describe("JsonCodec", () => {
       const decoder = decoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.succeed(1))
       expect(decoder.decode("a")).toEqual(D.fail(DE.equal(1, "a")))
+    })
+
+    it("tuple", () => {
+      const schema = S.tuple(true, S.string, S.number)
+      const decoder = decoderFor(schema)
+      expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
+
+      expect(decoder.decode(["a"])).toEqual(D.fail(DE.type("number", undefined)))
+      expect(decoder.decode({})).toEqual(D.fail(DE.type("JsonArray", {})))
+    })
+
+    it("union", () => {
+      const schema = S.union(S.string, S.number)
+      const decoder = decoderFor(schema)
+      expect(decoder.decode("a")).toEqual(D.succeed("a"))
+      expect(decoder.decode(1)).toEqual(D.succeed(1))
+
+      expect(decoder.decode(null)).toEqual(
+        T.left([DE.type("string", null), DE.type("number", null)])
+      )
+    })
+
+    it("struct", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = decoderFor(schema)
+      expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
+
+      expect(decoder.decode({ a: "a" })).toEqual(
+        D.fail(DE.type("number", undefined))
+      )
+    })
+
+    it("indexSignature", () => {
+      const schema = S.indexSignature(S.string)
+      const decoder = decoderFor(schema)
+      expect(decoder.decode({})).toEqual(D.succeed({}))
+      expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
+
+      expect(decoder.decode([])).toEqual(D.fail(DE.type("JsonObject", [])))
+      expect(decoder.decode({ a: 1 })).toEqual(
+        D.fail(DE.type("string", 1))
+      )
+    })
+
+    it("array", () => {
+      const schema = S.array(true, S.string)
+      const decoder = decoderFor(schema)
+      expect(decoder.decode([])).toEqual(D.succeed([]))
+      expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
+
+      expect(decoder.decode([1])).toEqual(
+        D.fail(DE.type("string", 1))
+      )
     })
   })
 })

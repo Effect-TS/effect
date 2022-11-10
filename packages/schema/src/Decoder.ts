@@ -105,9 +105,33 @@ export const literal = <A extends LiteralValue>(
     (u) => DE.equal(literal, u)
   )
 
-const UnknownArray: Decoder<unknown, DE.Type, Array<unknown>> = make((u) =>
+const UnknownArray: Decoder<unknown, DE.Type, ReadonlyArray<unknown>> = make((u) =>
   Array.isArray(u) ? succeed(u) : fail(DE.type("Array", u))
 )
+
+/**
+ * @since 1.0.0
+ */
+export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown, unknown>>>(
+  ...components: Components
+): Decoder<
+  ReadonlyArray<I>,
+  DE.Type | Components[number]["E"],
+  { readonly [K in keyof Components]: Components[K]["A"] }
+> =>
+  make(
+    (is) => {
+      const out: Array<unknown> = []
+      for (let i = 0; i < components.length; i++) {
+        const t = components[i].decode(is[i])
+        if (T.isLeft(t)) {
+          return T.left(t.left)
+        }
+        out[i] = t.right
+      }
+      return succeed(out as any)
+    }
+  )
 
 /**
  * @since 1.0.0
@@ -121,20 +145,37 @@ export const tuple = <Components extends ReadonlyArray<Decoder<unknown, unknown,
 > =>
   pipe(
     UnknownArray,
-    compose(make(
-      (us) => {
-        const out: Array<unknown> = []
-        for (let i = 0; i < components.length; i++) {
-          const t = components[i].decode(us[i])
-          if (T.isLeft(t)) {
-            return T.left(t.left)
-          }
-          out[i] = t.right
-        }
-        return succeed(out as any)
-      }
-    ))
+    compose(fromTuple<unknown, Components>(...components))
   )
+
+/**
+ * @since 1.0.0
+ */
+export const fromReadonlyArray = <I, E, A>(
+  item: Decoder<I, E, A>
+): Decoder<ReadonlyArray<I>, DE.Type | E, ReadonlyArray<A>> =>
+  make((is) => {
+    const es: Array<E> = []
+    const as: Array<A> = []
+    let isBoth = true
+    for (let index = 0; index < is.length; index++) {
+      const t = item.decode(is[index])
+      if (T.isLeft(t)) {
+        isBoth = false
+        es.push(...t.left)
+        break // bail out on a fatal errors
+      } else if (T.isRight(t)) {
+        as.push(t.right)
+      } else {
+        es.push(...t.left)
+        as.push(t.right)
+      }
+    }
+    if (isNonEmpty(es)) {
+      return isBoth ? T.both(es, as) : T.left(es)
+    }
+    return T.right(as)
+  })
 
 /**
  * @since 1.0.0
@@ -144,28 +185,7 @@ export const readonlyArray = <E, A>(
 ): Decoder<unknown, DE.Type | E, ReadonlyArray<A>> =>
   pipe(
     UnknownArray,
-    compose(make((us) => {
-      const es: Array<E> = []
-      const as: Array<A> = []
-      let isBoth = true
-      for (let index = 0; index < us.length; index++) {
-        const t = item.decode(us[index])
-        if (T.isLeft(t)) {
-          isBoth = false
-          es.push(...t.left)
-          break // bail out on a fatal errors
-        } else if (T.isRight(t)) {
-          as.push(t.right)
-        } else {
-          es.push(...t.left)
-          as.push(t.right)
-        }
-      }
-      if (isNonEmpty(es)) {
-        return isBoth ? T.both(es, as) : T.left(es)
-      }
-      return T.right(as)
-    }))
+    compose(fromReadonlyArray(item))
   )
 
 /**
@@ -182,6 +202,31 @@ const UnknownIndexSignature: Decoder<unknown, DE.Type, { readonly [_: string]: u
 /**
  * @since 1.0.0
  */
+export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any, any>>>(
+  fields: Fields
+): Decoder<
+  { readonly [_: string]: I },
+  DE.Type | Fields[keyof Fields]["E"],
+  { readonly [K in keyof Fields]: Fields[K]["A"] }
+> => {
+  const keys = Object.keys(fields)
+  return make((input: { readonly [_: string]: I }) => {
+    const a = {}
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      const t = fields[key].decode(input[key])
+      if (T.isLeft(t)) {
+        return T.left(t.left)
+      }
+      a[key] = t.right
+    }
+    return succeed(a as any)
+  })
+}
+
+/**
+ * @since 1.0.0
+ */
 export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any, any>>>(
   fields: Fields
 ): Decoder<
@@ -189,20 +234,57 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any, 
   DE.Type | Fields[keyof Fields]["E"],
   { readonly [K in keyof Fields]: Fields[K]["A"] }
 > => {
-  const keys = Object.keys(fields)
   return pipe(
     UnknownIndexSignature,
-    compose(make((input: { readonly [_: string]: unknown }) => {
-      const a = {}
-      for (let i = 0; i < keys.length; i++) {
-        const key = keys[i]
-        const t = fields[key].decode(input[key])
-        if (T.isLeft(t)) {
-          return T.left(t.left)
-        }
-        a[key] = t.right
-      }
-      return succeed(a as any)
-    }))
+    compose(fromStruct<unknown, Fields>(fields))
   )
 }
+
+/**
+ * @since 1.0.0
+ */
+export const union = <I, Members extends ReadonlyArray<Decoder<I, any, any>>>(
+  ...members: Members
+): Decoder<I, Members[number]["E"], Members[number]["A"]> =>
+  make((u) => {
+    const lefts: Array<Members[number]["E"]> = []
+    for (const member of members) {
+      const t = member.decode(u)
+      if (T.isRightOrBoth(t)) {
+        return t
+      }
+      lefts.push(...t.left)
+    }
+    return T.left(lefts)
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const fromIndexSignature = <I, E, A>(
+  value: Decoder<I, E, A>
+): Decoder<{ readonly [_: string]: I }, DE.Type | E, { readonly [_: string]: A }> =>
+  make(
+    (ri) => {
+      const out = {}
+      for (const key of Object.keys(ri)) {
+        const t = value.decode(ri[key])
+        if (T.isLeft(t)) {
+          return t
+        }
+        out[key] = t.right
+      }
+      return succeed(out as any)
+    }
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature = <E, A>(
+  value: Decoder<unknown, E, A>
+): Decoder<unknown, DE.Type | E, { readonly [_: string]: A }> =>
+  pipe(
+    UnknownIndexSignature,
+    compose(fromIndexSignature(value))
+  )
