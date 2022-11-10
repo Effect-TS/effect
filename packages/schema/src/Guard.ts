@@ -102,15 +102,14 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const guardFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) => Guard<A> => {
+export const guardFor = <P>(
+  ctx: C.Context<P>
+): <E, A>(schema: Schema<P, E, A>) => Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: { serve: (shows: ReadonlyArray<Guard<unknown>>) => Guard<unknown> } = pipe(
-          ctx,
-          C.get(meta.tag as any)
-        ) as any
-        return service.serve(meta.metas.map(f))
+        const service = pipe(ctx, C.get(meta.tag as any)) as any
+        return service.guard(meta.metas.map(f))
       }
       case "String":
         return string

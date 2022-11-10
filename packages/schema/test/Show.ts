@@ -7,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly serve: <A>(shows: [_.Show<A>]) => _.Show<Set<A>>
+  readonly show: <A>(shows: [_.Show<A>]) => _.Show<Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -21,7 +21,7 @@ describe("Show", () => {
       C.empty(),
       C.add(SetService)({
         _tag: "SetService",
-        serve: <A>(shows: [_.Show<A>]): _.Show<Set<A>> =>
+        show: <A>(shows: [_.Show<A>]): _.Show<Set<A>> =>
           _.make((a) => `Set([${Array.from(a.values()).map(shows[0].show).join(", ")}])`)
       })
     )

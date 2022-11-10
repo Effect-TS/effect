@@ -9,7 +9,7 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly serve: (reps: [string]) => string
+  readonly rep: (reps: [string]) => string
 }
 
 const SetService = C.Tag<SetService>()
@@ -21,7 +21,7 @@ const typeRepSet = (type: [string]) => `Set<${type[0]}>`
 
 interface OptionService {
   readonly _tag: "OptionService"
-  readonly serve: (type: [string]) => string
+  readonly rep: (type: [string]) => string
 }
 
 const OptionService = C.Tag<OptionService>()
@@ -34,7 +34,7 @@ const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
 
 interface BigIntService {
   readonly _tag: "BigIntService"
-  readonly serve: () => string
+  readonly rep: () => string
 }
 
 const BigIntService = C.Tag<BigIntService>()
@@ -45,11 +45,8 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: { serve: (reps: ReadonlyArray<string>) => string } = pipe(
-          ctx,
-          C.get(meta.tag as any)
-        ) as any
-        return service.serve(meta.metas.map(f))
+        const service = pipe(ctx, C.get(meta.tag as any)) as any
+        return service.rep(meta.metas.map(f))
       }
       case "String":
         return "string"
@@ -92,15 +89,15 @@ describe("typeRepFor", () => {
     C.empty(),
     C.add(SetService)({
       _tag: "SetService",
-      serve: typeRepSet
+      rep: typeRepSet
     }),
     C.add(OptionService)({
       _tag: "OptionService",
-      serve: typeRepOption
+      rep: typeRepOption
     }),
     C.add(BigIntService)({
       _tag: "BigIntService",
-      serve: () => "bigint"
+      rep: () => "bigint"
     })
   )
   const show = typeRepFor(ctx)

@@ -3,31 +3,36 @@
  */
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import type * as C from "@fp-ts/data/Context"
+import * as C from "@fp-ts/data/Context"
+import { pipe } from "@fp-ts/data/Function"
 import type * as FastCheck from "fast-check"
 
 /**
  * @since 1.0.0
  */
 export interface Arbitrary<A> {
+  readonly A: A
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> => ({ arbitrary })
+export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
+  ({ arbitrary }) as any
 
 /**
  * @since 1.0.0
  */
 export const arbitraryFor = <P>(
-  _ctx: C.Context<P>
+  ctx: C.Context<P>
 ): <E, A>(schema: Schema<P, E, A>) => Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
-      case "Constructor":
-        throw new Error(`Unhandled ${meta._tag}`)
+      case "Constructor": {
+        const service = pipe(ctx, C.get(meta.tag as any)) as any
+        return service.arbitrary(meta.metas.map(f))
+      }
       case "String":
         return make((fc) => fc.string())
       case "Number":

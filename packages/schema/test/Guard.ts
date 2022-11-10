@@ -6,7 +6,7 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly serve: <A>(guards: [_.Guard<A>]) => _.Guard<Set<A>>
+  readonly guard: <A>(guards: [_.Guard<A>]) => _.Guard<Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -20,7 +20,7 @@ describe("Guard", () => {
       C.empty(),
       C.add(SetService)({
         _tag: "SetService",
-        serve: <A>(guards: [_.Guard<A>]): _.Guard<Set<A>> =>
+        guard: <A>(guards: [_.Guard<A>]): _.Guard<Set<A>> =>
           _.make((input): input is Set<A> =>
             input instanceof Set && Array.from(input.values()).every(guards[0].is)
           )

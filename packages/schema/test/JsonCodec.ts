@@ -1,14 +1,14 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
+import * as T from "@fp-ts/codec/internal/These"
 import * as _ from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
-import * as T from "@fp-ts/codec/internal/These"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly serve: <E, A>(
+  readonly decoder: <E, A>(
     decoders: [D.Decoder<_.Json, E, A>]
   ) => D.Decoder<_.Json, SetError | E, Set<A>>
 }
@@ -30,7 +30,7 @@ describe("JsonCodec", () => {
       C.empty(),
       C.add(SetService)({
         _tag: "SetService",
-        serve: <E, A>(
+        decoder: <E, A>(
           [item]: [D.Decoder<_.Json, E, A>]
         ): D.Decoder<_.Json, SetError | E, Set<A>> =>
           D.make((u) => {

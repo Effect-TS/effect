@@ -27,13 +27,8 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): Decoder<Json, any, any> => {
     switch (meta._tag) {
       case "Constructor": {
-        const service: {
-          serve: (shows: ReadonlyArray<Decoder<Json, any, any>>) => Decoder<Json, any, any>
-        } = pipe(
-          ctx,
-          C.get(meta.tag as any)
-        ) as any
-        return D.make((a) => service.serve(meta.metas.map(f)).decode(a))
+        const service = pipe(ctx, C.get(meta.tag as any)) as any
+        return service.decoder(meta.metas.map(f))
       }
       case "String":
         return D.string

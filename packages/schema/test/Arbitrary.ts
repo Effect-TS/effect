@@ -2,15 +2,45 @@ import * as _ from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
+import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
+
+interface SetService {
+  readonly _tag: "SetService"
+  readonly arbitrary: <A>([arb]: [_.Arbitrary<A>]) => _.Arbitrary<Set<A>>
+  readonly guard: <A>(guards: [G.Guard<A>]) => G.Guard<Set<A>>
+}
+
+const SetService = C.Tag<SetService>()
+
+const set = <P, E, A>(item: S.Schema<P, E, A>): S.Schema<P | SetService, E, Set<A>> =>
+  S.constructor(SetService, item)
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
-    const ctx = C.empty()
+    const ctx = pipe(
+      C.empty(),
+      C.add(SetService)({
+        _tag: "SetService",
+        arbitrary: <A>([arb]: [_.Arbitrary<A>]): _.Arbitrary<Set<A>> =>
+          _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
+        guard: <A>(guards: [G.Guard<A>]): G.Guard<Set<A>> =>
+          G.make((input): input is Set<A> =>
+            input instanceof Set && Array.from(input.values()).every(guards[0].is)
+          )
+      })
+    )
 
     const arbitraryFor = _.arbitraryFor(ctx)
     const guardFor = G.guardFor(ctx)
     const sampleSize = 100
+
+    it("constructor", () => {
+      const schema = set(S.string)
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
 
     it("string", () => {
       const schema = S.string
