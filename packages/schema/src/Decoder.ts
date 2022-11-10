@@ -11,11 +11,11 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Decoder<in Whole, E, out A> {
-  readonly I: (_: Whole) => void
+export interface Decoder<in I, E, out A> {
+  readonly I: (_: I) => void
   readonly E: E
   readonly A: A
-  readonly decode: (whole: Whole) => T.These<ReadonlyArray<E>, A>
+  readonly decode: (i: I) => T.These<ReadonlyArray<E>, A>
 }
 
 /**
@@ -288,3 +288,12 @@ export const indexSignature = <E, A>(
     UnknownIndexSignature,
     compose(fromIndexSignature(value))
   )
+
+/**
+ * @since 1.0.0
+ */
+export const refinement = <A, B extends A, E2>(refinement: (a: A) => a is B, onFalse: E2) =>
+  <I, E1>(
+    self: Decoder<I, E1, A>
+  ): Decoder<I, E1 | E2, B> =>
+    make((i) => pipe(self.decode(i), flatMap((a) => refinement(a) ? succeed(a) : fail(onFalse))))

@@ -127,9 +127,7 @@ describe("JsonCodec", () => {
       const decoder = decoderFor(schema)
       expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
-      expect(decoder.decode({ a: "a" })).toEqual(
-        D.fail(DE.type("number", undefined))
-      )
+      expect(decoder.decode({ a: "a" })).toEqual(D.fail(DE.type("number", undefined)))
     })
 
     it("indexSignature", () => {
@@ -139,9 +137,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
       expect(decoder.decode([])).toEqual(D.fail(DE.type("JsonObject", [])))
-      expect(decoder.decode({ a: 1 })).toEqual(
-        D.fail(DE.type("string", 1))
-      )
+      expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.type("string", 1)))
     })
 
     it("array", () => {
@@ -150,9 +146,18 @@ describe("JsonCodec", () => {
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
-      expect(decoder.decode([1])).toEqual(
-        D.fail(DE.type("string", 1))
-      )
+      expect(decoder.decode([1])).toEqual(D.fail(DE.type("string", 1)))
+    })
+
+    it("refinement", () => {
+      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+      const decoder = decoderFor(schema)
+      expect(decoder.decode("aa")).toEqual(D.succeed("aa"))
+      expect(decoder.decode("aaa")).toEqual(D.succeed("aaa"))
+      expect(decoder.decode("aaaa")).toEqual(D.succeed("aaaa"))
+
+      expect(decoder.decode("a")).toEqual(D.fail(DE.minLength(2)))
+      expect(decoder.decode("aaaaa")).toEqual(D.fail(DE.maxLength(4)))
     })
   })
 })

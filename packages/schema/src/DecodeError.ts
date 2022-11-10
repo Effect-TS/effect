@@ -50,3 +50,35 @@ export interface NaN {
  * @since 1.0.0
  */
 export const nan: NaN = { _tag: "NaN" }
+
+/**
+ * @since 1.0.0
+ */
+export interface MinLength<N extends number> {
+  readonly _tag: "MinLength"
+  readonly minLength: N
+}
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = <N extends number>(minLength: N): MinLength<N> => ({
+  _tag: "MinLength",
+  minLength
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface MaxLength<N extends number> {
+  readonly _tag: "MaxLength"
+  readonly maxLength: N
+}
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = <N extends number>(maxLength: N): MaxLength<N> => ({
+  _tag: "MaxLength",
+  maxLength
+})

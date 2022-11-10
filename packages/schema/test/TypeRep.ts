@@ -79,6 +79,8 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${f(meta.value)} }`
       case "Array":
         return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
+      case "Refinement":
+        return f(meta.meta)
     }
   }
   return <E, A>(schema: Schema<P, E, A>): string => f(schema)
@@ -199,6 +201,13 @@ describe("typeRepFor", () => {
       const schema = option(set(S.string))
       expect(pipe(schema, show)).toEqual(
         "Option<Set<string>>"
+      )
+    })
+
+    it("refinement", () => {
+      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+      expect(pipe(schema, show)).toEqual(
+        "string"
       )
     })
   })

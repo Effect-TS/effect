@@ -83,6 +83,8 @@ export const showFor = <P>(ctx: C.Context<P>): <E, A>(schema: Schema<P, E, A>) =
           "[" + a.map((elem) => show.show(elem)).join(", ") + "]"
         )
       }
+      case "Refinement":
+        return f(meta.meta)
     }
   }
   return f

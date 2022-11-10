@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type * as DE from "@fp-ts/codec/DecodeError"
+import * as DE from "@fp-ts/codec/DecodeError"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as meta from "@fp-ts/codec/Meta"
 import type * as C from "@fp-ts/data/Context"
@@ -127,6 +127,47 @@ export const array = <B extends boolean, P, E, A>(
   readonly: B,
   item: Schema<P, E, A>
 ): Schema<P, E, B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item, readonly))
+
+/**
+ * @since 1.0.0
+ */
+export const refinement = <P, E1, A, B extends A, E2>(
+  schema: Schema<P, E1, A>,
+  refinement: (a: A) => a is B,
+  onFalse: E2
+): Schema<P, E1 | E2, B> => make(meta.refinement(schema, refinement, onFalse))
+
+/**
+ * @since 1.0.0
+ */
+export interface MinLength<N extends number> {
+  readonly _MinLength: N
+}
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = <N extends number>(minLength: N) =>
+  <P, E, A extends string>(
+    schema: Schema<P, E, A>
+  ): Schema<P, E | DE.MinLength<N>, A & MinLength<N>> =>
+    refinement(schema, (a): a is A & MinLength<N> => a.length >= minLength, DE.minLength(minLength))
+
+/**
+ * @since 1.0.0
+ */
+export interface MaxLength<N extends number> {
+  readonly _MaxLength: N
+}
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = <N extends number>(maxLength: N) =>
+  <P, E, A extends string>(
+    schema: Schema<P, E, A>
+  ): Schema<P, E | DE.MaxLength<N>, A & MaxLength<N>> =>
+    refinement(schema, (a): a is A & MaxLength<N> => a.length <= maxLength, DE.maxLength(maxLength))
 
 /**
  * @since 1.0.0

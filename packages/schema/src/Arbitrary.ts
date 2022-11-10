@@ -67,6 +67,10 @@ export const arbitraryFor = <P>(
         const arb = f(meta.item)
         return make((fc) => fc.array(arb.arbitrary(fc)))
       }
+      case "Refinement": {
+        const arb = f(meta.meta)
+        return make((fc) => arb.arbitrary(fc).filter(meta.refinement))
+      }
     }
   }
   return f

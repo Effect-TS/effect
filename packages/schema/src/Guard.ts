@@ -97,6 +97,14 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
+export const refinement = <A, B extends A>(
+  base: Guard<A>,
+  refinement: (a: A) => a is B
+): Guard<B> => make((a): a is B => base.is(a) && refinement(a))
+
+/**
+ * @since 1.0.0
+ */
 export const guardFor = <P>(
   ctx: C.Context<P>
 ): <E, A>(schema: Schema<P, E, A>) => Guard<A> => {
@@ -138,6 +146,8 @@ export const guardFor = <P>(
         return indexSignature(f(meta.value))
       case "Array":
         return array(f(meta.item))
+      case "Refinement":
+        return refinement(f(meta.meta), meta.refinement)
     }
   }
   return f

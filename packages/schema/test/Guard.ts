@@ -157,5 +157,16 @@ describe("Guard", () => {
       expect(guard.is(O.some(1))).toEqual(true)
       expect(guard.is(O.some("a"))).toEqual(false)
     })
+
+    it("refinement", () => {
+      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+      const guard = guardFor(schema)
+      expect(guard.is("aa")).toEqual(true)
+      expect(guard.is("aaa")).toEqual(true)
+      expect(guard.is("aaaa")).toEqual(true)
+
+      expect(guard.is("a")).toEqual(false)
+      expect(guard.is("aaaaa")).toEqual(false)
+    })
   })
 })

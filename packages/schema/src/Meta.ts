@@ -20,6 +20,26 @@ export type Meta =
   | IndexSignature
   | Tuple
   | Union
+  | Refinement
+
+/**
+ * @since 1.0.0
+ */
+export interface Refinement {
+  readonly _tag: "Refinement"
+  readonly meta: Meta
+  readonly refinement: (a: any) => a is any
+  readonly onFalse: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const refinement = (
+  meta: Meta,
+  refinement: (a: any) => a is any,
+  onFalse: unknown
+): Refinement => ({ _tag: "Refinement", meta, refinement, onFalse })
 
 /**
  * @since 1.0.0

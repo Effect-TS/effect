@@ -113,5 +113,12 @@ describe("Arbitrary", () => {
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
+
+    it("refinement", () => {
+      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
   })
 })
