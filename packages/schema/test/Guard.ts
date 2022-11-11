@@ -58,7 +58,7 @@ describe("Guard", () => {
         _tag: "SetService",
         guard: <P, A>([guard]: [_.Guard<P, A>]): _.Guard<P, Set<A>> =>
           _.make(
-            M.constructor(SetService, [guard.schema]) as any,
+            M.service(SetService, [guard.schema]) as any,
             (input): input is Set<A> =>
               input instanceof Set && Array.from(input.values()).every(guard.is)
           )

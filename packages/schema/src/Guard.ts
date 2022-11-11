@@ -185,7 +185,7 @@ export const guardFor = <P>(
 ): <A>(schema: Schema<P, A>) => Guard<P, A> => {
   const f = (meta: Meta): Guard<any, any> => {
     switch (meta._tag) {
-      case "Constructor": {
+      case "Service": {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.guard(meta.metas.map(f))
       }

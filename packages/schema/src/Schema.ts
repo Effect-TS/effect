@@ -26,7 +26,7 @@ export const make = <P, A>(meta: Meta): Schema<P, A> => meta as any
  */
 export const primitive = <S>(
   tag: C.Tag<S>
-): Schema<S, never> => make(meta.constructor(tag, []))
+): Schema<S, never> => make(meta.service(tag, []))
 
 /**
  * @since 1.0.0
@@ -34,7 +34,7 @@ export const primitive = <S>(
 export const constructor = <S, P, A>(
   tag: C.Tag<S>,
   schema: Schema<P, A>
-): Schema<P | S, never> => make(meta.constructor(tag, [schema]))
+): Schema<P | S, never> => make(meta.service(tag, [schema]))
 
 /**
  * @since 1.0.0

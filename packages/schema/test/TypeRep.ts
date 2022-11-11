@@ -43,7 +43,7 @@ const bigint: S.Schema<BigIntService, bigint> = S.primitive(BigIntService)
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
-      case "Constructor": {
+      case "Service": {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.rep(meta.metas.map(f))
       }

@@ -27,7 +27,7 @@ describe("Arbitrary", () => {
           _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
         guard: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
           G.make(
-            M.constructor(SetService, [guard.schema]) as any,
+            M.service(SetService, [guard.schema]) as any,
             (input): input is Set<A> =>
               input instanceof Set && Array.from(input.values()).every(guard.is)
           )
