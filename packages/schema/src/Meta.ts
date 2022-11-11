@@ -14,7 +14,7 @@ export type Meta =
   | String
   | Number
   | Boolean
-  | Literal
+  | Equal
   | Array
   | Struct
   | IndexSignature
@@ -98,22 +98,17 @@ export const boolean: Boolean = { _tag: "Boolean" }
 /**
  * @since 1.0.0
  */
-export type LiteralValue = PropertyKey | boolean | null | undefined
-
-/**
- * @since 1.0.0
- */
-export interface Literal {
-  readonly _tag: "Literal"
-  readonly literal: LiteralValue
+export interface Equal {
+  readonly _tag: "Equal"
+  readonly value: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const literal = (literal: LiteralValue): Literal => ({
-  _tag: "Literal",
-  literal
+export const equal = (value: unknown): Equal => ({
+  _tag: "Equal",
+  value
 })
 
 /**

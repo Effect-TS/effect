@@ -127,9 +127,9 @@ export const boolean: Schema<never, boolean> = make(meta.boolean)
 /**
  * @since 1.0.0
  */
-export const literal = <A extends meta.LiteralValue>(
-  literal: A
-): Schema<never, A> => make(meta.literal(literal))
+export const equal = <A>(
+  value: A
+): Schema<never, A> => make(meta.equal(value))
 
 /**
  * @since 1.0.0
@@ -202,8 +202,8 @@ export const option = <P, A>(
   value: Schema<P, A>
 ): Schema<P, Option<A>> =>
   union(
-    struct({ _tag: literal("None") }),
-    struct({ _tag: literal("Some"), value })
+    struct({ _tag: equal("None" as const) }),
+    struct({ _tag: equal("Some" as const), value })
   )
 
 /**
@@ -214,6 +214,6 @@ export const either = <PL, L, PR, R>(
   right: Schema<PR, R>
 ): Schema<PR | PL, Either<L, R>> =>
   union(
-    struct({ _tag: literal("Left"), left }),
-    struct({ _tag: literal("Right"), right })
+    struct({ _tag: equal("Left" as const), left }),
+    struct({ _tag: equal("Right" as const), right })
   )

@@ -71,7 +71,7 @@ describe("Decoder", () => {
   })
 
   it("literal", () => {
-    const decoder = D.literal(1)
+    const decoder = D.equal(1)
     expect(decoder.decode(1)).toEqual(D.succeed(1))
 
     expect(decoder.decode("a")).toEqual(D.fail(DE.equal(1, "a")))

@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type { LiteralValue, Meta } from "@fp-ts/codec/Meta"
+import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
@@ -25,10 +25,7 @@ export const make = <P, A>(schema: Schema<P, A>, is: Guard<P, A>["is"]): Guard<P
   is
 })
 
-/**
- * @since 1.0.0
- */
-export const isString = (u: unknown): u is string => typeof u === "string"
+const isString = (u: unknown): u is string => typeof u === "string"
 
 /**
  * @since 1.0.0
@@ -51,10 +48,7 @@ export const maxLength = (
   <P, A extends { length: number }>(self: Guard<P, A>): Guard<P, A> =>
     make(S.maxLength(maxLength)(self.schema), (a): a is A => self.is(a) && a.length <= maxLength)
 
-/**
- * @since 1.0.0
- */
-export const isNumber = (u: unknown): u is number => typeof u === "number"
+const isNumber = (u: unknown): u is number => typeof u === "number"
 
 /**
  * @since 1.0.0
@@ -77,29 +71,23 @@ export const maximum = (
   <P, A extends number>(self: Guard<P, A>): Guard<P, A> =>
     make(S.maximum(maximum)(self.schema), (a): a is A => self.is(a) && a <= maximum)
 
-/**
- * @since 1.0.0
- */
-export const isBoolean = (u: unknown): u is boolean => typeof u === "boolean"
+const isBoolean = (u: unknown): u is boolean => typeof u === "boolean"
 
 /**
  * @since 1.0.0
  */
 export const boolean: Guard<never, boolean> = make(S.boolean, isBoolean)
 
-/**
- * @since 1.0.0
- */
-export const isLiteral = <A extends LiteralValue>(
-  literal: A
-) => (u: unknown): u is A => u === literal
+const isEqual = <A>(
+  value: A
+) => (u: unknown): u is A => u === value
 
 /**
  * @since 1.0.0
  */
-export const literal = <A extends LiteralValue>(
-  literal: A
-): Guard<never, A> => make(S.literal(literal), (a): a is A => a === literal)
+export const equal = <A>(
+  value: A
+): Guard<never, A> => make(S.equal(value), isEqual(value))
 
 /**
  * @since 1.0.0
@@ -183,7 +171,7 @@ export const array = <P, A>(
 export const guardFor = <P>(
   ctx: C.Context<P>
 ): <A>(schema: Schema<P, A>) => Guard<P, A> => {
-  const f = (meta: Meta): Guard<any, any> => {
+  const f = (meta: Meta): Guard<P, any> => {
     switch (meta._tag) {
       case "Tag": {
         const service = pipe(ctx, C.unsafeGet(meta.tag))
@@ -211,8 +199,8 @@ export const guardFor = <P>(
       }
       case "Boolean":
         return boolean
-      case "Literal":
-        return literal(meta.literal)
+      case "Equal":
+        return equal(meta.value)
       case "Tuple": {
         const components = meta.components.map(f)
         const out = tuple(...components)

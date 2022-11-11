@@ -61,7 +61,7 @@ describe("Show", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal(1)
+      const schema = S.equal(1)
       expect(showFor(schema).show(1)).toEqual(
         "1"
       )

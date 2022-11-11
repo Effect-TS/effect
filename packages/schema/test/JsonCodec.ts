@@ -96,7 +96,7 @@ describe("JsonCodec", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal(1)
+      const schema = S.equal(1)
       const decoder = decoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.succeed(1))
       expect(decoder.decode("a")).toEqual(D.fail(DE.equal(1, "a")))

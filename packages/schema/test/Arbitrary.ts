@@ -67,7 +67,7 @@ describe("Arbitrary", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal(1)
+      const schema = S.equal(1)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

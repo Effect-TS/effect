@@ -53,8 +53,8 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return "number"
       case "Boolean":
         return "boolean"
-      case "Literal":
-        return JSON.stringify(meta.literal)
+      case "Equal":
+        return JSON.stringify(meta.value)
       case "Tuple": {
         const components = meta.components
         const restElement = pipe(
@@ -147,7 +147,7 @@ describe("typeRepFor", () => {
   })
 
   it("literal", () => {
-    const schema = S.literal("a")
+    const schema = S.equal("a")
     expect(pipe(schema, show)).toEqual(
       "\"a\""
     )

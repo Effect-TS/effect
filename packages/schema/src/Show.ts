@@ -40,7 +40,7 @@ export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show
       case "String":
       case "Number":
       case "Boolean":
-      case "Literal":
+      case "Equal":
         return make((a) => JSON.stringify(a))
       case "Tuple": {
         const shows: ReadonlyArray<Show<unknown>> = meta.components.map(f)

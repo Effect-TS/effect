@@ -2,8 +2,6 @@
  * @since 1.0.0
  */
 
-import type { LiteralValue } from "@fp-ts/codec/Meta"
-
 export type DecodeError =
   | Custom
   | Type
@@ -55,7 +53,7 @@ export const type = (expected: string, actual: unknown): Type => ({
  */
 export interface Equal {
   readonly _tag: "Equal"
-  readonly expected: LiteralValue
+  readonly expected: unknown
   readonly actual: unknown
 }
 
@@ -63,7 +61,7 @@ export interface Equal {
  * @since 1.0.0
  */
 export const equal = (
-  expected: LiteralValue,
+  expected: unknown,
   actual: unknown
 ): Equal => ({ _tag: "Equal", expected, actual })
 

@@ -61,8 +61,8 @@ export const arbitraryFor = <P>(
         })
       case "Boolean":
         return make((fc) => fc.boolean())
-      case "Literal":
-        return make((fc) => fc.constant(meta.literal))
+      case "Equal":
+        return make((fc) => fc.constant(meta.value))
       case "Tuple": {
         const arbs = meta.components.map(f)
         return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))

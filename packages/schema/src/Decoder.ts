@@ -4,7 +4,6 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
-import type { LiteralValue } from "@fp-ts/codec/Meta"
 import { pipe } from "@fp-ts/data/Function"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
@@ -140,12 +139,12 @@ export const boolean: Decoder<unknown, boolean> = fromRefinement(
 /**
  * @since 1.0.0
  */
-export const literal = <A extends LiteralValue>(
-  literal: A
+export const equal = <A>(
+  value: A
 ): Decoder<unknown, A> =>
   fromRefinement(
-    G.literal(literal).is,
-    (u) => DE.equal(literal, u)
+    G.equal(value).is,
+    (u) => DE.equal(value, u)
   )
 
 const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>

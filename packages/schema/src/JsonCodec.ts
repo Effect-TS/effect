@@ -76,8 +76,8 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
       }
       case "Boolean":
         return D.boolean
-      case "Literal":
-        return D.literal(meta.literal)
+      case "Equal":
+        return D.equal(meta.value)
       case "Tuple":
         return pipe(JsonArray, D.compose(D.fromTuple(...meta.components.map(f))))
       case "Union":

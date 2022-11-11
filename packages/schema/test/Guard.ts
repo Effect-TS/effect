@@ -99,7 +99,7 @@ describe("Guard", () => {
     })
 
     it("literal", () => {
-      const schema = S.literal(1)
+      const schema = S.equal(1)
       const guard = guardFor(schema)
       expect(guard.is(1)).toEqual(true)
       expect(guard.is(2)).toEqual(false)
