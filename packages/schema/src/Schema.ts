@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as DE from "@fp-ts/codec/DecodeError"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as meta from "@fp-ts/codec/Meta"
 import type * as C from "@fp-ts/data/Context"
@@ -202,24 +201,6 @@ export const array = <B extends boolean, P, A>(
   readonly: B,
   item: Schema<P, A>
 ): Schema<P, B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item, readonly))
-
-/**
- * @since 1.0.0
- */
-export const refinement = <P, A, B extends A>(
-  schema: Schema<P, A>,
-  refinement: (a: A) => a is B,
-  onFalse: DE.DecodeError
-): Schema<P, B> => make(meta.refinement(schema, refinement, onFalse))
-
-/**
- * @since 1.0.0
- */
-export const filter = <P, A>(
-  schema: Schema<P, A>,
-  predicate: (a: A) => boolean,
-  onFalse: DE.DecodeError
-): Schema<P, A> => refinement(schema, (a): a is A => predicate(a), onFalse)
 
 /**
  * @since 1.0.0

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as DE from "@fp-ts/codec/DecodeError"
 import type * as C from "@fp-ts/data/Context"
 import type { Option } from "@fp-ts/data/Option"
 
@@ -11,17 +10,34 @@ import type { Option } from "@fp-ts/data/Option"
  * @since 1.0.0
  */
 export type Meta =
+  | Constructor
   | String
   | Number
   | Boolean
-  | Constructor
   | Literal
   | Array
   | Struct
   | IndexSignature
   | Tuple
   | Union
-  | Refinement
+
+/**
+ * @since 1.0.0
+ */
+export interface Constructor {
+  readonly _tag: "Constructor"
+  readonly tag: C.Tag<any>
+  readonly metas: ReadonlyArray<Meta>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const constructor = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Constructor => ({
+  _tag: "Constructor",
+  tag,
+  metas
+})
 
 /**
  * @since 1.0.0
@@ -78,43 +94,6 @@ export interface Boolean {
  * @since 1.0.0
  */
 export const boolean: Boolean = { _tag: "Boolean" }
-
-/**
- * @since 1.0.0
- */
-export interface Refinement {
-  readonly _tag: "Refinement"
-  readonly meta: Meta
-  readonly refinement: (a: any) => a is any
-  readonly onFalse: DE.DecodeError
-}
-
-/**
- * @since 1.0.0
- */
-export const refinement = (
-  meta: Meta,
-  refinement: (a: any) => a is any,
-  onFalse: DE.DecodeError
-): Refinement => ({ _tag: "Refinement", meta, refinement, onFalse })
-
-/**
- * @since 1.0.0
- */
-export interface Constructor {
-  readonly _tag: "Constructor"
-  readonly tag: C.Tag<any>
-  readonly metas: ReadonlyArray<Meta>
-}
-
-/**
- * @since 1.0.0
- */
-export const constructor = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Constructor => ({
-  _tag: "Constructor",
-  tag,
-  metas
-})
 
 /**
  * @since 1.0.0

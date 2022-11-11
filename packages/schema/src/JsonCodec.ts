@@ -93,8 +93,6 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         return pipe(JsonObject, D.compose(D.fromIndexSignature(f(meta.value))))
       case "Array":
         return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
-      case "Refinement":
-        return pipe(f(meta.meta), D.refinement(meta.refinement, meta.onFalse))
     }
   }
   return <A>(schema: Schema<P, A>): Decoder<Json, A> => f(schema)

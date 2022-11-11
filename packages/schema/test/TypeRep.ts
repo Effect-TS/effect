@@ -78,8 +78,6 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${f(meta.value)} }`
       case "Array":
         return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
-      case "Refinement":
-        return f(meta.meta)
     }
   }
   return <A>(schema: Schema<P, A>): string => f(schema)

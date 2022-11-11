@@ -197,8 +197,6 @@ export const guardFor = <P>(
         return indexSignature(f(meta.value))
       case "Array":
         return array(f(meta.item))
-      case "Refinement":
-        return refinement(f(meta.meta), meta.refinement)
     }
   }
   return f
