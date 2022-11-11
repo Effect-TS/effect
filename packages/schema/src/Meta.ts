@@ -10,7 +10,7 @@ import type { Option } from "@fp-ts/data/Option"
  * @since 1.0.0
  */
 export type Meta =
-  | Tag
+  | Declare
   | String
   | Number
   | Boolean
@@ -24,8 +24,8 @@ export type Meta =
 /**
  * @since 1.0.0
  */
-export interface Tag {
-  readonly _tag: "Tag"
+export interface Declare {
+  readonly _tag: "Declare"
   readonly tag: C.Tag<any>
   readonly metas: ReadonlyArray<Meta>
 }
@@ -33,8 +33,8 @@ export interface Tag {
 /**
  * @since 1.0.0
  */
-export const tag = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Tag => ({
-  _tag: "Tag",
+export const declare = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Declare => ({
+  _tag: "Declare",
   tag,
   metas
 })

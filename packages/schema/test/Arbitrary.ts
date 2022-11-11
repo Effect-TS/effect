@@ -15,7 +15,7 @@ interface SetService {
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.tag(SetService, item)
+  S.declare(SetService, item)
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
@@ -27,7 +27,7 @@ describe("Arbitrary", () => {
           _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
         guardFor: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
           G.make(
-            M.tag(SetService, [guard.schema]) as any,
+            M.declare(SetService, [guard.schema]) as any,
             (input): input is Set<A> =>
               input instanceof Set && Array.from(input.values()).every(guard.is)
           )

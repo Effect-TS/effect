@@ -12,7 +12,7 @@ interface SetService {
 const SetServiceTag = C.Tag<SetService>()
 
 const setS = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.tag(SetServiceTag, item)
+  S.declare(SetServiceTag, item)
 
 export const set = <P, A>(guard: _.Guard<P, A>): _.Guard<P | SetService, Set<A>> =>
   _.make(

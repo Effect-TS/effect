@@ -173,7 +173,7 @@ export const guardFor = <P>(
 ): <A>(schema: Schema<P, A>) => Guard<P, A> => {
   const f = (meta: Meta): Guard<P, any> => {
     switch (meta._tag) {
-      case "Tag": {
+      case "Declare": {
         const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.guardFor(meta.metas.map(f))
       }

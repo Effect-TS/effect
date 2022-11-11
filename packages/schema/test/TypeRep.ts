@@ -14,7 +14,7 @@ interface SetService {
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.tag(SetService, item)
+  S.declare(SetService, item)
 
 const typeRepSet = ([rep]: [string]) => `Set<${rep}>`
 
@@ -27,23 +27,21 @@ const OptionService = C.Tag<OptionService>()
 
 const option = <P, A>(
   item: S.Schema<P, A>
-): S.Schema<P | OptionService, Option<A>> => S.tag(OptionService, item)
+): S.Schema<P | OptionService, Option<A>> => S.declare(OptionService, item)
 
 const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
 
-interface BigIntService {
-  readonly _tag: "BigIntService"
+interface BigInt {
+  readonly _tag: "BigInt"
   readonly rep: () => string
 }
 
-const BigIntService = C.Tag<BigIntService>()
-
-const bigint: S.Schema<BigIntService, bigint> = S.tag(BigIntService)
+const BigInt = C.Tag<BigInt>()
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
-      case "Tag": {
+      case "Declare": {
         const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.rep(meta.metas.map(f))
       }
@@ -94,15 +92,15 @@ describe("typeRepFor", () => {
       _tag: "OptionService",
       rep: typeRepOption
     }),
-    C.add(BigIntService)({
-      _tag: "BigIntService",
+    C.add(BigInt)({
+      _tag: "BigInt",
       rep: () => "bigint"
     })
   )
   const show = typeRepFor(ctx)
 
   it("primitive", () => {
-    const schema = set(bigint)
+    const schema = set(S.bigint(BigInt))
     expect(pipe(schema, show)).toEqual("Set<bigint>")
   })
 

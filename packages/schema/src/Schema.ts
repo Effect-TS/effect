@@ -24,10 +24,10 @@ export const make = <P, A>(meta: Meta): Schema<P, A> => meta as any
 /**
  * @since 1.0.0
  */
-export const tag = <P, Schemas extends ReadonlyArray<Schema<unknown, unknown>>>(
+export const declare = <P, Schemas extends ReadonlyArray<Schema<unknown, unknown>>>(
   tag: C.Tag<P>,
   ...schemas: Schemas
-): Schema<P | Schemas[number]["P"], never> => make(meta.tag(tag, schemas))
+): Schema<P | Schemas[number]["P"], never> => make(meta.declare(tag, schemas))
 
 /**
  * @since 1.0.0
@@ -130,6 +130,11 @@ export const boolean: Schema<never, boolean> = make(meta.boolean)
 export const equal = <A>(
   value: A
 ): Schema<never, A> => make(meta.equal(value))
+
+/**
+ * @since 1.0.0
+ */
+export const bigint = <P>(tag: C.Tag<P>): Schema<P, bigint> => declare(tag)
 
 /**
  * @since 1.0.0

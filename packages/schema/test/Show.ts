@@ -13,7 +13,7 @@ interface SetService {
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.tag(SetService, item)
+  S.declare(SetService, item)
 
 describe("Show", () => {
   it("empty", () => {
