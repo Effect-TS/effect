@@ -1,5 +1,6 @@
 import * as _ from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
+import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
@@ -8,7 +9,7 @@ import * as fc from "fast-check"
 interface SetService {
   readonly _tag: "SetService"
   readonly arbitrary: <A>([arb]: [_.Arbitrary<A>]) => _.Arbitrary<Set<A>>
-  readonly guard: <A>(guards: [G.Guard<A>]) => G.Guard<Set<A>>
+  readonly guard: <P, A>(guards: [G.Guard<P, A>]) => G.Guard<P, Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -24,9 +25,11 @@ describe("Arbitrary", () => {
         _tag: "SetService",
         arbitrary: <A>([arb]: [_.Arbitrary<A>]): _.Arbitrary<Set<A>> =>
           _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
-        guard: <A>(guards: [G.Guard<A>]): G.Guard<Set<A>> =>
-          G.make((input): input is Set<A> =>
-            input instanceof Set && Array.from(input.values()).every(guards[0].is)
+        guard: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
+          G.make(
+            M.constructor(SetService, [guard.schema]) as any,
+            (input): input is Set<A> =>
+              input instanceof Set && Array.from(input.values()).every(guard.is)
           )
       })
     )
@@ -83,8 +86,6 @@ describe("Arbitrary", () => {
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
-
-    // TODO it("nonEmptyArray", () => {
 
     it("union", () => {
       const schema = S.union(S.string, S.number)

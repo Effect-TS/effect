@@ -1,4 +1,5 @@
 import * as _ from "@fp-ts/codec/Guard"
+import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
@@ -6,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly guard: <A>(guards: [_.Guard<A>]) => _.Guard<Set<A>>
+  readonly guard: <P, A>([guard]: [_.Guard<P, A>]) => _.Guard<P, Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
@@ -55,9 +56,11 @@ describe("Guard", () => {
       C.empty(),
       C.add(SetService)({
         _tag: "SetService",
-        guard: <A>(guards: [_.Guard<A>]): _.Guard<Set<A>> =>
-          _.make((input): input is Set<A> =>
-            input instanceof Set && Array.from(input.values()).every(guards[0].is)
+        guard: <P, A>([guard]: [_.Guard<P, A>]): _.Guard<P, Set<A>> =>
+          _.make(
+            M.constructor(SetService, [guard.schema]) as any,
+            (input): input is Set<A> =>
+              input instanceof Set && Array.from(input.values()).every(guard.is)
           )
       })
     )
@@ -145,9 +148,10 @@ describe("Guard", () => {
     it("nonEmptyArray", () => {
       const schema = S.nonEmptyArray(true, S.string, S.number)
       const guard = guardFor(schema)
-      expect(guard.is([])).toEqual(true)
       expect(guard.is(["a"])).toEqual(true)
       expect(guard.is(["a", 1])).toEqual(true)
+
+      expect(guard.is([])).toEqual(false)
     })
 
     it("option (as structure)", () => {
