@@ -78,6 +78,52 @@ export const string: Decoder<unknown, string> = fromRefinement(
 /**
  * @since 1.0.0
  */
+export const refinement = <A, B extends A>(refinement: (a: A) => a is B, onFalse: DE.DecodeError) =>
+  <I>(self: Decoder<I, A>): Decoder<I, B> =>
+    make((i) => pipe(self.decode(i), flatMap((a) => refinement(a) ? succeed(a) : fail(onFalse))))
+
+/**
+ * @since 1.0.0
+ */
+export const filter = <A>(predicate: (a: A) => boolean, onFalse: DE.DecodeError) =>
+  <I, B extends A>(self: Decoder<I, B>): Decoder<I, B> =>
+    refinement((b: B): b is B => predicate(b), onFalse)(self)
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = (minLength: number) =>
+  <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
+    filter((a: A) => a.length >= minLength, DE.minLength(minLength))(self)
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = (
+  maxLength: number
+) =>
+  <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
+    filter((a: A) => a.length <= maxLength, DE.maxLength(maxLength))(self)
+
+/**
+ * @since 1.0.0
+ */
+export const minimum = (minimum: number) =>
+  <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
+    filter((a: A) => a >= minimum, DE.minimum(minimum))(self)
+
+/**
+ * @since 1.0.0
+ */
+export const maximum = (
+  maximum: number
+) =>
+  <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
+    filter((a: A) => a <= maximum, DE.maximum(maximum))(self)
+
+/**
+ * @since 1.0.0
+ */
 export const number: Decoder<unknown, number> = fromRefinement(
   G.number.is,
   (u) => DE.type("number", u)
@@ -262,10 +308,3 @@ export const indexSignature = <A>(
     UnknownIndexSignature,
     compose(fromIndexSignature(value))
   )
-
-/**
- * @since 1.0.0
- */
-export const refinement = <A, B extends A>(refinement: (a: A) => a is B, onFalse: DE.DecodeError) =>
-  <I>(self: Decoder<I, A>): Decoder<I, B> =>
-    make((i) => pipe(self.decode(i), flatMap((a) => refinement(a) ? succeed(a) : fail(onFalse))))

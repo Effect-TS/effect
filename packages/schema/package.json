@@ -78,6 +78,7 @@
     "@typescript-eslint/eslint-plugin": "^5.40.1",
     "@typescript-eslint/parser": "^5.40.1",
     "@vitest/coverage-c8": "^0.24.3",
+    "ajv": "^8.11.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^7.2.2",
     "cpx": "^1.5.0",
@@ -110,7 +111,6 @@
   },
   "dependencies": {
     "@fp-ts/core": "^0.0.8",
-    "@fp-ts/data": "^0.0.9",
-    "ajv": "^8.11.0"
+    "@fp-ts/data": "^0.0.9"
   }
 }

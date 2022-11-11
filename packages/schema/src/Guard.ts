@@ -29,6 +29,49 @@ export const string: Guard<string> = make((a): a is string => typeof a === "stri
 /**
  * @since 1.0.0
  */
+export const refinement = <A, B extends A>(
+  base: Guard<A>,
+  refinement: (a: A) => a is B
+): Guard<B> => make((a): a is B => base.is(a) && refinement(a))
+
+/**
+ * @since 1.0.0
+ */
+export const filter = <A>(predicate: (a: A) => boolean) =>
+  <B extends A>(self: Guard<B>): Guard<B> => refinement(self, (b): b is B => predicate(b))
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = (minLength: number) =>
+  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
+    filter((a: A) => a.length >= minLength)(self)
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = (
+  maxLength: number
+) =>
+  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
+    filter((a: A) => a.length <= maxLength)(self)
+
+/**
+ * @since 1.0.0
+ */
+export const minimum = (minimum: number) =>
+  <A extends number>(self: Guard<A>): Guard<A> => filter((a: A) => a >= minimum)(self)
+
+/**
+ * @since 1.0.0
+ */
+export const maximum = (
+  maximum: number
+) => <A extends number>(self: Guard<A>): Guard<A> => filter((a: A) => a <= maximum)(self)
+
+/**
+ * @since 1.0.0
+ */
 export const number: Guard<number> = make((a): a is number => typeof a === "number")
 
 /**
@@ -97,14 +140,6 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const refinement = <A, B extends A>(
-  base: Guard<A>,
-  refinement: (a: A) => a is B
-): Guard<B> => make((a): a is B => base.is(a) && refinement(a))
-
-/**
- * @since 1.0.0
- */
 export const guardFor = <P>(
   ctx: C.Context<P>
 ): <A>(schema: Schema<P, A>) => Guard<A> => {
@@ -114,6 +149,28 @@ export const guardFor = <P>(
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.guard(meta.metas.map(f))
       }
+      case "String": {
+        let out = string
+        if (meta.minLength !== undefined) {
+          out = minLength(meta.minLength)(out)
+        }
+        if (meta.maxLength !== undefined) {
+          out = maxLength(meta.maxLength)(out)
+        }
+        return out
+      }
+      case "Number": {
+        let out = number
+        if (meta.minimum !== undefined) {
+          out = minimum(meta.minimum)(out)
+        }
+        if (meta.maximum !== undefined) {
+          out = maximum(meta.maximum)(out)
+        }
+        return out
+      }
+      case "Boolean":
+        return boolean
       case "Literal":
         return literal(meta.literal)
       case "Tuple": {
@@ -142,17 +199,6 @@ export const guardFor = <P>(
         return array(f(meta.item))
       case "Refinement":
         return refinement(f(meta.meta), meta.refinement)
-      case "JSONSchema": {
-        const schema = meta.schema
-        switch (schema.type) {
-          case "string":
-            return string
-          case "number":
-            return number
-          case "boolean":
-            return boolean
-        }
-      }
     }
   }
   return f

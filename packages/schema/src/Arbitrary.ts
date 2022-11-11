@@ -33,6 +33,34 @@ export const arbitraryFor = <P>(
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.arbitrary(meta.metas.map(f))
       }
+      case "String":
+        return make((fc) => {
+          let out = fc.string()
+          if (meta.minLength !== undefined) {
+            const minLength = meta.minLength
+            out = out.filter((s) => s.length >= minLength)
+          }
+          if (meta.maxLength !== undefined) {
+            const maxLength = meta.maxLength
+            out = out.filter((s) => s.length <= maxLength)
+          }
+          return out
+        })
+      case "Number":
+        return make((fc) => {
+          let out = fc.float()
+          if (meta.minimum !== undefined) {
+            const minimum = meta.minimum
+            out = out.filter((n) => n >= minimum)
+          }
+          if (meta.maximum !== undefined) {
+            const maximum = meta.maximum
+            out = out.filter((n) => n <= maximum)
+          }
+          return out
+        })
+      case "Boolean":
+        return make((fc) => fc.boolean())
       case "Literal":
         return make((fc) => fc.constant(meta.literal))
       case "Tuple": {
@@ -64,17 +92,6 @@ export const arbitraryFor = <P>(
       case "Refinement": {
         const arb = f(meta.meta)
         return make((fc) => arb.arbitrary(fc).filter(meta.refinement))
-      }
-      case "JSONSchema": {
-        const schema = meta.schema
-        switch (schema.type) {
-          case "string":
-            return make((fc) => fc.string())
-          case "number":
-            return make((fc) => fc.float())
-          case "boolean":
-            return make((fc) => fc.boolean())
-        }
       }
     }
   }

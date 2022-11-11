@@ -3,7 +3,7 @@
  */
 
 import { guardFor } from "@fp-ts/codec/Guard"
-import type { LiteralValue, Meta } from "@fp-ts/codec/Meta"
+import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
@@ -37,8 +37,11 @@ export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.show(meta.metas.map(f))
       }
+      case "String":
+      case "Number":
+      case "Boolean":
       case "Literal":
-        return make((literal: LiteralValue) => JSON.stringify(literal))
+        return make((a) => JSON.stringify(a))
       case "Tuple": {
         const shows: ReadonlyArray<Show<unknown>> = meta.components.map(f)
         const restElement = pipe(meta.restElement, O.map(f), O.getOrElse(empty))
@@ -79,8 +82,6 @@ export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show
       }
       case "Refinement":
         return f(meta.meta)
-      case "JSONSchema":
-        return make((a) => JSON.stringify(a))
     }
   }
   return f

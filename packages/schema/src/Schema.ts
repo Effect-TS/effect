@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as DE from "@fp-ts/codec/DecodeError"
+import type * as DE from "@fp-ts/codec/DecodeError"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as meta from "@fp-ts/codec/Meta"
 import type * as C from "@fp-ts/data/Context"
@@ -40,12 +40,92 @@ export const constructor = <S, P, A>(
 /**
  * @since 1.0.0
  */
-export const string: Schema<never, string> = make(meta.string)
+export const string: Schema<never, string> = make(meta.string({}))
 
 /**
  * @since 1.0.0
  */
-export const number: Schema<never, number> = make(meta.number)
+export const minLength = (minLength: number) =>
+  <P, A extends { length: number }>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => {
+    switch (schema._tag) {
+      case "String":
+        return make(meta.string({
+          minLength,
+          maxLength: schema.maxLength
+        }))
+      default:
+        return schema
+    }
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = (maxLength: number) =>
+  <P, A extends { length: number }>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => {
+    switch (schema._tag) {
+      case "String":
+        return make(meta.string({
+          minLength: schema.minLength,
+          maxLength
+        }))
+      default:
+        return schema
+    }
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const number: Schema<never, number> = make(meta.number({}))
+
+/**
+ * @since 1.0.0
+ */
+export const minimum = (minimum: number) =>
+  <P, A extends number>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => {
+    switch (schema._tag) {
+      case "Number":
+        return make(
+          meta.number({
+            minimum,
+            maximum: schema.maximum,
+            exclusiveMinimum: schema.exclusiveMinimum,
+            exclusiveMaximum: schema.exclusiveMaximum
+          })
+        )
+      default:
+        return schema
+    }
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const maximum = (maximum: number) =>
+  <P, A extends number>(
+    schema: Schema<P, A>
+  ): Schema<P, A> => {
+    switch (schema._tag) {
+      case "Number":
+        return make(
+          meta.number({
+            minimum: schema.minimum,
+            maximum,
+            exclusiveMinimum: schema.exclusiveMinimum,
+            exclusiveMaximum: schema.exclusiveMaximum
+          })
+        )
+      default:
+        return schema
+    }
+  }
 
 /**
  * @since 1.0.0
@@ -140,30 +220,6 @@ export const filter = <P, A>(
   predicate: (a: A) => boolean,
   onFalse: DE.DecodeError
 ): Schema<P, A> => refinement(schema, (a): a is A => predicate(a), onFalse)
-
-/**
- * @since 1.0.0
- */
-export const minLength = (minLength: number) =>
-  <P, A extends { length: number }>(
-    schema: Schema<P, A>
-  ): Schema<P, A> => filter(schema, (a) => a.length >= minLength, DE.minLength(minLength))
-
-/**
- * @since 1.0.0
- */
-export const maxLength = (maxLength: number) =>
-  <P, A extends { length: number }>(
-    schema: Schema<P, A>
-  ): Schema<P, A> => filter(schema, (a) => a.length <= maxLength, DE.maxLength(maxLength))
-
-/**
- * @since 1.0.0
- */
-export const min = (min: number) =>
-  <P, A extends number>(
-    schema: Schema<P, A>
-  ): Schema<P, A> => filter(schema, (a) => a >= min, DE.min(min))
 
 /**
  * @since 1.0.0

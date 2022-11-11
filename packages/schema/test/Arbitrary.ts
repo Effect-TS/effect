@@ -120,5 +120,33 @@ describe("Arbitrary", () => {
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
+
+    it("minLength", () => {
+      const schema = pipe(S.string, S.minLength(1))
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("maxLength", () => {
+      const schema = pipe(S.string, S.maxLength(1))
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("minimum", () => {
+      const schema = pipe(S.number, S.minimum(1))
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("maximum", () => {
+      const schema = pipe(S.number, S.maximum(1))
+      const arbitrary = arbitraryFor(schema).arbitrary(fc)
+      const guard = guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
   })
 })

@@ -54,6 +54,28 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.decoder(meta.metas.map(f))
       }
+      case "String": {
+        let out = D.string
+        if (meta.minLength !== undefined) {
+          out = D.minLength(meta.minLength)(out)
+        }
+        if (meta.maxLength !== undefined) {
+          out = D.maxLength(meta.maxLength)(out)
+        }
+        return out
+      }
+      case "Number": {
+        let out = D.number
+        if (meta.minimum !== undefined) {
+          out = D.minimum(meta.minimum)(out)
+        }
+        if (meta.maximum !== undefined) {
+          out = D.maximum(meta.maximum)(out)
+        }
+        return out
+      }
+      case "Boolean":
+        return D.boolean
       case "Literal":
         return D.literal(meta.literal)
       case "Tuple":
@@ -73,17 +95,6 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
       case "Refinement":
         return pipe(f(meta.meta), D.refinement(meta.refinement, meta.onFalse))
-      case "JSONSchema": {
-        const schema = meta.schema
-        switch (schema.type) {
-          case "string":
-            return D.string
-          case "number":
-            return D.number
-          case "boolean":
-            return D.boolean
-        }
-      }
     }
   }
   return <A>(schema: Schema<P, A>): Decoder<Json, A> => f(schema)

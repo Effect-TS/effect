@@ -47,6 +47,12 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         const service = pipe(ctx, C.get(meta.tag as any)) as any
         return service.rep(meta.metas.map(f))
       }
+      case "String":
+        return "string"
+      case "Number":
+        return "number"
+      case "Boolean":
+        return "boolean"
       case "Literal":
         return JSON.stringify(meta.literal)
       case "Tuple": {
@@ -74,8 +80,6 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
       case "Refinement":
         return f(meta.meta)
-      case "JSONSchema":
-        return meta.schema.type
     }
   }
   return <A>(schema: Schema<P, A>): string => f(schema)
@@ -109,101 +113,99 @@ describe("typeRepFor", () => {
     expect(pipe(schema, show)).toEqual("Set<Set<string>>")
   })
 
-  describe("show", () => {
-    it("struct", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.number
-      })
-      expect(pipe(schema, show)).toEqual(
-        "{ readonly a: string, readonly b: number }"
-      )
+  it("struct", () => {
+    const schema = S.struct({
+      a: S.string,
+      b: S.number
     })
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly a: string, readonly b: number }"
+    )
+  })
 
-    it("constructor", () => {
-      const schema = S.struct({
-        a: set(S.string)
-      })
-      expect(pipe(schema, show)).toEqual(
-        "{ readonly a: Set<string> }"
-      )
+  it("constructor", () => {
+    const schema = S.struct({
+      a: set(S.string)
     })
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly a: Set<string> }"
+    )
+  })
 
-    it("ReadonlyArray", () => {
-      const schema = S.array(true, S.string)
-      expect(pipe(schema, show)).toEqual(
-        "ReadonlyArray<string>"
-      )
-    })
+  it("ReadonlyArray", () => {
+    const schema = S.array(true, S.string)
+    expect(pipe(schema, show)).toEqual(
+      "ReadonlyArray<string>"
+    )
+  })
 
-    it("Array", () => {
-      const schema = S.array(false, S.string)
-      expect(pipe(schema, show)).toEqual(
-        "Array<string>"
-      )
-    })
+  it("Array", () => {
+    const schema = S.array(false, S.string)
+    expect(pipe(schema, show)).toEqual(
+      "Array<string>"
+    )
+  })
 
-    it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(true, S.string, S.number)
-      expect(pipe(schema, show)).toEqual(
-        "readonly [string, ...number[]]"
-      )
-    })
+  it("nonEmptyArray", () => {
+    const schema = S.nonEmptyArray(true, S.string, S.number)
+    expect(pipe(schema, show)).toEqual(
+      "readonly [string, ...number[]]"
+    )
+  })
 
-    it("literal", () => {
-      const schema = S.literal("a")
-      expect(pipe(schema, show)).toEqual(
-        "\"a\""
-      )
-    })
+  it("literal", () => {
+    const schema = S.literal("a")
+    expect(pipe(schema, show)).toEqual(
+      "\"a\""
+    )
+  })
 
-    it("indexSignature", () => {
-      const schema = S.indexSignature(S.string)
-      expect(pipe(schema, show)).toEqual(
-        "{ readonly [_: string]: string }"
-      )
-    })
+  it("indexSignature", () => {
+    const schema = S.indexSignature(S.string)
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly [_: string]: string }"
+    )
+  })
 
-    it("union", () => {
-      const schema = S.union(S.string, S.number)
-      expect(pipe(schema, show)).toEqual(
-        "string | number"
-      )
-    })
+  it("union", () => {
+    const schema = S.union(S.string, S.number)
+    expect(pipe(schema, show)).toEqual(
+      "string | number"
+    )
+  })
 
-    it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
-      expect(pipe(schema, show)).toEqual(
-        "readonly [string, number]"
-      )
-    })
+  it("tuple", () => {
+    const schema = S.tuple(true, S.string, S.number)
+    expect(pipe(schema, show)).toEqual(
+      "readonly [string, number]"
+    )
+  })
 
-    it("option (as structure)", () => {
-      const schema = S.option(S.string)
-      expect(pipe(schema, show)).toEqual(
-        "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
-      )
-    })
+  it("option (as structure)", () => {
+    const schema = S.option(S.string)
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
+    )
+  })
 
-    it("either (as structure)", () => {
-      const schema = S.either(S.string, S.number)
-      expect(pipe(schema, show)).toEqual(
-        "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
-      )
-    })
+  it("either (as structure)", () => {
+    const schema = S.either(S.string, S.number)
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
+    )
+  })
 
-    it("option (as constructor)", () => {
-      const schema = option(set(S.string))
-      expect(pipe(schema, show)).toEqual(
-        "Option<Set<string>>"
-      )
-    })
+  it("option (as constructor)", () => {
+    const schema = option(set(S.string))
+    expect(pipe(schema, show)).toEqual(
+      "Option<Set<string>>"
+    )
+  })
 
-    it("refinement", () => {
-      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
-      expect(pipe(schema, show)).toEqual(
-        "string"
-      )
-    })
+  it("refinement", () => {
+    const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+    expect(pipe(schema, show)).toEqual(
+      "string"
+    )
   })
 })

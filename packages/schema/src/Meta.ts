@@ -11,6 +11,9 @@ import type { Option } from "@fp-ts/data/Option"
  * @since 1.0.0
  */
 export type Meta =
+  | String
+  | Number
+  | Boolean
   | Constructor
   | Literal
   | Array
@@ -19,21 +22,12 @@ export type Meta =
   | Tuple
   | Union
   | Refinement
-  | JSONSchema
-
-/**
- * @since 1.0.0
- */
-export interface JSONSchema {
-  readonly _tag: "JSONSchema"
-  readonly schema: String | Number | Boolean
-}
 
 /**
  * @since 1.0.0
  */
 export interface String {
-  readonly type: "string"
+  readonly _tag: "String"
   readonly minLength?: number
   readonly maxLength?: number
 }
@@ -41,13 +35,18 @@ export interface String {
 /**
  * @since 1.0.0
  */
-export const string: JSONSchema = { _tag: "JSONSchema", schema: { type: "string" } }
+export const string = (
+  options: {
+    readonly minLength?: number
+    readonly maxLength?: number
+  }
+): String => ({ _tag: "String", ...options })
 
 /**
  * @since 1.0.0
  */
 export interface Number {
-  readonly type: "number"
+  readonly _tag: "Number"
   readonly exclusiveMaximum?: number
   readonly exclusiveMinimum?: number
   readonly maximum?: number
@@ -58,19 +57,27 @@ export interface Number {
 /**
  * @since 1.0.0
  */
-export const number: JSONSchema = { _tag: "JSONSchema", schema: { type: "number" } }
+export const number = (
+  options: {
+    readonly exclusiveMaximum?: number
+    readonly exclusiveMinimum?: number
+    readonly maximum?: number
+    readonly minimum?: number
+    readonly multipleOf?: number
+  }
+): Number => ({ _tag: "Number", ...options })
 
 /**
  * @since 1.0.0
  */
 export interface Boolean {
-  readonly type: "boolean"
+  readonly _tag: "Boolean"
 }
 
 /**
  * @since 1.0.0
  */
-export const boolean: JSONSchema = { _tag: "JSONSchema", schema: { type: "boolean" } }
+export const boolean: Boolean = { _tag: "Boolean" }
 
 /**
  * @since 1.0.0
