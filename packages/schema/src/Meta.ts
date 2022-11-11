@@ -10,7 +10,7 @@ import type { Option } from "@fp-ts/data/Option"
  * @since 1.0.0
  */
 export type Meta =
-  | Service
+  | Tag
   | String
   | Number
   | Boolean
@@ -24,8 +24,8 @@ export type Meta =
 /**
  * @since 1.0.0
  */
-export interface Service {
-  readonly _tag: "Service"
+export interface Tag {
+  readonly _tag: "Tag"
   readonly tag: C.Tag<any>
   readonly metas: ReadonlyArray<Meta>
 }
@@ -33,8 +33,8 @@ export interface Service {
 /**
  * @since 1.0.0
  */
-export const service = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Service => ({
-  _tag: "Service",
+export const tag = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Tag => ({
+  _tag: "Tag",
   tag,
   metas
 })

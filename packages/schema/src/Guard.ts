@@ -185,9 +185,9 @@ export const guardFor = <P>(
 ): <A>(schema: Schema<P, A>) => Guard<P, A> => {
   const f = (meta: Meta): Guard<any, any> => {
     switch (meta._tag) {
-      case "Service": {
-        const service = pipe(ctx, C.get(meta.tag as any)) as any
-        return service.guard(meta.metas.map(f))
+      case "Tag": {
+        const service = pipe(ctx, C.unsafeGet(meta.tag))
+        return service.guardFor(meta.metas.map(f))
       }
       case "String": {
         let out = string
@@ -224,9 +224,8 @@ export const guardFor = <P>(
         }
         return out
       }
-      case "Union": {
+      case "Union":
         return union(...meta.members.map(f))
-      }
       case "Struct": {
         const fields = {}
         meta.fields.forEach((field) => {

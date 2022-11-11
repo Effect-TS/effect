@@ -8,15 +8,15 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly rep: (reps: [string]) => string
+  readonly rep: ([rep]: [string]) => string
 }
 
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.constructor(SetService, item)
+  S.tag(SetService, item)
 
-const typeRepSet = (type: [string]) => `Set<${type[0]}>`
+const typeRepSet = ([rep]: [string]) => `Set<${rep}>`
 
 interface OptionService {
   readonly _tag: "OptionService"
@@ -27,7 +27,7 @@ const OptionService = C.Tag<OptionService>()
 
 const option = <P, A>(
   item: S.Schema<P, A>
-): S.Schema<P | OptionService, Option<A>> => S.constructor(OptionService, item)
+): S.Schema<P | OptionService, Option<A>> => S.tag(OptionService, item)
 
 const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
 
@@ -38,13 +38,13 @@ interface BigIntService {
 
 const BigIntService = C.Tag<BigIntService>()
 
-const bigint: S.Schema<BigIntService, bigint> = S.primitive(BigIntService)
+const bigint: S.Schema<BigIntService, bigint> = S.tag(BigIntService)
 
 export const typeRepFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
-      case "Service": {
-        const service = pipe(ctx, C.get(meta.tag as any)) as any
+      case "Tag": {
+        const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.rep(meta.metas.map(f))
       }
       case "String":
@@ -106,9 +106,13 @@ describe("typeRepFor", () => {
     expect(pipe(schema, show)).toEqual("Set<bigint>")
   })
 
-  it("constructor", () => {
-    const schema = set(set(S.string))
-    expect(pipe(schema, show)).toEqual("Set<Set<string>>")
+  it("dependency", () => {
+    const schema = S.struct({
+      a: set(S.string)
+    })
+    expect(pipe(schema, show)).toEqual(
+      "{ readonly a: Set<string> }"
+    )
   })
 
   it("struct", () => {
@@ -118,15 +122,6 @@ describe("typeRepFor", () => {
     })
     expect(pipe(schema, show)).toEqual(
       "{ readonly a: string, readonly b: number }"
-    )
-  })
-
-  it("constructor", () => {
-    const schema = S.struct({
-      a: set(S.string)
-    })
-    expect(pipe(schema, show)).toEqual(
-      "{ readonly a: Set<string> }"
     )
   })
 

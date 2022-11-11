@@ -29,8 +29,8 @@ export const arbitraryFor = <P>(
 ): <A>(schema: Schema<P, A>) => Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
-      case "Service": {
-        const service = pipe(ctx, C.get(meta.tag as any)) as any
+      case "Tag": {
+        const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.arbitrary(meta.metas.map(f))
       }
       case "String":

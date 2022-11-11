@@ -22,7 +22,7 @@ interface SetError {
 const setError: SetError = { _tag: "SetError" }
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.constructor(SetService, item)
+  S.tag(SetService, item)
 
 describe("JsonCodec", () => {
   describe("decoderFor", () => {
@@ -52,7 +52,7 @@ describe("JsonCodec", () => {
 
     const decoderFor = _.JsonCodec.decoderFor(ctx)
 
-    it("constructor", () => {
+    it("dependency", () => {
       const schema = set(S.number)
       const decoder = decoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))

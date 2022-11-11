@@ -9,13 +9,13 @@ import * as fc from "fast-check"
 interface SetService {
   readonly _tag: "SetService"
   readonly arbitrary: <A>([arb]: [_.Arbitrary<A>]) => _.Arbitrary<Set<A>>
-  readonly guard: <P, A>(guards: [G.Guard<P, A>]) => G.Guard<P, Set<A>>
+  readonly guardFor: <P, A>(guards: [G.Guard<P, A>]) => G.Guard<P, Set<A>>
 }
 
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.constructor(SetService, item)
+  S.tag(SetService, item)
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
@@ -25,9 +25,9 @@ describe("Arbitrary", () => {
         _tag: "SetService",
         arbitrary: <A>([arb]: [_.Arbitrary<A>]): _.Arbitrary<Set<A>> =>
           _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
-        guard: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
+        guardFor: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
           G.make(
-            M.service(SetService, [guard.schema]) as any,
+            M.tag(SetService, [guard.schema]) as any,
             (input): input is Set<A> =>
               input instanceof Set && Array.from(input.values()).every(guard.is)
           )
@@ -38,7 +38,7 @@ describe("Arbitrary", () => {
     const guardFor = G.guardFor(ctx)
     const sampleSize = 100
 
-    it("constructor", () => {
+    it("dependency", () => {
       const schema = set(S.string)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)
       const guard = guardFor(schema)

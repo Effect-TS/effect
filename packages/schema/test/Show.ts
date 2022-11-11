@@ -13,7 +13,7 @@ interface SetService {
 const SetService = C.Tag<SetService>()
 
 const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.constructor(SetService, item)
+  S.tag(SetService, item)
 
 describe("Show", () => {
   it("empty", () => {
@@ -32,7 +32,7 @@ describe("Show", () => {
 
     const showFor = _.showFor(ctx)
 
-    it("constructor", () => {
+    it("dependency", () => {
       const schema = set(S.string)
       expect(showFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"

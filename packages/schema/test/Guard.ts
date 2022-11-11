@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/codec/Guard"
-import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
@@ -7,13 +6,19 @@ import * as O from "@fp-ts/data/Option"
 
 interface SetService {
   readonly _tag: "SetService"
-  readonly guard: <P, A>([guard]: [_.Guard<P, A>]) => _.Guard<P, Set<A>>
+  readonly guardFor: <P, A>([guard]: [_.Guard<P, A>]) => _.Guard<P | SetService, Set<A>>
 }
 
-const SetService = C.Tag<SetService>()
+const SetServiceTag = C.Tag<SetService>()
 
-const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.constructor(SetService, item)
+const setS = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
+  S.tag(SetServiceTag, item)
+
+export const set = <P, A>(guard: _.Guard<P, A>): _.Guard<P | SetService, Set<A>> =>
+  _.make(
+    setS(guard.schema),
+    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(guard.is)
+  )
 
 describe("Guard", () => {
   it("tuple", () => {
@@ -54,21 +59,16 @@ describe("Guard", () => {
   describe("guardFor", () => {
     const ctx = pipe(
       C.empty(),
-      C.add(SetService)({
+      C.add(SetServiceTag)({
         _tag: "SetService",
-        guard: <P, A>([guard]: [_.Guard<P, A>]): _.Guard<P, Set<A>> =>
-          _.make(
-            M.service(SetService, [guard.schema]) as any,
-            (input): input is Set<A> =>
-              input instanceof Set && Array.from(input.values()).every(guard.is)
-          )
+        guardFor: <P, A>([guard]: [_.Guard<P, A>]): _.Guard<P | SetService, Set<A>> => set(guard)
       })
     )
 
     const guardFor = _.guardFor(ctx)
 
-    it("constructor", () => {
-      const schema = set(S.string)
+    it("dependency", () => {
+      const schema = setS(S.string)
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set())).toEqual(true)

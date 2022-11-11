@@ -50,8 +50,8 @@ const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefine
 const decoderFor = <P>(ctx: C.Context<P>) => {
   const f = (meta: Meta): Decoder<Json, any> => {
     switch (meta._tag) {
-      case "Service": {
-        const service = pipe(ctx, C.get(meta.tag as any)) as any
+      case "Tag": {
+        const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.decoder(meta.metas.map(f))
       }
       case "String": {

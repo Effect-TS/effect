@@ -33,8 +33,8 @@ export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show
   const g = guardFor(ctx)
   const f = (meta: Meta): Show<any> => {
     switch (meta._tag) {
-      case "Service": {
-        const service = pipe(ctx, C.get(meta.tag as any)) as any
+      case "Tag": {
+        const service = pipe(ctx, C.unsafeGet(meta.tag))
         return service.show(meta.metas.map(f))
       }
       case "String":

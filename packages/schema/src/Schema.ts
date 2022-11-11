@@ -24,17 +24,10 @@ export const make = <P, A>(meta: Meta): Schema<P, A> => meta as any
 /**
  * @since 1.0.0
  */
-export const primitive = <S>(
-  tag: C.Tag<S>
-): Schema<S, never> => make(meta.service(tag, []))
-
-/**
- * @since 1.0.0
- */
-export const constructor = <S, P, A>(
-  tag: C.Tag<S>,
-  schema: Schema<P, A>
-): Schema<P | S, never> => make(meta.service(tag, [schema]))
+export const tag = <P, Schemas extends ReadonlyArray<Schema<unknown, unknown>>>(
+  tag: C.Tag<P>,
+  ...schemas: Schemas
+): Schema<P | Schemas[number]["P"], never> => make(meta.tag(tag, schemas))
 
 /**
  * @since 1.0.0
