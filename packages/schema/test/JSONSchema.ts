@@ -21,7 +21,7 @@ type JSONSchema =
   | { readonly type: "boolean" }
 
 const declarations = pipe(
-  S.empty()
+  S.empty
 )
 
 export const jsonSchemaFor = (declarations: S.Declarations) =>

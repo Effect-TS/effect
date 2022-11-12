@@ -11,7 +11,7 @@ const SetSym = Symbol("Set")
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 const declarations = pipe(
-  S.empty(),
+  S.empty,
   S.add(SetSym, {
     decoderFor: <A>(
       item: D.Decoder<JC.Json, A>

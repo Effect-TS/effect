@@ -5,21 +5,46 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
+const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
-const declarations = pipe(
-  S.empty(),
+const setDeclaration = pipe(
+  S.empty,
   S.add(SetSym, {
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-      G.make((input): input is Set<A> =>
-        input instanceof Set && Array.from(input.values()).every(guard.is)
-      )
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => set(guard)
   })
 )
 
-const guardFor = G.guardFor(declarations)
+const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
+  G.make(
+    setDeclaration,
+    setSchema(item.schema),
+    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
+  )
+
+const bigintSym = Symbol.for("bigint")
+
+const bigintSchema: S.Schema<bigint> = S.apply(bigintSym, O.none)
+
+const bigintDeclaration = pipe(
+  S.empty,
+  S.add(bigintSym, {
+    guardFor: (): G.Guard<bigint> => bigint
+  })
+)
+
+const bigint = G.make(
+  bigintDeclaration,
+  bigintSchema,
+  (input): input is bigint => typeof input === "bigint"
+)
 
 describe("Guard", () => {
+  it("bigint", () => {
+    const guard = bigint
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(BigInt("1"))).toEqual(true)
+  })
+
   it("tuple", () => {
     const guard = G.tuple(G.string, G.number)
     expect(guard.is(["a", 1])).toEqual(true)
@@ -55,7 +80,35 @@ describe("Guard", () => {
     expect(guard.is(["a", 1])).toEqual(false)
   })
 
+  it("pick", () => {
+    const base = G.struct({ a: G.string, b: bigint, c: G.boolean })
+    expect(base.is(null)).toEqual(false)
+    const guard = G.pick(base, "a", "b")
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({ a: "a", b: BigInt("1") })).toEqual(true)
+    expect(guard.is({ a: "a", b: BigInt("1"), c: true })).toEqual(true)
+    expect(guard.is({ a: "a", b: BigInt("1"), c: "a" })).toEqual(true)
+  })
+
+  it("Set & bigint", () => {
+    const declarations = pipe(
+      S.empty,
+      S.mergeMany([setDeclaration]),
+      S.mergeMany([bigintDeclaration])
+    )
+    const guardFor = G.guardFor(declarations)
+
+    const schema = setSchema(bigintSchema)
+    const guard = guardFor(schema)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(new Set())).toEqual(true)
+    expect(guard.is(new Set([BigInt("1"), BigInt("2")]))).toEqual(true)
+    expect(guard.is(new Set([BigInt("1"), 1]))).toEqual(false)
+  })
+
   describe("guardFor", () => {
+    const guardFor = G.guardFor(S.empty)
+
     it("pick", () => {
       const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
       const schema = S.pick(base, "a", "b")
@@ -142,15 +195,6 @@ describe("Guard", () => {
       expect(guard.is({ a: "a", b: 1 })).toEqual(false)
       expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
       expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(false)
-    })
-
-    it("declaration", () => {
-      const schema = set(S.string)
-      const guard = guardFor(schema)
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is(new Set())).toEqual(true)
-      expect(guard.is(new Set(["a", "b"]))).toEqual(true)
-      expect(guard.is(new Set(["a", 1]))).toEqual(false)
     })
 
     it("string", () => {

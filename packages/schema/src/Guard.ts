@@ -12,25 +12,39 @@ import * as O from "@fp-ts/data/Option"
  */
 export interface Guard<out A> {
   readonly A: A
+  readonly declarations: S.Declarations
+  readonly schema: Schema<A>
   readonly is: (input: unknown) => input is A
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is }) as any
+export const make = <A>(
+  declarations: S.Declarations,
+  schema: Schema<A>,
+  is: Guard<A>["is"]
+): Guard<A> => ({ declarations, schema, is }) as any
 
 /**
  * @since 1.0.0
  */
-export const string: Guard<string> = make((u: unknown): u is string => typeof u === "string")
+export const string: Guard<string> = make(
+  S.empty,
+  S.string,
+  (u: unknown): u is string => typeof u === "string"
+)
 
 /**
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make((a): a is A => self.is(a) && a.length >= minLength)
+    make(
+      self.declarations,
+      S.minLength(minLength)(self.schema),
+      (a): a is A => self.is(a) && a.length >= minLength
+    )
 
 /**
  * @since 1.0.0
@@ -39,30 +53,51 @@ export const maxLength = (
   maxLength: number
 ) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make((a): a is A => self.is(a) && a.length <= maxLength)
+    make(
+      self.declarations,
+      S.maxLength(maxLength)(self.schema),
+      (a): a is A => self.is(a) && a.length <= maxLength
+    )
 
 /**
  * @since 1.0.0
  */
-export const number: Guard<number> = make((u: unknown): u is number => typeof u === "number")
+export const number: Guard<number> = make(
+  S.empty,
+  S.number,
+  (u: unknown): u is number => typeof u === "number"
+)
 
 /**
  * @since 1.0.0
  */
 export const minimum = (minimum: number) =>
-  <A extends number>(self: Guard<A>): Guard<A> => make((a): a is A => self.is(a) && a >= minimum)
+  <A extends number>(self: Guard<A>): Guard<A> =>
+    make(
+      self.declarations,
+      S.minimum(minimum)(self.schema),
+      (a): a is A => self.is(a) && a >= minimum
+    )
 
 /**
  * @since 1.0.0
  */
 export const maximum = (
   maximum: number
-) => <A extends number>(self: Guard<A>): Guard<A> => make((a): a is A => self.is(a) && a <= maximum)
+) =>
+  <A extends number>(self: Guard<A>): Guard<A> =>
+    make(
+      self.declarations,
+      S.maximum(maximum)(self.schema),
+      (a): a is A => self.is(a) && a <= maximum
+    )
 
 /**
  * @since 1.0.0
  */
 export const boolean: Guard<boolean> = make(
+  S.empty,
+  S.boolean,
   (u: unknown): u is boolean => typeof u === "boolean"
 )
 
@@ -71,7 +106,7 @@ export const boolean: Guard<boolean> = make(
  */
 export const equal = <A>(
   value: A
-): Guard<A> => make((u: unknown): u is A => u === value)
+): Guard<A> => make(S.empty, S.equal(value), (u: unknown): u is A => u === value)
 
 /**
  * @since 1.0.0
@@ -80,6 +115,8 @@ export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
   ...components: Components
 ): Guard<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
   make(
+    S.mergeMany(components.map((c) => c.declarations))(S.empty),
+    S.tuple(true, ...components.map((c) => c.schema)) as any,
     (a): a is { readonly [K in keyof Components]: Components[K]["A"] } =>
       Array.isArray(a) &&
       components.every((guard, i) => guard.is(a[i]))
@@ -91,7 +128,11 @@ export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
 export const union = <Members extends ReadonlyArray<Guard<unknown>>>(
   ...members: Members
 ): Guard<Members[number]["A"]> =>
-  make((a): a is Members[number]["A"] => members.some((guard) => guard.is(a)))
+  make(
+    S.mergeMany(members.map((c) => c.declarations))(S.empty),
+    S.union(...members.map((m) => m.schema)),
+    (a): a is Members[number]["A"] => members.some((guard) => guard.is(a))
+  )
 
 /**
  * @since 1.0.0
@@ -101,7 +142,13 @@ export const struct = <Fields extends Record<PropertyKey, Guard<unknown>>>(
 ): Guard<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
   const keys = Object.keys(fields)
   const guards = keys.map((key) => fields[key])
+  const schemas = {}
+  keys.forEach((key) => {
+    schemas[key] = fields[key].schema
+  })
   return make(
+    S.mergeMany(keys.map((key) => fields[key].declarations))(S.empty),
+    S.struct(schemas) as any,
     (a): a is { readonly [K in keyof Fields]: Fields[K]["A"] } =>
       typeof a === "object" && a != null &&
       guards.every((guard, i) => guard.is(a[keys[i]]))
@@ -115,6 +162,8 @@ export const indexSignature = <A>(
   value: Guard<A>
 ): Guard<{ readonly [_: string]: A }> =>
   make(
+    value.declarations,
+    S.indexSignature(value.schema),
     (a): a is { readonly [_: string]: A } =>
       typeof a === "object" && a != null && Object.keys(a).every((key) => value.is(a[key]))
   )
@@ -125,14 +174,33 @@ export const indexSignature = <A>(
 export const array = <A>(
   item: Guard<A>
 ): Guard<ReadonlyArray<A>> =>
-  make((a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem)))
+  make(
+    item.declarations,
+    S.array(true, item.schema),
+    (a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem))
+  )
 
 /**
  * @since 1.0.0
  */
 export const optional = <A>(
   item: Guard<A>
-): Guard<A | undefined> => make((a): a is A | undefined => a === undefined || item.is(a))
+): Guard<A | undefined> =>
+  make(
+    item.declarations,
+    S.optional(item.schema),
+    (a): a is A | undefined => a === undefined || item.is(a)
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const pick = <A, K extends keyof A>(
+  guard: Guard<A>,
+  ...keys: ReadonlyArray<K>
+): Guard<Pick<A, K>> => {
+  return guardFor(guard.declarations)(S.pick(guard.schema, ...keys))
+}
 
 /**
  * @since 1.0.0
@@ -179,9 +247,12 @@ export const guardFor = (declarations: S.Declarations) =>
           const out = tuple(...components)
           if (O.isSome(meta.restElement)) {
             const restElement = f(meta.restElement.value)
-            return make((a): a is any =>
-              out.is(a) &&
-              a.slice(components.length).every(restElement.is)
+            return make(
+              S.mergeMany(components.map((c) => c.declarations))(S.empty),
+              S.make(meta),
+              (a): a is any =>
+                out.is(a) &&
+                a.slice(components.length).every(restElement.is)
             )
           }
           return out

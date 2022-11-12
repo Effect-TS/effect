@@ -10,14 +10,17 @@ const SetSym = Symbol("Set")
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 const declarations = pipe(
-  S.empty(),
+  S.empty,
   S.add(SetSym, {
     arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
       return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
     },
     guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-      G.make((input): input is Set<A> =>
-        input instanceof Set && Array.from(input.values()).every(guard.is)
+      G.make(
+        guard.declarations,
+        S.apply(SetSym, O.none, guard.schema),
+        (input): input is Set<A> =>
+          input instanceof Set && Array.from(input.values()).every(guard.is)
       )
   })
 )

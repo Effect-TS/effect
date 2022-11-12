@@ -23,18 +23,18 @@ export const make = <A>(meta: Meta): Schema<A> => meta as any
  * @since 1.0.0
  */
 export interface Declaration {
-  [_: string]: Function
+  readonly [_: string]: Function
 }
 
 /**
  * @since 1.0.0
  */
-export interface Declarations extends Map<symbol, Declaration> {}
+export interface Declarations extends ReadonlyMap<symbol, Declaration> {}
 
 /**
  * @since 1.0.0
  */
-export const empty = (): Declarations => new Map()
+export const empty: Declarations = new Map()
 
 /**
  * @since 1.0.0
@@ -44,7 +44,7 @@ export const add = (
   declaration: Declaration
 ) =>
   (declarations: Declarations): Declarations => {
-    const map: Declarations = new Map(declarations)
+    const map = new Map(declarations)
     const found = declarations.get(symbol)
     if (found !== undefined) {
       map.set(symbol, { ...found, ...declaration })
@@ -70,6 +70,25 @@ export const unsafeGet = (
 /**
  * @since 1.0.0
  */
+export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
+  (head: Declarations): Declarations => {
+    const map = new Map(head)
+    for (const d of tail) {
+      for (const [symbol, declaration] of d) {
+        const found = d.get(symbol)
+        if (found !== undefined) {
+          map.set(symbol, { ...found, ...declaration })
+        } else {
+          map.set(symbol, declaration)
+        }
+      }
+    }
+    return map
+  }
+
+/**
+ * @since 1.0.0
+ */
 export const apply = <Schemas extends ReadonlyArray<Schema<unknown>>>(
   symbol: symbol,
   config: Option<unknown>,
@@ -85,7 +104,7 @@ export const string: Schema<string> = make(meta.string({}))
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
-  <A extends string>(
+  <A extends { length: number }>(
     schema: Schema<A>
   ): Schema<A> => {
     if (meta.isString(schema)) {
@@ -101,7 +120,7 @@ export const minLength = (minLength: number) =>
  * @since 1.0.0
  */
 export const maxLength = (maxLength: number) =>
-  <A extends string>(
+  <A extends { length: number }>(
     schema: Schema<A>
   ): Schema<A> => {
     if (meta.isString(schema)) {

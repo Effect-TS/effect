@@ -9,7 +9,7 @@ const SetSym = Symbol("Set")
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 const declarations = pipe(
-  S.empty(),
+  S.empty,
   S.add(SetSym, {
     showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
       Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)

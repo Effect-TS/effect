@@ -23,7 +23,7 @@ const bigintSym = Symbol.for("bigint")
 const bigint: Schema<bigint> = S.apply(bigintSym, O.none)
 
 const declarations = pipe(
-  S.empty(),
+  S.empty,
   S.add(SetSym, {
     typeRepFor: (readonly: boolean, s: string) => readonly ? `ReadonlySet<${s}>` : `Set<${s}>`
   }),
