@@ -4,7 +4,7 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
-import * as S from "@fp-ts/codec/Schema"
+// import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
@@ -136,10 +136,6 @@ export const boolean: Decoder<unknown, boolean> = fromRefinement(
   G.boolean.is,
   (u) => DE.type("boolean", u)
 )
-
-S.addDeclaration(S.booleanSym, {
-  decoderFor: () => boolean
-})
 
 /**
  * @since 1.0.0

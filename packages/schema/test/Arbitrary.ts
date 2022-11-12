@@ -9,23 +9,27 @@ const SetSym = Symbol("Set")
 
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
-S.addDeclaration(SetSym, {
-  arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
-    return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
-  }
-})
-
-S.addDeclaration(SetSym, {
-  guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-    G.make((input): input is Set<A> =>
-      input instanceof Set && Array.from(input.values()).every(guard.is)
-    )
-})
+const declarations = pipe(
+  S.empty(),
+  S.add(S.booleanSym, {
+    arbitraryFor: () => A.boolean,
+    guardFor: () => G.boolean
+  }),
+  S.add(SetSym, {
+    arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
+      return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
+    },
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
+      G.make((input): input is Set<A> =>
+        input instanceof Set && Array.from(input.values()).every(guard.is)
+      )
+  })
+)
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
-    const arbitraryFor = A.arbitraryFor
-    const guardFor = G.guardFor
+    const arbitraryFor = A.arbitraryFor(declarations)
+    const guardFor = G.guardFor(declarations)
     const sampleSize = 100
 
     it("declaration", () => {

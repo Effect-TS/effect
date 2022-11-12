@@ -20,54 +20,60 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
-S.addDeclaration(S.booleanSym, {
-  jsonSchemaFor: () => ({ type: "boolean" })
-})
+const declarations = pipe(
+  S.empty(),
+  S.add(S.booleanSym, {
+    jsonSchemaFor: () => ({ type: "boolean" })
+  })
+)
 
-export const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
-  const f = (meta: Meta): JSONSchema => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = S.getDeclaration(meta.symbol)
-        if (declaration !== undefined && declaration.jsonSchemaFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.jsonSchemaFor(...meta.metas.map(f))
+export const jsonSchemaFor = (declarations: S.Declarations) =>
+  <A>(schema: Schema<A>): JSONSchema => {
+    const f = (meta: Meta): JSONSchema => {
+      switch (meta._tag) {
+        case "Apply": {
+          const declaration = S.unsafeGet(meta.symbol)(declarations)
+          if (declaration.jsonSchemaFor !== undefined) {
+            return O.isSome(meta.config) ?
+              declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(f)) :
+              declaration.jsonSchemaFor(...meta.metas.map(f))
+          }
+          throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
         }
-        throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
+        case "String": {
+          return {
+            type: "string",
+            minLength: meta.minLength,
+            maxLength: meta.maxLength
+          }
+        }
+        case "Number":
+          return {
+            type: "number",
+            minimum: meta.minimum,
+            maximum: meta.maximum,
+            exclusiveMinimum: meta.exclusiveMinimum,
+            exclusiveMaximum: meta.exclusiveMaximum
+          }
       }
-      case "String": {
-        return {
-          type: "string",
-          minLength: meta.minLength,
-          maxLength: meta.maxLength
-        }
-      }
-      case "Number":
-        return {
-          type: "number",
-          minimum: meta.minimum,
-          maximum: meta.maximum,
-          exclusiveMinimum: meta.exclusiveMinimum,
-          exclusiveMaximum: meta.exclusiveMaximum
-        }
+      throw new Error(`Unhandled ${meta._tag}`)
     }
-    throw new Error(`Unhandled ${meta._tag}`)
+    return f(schema)
   }
-  return f(schema)
-}
 
 describe("jsonSchemaFor", () => {
+  const jsonSchemaFor_ = jsonSchemaFor(declarations)
+
   it("string", () => {
     const schema = S.string
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate("a")).toEqual(true)
     expect(validate(1)).toEqual(false)
   })
 
   it("boolean", () => {
     const schema = S.boolean
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate(true)).toEqual(true)
     expect(validate(false)).toEqual(true)
     expect(validate(1)).toEqual(false)
@@ -75,7 +81,7 @@ describe("jsonSchemaFor", () => {
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate("a")).toEqual(true)
     expect(validate("aa")).toEqual(true)
 
@@ -84,7 +90,7 @@ describe("jsonSchemaFor", () => {
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate("")).toEqual(true)
     expect(validate("a")).toEqual(true)
 
@@ -93,7 +99,7 @@ describe("jsonSchemaFor", () => {
 
   it("minimum", () => {
     const schema = pipe(S.number, S.minimum(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate(1)).toEqual(true)
     expect(validate(2)).toEqual(true)
 
@@ -102,7 +108,7 @@ describe("jsonSchemaFor", () => {
 
   it("maximum", () => {
     const schema = pipe(S.number, S.maximum(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate(0)).toEqual(true)
     expect(validate(1)).toEqual(true)
 

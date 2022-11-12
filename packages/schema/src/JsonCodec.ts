@@ -48,59 +48,60 @@ const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefine
   (json) => DE.type("JsonObject", json)
 )
 
-const decoderFor = <A>(schema: Schema<A>): Decoder<Json, A> => {
-  const f = (meta: Meta): Decoder<Json, any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = S.getDeclaration(meta.symbol)
-        if (declaration !== undefined && declaration.decoderFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.decoderFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.decoderFor(...meta.metas.map(f))
+const decoderFor = (declarations: S.Declarations) =>
+  <A>(schema: Schema<A>): Decoder<Json, A> => {
+    const f = (meta: Meta): Decoder<Json, any> => {
+      switch (meta._tag) {
+        case "Apply": {
+          const declaration = S.unsafeGet(meta.symbol)(declarations)
+          if (declaration.decoderFor !== undefined) {
+            return O.isSome(meta.config) ?
+              declaration.decoderFor(meta.config.value, ...meta.metas.map(f)) :
+              declaration.decoderFor(...meta.metas.map(f))
+          }
+          throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
         }
-        throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
+        case "String": {
+          let out = D.string
+          if (meta.minLength !== undefined) {
+            out = D.minLength(meta.minLength)(out)
+          }
+          if (meta.maxLength !== undefined) {
+            out = D.maxLength(meta.maxLength)(out)
+          }
+          return out
+        }
+        case "Number": {
+          let out = D.number
+          if (meta.minimum !== undefined) {
+            out = D.minimum(meta.minimum)(out)
+          }
+          if (meta.maximum !== undefined) {
+            out = D.maximum(meta.maximum)(out)
+          }
+          return out
+        }
+        case "Equal":
+          return D.equal(meta.value)
+        case "Tuple":
+          return pipe(JsonArray, D.compose(D.fromTuple(...meta.components.map(f))))
+        case "Union":
+          return pipe(Json, D.compose(D.union(...meta.members.map(f))))
+        case "Struct": {
+          const fields = {}
+          meta.fields.forEach((field) => {
+            fields[field.key] = f(field.value)
+          })
+          return pipe(JsonObject, D.compose(D.fromStruct(fields)))
+        }
+        case "IndexSignature":
+          return pipe(JsonObject, D.compose(D.fromIndexSignature(f(meta.value))))
+        case "Array":
+          return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
       }
-      case "String": {
-        let out = D.string
-        if (meta.minLength !== undefined) {
-          out = D.minLength(meta.minLength)(out)
-        }
-        if (meta.maxLength !== undefined) {
-          out = D.maxLength(meta.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = D.number
-        if (meta.minimum !== undefined) {
-          out = D.minimum(meta.minimum)(out)
-        }
-        if (meta.maximum !== undefined) {
-          out = D.maximum(meta.maximum)(out)
-        }
-        return out
-      }
-      case "Equal":
-        return D.equal(meta.value)
-      case "Tuple":
-        return pipe(JsonArray, D.compose(D.fromTuple(...meta.components.map(f))))
-      case "Union":
-        return pipe(Json, D.compose(D.union(...meta.members.map(f))))
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return pipe(JsonObject, D.compose(D.fromStruct(fields)))
-      }
-      case "IndexSignature":
-        return pipe(JsonObject, D.compose(D.fromIndexSignature(f(meta.value))))
-      case "Array":
-        return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
     }
+    return f(schema)
   }
-  return f(schema)
-}
 
 /**
  * @since 1.0.0

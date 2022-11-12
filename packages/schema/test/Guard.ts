@@ -7,12 +7,18 @@ const SetSym = Symbol("Set")
 
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
-S.addDeclaration(SetSym, {
-  guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-    G.make((input): input is Set<A> =>
-      input instanceof Set && Array.from(input.values()).every(guard.is)
-    )
-})
+const declarations = pipe(
+  S.empty(),
+  S.add(S.booleanSym, {
+    guardFor: () => G.boolean
+  }),
+  S.add(SetSym, {
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
+      G.make((input): input is Set<A> =>
+        input instanceof Set && Array.from(input.values()).every(guard.is)
+      )
+  })
+)
 
 describe("Guard", () => {
   it("tuple", () => {
@@ -51,7 +57,7 @@ describe("Guard", () => {
   })
 
   describe("guardFor", () => {
-    const guardFor = G.guardFor
+    const guardFor = G.guardFor(declarations)
 
     it("declaration", () => {
       const schema = set(S.string)

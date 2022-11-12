@@ -22,12 +22,50 @@ export const make = <A>(meta: Meta): Schema<A> => meta as any
 /**
  * @since 1.0.0
  */
-export const addDeclaration = meta.addDeclaration
+export interface Declaration {
+  [_: string]: Function
+}
 
 /**
  * @since 1.0.0
  */
-export const getDeclaration = meta.getDeclaration
+export interface Declarations extends Map<symbol, Declaration> {}
+
+/**
+ * @since 1.0.0
+ */
+export const empty = (): Declarations => new Map()
+
+/**
+ * @since 1.0.0
+ */
+export const add = (
+  symbol: symbol,
+  declaration: Declaration
+) =>
+  (declarations: Declarations): Declarations => {
+    const map: Declarations = new Map(declarations)
+    const found = declarations.get(symbol)
+    if (found !== undefined) {
+      map.set(symbol, { ...found, ...declaration })
+    } else {
+      map.set(symbol, declaration)
+    }
+    return map
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const unsafeGet = (
+  symbol: symbol
+) =>
+  (declarations: Declarations): Declaration => {
+    if (!declarations.has(symbol)) {
+      throw new Error(`Declaration for ${symbol.description} not found`)
+    }
+    return declarations.get(symbol)!
+  }
 
 /**
  * @since 1.0.0

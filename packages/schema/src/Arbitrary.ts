@@ -26,80 +26,77 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
  */
 export const boolean: Arbitrary<boolean> = make((fc) => fc.boolean())
 
-S.addDeclaration(S.booleanSym, {
-  arbitraryFor: () => boolean
-})
-
 /**
  * @since 1.0.0
  */
-export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
-  const f = (meta: Meta): Arbitrary<any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = S.getDeclaration(meta.symbol)
-        if (declaration !== undefined && declaration.arbitraryFor != null) {
-          return O.isSome(meta.config) ?
-            declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.arbitraryFor(...meta.metas.map(f))
+export const arbitraryFor = (declarations: S.Declarations) =>
+  <A>(schema: Schema<A>): Arbitrary<A> => {
+    const f = (meta: Meta): Arbitrary<any> => {
+      switch (meta._tag) {
+        case "Apply": {
+          const declaration = S.unsafeGet(meta.symbol)(declarations)
+          if (declaration.arbitraryFor != null) {
+            return O.isSome(meta.config) ?
+              declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
+              declaration.arbitraryFor(...meta.metas.map(f))
+          }
+          throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
         }
-        throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
-      }
-      case "String":
-        return make((fc) => {
-          let out = fc.string()
-          if (meta.minLength !== undefined) {
-            const minLength = meta.minLength
-            out = out.filter((s) => s.length >= minLength)
-          }
-          if (meta.maxLength !== undefined) {
-            const maxLength = meta.maxLength
-            out = out.filter((s) => s.length <= maxLength)
-          }
-          return out
-        })
-      case "Number":
-        return make((fc) => {
-          let out = fc.float()
-          if (meta.minimum !== undefined) {
-            const minimum = meta.minimum
-            out = out.filter((n) => n >= minimum)
-          }
-          if (meta.maximum !== undefined) {
-            const maximum = meta.maximum
-            out = out.filter((n) => n <= maximum)
-          }
-          return out
-        })
-      case "Equal":
-        return make((fc) => fc.constant(meta.value))
-      case "Tuple": {
-        const arbs = meta.components.map(f)
-        return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))
-      }
-      case "Union": {
-        const arbs = meta.members.map(f)
-        return make((fc) => fc.oneof(...arbs.map((arb) => arb.arbitrary(fc))))
-      }
-      case "Struct": {
-        const arbs = meta.fields.map((field) => f(field.value))
-        return make((fc) => {
-          const fields = {}
-          arbs.forEach((arb, i) => {
-            fields[meta.fields[i].key] = arb.arbitrary(fc)
+        case "String":
+          return make((fc) => {
+            let out = fc.string()
+            if (meta.minLength !== undefined) {
+              const minLength = meta.minLength
+              out = out.filter((s) => s.length >= minLength)
+            }
+            if (meta.maxLength !== undefined) {
+              const maxLength = meta.maxLength
+              out = out.filter((s) => s.length <= maxLength)
+            }
+            return out
           })
-          return fc.record(fields)
-        })
-      }
-      case "IndexSignature": {
-        const arb = f(meta.value)
-        return make((fc) => fc.dictionary(fc.string(), arb.arbitrary(fc)))
-      }
-      case "Array": {
-        const arb = f(meta.item)
-        return make((fc) => fc.array(arb.arbitrary(fc)))
+        case "Number":
+          return make((fc) => {
+            let out = fc.float()
+            if (meta.minimum !== undefined) {
+              const minimum = meta.minimum
+              out = out.filter((n) => n >= minimum)
+            }
+            if (meta.maximum !== undefined) {
+              const maximum = meta.maximum
+              out = out.filter((n) => n <= maximum)
+            }
+            return out
+          })
+        case "Equal":
+          return make((fc) => fc.constant(meta.value))
+        case "Tuple": {
+          const arbs = meta.components.map(f)
+          return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))
+        }
+        case "Union": {
+          const arbs = meta.members.map(f)
+          return make((fc) => fc.oneof(...arbs.map((arb) => arb.arbitrary(fc))))
+        }
+        case "Struct": {
+          const arbs = meta.fields.map((field) => f(field.value))
+          return make((fc) => {
+            const fields = {}
+            arbs.forEach((arb, i) => {
+              fields[meta.fields[i].key] = arb.arbitrary(fc)
+            })
+            return fc.record(fields)
+          })
+        }
+        case "IndexSignature": {
+          const arb = f(meta.value)
+          return make((fc) => fc.dictionary(fc.string(), arb.arbitrary(fc)))
+        }
+        case "Array": {
+          const arb = f(meta.item)
+          return make((fc) => fc.array(arb.arbitrary(fc)))
+        }
       }
     }
+    return f(schema)
   }
-  return f(schema)
-}

@@ -8,10 +8,16 @@ const SetSym = Symbol("Set")
 
 const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
-S.addDeclaration(SetSym, {
-  showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
-    Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
-})
+const declarations = pipe(
+  S.empty(),
+  S.add(S.booleanSym, {
+    showFor: () => Sh.boolean
+  }),
+  S.add(SetSym, {
+    showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
+      Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
+  })
+)
 
 describe("Show", () => {
   it("empty", () => {
@@ -19,7 +25,7 @@ describe("Show", () => {
   })
 
   describe("showFor", () => {
-    const showFor = Sh.showFor
+    const showFor = Sh.showFor(declarations)
 
     it("declaration", () => {
       const schema = set(S.string)

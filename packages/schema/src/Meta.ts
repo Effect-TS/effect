@@ -3,35 +3,7 @@
  */
 import type { Option } from "@fp-ts/data/Option"
 
-const declarations = new Map<symbol, { [_: string]: Function }>()
-
 /**
- * @since 1.0.0
- */
-export const addDeclaration = (
-  symbol: symbol,
-  declaration: { [_: string]: Function }
-): void => {
-  const found = declarations.get(symbol)
-  if (found !== undefined) {
-    declarations.set(symbol, { ...found, ...declaration })
-  } else {
-    declarations.set(symbol, declaration)
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const getDeclaration = (
-  symbol: symbol
-): { [_: string]: Function } | undefined => {
-  return declarations.get(symbol)
-}
-
-/**
- * A sum type representing features of the TypeScript language we are interested in.
- *
  * @since 1.0.0
  */
 export type Meta =

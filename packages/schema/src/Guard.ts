@@ -66,10 +66,6 @@ export const boolean: Guard<boolean> = make(
   (u: unknown): u is boolean => typeof u === "boolean"
 )
 
-S.addDeclaration(S.booleanSym, {
-  guardFor: () => boolean
-})
-
 /**
  * @since 1.0.0
  */
@@ -134,66 +130,67 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
-  const f = (meta: Meta): Guard<any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = S.getDeclaration(meta.symbol)
-        if (declaration !== undefined && declaration.guardFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.guardFor(...meta.metas.map(f))
+export const guardFor = (declarations: S.Declarations) =>
+  <A>(schema: Schema<A>): Guard<A> => {
+    const f = (meta: Meta): Guard<any> => {
+      switch (meta._tag) {
+        case "Apply": {
+          const declaration = S.unsafeGet(meta.symbol)(declarations)
+          if (declaration.guardFor !== undefined) {
+            return O.isSome(meta.config) ?
+              declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
+              declaration.guardFor(...meta.metas.map(f))
+          }
+          throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
         }
-        throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
+        case "String": {
+          let out = string
+          if (meta.minLength !== undefined) {
+            out = minLength(meta.minLength)(out)
+          }
+          if (meta.maxLength !== undefined) {
+            out = maxLength(meta.maxLength)(out)
+          }
+          return out
+        }
+        case "Number": {
+          let out = number
+          if (meta.minimum !== undefined) {
+            out = minimum(meta.minimum)(out)
+          }
+          if (meta.maximum !== undefined) {
+            out = maximum(meta.maximum)(out)
+          }
+          return out
+        }
+        case "Equal":
+          return equal(meta.value)
+        case "Tuple": {
+          const components = meta.components.map(f)
+          const out = tuple(...components)
+          if (O.isSome(meta.restElement)) {
+            const restElement = f(meta.restElement.value)
+            return make((a): a is any =>
+              out.is(a) &&
+              a.slice(components.length).every(restElement.is)
+            )
+          }
+          return out
+        }
+        case "Union":
+          return union(...meta.members.map(f))
+        case "Struct": {
+          const fields = {}
+          meta.fields.forEach((field) => {
+            fields[field.key] = f(field.value)
+          })
+          return struct(fields)
+        }
+        case "IndexSignature":
+          return indexSignature(f(meta.value))
+        case "Array":
+          return array(f(meta.item))
       }
-      case "String": {
-        let out = string
-        if (meta.minLength !== undefined) {
-          out = minLength(meta.minLength)(out)
-        }
-        if (meta.maxLength !== undefined) {
-          out = maxLength(meta.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = number
-        if (meta.minimum !== undefined) {
-          out = minimum(meta.minimum)(out)
-        }
-        if (meta.maximum !== undefined) {
-          out = maximum(meta.maximum)(out)
-        }
-        return out
-      }
-      case "Equal":
-        return equal(meta.value)
-      case "Tuple": {
-        const components = meta.components.map(f)
-        const out = tuple(...components)
-        if (O.isSome(meta.restElement)) {
-          const restElement = f(meta.restElement.value)
-          return make((a): a is any =>
-            out.is(a) &&
-            a.slice(components.length).every(restElement.is)
-          )
-        }
-        return out
-      }
-      case "Union":
-        return union(...meta.members.map(f))
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return struct(fields)
-      }
-      case "IndexSignature":
-        return indexSignature(f(meta.value))
-      case "Array":
-        return array(f(meta.item))
     }
+    return f(schema)
   }
-  return f(schema)
-}
