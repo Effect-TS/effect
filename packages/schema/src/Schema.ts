@@ -209,7 +209,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<unknown>>>(
 ): Schema<{ readonly [K in keyof Fields]: Fields[K]["A"] }> =>
   make(
     meta.struct(
-      Object.keys(fields).map((name) => meta.field(name, fields[name], false, true))
+      Object.keys(fields).map((key) => meta.field(key, fields[key], false, true))
     )
   )
 
@@ -335,3 +335,33 @@ export const either = <E, A>(
     struct({ _tag: equal("Left" as const), left }),
     struct({ _tag: equal("Right" as const), right })
   )
+
+/*
+type OptionalKeys<A> = {
+  [K in keyof A]: K extends `${string}?` ? K : never
+}[keyof A]
+
+type RequiredKeys<A> = {
+  [K in keyof A]: K extends `${string}?` ? never : K
+}[keyof A]
+
+ export const crazyStruct = <Fields extends Record<PropertyKey, Schema<unknown>>>(
+  fields: Fields
+): Schema<
+  & { readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: Fields[K]["A"] }
+  & { readonly [K in RequiredKeys<Fields>]: Fields[K]["A"] }
+> =>
+  make(
+    meta.struct(
+      Object.keys(fields).map((key) => {
+        const isOptional = key.endsWith("?")
+        return meta.field(
+          isOptional ? key.substring(0, key.length - 1) : key,
+          fields[key],
+          isOptional,
+          true
+        )
+      })
+    )
+  )
+*/
