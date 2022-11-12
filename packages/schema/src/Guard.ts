@@ -140,7 +140,9 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       case "Apply": {
         const declaration = S.getDeclaration(meta.symbol)
         if (declaration !== undefined && declaration.guardFor !== undefined) {
-          return declaration.guardFor(...meta.metas.map(f))
+          return O.isSome(meta.config) ?
+            declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.guardFor(...meta.metas.map(f))
         }
         throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
       }

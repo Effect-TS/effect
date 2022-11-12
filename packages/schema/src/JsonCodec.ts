@@ -11,6 +11,7 @@ import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
@@ -53,7 +54,9 @@ const decoderFor = <A>(schema: Schema<A>): Decoder<Json, A> => {
       case "Apply": {
         const declaration = S.getDeclaration(meta.symbol)
         if (declaration !== undefined && declaration.decoderFor !== undefined) {
-          return declaration.decoderFor(...meta.metas.map(f))
+          return O.isSome(meta.config) ?
+            declaration.decoderFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.decoderFor(...meta.metas.map(f))
         }
         throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
       }

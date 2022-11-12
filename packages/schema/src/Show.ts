@@ -45,7 +45,9 @@ export const showFor = <A>(schema: Schema<A>): Show<A> => {
       case "Apply": {
         const declaration = S.getDeclaration(meta.symbol)
         if (declaration !== undefined && declaration.showFor !== undefined) {
-          return declaration.showFor(...meta.metas.map(f))
+          return O.isSome(meta.config) ?
+            declaration.showFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.showFor(...meta.metas.map(f))
         }
         throw new Error(`Missing "showFor" declaration for ${meta.symbol.description}`)
       }

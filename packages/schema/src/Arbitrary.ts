@@ -4,6 +4,7 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import * as O from "@fp-ts/data/Option"
 import type * as FastCheck from "fast-check"
 
 /**
@@ -38,7 +39,9 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "Apply": {
         const declaration = S.getDeclaration(meta.symbol)
         if (declaration !== undefined && declaration.arbitraryFor != null) {
-          return declaration.arbitraryFor(...meta.metas.map(f))
+          return O.isSome(meta.config) ?
+            declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.arbitraryFor(...meta.metas.map(f))
         }
         throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
       }

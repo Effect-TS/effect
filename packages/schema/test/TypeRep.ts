@@ -5,14 +5,6 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
-const bigintSym = Symbol("bigint")
-
-S.addDeclaration(bigintSym, {
-  typeRepFor: () => "bigint"
-})
-
-const bigint: S.Schema<bigint> = S.apply(bigintSym, O.none)
-
 const SetSym = Symbol("Set")
 
 const set = <B extends boolean, A>(
@@ -34,10 +26,16 @@ S.addDeclaration(OptionSym, {
   typeRepFor: (s: string) => `Option<${s}>`
 })
 
-export const boolean = "boolean"
+const boolean = "boolean"
 
 S.addDeclaration(S.booleanSym, {
   typeRepFor: () => boolean
+})
+
+const bigint = "bigint"
+
+S.addDeclaration(S.bigintSym, {
+  typeRepFor: () => bigint
 })
 
 export const typeRepFor = <A>(schema: Schema<A>): string => {
@@ -89,7 +87,7 @@ export const typeRepFor = <A>(schema: Schema<A>): string => {
 describe("typeRepFor", () => {
   describe("declaration", () => {
     it("kind 0", () => {
-      const schema = bigint
+      const schema = S.bigint
       expect(pipe(schema, typeRepFor)).toEqual("bigint")
     })
 

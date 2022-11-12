@@ -2,6 +2,7 @@ import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import Ajv from "ajv"
 
 type JSONSchema =
@@ -19,15 +20,22 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
-export const boolean = { type: "boolean" }
-
 S.addDeclaration(S.booleanSym, {
-  jsonSchemaFor: () => boolean
+  jsonSchemaFor: () => ({ type: "boolean" })
 })
 
 export const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const f = (meta: Meta): JSONSchema => {
     switch (meta._tag) {
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.jsonSchemaFor !== undefined) {
+          return O.isSome(meta.config) ?
+            declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.jsonSchemaFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
+      }
       case "String": {
         return {
           type: "string",
@@ -54,6 +62,14 @@ describe("jsonSchemaFor", () => {
     const schema = S.string
     const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate("a")).toEqual(true)
+    expect(validate(1)).toEqual(false)
+  })
+
+  it("boolean", () => {
+    const schema = S.boolean
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
+    expect(validate(true)).toEqual(true)
+    expect(validate(false)).toEqual(true)
     expect(validate(1)).toEqual(false)
   })
 
