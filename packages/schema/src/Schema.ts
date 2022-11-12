@@ -85,36 +85,32 @@ export const string: Schema<string> = make(meta.string({}))
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
-  <A extends { length: number }>(
+  <A extends string>(
     schema: Schema<A>
   ): Schema<A> => {
-    switch (schema._tag) {
-      case "String":
-        return make(meta.string({
-          minLength,
-          maxLength: schema.maxLength
-        }))
-      default:
-        return schema
+    if (meta.isString(schema)) {
+      return make(meta.string({
+        minLength,
+        maxLength: schema.maxLength
+      }))
     }
+    throw new Error("cannot `minLength` non-String schemas")
   }
 
 /**
  * @since 1.0.0
  */
 export const maxLength = (maxLength: number) =>
-  <A extends { length: number }>(
+  <A extends string>(
     schema: Schema<A>
   ): Schema<A> => {
-    switch (schema._tag) {
-      case "String":
-        return make(meta.string({
-          minLength: schema.minLength,
-          maxLength
-        }))
-      default:
-        return schema
+    if (meta.isString(schema)) {
+      return make(meta.string({
+        minLength: schema.minLength,
+        maxLength
+      }))
     }
+    throw new Error("cannot `maxLength` non-String schemas")
   }
 
 /**
@@ -129,19 +125,17 @@ export const minimum = (minimum: number) =>
   <A extends number>(
     schema: Schema<A>
   ): Schema<A> => {
-    switch (schema._tag) {
-      case "Number":
-        return make(
-          meta.number({
-            minimum,
-            maximum: schema.maximum,
-            exclusiveMinimum: schema.exclusiveMinimum,
-            exclusiveMaximum: schema.exclusiveMaximum
-          })
-        )
-      default:
-        return schema
+    if (meta.isNumber(schema)) {
+      return make(
+        meta.number({
+          minimum,
+          maximum: schema.maximum,
+          exclusiveMinimum: schema.exclusiveMinimum,
+          exclusiveMaximum: schema.exclusiveMaximum
+        })
+      )
     }
+    throw new Error("cannot `minimum` non-Number schemas")
   }
 
 /**
@@ -151,19 +145,17 @@ export const maximum = (maximum: number) =>
   <A extends number>(
     schema: Schema<A>
   ): Schema<A> => {
-    switch (schema._tag) {
-      case "Number":
-        return make(
-          meta.number({
-            minimum: schema.minimum,
-            maximum,
-            exclusiveMinimum: schema.exclusiveMinimum,
-            exclusiveMaximum: schema.exclusiveMaximum
-          })
-        )
-      default:
-        return schema
+    if (meta.isNumber(schema)) {
+      return make(
+        meta.number({
+          minimum: schema.minimum,
+          maximum,
+          exclusiveMinimum: schema.exclusiveMinimum,
+          exclusiveMaximum: schema.exclusiveMaximum
+        })
+      )
     }
+    throw new Error("cannot `maximum` non-Number schemas")
   }
 
 /**
@@ -235,6 +227,91 @@ export const array = <B extends boolean, A>(
   readonly: B,
   item: Schema<A>
 ): Schema<B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item, readonly))
+
+/**
+ * @since 1.0.0
+ */
+export const pick = <A, K extends keyof A>(
+  schema: Schema<A>,
+  ...keys: ReadonlyArray<K>
+): Schema<Pick<A, K>> => {
+  if (meta.isStruct(schema)) {
+    return make(
+      meta.struct(schema.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)))
+    )
+  }
+  throw new Error("cannot `pick` non-Struct schemas")
+}
+
+/**
+ * @since 1.0.0
+ */
+export const omit = <A, K extends keyof A>(
+  schema: Schema<A>,
+  ...keys: ReadonlyArray<K>
+): Schema<Pick<A, K>> => {
+  if (meta.isStruct(schema)) {
+    return make(
+      meta.struct(
+        schema.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key))
+      )
+    )
+  }
+  throw new Error("cannot `omit` non-Struct schemas")
+}
+
+/**
+ * @since 1.0.0
+ */
+export const partial = <A>(
+  schema: Schema<A>
+): Schema<Partial<A>> => {
+  if (meta.isStruct(schema)) {
+    return make(
+      meta.struct(
+        schema.fields.map((f) => meta.field(f.key, f.value, true, f.readonly))
+      )
+    )
+  }
+  throw new Error("cannot `partial` non-Struct schemas")
+}
+
+/**
+ * @since 1.0.0
+ */
+export const optional = <A>(
+  schema: Schema<A>
+): Schema<A | undefined> => union(equal(undefined), schema)
+
+/**
+ * @since 1.0.0
+ */
+export const nullable = <A>(
+  schema: Schema<A>
+): Schema<A | null> => union(equal(null), schema)
+
+/**
+ * @since 1.0.0
+ */
+export const nullish = <A>(
+  schema: Schema<A>
+): Schema<A | null | undefined> => union(equal(null), equal(undefined), schema)
+
+/**
+ * @since 1.0.0
+ */
+export const required = <A>(
+  schema: Schema<A>
+): Schema<Required<A>> => {
+  if (meta.isStruct(schema)) {
+    return make(
+      meta.struct(
+        schema.fields.map((f) => meta.field(f.key, f.value, false, f.readonly))
+      )
+    )
+  }
+  throw new Error("cannot `required` non-Struct schemas")
+}
 
 /**
  * @since 1.0.0

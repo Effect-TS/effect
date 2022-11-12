@@ -130,6 +130,13 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
+export const optional = <A>(
+  item: Guard<A>
+): Guard<A | undefined> => make((a): a is A | undefined => a === undefined || item.is(a))
+
+/**
+ * @since 1.0.0
+ */
 export const guardFor = (declarations: S.Declarations) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const f = (meta: Meta): Guard<any> => {
@@ -184,7 +191,7 @@ export const guardFor = (declarations: S.Declarations) =>
         case "Struct": {
           const fields = {}
           meta.fields.forEach((field) => {
-            fields[field.key] = f(field.value)
+            fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
           })
           return struct(fields)
         }

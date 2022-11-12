@@ -64,6 +64,11 @@ export const string = (
 /**
  * @since 1.0.0
  */
+export const isString = (meta: Meta): meta is String => meta._tag === "String"
+
+/**
+ * @since 1.0.0
+ */
 export interface Number {
   readonly _tag: "Number"
   readonly exclusiveMaximum?: number
@@ -85,6 +90,11 @@ export const number = (
     readonly multipleOf?: number
   }
 ): Number => ({ _tag: "Number", ...options })
+
+/**
+ * @since 1.0.0
+ */
+export const isNumber = (meta: Meta): meta is Number => meta._tag === "Number"
 
 /**
  * @since 1.0.0
@@ -135,7 +145,7 @@ export const array = (item: Meta, readonly: boolean): Array => ({
 /**
  * @since 1.0.0
  */
-export interface FieldDSL {
+export interface Field {
   readonly key: PropertyKey
   readonly value: Meta
   readonly optional: boolean
@@ -150,22 +160,25 @@ export const field = (
   value: Meta,
   optional: boolean,
   readonly: boolean
-): FieldDSL => ({ key, value, optional, readonly })
+): Field => ({ key, value, optional, readonly })
 
 /**
  * @since 1.0.0
  */
 export interface Struct {
   readonly _tag: "Struct"
-  readonly fields: ReadonlyArray<FieldDSL>
+  readonly fields: ReadonlyArray<Field>
 }
 
 /**
  * @since 1.0.0
  */
-export const struct = (
-  fields: ReadonlyArray<FieldDSL>
-): Struct => ({ _tag: "Struct", fields })
+export const struct = (fields: ReadonlyArray<Field>): Struct => ({ _tag: "Struct", fields })
+
+/**
+ * @since 1.0.0
+ */
+export const isStruct = (meta: Meta): meta is Struct => meta._tag === "Struct"
 
 /**
  * @since 1.0.0
