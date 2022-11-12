@@ -4,40 +4,32 @@
 
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as S from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
-import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
  */
-export interface Guard<out P, out A> {
-  readonly schema: Schema<P, A>
+export interface Guard<out A> {
+  readonly A: A
   readonly is: (input: unknown) => input is A
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <P, A>(schema: Schema<P, A>, is: Guard<P, A>["is"]): Guard<P, A> => ({
-  schema,
-  is
-})
-
-const isString = (u: unknown): u is string => typeof u === "string"
+export const make = <A>(is: Guard<A>["is"]): Guard<A> => ({ is }) as any
 
 /**
  * @since 1.0.0
  */
-export const string: Guard<never, string> = make(S.string, isString)
+export const string: Guard<string> = make((u: unknown): u is string => typeof u === "string")
 
 /**
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
-  <P, A extends { length: number }>(self: Guard<P, A>): Guard<P, A> =>
-    make(S.minLength(minLength)(self.schema), (a): a is A => self.is(a) && a.length >= minLength)
+  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
+    make((a): a is A => self.is(a) && a.length >= minLength)
 
 /**
  * @since 1.0.0
@@ -45,65 +37,49 @@ export const minLength = (minLength: number) =>
 export const maxLength = (
   maxLength: number
 ) =>
-  <P, A extends { length: number }>(self: Guard<P, A>): Guard<P, A> =>
-    make(S.maxLength(maxLength)(self.schema), (a): a is A => self.is(a) && a.length <= maxLength)
-
-const isNumber = (u: unknown): u is number => typeof u === "number"
+  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
+    make((a): a is A => self.is(a) && a.length <= maxLength)
 
 /**
  * @since 1.0.0
  */
-export const number: Guard<never, number> = make(S.number, isNumber)
+export const number: Guard<number> = make((u: unknown): u is number => typeof u === "number")
 
 /**
  * @since 1.0.0
  */
 export const minimum = (minimum: number) =>
-  <P, A extends number>(self: Guard<P, A>): Guard<P, A> =>
-    make(S.minimum(minimum)(self.schema), (a): a is A => self.is(a) && a >= minimum)
+  <A extends number>(self: Guard<A>): Guard<A> => make((a): a is A => self.is(a) && a >= minimum)
 
 /**
  * @since 1.0.0
  */
 export const maximum = (
   maximum: number
-) =>
-  <P, A extends number>(self: Guard<P, A>): Guard<P, A> =>
-    make(S.maximum(maximum)(self.schema), (a): a is A => self.is(a) && a <= maximum)
-
-const isBoolean = (u: unknown): u is boolean => typeof u === "boolean"
+) => <A extends number>(self: Guard<A>): Guard<A> => make((a): a is A => self.is(a) && a <= maximum)
 
 /**
  * @since 1.0.0
  */
-export const boolean: Guard<never, boolean> = make(S.boolean, isBoolean)
-
-const isEqual = <A>(
-  value: A
-) => (u: unknown): u is A => u === value
+export const boolean: Guard<boolean> = make(
+  (u: unknown): u is boolean => typeof u === "boolean"
+)
 
 /**
  * @since 1.0.0
  */
 export const equal = <A>(
   value: A
-): Guard<never, A> => make(S.equal(value), isEqual(value))
+): Guard<A> => make((u: unknown): u is A => u === value)
 
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Guard<unknown, unknown>>>(
+export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
   ...components: Components
-): Guard<
-  Components[number]["schema"]["P"],
-  { readonly [K in keyof Components]: Components[K]["schema"]["A"] }
-> =>
+): Guard<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
   make(
-    S.tuple(
-      true,
-      ...components.map((c) => c.schema)
-    ) as any,
-    (a): a is { readonly [K in keyof Components]: Components[K]["schema"]["A"] } =>
+    (a): a is { readonly [K in keyof Components]: Components[K]["A"] } =>
       Array.isArray(a) &&
       components.every((guard, i) => guard.is(a[i]))
   )
@@ -111,32 +87,21 @@ export const tuple = <Components extends ReadonlyArray<Guard<unknown, unknown>>>
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Guard<unknown, unknown>>>(
+export const union = <Members extends ReadonlyArray<Guard<unknown>>>(
   ...members: Members
-): Guard<Members[number]["schema"]["P"], Members[number]["schema"]["A"]> =>
-  make(
-    S.union(...members.map((m) => m.schema)),
-    (a): a is Members[number]["schema"]["A"] => members.some((guard) => guard.is(a))
-  )
+): Guard<Members[number]["A"]> =>
+  make((a): a is Members[number]["A"] => members.some((guard) => guard.is(a)))
 
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Guard<unknown, unknown>>>(
+export const struct = <Fields extends Record<PropertyKey, Guard<unknown>>>(
   fields: Fields
-): Guard<
-  Fields[keyof Fields]["schema"]["P"],
-  { readonly [K in keyof Fields]: Fields[K]["schema"]["A"] }
-> => {
+): Guard<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
   const keys = Object.keys(fields)
   const guards = keys.map((key) => fields[key])
-  const schemas = {}
-  keys.forEach((key) => {
-    schemas[key] = fields[key].schema
-  })
   return make(
-    S.struct(schemas) as any,
-    (a): a is { readonly [K in keyof Fields]: Fields[K]["schema"]["A"] } =>
+    (a): a is { readonly [K in keyof Fields]: Fields[K]["A"] } =>
       typeof a === "object" && a != null &&
       guards.every((guard, i) => guard.is(a[keys[i]]))
   )
@@ -145,11 +110,10 @@ export const struct = <Fields extends Record<PropertyKey, Guard<unknown, unknown
 /**
  * @since 1.0.0
  */
-export const indexSignature = <P, A>(
-  value: Guard<P, A>
-): Guard<P, { readonly [_: string]: A }> =>
+export const indexSignature = <A>(
+  value: Guard<A>
+): Guard<{ readonly [_: string]: A }> =>
   make(
-    S.indexSignature(value.schema),
     (a): a is { readonly [_: string]: A } =>
       typeof a === "object" && a != null && Object.keys(a).every((key) => value.is(a[key]))
   )
@@ -157,26 +121,19 @@ export const indexSignature = <P, A>(
 /**
  * @since 1.0.0
  */
-export const array = <P, A>(
-  item: Guard<P, A>
-): Guard<P, ReadonlyArray<A>> =>
-  make(
-    S.array(true, item.schema),
-    (a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem))
-  )
+export const array = <A>(
+  item: Guard<A>
+): Guard<ReadonlyArray<A>> =>
+  make((a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem)))
 
 /**
  * @since 1.0.0
  */
-export const guardFor = <P>(
-  ctx: C.Context<P>
-): <A>(schema: Schema<P, A>) => Guard<P, A> => {
-  const f = (meta: Meta): Guard<P, any> => {
+export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
+  const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
-      case "Declare": {
-        const service = pipe(ctx, C.unsafeGet(meta.tag))
-        return service.guardFor(meta.metas.map(f))
-      }
+      case "Declare":
+        return meta.kind.guardFor(...meta.metas.map(f))
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {
@@ -206,9 +163,10 @@ export const guardFor = <P>(
         const out = tuple(...components)
         if (O.isSome(meta.restElement)) {
           const restElement = f(meta.restElement.value)
-          return make(meta as any, (a): a is any =>
+          return make((a): a is any =>
             out.is(a) &&
-            a.slice(components.length).every(restElement.is))
+            a.slice(components.length).every(restElement.is)
+          )
         }
         return out
       }
@@ -227,5 +185,5 @@ export const guardFor = <P>(
         return array(f(meta.item))
     }
   }
-  return f
+  return f(schema)
 }

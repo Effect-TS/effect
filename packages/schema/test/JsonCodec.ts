@@ -1,19 +1,30 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
-import * as _ from "@fp-ts/codec/JsonCodec"
+import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 
-interface SetService {
-  readonly _tag: "SetService"
-  readonly decoder: <A>(
-    decoders: [D.Decoder<_.Json, A>]
-  ) => D.Decoder<_.Json, Set<A>>
-}
-
-const SetService = C.Tag<SetService>()
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.declare({
+    decoderFor: <A>(
+      item: D.Decoder<JC.Json, A>
+    ): D.Decoder<JC.Json, Set<A>> =>
+      D.make((u) => {
+        if (!(Array.isArray(u))) {
+          return D.fail(DE.custom(setError, u))
+        }
+        const out: Set<unknown> = new Set()
+        for (let i = 0; i < u.length; i++) {
+          const t = item.decode(u[i])
+          if (T.isLeft(t)) {
+            return T.left(t.left)
+          }
+          out.add(t.right)
+        }
+        return D.succeed(out as any)
+      })
+  }, item)
 
 interface SetError {
   readonly _tag: "SetError"
@@ -21,38 +32,11 @@ interface SetError {
 
 const setError: SetError = { _tag: "SetError" }
 
-const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.declare(SetService, item)
-
 describe("JsonCodec", () => {
   describe("decoderFor", () => {
-    const ctx = pipe(
-      C.empty(),
-      C.add(SetService)({
-        _tag: "SetService",
-        decoder: <A>(
-          [item]: [D.Decoder<_.Json, A>]
-        ): D.Decoder<_.Json, Set<A>> =>
-          D.make((u) => {
-            if (!(Array.isArray(u))) {
-              return D.fail(DE.custom(setError, u))
-            }
-            const out: Set<unknown> = new Set()
-            for (let i = 0; i < u.length; i++) {
-              const t = item.decode(u[i])
-              if (T.isLeft(t)) {
-                return T.left(t.left)
-              }
-              out.add(t.right)
-            }
-            return D.succeed(out as any)
-          })
-      })
-    )
+    const decoderFor = JC.JsonCodec.decoderFor
 
-    const decoderFor = _.JsonCodec.decoderFor(ctx)
-
-    it("dependency", () => {
+    it("declaration", () => {
       const schema = set(S.number)
       const decoder = decoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
@@ -63,14 +47,14 @@ describe("JsonCodec", () => {
     })
 
     it("isJson", () => {
-      expect(_.isJson(null)).toEqual(true)
-      expect(_.isJson("a")).toEqual(true)
-      expect(_.isJson(1)).toEqual(true)
-      expect(_.isJson(true)).toEqual(true)
-      expect(_.isJson([])).toEqual(true)
-      expect(_.isJson([1])).toEqual(true)
-      expect(_.isJson({})).toEqual(true)
-      expect(_.isJson({ a: 1 })).toEqual(true)
+      expect(JC.isJson(null)).toEqual(true)
+      expect(JC.isJson("a")).toEqual(true)
+      expect(JC.isJson(1)).toEqual(true)
+      expect(JC.isJson(true)).toEqual(true)
+      expect(JC.isJson([])).toEqual(true)
+      expect(JC.isJson([1])).toEqual(true)
+      expect(JC.isJson({})).toEqual(true)
+      expect(JC.isJson({ a: 1 })).toEqual(true)
     })
 
     it("string", () => {

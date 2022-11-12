@@ -5,7 +5,6 @@
 import { guardFor } from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -29,14 +28,12 @@ export const empty: Show<unknown> = make(() => "")
 /**
  * @since 1.0.0
  */
-export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show<A> => {
-  const g = guardFor(ctx)
+export const showFor = <A>(schema: Schema<A>): Show<A> => {
+  const g = guardFor
   const f = (meta: Meta): Show<any> => {
     switch (meta._tag) {
-      case "Declare": {
-        const service = pipe(ctx, C.unsafeGet(meta.tag))
-        return service.show(meta.metas.map(f))
-      }
+      case "Declare":
+        return meta.kind.showFor(...meta.metas.map(f))
       case "String":
       case "Number":
       case "Boolean":
@@ -82,5 +79,5 @@ export const showFor = <P>(ctx: C.Context<P>): <A>(schema: Schema<P, A>) => Show
       }
     }
   }
-  return f
+  return f(schema)
 }

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as C from "@fp-ts/data/Context"
 import type { Option } from "@fp-ts/data/Option"
 
 /**
@@ -26,16 +25,16 @@ export type Meta =
  */
 export interface Declare {
   readonly _tag: "Declare"
-  readonly tag: C.Tag<any>
+  readonly kind: any
   readonly metas: ReadonlyArray<Meta>
 }
 
 /**
  * @since 1.0.0
  */
-export const declare = (tag: C.Tag<any>, metas: ReadonlyArray<Meta>): Declare => ({
+export const declare = (kind: any, metas: ReadonlyArray<Meta>): Declare => ({
   _tag: "Declare",
-  tag,
+  kind,
   metas
 })
 

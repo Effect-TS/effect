@@ -1,48 +1,39 @@
-import * as _ from "@fp-ts/codec/Guard"
+import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-interface SetService {
-  readonly _tag: "SetService"
-  readonly guardFor: <P, A>([guard]: [_.Guard<P, A>]) => _.Guard<P | SetService, Set<A>>
-}
-
-const SetServiceTag = C.Tag<SetService>()
-
-const setS = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.declare(SetServiceTag, item)
-
-export const set = <P, A>(guard: _.Guard<P, A>): _.Guard<P | SetService, Set<A>> =>
-  _.make(
-    setS(guard.schema),
-    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(guard.is)
-  )
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.declare({
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
+      G.make((input): input is Set<A> =>
+        input instanceof Set && Array.from(input.values()).every(guard.is)
+      )
+  }, item)
 
 describe("Guard", () => {
   it("tuple", () => {
-    const guard = _.tuple(_.string, _.number)
+    const guard = G.tuple(G.string, G.number)
     expect(guard.is(["a", 1])).toEqual(true)
     expect(guard.is([1, 1])).toEqual(false)
     expect(guard.is(["a", "b"])).toEqual(false)
   })
 
   it("union", () => {
-    const guard = _.union(_.string, _.number)
+    const guard = G.union(G.string, G.number)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is("a")).toEqual(true)
   })
 
   it("struct", () => {
-    const guard = _.struct({ a: _.string, b: _.number })
+    const guard = G.struct({ a: G.string, b: G.number })
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
   })
 
   it("indexSignature", () => {
-    const guard = _.indexSignature(_.string)
+    const guard = G.indexSignature(G.string)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
     expect(guard.is({ a: 1 })).toEqual(false)
@@ -50,25 +41,17 @@ describe("Guard", () => {
   })
 
   it("array", () => {
-    const guard = _.array(_.string)
+    const guard = G.array(G.string)
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(false)
   })
 
   describe("guardFor", () => {
-    const ctx = pipe(
-      C.empty(),
-      C.add(SetServiceTag)({
-        _tag: "SetService",
-        guardFor: <P, A>([guard]: [_.Guard<P, A>]): _.Guard<P | SetService, Set<A>> => set(guard)
-      })
-    )
+    const guardFor = G.guardFor
 
-    const guardFor = _.guardFor(ctx)
-
-    it("dependency", () => {
-      const schema = setS(S.string)
+    it("declaration", () => {
+      const schema = set(S.string)
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set())).toEqual(true)

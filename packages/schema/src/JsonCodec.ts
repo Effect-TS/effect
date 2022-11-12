@@ -9,7 +9,6 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 
 /**
@@ -47,13 +46,11 @@ const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefine
   (json) => DE.type("JsonObject", json)
 )
 
-const decoderFor = <P>(ctx: C.Context<P>) => {
+const decoderFor = <A>(schema: Schema<A>): Decoder<Json, A> => {
   const f = (meta: Meta): Decoder<Json, any> => {
     switch (meta._tag) {
-      case "Declare": {
-        const service = pipe(ctx, C.unsafeGet(meta.tag))
-        return service.decoder(meta.metas.map(f))
-      }
+      case "Declare":
+        return meta.kind.decoderFor(...meta.metas.map(f))
       case "String": {
         let out = D.string
         if (meta.minLength !== undefined) {
@@ -95,7 +92,7 @@ const decoderFor = <P>(ctx: C.Context<P>) => {
         return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
     }
   }
-  return <A>(schema: Schema<P, A>): Decoder<Json, A> => f(schema)
+  return f(schema)
 }
 
 /**

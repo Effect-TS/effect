@@ -1,44 +1,25 @@
-import * as _ from "@fp-ts/codec/Arbitrary"
+import * as A from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
-import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
-interface SetService {
-  readonly _tag: "SetService"
-  readonly arbitrary: <A>([arb]: [_.Arbitrary<A>]) => _.Arbitrary<Set<A>>
-  readonly guardFor: <P, A>(guards: [G.Guard<P, A>]) => G.Guard<P, Set<A>>
-}
-
-const SetService = C.Tag<SetService>()
-
-const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.declare(SetService, item)
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.declare({
+    arbitraryFor: A.set,
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
+      G.make((input): input is Set<A> =>
+        input instanceof Set && Array.from(input.values()).every(guard.is)
+      )
+  }, item)
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
-    const ctx = pipe(
-      C.empty(),
-      C.add(SetService)({
-        _tag: "SetService",
-        arbitrary: <A>([arb]: [_.Arbitrary<A>]): _.Arbitrary<Set<A>> =>
-          _.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as))),
-        guardFor: <P, A>([guard]: [G.Guard<P, A>]): G.Guard<P, Set<A>> =>
-          G.make(
-            M.declare(SetService, [guard.schema]) as any,
-            (input): input is Set<A> =>
-              input instanceof Set && Array.from(input.values()).every(guard.is)
-          )
-      })
-    )
-
-    const arbitraryFor = _.arbitraryFor(ctx)
-    const guardFor = G.guardFor(ctx)
+    const arbitraryFor = A.arbitraryFor
+    const guardFor = G.guardFor
     const sampleSize = 100
 
-    it("dependency", () => {
+    it("declaration", () => {
       const schema = set(S.string)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)
       const guard = guardFor(schema)

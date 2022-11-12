@@ -3,14 +3,12 @@
  */
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
-import { pipe } from "@fp-ts/data/Function"
 import type * as FastCheck from "fast-check"
 
 /**
  * @since 1.0.0
  */
-export interface Arbitrary<A> {
+export interface Arbitrary<out A> {
   readonly A: A
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
@@ -24,15 +22,18 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
 /**
  * @since 1.0.0
  */
-export const arbitraryFor = <P>(
-  ctx: C.Context<P>
-): <A>(schema: Schema<P, A>) => Arbitrary<A> => {
+export const set = <A>(arb: Arbitrary<A>): Arbitrary<Set<A>> => {
+  return make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
+}
+
+/**
+ * @since 1.0.0
+ */
+export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
-      case "Declare": {
-        const service = pipe(ctx, C.unsafeGet(meta.tag))
-        return service.arbitrary(meta.metas.map(f))
-      }
+      case "Declare":
+        return meta.kind.arbitraryFor(...meta.metas.map(f))
       case "String":
         return make((fc) => {
           let out = fc.string()
@@ -91,5 +92,5 @@ export const arbitraryFor = <P>(
       }
     }
   }
-  return f
+  return f(schema)
 }

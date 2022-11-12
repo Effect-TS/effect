@@ -1,38 +1,24 @@
 import * as S from "@fp-ts/codec/Schema"
-import * as _ from "@fp-ts/codec/Show"
-import * as C from "@fp-ts/data/Context"
+import * as Sh from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-interface SetService {
-  readonly _tag: "SetService"
-  readonly show: <A>(shows: [_.Show<A>]) => _.Show<Set<A>>
-}
-
-const SetService = C.Tag<SetService>()
-
-const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.declare(SetService, item)
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.declare({
+    showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
+      Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
+  }, item)
 
 describe("Show", () => {
   it("empty", () => {
-    expect(_.empty).exist
+    expect(Sh.empty).exist
   })
 
   describe("showFor", () => {
-    const ctx = pipe(
-      C.empty(),
-      C.add(SetService)({
-        _tag: "SetService",
-        show: <A>(shows: [_.Show<A>]): _.Show<Set<A>> =>
-          _.make((a) => `Set([${Array.from(a.values()).map(shows[0].show).join(", ")}])`)
-      })
-    )
+    const showFor = Sh.showFor
 
-    const showFor = _.showFor(ctx)
-
-    it("dependency", () => {
+    it("declaration", () => {
       const schema = set(S.string)
       expect(showFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"

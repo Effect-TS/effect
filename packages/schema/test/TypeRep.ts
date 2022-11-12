@@ -1,50 +1,28 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as C from "@fp-ts/data/Context"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
-interface SetService {
-  readonly _tag: "SetService"
-  readonly rep: ([rep]: [string]) => string
-}
+const bigint: S.Schema<bigint> = S.declare({
+  typeRepFor: () => "bigint"
+})
 
-const SetService = C.Tag<SetService>()
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.declare({
+    typeRepFor: (s: string) => `Set<${s}>`
+  }, item)
 
-const set = <P, A>(item: S.Schema<P, A>): S.Schema<P | SetService, Set<A>> =>
-  S.declare(SetService, item)
+const option = <A>(
+  item: S.Schema<A>
+): S.Schema<Option<A>> => S.declare({ typeRepFor: (s: string) => `Option<${s}>` }, item)
 
-const typeRepSet = ([rep]: [string]) => `Set<${rep}>`
-
-interface OptionService {
-  readonly _tag: "OptionService"
-  readonly rep: (type: [string]) => string
-}
-
-const OptionService = C.Tag<OptionService>()
-
-const option = <P, A>(
-  item: S.Schema<P, A>
-): S.Schema<P | OptionService, Option<A>> => S.declare(OptionService, item)
-
-const typeRepOption = (reps: [string]) => `Option<${reps[0]}>`
-
-interface BigInt {
-  readonly _tag: "BigInt"
-  readonly rep: () => string
-}
-
-const BigInt = C.Tag<BigInt>()
-
-export const typeRepFor = <P>(ctx: C.Context<P>) => {
+export const typeRepFor = <A>(schema: Schema<A>): string => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
-      case "Declare": {
-        const service = pipe(ctx, C.unsafeGet(meta.tag))
-        return service.rep(meta.metas.map(f))
-      }
+      case "Declare":
+        return meta.kind.typeRepFor(...meta.metas.map(f))
       case "String":
         return "string"
       case "Number":
@@ -78,39 +56,29 @@ export const typeRepFor = <P>(ctx: C.Context<P>) => {
         return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
     }
   }
-  return <A>(schema: Schema<P, A>): string => f(schema)
+  return f(schema)
 }
 
 describe("typeRepFor", () => {
-  const ctx = pipe(
-    C.empty(),
-    C.add(SetService)({
-      _tag: "SetService",
-      rep: typeRepSet
-    }),
-    C.add(OptionService)({
-      _tag: "OptionService",
-      rep: typeRepOption
-    }),
-    C.add(BigInt)({
-      _tag: "BigInt",
-      rep: () => "bigint"
+  describe("declaration", () => {
+    it("kind 0", () => {
+      const schema = bigint
+      expect(pipe(schema, typeRepFor)).toEqual("bigint")
     })
-  )
-  const show = typeRepFor(ctx)
 
-  it("primitive", () => {
-    const schema = set(S.bigint(BigInt))
-    expect(pipe(schema, show)).toEqual("Set<bigint>")
-  })
-
-  it("dependency", () => {
-    const schema = S.struct({
-      a: set(S.string)
+    it("kind 1", () => {
+      const schema = set(S.string)
+      expect(pipe(schema, typeRepFor)).toEqual(
+        "Set<string>"
+      )
     })
-    expect(pipe(schema, show)).toEqual(
-      "{ readonly a: Set<string> }"
-    )
+
+    it("option (as declaration)", () => {
+      const schema = option(set(S.string))
+      expect(pipe(schema, typeRepFor)).toEqual(
+        "Option<Set<string>>"
+      )
+    })
   })
 
   it("struct", () => {
@@ -118,84 +86,77 @@ describe("typeRepFor", () => {
       a: S.string,
       b: S.number
     })
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "{ readonly a: string, readonly b: number }"
     )
   })
 
   it("ReadonlyArray", () => {
     const schema = S.array(true, S.string)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "ReadonlyArray<string>"
     )
   })
 
   it("Array", () => {
     const schema = S.array(false, S.string)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "Array<string>"
     )
   })
 
   it("nonEmptyArray", () => {
     const schema = S.nonEmptyArray(true, S.string, S.number)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "readonly [string, ...number[]]"
     )
   })
 
   it("literal", () => {
     const schema = S.equal("a")
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "\"a\""
     )
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "{ readonly [_: string]: string }"
     )
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "string | number"
     )
   })
 
   it("tuple", () => {
     const schema = S.tuple(true, S.string, S.number)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "readonly [string, number]"
     )
   })
 
   it("option (as structure)", () => {
     const schema = S.option(S.string)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
     )
   })
 
   it("either (as structure)", () => {
     const schema = S.either(S.string, S.number)
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
-    )
-  })
-
-  it("option (as constructor)", () => {
-    const schema = option(set(S.string))
-    expect(pipe(schema, show)).toEqual(
-      "Option<Set<string>>"
     )
   })
 
   it("refinement", () => {
     const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
-    expect(pipe(schema, show)).toEqual(
+    expect(pipe(schema, typeRepFor)).toEqual(
       "string"
     )
   })
