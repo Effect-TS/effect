@@ -10,9 +10,6 @@ const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, 
 
 const declarations = pipe(
   S.empty(),
-  S.add(S.booleanSym, {
-    showFor: () => Sh.boolean
-  }),
   S.add(SetSym, {
     showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
       Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
@@ -20,10 +17,6 @@ const declarations = pipe(
 )
 
 describe("Show", () => {
-  it("empty", () => {
-    expect(Sh.empty).exist
-  })
-
   describe("showFor", () => {
     const showFor = Sh.showFor(declarations)
 

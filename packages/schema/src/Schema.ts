@@ -169,6 +169,11 @@ export const maximum = (maximum: number) =>
 /**
  * @since 1.0.0
  */
+export const boolean: Schema<boolean> = make(meta.boolean)
+
+/**
+ * @since 1.0.0
+ */
 export const equal = <A>(
   value: A
 ): Schema<A> => make(meta.equal(value))
@@ -253,23 +258,3 @@ export const either = <E, A>(
     struct({ _tag: equal("Left" as const), left }),
     struct({ _tag: equal("Right" as const), right })
   )
-
-/**
- * @since 1.0.0
- */
-export const booleanSym = Symbol.for("@fp-ts/codec/boolean")
-
-/**
- * @since 1.0.0
- */
-export const boolean: Schema<boolean> = apply(booleanSym, O.none)
-
-/**
- * @since 1.0.0
- */
-export const bigintSym = Symbol.for("@fp-ts/codec/bigint")
-
-/**
- * @since 1.0.0
- */
-export const bigint: Schema<bigint> = apply(bigintSym, O.none)

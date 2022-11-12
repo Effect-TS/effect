@@ -9,9 +9,6 @@ const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, 
 
 const declarations = pipe(
   S.empty(),
-  S.add(S.booleanSym, {
-    guardFor: () => G.boolean
-  }),
   S.add(SetSym, {
     guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
       G.make((input): input is Set<A> =>

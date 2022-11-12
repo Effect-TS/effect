@@ -21,10 +21,7 @@ type JSONSchema =
   | { readonly type: "boolean" }
 
 const declarations = pipe(
-  S.empty(),
-  S.add(S.booleanSym, {
-    jsonSchemaFor: () => ({ type: "boolean" })
-  })
+  S.empty()
 )
 
 export const jsonSchemaFor = (declarations: S.Declarations) =>
@@ -55,6 +52,11 @@ export const jsonSchemaFor = (declarations: S.Declarations) =>
             exclusiveMinimum: meta.exclusiveMinimum,
             exclusiveMaximum: meta.exclusiveMaximum
           }
+        case "Boolean": {
+          return {
+            type: "boolean"
+          }
+        }
       }
       throw new Error(`Unhandled ${meta._tag}`)
     }

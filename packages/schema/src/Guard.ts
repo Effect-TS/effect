@@ -163,6 +163,8 @@ export const guardFor = (declarations: S.Declarations) =>
           }
           return out
         }
+        case "Boolean":
+          return boolean
         case "Equal":
           return equal(meta.value)
         case "Tuple": {

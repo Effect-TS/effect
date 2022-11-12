@@ -11,10 +11,6 @@ const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, 
 
 const declarations = pipe(
   S.empty(),
-  S.add(S.booleanSym, {
-    arbitraryFor: () => A.boolean,
-    guardFor: () => G.boolean
-  }),
   S.add(SetSym, {
     arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
       return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))

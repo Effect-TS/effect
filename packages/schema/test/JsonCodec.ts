@@ -12,9 +12,6 @@ const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, 
 
 const declarations = pipe(
   S.empty(),
-  S.add(S.booleanSym, {
-    decoderFor: () => D.boolean
-  }),
   S.add(SetSym, {
     decoderFor: <A>(
       item: D.Decoder<JC.Json, A>

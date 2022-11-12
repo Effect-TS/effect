@@ -6,7 +6,6 @@ import { guardFor } from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -20,16 +19,6 @@ export interface Show<A> {
  * @since 1.0.0
  */
 export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
-
-/**
- * @since 1.0.0
- */
-export const empty: Show<unknown> = make(() => "")
-
-/**
- * @since 1.0.0
- */
-export const boolean: Show<boolean> = make((b) => JSON.stringify(b))
 
 /**
  * @since 1.0.0
@@ -50,14 +39,20 @@ export const showFor = (declarations: S.Declarations) =>
         }
         case "String":
         case "Number":
+        case "Boolean":
         case "Equal":
           return make((a) => JSON.stringify(a))
         case "Tuple": {
           const shows: ReadonlyArray<Show<unknown>> = meta.components.map(f)
-          const restElement = pipe(meta.restElement, O.map(f), O.getOrElse(empty))
           return make((tuple: ReadonlyArray<unknown>) =>
             "[" +
-            tuple.map((c, i) => i < shows.length ? shows[i].show(c) : restElement.show(c)).join(
+            tuple.map((c, i) =>
+              i < shows.length ?
+                shows[i].show(c) :
+                O.isSome(meta.restElement) ?
+                f(meta.restElement.value).show(c) :
+                ""
+            ).join(
               ", "
             ) + "]"
           )

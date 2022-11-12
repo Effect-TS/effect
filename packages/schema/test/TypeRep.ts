@@ -12,15 +12,15 @@ const set = <B extends boolean, A>(
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> => S.apply(SetSym, O.some(readonly), item)
 
-const OptionSym = Symbol("@fp-ts/data/Option")
+const OptionSym = Symbol("Option")
 
 const option = <A>(
   item: S.Schema<A>
 ): S.Schema<Option<A>> => S.apply(OptionSym, O.none, item)
 
-const boolean = "boolean"
+const bigintSym = Symbol.for("bigint")
 
-const bigint = "bigint"
+const bigint: Schema<bigint> = S.apply(bigintSym, O.none)
 
 const declarations = pipe(
   S.empty(),
@@ -30,11 +30,8 @@ const declarations = pipe(
   S.add(OptionSym, {
     typeRepFor: (s: string) => `Option<${s}>`
   }),
-  S.add(S.booleanSym, {
-    typeRepFor: () => boolean
-  }),
-  S.add(S.bigintSym, {
-    typeRepFor: () => bigint
+  S.add(bigintSym, {
+    typeRepFor: () => "bigint"
   })
 )
 
@@ -55,6 +52,8 @@ export const typeRepFor = (declarations: S.Declarations) =>
           return "string"
         case "Number":
           return "number"
+        case "Boolean":
+          return "boolean"
         case "Equal":
           return JSON.stringify(meta.value)
         case "Tuple": {
@@ -92,7 +91,7 @@ describe("typeRepFor", () => {
 
   describe("declaration", () => {
     it("kind 0", () => {
-      const schema = S.bigint
+      const schema = bigint
       expect(pipe(schema, typeRepFor_)).toEqual("bigint")
     })
 

@@ -81,6 +81,8 @@ const decoderFor = (declarations: S.Declarations) =>
           }
           return out
         }
+        case "Boolean":
+          return D.boolean
         case "Equal":
           return D.equal(meta.value)
         case "Tuple":

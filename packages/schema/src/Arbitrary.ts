@@ -68,6 +68,8 @@ export const arbitraryFor = (declarations: S.Declarations) =>
             }
             return out
           })
+        case "Boolean":
+          return make((fc) => fc.boolean())
         case "Equal":
           return make((fc) => fc.constant(meta.value))
         case "Tuple": {
