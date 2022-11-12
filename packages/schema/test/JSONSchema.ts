@@ -19,6 +19,12 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
+export const boolean = { type: "boolean" }
+
+S.addDeclaration(S.booleanSym, {
+  jsonSchemaFor: () => boolean
+})
+
 export const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const f = (meta: Meta): JSONSchema => {
     switch (meta._tag) {
@@ -37,8 +43,6 @@ export const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
           exclusiveMinimum: meta.exclusiveMinimum,
           exclusiveMaximum: meta.exclusiveMaximum
         }
-      case "Boolean":
-        return { type: "boolean" }
     }
     throw new Error(`Unhandled ${meta._tag}`)
   }

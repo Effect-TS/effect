@@ -29,6 +29,15 @@ export const empty: Show<unknown> = make(() => "")
 /**
  * @since 1.0.0
  */
+export const boolean: Show<boolean> = make((b) => JSON.stringify(b))
+
+S.addDeclaration(S.booleanSym, {
+  showFor: () => boolean
+})
+
+/**
+ * @since 1.0.0
+ */
 export const showFor = <A>(schema: Schema<A>): Show<A> => {
   const g = guardFor
   const f = (meta: Meta): Show<any> => {
@@ -42,7 +51,6 @@ export const showFor = <A>(schema: Schema<A>): Show<A> => {
       }
       case "String":
       case "Number":
-      case "Boolean":
       case "Equal":
         return make((a) => JSON.stringify(a))
       case "Tuple": {

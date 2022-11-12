@@ -34,6 +34,12 @@ S.addDeclaration(OptionSym, {
   typeRepFor: (s: string) => `Option<${s}>`
 })
 
+export const boolean = "boolean"
+
+S.addDeclaration(S.booleanSym, {
+  typeRepFor: () => boolean
+})
+
 export const typeRepFor = <A>(schema: Schema<A>): string => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
@@ -50,8 +56,6 @@ export const typeRepFor = <A>(schema: Schema<A>): string => {
         return "string"
       case "Number":
         return "number"
-      case "Boolean":
-        return "boolean"
       case "Equal":
         return JSON.stringify(meta.value)
       case "Tuple": {

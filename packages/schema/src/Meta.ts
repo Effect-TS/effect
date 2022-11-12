@@ -38,7 +38,6 @@ export type Meta =
   | Apply
   | String
   | Number
-  | Boolean
   | Equal
   | Array
   | Struct
@@ -113,18 +112,6 @@ export const number = (
     readonly multipleOf?: number
   }
 ): Number => ({ _tag: "Number", ...options })
-
-/**
- * @since 1.0.0
- */
-export interface Boolean {
-  readonly _tag: "Boolean"
-}
-
-/**
- * @since 1.0.0
- */
-export const boolean: Boolean = { _tag: "Boolean" }
 
 /**
  * @since 1.0.0

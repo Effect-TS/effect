@@ -77,8 +77,6 @@ const decoderFor = <A>(schema: Schema<A>): Decoder<Json, A> => {
         }
         return out
       }
-      case "Boolean":
-        return D.boolean
       case "Equal":
         return D.equal(meta.value)
       case "Tuple":

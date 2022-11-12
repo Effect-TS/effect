@@ -66,6 +66,10 @@ export const boolean: Guard<boolean> = make(
   (u: unknown): u is boolean => typeof u === "boolean"
 )
 
+S.addDeclaration(S.booleanSym, {
+  guardFor: () => boolean
+})
+
 /**
  * @since 1.0.0
  */
@@ -160,8 +164,6 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         }
         return out
       }
-      case "Boolean":
-        return boolean
       case "Equal":
         return equal(meta.value)
       case "Tuple": {

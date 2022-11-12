@@ -131,7 +131,12 @@ export const maximum = (maximum: number) =>
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = make(meta.boolean)
+export const booleanSym = Symbol.for("@fp-ts/codec/boolean")
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Schema<boolean> = apply(booleanSym, O.none)
 
 /**
  * @since 1.0.0

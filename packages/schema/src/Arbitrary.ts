@@ -23,6 +23,15 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
 /**
  * @since 1.0.0
  */
+export const boolean: Arbitrary<boolean> = make((fc) => fc.boolean())
+
+S.addDeclaration(S.booleanSym, {
+  arbitraryFor: () => boolean
+})
+
+/**
+ * @since 1.0.0
+ */
 export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
@@ -59,8 +68,6 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           }
           return out
         })
-      case "Boolean":
-        return make((fc) => fc.boolean())
       case "Equal":
         return make((fc) => fc.constant(meta.value))
       case "Tuple": {
