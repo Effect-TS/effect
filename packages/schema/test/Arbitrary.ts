@@ -2,11 +2,12 @@ import * as A from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as fc from "fast-check"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 S.addDeclaration(SetSym, {
   arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {

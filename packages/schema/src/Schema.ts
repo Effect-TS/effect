@@ -34,8 +34,9 @@ export const getDeclaration = meta.getDeclaration
  */
 export const apply = <Schemas extends ReadonlyArray<Schema<unknown>>>(
   symbol: symbol,
+  config: Option<unknown>,
   ...schemas: Schemas
-): Schema<never> => make(meta.apply(symbol, schemas))
+): Schema<never> => make(meta.apply(symbol, config, schemas))
 
 /**
  * @since 1.0.0

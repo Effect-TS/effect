@@ -4,10 +4,11 @@ import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 S.addDeclaration(SetSym, {
   decoderFor: <A>(

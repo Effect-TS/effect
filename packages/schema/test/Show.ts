@@ -6,7 +6,7 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
 S.addDeclaration(SetSym, {
   showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>

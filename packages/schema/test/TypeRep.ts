@@ -11,21 +11,24 @@ S.addDeclaration(bigintSym, {
   typeRepFor: () => "bigint"
 })
 
-const bigint: S.Schema<bigint> = S.apply(bigintSym)
+const bigint: S.Schema<bigint> = S.apply(bigintSym, O.none)
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+const set = <B extends boolean, A>(
+  readonly: B,
+  item: S.Schema<A>
+): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> => S.apply(SetSym, O.some(readonly), item)
 
 S.addDeclaration(SetSym, {
-  typeRepFor: (s: string) => `Set<${s}>`
+  typeRepFor: (readonly: boolean, s: string) => readonly ? `ReadonlySet<${s}>` : `Set<${s}>`
 })
 
 const OptionSym = Symbol("@fp-ts/data/Option")
 
 const option = <A>(
   item: S.Schema<A>
-): S.Schema<Option<A>> => S.apply(OptionSym, item)
+): S.Schema<Option<A>> => S.apply(OptionSym, O.none, item)
 
 S.addDeclaration(OptionSym, {
   typeRepFor: (s: string) => `Option<${s}>`
@@ -37,7 +40,9 @@ export const typeRepFor = <A>(schema: Schema<A>): string => {
       case "Apply": {
         const declaration = S.getDeclaration(meta.symbol)
         if (declaration !== undefined && declaration.typeRepFor !== undefined) {
-          return declaration.typeRepFor(...meta.metas.map(f))
+          return O.isSome(meta.config) ?
+            declaration.typeRepFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.typeRepFor(...meta.metas.map(f))
         }
         throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
       }
@@ -85,16 +90,16 @@ describe("typeRepFor", () => {
     })
 
     it("kind 1", () => {
-      const schema = set(S.string)
+      const schema = set(false, S.string)
       expect(pipe(schema, typeRepFor)).toEqual(
         "Set<string>"
       )
     })
 
     it("option (as declaration)", () => {
-      const schema = option(set(S.string))
+      const schema = option(set(true, S.number))
       expect(pipe(schema, typeRepFor)).toEqual(
-        "Option<Set<string>>"
+        "Option<ReadonlySet<number>>"
       )
     })
   })

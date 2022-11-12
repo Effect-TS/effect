@@ -52,15 +52,21 @@ export type Meta =
 export interface Apply {
   readonly _tag: "Apply"
   readonly symbol: symbol
+  readonly config: Option<unknown>
   readonly metas: ReadonlyArray<Meta>
 }
 
 /**
  * @since 1.0.0
  */
-export const apply = (symbol: symbol, metas: ReadonlyArray<Meta>): Apply => ({
+export const apply = (
+  symbol: symbol,
+  config: Option<unknown>,
+  metas: ReadonlyArray<Meta>
+): Apply => ({
   _tag: "Apply",
   symbol,
+  config,
   metas
 })
 
