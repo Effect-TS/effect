@@ -9,6 +9,7 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
 /**
@@ -49,8 +50,13 @@ const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefine
 const decoderFor = <A>(schema: Schema<A>): Decoder<Json, A> => {
   const f = (meta: Meta): Decoder<Json, any> => {
     switch (meta._tag) {
-      case "Declare":
-        return meta.kind.decoderFor(...meta.metas.map(f))
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.decoderFor !== undefined) {
+          return declaration.decoderFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
+      }
       case "String": {
         let out = D.string
         if (meta.minLength !== undefined) {

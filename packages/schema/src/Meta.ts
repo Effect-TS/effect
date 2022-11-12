@@ -3,13 +3,39 @@
  */
 import type { Option } from "@fp-ts/data/Option"
 
+const declarations = new Map<symbol, { [_: string]: Function }>()
+
+/**
+ * @since 1.0.0
+ */
+export const addDeclaration = (
+  symbol: symbol,
+  declaration: { [_: string]: Function }
+): void => {
+  const found = declarations.get(symbol)
+  if (found !== undefined) {
+    declarations.set(symbol, { ...found, ...declaration })
+  } else {
+    declarations.set(symbol, declaration)
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const getDeclaration = (
+  symbol: symbol
+): { [_: string]: Function } | undefined => {
+  return declarations.get(symbol)
+}
+
 /**
  * A sum type representing features of the TypeScript language we are interested in.
  *
  * @since 1.0.0
  */
 export type Meta =
-  | Declare
+  | Apply
   | String
   | Number
   | Boolean
@@ -23,18 +49,18 @@ export type Meta =
 /**
  * @since 1.0.0
  */
-export interface Declare {
-  readonly _tag: "Declare"
-  readonly kind: any
+export interface Apply {
+  readonly _tag: "Apply"
+  readonly symbol: symbol
   readonly metas: ReadonlyArray<Meta>
 }
 
 /**
  * @since 1.0.0
  */
-export const declare = (kind: any, metas: ReadonlyArray<Meta>): Declare => ({
-  _tag: "Declare",
-  kind,
+export const apply = (symbol: symbol, metas: ReadonlyArray<Meta>): Apply => ({
+  _tag: "Apply",
+  symbol,
   metas
 })
 

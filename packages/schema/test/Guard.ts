@@ -3,13 +3,16 @@ import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare({
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-      G.make((input): input is Set<A> =>
-        input instanceof Set && Array.from(input.values()).every(guard.is)
-      )
-  }, item)
+const SetSym = Symbol("Set")
+
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+
+S.addDeclaration(SetSym, {
+  guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
+    G.make((input): input is Set<A> =>
+      input instanceof Set && Array.from(input.values()).every(guard.is)
+    )
+})
 
 describe("Guard", () => {
   it("tuple", () => {

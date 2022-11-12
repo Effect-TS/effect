@@ -22,10 +22,20 @@ export const make = <A>(meta: Meta): Schema<A> => meta as any
 /**
  * @since 1.0.0
  */
-export const declare = <Schemas extends ReadonlyArray<Schema<unknown>>>(
-  name: any,
+export const addDeclaration = meta.addDeclaration
+
+/**
+ * @since 1.0.0
+ */
+export const getDeclaration = meta.getDeclaration
+
+/**
+ * @since 1.0.0
+ */
+export const apply = <Schemas extends ReadonlyArray<Schema<unknown>>>(
+  symbol: symbol,
   ...schemas: Schemas
-): Schema<never> => make(meta.declare(name, schemas))
+): Schema<never> => make(meta.apply(symbol, schemas))
 
 /**
  * @since 1.0.0

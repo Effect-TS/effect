@@ -4,6 +4,7 @@
 
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -132,8 +133,13 @@ export const array = <A>(
 export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
-      case "Declare":
-        return meta.kind.guardFor(...meta.metas.map(f))
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.guardFor !== undefined) {
+          return declaration.guardFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
+      }
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

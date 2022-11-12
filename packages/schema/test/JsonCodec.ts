@@ -5,26 +5,29 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare({
-    decoderFor: <A>(
-      item: D.Decoder<JC.Json, A>
-    ): D.Decoder<JC.Json, Set<A>> =>
-      D.make((u) => {
-        if (!(Array.isArray(u))) {
-          return D.fail(DE.custom(setError, u))
+const SetSym = Symbol("Set")
+
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+
+S.addDeclaration(SetSym, {
+  decoderFor: <A>(
+    item: D.Decoder<JC.Json, A>
+  ): D.Decoder<JC.Json, Set<A>> =>
+    D.make((u) => {
+      if (!(Array.isArray(u))) {
+        return D.fail(DE.custom(setError, u))
+      }
+      const out: Set<unknown> = new Set()
+      for (let i = 0; i < u.length; i++) {
+        const t = item.decode(u[i])
+        if (T.isLeft(t)) {
+          return T.left(t.left)
         }
-        const out: Set<unknown> = new Set()
-        for (let i = 0; i < u.length; i++) {
-          const t = item.decode(u[i])
-          if (T.isLeft(t)) {
-            return T.left(t.left)
-          }
-          out.add(t.right)
-        }
-        return D.succeed(out as any)
-      })
-  }, item)
+        out.add(t.right)
+      }
+      return D.succeed(out as any)
+    })
+})
 
 interface SetError {
   readonly _tag: "SetError"

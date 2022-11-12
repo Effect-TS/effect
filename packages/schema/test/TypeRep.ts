@@ -5,24 +5,42 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
-const bigint: S.Schema<bigint> = S.declare({
+const bigintSym = Symbol("bigint")
+
+S.addDeclaration(bigintSym, {
   typeRepFor: () => "bigint"
 })
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare({
-    typeRepFor: (s: string) => `Set<${s}>`
-  }, item)
+const bigint: S.Schema<bigint> = S.apply(bigintSym)
+
+const SetSym = Symbol("Set")
+
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+
+S.addDeclaration(SetSym, {
+  typeRepFor: (s: string) => `Set<${s}>`
+})
+
+const OptionSym = Symbol("@fp-ts/data/Option")
 
 const option = <A>(
   item: S.Schema<A>
-): S.Schema<Option<A>> => S.declare({ typeRepFor: (s: string) => `Option<${s}>` }, item)
+): S.Schema<Option<A>> => S.apply(OptionSym, item)
+
+S.addDeclaration(OptionSym, {
+  typeRepFor: (s: string) => `Option<${s}>`
+})
 
 export const typeRepFor = <A>(schema: Schema<A>): string => {
   const f = (meta: Meta): string => {
     switch (meta._tag) {
-      case "Declare":
-        return meta.kind.typeRepFor(...meta.metas.map(f))
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.typeRepFor !== undefined) {
+          return declaration.typeRepFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
+      }
       case "String":
         return "string"
       case "Number":

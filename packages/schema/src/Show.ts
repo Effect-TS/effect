@@ -5,6 +5,7 @@
 import { guardFor } from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -32,8 +33,13 @@ export const showFor = <A>(schema: Schema<A>): Show<A> => {
   const g = guardFor
   const f = (meta: Meta): Show<any> => {
     switch (meta._tag) {
-      case "Declare":
-        return meta.kind.showFor(...meta.metas.map(f))
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.showFor !== undefined) {
+          return declaration.showFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "showFor" declaration for ${meta.symbol.description}`)
+      }
       case "String":
       case "Number":
       case "Boolean":

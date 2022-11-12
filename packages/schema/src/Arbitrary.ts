@@ -3,6 +3,7 @@
  */
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
@@ -22,18 +23,16 @@ export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
 /**
  * @since 1.0.0
  */
-export const set = <A>(arb: Arbitrary<A>): Arbitrary<Set<A>> => {
-  return make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
-}
-
-/**
- * @since 1.0.0
- */
 export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
-      case "Declare":
-        return meta.kind.arbitraryFor(...meta.metas.map(f))
+      case "Apply": {
+        const declaration = S.getDeclaration(meta.symbol)
+        if (declaration !== undefined && declaration.arbitraryFor != null) {
+          return declaration.arbitraryFor(...meta.metas.map(f))
+        }
+        throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
+      }
       case "String":
         return make((fc) => {
           let out = fc.string()

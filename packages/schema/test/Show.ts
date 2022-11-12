@@ -4,11 +4,14 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare({
-    showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
-      Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
-  }, item)
+const SetSym = Symbol("Set")
+
+const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, item)
+
+S.addDeclaration(SetSym, {
+  showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
+    Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
+})
 
 describe("Show", () => {
   it("empty", () => {
