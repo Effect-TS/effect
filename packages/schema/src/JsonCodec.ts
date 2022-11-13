@@ -65,6 +65,8 @@ const decoderFor = (declarations: S.Declarations) =>
           return D.never as any
         case "Unknown":
           return D.unknown
+        case "Any":
+          return D.any
         case "String": {
           let out = D.string
           if (meta.minLength !== undefined) {

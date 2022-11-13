@@ -35,6 +35,11 @@ export const unknown: Arbitrary<unknown> = make(S.unknown, (fc) => fc.anything()
 /**
  * @since 1.0.0
  */
+export const any: Arbitrary<any> = make(S.any, (fc) => fc.anything())
+
+/**
+ * @since 1.0.0
+ */
 export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 
 /**
@@ -191,6 +196,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         return never as any
       case "Unknown":
         return unknown
+      case "Any":
+        return any
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

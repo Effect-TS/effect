@@ -54,7 +54,12 @@ export const never: Guard<never> = make(S.never, (_u: unknown): _u is never => f
 /**
  * @since 1.0.0
  */
-export const unknown: Guard<unknown> = make(S.unknown, (u: unknown): u is unknown => true)
+export const unknown: Guard<unknown> = make(S.unknown, (_u: unknown): _u is unknown => true)
+
+/**
+ * @since 1.0.0
+ */
+export const any: Guard<any> = make(S.any, (_u: unknown): _u is any => true)
 
 /**
  * @since 1.0.0
@@ -232,6 +237,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         return never as any
       case "Unknown":
         return unknown
+      case "Any":
+        return any
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

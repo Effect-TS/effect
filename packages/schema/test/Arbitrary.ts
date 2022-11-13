@@ -43,6 +43,13 @@ describe("Arbitrary", () => {
     expect(fc.sample(arbitrary, 10).every(guard.is)).toEqual(true)
   })
 
+  it("any", () => {
+    const schema = S.any
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, 10).every(guard.is)).toEqual(true)
+  })
+
   describe("arbitraryFor", () => {
     const arbitraryFor = A.arbitraryFor
     const guardFor = G.guardFor

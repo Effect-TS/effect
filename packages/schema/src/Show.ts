@@ -41,6 +41,7 @@ export const showFor = (declarations: S.Declarations) =>
             throw new Error("never")
           }) as any
         case "Unknown":
+        case "Any":
         case "String":
         case "Number":
         case "Boolean":

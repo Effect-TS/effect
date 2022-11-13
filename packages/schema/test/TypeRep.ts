@@ -64,6 +64,8 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
         return make(S.never, "never") as any
       case "Unknown":
         return make(S.unknown, "unknown")
+      case "Any":
+        return make(S.any, "any")
       case "String":
         return make(S.string, "string")
       case "Number":
@@ -152,6 +154,11 @@ describe("typeRepFor", () => {
   it("unknown", () => {
     const schema = S.unknown
     expect(pipe(schema, typeRepFor).typeRep).toEqual("unknown")
+  })
+
+  it("any", () => {
+    const schema = S.any
+    expect(pipe(schema, typeRepFor).typeRep).toEqual("any")
   })
 
   it("struct", () => {

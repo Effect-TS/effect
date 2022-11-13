@@ -59,6 +59,12 @@ describe("Guard", () => {
     expect(guard.is("a")).toEqual(true)
   })
 
+  it("any", () => {
+    const guard = G.any
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(true)
+  })
+
   it("bigint", () => {
     const guard = bigint
     expect(guard.is(null)).toEqual(false)

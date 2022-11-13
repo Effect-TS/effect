@@ -112,6 +112,11 @@ export const unknown: Schema<unknown> = make(empty, meta.unknown)
 /**
  * @since 1.0.0
  */
+export const any: Schema<any> = make(empty, meta.any)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Schema<string> = make(empty, meta.string({}))
 
 /**

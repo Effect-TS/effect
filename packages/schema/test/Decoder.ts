@@ -60,6 +60,11 @@ describe("Decoder", () => {
     expect(D.unknown.decode("a")).toEqual(D.succeed("a"))
   })
 
+  it("any", () => {
+    expect(D.any.decode(1)).toEqual(D.succeed(1))
+    expect(D.any.decode("a")).toEqual(D.succeed("a"))
+  })
+
   it("string", () => {
     expect(D.string.decode("a")).toEqual(D.succeed("a"))
 

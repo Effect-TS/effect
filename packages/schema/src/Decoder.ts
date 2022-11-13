@@ -86,6 +86,14 @@ export const unknown: Decoder<unknown, unknown> = fromRefinement(
 /**
  * @since 1.0.0
  */
+export const any: Decoder<unknown, any> = fromRefinement(
+  G.any.is,
+  (u) => DE.notType("any", u)
+)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Decoder<unknown, string> = fromRefinement(
   G.string.is,
   (u) => DE.notType("string", u)
