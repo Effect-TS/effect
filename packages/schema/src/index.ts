@@ -11,6 +11,9 @@ import * as jsonCodec from "@fp-ts/codec/JsonCodec"
 import * as meta from "@fp-ts/codec/Meta"
 import * as schema from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
+import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
+import * as schemableFunctor from "@fp-ts/codec/typeclass/SchemableFunctor"
+import * as toSchema from "@fp-ts/codec/typeclass/ToSchema"
 
 export {
   /**
@@ -36,6 +39,10 @@ export {
   /**
    * @since 1.0.0
    */
+  fromSchema,
+  /**
+   * @since 1.0.0
+   */
   guard,
   /**
    * @since 1.0.0
@@ -52,5 +59,13 @@ export {
   /**
    * @since 1.0.0
    */
-  show
+  schemableFunctor,
+  /**
+   * @since 1.0.0
+   */
+  show,
+  /**
+   * @since 1.0.0
+   */
+  toSchema
 }
