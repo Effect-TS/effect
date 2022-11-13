@@ -8,7 +8,8 @@ interface TypeRep<A> extends S.Schema<A> {
   readonly typeRep: string
 }
 
-const make = <A>(schema: Schema<A>, typeRep: string): TypeRep<A> => ({ ...schema, typeRep })
+const make = <A>(schema: Schema<A>, typeRep: string): TypeRep<A> =>
+  ({ declarations: schema.declarations, meta: schema.meta, typeRep }) as any
 
 const SetSym = Symbol("Set")
 

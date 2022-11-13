@@ -10,21 +10,155 @@ import type * as FastCheck from "fast-check"
 /**
  * @since 1.0.0
  */
-export interface Arbitrary<out A> {
-  readonly A: A
+export interface Arbitrary<out A> extends S.Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <A>(arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
-  ({ arbitrary }) as any
+export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
+  ({ declarations: schema.declarations, meta: schema.meta, arbitrary }) as any
 
 /**
  * @since 1.0.0
  */
-export const boolean: Arbitrary<boolean> = make((fc) => fc.boolean())
+export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = (minLength: number) =>
+  <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
+    make(
+      S.minLength(minLength)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a.length >= minLength)
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = (
+  maxLength: number
+) =>
+  <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
+    make(
+      S.maxLength(maxLength)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a.length <= maxLength)
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const number: Arbitrary<number> = make(S.number, (fc) => fc.float())
+
+/**
+ * @since 1.0.0
+ */
+export const minimum = (minimum: number) =>
+  <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
+    make(
+      S.minimum(minimum)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a >= minimum)
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const maximum = (
+  maximum: number
+) =>
+  <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
+    make(
+      S.maximum(maximum)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a <= maximum)
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Arbitrary<boolean> = make(S.boolean, (fc) => fc.boolean())
+
+/**
+ * @since 1.0.0
+ */
+export const equal = <A>(
+  value: A
+): Arbitrary<A> => make(S.equal(value), (fc) => fc.constant(value))
+
+/**
+ * @since 1.0.0
+ */
+export const tuple = <Components extends ReadonlyArray<Arbitrary<unknown>>>(
+  ...components: Components
+): Arbitrary<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
+  make(
+    S.tuple(true, ...components) as any,
+    (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc))) as any
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const union = <Members extends ReadonlyArray<Arbitrary<unknown>>>(
+  ...members: Members
+): Arbitrary<Members[number]["A"]> =>
+  make(
+    S.union(...members),
+    (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const mapSchema = <A, B>(
+  f: (schema: Schema<A>) => Schema<B>
+) => (arb: Arbitrary<A>): Arbitrary<B> => arbitraryFor(arb.declarations)(f(arb))
+
+/**
+ * @since 1.0.0
+ */
+export const optional = mapSchema(S.optional)
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <Fields extends Record<PropertyKey, Arbitrary<unknown>>>(
+  fields: Fields
+): Arbitrary<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+  return make(
+    S.struct(fields),
+    (fc) => {
+      const arbs: any = {}
+      Object.keys(fields).forEach((key) => {
+        arbs[key] = fields[key].arbitrary(fc)
+      })
+      return fc.record(arbs)
+    }
+  )
+}
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature = <A>(
+  value: Arbitrary<A>
+): Arbitrary<{ readonly [_: string]: A }> =>
+  make(
+    S.indexSignature(value),
+    (fc) => fc.dictionary(fc.string(), value.arbitrary(fc))
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const array = <A>(
+  item: Arbitrary<A>
+): Arbitrary<ReadonlyArray<A>> =>
+  make(
+    S.array(true, item),
+    (fc) => fc.array(item.arbitrary(fc))
+  )
 
 /**
  * @since 1.0.0
@@ -42,62 +176,58 @@ export const arbitraryFor = (declarations: S.Declarations) =>
           }
           throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
         }
-        case "String":
-          return make((fc) => {
-            let out = fc.string()
-            if (meta.minLength !== undefined) {
-              const minLength = meta.minLength
-              out = out.filter((s) => s.length >= minLength)
-            }
-            if (meta.maxLength !== undefined) {
-              const maxLength = meta.maxLength
-              out = out.filter((s) => s.length <= maxLength)
-            }
-            return out
-          })
-        case "Number":
-          return make((fc) => {
-            let out = fc.float()
-            if (meta.minimum !== undefined) {
-              const minimum = meta.minimum
-              out = out.filter((n) => n >= minimum)
-            }
-            if (meta.maximum !== undefined) {
-              const maximum = meta.maximum
-              out = out.filter((n) => n <= maximum)
-            }
-            return out
-          })
+        case "String": {
+          let out = string
+          if (meta.minLength !== undefined) {
+            out = minLength(meta.minLength)(out)
+          }
+          if (meta.maxLength !== undefined) {
+            out = maxLength(meta.maxLength)(out)
+          }
+          return out
+        }
+        case "Number": {
+          let out = number
+          if (meta.minimum !== undefined) {
+            out = minimum(meta.minimum)(out)
+          }
+          if (meta.maximum !== undefined) {
+            out = maximum(meta.maximum)(out)
+          }
+          return out
+        }
         case "Boolean":
-          return make((fc) => fc.boolean())
+          return boolean
         case "Equal":
-          return make((fc) => fc.constant(meta.value))
+          return equal(meta.value)
         case "Tuple": {
-          const arbs = meta.components.map(f)
-          return make((fc) => fc.tuple(...arbs.map((arb) => arb.arbitrary(fc))))
+          const components = meta.components.map(f)
+          const out = tuple(...components)
+          if (O.isSome(meta.restElement)) {
+            const restElement = f(meta.restElement.value)
+            return make(
+              S.make(S.mergeMany(components.map((c) => c.declarations))(S.empty), meta),
+              (fc) =>
+                out.arbitrary(fc).chain((as) =>
+                  fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
+                )
+            )
+          }
+          return out
         }
-        case "Union": {
-          const arbs = meta.members.map(f)
-          return make((fc) => fc.oneof(...arbs.map((arb) => arb.arbitrary(fc))))
-        }
+        case "Union":
+          return union(...meta.members.map(f))
         case "Struct": {
-          const arbs = meta.fields.map((field) => f(field.value))
-          return make((fc) => {
-            const fields = {}
-            arbs.forEach((arb, i) => {
-              fields[meta.fields[i].key] = arb.arbitrary(fc)
-            })
-            return fc.record(fields)
+          const fields = {}
+          meta.fields.forEach((field) => {
+            fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
           })
+          return struct(fields)
         }
-        case "IndexSignature": {
-          const arb = f(meta.value)
-          return make((fc) => fc.dictionary(fc.string(), arb.arbitrary(fc)))
-        }
-        case "Array": {
-          const arb = f(meta.item)
-          return make((fc) => fc.array(arb.arbitrary(fc)))
-        }
+        case "IndexSignature":
+          return indexSignature(f(meta.value))
+        case "Array":
+          return array(f(meta.item))
       }
     }
     return f(schema.meta)

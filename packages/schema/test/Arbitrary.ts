@@ -10,19 +10,23 @@ const SetSym = Symbol("Set")
 const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
 
-const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
+const setGuard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
     setSchema(item),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
+const setArbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
+  A.make(
+    setSchema(item),
+    (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
+  )
+
 const declarations = pipe(
   S.empty,
   S.add(SetSym, {
-    arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
-      return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
-    },
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => set(guard)
+    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => setArbitrary(item),
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setGuard(guard)
   })
 )
 

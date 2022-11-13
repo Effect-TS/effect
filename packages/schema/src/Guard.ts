@@ -21,7 +21,7 @@ export interface Guard<out A> extends Schema<A> {
 export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
-): Guard<A> => ({ ...schema, is }) as any
+): Guard<A> => ({ declarations: schema.declarations, meta: schema.meta, is }) as any
 
 /**
  * @since 1.0.0
