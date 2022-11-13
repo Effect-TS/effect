@@ -10,7 +10,7 @@ import type * as FastCheck from "fast-check"
 /**
  * @since 1.0.0
  */
-export interface Arbitrary<out A> extends S.Schema<A> {
+export interface Arbitrary<in out A> extends S.Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
 
@@ -91,7 +91,7 @@ export const equal = <A>(
  */
 export const tuple = <Components extends ReadonlyArray<Arbitrary<unknown>>>(
   ...components: Components
-): Arbitrary<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
+): Arbitrary<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
   make(
     S.tuple(true, ...components) as any,
     (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc))) as any
@@ -102,9 +102,9 @@ export const tuple = <Components extends ReadonlyArray<Arbitrary<unknown>>>(
  */
 export const union = <Members extends ReadonlyArray<Arbitrary<unknown>>>(
   ...members: Members
-): Arbitrary<Members[number]["A"]> =>
+): Arbitrary<Parameters<Members[number]["A"]>[0]> =>
   make(
-    S.union(...members),
+    S.union<Members>(...members),
     (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
   )
 
@@ -125,7 +125,7 @@ export const optional = mapSchema(S.optional)
  */
 export const struct = <Fields extends Record<PropertyKey, Arbitrary<unknown>>>(
   fields: Fields
-): Arbitrary<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+): Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
   return make(
     S.struct(fields),
     (fc) => {

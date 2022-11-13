@@ -4,7 +4,7 @@ import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-interface TypeRep<A> extends S.Schema<A> {
+interface TypeRep<in out A> extends S.Schema<A> {
   readonly typeRep: string
 }
 

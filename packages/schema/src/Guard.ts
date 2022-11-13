@@ -11,7 +11,7 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface Guard<out A> extends Schema<A> {
+export interface Guard<in out A> extends Schema<A> {
   readonly is: (input: unknown) => input is A
 }
 
@@ -124,12 +124,12 @@ export const equal = <A>(
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
+export const tuple = <Components extends ReadonlyArray<Guard<any>>>(
   ...components: Components
-): Guard<{ readonly [K in keyof Components]: Components[K]["A"] }> =>
+): Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
   make(
     S.tuple(true, ...components) as any,
-    (a): a is { readonly [K in keyof Components]: Components[K]["A"] } =>
+    (a): a is { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] } =>
       Array.isArray(a) &&
       components.every((guard, i) => guard.is(a[i]))
   )
@@ -137,20 +137,20 @@ export const tuple = <Components extends ReadonlyArray<Guard<unknown>>>(
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Guard<unknown>>>(
+export const union = <Members extends ReadonlyArray<Guard<any>>>(
   ...members: Members
-): Guard<Members[number]["A"]> =>
+): Guard<Parameters<Members[number]["A"]>[0]> =>
   make(
     S.union(...members),
-    (a): a is Members[number]["A"] => members.some((guard) => guard.is(a))
+    (a): a is Parameters<Members[number]["A"]>[0] => members.some((guard) => guard.is(a))
   )
 
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Guard<unknown>>>(
+export const struct = <Fields extends Record<PropertyKey, Guard<any>>>(
   fields: Fields
-): Guard<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+): Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
   const keys = Object.keys(fields)
   const guards = keys.map((key) => fields[key])
   const schemas = {}
@@ -159,7 +159,7 @@ export const struct = <Fields extends Record<PropertyKey, Guard<unknown>>>(
   })
   return make(
     S.struct(schemas) as any,
-    (a): a is { readonly [K in keyof Fields]: Fields[K]["A"] } =>
+    (a): a is { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] } =>
       typeof a === "object" && a != null &&
       guards.every((guard, i) => guard.is(a[keys[i]]))
   )

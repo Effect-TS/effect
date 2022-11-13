@@ -11,9 +11,9 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Decoder<in I, out A> {
+export interface Decoder<in I, in out A> {
   readonly I: (_: I) => void
-  readonly A: A
+  readonly A: (_: A) => A
   readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>
 }
 
@@ -149,7 +149,7 @@ export const equal = <A>(
   )
 
 const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>
-  Array.isArray(u) ? succeed(u) : fail(DE.type("Array", u))
+  Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.type("Array", u))
 )
 
 /**
@@ -157,7 +157,10 @@ const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>
  */
 export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown>>>(
   ...components: Components
-): Decoder<ReadonlyArray<I>, { readonly [K in keyof Components]: Components[K]["A"] }> =>
+): Decoder<
+  ReadonlyArray<I>,
+  { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
+> =>
   make(
     (is) => {
       const out: Array<unknown> = []
@@ -175,9 +178,9 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Decoder<unknown, unknown>>>(
+export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
   ...components: Components
-): Decoder<unknown, { readonly [K in keyof Components]: Components[K]["A"] }> =>
+): Decoder<unknown, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
   pipe(UnknownArray, compose(fromTuple<unknown, Components>(...components)))
 
 /**
@@ -206,7 +209,7 @@ export const fromReadonlyArray = <I, A>(
     if (isNonEmpty(es)) {
       return isBoth ? T.both(es, as) : T.left(es)
     }
-    return T.right(as)
+    return T.right(as as ReadonlyArray<A>)
   })
 
 /**
@@ -232,7 +235,10 @@ const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }>
  */
 export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>>>(
   fields: Fields
-): Decoder<{ readonly [_: string]: I }, { readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+): Decoder<
+  { readonly [_: string]: I },
+  { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }
+> => {
   const keys = Object.keys(fields)
   return make((input: { readonly [_: string]: I }) => {
     const a = {}
@@ -253,7 +259,7 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
  */
 export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>>(
   fields: Fields
-): Decoder<unknown, { readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+): Decoder<unknown, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
   return pipe(
     UnknownIndexSignature,
     compose(fromStruct<unknown, Fields>(fields))
@@ -265,7 +271,7 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>
  */
 export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ...members: Members
-): Decoder<I, Members[number]["A"]> =>
+): Decoder<I, Parameters<Members[number]["A"]>[0]> =>
   make((u) => {
     const lefts: Array<DE.DecodeError> = []
     for (const member of members) {

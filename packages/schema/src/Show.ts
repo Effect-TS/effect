@@ -11,7 +11,7 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface Show<A> {
+export interface Show<in out A> {
   readonly show: (a: A) => string
 }
 

@@ -10,8 +10,8 @@ import type { Option } from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface Schema<A> {
-  readonly A: A
+export interface Schema<in out A> {
+  readonly A: (_: A) => A
   readonly declarations: Declarations
   readonly meta: Meta
 }
@@ -92,12 +92,12 @@ export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
 /**
  * @since 1.0.0
  */
-export const apply = <Schemas extends ReadonlyArray<Schema<unknown>>>(
+export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
   config: Option<unknown>,
   declarations: Declarations,
   ...schemas: Schemas
-): Schema<never> => make(declarations, meta.apply(symbol, config, schemas.map((s) => s.meta)))
+): Schema<any> => make(declarations, meta.apply(symbol, config, schemas.map((s) => s.meta)))
 
 /**
  * @since 1.0.0
@@ -204,9 +204,9 @@ export const equal = <A>(
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<unknown>>>(
+export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Members[number]["A"]> =>
+): Schema<Parameters<Members[number]["A"]>[0]> =>
   make(
     mergeMany(members.map((c) => c.declarations))(empty),
     meta.union(members.map((m) => m.meta))
@@ -217,13 +217,13 @@ export const union = <Members extends ReadonlyArray<Schema<unknown>>>(
  */
 export const tuple = <
   B extends boolean,
-  Components extends ReadonlyArray<Schema<unknown>>
+  Components extends ReadonlyArray<Schema<any>>
 >(
   readonly: B,
   ...components: Components
 ): Schema<
-  B extends true ? { readonly [K in keyof Components]: Components[K]["A"] }
-    : { [K in keyof Components]: Components[K]["A"] }
+  B extends true ? { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
+    : { [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
 > =>
   make(
     mergeMany(components.map((c) => c.declarations))(empty),
@@ -246,9 +246,9 @@ export const nonEmptyArray = <B extends boolean, H, T>(
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Schema<unknown>>>(
+export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-): Schema<{ readonly [K in keyof Fields]: Fields[K]["A"] }> => {
+): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
   const keys = Object.keys(fields)
   return make(
     mergeMany(keys.map((key) => fields[key].declarations))(empty),
@@ -399,8 +399,8 @@ type RequiredKeys<A> = {
  export const crazyStruct = <Fields extends Record<PropertyKey, Schema<unknown>>>(
   fields: Fields
 ): Schema<
-  & { readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: Fields[K]["A"] }
-  & { readonly [K in RequiredKeys<Fields>]: Fields[K]["A"] }
+  & { readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: Parameters<Fields[K]["A"]>[0] }
+  & { readonly [K in RequiredKeys<Fields>]: Parameters<Fields[K]["A"]>[0] }
 > =>
   make(
     meta.struct(
