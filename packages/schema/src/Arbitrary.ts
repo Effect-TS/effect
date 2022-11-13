@@ -100,5 +100,5 @@ export const arbitraryFor = (declarations: S.Declarations) =>
         }
       }
     }
-    return f(schema)
+    return f(schema.meta)
   }

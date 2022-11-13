@@ -18,7 +18,7 @@ const declarations = pipe(
     guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
       G.make(
         guard.declarations,
-        S.apply(SetSym, O.none, guard.schema),
+        S.apply(SetSym, O.none, S.make(guard.meta)).meta,
         (input): input is Set<A> =>
           input instanceof Set && Array.from(input.values()).every(guard.is)
       )

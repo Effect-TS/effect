@@ -60,7 +60,7 @@ export const jsonSchemaFor = (declarations: S.Declarations) =>
       }
       throw new Error(`Unhandled ${meta._tag}`)
     }
-    return f(schema)
+    return f(schema.meta)
   }
 
 describe("jsonSchemaFor", () => {

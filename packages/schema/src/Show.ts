@@ -59,7 +59,7 @@ export const showFor = (declarations: S.Declarations) =>
         }
         case "Union": {
           const shows: ReadonlyArray<Show<unknown>> = meta.members.map(f)
-          const guards = meta.members.map((member) => g(member as any))
+          const guards = meta.members.map((member) => g(S.make(member)))
           return make((a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return shows[index].show(a)
@@ -88,5 +88,5 @@ export const showFor = (declarations: S.Declarations) =>
         }
       }
     }
-    return f(schema)
+    return f(schema.meta)
   }

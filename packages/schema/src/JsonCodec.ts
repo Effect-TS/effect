@@ -102,7 +102,7 @@ const decoderFor = (declarations: S.Declarations) =>
           return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
       }
     }
-    return f(schema)
+    return f(schema.meta)
   }
 
 /**

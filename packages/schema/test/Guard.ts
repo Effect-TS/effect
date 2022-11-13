@@ -17,7 +17,7 @@ const setDeclarations = pipe(
 const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
     setDeclarations,
-    setSchema(item.schema),
+    setSchema(S.make(item.meta)).meta,
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
@@ -34,7 +34,7 @@ const bigintDeclarations = pipe(
 
 const bigint = G.make(
   bigintDeclarations,
-  bigintSchema,
+  bigintSchema.meta,
   (input): input is bigint => typeof input === "bigint"
 )
 
@@ -43,7 +43,7 @@ describe("Guard", () => {
     const Name = pipe(G.string, G.alias(Symbol.for("Name")))
     expect(Name.is(null)).toEqual(false)
     expect(Name.is("a")).toEqual(true)
-    const ReName = G.guardFor(Name.declarations)(Name.schema)
+    const ReName = G.guardFor(Name.declarations)(S.make(Name.meta))
     expect(ReName.is(null)).toEqual(false)
     expect(ReName.is("a")).toEqual(true)
   })

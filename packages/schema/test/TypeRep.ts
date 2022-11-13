@@ -83,7 +83,7 @@ export const typeRepFor = (declarations: S.Declarations) =>
           return `${meta.readonly ? "Readonly" : ""}Array<${f(meta.item)}>`
       }
     }
-    return f(schema)
+    return f(schema.meta)
   }
 
 describe("typeRepFor", () => {
