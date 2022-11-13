@@ -6,13 +6,16 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
+const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
+
+const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
+  Sh.make((a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 const declarations = pipe(
   S.empty,
   S.add(SetSym, {
-    showFor: <A>(show: Sh.Show<A>): Sh.Show<Set<A>> =>
-      Sh.make((a) => `Set([${Array.from(a.values()).map(show.show).join(", ")}])`)
+    showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
   })
 )
 
@@ -21,7 +24,7 @@ describe("Show", () => {
     const showFor = Sh.showFor(declarations)
 
     it("declaration", () => {
-      const schema = set(S.string)
+      const schema = setSchema(S.string)
       expect(showFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"
       )

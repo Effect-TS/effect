@@ -8,28 +8,31 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
+const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
+
+const set = <A>(item: D.Decoder<JC.Json, A>): D.Decoder<JC.Json, Set<A>> =>
+  D.make((u) => {
+    if (!(Array.isArray(u))) {
+      return D.fail(DE.custom(setError, u))
+    }
+    const out: Set<unknown> = new Set()
+    for (let i = 0; i < u.length; i++) {
+      const t = item.decode(u[i])
+      if (T.isLeft(t)) {
+        return T.left(t.left)
+      }
+      out.add(t.right)
+    }
+    return D.succeed(out as any)
+  })
 
 const declarations = pipe(
   S.empty,
   S.add(SetSym, {
     decoderFor: <A>(
       item: D.Decoder<JC.Json, A>
-    ): D.Decoder<JC.Json, Set<A>> =>
-      D.make((u) => {
-        if (!(Array.isArray(u))) {
-          return D.fail(DE.custom(setError, u))
-        }
-        const out: Set<unknown> = new Set()
-        for (let i = 0; i < u.length; i++) {
-          const t = item.decode(u[i])
-          if (T.isLeft(t)) {
-            return T.left(t.left)
-          }
-          out.add(t.right)
-        }
-        return D.succeed(out as any)
-      })
+    ): D.Decoder<JC.Json, Set<A>> => set(item)
   })
 )
 
@@ -44,7 +47,7 @@ describe("JsonCodec", () => {
     const decoderFor = JC.JsonCodec.decoderFor(declarations)
 
     it("declaration", () => {
-      const schema = set(S.number)
+      const schema = setSchema(S.number)
       const decoder = decoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))

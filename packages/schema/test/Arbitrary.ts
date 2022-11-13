@@ -7,7 +7,14 @@ import * as fc from "fast-check"
 
 const SetSym = Symbol("Set")
 
-const set = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
+const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+  S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
+
+const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
+  G.make(
+    setSchema(item),
+    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
+  )
 
 const declarations = pipe(
   S.empty,
@@ -15,24 +22,18 @@ const declarations = pipe(
     arbitraryFor: <A>(arb: A.Arbitrary<A>): A.Arbitrary<Set<A>> => {
       return A.make((fc) => fc.array(arb.arbitrary(fc)).map((as) => new Set(as)))
     },
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> =>
-      G.make(
-        guard.declarations,
-        S.apply(SetSym, O.none, guard),
-        (input): input is Set<A> =>
-          input instanceof Set && Array.from(input.values()).every(guard.is)
-      )
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => set(guard)
   })
 )
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
     const arbitraryFor = A.arbitraryFor(declarations)
-    const guardFor = G.guardFor(declarations)
+    const guardFor = G.guardFor
     const sampleSize = 100
 
     it("declaration", () => {
-      const schema = set(S.string)
+      const schema = setSchema(S.string)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

@@ -25,7 +25,6 @@ export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
  */
 export const showFor = (declarations: S.Declarations) =>
   <A>(schema: Schema<A>): Show<A> => {
-    const g = guardFor(declarations)
     const f = (meta: Meta): Show<any> => {
       switch (meta._tag) {
         case "Apply": {
@@ -59,7 +58,7 @@ export const showFor = (declarations: S.Declarations) =>
         }
         case "Union": {
           const shows: ReadonlyArray<Show<unknown>> = meta.members.map(f)
-          const guards = meta.members.map((member) => g(S.make(member)))
+          const guards = meta.members.map((member) => guardFor(S.make(declarations, member)))
           return make((a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return shows[index].show(a)
