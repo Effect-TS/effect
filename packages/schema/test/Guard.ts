@@ -47,6 +47,11 @@ describe("Guard", () => {
     expect(ReName.is("a")).toEqual(true)
   })
 
+  it("never", () => {
+    const guard = G.never
+    expect(guard.is(1)).toEqual(false)
+  })
+
   it("bigint", () => {
     const guard = bigint
     expect(guard.is(null)).toEqual(false)

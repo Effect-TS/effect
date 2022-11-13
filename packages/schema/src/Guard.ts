@@ -49,6 +49,11 @@ export const mapSchema = <A, B>(
 /**
  * @since 1.0.0
  */
+export const never: Guard<never> = make(S.never, (_u: unknown): _u is never => false)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Guard<string> = make(
   S.string,
   (u: unknown): u is string => typeof u === "string"
@@ -218,6 +223,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         }
         throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
       }
+      case "Never":
+        return never as any
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

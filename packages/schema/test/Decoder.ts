@@ -51,6 +51,10 @@ describe("Decoder", () => {
     expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
   })
 
+  it("never", () => {
+    expect(D.never.decode(1)).toEqual(D.fail(DE.notType("never", 1)))
+  })
+
   it("string", () => {
     expect(D.string.decode("a")).toEqual(D.succeed("a"))
 

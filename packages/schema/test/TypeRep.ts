@@ -60,6 +60,8 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
         }
         throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
       }
+      case "Never":
+        return make(S.string, "never")
       case "String":
         return make(S.string, "string")
       case "Number":

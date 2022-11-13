@@ -70,6 +70,14 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
 /**
  * @since 1.0.0
  */
+export const never: Decoder<unknown, never> = fromRefinement(
+  G.never.is,
+  (u) => DE.notType("never", u)
+)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Decoder<unknown, string> = fromRefinement(
   G.string.is,
   (u) => DE.notType("string", u)

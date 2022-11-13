@@ -23,6 +23,13 @@ export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"])
 /**
  * @since 1.0.0
  */
+export const never: Arbitrary<never> = make(S.never, () => {
+  throw new Error("never")
+})
+
+/**
+ * @since 1.0.0
+ */
 export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 
 /**
@@ -175,6 +182,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         }
         throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
       }
+      case "Never":
+        return never as any
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

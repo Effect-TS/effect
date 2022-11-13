@@ -31,6 +31,11 @@ const declarations = pipe(
 )
 
 describe("Arbitrary", () => {
+  it("never", () => {
+    const schema = S.never
+    expect(() => A.arbitraryFor(schema).arbitrary(fc)).toThrow()
+  })
+
   describe("arbitraryFor", () => {
     const arbitraryFor = A.arbitraryFor
     const guardFor = G.guardFor

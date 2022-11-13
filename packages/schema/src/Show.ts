@@ -36,6 +36,10 @@ export const showFor = (declarations: S.Declarations) =>
           }
           throw new Error(`Missing "showFor" declaration for ${meta.symbol.description}`)
         }
+        case "Never":
+          return make<never>(() => {
+            throw new Error("never")
+          }) as any
         case "String":
         case "Number":
         case "Boolean":

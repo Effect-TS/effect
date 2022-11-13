@@ -30,6 +30,11 @@ describe("Show", () => {
       )
     })
 
+    it("never", () => {
+      const schema = S.never
+      expect(() => showFor(schema).show(1 as any as never)).toThrow()
+    })
+
     it("string", () => {
       const schema = S.string
       expect(showFor(schema).show("a")).toEqual(

@@ -61,6 +61,8 @@ const decoderFor = (declarations: S.Declarations) =>
           }
           throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
         }
+        case "Never":
+          return D.never as any
         case "String": {
           let out = D.string
           if (meta.minLength !== undefined) {

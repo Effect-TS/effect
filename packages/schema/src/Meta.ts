@@ -8,6 +8,7 @@ import type { Option } from "@fp-ts/data/Option"
  */
 export type Meta =
   | Apply
+  | Never
   | String
   | Number
   | Boolean
@@ -41,6 +42,18 @@ export const apply = (
   config,
   metas
 })
+
+/**
+ * @since 1.0.0
+ */
+export interface Never {
+  readonly _tag: "Never"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const never: Never = { _tag: "Never" }
 
 /**
  * @since 1.0.0

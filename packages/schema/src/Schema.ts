@@ -102,6 +102,11 @@ export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
+export const never: Schema<never> = make(empty, meta.never)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Schema<string> = make(empty, meta.string({}))
 
 /**
