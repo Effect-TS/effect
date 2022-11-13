@@ -113,7 +113,7 @@ export const union = <Members extends ReadonlyArray<Arbitrary<unknown>>>(
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => arbitraryFor(arb.declarations)(f(arb))
+) => (arb: Arbitrary<A>): Arbitrary<B> => arbitraryFor(f(arb))
 
 /**
  * @since 1.0.0
@@ -163,72 +163,71 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const arbitraryFor = (declarations: S.Declarations) =>
-  <A>(schema: Schema<A>): Arbitrary<A> => {
-    const f = (meta: Meta): Arbitrary<any> => {
-      switch (meta._tag) {
-        case "Apply": {
-          const declaration = S.unsafeGet(meta.symbol)(declarations)
-          if (declaration.arbitraryFor != null) {
-            return O.isSome(meta.config) ?
-              declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
-              declaration.arbitraryFor(...meta.metas.map(f))
-          }
-          throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
+export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
+  const f = (meta: Meta): Arbitrary<any> => {
+    switch (meta._tag) {
+      case "Apply": {
+        const declaration = S.unsafeGet(meta.symbol)(schema.declarations)
+        if (declaration.arbitraryFor != null) {
+          return O.isSome(meta.config) ?
+            declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
+            declaration.arbitraryFor(...meta.metas.map(f))
         }
-        case "String": {
-          let out = string
-          if (meta.minLength !== undefined) {
-            out = minLength(meta.minLength)(out)
-          }
-          if (meta.maxLength !== undefined) {
-            out = maxLength(meta.maxLength)(out)
-          }
-          return out
-        }
-        case "Number": {
-          let out = number
-          if (meta.minimum !== undefined) {
-            out = minimum(meta.minimum)(out)
-          }
-          if (meta.maximum !== undefined) {
-            out = maximum(meta.maximum)(out)
-          }
-          return out
-        }
-        case "Boolean":
-          return boolean
-        case "Equal":
-          return equal(meta.value)
-        case "Tuple": {
-          const components = meta.components.map(f)
-          const out = tuple(...components)
-          if (O.isSome(meta.restElement)) {
-            const restElement = f(meta.restElement.value)
-            return make(
-              S.make(S.mergeMany(components.map((c) => c.declarations))(S.empty), meta),
-              (fc) =>
-                out.arbitrary(fc).chain((as) =>
-                  fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
-                )
-            )
-          }
-          return out
-        }
-        case "Union":
-          return union(...meta.members.map(f))
-        case "Struct": {
-          const fields = {}
-          meta.fields.forEach((field) => {
-            fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
-          })
-          return struct(fields)
-        }
-        case "IndexSignature":
-          return indexSignature(f(meta.value))
-        case "Array":
-          return array(f(meta.item))
+        throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
       }
+      case "String": {
+        let out = string
+        if (meta.minLength !== undefined) {
+          out = minLength(meta.minLength)(out)
+        }
+        if (meta.maxLength !== undefined) {
+          out = maxLength(meta.maxLength)(out)
+        }
+        return out
+      }
+      case "Number": {
+        let out = number
+        if (meta.minimum !== undefined) {
+          out = minimum(meta.minimum)(out)
+        }
+        if (meta.maximum !== undefined) {
+          out = maximum(meta.maximum)(out)
+        }
+        return out
+      }
+      case "Boolean":
+        return boolean
+      case "Equal":
+        return equal(meta.value)
+      case "Tuple": {
+        const components = meta.components.map(f)
+        const out = tuple(...components)
+        if (O.isSome(meta.restElement)) {
+          const restElement = f(meta.restElement.value)
+          return make(
+            S.make(S.mergeMany(components.map((c) => c.declarations))(S.empty), meta),
+            (fc) =>
+              out.arbitrary(fc).chain((as) =>
+                fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
+              )
+          )
+        }
+        return out
+      }
+      case "Union":
+        return union(...meta.members.map(f))
+      case "Struct": {
+        const fields = {}
+        meta.fields.forEach((field) => {
+          fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
+        })
+        return struct(fields)
+      }
+      case "IndexSignature":
+        return indexSignature(f(meta.value))
+      case "Array":
+        return array(f(meta.item))
     }
-    return f(schema.meta)
   }
+  return f(schema.meta)
+}

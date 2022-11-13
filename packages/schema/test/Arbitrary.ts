@@ -32,7 +32,7 @@ const declarations = pipe(
 
 describe("Arbitrary", () => {
   describe("arbitraryFor", () => {
-    const arbitraryFor = A.arbitraryFor(declarations)
+    const arbitraryFor = A.arbitraryFor
     const guardFor = G.guardFor
     const sampleSize = 100
 
