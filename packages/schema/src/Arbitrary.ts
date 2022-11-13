@@ -30,6 +30,11 @@ export const never: Arbitrary<never> = make(S.never, () => {
 /**
  * @since 1.0.0
  */
+export const unknown: Arbitrary<unknown> = make(S.unknown, (fc) => fc.anything())
+
+/**
+ * @since 1.0.0
+ */
 export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 
 /**
@@ -184,6 +189,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       }
       case "Never":
         return never as any
+      case "Unknown":
+        return unknown
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

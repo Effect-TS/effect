@@ -36,6 +36,13 @@ describe("Arbitrary", () => {
     expect(() => A.arbitraryFor(schema).arbitrary(fc)).toThrow()
   })
 
+  it("unknown", () => {
+    const schema = S.unknown
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, 10).every(guard.is)).toEqual(true)
+  })
+
   describe("arbitraryFor", () => {
     const arbitraryFor = A.arbitraryFor
     const guardFor = G.guardFor

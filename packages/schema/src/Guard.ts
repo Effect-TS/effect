@@ -54,6 +54,11 @@ export const never: Guard<never> = make(S.never, (_u: unknown): _u is never => f
 /**
  * @since 1.0.0
  */
+export const unknown: Guard<unknown> = make(S.unknown, (u: unknown): u is unknown => true)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Guard<string> = make(
   S.string,
   (u: unknown): u is string => typeof u === "string"
@@ -225,6 +230,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       }
       case "Never":
         return never as any
+      case "Unknown":
+        return unknown
       case "String": {
         let out = string
         if (meta.minLength !== undefined) {

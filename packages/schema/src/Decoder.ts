@@ -78,6 +78,14 @@ export const never: Decoder<unknown, never> = fromRefinement(
 /**
  * @since 1.0.0
  */
+export const unknown: Decoder<unknown, unknown> = fromRefinement(
+  G.unknown.is,
+  (u) => DE.notType("unknown", u)
+)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Decoder<unknown, string> = fromRefinement(
   G.string.is,
   (u) => DE.notType("string", u)

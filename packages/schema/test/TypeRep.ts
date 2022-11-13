@@ -61,7 +61,9 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
         throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
       }
       case "Never":
-        return make(S.string, "never")
+        return make(S.never, "never") as any
+      case "Unknown":
+        return make(S.unknown, "unknown")
       case "String":
         return make(S.string, "string")
       case "Number":
@@ -140,6 +142,16 @@ describe("typeRepFor", () => {
         "Set<string>"
       )
     })
+  })
+
+  it("never", () => {
+    const schema = S.never
+    expect(pipe(schema, typeRepFor).typeRep).toEqual("never")
+  })
+
+  it("unknown", () => {
+    const schema = S.unknown
+    expect(pipe(schema, typeRepFor).typeRep).toEqual("unknown")
   })
 
   it("struct", () => {

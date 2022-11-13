@@ -35,6 +35,12 @@ describe("Show", () => {
       expect(() => showFor(schema).show(1 as any as never)).toThrow()
     })
 
+    it("unknown", () => {
+      const schema = S.unknown
+      expect(showFor(schema).show(1)).toEqual("1")
+      expect(showFor(schema).show("a")).toEqual("\"a\"")
+    })
+
     it("string", () => {
       const schema = S.string
       expect(showFor(schema).show("a")).toEqual(
