@@ -40,6 +40,21 @@ export const optional = <F extends TypeLambda>(
 /**
  * @since 1.0.0
  */
+export const nullable = <F extends TypeLambda>(
+  F: SchemableFunctor<F>
+): <I, O, E, A>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, A | null> => F.mapSchema(S.nullable)
+
+/**
+ * @since 1.0.0
+ */
+export const nullish = <F extends TypeLambda>(
+  F: SchemableFunctor<F>
+): <I, O, E, A>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, A | null | undefined> =>
+  F.mapSchema(S.nullish)
+
+/**
+ * @since 1.0.0
+ */
 export const pick = <F extends TypeLambda>(
   F: SchemableFunctor<F>
 ) =>
