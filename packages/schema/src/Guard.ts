@@ -5,6 +5,7 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import { flow, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -25,6 +26,29 @@ export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
 ): Guard<A> => ({ declarations, schema, is }) as any
+
+/**
+ * @since 1.0.0
+ */
+export const alias = (symbol: symbol) =>
+  <A>(guard: Guard<A>): Guard<A> => {
+    const schema = S.apply(symbol, O.none)
+    const declarations = pipe(
+      guard.declarations,
+      S.add(symbol, {
+        guardFor: (): Guard<A> => out
+      })
+    )
+    const out = make(declarations, schema, guard.is)
+    return out
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const mapSchema = <A, B>(
+  f: (schema: Schema<A>) => Schema<B>
+) => (guard: Guard<A>): Guard<B> => guardFor(guard.declarations)(f(guard.schema))
 
 /**
  * @since 1.0.0
@@ -183,24 +207,17 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const optional = <A>(
-  item: Guard<A>
-): Guard<A | undefined> =>
-  make(
-    item.declarations,
-    S.optional(item.schema),
-    (a): a is A | undefined => a === undefined || item.is(a)
-  )
+export const optional = mapSchema(S.optional)
 
 /**
  * @since 1.0.0
  */
-export const pick = <A, K extends keyof A>(
-  guard: Guard<A>,
-  ...keys: ReadonlyArray<K>
-): Guard<Pick<A, K>> => {
-  return guardFor(guard.declarations)(S.pick(guard.schema, ...keys))
-}
+export const pick = flow(S.pick, mapSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const omit = flow(S.omit, mapSchema)
 
 /**
  * @since 1.0.0

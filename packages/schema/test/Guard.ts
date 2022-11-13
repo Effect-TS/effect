@@ -7,7 +7,7 @@ const SetSym = Symbol("Set")
 
 const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.apply(SetSym, O.none, item)
 
-const setDeclaration = pipe(
+const setDeclarations = pipe(
   S.empty,
   S.add(SetSym, {
     guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => set(guard)
@@ -16,7 +16,7 @@ const setDeclaration = pipe(
 
 const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
-    setDeclaration,
+    setDeclarations,
     setSchema(item.schema),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
@@ -25,7 +25,7 @@ const bigintSym = Symbol.for("bigint")
 
 const bigintSchema: S.Schema<bigint> = S.apply(bigintSym, O.none)
 
-const bigintDeclaration = pipe(
+const bigintDeclarations = pipe(
   S.empty,
   S.add(bigintSym, {
     guardFor: (): G.Guard<bigint> => bigint
@@ -33,12 +33,21 @@ const bigintDeclaration = pipe(
 )
 
 const bigint = G.make(
-  bigintDeclaration,
+  bigintDeclarations,
   bigintSchema,
   (input): input is bigint => typeof input === "bigint"
 )
 
 describe("Guard", () => {
+  it("alias", () => {
+    const Name = pipe(G.string, G.alias(Symbol.for("Name")))
+    expect(Name.is(null)).toEqual(false)
+    expect(Name.is("a")).toEqual(true)
+    const ReName = G.guardFor(Name.declarations)(Name.schema)
+    expect(ReName.is(null)).toEqual(false)
+    expect(ReName.is("a")).toEqual(true)
+  })
+
   it("bigint", () => {
     const guard = bigint
     expect(guard.is(null)).toEqual(false)
@@ -81,9 +90,9 @@ describe("Guard", () => {
   })
 
   it("pick", () => {
-    const base = G.struct({ a: G.string, b: bigint, c: G.boolean })
-    expect(base.is(null)).toEqual(false)
-    const guard = G.pick(base, "a", "b")
+    const baseGuard = G.struct({ a: G.string, b: bigint, c: G.boolean })
+    expect(baseGuard.is(null)).toEqual(false)
+    const guard = pipe(baseGuard, G.pick("a", "b"))
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: BigInt("1") })).toEqual(true)
     expect(guard.is({ a: "a", b: BigInt("1"), c: true })).toEqual(true)
@@ -93,8 +102,8 @@ describe("Guard", () => {
   it("Set & bigint", () => {
     const declarations = pipe(
       S.empty,
-      S.mergeMany([setDeclaration]),
-      S.mergeMany([bigintDeclaration])
+      S.mergeMany([setDeclarations]),
+      S.mergeMany([bigintDeclarations])
     )
     const guardFor = G.guardFor(declarations)
 
@@ -111,7 +120,7 @@ describe("Guard", () => {
 
     it("pick", () => {
       const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
-      const schema = S.pick(base, "a", "b")
+      const schema = pipe(base, S.pick("a", "b"))
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({ a: "a", b: 1 })).toEqual(true)
@@ -121,7 +130,7 @@ describe("Guard", () => {
 
     it("omit", () => {
       const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
-      const schema = S.omit(base, "c")
+      const schema = pipe(base, S.omit("c"))
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({ a: "a", b: 1 })).toEqual(true)

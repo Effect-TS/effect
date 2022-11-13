@@ -250,34 +250,36 @@ export const array = <B extends boolean, A>(
 /**
  * @since 1.0.0
  */
-export const pick = <A, K extends keyof A>(
-  schema: Schema<A>,
-  ...keys: ReadonlyArray<K>
-): Schema<Pick<A, K>> => {
-  if (meta.isStruct(schema)) {
-    return make(
-      meta.struct(schema.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)))
-    )
+export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) =>
+  (schema: Schema<A>): Schema<{ [P in Keys[number]]: A[P] }> => {
+    if (meta.isStruct(schema)) {
+      return make(
+        meta.struct(
+          schema.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key))
+        )
+      )
+    }
+    throw new Error("cannot `pick` non-Struct schemas")
   }
-  throw new Error("cannot `pick` non-Struct schemas")
-}
 
 /**
  * @since 1.0.0
  */
-export const omit = <A, K extends keyof A>(
-  schema: Schema<A>,
-  ...keys: ReadonlyArray<K>
-): Schema<Pick<A, K>> => {
-  if (meta.isStruct(schema)) {
-    return make(
-      meta.struct(
-        schema.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key))
+export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) =>
+  (schema: Schema<A>): Schema<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
+    if (meta.isStruct(schema)) {
+      return make(
+        meta.struct(
+          schema.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key))
+        )
       )
-    )
+    }
+    throw new Error("cannot `omit` non-Struct schemas")
   }
-  throw new Error("cannot `omit` non-Struct schemas")
-}
 
 /**
  * @since 1.0.0
