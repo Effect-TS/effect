@@ -66,8 +66,8 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
         return make(S.number, "number")
       case "Boolean":
         return make(S.boolean, "boolean")
-      case "Equal":
-        return make(S.equal(meta.value), JSON.stringify(meta.value))
+      case "Of":
+        return make(S.of(meta.value), JSON.stringify(meta.value))
       case "Tuple": {
         const components = meta.components.map(f)
         const restElement = pipe(
@@ -171,8 +171,8 @@ describe("typeRepFor", () => {
     )
   })
 
-  it("literal", () => {
-    const schema = S.equal("a")
+  it("of", () => {
+    const schema = S.of("a")
     expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "\"a\""
     )

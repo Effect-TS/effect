@@ -48,40 +48,40 @@ describe("Decoder", () => {
     expect(decoder.decode(new Set([1, 2, 3]))).toEqual(D.succeed(new Set([1, 2, 3])))
 
     expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
-    expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.type("number", "a")))
+    expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
   })
 
   it("string", () => {
     expect(D.string.decode("a")).toEqual(D.succeed("a"))
 
-    expect(D.string.decode(1)).toEqual(D.fail(DE.type("string", 1)))
+    expect(D.string.decode(1)).toEqual(D.fail(DE.notType("string", 1)))
   })
 
   it("number", () => {
     expect(D.number.decode(1)).toEqual(D.succeed(1))
 
-    expect(D.number.decode("a")).toEqual(D.fail(DE.type("number", "a")))
+    expect(D.number.decode("a")).toEqual(D.fail(DE.notType("number", "a")))
   })
 
   it("boolean", () => {
     expect(D.boolean.decode(true)).toEqual(D.succeed(true))
     expect(D.boolean.decode(false)).toEqual(D.succeed(false))
 
-    expect(D.boolean.decode("a")).toEqual(D.fail(DE.type("boolean", "a")))
+    expect(D.boolean.decode("a")).toEqual(D.fail(DE.notType("boolean", "a")))
   })
 
-  it("literal", () => {
-    const decoder = D.equal(1)
+  it("of", () => {
+    const decoder = D.of(1)
     expect(decoder.decode(1)).toEqual(D.succeed(1))
 
-    expect(decoder.decode("a")).toEqual(D.fail(DE.equal(1, "a")))
+    expect(decoder.decode("a")).toEqual(D.fail(DE.notEqual(1, "a")))
   })
 
   it("tuple", () => {
     const decoder = D.tuple(D.string, D.number)
     expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
-    expect(decoder.decode(["a"])).toEqual(D.fail(DE.type("number", undefined)))
+    expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
   })
 
   describe("readonlyArray", () => {
@@ -90,8 +90,8 @@ describe("Decoder", () => {
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.type("Array", null)))
-      expect(decoder.decode([1])).toEqual(D.fail(DE.type("string", 1)))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Array", null)))
+      expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
     })
 
     it("using both", () => {
@@ -104,16 +104,16 @@ describe("Decoder", () => {
     const decoder = D.struct({ a: D.string, b: D.number })
     expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
-    expect(decoder.decode(null)).toEqual(D.fail(DE.type("Object", null)))
-    expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.type("number", "a")))
-    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.type("string", 1)))
+    expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Object", null)))
+    expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
+    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
   })
 
   it("indexSignature", () => {
     const decoder = D.indexSignature(D.string)
     expect(decoder.decode({ a: "a", b: "b" })).toEqual(D.succeed({ a: "a", b: "b" }))
 
-    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.type("string", 1)))
-    expect(decoder.decode({ a: "a", b: 2 })).toEqual(D.fail(DE.type("string", 2)))
+    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
+    expect(decoder.decode({ a: "a", b: 2 })).toEqual(D.fail(DE.notType("string", 2)))
   })
 })

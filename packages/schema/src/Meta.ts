@@ -11,7 +11,7 @@ export type Meta =
   | String
   | Number
   | Boolean
-  | Equal
+  | Of
   | Array
   | Struct
   | IndexSignature
@@ -111,16 +111,16 @@ export const boolean: Boolean = { _tag: "Boolean" }
 /**
  * @since 1.0.0
  */
-export interface Equal {
-  readonly _tag: "Equal"
+export interface Of {
+  readonly _tag: "Of"
   readonly value: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const equal = (value: unknown): Equal => ({
-  _tag: "Equal",
+export const of = (value: unknown): Of => ({
+  _tag: "Of",
   value
 })
 

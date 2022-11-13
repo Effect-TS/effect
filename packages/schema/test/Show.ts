@@ -51,8 +51,8 @@ describe("Show", () => {
       )
     })
 
-    it("literal", () => {
-      const schema = S.equal(1)
+    it("of", () => {
+      const schema = S.of(1)
       expect(showFor(schema).show(1)).toEqual(
         "1"
       )

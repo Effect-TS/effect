@@ -31,13 +31,13 @@ export const isJson = (u: unknown): u is Json =>
     isJson(u[key])
   ))
 
-const Json: Decoder<unknown, Json> = D.fromRefinement(isJson, (u) => DE.type("Json", u))
+const Json: Decoder<unknown, Json> = D.fromRefinement(isJson, (u) => DE.notType("Json", u))
 
 const isJsonArray = (json: Json): json is ReadonlyArray<Json> => Array.isArray(json)
 
 const JsonArray: Decoder<Json, ReadonlyArray<Json>> = D.fromRefinement(
   isJsonArray,
-  (json) => DE.type("JsonArray", json)
+  (json) => DE.notType("JsonArray", json)
 )
 
 export const isJsonObject = (json: Json): json is { readonly [key: string]: Json } =>
@@ -45,7 +45,7 @@ export const isJsonObject = (json: Json): json is { readonly [key: string]: Json
 
 const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefinement(
   isJsonObject,
-  (json) => DE.type("JsonObject", json)
+  (json) => DE.notType("JsonObject", json)
 )
 
 const decoderFor = (declarations: S.Declarations) =>
@@ -83,8 +83,8 @@ const decoderFor = (declarations: S.Declarations) =>
         }
         case "Boolean":
           return D.boolean
-        case "Equal":
-          return D.equal(meta.value)
+        case "Of":
+          return D.of(meta.value)
         case "Tuple":
           return pipe(JsonArray, D.compose(D.fromTuple(...meta.components.map(f))))
         case "Union":

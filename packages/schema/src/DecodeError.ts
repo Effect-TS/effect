@@ -4,8 +4,8 @@
 
 export type DecodeError =
   | Custom
-  | Type
-  | Equal
+  | NotType
+  | NotEqual
   | NaN
   | MinLength
   | MaxLength
@@ -33,8 +33,8 @@ export const custom = (meta: unknown, actual: unknown): Custom => ({
 /**
  * @since 1.0.0
  */
-export interface Type {
-  readonly _tag: "Type"
+export interface NotType {
+  readonly _tag: "NotType"
   readonly expected: string
   readonly actual: unknown
 }
@@ -42,8 +42,8 @@ export interface Type {
 /**
  * @since 1.0.0
  */
-export const type = (expected: string, actual: unknown): Type => ({
-  _tag: "Type",
+export const notType = (expected: string, actual: unknown): NotType => ({
+  _tag: "NotType",
   expected,
   actual
 })
@@ -51,8 +51,8 @@ export const type = (expected: string, actual: unknown): Type => ({
 /**
  * @since 1.0.0
  */
-export interface Equal {
-  readonly _tag: "Equal"
+export interface NotEqual {
+  readonly _tag: "NotEqual"
   readonly expected: unknown
   readonly actual: unknown
 }
@@ -60,10 +60,10 @@ export interface Equal {
 /**
  * @since 1.0.0
  */
-export const equal = (
+export const notEqual = (
   expected: unknown,
   actual: unknown
-): Equal => ({ _tag: "Equal", expected, actual })
+): NotEqual => ({ _tag: "NotEqual", expected, actual })
 
 /**
  * @since 1.0.0

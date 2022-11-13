@@ -39,7 +39,7 @@ export const showFor = (declarations: S.Declarations) =>
         case "String":
         case "Number":
         case "Boolean":
-        case "Equal":
+        case "Of":
           return make((a) => JSON.stringify(a))
         case "Tuple": {
           const shows: ReadonlyArray<Show<unknown>> = meta.components.map(f)

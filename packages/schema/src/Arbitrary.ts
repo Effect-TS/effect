@@ -82,9 +82,9 @@ export const boolean: Arbitrary<boolean> = make(S.boolean, (fc) => fc.boolean())
 /**
  * @since 1.0.0
  */
-export const equal = <A>(
+export const of = <A>(
   value: A
-): Arbitrary<A> => make(S.equal(value), (fc) => fc.constant(value))
+): Arbitrary<A> => make(S.of(value), (fc) => fc.constant(value))
 
 /**
  * @since 1.0.0
@@ -197,8 +197,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       }
       case "Boolean":
         return boolean
-      case "Equal":
-        return equal(meta.value)
+      case "Of":
+        return of(meta.value)
       case "Tuple": {
         const components = meta.components.map(f)
         const out = tuple(...components)

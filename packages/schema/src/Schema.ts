@@ -197,9 +197,9 @@ export const boolean: Schema<boolean> = make(empty, meta.boolean)
 /**
  * @since 1.0.0
  */
-export const equal = <A>(
+export const of = <A>(
   value: A
-): Schema<A> => make(empty, meta.equal(value))
+): Schema<A> => make(empty, meta.of(value))
 
 /**
  * @since 1.0.0
@@ -331,21 +331,21 @@ export const partial = <A>(
  */
 export const optional = <A>(
   schema: Schema<A>
-): Schema<A | undefined> => union(equal(undefined), schema)
+): Schema<A | undefined> => union(of(undefined), schema)
 
 /**
  * @since 1.0.0
  */
 export const nullable = <A>(
   schema: Schema<A>
-): Schema<A | null> => union(equal(null), schema)
+): Schema<A | null> => union(of(null), schema)
 
 /**
  * @since 1.0.0
  */
 export const nullish = <A>(
   schema: Schema<A>
-): Schema<A | null | undefined> => union(equal(null), equal(undefined), schema)
+): Schema<A | null | undefined> => union(of(null), of(undefined), schema)
 
 /**
  * @since 1.0.0
@@ -371,8 +371,8 @@ export const option = <A>(
   value: Schema<A>
 ): Schema<Option<A>> =>
   union(
-    struct({ _tag: equal("None" as const) }),
-    struct({ _tag: equal("Some" as const), value })
+    struct({ _tag: of("None" as const) }),
+    struct({ _tag: of("Some" as const), value })
   )
 
 /**
@@ -383,8 +383,8 @@ export const either = <E, A>(
   right: Schema<A>
 ): Schema<Either<E, A>> =>
   union(
-    struct({ _tag: equal("Left" as const), left }),
-    struct({ _tag: equal("Right" as const), right })
+    struct({ _tag: of("Left" as const), left }),
+    struct({ _tag: of("Right" as const), right })
   )
 
 /*

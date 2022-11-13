@@ -53,7 +53,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))
 
       expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
-      expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.type("number", "a")))
+      expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.notType("number", "a")))
     })
 
     it("isJson", () => {
@@ -71,14 +71,14 @@ describe("JsonCodec", () => {
       const schema = S.string
       const decoder = decoderFor(schema)
       expect(decoder.decode("a")).toEqual(D.succeed("a"))
-      expect(decoder.decode(1)).toEqual(D.fail(DE.type("string", 1)))
+      expect(decoder.decode(1)).toEqual(D.fail(DE.notType("string", 1)))
     })
 
     it("number", () => {
       const schema = S.number
       const decoder = decoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.succeed(1))
-      expect(decoder.decode("a")).toEqual(D.fail(DE.type("number", "a")))
+      expect(decoder.decode("a")).toEqual(D.fail(DE.notType("number", "a")))
     })
 
     it("boolean", () => {
@@ -86,14 +86,14 @@ describe("JsonCodec", () => {
       const decoder = decoderFor(schema)
       expect(decoder.decode(true)).toEqual(D.succeed(true))
       expect(decoder.decode(false)).toEqual(D.succeed(false))
-      expect(decoder.decode(1)).toEqual(D.fail(DE.type("boolean", 1)))
+      expect(decoder.decode(1)).toEqual(D.fail(DE.notType("boolean", 1)))
     })
 
-    it("literal", () => {
-      const schema = S.equal(1)
+    it("of", () => {
+      const schema = S.of(1)
       const decoder = decoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.succeed(1))
-      expect(decoder.decode("a")).toEqual(D.fail(DE.equal(1, "a")))
+      expect(decoder.decode("a")).toEqual(D.fail(DE.notEqual(1, "a")))
     })
 
     it("tuple", () => {
@@ -101,8 +101,8 @@ describe("JsonCodec", () => {
       const decoder = decoderFor(schema)
       expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
-      expect(decoder.decode(["a"])).toEqual(D.fail(DE.type("number", undefined)))
-      expect(decoder.decode({})).toEqual(D.fail(DE.type("JsonArray", {})))
+      expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
+      expect(decoder.decode({})).toEqual(D.fail(DE.notType("JsonArray", {})))
     })
 
     it("union", () => {
@@ -112,7 +112,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode(1)).toEqual(D.succeed(1))
 
       expect(decoder.decode(null)).toEqual(
-        T.left([DE.type("string", null), DE.type("number", null)])
+        T.left([DE.notType("string", null), DE.notType("number", null)])
       )
     })
 
@@ -121,7 +121,7 @@ describe("JsonCodec", () => {
       const decoder = decoderFor(schema)
       expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
-      expect(decoder.decode({ a: "a" })).toEqual(D.fail(DE.type("number", undefined)))
+      expect(decoder.decode({ a: "a" })).toEqual(D.fail(DE.notType("number", undefined)))
     })
 
     it("indexSignature", () => {
@@ -130,8 +130,8 @@ describe("JsonCodec", () => {
       expect(decoder.decode({})).toEqual(D.succeed({}))
       expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
-      expect(decoder.decode([])).toEqual(D.fail(DE.type("JsonObject", [])))
-      expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.type("string", 1)))
+      expect(decoder.decode([])).toEqual(D.fail(DE.notType("JsonObject", [])))
+      expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
     })
 
     it("array", () => {
@@ -140,7 +140,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
-      expect(decoder.decode([1])).toEqual(D.fail(DE.type("string", 1)))
+      expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
     })
 
     it("minLength", () => {

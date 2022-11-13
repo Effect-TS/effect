@@ -117,9 +117,9 @@ export const boolean: Guard<boolean> = make(
 /**
  * @since 1.0.0
  */
-export const equal = <A>(
+export const of = <A>(
   value: A
-): Guard<A> => make(S.equal(value), (u: unknown): u is A => u === value)
+): Guard<A> => make(S.of(value), (u: unknown): u is A => u === value)
 
 /**
  * @since 1.0.0
@@ -240,8 +240,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       }
       case "Boolean":
         return boolean
-      case "Equal":
-        return equal(meta.value)
+      case "Of":
+        return of(meta.value)
       case "Tuple": {
         const components = meta.components.map(f)
         const out = tuple(...components)

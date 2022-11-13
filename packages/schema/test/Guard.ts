@@ -234,8 +234,8 @@ describe("Guard", () => {
       expect(guard.is(1)).toEqual(false)
     })
 
-    it("literal", () => {
-      const schema = S.equal(1)
+    it("of", () => {
+      const schema = S.of(1)
       const guard = guardFor(schema)
       expect(guard.is(1)).toEqual(true)
       expect(guard.is(2)).toEqual(false)

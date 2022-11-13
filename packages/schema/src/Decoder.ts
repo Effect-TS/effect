@@ -72,7 +72,7 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
  */
 export const string: Decoder<unknown, string> = fromRefinement(
   G.string.is,
-  (u) => DE.type("string", u)
+  (u) => DE.notType("string", u)
 )
 
 /**
@@ -126,7 +126,7 @@ export const maximum = (
  */
 export const number: Decoder<unknown, number> = fromRefinement(
   G.number.is,
-  (u) => DE.type("number", u)
+  (u) => DE.notType("number", u)
 )
 
 /**
@@ -134,22 +134,22 @@ export const number: Decoder<unknown, number> = fromRefinement(
  */
 export const boolean: Decoder<unknown, boolean> = fromRefinement(
   G.boolean.is,
-  (u) => DE.type("boolean", u)
+  (u) => DE.notType("boolean", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const equal = <A>(
+export const of = <A>(
   value: A
 ): Decoder<unknown, A> =>
   fromRefinement(
-    G.equal(value).is,
-    (u) => DE.equal(value, u)
+    G.of(value).is,
+    (u) => DE.notEqual(value, u)
   )
 
 const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>
-  Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.type("Array", u))
+  Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.notType("Array", u))
 )
 
 /**
@@ -227,7 +227,7 @@ const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }>
 ) =>
   typeof u === "object" && u != null && !Array.isArray(u) ?
     succeed(u as any) :
-    fail(DE.type("Object", u))
+    fail(DE.notType("Object", u))
 )
 
 /**
