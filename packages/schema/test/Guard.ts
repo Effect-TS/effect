@@ -17,7 +17,7 @@ const setDeclarations = pipe(
 const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
     setDeclarations,
-    setSchema(S.make(item.meta)).meta,
+    setSchema(item),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
@@ -34,7 +34,7 @@ const bigintDeclarations = pipe(
 
 const bigint = G.make(
   bigintDeclarations,
-  bigintSchema.meta,
+  bigintSchema,
   (input): input is bigint => typeof input === "bigint"
 )
 
