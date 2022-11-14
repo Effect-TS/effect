@@ -1,11 +1,13 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
+import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 const nan: D.Decoder<unknown, number> = pipe(
   D.number,
-  D.compose(D.make((n) => Number.isNaN(n) ? T.both([DE.nan], n) : D.succeed(n)))
+  D.compose(D.make(S.of(NaN), (n) => Number.isNaN(n) ? T.both([DE.nan], n) : D.succeed(n)))
 )
 
 describe("Decoder", () => {
@@ -22,33 +24,29 @@ describe("Decoder", () => {
   })
 
   it("should allow custom errors", () => {
-    interface SetError {
-      readonly _tag: "SetError"
-    }
-    const setError: SetError = { _tag: "SetError" }
-    const set = <A>(
-      item: D.Decoder<unknown, A>
-    ): D.Decoder<unknown, Set<A>> =>
-      D.make((u) => {
-        if (!(u instanceof Set)) {
-          return D.fail(DE.custom(setError, u))
-        }
-        const out: Set<unknown> = new Set()
-        for (const v of u.values()) {
-          const t = item.decode(v)
-          if (T.isLeft(t)) {
-            return T.left(t.left)
-          }
-          out.add(t.right)
-        }
-        return D.succeed(out as any)
-      })
-    const decoder = set(D.number)
-    expect(decoder.decode(new Set())).toEqual(D.succeed(new Set()))
-    expect(decoder.decode(new Set([1, 2, 3]))).toEqual(D.succeed(new Set([1, 2, 3])))
+    const bigintSym = Symbol.for("bigint")
 
-    expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
-    expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
+    const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {
+      decoderFor: (): D.Decoder<unknown, bigint> => bigint
+    })
+
+    interface NoBigInt {
+      readonly _tag: "NoBigInt"
+    }
+
+    const noBigInt: NoBigInt = { _tag: "NoBigInt" }
+
+    const bigint = D.make(
+      bigintS,
+      (u) => typeof u === "bigint" ? D.succeed(u) : D.fail(DE.custom(noBigInt, u))
+    )
+
+    const decoder = bigint
+    expect(decoder.decode(BigInt("1"))).toEqual(D.succeed(BigInt("1")))
+    // expect(decoder.decode(new Set([1, 2, 3]))).toEqual(D.succeed(new Set([1, 2, 3])))
+
+    // expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
+    // expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
   })
 
   it("never", () => {

@@ -4,31 +4,32 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
-// import * as S from "@fp-ts/codec/Schema"
+import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
 /**
  * @since 1.0.0
  */
-export interface Decoder<in I, in out A> {
+export interface Decoder<in I, in out A> extends Schema<A> {
   readonly I: (_: I) => void
-  readonly A: (_: A) => A
   readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>
 }
 
 /**
  * @since 1.0.0
  */
-export const make = <I, A>(decode: Decoder<I, A>["decode"]): Decoder<I, A> => ({ decode }) as any
+export const make = <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]): Decoder<I, A> =>
+  ({ meta: schema.meta, decode }) as any
 
 /**
  * @since 1.0.0
  */
-export const fromRefinement = <A, B extends A>(
-  is: (a: A) => a is B,
-  onFalse: (a: A) => DE.DecodeError
-): Decoder<A, B> => make((a) => is(a) ? succeed(a) : fail(onFalse(a)))
+export const fromGuard = <A>(
+  guard: G.Guard<A>,
+  onFalse: (u: unknown) => DE.DecodeError
+): Decoder<unknown, A> => make(guard, (u) => guard.is(u) ? succeed(u) : fail(onFalse(u)))
 
 /**
  * @since 1.0.0
@@ -65,60 +66,53 @@ export const flatMap = <A, E2, B>(
  * @since 1.0.0
  */
 export const compose = <B, C>(bc: Decoder<B, C>) =>
-  <A>(ab: Decoder<A, B>): Decoder<A, C> => make((a) => pipe(ab.decode(a), flatMap(bc.decode)))
+  <A>(ab: Decoder<A, B>): Decoder<A, C> => make(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
 /**
  * @since 1.0.0
  */
-export const never: Decoder<unknown, never> = fromRefinement(
-  G.never.is,
+export const never: Decoder<unknown, never> = fromGuard(
+  G.never,
   (u) => DE.notType("never", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const unknown: Decoder<unknown, unknown> = fromRefinement(
-  G.unknown.is,
+export const unknown: Decoder<unknown, unknown> = fromGuard(
+  G.unknown,
   (u) => DE.notType("unknown", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const any: Decoder<unknown, any> = fromRefinement(
-  G.any.is,
+export const any: Decoder<unknown, any> = fromGuard(
+  G.any,
   (u) => DE.notType("any", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const string: Decoder<unknown, string> = fromRefinement(
-  G.string.is,
+export const string: Decoder<unknown, string> = fromGuard(
+  G.string,
   (u) => DE.notType("string", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const refinement = <A, B extends A>(refinement: (a: A) => a is B, onFalse: DE.DecodeError) =>
-  <I>(self: Decoder<I, A>): Decoder<I, B> =>
-    make((i) => pipe(self.decode(i), flatMap((a) => refinement(a) ? succeed(a) : fail(onFalse))))
-
-/**
- * @since 1.0.0
- */
-export const filter = <A>(predicate: (a: A) => boolean, onFalse: DE.DecodeError) =>
-  <I, B extends A>(self: Decoder<I, B>): Decoder<I, B> =>
-    refinement((b: B): b is B => predicate(b), onFalse)(self)
-
-/**
- * @since 1.0.0
- */
 export const minLength = (minLength: number) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
-    filter((a: A) => a.length >= minLength, DE.minLength(minLength))(self)
+    make(
+      S.minLength(minLength)(self),
+      (i) =>
+        pipe(
+          self.decode(i),
+          flatMap((a) => a.length >= minLength ? succeed(a) : fail(DE.minLength(minLength)))
+        )
+    )
 
 /**
  * @since 1.0.0
@@ -127,14 +121,28 @@ export const maxLength = (
   maxLength: number
 ) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
-    filter((a: A) => a.length <= maxLength, DE.maxLength(maxLength))(self)
+    make(
+      S.maxLength(maxLength)(self),
+      (i) =>
+        pipe(
+          self.decode(i),
+          flatMap((a) => a.length <= maxLength ? succeed(a) : fail(DE.maxLength(maxLength)))
+        )
+    )
 
 /**
  * @since 1.0.0
  */
 export const minimum = (minimum: number) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
-    filter((a: A) => a >= minimum, DE.minimum(minimum))(self)
+    make(
+      S.minimum(minimum)(self),
+      (i) =>
+        pipe(
+          self.decode(i),
+          flatMap((a) => a >= minimum ? succeed(a) : fail(DE.minimum(minimum)))
+        )
+    )
 
 /**
  * @since 1.0.0
@@ -143,21 +151,28 @@ export const maximum = (
   maximum: number
 ) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
-    filter((a: A) => a <= maximum, DE.maximum(maximum))(self)
+    make(
+      S.maximum(maximum)(self),
+      (i) =>
+        pipe(
+          self.decode(i),
+          flatMap((a) => a <= maximum ? succeed(a) : fail(DE.maximum(maximum)))
+        )
+    )
 
 /**
  * @since 1.0.0
  */
-export const number: Decoder<unknown, number> = fromRefinement(
-  G.number.is,
+export const number: Decoder<unknown, number> = fromGuard(
+  G.number,
   (u) => DE.notType("number", u)
 )
 
 /**
  * @since 1.0.0
  */
-export const boolean: Decoder<unknown, boolean> = fromRefinement(
-  G.boolean.is,
+export const boolean: Decoder<unknown, boolean> = fromGuard(
+  G.boolean,
   (u) => DE.notType("boolean", u)
 )
 
@@ -167,13 +182,14 @@ export const boolean: Decoder<unknown, boolean> = fromRefinement(
 export const of = <A>(
   value: A
 ): Decoder<unknown, A> =>
-  fromRefinement(
-    G.of(value).is,
+  fromGuard(
+    G.of(value),
     (u) => DE.notEqual(value, u)
   )
 
-const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make((u) =>
-  Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.notType("Array", u))
+const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make(
+  S.array(true, S.unknown),
+  (u) => Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.notType("Array", u))
 )
 
 /**
@@ -186,6 +202,7 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
   { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
 > =>
   make(
+    S.tuple(true, ...components),
     (is) => {
       const out: Array<unknown> = []
       for (let i = 0; i < components.length; i++) {
@@ -213,7 +230,7 @@ export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
 export const fromReadonlyArray = <I, A>(
   item: Decoder<I, A>
 ): Decoder<ReadonlyArray<I>, ReadonlyArray<A>> =>
-  make((is) => {
+  make(S.array(true, item), (is) => {
     const es: Array<DE.DecodeError> = []
     const as: Array<A> = []
     let isBoth = true
@@ -246,12 +263,14 @@ export const readonlyArray = <A>(
 /**
  * @since 1.0.0
  */
-const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = make((
-  u
-) =>
-  typeof u === "object" && u != null && !Array.isArray(u) ?
-    succeed(u as any) :
-    fail(DE.notType("Object", u))
+const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = make(
+  S.indexSignature(S.unknown),
+  (
+    u
+  ) =>
+    typeof u === "object" && u != null && !Array.isArray(u) ?
+      succeed(u as any) :
+      fail(DE.notType("Object", u))
 )
 
 /**
@@ -264,7 +283,11 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
   { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }
 > => {
   const keys = Object.keys(fields)
-  return make((input: { readonly [_: string]: I }) => {
+  const schemas = {}
+  keys.forEach((key) => {
+    schemas[key] = fields[key]
+  })
+  return make(S.struct(schemas), (input: { readonly [_: string]: I }) => {
     const a = {}
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
@@ -296,7 +319,7 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>
 export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ...members: Members
 ): Decoder<I, Parameters<Members[number]["A"]>[0]> =>
-  make((u) => {
+  make(S.union(...members), (u) => {
     const lefts: Array<DE.DecodeError> = []
     for (const member of members) {
       const t = member.decode(u)
@@ -314,19 +337,17 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
 export const fromIndexSignature = <I, A>(
   value: Decoder<I, A>
 ): Decoder<{ readonly [_: string]: I }, { readonly [_: string]: A }> =>
-  make(
-    (ri) => {
-      const out = {}
-      for (const key of Object.keys(ri)) {
-        const t = value.decode(ri[key])
-        if (T.isLeft(t)) {
-          return t
-        }
-        out[key] = t.right
+  make(S.indexSignature(value), (ri) => {
+    const out = {}
+    for (const key of Object.keys(ri)) {
+      const t = value.decode(ri[key])
+      if (T.isLeft(t)) {
+        return t
       }
-      return succeed(out as any)
+      out[key] = t.right
     }
-  )
+    return succeed(out as any)
+  })
 
 /**
  * @since 1.0.0

@@ -24,29 +24,11 @@ export type Json =
   | ReadonlyArray<Json>
   | { readonly [key: string]: Json }
 
-/** @internal */
-export const isJson = (u: unknown): u is Json =>
-  u === null || G.string.is(u) || G.number.is(u) || G.boolean.is(u) ||
-  (Array.isArray(u) && u.every(isJson)) || (typeof u === "object" && Object.keys(u).every((key) =>
-    isJson(u[key])
-  ))
+const Json: Decoder<unknown, Json> = D.fromGuard(G.Json, (u) => DE.notType("Json", u))
 
-const Json: Decoder<unknown, Json> = D.fromRefinement(isJson, (u) => DE.notType("Json", u))
+const JsonArray: Decoder<Json, ReadonlyArray<Json>> = D.readonlyArray(Json)
 
-const isJsonArray = (json: Json): json is ReadonlyArray<Json> => Array.isArray(json)
-
-const JsonArray: Decoder<Json, ReadonlyArray<Json>> = D.fromRefinement(
-  isJsonArray,
-  (json) => DE.notType("JsonArray", json)
-)
-
-export const isJsonObject = (json: Json): json is { readonly [key: string]: Json } =>
-  json !== null && typeof json === "object" && (!Array.isArray(json))
-
-const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefinement(
-  isJsonObject,
-  (json) => DE.notType("JsonObject", json)
-)
+const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.indexSignature(Json)
 
 const unsafeDecoderFor = (declarations: Declarations) =>
   <A>(schema: Schema<A>): Decoder<Json, A> => {

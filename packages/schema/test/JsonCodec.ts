@@ -16,7 +16,7 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   }, item)
 
 const set = <A>(item: D.Decoder<JC.Json, A>): D.Decoder<JC.Json, Set<A>> =>
-  D.make((u) => {
+  D.make(setS(item), (u) => {
     if (!(Array.isArray(u))) {
       return D.fail(DE.custom(setError, u))
     }
@@ -60,17 +60,6 @@ describe("JsonCodec", () => {
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.notType("number", "a")))
     })
 
-    it("isJson", () => {
-      expect(JC.isJson(null)).toEqual(true)
-      expect(JC.isJson("a")).toEqual(true)
-      expect(JC.isJson(1)).toEqual(true)
-      expect(JC.isJson(true)).toEqual(true)
-      expect(JC.isJson([])).toEqual(true)
-      expect(JC.isJson([1])).toEqual(true)
-      expect(JC.isJson({})).toEqual(true)
-      expect(JC.isJson({ a: 1 })).toEqual(true)
-    })
-
     it("string", () => {
       const schema = S.string
       const decoder = unsafeDecoderFor(schema)
@@ -106,7 +95,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
       expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
-      expect(decoder.decode({})).toEqual(D.fail(DE.notType("JsonArray", {})))
+      expect(decoder.decode({})).toEqual(D.fail(DE.notType("Array", {})))
     })
 
     it("union", () => {
@@ -134,7 +123,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode({})).toEqual(D.succeed({}))
       expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
-      expect(decoder.decode([])).toEqual(D.fail(DE.notType("JsonObject", [])))
+      expect(decoder.decode([])).toEqual(D.fail(DE.notType("Object", [])))
       expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
     })
 
