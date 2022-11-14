@@ -305,9 +305,10 @@ export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {
  * @since 1.0.0
  */
 export const lazy = <A>(
+  symbol: symbol,
   f: () => Schema<A>
 ): Schema<A> => {
-  return make(meta.lazy(() => f().meta))
+  return make(meta.lazy(symbol, () => f().meta))
 }
 
 /**

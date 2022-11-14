@@ -101,12 +101,11 @@ describe("Guard", () => {
       readonly name: string
       readonly categories: Set<Category>
     }
-    const guard: G.Guard<Category> = G.lazy<Category>(() =>
+    const guard: G.Guard<Category> = G.lazy<Category>(Symbol.for("Category"), () =>
       G.struct({
         name: G.string,
         categories: set(guard)
-      })
-    )
+      }))
     expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
     expect(
       guard.is({
@@ -129,18 +128,16 @@ describe("Guard", () => {
       readonly b: number
       readonly as: Set<A>
     }
-    const A: G.Guard<A> = G.lazy<A>(() =>
+    const A: G.Guard<A> = G.lazy<A>(Symbol.for("A"), () =>
       G.struct({
         a: G.string,
         bs: set(B)
-      })
-    )
-    const B: G.Guard<B> = G.lazy<B>(() =>
+      }))
+    const B: G.Guard<B> = G.lazy<B>(Symbol.for("B"), () =>
       G.struct({
         b: G.number,
         as: set(A)
-      })
-    )
+      }))
     expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
     expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)
     expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([]) }]) }]) }))
@@ -169,11 +166,13 @@ describe("Guard", () => {
         readonly name: string
         readonly categories: Set<Category>
       }
-      const CategoryS: S.Schema<Category> = S.lazy<Category>(() =>
-        S.struct({
-          name: S.string,
-          categories: setS(CategoryS)
-        })
+      const CategoryS: S.Schema<Category> = S.lazy<Category>(
+        Symbol.for("Category"),
+        () =>
+          S.struct({
+            name: S.string,
+            categories: setS(CategoryS)
+          })
       )
       const guard = unsafeGuardFor(CategoryS)
       expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
@@ -198,18 +197,16 @@ describe("Guard", () => {
         readonly b: number
         readonly as: Set<A>
       }
-      const AS: S.Schema<A> = S.lazy<A>(() =>
+      const AS: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
         S.struct({
           a: S.string,
           bs: setS(BS)
-        })
-      )
-      const BS: S.Schema<B> = S.lazy<B>(() =>
+        }))
+      const BS: S.Schema<B> = S.lazy<B>(Symbol.for("B"), () =>
         S.struct({
           b: S.number,
           as: setS(AS)
-        })
-      )
+        }))
       const A = unsafeGuardFor(AS)
       expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
       expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)

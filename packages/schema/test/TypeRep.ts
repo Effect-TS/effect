@@ -38,6 +38,17 @@ const bigintS: Schema<bigint> = S.apply(bigintSym, O.none, {
 
 const bigint: TypeRep<bigint> = make(bigintS, "bigint")
 
+export const lazy = <A>(
+  symbol: symbol,
+  f: () => TypeRep<A>
+): TypeRep<A> => {
+  const schema = S.lazy(symbol, f)
+  return make(
+    schema,
+    symbol.description ?? "<Anonymous Lazy type>"
+  )
+}
+
 export const unsafeTypeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
   const f = (meta: Meta): TypeRep<any> => {
     switch (meta._tag) {
@@ -116,7 +127,7 @@ export const unsafeTypeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
         )
       }
       case "Lazy":
-        throw new Error("Lazy")
+        return lazy(meta.symbol, () => f(meta.f()))
     }
   }
   return f(schema.meta)
@@ -128,6 +139,25 @@ describe("unsafeTypeRepFor", () => {
       const schema = bigintS
       const typeRep = pipe(schema, unsafeTypeRepFor)
       expect(typeRep.typeRep).toEqual("bigint")
+    })
+
+    it("recursive", () => {
+      interface Category {
+        readonly name: string
+        readonly categories: Set<Category>
+      }
+      const CategoryS: S.Schema<Category> = S.lazy<Category>(
+        Symbol.for("Category"),
+        () =>
+          S.struct({
+            name: S.string,
+            categories: setS(false, CategoryS)
+          })
+      )
+      const typeRep = pipe(CategoryS, unsafeTypeRepFor)
+      expect(typeRep.typeRep).toEqual(
+        "Category"
+      )
     })
 
     it("kind 1", () => {

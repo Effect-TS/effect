@@ -304,13 +304,15 @@ export const union = (members: ReadonlyArray<Meta>): Union => ({
  */
 export interface Lazy {
   readonly _tag: "Lazy"
+  readonly symbol: symbol
   readonly f: () => Meta
 }
 
 /**
  * @since 1.0.0
  */
-export const lazy = (f: () => Meta): Lazy => ({
+export const lazy = (symbol: symbol, f: () => Meta): Lazy => ({
   _tag: "Lazy",
+  symbol,
   f
 })

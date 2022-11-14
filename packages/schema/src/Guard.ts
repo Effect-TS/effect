@@ -204,10 +204,11 @@ export const array = <A>(
  * @since 1.0.0
  */
 export const lazy = <A>(
+  symbol: symbol,
   f: () => Guard<A>
 ): Guard<A> => {
   const get = S.memoize<void, Guard<A>>(f)
-  const schema = S.lazy(f)
+  const schema = S.lazy(symbol, f)
   return make(
     schema,
     (a): a is A => get().is(a)
@@ -302,7 +303,7 @@ export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
       case "Array":
         return array(f(meta.item))
       case "Lazy":
-        return lazy(() => f(meta.f()))
+        return lazy(meta.symbol, () => f(meta.f()))
     }
   }
   return f(schema.meta)
