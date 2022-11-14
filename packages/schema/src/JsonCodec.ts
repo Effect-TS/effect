@@ -89,7 +89,7 @@ const unsafeDecoderFor = (declarations: Declarations) =>
         case "Array":
           return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
         case "Lazy":
-          throw new Error("Lazy")
+          return D.lazy(meta.symbol, () => f(meta.f()))
       }
     }
     return f(schema.meta)

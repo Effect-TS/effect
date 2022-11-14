@@ -177,6 +177,22 @@ export const array = <A>(
     (fc) => fc.array(item.arbitrary(fc))
   )
 
+// TODO
+/**
+ * @since 1.0.0
+ */
+export const lazy = <A>(
+  symbol: symbol,
+  f: () => Arbitrary<A>
+): Arbitrary<A> => {
+  const get = S.memoize<void, Arbitrary<A>>(f)
+  const schema = S.lazy(symbol, f)
+  return make(
+    schema,
+    (fc) => get().arbitrary(fc)
+  )
+}
+
 /**
  * @since 1.0.0
  */
@@ -251,7 +267,8 @@ export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "Array":
         return array(f(meta.item))
       case "Lazy":
-        throw new Error("Lazy")
+        // TODO
+        return lazy(meta.symbol, () => f(meta.f()))
     }
   }
   return f(schema.meta)

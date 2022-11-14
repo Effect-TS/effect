@@ -57,6 +57,22 @@ describe("Arbitrary", () => {
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
+    it.skip("lazy", () => {
+      interface A {
+        readonly a: string
+        readonly as: Set<A>
+      }
+      const A: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+        S.struct({
+          a: S.string,
+          as: setS(A)
+        }))
+      const schema = setS(A)
+      const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
+      const guard = unsafeGuardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
     it("string", () => {
       const schema = S.string
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)

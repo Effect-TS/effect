@@ -359,3 +359,18 @@ export const indexSignature = <A>(
     UnknownIndexSignature,
     compose(fromIndexSignature(value))
   )
+
+/**
+ * @since 1.0.0
+ */
+export const lazy = <I, A>(
+  symbol: symbol,
+  f: () => Decoder<I, A>
+): Decoder<I, A> => {
+  const get = S.memoize<void, Decoder<I, A>>(f)
+  const schema = S.lazy(symbol, f)
+  return make(
+    schema,
+    (a) => get().decode(a)
+  )
+}

@@ -182,5 +182,25 @@ describe("JsonCodec", () => {
       expect(decoder.decode("a")).toEqual(D.fail(DE.minLength(2)))
       expect(decoder.decode("aaaaa")).toEqual(D.fail(DE.maxLength(4)))
     })
+
+    it("lazy", () => {
+      interface A {
+        readonly a: string
+        readonly as: ReadonlyArray<A>
+      }
+      const schema: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+        S.struct({
+          a: S.string,
+          as: S.array(true, schema)
+        }))
+      const decoder = unsafeDecoderFor(schema)
+      expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))
+      expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(
+        D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
+      )
+      expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
+        D.fail(DE.notType("Object", 1))
+      )
+    })
   })
 })

@@ -128,4 +128,23 @@ describe("Decoder", () => {
     expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
     expect(decoder.decode({ a: "a", b: 2 })).toEqual(D.fail(DE.notType("string", 2)))
   })
+
+  it("lazy", () => {
+    interface A {
+      readonly a: string
+      readonly as: ReadonlyArray<A>
+    }
+    const decoder: D.Decoder<unknown, A> = D.lazy<unknown, A>(Symbol.for("A"), () =>
+      D.struct({
+        a: D.string,
+        as: D.readonlyArray(decoder)
+      }))
+    expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))
+    expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(
+      D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
+    )
+    expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
+      D.fail(DE.notType("Object", 1))
+    )
+  })
 })
