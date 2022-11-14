@@ -9,7 +9,11 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
+  S.apply(SetSym, O.none, {
+    decoderFor: <A>(
+      item: D.Decoder<JC.Json, A>
+    ): D.Decoder<JC.Json, Set<A>> => set(item)
+  }, item)
 
 const set = <A>(item: D.Decoder<JC.Json, A>): D.Decoder<JC.Json, Set<A>> =>
   D.make((u) => {

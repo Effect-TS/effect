@@ -18,7 +18,7 @@ export interface Arbitrary<in out A> extends S.Schema<A> {
  * @since 1.0.0
  */
 export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
-  ({ declarations: schema.declarations, meta: schema.meta, arbitrary }) as any
+  ({ meta: schema.meta, arbitrary }) as any
 
 /**
  * @since 1.0.0
@@ -184,7 +184,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
       case "Apply": {
-        const declaration = S.unsafeGet(meta.symbol)(schema.declarations)
+        const declaration = meta.declaration
         if (declaration.arbitraryFor != null) {
           return O.isSome(meta.config) ?
             declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
@@ -228,7 +228,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         if (O.isSome(meta.restElement)) {
           const restElement = f(meta.restElement.value)
           return make(
-            S.make(S.mergeMany(components.map((c) => c.declarations))(S.empty), meta),
+            S.make(meta),
             (fc) =>
               out.arbitrary(fc).chain((as) =>
                 fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])

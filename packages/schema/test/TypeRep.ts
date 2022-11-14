@@ -9,7 +9,7 @@ interface TypeRep<in out A> extends S.Schema<A> {
 }
 
 const make = <A>(schema: Schema<A>, typeRep: string): TypeRep<A> =>
-  ({ declarations: schema.declarations, meta: schema.meta, typeRep }) as any
+  ({ meta: schema.meta, typeRep }) as any
 
 const SetSym = Symbol("Set")
 
@@ -17,7 +17,9 @@ const setSchema = <B extends boolean, A>(
   readonly: B,
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
-  S.apply(SetSym, O.some(readonly), pipe(setDeclarations, S.mergeMany([item.declarations])), item)
+  S.apply(SetSym, O.some(readonly), {
+    typeRepFor: <A>(readonly: boolean, item: TypeRep<A>) => set(readonly, item)
+  }, item)
 
 const set = <B extends boolean, A>(
   readonly: B,
@@ -28,23 +30,11 @@ const set = <B extends boolean, A>(
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
-const setDeclarations = pipe(
-  S.empty,
-  S.add(SetSym, {
-    typeRepFor: <A>(readonly: boolean, item: TypeRep<A>) => set(readonly, item)
-  })
-)
-
 const bigintSym = Symbol.for("bigint")
 
-const bigintDeclarations = pipe(
-  S.empty,
-  S.add(bigintSym, {
-    typeRepFor: () => bigint
-  })
-)
-
-const bigintSchema: Schema<bigint> = S.apply(bigintSym, O.none, bigintDeclarations)
+const bigintSchema: Schema<bigint> = S.apply(bigintSym, O.none, {
+  typeRepFor: () => bigint
+})
 
 const bigint: TypeRep<bigint> = make(bigintSchema, "bigint")
 
@@ -52,7 +42,7 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
   const f = (meta: Meta): TypeRep<any> => {
     switch (meta._tag) {
       case "Apply": {
-        const declaration = S.unsafeGet(meta.symbol)(schema.declarations)
+        const declaration = meta.declaration
         if (declaration.typeRepFor !== undefined) {
           return O.isSome(meta.config) ?
             declaration.typeRepFor(meta.config.value, ...meta.metas.map(f)) :

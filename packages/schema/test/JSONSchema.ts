@@ -1,4 +1,4 @@
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Declarations, Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -24,7 +24,7 @@ const declarations = pipe(
   S.empty
 )
 
-export const jsonSchemaFor = (declarations: S.Declarations) =>
+export const jsonSchemaFor = (declarations: Declarations) =>
   <A>(schema: Schema<A>): JSONSchema => {
     const f = (meta: Meta): JSONSchema => {
       switch (meta._tag) {

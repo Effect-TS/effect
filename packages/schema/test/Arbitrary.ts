@@ -8,7 +8,10 @@ import * as fc from "fast-check"
 const SetSym = Symbol("Set")
 
 const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, pipe(declarations, S.mergeMany([item.declarations])), item)
+  S.apply(SetSym, O.none, {
+    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => setArbitrary(item),
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setGuard(guard)
+  }, item)
 
 const setGuard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
@@ -21,14 +24,6 @@ const setArbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
     setSchema(item),
     (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
   )
-
-const declarations = pipe(
-  S.empty,
-  S.add(SetSym, {
-    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => setArbitrary(item),
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setGuard(guard)
-  })
-)
 
 describe("Arbitrary", () => {
   it("never", () => {

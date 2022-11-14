@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Declaration, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import { flow, pipe } from "@fp-ts/data/Function"
+import { flow } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -21,20 +21,17 @@ export interface Guard<in out A> extends Schema<A> {
 export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
-): Guard<A> => ({ declarations: schema.declarations, meta: schema.meta, is }) as any
+): Guard<A> => ({ meta: schema.meta, is }) as any
 
 /**
  * @since 1.0.0
  */
 export const alias = (symbol: symbol) =>
   <A>(guard: Guard<A>): Guard<A> => {
-    const declarations = pipe(
-      guard.declarations,
-      S.add(symbol, {
-        guardFor: (): Guard<A> => out
-      })
-    )
-    const schema = S.apply(symbol, O.none, declarations)
+    const declaration: Declaration = {
+      guardFor: (): Guard<A> => out
+    }
+    const schema = S.apply(symbol, O.none, declaration)
     const out = make(schema, guard.is)
     return out
   }
@@ -239,7 +236,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Apply": {
-        const declaration = S.unsafeGet(meta.symbol)(S.getDeclarations(schema))
+        const declaration = meta.declaration
         if (declaration.guardFor !== undefined) {
           return O.isSome(meta.config) ?
             declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
@@ -283,7 +280,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         if (O.isSome(meta.restElement)) {
           const restElement = f(meta.restElement.value)
           return make(
-            S.make(S.mergeMany(components.map((c) => c.declarations))(S.empty), meta),
+            S.make(meta),
             (a): a is any =>
               out.is(a) &&
               a.slice(components.length).every(restElement.is)

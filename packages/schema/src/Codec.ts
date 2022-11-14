@@ -4,7 +4,8 @@
 
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
-import type { Declarations, Schema } from "@fp-ts/codec/Schema"
+import type { Declarations } from "@fp-ts/codec/Meta"
+import type { Schema } from "@fp-ts/codec/Schema"
 
 /**
  * @since 1.0.0
