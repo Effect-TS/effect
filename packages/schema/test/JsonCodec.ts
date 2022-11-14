@@ -39,6 +39,28 @@ interface SetError {
 const setError: SetError = { _tag: "SetError" }
 
 describe("JsonCodec", () => {
+  describe("unsafeEncoderFor", () => {
+    const unsafeEncoderFor = JC.JsonCodec.unsafeEncoderFor
+
+    it("string", () => {
+      const schema = S.string
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode("a")).toEqual("a")
+    })
+
+    it("number", () => {
+      const schema = S.number
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode(1)).toEqual(1)
+    })
+
+    it("tuple", () => {
+      const schema = S.tuple(true, S.string, S.number)
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode(["a", 1])).toEqual(["a", 1])
+    })
+  })
+
   describe("unsafeDecoderFor", () => {
     const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor
 

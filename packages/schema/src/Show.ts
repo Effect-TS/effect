@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { unsafeGuardFor } from "@fp-ts/codec/Guard"
+import * as G from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -82,8 +82,8 @@ export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => {
           ) + "]")
       }
       case "Union": {
-        const members: ReadonlyArray<Show<unknown>> = meta.members.map(f)
-        const guards = meta.members.map((member) => unsafeGuardFor(S.make(member)))
+        const members = meta.members.map(f)
+        const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
         return make(S.union(...members), (a) => {
           const index = guards.findIndex((guard) => guard.is(a))
           return members[index].show(a)
