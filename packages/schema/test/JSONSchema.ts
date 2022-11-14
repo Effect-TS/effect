@@ -24,7 +24,7 @@ const declarations = pipe(
   S.empty
 )
 
-export const jsonSchemaFor = (declarations: Declarations) =>
+export const unsafeJsonSchemaFor = (declarations: Declarations) =>
   <A>(schema: Schema<A>): JSONSchema => {
     const f = (meta: Meta): JSONSchema => {
       switch (meta._tag) {
@@ -63,8 +63,8 @@ export const jsonSchemaFor = (declarations: Declarations) =>
     return f(schema.meta)
   }
 
-describe("jsonSchemaFor", () => {
-  const jsonSchemaFor_ = jsonSchemaFor(declarations)
+describe("unsafeJsonSchemaFor", () => {
+  const jsonSchemaFor_ = unsafeJsonSchemaFor(declarations)
 
   it("string", () => {
     const schema = S.string

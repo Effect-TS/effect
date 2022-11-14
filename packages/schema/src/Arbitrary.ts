@@ -130,7 +130,7 @@ export const union = <Members extends ReadonlyArray<Arbitrary<unknown>>>(
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => arbitraryFor(f(arb))
+) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
 
 /**
  * @since 1.0.0
@@ -180,7 +180,7 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
-export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
+export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const f = (meta: Meta): Arbitrary<any> => {
     switch (meta._tag) {
       case "Apply": {

@@ -11,6 +11,10 @@ import type { Schema } from "@fp-ts/codec/Schema"
  * @since 1.0.0
  */
 export interface Codec<in out IO> {
-  readonly decoderFor: (declarations: Declarations) => <A>(schema: Schema<A>) => Decoder<IO, A>
-  readonly encoderFor: (declarations: Declarations) => <A>(schema: Schema<A>) => Encoder<IO, A>
+  readonly unsafeDecoderFor: (
+    declarations: Declarations
+  ) => <A>(schema: Schema<A>) => Decoder<IO, A>
+  readonly unsafeEncoderFor: (
+    declarations: Declarations
+  ) => <A>(schema: Schema<A>) => Encoder<IO, A>
 }

@@ -41,7 +41,7 @@ export const alias = (symbol: symbol) =>
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => guardFor(f(guard))
+) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
 
 /**
  * @since 1.0.0
@@ -232,7 +232,7 @@ export const omit = flow(S.omit, mapSchema)
 /**
  * @since 1.0.0
  */
-export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
+export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Apply": {

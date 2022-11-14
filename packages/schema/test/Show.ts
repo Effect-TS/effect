@@ -6,7 +6,7 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(SetSym, O.none, {
     showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
   }, item)
@@ -22,78 +22,78 @@ const declarations = pipe(
 )
 
 describe("Show", () => {
-  describe("showFor", () => {
-    const showFor = Sh.showFor(declarations)
+  describe("unsafeShowFor", () => {
+    const unsafeShowFor = Sh.unsafeShowFor(declarations)
 
     it("declaration", () => {
-      const schema = setSchema(S.string)
-      expect(showFor(schema).show(new Set("a"))).toEqual(
+      const schema = setS(S.string)
+      expect(unsafeShowFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"
       )
     })
 
     it("never", () => {
       const schema = S.never
-      expect(() => showFor(schema).show(1 as any as never)).toThrow()
+      expect(() => unsafeShowFor(schema).show(1 as any as never)).toThrow()
     })
 
     it("unknown", () => {
       const schema = S.unknown
-      expect(showFor(schema).show(1)).toEqual("1")
-      expect(showFor(schema).show("a")).toEqual("\"a\"")
+      expect(unsafeShowFor(schema).show(1)).toEqual("1")
+      expect(unsafeShowFor(schema).show("a")).toEqual("\"a\"")
     })
 
     it("any", () => {
       const schema = S.any
-      expect(showFor(schema).show(1)).toEqual("1")
-      expect(showFor(schema).show("a")).toEqual("\"a\"")
+      expect(unsafeShowFor(schema).show(1)).toEqual("1")
+      expect(unsafeShowFor(schema).show("a")).toEqual("\"a\"")
     })
 
     it("string", () => {
       const schema = S.string
-      expect(showFor(schema).show("a")).toEqual(
+      expect(unsafeShowFor(schema).show("a")).toEqual(
         "\"a\""
       )
     })
 
     it("number", () => {
       const schema = S.number
-      expect(showFor(schema).show(1)).toEqual(
+      expect(unsafeShowFor(schema).show(1)).toEqual(
         "1"
       )
     })
 
     it("boolean", () => {
       const schema = S.boolean
-      expect(showFor(schema).show(true)).toEqual(
+      expect(unsafeShowFor(schema).show(true)).toEqual(
         "true"
       )
     })
 
     it("of", () => {
       const schema = S.of(1)
-      expect(showFor(schema).show(1)).toEqual(
+      expect(unsafeShowFor(schema).show(1)).toEqual(
         "1"
       )
     })
 
     it("tuple", () => {
       const schema = S.tuple(true, S.string, S.number)
-      expect(showFor(schema).show(["a", 1])).toEqual(
+      expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
         "[\"a\", 1]"
       )
     })
 
     it("nonEmptyArray", () => {
       const schema = S.nonEmptyArray(true, S.string, S.number)
-      expect(showFor(schema).show(["a", 1])).toEqual(
+      expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
         "[\"a\", 1]"
       )
     })
 
     it("union", () => {
       const schema = S.union(S.string, S.number)
-      const s = showFor(schema)
+      const s = unsafeShowFor(schema)
       expect(s.show("a")).toEqual(
         "\"a\""
       )
@@ -104,35 +104,35 @@ describe("Show", () => {
 
     it("struct", () => {
       const schema = S.struct({ a: S.string, b: S.number })
-      expect(showFor(schema).show({ a: "a", b: 1 })).toEqual(
+      expect(unsafeShowFor(schema).show({ a: "a", b: 1 })).toEqual(
         "{ a: \"a\", b: 1 }"
       )
     })
 
     it("indexSignature", () => {
       const schema = S.indexSignature(S.string)
-      expect(showFor(schema).show({ a: "a", b: "b" })).toEqual(
+      expect(unsafeShowFor(schema).show({ a: "a", b: "b" })).toEqual(
         "{ a: \"a\", b: \"b\" }"
       )
     })
 
     it("array", () => {
       const schema = S.array(true, S.string)
-      expect(showFor(schema).show(["a", "b"])).toEqual(
+      expect(unsafeShowFor(schema).show(["a", "b"])).toEqual(
         "[\"a\", \"b\"]"
       )
     })
 
     it("refinement", () => {
       const schema = pipe(S.string, S.minLength(2))
-      expect(showFor(schema).show("a")).toEqual(
+      expect(unsafeShowFor(schema).show("a")).toEqual(
         "\"a\""
       )
     })
 
     it("option (as structure)", () => {
       const schema = S.option(S.number)
-      const show = showFor(schema)
+      const show = unsafeShowFor(schema)
       expect(show.show(O.none)).toEqual(
         "{ _tag: \"None\" }"
       )
@@ -143,7 +143,7 @@ describe("Show", () => {
 
     it("either (as structure)", () => {
       const schema = S.either(S.string, S.number)
-      const show = showFor(schema)
+      const show = unsafeShowFor(schema)
       expect(show.show(E.right(1))).toEqual(
         "{ _tag: \"Right\", right: 1 }"
       )

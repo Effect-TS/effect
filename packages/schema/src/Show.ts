@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { guardFor } from "@fp-ts/codec/Guard"
+import { unsafeGuardFor } from "@fp-ts/codec/Guard"
 import type { Declarations, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -23,7 +23,7 @@ export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
 /**
  * @since 1.0.0
  */
-export const showFor = (declarations: Declarations) =>
+export const unsafeShowFor = (declarations: Declarations) =>
   <A>(schema: Schema<A>): Show<A> => {
     const f = (meta: Meta): Show<any> => {
       switch (meta._tag) {
@@ -64,7 +64,7 @@ export const showFor = (declarations: Declarations) =>
         }
         case "Union": {
           const shows: ReadonlyArray<Show<unknown>> = meta.members.map(f)
-          const guards = meta.members.map((member) => guardFor(S.make(member)))
+          const guards = meta.members.map((member) => unsafeGuardFor(S.make(member)))
           return make((a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return shows[index].show(a)

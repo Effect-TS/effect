@@ -13,7 +13,7 @@ const make = <A>(schema: Schema<A>, typeRep: string): TypeRep<A> =>
 
 const SetSym = Symbol("Set")
 
-const setSchema = <B extends boolean, A>(
+const setS = <B extends boolean, A>(
   readonly: B,
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
@@ -26,19 +26,19 @@ const set = <B extends boolean, A>(
   item: TypeRep<A>
 ): TypeRep<B extends true ? ReadonlySet<A> : Set<A>> =>
   make(
-    setSchema(readonly, item),
+    setS(readonly, item),
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintSchema: Schema<bigint> = S.apply(bigintSym, O.none, {
+const bigintS: Schema<bigint> = S.apply(bigintSym, O.none, {
   typeRepFor: () => bigint
 })
 
-const bigint: TypeRep<bigint> = make(bigintSchema, "bigint")
+const bigint: TypeRep<bigint> = make(bigintS, "bigint")
 
-export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
+export const unsafeTypeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
   const f = (meta: Meta): TypeRep<any> => {
     switch (meta._tag) {
       case "Apply": {
@@ -122,17 +122,17 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
   return f(schema.meta)
 }
 
-describe("typeRepFor", () => {
+describe("unsafeTypeRepFor", () => {
   describe("declaration", () => {
     it("kind 0", () => {
-      const schema = bigintSchema
-      const typeRep = pipe(schema, typeRepFor)
+      const schema = bigintS
+      const typeRep = pipe(schema, unsafeTypeRepFor)
       expect(typeRep.typeRep).toEqual("bigint")
     })
 
     it("kind 1", () => {
-      const schema = setSchema(false, S.string)
-      expect(pipe(schema, typeRepFor).typeRep).toEqual(
+      const schema = setS(false, S.string)
+      expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
         "Set<string>"
       )
     })
@@ -140,17 +140,17 @@ describe("typeRepFor", () => {
 
   it("never", () => {
     const schema = S.never
-    expect(pipe(schema, typeRepFor).typeRep).toEqual("never")
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("never")
   })
 
   it("unknown", () => {
     const schema = S.unknown
-    expect(pipe(schema, typeRepFor).typeRep).toEqual("unknown")
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("unknown")
   })
 
   it("any", () => {
     const schema = S.any
-    expect(pipe(schema, typeRepFor).typeRep).toEqual("any")
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("any")
   })
 
   it("struct", () => {
@@ -158,70 +158,70 @@ describe("typeRepFor", () => {
       a: S.string,
       b: S.number
     })
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly a: string, readonly b: number }"
     )
   })
 
   it("ReadonlyArray", () => {
     const schema = S.array(true, S.string)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "ReadonlyArray<string>"
     )
   })
 
   it("Array", () => {
     const schema = S.array(false, S.string)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "Array<string>"
     )
   })
 
   it("nonEmptyArray", () => {
     const schema = S.nonEmptyArray(true, S.string, S.number)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, ...number[]]"
     )
   })
 
   it("of", () => {
     const schema = S.of("a")
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "\"a\""
     )
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly [_: string]: string }"
     )
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string | number"
     )
   })
 
   it("tuple", () => {
     const schema = S.tuple(true, S.string, S.number)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, number]"
     )
   })
 
   it("option (as structure)", () => {
     const schema = S.option(S.string)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
     )
   })
 
   it("either (as structure)", () => {
     const schema = S.either(S.string, S.number)
-    const typeRep = pipe(schema, typeRepFor)
+    const typeRep = pipe(schema, unsafeTypeRepFor)
     expect(typeRep.typeRep).toEqual(
       "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
     )
@@ -229,7 +229,7 @@ describe("typeRepFor", () => {
 
   it("refinement", () => {
     const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"
     )
   })

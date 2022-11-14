@@ -48,7 +48,7 @@ const JsonObject: Decoder<Json, { readonly [key: string]: Json }> = D.fromRefine
   (json) => DE.notType("JsonObject", json)
 )
 
-const decoderFor = (declarations: Declarations) =>
+const unsafeDecoderFor = (declarations: Declarations) =>
   <A>(schema: Schema<A>): Decoder<Json, A> => {
     const f = (meta: Meta): Decoder<Json, any> => {
       switch (meta._tag) {
@@ -117,6 +117,6 @@ const decoderFor = (declarations: Declarations) =>
  * @since 1.0.0
  */
 export const JsonCodec: Codec<Json> = {
-  decoderFor,
-  encoderFor: null as any
+  unsafeDecoderFor,
+  unsafeEncoderFor: null as any
 }
