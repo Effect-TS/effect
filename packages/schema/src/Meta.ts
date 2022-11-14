@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Declarations } from "@fp-ts/codec/Schema"
 import type { Option } from "@fp-ts/data/Option"
 
 /**
@@ -20,6 +21,7 @@ export type Meta =
   | IndexSignature
   | Tuple
   | Union
+  | Lazy
 
 /**
  * @since 1.0.0
@@ -28,6 +30,7 @@ export interface Apply {
   readonly _tag: "Apply"
   readonly symbol: symbol
   readonly config: Option<unknown>
+  readonly declarations: Declarations
   readonly metas: ReadonlyArray<Meta>
 }
 
@@ -37,11 +40,13 @@ export interface Apply {
 export const apply = (
   symbol: symbol,
   config: Option<unknown>,
+  declarations: Declarations,
   metas: ReadonlyArray<Meta>
 ): Apply => ({
   _tag: "Apply",
   symbol,
   config,
+  declarations,
   metas
 })
 
@@ -281,4 +286,20 @@ export interface Union {
 export const union = (members: ReadonlyArray<Meta>): Union => ({
   _tag: "Union",
   members
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Lazy {
+  readonly _tag: "Lazy"
+  readonly f: () => Meta
+}
+
+/**
+ * @since 1.0.0
+ */
+export const lazy = (f: () => Meta): Lazy => ({
+  _tag: "Lazy",
+  f
 })

@@ -250,6 +250,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         return indexSignature(f(meta.value))
       case "Array":
         return array(f(meta.item))
+      case "Lazy":
+        throw new Error("Lazy")
     }
   }
   return f(schema.meta)

@@ -206,6 +206,20 @@ export const array = <A>(
 /**
  * @since 1.0.0
  */
+export const lazy = <A>(
+  f: () => Guard<A>
+): Guard<A> => {
+  const get = S.memoize<void, Guard<A>>(f)
+  const schema = S.lazy(f)
+  return make(
+    schema,
+    (a): a is A => get().is(a)
+  )
+}
+
+/**
+ * @since 1.0.0
+ */
 export const optional = mapSchema(S.optional)
 
 /**
@@ -225,7 +239,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const f = (meta: Meta): Guard<any> => {
     switch (meta._tag) {
       case "Apply": {
-        const declaration = S.unsafeGet(meta.symbol)(schema.declarations)
+        const declaration = S.unsafeGet(meta.symbol)(S.getDeclarations(schema))
         if (declaration.guardFor !== undefined) {
           return O.isSome(meta.config) ?
             declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
@@ -290,6 +304,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         return indexSignature(f(meta.value))
       case "Array":
         return array(f(meta.item))
+      case "Lazy":
+        return lazy(() => f(meta.f()))
     }
   }
   return f(schema.meta)

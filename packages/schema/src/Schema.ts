@@ -92,12 +92,46 @@ export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
 /**
  * @since 1.0.0
  */
+export const getDeclarations = <A>(schema: Schema<A>): Declarations => {
+  const f = (meta: Meta): Declarations => {
+    switch (meta._tag) {
+      case "Apply":
+        return meta.declarations
+      case "Never":
+      case "Unknown":
+      case "Any":
+      case "String":
+      case "Number":
+      case "Boolean":
+      case "Of":
+        return empty
+      case "Tuple":
+        return mergeMany(meta.components.map((c) => f(c)))(empty)
+      case "Union":
+        return mergeMany(meta.members.map((m) => f(m)))(empty)
+      case "Struct":
+        return mergeMany(meta.fields.map((field) => f(field.value)))(empty)
+      case "IndexSignature":
+        return f(meta.value)
+      case "Array":
+        return f(meta.item)
+      case "Lazy":
+        return f(meta.f())
+    }
+  }
+  return f(schema.meta)
+}
+
+/**
+ * @since 1.0.0
+ */
 export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
   config: Option<unknown>,
   declarations: Declarations,
   ...schemas: Schemas
-): Schema<any> => make(declarations, meta.apply(symbol, config, schemas.map((s) => s.meta)))
+): Schema<any> =>
+  make(declarations, meta.apply(symbol, config, declarations, schemas.map((s) => s.meta)))
 
 /**
  * @since 1.0.0
@@ -287,6 +321,28 @@ export const array = <B extends boolean, A>(
   item: Schema<A>
 ): Schema<B extends true ? ReadonlyArray<A> : Array<A>> =>
   make(item.declarations, meta.array(item.meta, readonly))
+
+/** @internal */
+export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {
+  const cache = new Map()
+  return (a) => {
+    if (!cache.has(a)) {
+      const b = f(a)
+      cache.set(a, b)
+      return b
+    }
+    return cache.get(a)
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const lazy = <A>(
+  f: () => Schema<A>
+): Schema<A> => {
+  return make(empty, meta.lazy(() => f().meta))
+}
 
 /**
  * @since 1.0.0

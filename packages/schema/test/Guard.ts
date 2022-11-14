@@ -106,6 +106,30 @@ describe("Guard", () => {
     expect(guard.is(["a", 1])).toEqual(false)
   })
 
+  it("lazy", () => {
+    interface Category {
+      readonly name: string
+      readonly categories: Set<Category>
+    }
+    const guard: G.Guard<Category> = G.lazy<Category>(() =>
+      G.struct({
+        name: G.string,
+        categories: set(guard)
+      })
+    )
+    expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
+    expect(
+      guard.is({
+        name: "a",
+        categories: new Set([{
+          name: "b",
+          categories: new Set([{ name: "c", categories: new Set([]) }])
+        }])
+      })
+    ).toEqual(true)
+    expect(guard.is({ name: "a", categories: new Set([1]) })).toEqual(false)
+  })
+
   it("pick", () => {
     const baseGuard = G.struct({ a: G.string, b: bigint, c: G.boolean })
     expect(baseGuard.is(null)).toEqual(false)
@@ -118,6 +142,31 @@ describe("Guard", () => {
 
   describe("guardFor", () => {
     const guardFor = G.guardFor
+
+    it("lazy", () => {
+      interface Category {
+        readonly name: string
+        readonly categories: Set<Category>
+      }
+      const categorySchema: S.Schema<Category> = S.lazy<Category>(() =>
+        S.struct({
+          name: S.string,
+          categories: setSchema(categorySchema)
+        })
+      )
+      const guard = guardFor(categorySchema)
+      expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
+      expect(
+        guard.is({
+          name: "a",
+          categories: new Set([{
+            name: "b",
+            categories: new Set([{ name: "c", categories: new Set([]) }])
+          }])
+        })
+      ).toEqual(true)
+      expect(guard.is({ name: "a", categories: new Set([1]) })).toEqual(false)
+    })
 
     it("bigint", () => {
       const schema = bigintSchema

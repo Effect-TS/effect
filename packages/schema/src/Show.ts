@@ -91,6 +91,8 @@ export const showFor = (declarations: S.Declarations) =>
             "[" + a.map((elem) => show.show(elem)).join(", ") + "]"
           )
         }
+        case "Lazy":
+          throw new Error("Lazy")
       }
     }
     return f(schema.meta)

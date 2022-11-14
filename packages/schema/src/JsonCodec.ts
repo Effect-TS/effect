@@ -106,6 +106,8 @@ const decoderFor = (declarations: S.Declarations) =>
           return pipe(JsonObject, D.compose(D.fromIndexSignature(f(meta.value))))
         case "Array":
           return pipe(JsonArray, D.compose(D.fromReadonlyArray(f(meta.item))))
+        case "Lazy":
+          throw new Error("Lazy")
       }
     }
     return f(schema.meta)

@@ -125,6 +125,8 @@ export const typeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
           `${meta.readonly ? "Readonly" : ""}Array<${item.typeRep}>`
         )
       }
+      case "Lazy":
+        throw new Error("Lazy")
     }
   }
   return f(schema.meta)
