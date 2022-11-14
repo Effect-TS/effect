@@ -12,7 +12,7 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   }, item)
 
 const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
-  Sh.make((a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
+  Sh.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 const declarations = pipe(
   S.empty,
@@ -32,7 +32,7 @@ describe("Show", () => {
       )
     })
 
-    it.skip("recursive", () => {
+    it("recursive", () => {
       interface A {
         readonly a: string
         readonly as: Set<A>
@@ -42,7 +42,7 @@ describe("Show", () => {
           a: S.string,
           as: setS(A)
         }))
-      expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual("TODO")
+      expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual("{ a: \"a\", as: Set([]) }")
     })
 
     it("never", () => {
