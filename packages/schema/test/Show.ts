@@ -32,6 +32,19 @@ describe("Show", () => {
       )
     })
 
+    it.skip("recursive", () => {
+      interface A {
+        readonly a: string
+        readonly as: Set<A>
+      }
+      const A: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+        S.struct({
+          a: S.string,
+          as: setS(A)
+        }))
+      expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual("TODO")
+    })
+
     it("never", () => {
       const schema = S.never
       expect(() => unsafeShowFor(schema).show(1 as any as never)).toThrow()

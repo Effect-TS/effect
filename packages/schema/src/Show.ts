@@ -20,6 +20,21 @@ export interface Show<in out A> {
  */
 export const make = <A>(show: Show<A>["show"]): Show<A> => ({ show })
 
+// /**
+//  * @since 1.0.0
+//  */
+// export const lazy = <A>(
+//   symbol: symbol,
+//   f: () => Show<A>
+// ): Show<A> => {
+//   const get = S.memoize<void, Show<A>>(f)
+//   const schema = S.lazy(symbol, f)
+//   return make(
+//     schema,
+//     (a) => get().show(a)
+//   )
+// }
+
 /**
  * @since 1.0.0
  */
@@ -92,7 +107,7 @@ export const unsafeShowFor = (declarations: Declarations) =>
           )
         }
         case "Lazy":
-          throw new Error("Lazy")
+          throw new Error("Lazy") // return f(meta.f())
       }
     }
     return f(schema.meta)

@@ -325,6 +325,10 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
         )
       )
     }
+    if (meta.isLazy(schema.meta)) {
+      const lazyMeta = schema.meta
+      return lazy(lazyMeta.symbol, () => pipe(make<A>(lazyMeta.f()), pick(...keys)))
+    }
     throw new Error("cannot `pick` non-Struct schemas")
   }
 
@@ -341,6 +345,10 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
           schema.meta.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key))
         )
       )
+    }
+    if (meta.isLazy(schema.meta)) {
+      const lazyMeta = schema.meta
+      return lazy(lazyMeta.symbol, () => pipe(make<A>(lazyMeta.f()), omit(...keys)))
     }
     throw new Error("cannot `omit` non-Struct schemas")
   }

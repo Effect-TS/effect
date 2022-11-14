@@ -148,6 +148,38 @@ describe("Guard", () => {
       .toEqual(false)
   })
 
+  it("pick recursive", () => {
+    interface A {
+      readonly a: string
+      readonly as: Set<A>
+    }
+    const A: G.Guard<A> = G.lazy<A>(Symbol.for("A"), () =>
+      G.struct({
+        a: G.string,
+        as: set(A)
+      }))
+    const B = pipe(A, G.pick("as"))
+    expect(B.is({ as: new Set([]) })).toEqual(true)
+    expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
+    expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
+  })
+
+  it("omit recursive", () => {
+    interface A {
+      readonly a: string
+      readonly as: Set<A>
+    }
+    const A: G.Guard<A> = G.lazy<A>(Symbol.for("A"), () =>
+      G.struct({
+        a: G.string,
+        as: set(A)
+      }))
+    const B = pipe(A, G.omit("a"))
+    expect(B.is({ as: new Set([]) })).toEqual(true)
+    expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
+    expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
+  })
+
   it("pick", () => {
     const baseGuard = G.struct({ a: G.string, b: bigint, c: G.boolean })
     expect(baseGuard.is(null)).toEqual(false)

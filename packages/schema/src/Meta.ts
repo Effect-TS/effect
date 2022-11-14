@@ -316,3 +316,8 @@ export const lazy = (symbol: symbol, f: () => Meta): Lazy => ({
   symbol,
   f
 })
+
+/**
+ * @since 1.0.0
+ */
+export const isLazy = (meta: Meta): meta is Lazy => meta._tag === "Lazy"
