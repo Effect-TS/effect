@@ -7,21 +7,21 @@ import * as fc from "fast-check"
 
 const SetSym = Symbol("Set")
 
-const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(SetSym, O.none, {
-    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => setArbitrary(item),
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setGuard(guard)
+    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item),
+    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setG(guard)
   }, item)
 
-const setGuard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
+const setG = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
-    setSchema(item),
+    setS(item),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
-const setArbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
+const set = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   A.make(
-    setSchema(item),
+    setS(item),
     (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
   )
 
@@ -51,7 +51,7 @@ describe("Arbitrary", () => {
     const sampleSize = 100
 
     it("declaration", () => {
-      const schema = setSchema(S.string)
+      const schema = setS(S.string)
       const arbitrary = arbitraryFor(schema).arbitrary(fc)
       const guard = guardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

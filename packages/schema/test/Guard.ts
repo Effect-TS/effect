@@ -5,25 +5,25 @@ import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
-const setSchema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
+const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(SetSym, O.none, {
     guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => set(guard)
   }, item)
 
 const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
-    setSchema(item),
+    setS(item),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintSchema: S.Schema<bigint> = S.apply(bigintSym, O.none, {
+const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {
   guardFor: (): G.Guard<bigint> => bigint
 })
 
 const bigint = G.make(
-  bigintSchema,
+  bigintS,
   (input): input is bigint => typeof input === "bigint"
 )
 
@@ -96,7 +96,7 @@ describe("Guard", () => {
     expect(guard.is(["a", 1])).toEqual(false)
   })
 
-  it("lazy", () => {
+  it("recursive", () => {
     interface Category {
       readonly name: string
       readonly categories: Set<Category>
@@ -120,6 +120,37 @@ describe("Guard", () => {
     expect(guard.is({ name: "a", categories: new Set([1]) })).toEqual(false)
   })
 
+  it("mutually recursive", () => {
+    interface A {
+      readonly a: string
+      readonly bs: Set<B>
+    }
+    interface B {
+      readonly b: number
+      readonly as: Set<A>
+    }
+    const A: G.Guard<A> = G.lazy<A>(() =>
+      G.struct({
+        a: G.string,
+        bs: set(B)
+      })
+    )
+    const B: G.Guard<B> = G.lazy<B>(() =>
+      G.struct({
+        b: G.number,
+        as: set(A)
+      })
+    )
+    expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
+    expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)
+    expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([]) }]) }]) }))
+      .toEqual(true)
+    expect(
+      A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([null]) }]) }]) })
+    )
+      .toEqual(false)
+  })
+
   it("pick", () => {
     const baseGuard = G.struct({ a: G.string, b: bigint, c: G.boolean })
     expect(baseGuard.is(null)).toEqual(false)
@@ -133,18 +164,18 @@ describe("Guard", () => {
   describe("guardFor", () => {
     const guardFor = G.guardFor
 
-    it.skip("lazy", () => {
+    it("recursive", () => {
       interface Category {
         readonly name: string
         readonly categories: Set<Category>
       }
-      const categorySchema: S.Schema<Category> = S.lazy<Category>(() =>
+      const CategoryS: S.Schema<Category> = S.lazy<Category>(() =>
         S.struct({
           name: S.string,
-          categories: setSchema(categorySchema)
+          categories: setS(CategoryS)
         })
       )
-      const guard = guardFor(categorySchema)
+      const guard = guardFor(CategoryS)
       expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
       expect(
         guard.is({
@@ -158,22 +189,56 @@ describe("Guard", () => {
       expect(guard.is({ name: "a", categories: new Set([1]) })).toEqual(false)
     })
 
+    it("mutually recursive", () => {
+      interface A {
+        readonly a: string
+        readonly bs: Set<B>
+      }
+      interface B {
+        readonly b: number
+        readonly as: Set<A>
+      }
+      const AS: S.Schema<A> = S.lazy<A>(() =>
+        S.struct({
+          a: S.string,
+          bs: setS(BS)
+        })
+      )
+      const BS: S.Schema<B> = S.lazy<B>(() =>
+        S.struct({
+          b: S.number,
+          as: setS(AS)
+        })
+      )
+      const A = guardFor(AS)
+      expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
+      expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)
+      expect(
+        A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([]) }]) }]) })
+      )
+        .toEqual(true)
+      expect(
+        A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([null]) }]) }]) })
+      )
+        .toEqual(false)
+    })
+
     it("bigint", () => {
-      const schema = bigintSchema
+      const schema = bigintS
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(BigInt("1"))).toEqual(true)
     })
 
     it("Set", () => {
-      const schema = setSchema(S.number)
+      const schema = setS(S.number)
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
     })
 
     it("Set & bigint", () => {
-      const schema = setSchema(bigintSchema)
+      const schema = setS(bigintS)
       const guard = guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set())).toEqual(true)
