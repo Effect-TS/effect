@@ -1,3 +1,4 @@
+import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
@@ -11,11 +12,11 @@ const SetSym = Symbol("Set")
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(SetSym, O.none, {
     decoderFor: <A>(
-      item: D.Decoder<JC.Json, A>
-    ): D.Decoder<JC.Json, Set<A>> => set(item)
+      item: D.Decoder<J.Json, A>
+    ): D.Decoder<J.Json, Set<A>> => set(item)
   }, item)
 
-const set = <A>(item: D.Decoder<JC.Json, A>): D.Decoder<JC.Json, Set<A>> =>
+const set = <A>(item: D.Decoder<J.Json, A>): D.Decoder<J.Json, Set<A>> =>
   D.make(setS(item), (u) => {
     if (!(Array.isArray(u))) {
       return D.fail(DE.custom(setError, u))
@@ -31,15 +32,6 @@ const set = <A>(item: D.Decoder<JC.Json, A>): D.Decoder<JC.Json, Set<A>> =>
     return D.succeed(out as any)
   })
 
-const declarations = pipe(
-  S.empty,
-  S.add(SetSym, {
-    decoderFor: <A>(
-      item: D.Decoder<JC.Json, A>
-    ): D.Decoder<JC.Json, Set<A>> => set(item)
-  })
-)
-
 interface SetError {
   readonly _tag: "SetError"
 }
@@ -48,7 +40,7 @@ const setError: SetError = { _tag: "SetError" }
 
 describe("JsonCodec", () => {
   describe("unsafeDecoderFor", () => {
-    const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor(declarations)
+    const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor
 
     it("declaration", () => {
       const schema = setS(S.number)

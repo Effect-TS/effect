@@ -14,16 +14,9 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
 const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
   Sh.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
-const declarations = pipe(
-  S.empty,
-  S.add(SetSym, {
-    showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
-  })
-)
-
 describe("Show", () => {
   describe("unsafeShowFor", () => {
-    const unsafeShowFor = Sh.unsafeShowFor(declarations)
+    const unsafeShowFor = Sh.unsafeShowFor
 
     it("declaration", () => {
       const schema = setS(S.string)
@@ -42,7 +35,9 @@ describe("Show", () => {
           a: S.string,
           as: setS(A)
         }))
-      expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual("{ a: \"a\", as: Set([]) }")
+      expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual(
+        "{\"a\":\"a\",\"as\":Set([])}"
+      )
     })
 
     it("never", () => {
@@ -93,14 +88,14 @@ describe("Show", () => {
     it("tuple", () => {
       const schema = S.tuple(true, S.string, S.number)
       expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
-        "[\"a\", 1]"
+        "[\"a\",1]"
       )
     })
 
     it("nonEmptyArray", () => {
       const schema = S.nonEmptyArray(true, S.string, S.number)
       expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
-        "[\"a\", 1]"
+        "[\"a\",1]"
       )
     })
 
@@ -118,21 +113,21 @@ describe("Show", () => {
     it("struct", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       expect(unsafeShowFor(schema).show({ a: "a", b: 1 })).toEqual(
-        "{ a: \"a\", b: 1 }"
+        "{\"a\":\"a\",\"b\":1}"
       )
     })
 
     it("indexSignature", () => {
       const schema = S.indexSignature(S.string)
       expect(unsafeShowFor(schema).show({ a: "a", b: "b" })).toEqual(
-        "{ a: \"a\", b: \"b\" }"
+        "{\"a\":\"a\",\"b\":\"b\"}"
       )
     })
 
     it("array", () => {
       const schema = S.array(true, S.string)
       expect(unsafeShowFor(schema).show(["a", "b"])).toEqual(
-        "[\"a\", \"b\"]"
+        "[\"a\",\"b\"]"
       )
     })
 
@@ -147,10 +142,10 @@ describe("Show", () => {
       const schema = S.option(S.number)
       const show = unsafeShowFor(schema)
       expect(show.show(O.none)).toEqual(
-        "{ _tag: \"None\" }"
+        "{\"_tag\":\"None\"}"
       )
       expect(show.show(O.some(1))).toEqual(
-        "{ _tag: \"Some\", value: 1 }"
+        "{\"_tag\":\"Some\",\"value\":1}"
       )
     })
 
@@ -158,10 +153,10 @@ describe("Show", () => {
       const schema = S.either(S.string, S.number)
       const show = unsafeShowFor(schema)
       expect(show.show(E.right(1))).toEqual(
-        "{ _tag: \"Right\", right: 1 }"
+        "{\"_tag\":\"Right\",\"right\":1}"
       )
       expect(show.show(E.left("e"))).toEqual(
-        "{ _tag: \"Left\", left: \"e\" }"
+        "{\"_tag\":\"Left\",\"left\":\"e\"}"
       )
     })
   })

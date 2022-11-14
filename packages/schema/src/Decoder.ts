@@ -189,7 +189,7 @@ export const of = <A>(
 
 const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make(
   S.array(true, S.unknown),
-  (u) => Array.isArray(u) ? succeed(u as ReadonlyArray<any>) : fail(DE.notType("Array", u))
+  (u) => Array.isArray(u) ? succeed(u as ReadonlyArray<unknown>) : fail(DE.notType("Array", u))
 )
 
 /**
@@ -269,7 +269,7 @@ const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }>
     u
   ) =>
     typeof u === "object" && u != null && !Array.isArray(u) ?
-      succeed(u as any) :
+      succeed(u as { readonly [_: string]: unknown }) :
       fail(DE.notType("Object", u))
 )
 

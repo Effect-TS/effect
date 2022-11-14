@@ -3,6 +3,7 @@
  */
 import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as codec from "@fp-ts/codec/Codec"
+import * as json from "@fp-ts/codec/data/Json"
 import * as decodeError from "@fp-ts/codec/DecodeError"
 import * as decoder from "@fp-ts/codec/Decoder"
 import * as encoder from "@fp-ts/codec/Encoder"
@@ -44,6 +45,10 @@ export {
    * @since 1.0.0
    */
   guard,
+  /**
+   * @since 1.0.0
+   */
+  json,
   /**
    * @since 1.0.0
    */

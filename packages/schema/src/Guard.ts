@@ -2,8 +2,7 @@
  * @since 1.0.0
  */
 
-import type * as JC from "@fp-ts/codec/JsonCodec"
-import type { Declaration, Meta } from "@fp-ts/codec/Meta"
+import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { flow } from "@fp-ts/data/Function"
@@ -24,18 +23,18 @@ export const make = <A>(
   is: Guard<A>["is"]
 ): Guard<A> => ({ meta: schema.meta, is }) as any
 
-/**
- * @since 1.0.0
- */
-export const alias = (symbol: symbol) =>
-  <A>(guard: Guard<A>): Guard<A> => {
-    const declaration: Declaration = {
-      guardFor: (): Guard<A> => out
-    }
-    const schema = S.apply(symbol, O.none, declaration)
-    const out = make(schema, guard.is)
-    return out
-  }
+// /**
+//  * @since 1.0.0
+//  */
+// export const alias = (symbol: symbol) =>
+//   <A>(guard: Guard<A>): Guard<A> => {
+//     const declaration: Declaration = {
+//       guardFor: (): Guard<A> => out
+//     }
+//     const schema = S.apply(symbol, O.none, declaration)
+//     const out = make(schema, guard.is)
+//     return out
+//   }
 
 /**
  * @since 1.0.0
@@ -125,29 +124,6 @@ export const maximum = (
 export const boolean: Guard<boolean> = make(
   S.boolean,
   (u: unknown): u is boolean => typeof u === "boolean"
-)
-
-/**
- * @since 1.0.0
- */
-export const JsonSym = Symbol("@fp-ts/codec/Json")
-
-/**
- * @since 1.0.0
- */
-export const JsonSchema: S.Schema<JC.Json> = S.apply(JsonSym, O.none, {
-  guardFor: (): Guard<JC.Json> => Json
-})
-
-/**
- * @since 1.0.0
- */
-export const Json: Guard<JC.Json> = make(
-  JsonSchema,
-  (u: unknown): u is JC.Json =>
-    u === null || string.is(u) || number.is(u) || boolean.is(u) ||
-    (Array.isArray(u) && u.every(Json.is)) ||
-    (typeof u === "object" && Object.keys(u).every((key) => Json.is(u[key])))
 )
 
 /**

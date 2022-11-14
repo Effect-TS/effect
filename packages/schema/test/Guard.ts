@@ -28,14 +28,14 @@ const bigint = G.make(
 )
 
 describe("Guard", () => {
-  it("alias", () => {
-    const Name = pipe(G.string, G.alias(Symbol.for("Name")))
-    expect(Name.is(null)).toEqual(false)
-    expect(Name.is("a")).toEqual(true)
-    const ReName = G.unsafeGuardFor(Name)
-    expect(ReName.is(null)).toEqual(false)
-    expect(ReName.is("a")).toEqual(true)
-  })
+  // it("alias", () => {
+  //   const Name = pipe(G.string, G.alias(Symbol.for("Name")))
+  //   expect(Name.is(null)).toEqual(false)
+  //   expect(Name.is("a")).toEqual(true)
+  //   const ReName = G.unsafeGuardFor(Name)
+  //   expect(ReName.is(null)).toEqual(false)
+  //   expect(ReName.is("a")).toEqual(true)
+  // })
 
   it("never", () => {
     const guard = G.never
