@@ -19,15 +19,15 @@ export interface Declarations extends ReadonlyMap<symbol, Declaration> {}
  * @since 1.0.0
  */
 export type Meta =
-  | Apply
-  | String
-  | Number
-  | Boolean
-  | Of
-  | Struct
-  | Tuple
-  | Union
-  | Lazy
+  | Apply // customisations
+  | String // `string` data type
+  | Number // `number` data type
+  | Boolean // `boolean` data type
+  | Of // examples: type literals
+  | Struct // examples: `{ a: string, b: number  }`, `{ [_: string]: string }`, `{ a: string, b: string, [_: string]: string  }`
+  | Tuple // examples: `[string, number]`, ``[string, number, ...boolean[]]`
+  | Union // examples: `string | number`
+  | Lazy // recursive and mutually recursive data types
 
 /**
  * @since 1.0.0
