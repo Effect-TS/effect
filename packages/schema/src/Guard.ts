@@ -140,7 +140,7 @@ export const tuple = <Components extends ReadonlyArray<Guard<any>>>(
   ...components: Components
 ): Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
   make(
-    S.tuple(true, ...components) as any,
+    S.tuple<true, Components>(true, ...components),
     (a): a is { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] } =>
       Array.isArray(a) &&
       components.every((guard, i) => guard.is(a[i]))
@@ -165,14 +165,10 @@ export const struct = <Fields extends Record<PropertyKey, Guard<any>>>(
 ): Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
   const keys = Object.keys(fields)
   const guards = keys.map((key) => fields[key])
-  const schemas = {}
-  keys.forEach((key) => {
-    schemas[key] = fields[key]
-  })
   return make(
-    S.struct(schemas) as any,
+    S.struct(fields),
     (a): a is { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] } =>
-      typeof a === "object" && a != null &&
+      typeof a === "object" && a != null && !Array.isArray(a) &&
       guards.every((guard, i) => guard.is(a[keys[i]]))
   )
 }
@@ -186,7 +182,8 @@ export const indexSignature = <A>(
   make(
     S.indexSignature(value),
     (a): a is { readonly [_: string]: A } =>
-      typeof a === "object" && a != null && Object.keys(a).every((key) => value.is(a[key]))
+      typeof a === "object" && a != null && !Array.isArray(a) &&
+      Object.keys(a).every((key) => value.is(a[key]))
   )
 
 /**
@@ -294,7 +291,7 @@ export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
       case "Struct": {
         const fields = {}
         meta.fields.forEach((field) => {
-          fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
+          fields[field.key] = f(field.value)
         })
         return struct(fields)
       }

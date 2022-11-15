@@ -66,10 +66,10 @@ export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => {
       case "Boolean":
         return make(S.boolean, (a) => JSON.stringify(a))
       case "Of":
-        return make(S.of(meta.value), (a) => JSON.stringify(a))
+        return make(S.make(meta), (a) => JSON.stringify(a))
       case "Tuple": {
         const components: ReadonlyArray<Show<unknown>> = meta.components.map(f)
-        return make(S.tuple(meta.readonly, ...components), (tuple: ReadonlyArray<unknown>) =>
+        return make(S.make(meta), (tuple: ReadonlyArray<unknown>) =>
           "[" +
           tuple.map((c, i) =>
             i < components.length ?
@@ -84,19 +84,15 @@ export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => {
       case "Union": {
         const members = meta.members.map(f)
         const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
-        return make(S.union(...members), (a) => {
+        return make(S.make(meta), (a) => {
           const index = guards.findIndex((guard) => guard.is(a))
           return members[index].show(a)
         })
       }
       case "Struct": {
         const fields = meta.fields.map((field) => f(field.value))
-        const schemas = {}
-        meta.fields.forEach((field, i) => {
-          schemas[field.key] = fields[i]
-        })
         return make(
-          S.struct(schemas),
+          S.make(meta),
           (a: { [_: PropertyKey]: unknown }) =>
             `{${
               meta.fields.map((field, i) =>
@@ -109,7 +105,7 @@ export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => {
       case "IndexSignature": {
         const value = f(meta.value)
         return make(
-          S.indexSignature(value),
+          S.make(meta),
           (a) =>
             `{${
               Object.keys(a).map((key) => `${JSON.stringify(key)}:${value.show(a[key])}`).join(",")
@@ -119,7 +115,7 @@ export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => {
       case "Array": {
         const item = f(meta.item)
         return make(
-          S.array(meta.readonly, item),
+          S.make(meta),
           (a: ReadonlyArray<unknown>) =>
             "[" + a.map((elem) => item.show(elem)).join(",") +
             "]"

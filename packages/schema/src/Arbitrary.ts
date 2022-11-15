@@ -110,8 +110,8 @@ export const tuple = <Components extends ReadonlyArray<Arbitrary<unknown>>>(
   ...components: Components
 ): Arbitrary<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
   make(
-    S.tuple(true, ...components) as any,
-    (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc))) as any
+    S.tuple<true, Components>(true, ...components),
+    (fc) => fc.tuple<any>(...components.map((c) => c.arbitrary(fc)))
   )
 
 /**
@@ -142,8 +142,8 @@ export const optional = mapSchema(S.optional)
  */
 export const struct = <Fields extends Record<PropertyKey, Arbitrary<unknown>>>(
   fields: Fields
-): Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
-  return make(
+): Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
+  make(
     S.struct(fields),
     (fc) => {
       const arbs: any = {}
@@ -153,7 +153,6 @@ export const struct = <Fields extends Record<PropertyKey, Arbitrary<unknown>>>(
       return fc.record(arbs)
     }
   )
-}
 
 /**
  * @since 1.0.0
@@ -177,7 +176,6 @@ export const array = <A>(
     (fc) => fc.array(item.arbitrary(fc))
   )
 
-// TODO
 /**
  * @since 1.0.0
  */
@@ -258,7 +256,7 @@ export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "Struct": {
         const fields = {}
         meta.fields.forEach((field) => {
-          fields[field.key] = field.optional ? optional(f(field.value)) : f(field.value)
+          fields[field.key] = f(field.value)
         })
         return struct(fields)
       }
@@ -267,7 +265,6 @@ export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "Array":
         return array(f(meta.item))
       case "Lazy":
-        // TODO
         return lazy(meta.symbol, () => f(meta.f()))
     }
   }

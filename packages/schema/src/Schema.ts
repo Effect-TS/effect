@@ -268,10 +268,10 @@ export const nonEmptyArray = <B extends boolean, H, T>(
  */
 export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
-  const keys = Object.keys(fields)
-  return make(meta.struct(keys.map((key) => meta.field(key, fields[key].meta, false, true))))
-}
+): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
+  make(
+    meta.struct(Object.keys(fields).map((key) => meta.field(key, fields[key].meta, false, true)))
+  )
 
 /**
  * @since 1.0.0

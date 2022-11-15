@@ -12,7 +12,7 @@ import * as G from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
-import { identity, pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 const unsafeDecoderFor = <A>(schema: Schema<A>): Decoder<J.Json, A> => {
@@ -98,62 +98,56 @@ const unsafeEncoderFor = <A>(schema: Schema<A>): Encoder<J.Json, A> => {
       case "Any":
         throw new Error("Any")
       case "String":
-        return E.make(S.string, identity)
+        return E.string
       case "Number":
-        return E.make(S.number, identity)
+        return E.number
       case "Boolean":
-        return E.make(S.boolean, identity)
+        return E.boolean
       case "Of":
         if (Json.JsonGuard.is(meta.value)) {
-          return E.make(S.of(meta.value), identity)
+          return E.of(meta.value)
         }
         throw new Error("Of value is not a JSON")
       case "Tuple": {
         const components = meta.components.map(f)
         if (O.isSome(meta.restElement)) {
           const restElement = f(meta.restElement.value)
-          return E.make(
-            S.tuple(true, ...components),
+          return E.make<Array<J.Json>, ReadonlyArray<any>>(
+            S.make(meta),
             (a) =>
               a.map((ai, i) =>
                 i < components.length ? components[i].encode(ai) : restElement.encode(ai)
               )
           )
         }
-        return E.make(
-          S.tuple(true, ...components),
+        return E.make<Array<J.Json>, ReadonlyArray<any>>(
+          S.make(meta),
           (a) => a.map((ai, i) => components[i].encode(ai))
         )
       }
       case "Union": {
         const members = meta.members.map(f)
         const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
-        return E.make(S.union(...members), (a) => {
+        return E.make(S.make(meta), (a) => {
           const index = guards.findIndex((guard) => guard.is(a))
           return members[index].encode(a)
         })
       }
       case "Struct": {
-        const fields = meta.fields.map((field) => f(field.value))
-        const schemas = {}
-        meta.fields.forEach((field, i) => {
-          schemas[field.key] = fields[i]
-        })
-        return E.make(S.struct(schemas), (a) => {
+        return E.make(S.make(meta), (a) => {
           const out = {}
-          meta.fields.forEach((field) => {
-            out[field.key] = a[field.key]
-          })
+          for (let i = 0; i < meta.fields.length; i++) {
+            const key = meta.fields[i].key
+            out[key] = a[key]
+          }
           return out
         })
       }
-      case "IndexSignature": {
-        const value = f(meta.value)
-        return E.make(S.indexSignature(value), value.encode)
-      }
+      case "IndexSignature":
+        return E.toIndexSignature(f(meta.value))
       case "Array": {
         const item = f(meta.item)
-        return E.make(S.array(true, item), (a) => a.map(item.encode))
+        return E.make(S.make(meta), (a) => a.map(item.encode))
       }
       case "Lazy":
         return E.lazy(meta.symbol, () => f(meta.f()))
