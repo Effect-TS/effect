@@ -132,53 +132,6 @@ export const boolean: Guard<boolean> = make(
 /**
  * @since 1.0.0
  */
-export const of = <A>(
-  value: A
-): Guard<A> => make(S.of(value), (u: unknown): u is A => u === value)
-
-/**
- * @since 1.0.0
- */
-export const struct = <Fields extends Record<PropertyKey, Guard<any>>>(
-  fields: Fields
-): Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
-  const keys = Object.keys(fields)
-  const guards = keys.map((key) => fields[key])
-  return make(
-    S.struct(fields),
-    (a): a is { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] } =>
-      typeof a === "object" && a != null && !Array.isArray(a) &&
-      guards.every((guard, i) => guard.is(a[keys[i]]))
-  )
-}
-
-/**
- * @since 1.0.0
- */
-export const indexSignature = <A>(
-  value: Guard<A>
-): Guard<{ readonly [_: string]: A }> =>
-  make(
-    S.indexSignature(value),
-    (a): a is { readonly [_: string]: A } =>
-      typeof a === "object" && a != null && !Array.isArray(a) &&
-      Object.keys(a).every((key) => value.is(a[key]))
-  )
-
-/**
- * @since 1.0.0
- */
-export const array = <A>(
-  item: Guard<A>
-): Guard<ReadonlyArray<A>> =>
-  make(
-    S.array(true, item),
-    (a): a is ReadonlyArray<A> => Array.isArray(a) && a.every((elem) => item.is(elem))
-  )
-
-/**
- * @since 1.0.0
- */
 export const lazy = <A>(
   symbol: symbol,
   f: () => Guard<A>
@@ -231,7 +184,7 @@ const go = S.memoize((meta: Meta): Guard<any> => {
     case "Boolean":
       return boolean
     case "Of":
-      return of(meta.value)
+      return make(S.make(meta), (u): u is any => u === meta.value)
     case "Tuple": {
       const components = meta.components.map(go)
       const restElement = pipe(meta.restElement, O.map(go))
@@ -255,16 +208,30 @@ const go = S.memoize((meta: Meta): Guard<any> => {
       )
     }
     case "Struct": {
-      const fields = {}
-      meta.fields.forEach((field) => {
-        fields[field.key] = go(field.value)
-      })
-      return struct(fields)
+      const fields = meta.fields.map((field) => go(field.value))
+      return make(
+        S.make(meta),
+        (a): a is any =>
+          typeof a === "object" && a != null && !Array.isArray(a) &&
+          fields.every((field, i) => field.is(a[meta.fields[i].key]))
+      )
     }
-    case "IndexSignature":
-      return indexSignature(go(meta.value))
-    case "Array":
-      return array(go(meta.item))
+    case "IndexSignature": {
+      const value = go(meta.value)
+      return make(
+        S.make(meta),
+        (a): a is { readonly [_: string]: unknown } =>
+          typeof a === "object" && a != null && !Array.isArray(a) &&
+          Object.keys(a).every((key) => value.is(a[key]))
+      )
+    }
+    case "Array": {
+      const item = go(meta.item)
+      return make(
+        S.make(meta),
+        (a): a is ReadonlyArray<unknown> => Array.isArray(a) && a.every((elem) => item.is(elem))
+      )
+    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }
@@ -285,6 +252,11 @@ export const FromSchema: fromSchema.FromSchema<GuardTypeLambda> = {
 /**
  * @since 1.0.0
  */
+export const of: <A>(a: A) => Guard<A> = fromSchema.of(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ) => Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = fromSchema
@@ -297,6 +269,27 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ) => Guard<Parameters<Members[number]["A"]>[0]> = fromSchema
   .union(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) => Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = fromSchema
+  .struct(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature: <A>(value: Schema<A>) => Guard<{
+  readonly [_: string]: A
+}> = fromSchema.indexSignature(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const readonlyArray: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = fromSchema
+  .readonlyArray(FromSchema)
 
 /**
  * @since 1.0.0

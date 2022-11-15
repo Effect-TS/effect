@@ -89,8 +89,8 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1 })).toEqual(false)
   })
 
-  it("array", () => {
-    const guard = G.array(G.string)
+  it("readonlyArray", () => {
+    const guard = G.readonlyArray(G.string)
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(false)

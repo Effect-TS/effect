@@ -42,3 +42,34 @@ export const union = <F extends TypeLambda>(
   <I, O, E, Members extends ReadonlyArray<Schema<any>>>(
     ...members: Members
   ): Kind<F, I, O, E, Parameters<Members[number]["A"]>[0]> => F.fromSchema(S.union(...members))
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <F extends TypeLambda>(
+  F: FromSchema<F>
+) =>
+  <I, O, E, Fields extends Record<PropertyKey, Schema<any>>>(
+    fields: Fields
+  ): Kind<F, I, O, E, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
+    F.fromSchema(S.struct(fields))
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature = <F extends TypeLambda>(
+  F: FromSchema<F>
+) =>
+  <I, O, E, A>(
+    value: Schema<A>
+  ): Kind<F, I, O, E, { readonly [_: string]: A }> => F.fromSchema(S.indexSignature(value))
+
+/**
+ * @since 1.0.0
+ */
+export const readonlyArray = <F extends TypeLambda>(
+  F: FromSchema<F>
+) =>
+  <I, O, E, A>(
+    item: Schema<A>
+  ): Kind<F, I, O, E, ReadonlyArray<A>> => F.fromSchema(S.array(true, item))
