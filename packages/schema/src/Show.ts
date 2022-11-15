@@ -6,6 +6,7 @@ import * as G from "@fp-ts/codec/Guard"
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -78,26 +79,33 @@ const go = S.memoize((meta: Meta): Show<any> => {
       })
     }
     case "Struct": {
-      const fields = meta.fields.map((field) => go(field.value))
+      const fields = {}
+      meta.fields.forEach((field) => {
+        fields[field.key] = go(field.value)
+      })
+      const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
       return make(
         S.make(meta),
-        (a: { [_: PropertyKey]: unknown }) =>
-          `{${
-            meta.fields.map((field, i) =>
-              `${JSON.stringify(field.key)}:${fields[i].show(a[field.key])}`
-            )
-              .join(",")
-          }}`
-      )
-    }
-    case "IndexSignature": {
-      const value = go(meta.value)
-      return make(
-        S.make(meta),
-        (a) =>
-          `{${
-            Object.keys(a).map((key) => `${JSON.stringify(key)}:${value.show(a[key])}`).join(",")
-          }}`
+        (struct: { [_: PropertyKey]: unknown }) => {
+          const keys = Object.keys(struct)
+          let out = "{"
+          keys.forEach((key) => {
+            if (key in fields) {
+              out += `${JSON.stringify(key)}:${fields[key].show(struct[key])},`
+            }
+          })
+          if (O.isSome(oIndexSignature)) {
+            const indexSignature = oIndexSignature.value
+            keys.forEach((key) => {
+              if (!(key in fields)) {
+                out += `${JSON.stringify(key)}:${indexSignature.show(struct[key])},`
+              }
+            })
+          }
+          out = out.substring(0, out.length - 1)
+          out += "}"
+          return out
+        }
       )
     }
     case "Lazy":

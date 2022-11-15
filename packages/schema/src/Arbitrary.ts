@@ -177,13 +177,6 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
         }
       )
     }
-    case "IndexSignature": {
-      const value = go(meta.value)
-      return make(
-        S.make(meta),
-        (fc) => fc.dictionary(fc.string(), value.arbitrary(fc))
-      )
-    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }

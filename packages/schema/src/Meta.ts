@@ -25,7 +25,6 @@ export type Meta =
   | Boolean
   | Of
   | Struct
-  | IndexSignature
   | Tuple
   | Union
   | Lazy
@@ -162,26 +161,7 @@ export const field = (
 /**
  * @since 1.0.0
  */
-export interface Struct {
-  readonly _tag: "Struct"
-  readonly fields: ReadonlyArray<Field>
-}
-
-/**
- * @since 1.0.0
- */
-export const struct = (fields: ReadonlyArray<Field>): Struct => ({ _tag: "Struct", fields })
-
-/**
- * @since 1.0.0
- */
-export const isStruct = (meta: Meta): meta is Struct => meta._tag === "Struct"
-
-/**
- * @since 1.0.0
- */
 export interface IndexSignature {
-  readonly _tag: "IndexSignature"
   readonly key: "string" | "number" | "symbol"
   readonly value: Meta
   readonly readonly: boolean
@@ -195,11 +175,32 @@ export const indexSignature = (
   value: Meta,
   readonly: boolean
 ): IndexSignature => ({
-  _tag: "IndexSignature",
   key,
   value,
   readonly
 })
+
+/**
+ * @since 1.0.0
+ */
+export interface Struct {
+  readonly _tag: "Struct"
+  readonly fields: ReadonlyArray<Field>
+  readonly indexSignature: Option<IndexSignature>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const struct = (
+  fields: ReadonlyArray<Field>,
+  indexSignature: Option<IndexSignature>
+): Struct => ({ _tag: "Struct", fields, indexSignature })
+
+/**
+ * @since 1.0.0
+ */
+export const isStruct = (meta: Meta): meta is Struct => meta._tag === "Struct"
 
 /**
  * @since 1.0.0

@@ -72,6 +72,7 @@ describe("Guard", () => {
 
   it("indexSignature", () => {
     const guard = G.indexSignature(G.string)
+    expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
     expect(guard.is({ a: 1 })).toEqual(false)
@@ -407,6 +408,7 @@ describe("Guard", () => {
     it("indexSignature", () => {
       const schema = S.indexSignature(S.string)
       const guard = unsafeGuardFor(schema)
+      expect(guard.is(null)).toEqual(false)
       expect(guard.is({})).toEqual(true)
       expect(guard.is({ a: "a" })).toEqual(true)
       expect(guard.is({ a: 1 })).toEqual(false)

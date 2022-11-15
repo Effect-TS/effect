@@ -97,15 +97,13 @@ const go = S.memoize((meta: Meta): TypeRep<any> => {
             return `${field.readonly ? "readonly " : ""}${String(field.key)}${
               field.optional ? "?" : ""
             }: ${fields[i].typeRep}`
-          }).join(", ")
+          }).join(", ") +
+          (pipe(
+            meta.indexSignature,
+            O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
+            O.getOrElse("")
+          ))
           + " }"
-      )
-    }
-    case "IndexSignature": {
-      const value = go(meta.value)
-      return make(
-        meta,
-        `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${value.typeRep} }`
       )
     }
     case "Lazy":

@@ -222,7 +222,10 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
 ): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
   make(
-    meta.struct(Object.keys(fields).map((key) => meta.field(key, fields[key].meta, false, true)))
+    meta.struct(
+      Object.keys(fields).map((key) => meta.field(key, fields[key].meta, false, true)),
+      O.none
+    )
   )
 
 /**
@@ -230,7 +233,8 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
  */
 export const indexSignature = <A>(
   value: Schema<A>
-): Schema<{ readonly [_: string]: A }> => make(meta.indexSignature("string", value.meta, true))
+): Schema<{ readonly [_: string]: A }> =>
+  make(meta.struct([], O.some(meta.indexSignature("string", value.meta, true))))
 
 /**
  * @since 1.0.0
@@ -276,7 +280,8 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
     if (meta.isStruct(schema.meta)) {
       return make(
         meta.struct(
-          schema.meta.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key))
+          schema.meta.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+          schema.meta.indexSignature
         )
       )
     }
@@ -297,7 +302,8 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
     if (meta.isStruct(schema.meta)) {
       return make(
         meta.struct(
-          schema.meta.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key))
+          schema.meta.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+          schema.meta.indexSignature
         )
       )
     }
@@ -317,7 +323,8 @@ export const partial = <A>(
   if (meta.isStruct(schema.meta)) {
     return make(
       meta.struct(
-        schema.meta.fields.map((f) => meta.field(f.key, f.value, true, f.readonly))
+        schema.meta.fields.map((f) => meta.field(f.key, f.value, true, f.readonly)),
+        schema.meta.indexSignature
       )
     )
   }
@@ -354,7 +361,8 @@ export const required = <A>(
   if (meta.isStruct(schema.meta)) {
     return make(
       meta.struct(
-        schema.meta.fields.map((f) => meta.field(f.key, f.value, false, f.readonly))
+        schema.meta.fields.map((f) => meta.field(f.key, f.value, false, f.readonly)),
+        schema.meta.indexSignature
       )
     )
   }

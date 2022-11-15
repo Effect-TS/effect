@@ -116,6 +116,10 @@ export const lazy = <A>(
   )
 }
 
+// TODO: move to internal
+const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
+  typeof u === "object" && u != null && !Array.isArray(u)
+
 const go = S.memoize((meta: Meta): Guard<any> => {
   switch (meta._tag) {
     case "Apply": {
@@ -174,21 +178,32 @@ const go = S.memoize((meta: Meta): Guard<any> => {
       )
     }
     case "Struct": {
-      const fields = meta.fields.map((field) => go(field.value))
+      const fields = {}
+      meta.fields.forEach((field) => {
+        fields[field.key] = go(field.value)
+      })
+      const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
       return make(
         S.make(meta),
-        (a): a is any =>
-          typeof a === "object" && a != null && !Array.isArray(a) &&
-          fields.every((field, i) => field.is(a[meta.fields[i].key]))
-      )
-    }
-    case "IndexSignature": {
-      const value = go(meta.value)
-      return make(
-        S.make(meta),
-        (a): a is { readonly [_: string]: unknown } =>
-          typeof a === "object" && a != null && !Array.isArray(a) &&
-          Object.keys(a).every((key) => value.is(a[key]))
+        (a): a is any => {
+          if (!isUnknownIndexSignature(a)) {
+            return false
+          }
+          for (const key of Object.keys(fields)) {
+            if (!fields[key].is(a[key])) {
+              return false
+            }
+          }
+          if (O.isSome(oIndexSignature)) {
+            const indexSignature = oIndexSignature.value
+            for (const key of Object.keys(a)) {
+              if (!(key in fields) && !indexSignature.is(a[key])) {
+                return false
+              }
+            }
+          }
+          return true
+        }
       )
     }
     case "Lazy":

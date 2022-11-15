@@ -85,14 +85,41 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
     case "Union":
       return pipe(Json.Decoder, D.compose(D.union(...meta.members.map(goD))))
     case "Struct": {
-      const fields = {}
+      const fields: Record<PropertyKey, Decoder<J.Json, any>> = {}
       meta.fields.forEach((field) => {
         fields[field.key] = goD(field.value)
       })
-      return pipe(Json.JsonObjectDecoder, D.compose(D.fromStruct(fields)))
+      const oIndexSignature = pipe(meta.indexSignature, O.map((is) => goD(is.value)))
+      return pipe(
+        Json.JsonObjectDecoder,
+        D.compose(D.make(
+          S.make(meta),
+          (input) => {
+            const a = {}
+            for (const key of Object.keys(fields)) {
+              const t = fields[key].decode(input[key])
+              if (T.isLeft(t)) {
+                return T.left(t.left)
+              }
+              a[key] = t.right
+            }
+            if (O.isSome(oIndexSignature)) {
+              const indexSignature = oIndexSignature.value
+              for (const key of Object.keys(input)) {
+                if (!(key in fields)) {
+                  const t = indexSignature.decode(input[key])
+                  if (T.isLeft(t)) {
+                    return T.left(t.left)
+                  }
+                  a[key] = t.right
+                }
+              }
+            }
+            return D.succeed(a as any)
+          }
+        ))
+      )
     }
-    case "IndexSignature":
-      return pipe(Json.JsonObjectDecoder, D.compose(D.fromIndexSignature(goD(meta.value))))
     case "Lazy":
       return D.lazy(meta.symbol, () => goD(meta.f()))
   }
@@ -157,8 +184,6 @@ const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
         return out
       })
     }
-    case "IndexSignature":
-      return E.toIndexSignature(goE(meta.value))
     case "Lazy":
       return E.lazy(meta.symbol, () => goE(meta.f()))
   }

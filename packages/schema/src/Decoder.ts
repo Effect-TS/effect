@@ -276,6 +276,7 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
   })
 }
 
+// TODO: move to internal
 const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
