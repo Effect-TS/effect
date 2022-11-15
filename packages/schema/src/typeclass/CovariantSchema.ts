@@ -4,36 +4,33 @@
 
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { FromSchema } from "@fp-ts/codec/typeclass/FromSchema"
-import type { ToSchema } from "@fp-ts/codec/typeclass/ToSchema"
+import type { InvariantSchema } from "@fp-ts/codec/typeclass/InvariantSchema"
 import type { Kind, TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 
 /**
  * @since 1.0.0
  */
-export interface SchemableFunctor<F extends TypeLambda> {
+export interface CovariantSchema<F extends TypeLambda> extends InvariantSchema<F> {
   readonly mapSchema: <A, B>(
     f: (schema: Schema<A>) => Schema<B>
   ) => <I, O, E>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, B>
 }
 
 /**
+ * Returns a default `imapSchema` implementation.
+ *
  * @since 1.0.0
  */
-export const getSchemableFunctor = <F extends TypeLambda>(
-  F: FromSchema<F> & ToSchema<F>
-): SchemableFunctor<F> => ({
-  mapSchema: <A, B>(
-    f: (schema: Schema<A>) => Schema<B>
-  ) => <I, O, E>(self: Kind<F, I, O, E, A>) => F.fromSchema<I, O, E, B>(f(F.toSchema(self)))
-})
+export const imap = <F extends TypeLambda>(
+  mapSchema: CovariantSchema<F>["mapSchema"]
+): InvariantSchema<F>["imapSchema"] => (to, _) => mapSchema(to)
 
 /**
  * @since 1.0.0
  */
 export const optional = <F extends TypeLambda>(
-  F: SchemableFunctor<F>
+  F: CovariantSchema<F>
 ): <I, O, E, A>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, A | undefined> =>
   F.mapSchema(S.optional)
 
@@ -41,14 +38,14 @@ export const optional = <F extends TypeLambda>(
  * @since 1.0.0
  */
 export const nullable = <F extends TypeLambda>(
-  F: SchemableFunctor<F>
+  F: CovariantSchema<F>
 ): <I, O, E, A>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, A | null> => F.mapSchema(S.nullable)
 
 /**
  * @since 1.0.0
  */
 export const nullish = <F extends TypeLambda>(
-  F: SchemableFunctor<F>
+  F: CovariantSchema<F>
 ): <I, O, E, A>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, A | null | undefined> =>
   F.mapSchema(S.nullish)
 
@@ -56,7 +53,7 @@ export const nullish = <F extends TypeLambda>(
  * @since 1.0.0
  */
 export const pick = <F extends TypeLambda>(
-  F: SchemableFunctor<F>
+  F: CovariantSchema<F>
 ) =>
   <A, Keys extends ReadonlyArray<keyof A>>(
     ...keys: Keys
@@ -68,7 +65,7 @@ export const pick = <F extends TypeLambda>(
  * @since 1.0.0
  */
 export const omit = <F extends TypeLambda>(
-  F: SchemableFunctor<F>
+  F: CovariantSchema<F>
 ) =>
   <A, Keys extends ReadonlyArray<keyof A>>(
     ...keys: Keys

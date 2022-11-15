@@ -9,8 +9,8 @@ import type { Kind, TypeLambda } from "@fp-ts/core/HKT"
 /**
  * @since 1.0.0
  */
-export interface FromSchema<F extends TypeLambda> {
-  readonly fromSchema: <I, O, E, A>(
+export interface OfSchema<F extends TypeLambda> {
+  readonly ofSchema: <I, O, E, A>(
     schema: Schema<A>
   ) => Kind<F, I, O, E, A>
 }
@@ -19,57 +19,71 @@ export interface FromSchema<F extends TypeLambda> {
  * @since 1.0.0
  */
 export const of = <F extends TypeLambda>(
-  F: FromSchema<F>
-) => <I, O, E, A>(a: A): Kind<F, I, O, E, A> => F.fromSchema(S.of(a))
+  F: OfSchema<F>
+) => <A>(a: A): Kind<F, unknown, never, never, A> => F.ofSchema(S.of(a))
+
+/**
+ * @since 1.0.0
+ */
+export const unit = <F extends TypeLambda>(
+  F: OfSchema<F>
+): Kind<F, unknown, never, never, void> => of(F)<void>(undefined)
+
+/**
+ * @since 1.0.0
+ */
+export const Do = <F extends TypeLambda>(
+  F: OfSchema<F>
+): Kind<F, unknown, never, never, {}> => of(F)({})
 
 /**
  * @since 1.0.0
  */
 export const tuple = <F extends TypeLambda>(
-  F: FromSchema<F>
+  F: OfSchema<F>
 ) =>
   <I, O, E, Components extends ReadonlyArray<Schema<any>>>(
     ...components: Components
   ): Kind<F, I, O, E, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
-    F.fromSchema(S.tuple<true, Components>(true, ...components))
+    F.ofSchema(S.tuple<true, Components>(true, ...components))
 
 /**
  * @since 1.0.0
  */
 export const union = <F extends TypeLambda>(
-  F: FromSchema<F>
+  F: OfSchema<F>
 ) =>
   <I, O, E, Members extends ReadonlyArray<Schema<any>>>(
     ...members: Members
-  ): Kind<F, I, O, E, Parameters<Members[number]["A"]>[0]> => F.fromSchema(S.union(...members))
+  ): Kind<F, I, O, E, Parameters<Members[number]["A"]>[0]> => F.ofSchema(S.union(...members))
 
 /**
  * @since 1.0.0
  */
 export const struct = <F extends TypeLambda>(
-  F: FromSchema<F>
+  F: OfSchema<F>
 ) =>
   <I, O, E, Fields extends Record<PropertyKey, Schema<any>>>(
     fields: Fields
   ): Kind<F, I, O, E, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
-    F.fromSchema(S.struct(fields))
+    F.ofSchema(S.struct(fields))
 
 /**
  * @since 1.0.0
  */
 export const indexSignature = <F extends TypeLambda>(
-  F: FromSchema<F>
+  F: OfSchema<F>
 ) =>
   <I, O, E, A>(
     value: Schema<A>
-  ): Kind<F, I, O, E, { readonly [_: string]: A }> => F.fromSchema(S.indexSignature(value))
+  ): Kind<F, I, O, E, { readonly [_: string]: A }> => F.ofSchema(S.indexSignature(value))
 
 /**
  * @since 1.0.0
  */
 export const readonlyArray = <F extends TypeLambda>(
-  F: FromSchema<F>
+  F: OfSchema<F>
 ) =>
   <I, O, E, A>(
     item: Schema<A>
-  ): Kind<F, I, O, E, ReadonlyArray<A>> => F.fromSchema(S.array(true, item))
+  ): Kind<F, I, O, E, ReadonlyArray<A>> => F.ofSchema(S.array(true, item))

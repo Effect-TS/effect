@@ -5,8 +5,8 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
-import * as schemableFunctor from "@fp-ts/codec/typeclass/SchemableFunctor"
+import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
+import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -211,21 +211,21 @@ export const unsafeGuardFor = S.memoize(<A>(schema: Schema<A>): Guard<A> => go(s
 /**
  * @since 1.0.0
  */
-export const FromSchema: fromSchema.FromSchema<GuardTypeLambda> = {
-  fromSchema: unsafeGuardFor
+export const FromSchema: ofSchema.OfSchema<GuardTypeLambda> = {
+  ofSchema: unsafeGuardFor
 }
 
 /**
  * @since 1.0.0
  */
-export const of: <A>(a: A) => Guard<A> = fromSchema.of(FromSchema)
+export const of: <A>(a: A) => Guard<A> = ofSchema.of(FromSchema)
 
 /**
  * @since 1.0.0
  */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-) => Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = fromSchema
+) => Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = ofSchema
   .tuple(FromSchema)
 
 /**
@@ -233,7 +233,7 @@ export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Guard<Parameters<Members[number]["A"]>[0]> = fromSchema
+) => Guard<Parameters<Members[number]["A"]>[0]> = ofSchema
   .union(FromSchema)
 
 /**
@@ -241,7 +241,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-) => Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = fromSchema
+) => Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = ofSchema
   .struct(FromSchema)
 
 /**
@@ -249,12 +249,12 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
  */
 export const indexSignature: <A>(value: Schema<A>) => Guard<{
   readonly [_: string]: A
-}> = fromSchema.indexSignature(FromSchema)
+}> = ofSchema.indexSignature(FromSchema)
 
 /**
  * @since 1.0.0
  */
-export const readonlyArray: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = fromSchema
+export const readonlyArray: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = ofSchema
   .readonlyArray(FromSchema)
 
 /**
@@ -267,15 +267,16 @@ export const mapSchema = <A, B>(
 /**
  * @since 1.0.0
  */
-export const SchemableFunctor: schemableFunctor.SchemableFunctor<GuardTypeLambda> = {
+export const CovariantSchema: covariantSchema.CovariantSchema<GuardTypeLambda> = {
+  imapSchema: covariantSchema.imap<GuardTypeLambda>(mapSchema),
   mapSchema
 }
 
 /**
  * @since 1.0.0
  */
-export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = schemableFunctor.optional(
-  SchemableFunctor
+export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = covariantSchema.optional(
+  CovariantSchema
 )
 
 /**
@@ -283,8 +284,8 @@ export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = schemableFu
  */
 export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = schemableFunctor.pick(
-  SchemableFunctor
+) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = covariantSchema.pick(
+  CovariantSchema
 )
 
 /**
@@ -292,8 +293,8 @@ export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
  */
 export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemableFunctor
-  .omit(SchemableFunctor)
+) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = covariantSchema
+  .omit(CovariantSchema)
 
 // /**
 //  * @since 1.0.0

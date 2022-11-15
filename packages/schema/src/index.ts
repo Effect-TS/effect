@@ -13,9 +13,10 @@ import * as schema from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
 
 // typeclass
-import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
-import * as schemableFunctor from "@fp-ts/codec/typeclass/SchemableFunctor"
-import * as toSchema from "@fp-ts/codec/typeclass/ToSchema"
+import * as contravariantSchema from "@fp-ts/codec/typeclass/ContravariantSchema"
+import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
+import * as invariantSchema from "@fp-ts/codec/typeclass/InvariantSchema"
+import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 
 // data types
 import * as any from "@fp-ts/codec/data/any"
@@ -39,6 +40,14 @@ export {
   /**
    * @since 1.0.0
    */
+  contravariantSchema,
+  /**
+   * @since 1.0.0
+   */
+  covariantSchema,
+  /**
+   * @since 1.0.0
+   */
   decodeError,
   /**
    * @since 1.0.0
@@ -51,11 +60,11 @@ export {
   /**
    * @since 1.0.0
    */
-  fromSchema,
+  guard,
   /**
    * @since 1.0.0
    */
-  guard,
+  invariantSchema,
   /**
    * @since 1.0.0
    */
@@ -75,19 +84,15 @@ export {
   /**
    * @since 1.0.0
    */
+  ofSchema,
+  /**
+   * @since 1.0.0
+   */
   schema,
   /**
    * @since 1.0.0
    */
-  schemableFunctor,
-  /**
-   * @since 1.0.0
-   */
   show,
-  /**
-   * @since 1.0.0
-   */
-  toSchema,
   /**
    * @since 1.0.0
    */
