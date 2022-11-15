@@ -9,6 +9,7 @@ import * as D from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
+import * as T from "@fp-ts/codec/internal/These"
 import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -50,8 +51,37 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
       return D.boolean
     case "Of":
       return D.of(meta.value)
-    case "Tuple":
-      return pipe(Json.JsonArrayDecoder, D.compose(D.fromTuple(...meta.components.map(goD))))
+    case "Tuple": {
+      const components = meta.components.map(goD)
+      const oRestElement = pipe(meta.restElement, O.map(goD))
+      return pipe(
+        Json.JsonArrayDecoder,
+        D.compose(D.make(
+          S.make(meta),
+          (is) => {
+            const out: Array<unknown> = []
+            for (let i = 0; i < components.length; i++) {
+              const t = components[i].decode(is[i])
+              if (T.isLeft(t)) {
+                return T.left(t.left)
+              }
+              out[i] = t.right
+            }
+            if (O.isSome(oRestElement)) {
+              const restElement = oRestElement.value
+              for (let i = components.length; i < is.length; i++) {
+                const t = restElement.decode(is[i])
+                if (T.isLeft(t)) {
+                  return T.left(t.left)
+                }
+                out[i] = t.right
+              }
+            }
+            return D.succeed(out as any)
+          }
+        ))
+      )
+    }
     case "Union":
       return pipe(Json.Decoder, D.compose(D.union(...meta.members.map(goD))))
     case "Struct": {
@@ -63,8 +93,6 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
     }
     case "IndexSignature":
       return pipe(Json.JsonObjectDecoder, D.compose(D.fromIndexSignature(goD(meta.value))))
-    case "Array":
-      return pipe(Json.JsonArrayDecoder, D.compose(D.fromReadonlyArray(goD(meta.item))))
     case "Lazy":
       return D.lazy(meta.symbol, () => goD(meta.f()))
   }
@@ -131,10 +159,6 @@ const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
     }
     case "IndexSignature":
       return E.toIndexSignature(goE(meta.value))
-    case "Array": {
-      const item = goE(meta.item)
-      return E.make(S.make(meta), (a) => a.map(item.encode))
-    }
     case "Lazy":
       return E.lazy(meta.symbol, () => goE(meta.f()))
   }

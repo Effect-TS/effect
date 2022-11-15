@@ -43,11 +43,18 @@ describe("Guard", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
-  it("tuple", () => {
-    const guard = G.tuple(G.string, G.number)
-    expect(guard.is(["a", 1])).toEqual(true)
-    expect(guard.is([1, 1])).toEqual(false)
-    expect(guard.is(["a", "b"])).toEqual(false)
+  describe("tuple", () => {
+    it("tuple", () => {
+      const guard = G.tuple(G.string, G.number)
+      expect(guard.is(["a", 1])).toEqual(true)
+      expect(guard.is([1, 1])).toEqual(false)
+      expect(guard.is(["a", "b"])).toEqual(false)
+    })
+
+    it("empty tuple", () => {
+      const guard = G.tuple()
+      expect(guard.is([])).toEqual(true)
+    })
   })
 
   it("union", () => {

@@ -238,7 +238,8 @@ export const indexSignature = <A>(
 export const array = <B extends boolean, A>(
   readonly: B,
   item: Schema<A>
-): Schema<B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item.meta, readonly))
+): Schema<B extends true ? ReadonlyArray<A> : Array<A>> =>
+  make(meta.tuple([], O.some(item.meta), readonly))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {

@@ -100,15 +100,6 @@ const go = S.memoize((meta: Meta): Show<any> => {
           }}`
       )
     }
-    case "Array": {
-      const item = go(meta.item)
-      return make(
-        S.make(meta),
-        (a: ReadonlyArray<unknown>) =>
-          "[" + a.map((elem) => item.show(elem)).join(",") +
-          "]"
-      )
-    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }

@@ -24,7 +24,6 @@ export type Meta =
   | Number
   | Boolean
   | Of
-  | Array
   | Struct
   | IndexSignature
   | Tuple
@@ -138,24 +137,6 @@ export interface Of {
 export const of = (value: unknown): Of => ({
   _tag: "Of",
   value
-})
-
-/**
- * @since 1.0.0
- */
-export interface Array {
-  readonly _tag: "Array"
-  readonly item: Meta
-  readonly readonly: boolean
-}
-
-/**
- * @since 1.0.0
- */
-export const array = (item: Meta, readonly: boolean): Array => ({
-  _tag: "Array",
-  item,
-  readonly
 })
 
 /**

@@ -191,13 +191,6 @@ const go = S.memoize((meta: Meta): Guard<any> => {
           Object.keys(a).every((key) => value.is(a[key]))
       )
     }
-    case "Array": {
-      const item = go(meta.item)
-      return make(
-        S.make(meta),
-        (a): a is ReadonlyArray<unknown> => Array.isArray(a) && a.every((elem) => item.is(elem))
-      )
-    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }

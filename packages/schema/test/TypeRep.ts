@@ -108,13 +108,6 @@ const go = S.memoize((meta: Meta): TypeRep<any> => {
         `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${value.typeRep} }`
       )
     }
-    case "Array": {
-      const item = go(meta.item)
-      return make(
-        meta,
-        `${meta.readonly ? "Readonly" : ""}Array<${item.typeRep}>`
-      )
-    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }
@@ -170,14 +163,14 @@ describe("unsafeTypeRepFor", () => {
   it("ReadonlyArray", () => {
     const schema = S.array(true, S.string)
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
-      "ReadonlyArray<string>"
+      "readonly [...string[]]"
     )
   })
 
   it("Array", () => {
     const schema = S.array(false, S.string)
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
-      "Array<string>"
+      "[...string[]]"
     )
   })
 

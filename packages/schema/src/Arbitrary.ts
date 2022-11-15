@@ -184,13 +184,6 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
         (fc) => fc.dictionary(fc.string(), value.arbitrary(fc))
       )
     }
-    case "Array": {
-      const item = go(meta.item)
-      return make(
-        S.make(meta),
-        (fc) => fc.array(item.arbitrary(fc))
-      )
-    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }

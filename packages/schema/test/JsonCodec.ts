@@ -146,6 +146,7 @@ describe("JsonCodec", () => {
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
+      expect(decoder.decode(["a", "b", "c"])).toEqual(D.succeed(["a", "b", "c"]))
 
       expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
     })
