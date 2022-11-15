@@ -79,36 +79,6 @@ export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
 /**
  * @since 1.0.0
  */
-export const getDeclarations = <A>(schema: Schema<A>): Declarations => {
-  const go = memoize((meta: Meta): Declarations => {
-    switch (meta._tag) {
-      case "Apply":
-        return mergeMany(meta.metas.map(go))(pipe(empty, add(meta.symbol, meta.declaration)))
-      case "String":
-      case "Number":
-      case "Boolean":
-      case "Of":
-        return empty
-      case "Tuple":
-        return mergeMany(meta.components.map(go))(empty)
-      case "Union":
-        return mergeMany(meta.members.map(go))(empty)
-      case "Struct":
-        return mergeMany(meta.fields.map((field) => go(field.value)))(empty)
-      case "IndexSignature":
-        return go(meta.value)
-      case "Array":
-        return go(meta.item)
-      case "Lazy":
-        return go(meta.f())
-    }
-  })
-  return go(schema.meta)
-}
-
-/**
- * @since 1.0.0
- */
 export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
   config: Option<unknown>,
