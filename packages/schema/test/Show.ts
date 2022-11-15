@@ -51,23 +51,6 @@ describe("Show", () => {
       )
     })
 
-    it("never", () => {
-      const schema = S.never
-      expect(() => unsafeShowFor(schema).show(1 as any as never)).toThrow()
-    })
-
-    it("unknown", () => {
-      const schema = S.unknown
-      expect(unsafeShowFor(schema).show(1)).toEqual("1")
-      expect(unsafeShowFor(schema).show("a")).toEqual("\"a\"")
-    })
-
-    it("any", () => {
-      const schema = S.any
-      expect(unsafeShowFor(schema).show(1)).toEqual("1")
-      expect(unsafeShowFor(schema).show("a")).toEqual("\"a\"")
-    })
-
     it("string", () => {
       const schema = S.string
       expect(unsafeShowFor(schema).show("a")).toEqual(

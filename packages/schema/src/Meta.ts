@@ -20,9 +20,6 @@ export interface Declarations extends ReadonlyMap<symbol, Declaration> {}
  */
 export type Meta =
   | Apply
-  | Never
-  | Unknown
-  | Any
   | String
   | Number
   | Boolean
@@ -60,42 +57,6 @@ export const apply = (
   declaration,
   metas
 })
-
-/**
- * @since 1.0.0
- */
-export interface Never {
-  readonly _tag: "Never"
-}
-
-/**
- * @since 1.0.0
- */
-export const never: Never = { _tag: "Never" }
-
-/**
- * @since 1.0.0
- */
-export interface Unknown {
-  readonly _tag: "Unknown"
-}
-
-/**
- * @since 1.0.0
- */
-export const unknown: Unknown = { _tag: "Unknown" }
-
-/**
- * @since 1.0.0
- */
-export interface Any {
-  readonly _tag: "Any"
-}
-
-/**
- * @since 1.0.0
- */
-export const any: Any = { _tag: "Any" }
 
 /**
  * @since 1.0.0

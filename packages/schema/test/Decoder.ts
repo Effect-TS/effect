@@ -49,20 +49,6 @@ describe("Decoder", () => {
     // expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
   })
 
-  it("never", () => {
-    expect(D.never.decode(1)).toEqual(D.fail(DE.notType("never", 1)))
-  })
-
-  it("unknown", () => {
-    expect(D.unknown.decode(1)).toEqual(D.succeed(1))
-    expect(D.unknown.decode("a")).toEqual(D.succeed("a"))
-  })
-
-  it("any", () => {
-    expect(D.any.decode(1)).toEqual(D.succeed(1))
-    expect(D.any.decode("a")).toEqual(D.succeed("a"))
-  })
-
   it("string", () => {
     expect(D.string.decode("a")).toEqual(D.succeed("a"))
 

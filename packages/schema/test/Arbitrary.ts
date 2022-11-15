@@ -26,25 +26,6 @@ const set = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   )
 
 describe("Arbitrary", () => {
-  it("never", () => {
-    const schema = S.never
-    expect(() => A.unsafeArbitraryFor(schema).arbitrary(fc)).toThrow()
-  })
-
-  it("unknown", () => {
-    const schema = S.unknown
-    const arbitrary = A.unsafeArbitraryFor(schema).arbitrary(fc)
-    const guard = G.unsafeGuardFor(schema)
-    expect(fc.sample(arbitrary, 10).every(guard.is)).toEqual(true)
-  })
-
-  it("any", () => {
-    const schema = S.any
-    const arbitrary = A.unsafeArbitraryFor(schema).arbitrary(fc)
-    const guard = G.unsafeGuardFor(schema)
-    expect(fc.sample(arbitrary, 10).every(guard.is)).toEqual(true)
-  })
-
   describe("unsafeArbitraryFor", () => {
     const unsafeArbitraryFor = A.unsafeArbitraryFor
     const unsafeGuardFor = G.unsafeGuardFor

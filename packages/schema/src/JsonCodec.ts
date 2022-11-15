@@ -26,12 +26,6 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
       }
       throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      return D.never as any
-    case "Unknown":
-      return D.unknown
-    case "Any":
-      return D.any
     case "String": {
       let out = D.string
       if (meta.minLength !== undefined) {
@@ -59,7 +53,7 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
     case "Tuple":
       return pipe(Json.JsonArrayDecoder, D.compose(D.fromTuple(...meta.components.map(goD))))
     case "Union":
-      return pipe(Json.JsonDecoder, D.compose(D.union(...meta.members.map(goD))))
+      return pipe(Json.Decoder, D.compose(D.union(...meta.members.map(goD))))
     case "Struct": {
       const fields = {}
       meta.fields.forEach((field) => {
@@ -89,12 +83,6 @@ const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
       }
       throw new Error(`Missing "encoderFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      throw new Error("Never")
-    case "Unknown":
-      throw new Error("Unknown")
-    case "Any":
-      throw new Error("Any")
     case "String":
       return E.string
     case "Number":
@@ -102,7 +90,7 @@ const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
     case "Boolean":
       return E.boolean
     case "Of":
-      if (Json.JsonGuard.is(meta.value)) {
+      if (Json.Guard.is(meta.value)) {
         return E.of(meta.value)
       }
       throw new Error("Of value is not a JSON")

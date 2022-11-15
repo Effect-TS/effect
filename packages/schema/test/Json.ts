@@ -9,7 +9,7 @@ import * as fc from "fast-check"
 
 describe("Json", () => {
   it("Json", () => {
-    const schema = Json.JsonSchema
+    const schema = Json.Schema
     const arbitrary = A.unsafeArbitraryFor(schema)
     const guard = G.unsafeGuardFor(schema)
     const decoder = JC.JsonCodec.unsafeDecoderFor(schema)
@@ -19,8 +19,8 @@ describe("Json", () => {
   })
 
   it("Show", () => {
-    const schema = Json.JsonSchema
-    const manualSchema: S.Schema<Json.Json> = S.lazy<Json.Json>(Json.JsonSymbol, () =>
+    const schema = Json.Schema
+    const manualSchema: S.Schema<Json.Json> = S.lazy<Json.Json>(Json.symbol, () =>
       S.union(
         S.of(null),
         S.string,

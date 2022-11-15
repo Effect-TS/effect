@@ -23,23 +23,6 @@ export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"])
 /**
  * @since 1.0.0
  */
-export const never: Arbitrary<never> = make(S.never, () => {
-  throw new Error("never")
-})
-
-/**
- * @since 1.0.0
- */
-export const unknown: Arbitrary<unknown> = make(S.unknown, (fc) => fc.anything())
-
-/**
- * @since 1.0.0
- */
-export const any: Arbitrary<any> = make(S.any, (fc) => fc.anything())
-
-/**
- * @since 1.0.0
- */
 export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 
 /**
@@ -202,12 +185,6 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
       }
       throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      return never as any
-    case "Unknown":
-      return unknown
-    case "Any":
-      return any
     case "String": {
       let out = string
       if (meta.minLength !== undefined) {

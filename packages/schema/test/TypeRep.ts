@@ -59,12 +59,6 @@ const go = S.memoize((meta: Meta): TypeRep<any> => {
       }
       throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      return make(S.never.meta, "never") as any
-    case "Unknown":
-      return make(S.unknown.meta, "unknown")
-    case "Any":
-      return make(S.any.meta, "any")
     case "String":
       return make(S.string.meta, "string")
     case "Number":
@@ -161,21 +155,6 @@ describe("unsafeTypeRepFor", () => {
         "Set<string>"
       )
     })
-  })
-
-  it("never", () => {
-    const schema = S.never
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("never")
-  })
-
-  it("unknown", () => {
-    const schema = S.unknown
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("unknown")
-  })
-
-  it("any", () => {
-    const schema = S.any
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual("any")
   })
 
   it("struct", () => {

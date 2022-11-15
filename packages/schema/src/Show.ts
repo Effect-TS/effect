@@ -47,14 +47,6 @@ const go = S.memoize((meta: Meta): Show<any> => {
       }
       throw new Error(`Missing "showFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      return make<never>(S.never, () => {
-        throw new Error("never")
-      }) as any
-    case "Unknown":
-      return make(S.unknown, (a) => JSON.stringify(a))
-    case "Any":
-      return make(S.any, (a) => JSON.stringify(a))
     case "String":
       return make(S.string, (a) => JSON.stringify(a))
     case "Number":

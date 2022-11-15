@@ -71,30 +71,6 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
 /**
  * @since 1.0.0
  */
-export const never: Decoder<unknown, never> = fromGuard(
-  G.never,
-  (u) => DE.notType("never", u)
-)
-
-/**
- * @since 1.0.0
- */
-export const unknown: Decoder<unknown, unknown> = fromGuard(
-  G.unknown,
-  (u) => DE.notType("unknown", u)
-)
-
-/**
- * @since 1.0.0
- */
-export const any: Decoder<unknown, any> = fromGuard(
-  G.any,
-  (u) => DE.notType("any", u)
-)
-
-/**
- * @since 1.0.0
- */
 export const string: Decoder<unknown, string> = fromGuard(
   G.string,
   (u) => DE.notType("string", u)
@@ -187,11 +163,6 @@ export const of = <A>(
     (u) => DE.notEqual(value, u)
   )
 
-const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = make(
-  S.array(true, S.unknown),
-  (u) => Array.isArray(u) ? succeed(u as ReadonlyArray<unknown>) : fail(DE.notType("Array", u))
-)
-
 /**
  * @since 1.0.0
  */
@@ -221,8 +192,18 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
  */
 export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
   ...components: Components
-): Decoder<unknown, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
-  pipe(UnknownArray, compose(fromTuple<unknown, Components>(...components)))
+): Decoder<unknown, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> => {
+  const decoder = fromTuple<unknown, Components>(...components)
+  return make(
+    S.tuple<true, Components>(true, ...components),
+    (is) => {
+      if (!Array.isArray(is)) {
+        return fail(DE.notType("Array", is))
+      }
+      return decoder.decode(is)
+    }
+  )
+}
 
 /**
  * @since 1.0.0
@@ -258,20 +239,18 @@ export const fromReadonlyArray = <I, A>(
  */
 export const readonlyArray = <A>(
   item: Decoder<unknown, A>
-): Decoder<unknown, ReadonlyArray<A>> => pipe(UnknownArray, compose(fromReadonlyArray(item)))
-
-/**
- * @since 1.0.0
- */
-const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = make(
-  S.indexSignature(S.unknown),
-  (
-    u
-  ) =>
-    typeof u === "object" && u != null && !Array.isArray(u) ?
-      succeed(u as { readonly [_: string]: unknown }) :
-      fail(DE.notType("Object", u))
-)
+): Decoder<unknown, ReadonlyArray<A>> => {
+  const decoder = fromReadonlyArray(item)
+  return make(
+    S.array(true, item),
+    (is) => {
+      if (!Array.isArray(is)) {
+        return fail(DE.notType("Array", is))
+      }
+      return decoder.decode(is)
+    }
+  )
+}
 
 /**
  * @since 1.0.0
@@ -297,16 +276,22 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
   })
 }
 
+const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
+  typeof u === "object" && u != null && !Array.isArray(u)
+
 /**
  * @since 1.0.0
  */
 export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>>(
   fields: Fields
 ): Decoder<unknown, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
-  return pipe(
-    UnknownIndexSignature,
-    compose(fromStruct<unknown, Fields>(fields))
-  )
+  const decoder = fromStruct(fields)
+  return make(S.struct(fields), (u) => {
+    if (!isUnknownIndexSignature(u)) {
+      return fail(DE.notType("Object", u))
+    }
+    return decoder.decode(u)
+  })
 }
 
 /**
@@ -350,11 +335,15 @@ export const fromIndexSignature = <I, A>(
  */
 export const indexSignature = <A>(
   value: Decoder<unknown, A>
-): Decoder<unknown, { readonly [_: string]: A }> =>
-  pipe(
-    UnknownIndexSignature,
-    compose(fromIndexSignature(value))
-  )
+): Decoder<unknown, { readonly [_: string]: A }> => {
+  const decoder = fromIndexSignature(value)
+  return make(S.indexSignature(value), (u) => {
+    if (!isUnknownIndexSignature(u)) {
+      return fail(DE.notType("Object", u))
+    }
+    return decoder.decode(u)
+  })
+}
 
 /**
  * @since 1.0.0

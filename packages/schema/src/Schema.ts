@@ -84,9 +84,6 @@ export const getDeclarations = <A>(schema: Schema<A>): Declarations => {
     switch (meta._tag) {
       case "Apply":
         return mergeMany(meta.metas.map(go))(pipe(empty, add(meta.symbol, meta.declaration)))
-      case "Never":
-      case "Unknown":
-      case "Any":
       case "String":
       case "Number":
       case "Boolean":
@@ -118,21 +115,6 @@ export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   declaration: Declaration,
   ...schemas: Schemas
 ): Schema<any> => make(meta.apply(symbol, config, declaration, schemas.map((s) => s.meta)))
-
-/**
- * @since 1.0.0
- */
-export const never: Schema<never> = make(meta.never)
-
-/**
- * @since 1.0.0
- */
-export const unknown: Schema<unknown> = make(meta.unknown)
-
-/**
- * @since 1.0.0
- */
-export const any: Schema<any> = make(meta.any)
 
 /**
  * @since 1.0.0

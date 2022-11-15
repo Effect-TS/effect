@@ -49,21 +49,6 @@ export const make = <A>(
 /**
  * @since 1.0.0
  */
-export const never: Guard<never> = make(S.never, (_u: unknown): _u is never => false)
-
-/**
- * @since 1.0.0
- */
-export const unknown: Guard<unknown> = make(S.unknown, (_u: unknown): _u is unknown => true)
-
-/**
- * @since 1.0.0
- */
-export const any: Guard<any> = make(S.any, (_u: unknown): _u is any => true)
-
-/**
- * @since 1.0.0
- */
 export const string: Guard<string> = make(
   S.string,
   (u: unknown): u is string => typeof u === "string"
@@ -155,12 +140,6 @@ const go = S.memoize((meta: Meta): Guard<any> => {
       }
       throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
     }
-    case "Never":
-      return never as any
-    case "Unknown":
-      return unknown
-    case "Any":
-      return any
     case "String": {
       let out = string
       if (meta.minLength !== undefined) {
