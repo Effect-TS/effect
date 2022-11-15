@@ -107,7 +107,7 @@ describe("Arbitrary", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
-      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+      fc.assert(fc.property(arbitrary, (a) => guard.is(a)))
     })
 
     it("indexSignature", () => {

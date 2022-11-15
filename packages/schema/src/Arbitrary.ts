@@ -4,6 +4,10 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
+import * as schemableFunctor from "@fp-ts/codec/typeclass/SchemableFunctor"
+import type { TypeLambda } from "@fp-ts/core/HKT"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type * as FastCheck from "fast-check"
 
@@ -12,6 +16,13 @@ import type * as FastCheck from "fast-check"
  */
 export interface Arbitrary<in out A> extends S.Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface ArbitraryTypeLambda extends TypeLambda {
+  readonly type: Arbitrary<this["Target"]>
 }
 
 /**
@@ -82,86 +93,6 @@ export const boolean: Arbitrary<boolean> = make(S.boolean, (fc) => fc.boolean())
 /**
  * @since 1.0.0
  */
-export const of = <A>(
-  value: A
-): Arbitrary<A> => make(S.of(value), (fc) => fc.constant(value))
-
-/**
- * @since 1.0.0
- */
-export const tuple = <Components extends ReadonlyArray<Arbitrary<unknown>>>(
-  ...components: Components
-): Arbitrary<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
-  make(
-    S.tuple<true, Components>(true, ...components),
-    (fc) => fc.tuple<any>(...components.map((c) => c.arbitrary(fc)))
-  )
-
-/**
- * @since 1.0.0
- */
-export const union = <Members extends ReadonlyArray<Arbitrary<unknown>>>(
-  ...members: Members
-): Arbitrary<Parameters<Members[number]["A"]>[0]> =>
-  make(
-    S.union<Members>(...members),
-    (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
-  )
-
-/**
- * @since 1.0.0
- */
-export const mapSchema = <A, B>(
-  f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
-
-/**
- * @since 1.0.0
- */
-export const optional = mapSchema(S.optional)
-
-/**
- * @since 1.0.0
- */
-export const struct = <Fields extends Record<PropertyKey, Arbitrary<unknown>>>(
-  fields: Fields
-): Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
-  make(
-    S.struct(fields),
-    (fc) => {
-      const arbs: any = {}
-      Object.keys(fields).forEach((key) => {
-        arbs[key] = fields[key].arbitrary(fc)
-      })
-      return fc.record(arbs)
-    }
-  )
-
-/**
- * @since 1.0.0
- */
-export const indexSignature = <A>(
-  value: Arbitrary<A>
-): Arbitrary<{ readonly [_: string]: A }> =>
-  make(
-    S.indexSignature(value),
-    (fc) => fc.dictionary(fc.string(), value.arbitrary(fc))
-  )
-
-/**
- * @since 1.0.0
- */
-export const array = <A>(
-  item: Arbitrary<A>
-): Arbitrary<ReadonlyArray<A>> =>
-  make(
-    S.array(true, item),
-    (fc) => fc.array(item.arbitrary(fc))
-  )
-
-/**
- * @since 1.0.0
- */
 export const lazy = <A>(
   symbol: symbol,
   f: () => Arbitrary<A>
@@ -208,35 +139,58 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
     case "Boolean":
       return boolean
     case "Of":
-      return of(meta.value)
+      return make(S.make(meta), (fc) => fc.constant(meta.value))
     case "Tuple": {
       const components = meta.components.map(go)
-      const out = tuple(...components)
-      if (O.isSome(meta.restElement)) {
-        const restElement = go(meta.restElement.value)
+      const restElement = pipe(meta.restElement, O.map(go))
+      if (O.isSome(restElement)) {
         return make(
           S.make(meta),
           (fc) =>
-            out.arbitrary(fc).chain((as) =>
-              fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
+            fc.tuple(...components.map((c) => c.arbitrary(fc))).chain((as) =>
+              fc.array(restElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
             )
         )
       }
-      return out
+      return make(
+        S.make(meta),
+        (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc)))
+      )
     }
-    case "Union":
-      return union(...meta.members.map(go))
+    case "Union": {
+      const members = meta.members.map(go)
+      return make(
+        S.make(meta),
+        (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+      )
+    }
     case "Struct": {
-      const fields = {}
-      meta.fields.forEach((field) => {
-        fields[field.key] = go(field.value)
-      })
-      return struct(fields)
+      const fields = meta.fields.map((field) => go(field.value))
+      return make(
+        S.make(meta),
+        (fc) => {
+          const arbs: any = {}
+          for (let i = 0; i < fields.length; i++) {
+            arbs[meta.fields[i].key] = fields[i].arbitrary(fc)
+          }
+          return fc.record(arbs)
+        }
+      )
     }
-    case "IndexSignature":
-      return indexSignature(go(meta.value))
-    case "Array":
-      return array(go(meta.item))
+    case "IndexSignature": {
+      const value = go(meta.value)
+      return make(
+        S.make(meta),
+        (fc) => fc.dictionary(fc.string(), value.arbitrary(fc))
+      )
+    }
+    case "Array": {
+      const item = go(meta.item)
+      return make(
+        S.make(meta),
+        (fc) => fc.array(item.arbitrary(fc))
+      )
+    }
     case "Lazy":
       return lazy(meta.symbol, () => go(meta.f()))
   }
@@ -246,3 +200,92 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
  * @since 1.0.0
  */
 export const unsafeArbitraryFor = S.memoize(<A>(schema: Schema<A>): Arbitrary<A> => go(schema.meta))
+
+/**
+ * @since 1.0.0
+ */
+export const FromSchema: fromSchema.FromSchema<ArbitraryTypeLambda> = {
+  fromSchema: unsafeArbitraryFor
+}
+
+/**
+ * @since 1.0.0
+ */
+export const of: <A>(a: A) => Arbitrary<A> = fromSchema.of(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
+  ...components: Components
+) => Arbitrary<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = fromSchema
+  .tuple(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const union: <Members extends ReadonlyArray<Schema<any>>>(
+  ...members: Members
+) => Arbitrary<Parameters<Members[number]["A"]>[0]> = fromSchema
+  .union(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) => Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = fromSchema
+  .struct(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature: <A>(value: Schema<A>) => Arbitrary<{
+  readonly [_: string]: A
+}> = fromSchema.indexSignature(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const readonlyArray: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = fromSchema
+  .readonlyArray(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const mapSchema = <A, B>(
+  f: (schema: Schema<A>) => Schema<B>
+) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
+
+/**
+ * @since 1.0.0
+ */
+export const SchemableFunctor: schemableFunctor.SchemableFunctor<ArbitraryTypeLambda> = {
+  mapSchema
+}
+
+/**
+ * @since 1.0.0
+ */
+export const optional: <A>(self: Arbitrary<A>) => Arbitrary<A | undefined> = schemableFunctor
+  .optional(
+    SchemableFunctor
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Arbitrary<A>) => Arbitrary<{ [P in Keys[number]]: A[P] }> = schemableFunctor.pick(
+  SchemableFunctor
+)
+
+/**
+ * @since 1.0.0
+ */
+export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Arbitrary<A>) => Arbitrary<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> =
+  schemableFunctor
+    .omit(SchemableFunctor)

@@ -6,7 +6,7 @@ import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
-import * as functor from "@fp-ts/codec/typeclass/SchemableFunctor"
+import * as schemableFunctor from "@fp-ts/codec/typeclass/SchemableFunctor"
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -32,19 +32,6 @@ export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
 ): Guard<A> => ({ meta: schema.meta, is }) as any
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const alias = (symbol: symbol) =>
-//   <A>(guard: Guard<A>): Guard<A> => {
-//     const declaration: Declaration = {
-//       guardFor: (): Guard<A> => out
-//     }
-//     const schema = S.apply(symbol, O.none, declaration)
-//     const out = make(schema, guard.is)
-//     return out
-//   }
 
 /**
  * @since 1.0.0
@@ -280,14 +267,14 @@ export const mapSchema = <A, B>(
 /**
  * @since 1.0.0
  */
-export const SchemableFunctor: functor.SchemableFunctor<GuardTypeLambda> = {
+export const SchemableFunctor: schemableFunctor.SchemableFunctor<GuardTypeLambda> = {
   mapSchema
 }
 
 /**
  * @since 1.0.0
  */
-export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = functor.optional(
+export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = schemableFunctor.optional(
   SchemableFunctor
 )
 
@@ -296,7 +283,7 @@ export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = functor.opt
  */
 export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = functor.pick(
+) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = schemableFunctor.pick(
   SchemableFunctor
 )
 
@@ -305,5 +292,18 @@ export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
  */
 export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = functor
+) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemableFunctor
   .omit(SchemableFunctor)
+
+// /**
+//  * @since 1.0.0
+//  */
+// export const alias = (symbol: symbol) =>
+//   <A>(guard: Guard<A>): Guard<A> => {
+//     const declaration: Declaration = {
+//       guardFor: (): Guard<A> => out
+//     }
+//     const schema = S.apply(symbol, O.none, declaration)
+//     const out = make(schema, guard.is)
+//     return out
+//   }
