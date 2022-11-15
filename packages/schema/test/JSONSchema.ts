@@ -1,4 +1,4 @@
-import type { Declarations, Meta } from "@fp-ts/codec/Meta"
+import type { Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -24,47 +24,45 @@ const declarations = pipe(
   S.empty
 )
 
-export const unsafeJsonSchemaFor = (declarations: Declarations) =>
-  <A>(schema: Schema<A>): JSONSchema => {
-    const f = (meta: Meta): JSONSchema => {
-      switch (meta._tag) {
-        case "Apply": {
-          const declaration = S.unsafeGet(meta.symbol)(declarations)
-          if (declaration.jsonSchemaFor !== undefined) {
-            return O.isSome(meta.config) ?
-              declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(f)) :
-              declaration.jsonSchemaFor(...meta.metas.map(f))
-          }
-          throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
-        }
-        case "String": {
-          return {
-            type: "string",
-            minLength: meta.minLength,
-            maxLength: meta.maxLength
-          }
-        }
-        case "Number":
-          return {
-            type: "number",
-            minimum: meta.minimum,
-            maximum: meta.maximum,
-            exclusiveMinimum: meta.exclusiveMinimum,
-            exclusiveMaximum: meta.exclusiveMaximum
-          }
-        case "Boolean": {
-          return {
-            type: "boolean"
-          }
-        }
+const go = S.memoize((meta: Meta): JSONSchema => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = S.unsafeGet(meta.symbol)(declarations)
+      if (declaration.jsonSchemaFor !== undefined) {
+        return O.isSome(meta.config) ?
+          declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(go)) :
+          declaration.jsonSchemaFor(...meta.metas.map(go))
       }
-      throw new Error(`Unhandled ${meta._tag}`)
+      throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
     }
-    return f(schema.meta)
+    case "String": {
+      return {
+        type: "string",
+        minLength: meta.minLength,
+        maxLength: meta.maxLength
+      }
+    }
+    case "Number":
+      return {
+        type: "number",
+        minimum: meta.minimum,
+        maximum: meta.maximum,
+        exclusiveMinimum: meta.exclusiveMinimum,
+        exclusiveMaximum: meta.exclusiveMaximum
+      }
+    case "Boolean": {
+      return {
+        type: "boolean"
+      }
+    }
   }
+  throw new Error(`Unhandled ${meta._tag}`)
+})
+
+export const unsafeJsonSchemaFor = S.memoize(<A>(schema: Schema<A>): JSONSchema => go(schema.meta))
 
 describe("unsafeJsonSchemaFor", () => {
-  const jsonSchemaFor_ = unsafeJsonSchemaFor(declarations)
+  const jsonSchemaFor_ = unsafeJsonSchemaFor
 
   it("string", () => {
     const schema = S.string

@@ -191,82 +191,81 @@ export const lazy = <A>(
   )
 }
 
+const go = S.memoize((meta: Meta): Arbitrary<any> => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = meta.declaration
+      if (declaration.arbitraryFor != null) {
+        return O.isSome(meta.config) ?
+          declaration.arbitraryFor(meta.config.value, ...meta.metas.map(go)) :
+          declaration.arbitraryFor(...meta.metas.map(go))
+      }
+      throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
+    }
+    case "Never":
+      return never as any
+    case "Unknown":
+      return unknown
+    case "Any":
+      return any
+    case "String": {
+      let out = string
+      if (meta.minLength !== undefined) {
+        out = minLength(meta.minLength)(out)
+      }
+      if (meta.maxLength !== undefined) {
+        out = maxLength(meta.maxLength)(out)
+      }
+      return out
+    }
+    case "Number": {
+      let out = number
+      if (meta.minimum !== undefined) {
+        out = minimum(meta.minimum)(out)
+      }
+      if (meta.maximum !== undefined) {
+        out = maximum(meta.maximum)(out)
+      }
+      return out
+    }
+    case "Boolean":
+      return boolean
+    case "Of":
+      return of(meta.value)
+    case "Tuple": {
+      const components = meta.components.map(go)
+      const out = tuple(...components)
+      if (O.isSome(meta.restElement)) {
+        const restElement = go(meta.restElement.value)
+        return make(
+          S.make(meta),
+          (fc) =>
+            out.arbitrary(fc).chain((as) =>
+              fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
+            )
+        )
+      }
+      return out
+    }
+    case "Union":
+      return union(...meta.members.map(go))
+    case "Struct": {
+      const fields = {}
+      meta.fields.forEach((field) => {
+        fields[field.key] = go(field.value)
+      })
+      return struct(fields)
+    }
+    case "IndexSignature":
+      return indexSignature(go(meta.value))
+    case "Array":
+      return array(go(meta.item))
+    case "Lazy":
+      return lazy(meta.symbol, () => go(meta.f()))
+  }
+})
+
 /**
  * @since 1.0.0
  */
-export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
-  const f = (meta: Meta): Arbitrary<any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = meta.declaration
-        if (declaration.arbitraryFor != null) {
-          return O.isSome(meta.config) ?
-            declaration.arbitraryFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.arbitraryFor(...meta.metas.map(f))
-        }
-        throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
-      }
-      case "Never":
-        return never as any
-      case "Unknown":
-        return unknown
-      case "Any":
-        return any
-      case "String": {
-        let out = string
-        if (meta.minLength !== undefined) {
-          out = minLength(meta.minLength)(out)
-        }
-        if (meta.maxLength !== undefined) {
-          out = maxLength(meta.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = number
-        if (meta.minimum !== undefined) {
-          out = minimum(meta.minimum)(out)
-        }
-        if (meta.maximum !== undefined) {
-          out = maximum(meta.maximum)(out)
-        }
-        return out
-      }
-      case "Boolean":
-        return boolean
-      case "Of":
-        return of(meta.value)
-      case "Tuple": {
-        const components = meta.components.map(f)
-        const out = tuple(...components)
-        if (O.isSome(meta.restElement)) {
-          const restElement = f(meta.restElement.value)
-          return make(
-            S.make(meta),
-            (fc) =>
-              out.arbitrary(fc).chain((as) =>
-                fc.array(restElement.arbitrary(fc)).map((rest) => [...as, ...rest])
-              )
-          )
-        }
-        return out
-      }
-      case "Union":
-        return union(...meta.members.map(f))
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return struct(fields)
-      }
-      case "IndexSignature":
-        return indexSignature(f(meta.value))
-      case "Array":
-        return array(f(meta.item))
-      case "Lazy":
-        return lazy(meta.symbol, () => f(meta.f()))
-    }
-  }
-  return f(schema.meta)
-}
+export const unsafeArbitraryFor = S.memoize(<A>(schema: Schema<A>): Arbitrary<A> => go(schema.meta))

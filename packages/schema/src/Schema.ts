@@ -80,10 +80,10 @@ export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
  * @since 1.0.0
  */
 export const getDeclarations = <A>(schema: Schema<A>): Declarations => {
-  const f = memoize((meta: Meta): Declarations => {
+  const go = memoize((meta: Meta): Declarations => {
     switch (meta._tag) {
       case "Apply":
-        return mergeMany(meta.metas.map(f))(pipe(empty, add(meta.symbol, meta.declaration)))
+        return mergeMany(meta.metas.map(go))(pipe(empty, add(meta.symbol, meta.declaration)))
       case "Never":
       case "Unknown":
       case "Any":
@@ -93,20 +93,20 @@ export const getDeclarations = <A>(schema: Schema<A>): Declarations => {
       case "Of":
         return empty
       case "Tuple":
-        return mergeMany(meta.components.map(f))(empty)
+        return mergeMany(meta.components.map(go))(empty)
       case "Union":
-        return mergeMany(meta.members.map(f))(empty)
+        return mergeMany(meta.members.map(go))(empty)
       case "Struct":
-        return mergeMany(meta.fields.map((field) => f(field.value)))(empty)
+        return mergeMany(meta.fields.map((field) => go(field.value)))(empty)
       case "IndexSignature":
-        return f(meta.value)
+        return go(meta.value)
       case "Array":
-        return f(meta.item)
+        return go(meta.item)
       case "Lazy":
-        return f(meta.f())
+        return go(meta.f())
     }
   })
-  return f(schema.meta)
+  return go(schema.meta)
 }
 
 /**
@@ -289,13 +289,15 @@ export const array = <B extends boolean, A>(
 ): Schema<B extends true ? ReadonlyArray<A> : Array<A>> => make(meta.array(item.meta, readonly))
 
 /** @internal */
-export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {
+export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
   const cache = new Map()
   return (a) => {
     if (!cache.has(a)) {
       const b = f(a)
       cache.set(a, b)
       return b
+    } else if (trace) {
+      console.log("cache hit, key: ", a, ", value: ", cache.get(a))
     }
     return cache.get(a)
   }

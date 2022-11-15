@@ -15,6 +15,17 @@ const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
   Sh.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 describe("Show", () => {
+  it("struct", () => {
+    const schema = S.struct({ a: S.string, b: S.struct({ c: S.number }) })
+    expect(Sh.unsafeShowFor(schema).show({ a: "a", b: { c: 1 } })).toEqual(
+      "{\"a\":\"a\",\"b\":{\"c\":1}}"
+    )
+    const schema2 = pipe(schema, S.pick("b"))
+    expect(Sh.unsafeShowFor(schema2).show({ b: { c: 1 } })).toEqual(
+      "{\"b\":{\"c\":1}}"
+    )
+  })
+
   describe("unsafeShowFor", () => {
     const unsafeShowFor = Sh.unsafeShowFor
 

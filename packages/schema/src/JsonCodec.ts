@@ -15,146 +15,144 @@ import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const unsafeDecoderFor = <A>(schema: Schema<A>): Decoder<J.Json, A> => {
-  const f = (meta: Meta): Decoder<J.Json, any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = meta.declaration
-        if (declaration.decoderFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.decoderFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.decoderFor(...meta.metas.map(f))
-        }
-        throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
+const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = meta.declaration
+      if (declaration.decoderFor !== undefined) {
+        return O.isSome(meta.config) ?
+          declaration.decoderFor(meta.config.value, ...meta.metas.map(goD)) :
+          declaration.decoderFor(...meta.metas.map(goD))
       }
-      case "Never":
-        return D.never as any
-      case "Unknown":
-        return D.unknown
-      case "Any":
-        return D.any
-      case "String": {
-        let out = D.string
-        if (meta.minLength !== undefined) {
-          out = D.minLength(meta.minLength)(out)
-        }
-        if (meta.maxLength !== undefined) {
-          out = D.maxLength(meta.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = D.number
-        if (meta.minimum !== undefined) {
-          out = D.minimum(meta.minimum)(out)
-        }
-        if (meta.maximum !== undefined) {
-          out = D.maximum(meta.maximum)(out)
-        }
-        return out
-      }
-      case "Boolean":
-        return D.boolean
-      case "Of":
-        return D.of(meta.value)
-      case "Tuple":
-        return pipe(Json.JsonArrayDecoder, D.compose(D.fromTuple(...meta.components.map(f))))
-      case "Union":
-        return pipe(Json.JsonDecoder, D.compose(D.union(...meta.members.map(f))))
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return pipe(Json.JsonObjectDecoder, D.compose(D.fromStruct(fields)))
-      }
-      case "IndexSignature":
-        return pipe(Json.JsonObjectDecoder, D.compose(D.fromIndexSignature(f(meta.value))))
-      case "Array":
-        return pipe(Json.JsonArrayDecoder, D.compose(D.fromReadonlyArray(f(meta.item))))
-      case "Lazy":
-        return D.lazy(meta.symbol, () => f(meta.f()))
+      throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
     }
-  }
-  return f(schema.meta)
-}
-
-const unsafeEncoderFor = <A>(schema: Schema<A>): Encoder<J.Json, A> => {
-  const f = (meta: Meta): Encoder<J.Json, any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = meta.declaration
-        if (declaration.encoderFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.encoderFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.encoderFor(...meta.metas.map(f))
-        }
-        throw new Error(`Missing "encoderFor" declaration for ${meta.symbol.description}`)
+    case "Never":
+      return D.never as any
+    case "Unknown":
+      return D.unknown
+    case "Any":
+      return D.any
+    case "String": {
+      let out = D.string
+      if (meta.minLength !== undefined) {
+        out = D.minLength(meta.minLength)(out)
       }
-      case "Never":
-        throw new Error("Never")
-      case "Unknown":
-        throw new Error("Unknown")
-      case "Any":
-        throw new Error("Any")
-      case "String":
-        return E.string
-      case "Number":
-        return E.number
-      case "Boolean":
-        return E.boolean
-      case "Of":
-        if (Json.JsonGuard.is(meta.value)) {
-          return E.of(meta.value)
-        }
-        throw new Error("Of value is not a JSON")
-      case "Tuple": {
-        const components = meta.components.map(f)
-        if (O.isSome(meta.restElement)) {
-          const restElement = f(meta.restElement.value)
-          return E.make<Array<J.Json>, ReadonlyArray<any>>(
-            S.make(meta),
-            (a) =>
-              a.map((ai, i) =>
-                i < components.length ? components[i].encode(ai) : restElement.encode(ai)
-              )
-          )
-        }
+      if (meta.maxLength !== undefined) {
+        out = D.maxLength(meta.maxLength)(out)
+      }
+      return out
+    }
+    case "Number": {
+      let out = D.number
+      if (meta.minimum !== undefined) {
+        out = D.minimum(meta.minimum)(out)
+      }
+      if (meta.maximum !== undefined) {
+        out = D.maximum(meta.maximum)(out)
+      }
+      return out
+    }
+    case "Boolean":
+      return D.boolean
+    case "Of":
+      return D.of(meta.value)
+    case "Tuple":
+      return pipe(Json.JsonArrayDecoder, D.compose(D.fromTuple(...meta.components.map(goD))))
+    case "Union":
+      return pipe(Json.JsonDecoder, D.compose(D.union(...meta.members.map(goD))))
+    case "Struct": {
+      const fields = {}
+      meta.fields.forEach((field) => {
+        fields[field.key] = goD(field.value)
+      })
+      return pipe(Json.JsonObjectDecoder, D.compose(D.fromStruct(fields)))
+    }
+    case "IndexSignature":
+      return pipe(Json.JsonObjectDecoder, D.compose(D.fromIndexSignature(goD(meta.value))))
+    case "Array":
+      return pipe(Json.JsonArrayDecoder, D.compose(D.fromReadonlyArray(goD(meta.item))))
+    case "Lazy":
+      return D.lazy(meta.symbol, () => goD(meta.f()))
+  }
+})
+
+const unsafeDecoderFor = S.memoize(<A>(schema: Schema<A>): Decoder<J.Json, A> => goD(schema.meta))
+
+const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = meta.declaration
+      if (declaration.encoderFor !== undefined) {
+        return O.isSome(meta.config) ?
+          declaration.encoderFor(meta.config.value, ...meta.metas.map(goE)) :
+          declaration.encoderFor(...meta.metas.map(goE))
+      }
+      throw new Error(`Missing "encoderFor" declaration for ${meta.symbol.description}`)
+    }
+    case "Never":
+      throw new Error("Never")
+    case "Unknown":
+      throw new Error("Unknown")
+    case "Any":
+      throw new Error("Any")
+    case "String":
+      return E.string
+    case "Number":
+      return E.number
+    case "Boolean":
+      return E.boolean
+    case "Of":
+      if (Json.JsonGuard.is(meta.value)) {
+        return E.of(meta.value)
+      }
+      throw new Error("Of value is not a JSON")
+    case "Tuple": {
+      const components = meta.components.map(goE)
+      if (O.isSome(meta.restElement)) {
+        const restElement = goE(meta.restElement.value)
         return E.make<Array<J.Json>, ReadonlyArray<any>>(
           S.make(meta),
-          (a) => a.map((ai, i) => components[i].encode(ai))
+          (a) =>
+            a.map((ai, i) =>
+              i < components.length ? components[i].encode(ai) : restElement.encode(ai)
+            )
         )
       }
-      case "Union": {
-        const members = meta.members.map(f)
-        const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
-        return E.make(S.make(meta), (a) => {
-          const index = guards.findIndex((guard) => guard.is(a))
-          return members[index].encode(a)
-        })
-      }
-      case "Struct": {
-        return E.make(S.make(meta), (a) => {
-          const out = {}
-          for (let i = 0; i < meta.fields.length; i++) {
-            const key = meta.fields[i].key
-            out[key] = a[key]
-          }
-          return out
-        })
-      }
-      case "IndexSignature":
-        return E.toIndexSignature(f(meta.value))
-      case "Array": {
-        const item = f(meta.item)
-        return E.make(S.make(meta), (a) => a.map(item.encode))
-      }
-      case "Lazy":
-        return E.lazy(meta.symbol, () => f(meta.f()))
+      return E.make<Array<J.Json>, ReadonlyArray<any>>(
+        S.make(meta),
+        (a) => a.map((ai, i) => components[i].encode(ai))
+      )
     }
+    case "Union": {
+      const members = meta.members.map(goE)
+      const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
+      return E.make(S.make(meta), (a) => {
+        const index = guards.findIndex((guard) => guard.is(a))
+        return members[index].encode(a)
+      })
+    }
+    case "Struct": {
+      return E.make(S.make(meta), (a) => {
+        const out = {}
+        for (let i = 0; i < meta.fields.length; i++) {
+          const key = meta.fields[i].key
+          out[key] = a[key]
+        }
+        return out
+      })
+    }
+    case "IndexSignature":
+      return E.toIndexSignature(goE(meta.value))
+    case "Array": {
+      const item = goE(meta.item)
+      return E.make(S.make(meta), (a) => a.map(item.encode))
+    }
+    case "Lazy":
+      return E.lazy(meta.symbol, () => goE(meta.f()))
   }
-  return f(schema.meta)
-}
+})
+
+const unsafeEncoderFor = S.memoize(<A>(schema: Schema<A>): Encoder<J.Json, A> => goE(schema.meta))
 
 /**
  * @since 1.0.0

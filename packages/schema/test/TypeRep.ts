@@ -8,8 +8,7 @@ interface TypeRep<in out A> extends S.Schema<A> {
   readonly typeRep: string
 }
 
-const make = <A>(schema: Schema<A>, typeRep: string): TypeRep<A> =>
-  ({ meta: schema.meta, typeRep }) as any
+const make = (meta: Meta, typeRep: string): TypeRep<any> => ({ meta, typeRep }) as any
 
 const SetSym = Symbol("Set")
 
@@ -26,7 +25,7 @@ const set = <B extends boolean, A>(
   item: TypeRep<A>
 ): TypeRep<B extends true ? ReadonlySet<A> : Set<A>> =>
   make(
-    setS(readonly, item),
+    setS(readonly, item).meta,
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
@@ -36,7 +35,7 @@ const bigintS: Schema<bigint> = S.apply(bigintSym, O.none, {
   typeRepFor: () => bigint
 })
 
-const bigint: TypeRep<bigint> = make(bigintS, "bigint")
+const bigint: TypeRep<bigint> = make(bigintS.meta, "bigint")
 
 export const lazy = <A>(
   symbol: symbol,
@@ -44,94 +43,90 @@ export const lazy = <A>(
 ): TypeRep<A> => {
   const schema = S.lazy(symbol, f)
   return make(
-    schema,
+    schema.meta,
     symbol.description ?? "<Anonymous Lazy type>"
   )
 }
 
-export const unsafeTypeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
-  const f = (meta: Meta): TypeRep<any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = meta.declaration
-        if (declaration.typeRepFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.typeRepFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.typeRepFor(...meta.metas.map(f))
-        }
-        throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
+const go = S.memoize((meta: Meta): TypeRep<any> => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = meta.declaration
+      if (declaration.typeRepFor !== undefined) {
+        return O.isSome(meta.config) ?
+          declaration.typeRepFor(meta.config.value, ...meta.metas.map(go)) :
+          declaration.typeRepFor(...meta.metas.map(go))
       }
-      case "Never":
-        return make(S.never, "never") as any
-      case "Unknown":
-        return make(S.unknown, "unknown")
-      case "Any":
-        return make(S.any, "any")
-      case "String":
-        return make(S.string, "string")
-      case "Number":
-        return make(S.number, "number")
-      case "Boolean":
-        return make(S.boolean, "boolean")
-      case "Of":
-        return make(S.of(meta.value), JSON.stringify(meta.value))
-      case "Tuple": {
-        const components = meta.components.map(f)
-        const restElement = pipe(
-          meta.restElement,
-          O.map((meta) => (components.length > 0 ? ", " : "") + `...${f(meta).typeRep}[]`),
-          O.getOrElse("")
-        )
-        return make(
-          S.tuple(meta.readonly, ...components),
-          `${meta.readonly ? "readonly " : ""}[${
-            components.map((c) => c.typeRep).join(", ")
-          }${restElement}]`
-        )
-      }
-      case "Union": {
-        const members = meta.members.map(f)
-        return make(
-          S.union(...members),
-          members.map((m) => m.typeRep).join(" | ")
-        )
-      }
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return make(
-          S.struct(fields) as any,
-          "{ " +
-            meta.fields.map((field) => {
-              return `${field.readonly ? "readonly " : ""}${String(field.key)}${
-                field.optional ? "?" : ""
-              }: ${fields[field.key].typeRep}`
-            }).join(", ")
-            + " }"
-        )
-      }
-      case "IndexSignature": {
-        const value = f(meta.value)
-        return make(
-          S.indexSignature(f(meta.value)),
-          `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${value.typeRep} }`
-        )
-      }
-      case "Array": {
-        const item = f(meta.item)
-        return make(
-          S.array(meta.readonly, f(meta.item)),
-          `${meta.readonly ? "Readonly" : ""}Array<${item.typeRep}>`
-        )
-      }
-      case "Lazy":
-        return lazy(meta.symbol, () => f(meta.f()))
+      throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
     }
+    case "Never":
+      return make(S.never.meta, "never") as any
+    case "Unknown":
+      return make(S.unknown.meta, "unknown")
+    case "Any":
+      return make(S.any.meta, "any")
+    case "String":
+      return make(S.string.meta, "string")
+    case "Number":
+      return make(S.number.meta, "number")
+    case "Boolean":
+      return make(S.boolean.meta, "boolean")
+    case "Of":
+      return make(meta, JSON.stringify(meta.value))
+    case "Tuple": {
+      const components = meta.components.map(go)
+      const restElement = pipe(
+        meta.restElement,
+        O.map((meta) => (components.length > 0 ? ", " : "") + `...${go(meta).typeRep}[]`),
+        O.getOrElse("")
+      )
+      return make(
+        meta,
+        `${meta.readonly ? "readonly " : ""}[${
+          components.map((c) => c.typeRep).join(", ")
+        }${restElement}]`
+      )
+    }
+    case "Union": {
+      const members = meta.members.map(go)
+      return make(
+        meta,
+        members.map((m) => m.typeRep).join(" | ")
+      )
+    }
+    case "Struct": {
+      const fields = meta.fields.map((field) => go(field.value))
+      return make(
+        meta,
+        "{ " +
+          meta.fields.map((field, i) => {
+            return `${field.readonly ? "readonly " : ""}${String(field.key)}${
+              field.optional ? "?" : ""
+            }: ${fields[i].typeRep}`
+          }).join(", ")
+          + " }"
+      )
+    }
+    case "IndexSignature": {
+      const value = go(meta.value)
+      return make(
+        meta,
+        `{ ${meta.readonly ? "readonly " : ""}[_: ${meta.key}]: ${value.typeRep} }`
+      )
+    }
+    case "Array": {
+      const item = go(meta.item)
+      return make(
+        meta,
+        `${meta.readonly ? "Readonly" : ""}Array<${item.typeRep}>`
+      )
+    }
+    case "Lazy":
+      return lazy(meta.symbol, () => go(meta.f()))
   }
-  return f(schema.meta)
-}
+})
+
+export const unsafeTypeRepFor = S.memoize(<A>(schema: Schema<A>): TypeRep<A> => go(schema.meta))
 
 describe("unsafeTypeRepFor", () => {
   describe("declaration", () => {

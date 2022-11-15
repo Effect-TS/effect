@@ -5,7 +5,10 @@
 import type { Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import { flow } from "@fp-ts/data/Function"
+import * as fromSchema from "@fp-ts/codec/typeclass/FromSchema"
+import * as functor from "@fp-ts/codec/typeclass/SchemableFunctor"
+import type { TypeLambda } from "@fp-ts/core/HKT"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -13,6 +16,13 @@ import * as O from "@fp-ts/data/Option"
  */
 export interface Guard<in out A> extends Schema<A> {
   readonly is: (input: unknown) => input is A
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface GuardTypeLambda extends TypeLambda {
+  readonly type: Guard<this["Target"]>
 }
 
 /**
@@ -35,13 +45,6 @@ export const make = <A>(
 //     const out = make(schema, guard.is)
 //     return out
 //   }
-
-/**
- * @since 1.0.0
- */
-export const mapSchema = <A, B>(
-  f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
 
 /**
  * @since 1.0.0
@@ -136,30 +139,6 @@ export const of = <A>(
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Guard<any>>>(
-  ...components: Components
-): Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
-  make(
-    S.tuple<true, Components>(true, ...components),
-    (a): a is { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] } =>
-      Array.isArray(a) &&
-      components.every((guard, i) => guard.is(a[i]))
-  )
-
-/**
- * @since 1.0.0
- */
-export const union = <Members extends ReadonlyArray<Guard<any>>>(
-  ...members: Members
-): Guard<Parameters<Members[number]["A"]>[0]> =>
-  make(
-    S.union(...members),
-    (a): a is Parameters<Members[number]["A"]>[0] => members.some((guard) => guard.is(a))
-  )
-
-/**
- * @since 1.0.0
- */
 export const struct = <Fields extends Record<PropertyKey, Guard<any>>>(
   fields: Fields
 ): Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
@@ -212,96 +191,147 @@ export const lazy = <A>(
   )
 }
 
-/**
- * @since 1.0.0
- */
-export const optional = mapSchema(S.optional)
-
-/**
- * @since 1.0.0
- */
-export const pick = flow(S.pick, mapSchema)
-
-/**
- * @since 1.0.0
- */
-export const omit = flow(S.omit, mapSchema)
-
-/**
- * @since 1.0.0
- */
-export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
-  const f = (meta: Meta): Guard<any> => {
-    switch (meta._tag) {
-      case "Apply": {
-        const declaration = meta.declaration
-        if (declaration.guardFor !== undefined) {
-          return O.isSome(meta.config) ?
-            declaration.guardFor(meta.config.value, ...meta.metas.map(f)) :
-            declaration.guardFor(...meta.metas.map(f))
-        }
-        throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
+const go = S.memoize((meta: Meta): Guard<any> => {
+  switch (meta._tag) {
+    case "Apply": {
+      const declaration = meta.declaration
+      if (declaration.guardFor !== undefined) {
+        return O.isSome(meta.config) ?
+          declaration.guardFor(meta.config.value, ...meta.metas.map(go)) :
+          declaration.guardFor(...meta.metas.map(go))
       }
-      case "Never":
-        return never as any
-      case "Unknown":
-        return unknown
-      case "Any":
-        return any
-      case "String": {
-        let out = string
-        if (meta.minLength !== undefined) {
-          out = minLength(meta.minLength)(out)
-        }
-        if (meta.maxLength !== undefined) {
-          out = maxLength(meta.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = number
-        if (meta.minimum !== undefined) {
-          out = minimum(meta.minimum)(out)
-        }
-        if (meta.maximum !== undefined) {
-          out = maximum(meta.maximum)(out)
-        }
-        return out
-      }
-      case "Boolean":
-        return boolean
-      case "Of":
-        return of(meta.value)
-      case "Tuple": {
-        const components = meta.components.map(f)
-        const out = tuple(...components)
-        if (O.isSome(meta.restElement)) {
-          const restElement = f(meta.restElement.value)
-          return make(
-            S.make(meta),
-            (a): a is any =>
-              out.is(a) &&
-              a.slice(components.length).every(restElement.is)
-          )
-        }
-        return out
-      }
-      case "Union":
-        return union(...meta.members.map(f))
-      case "Struct": {
-        const fields = {}
-        meta.fields.forEach((field) => {
-          fields[field.key] = f(field.value)
-        })
-        return struct(fields)
-      }
-      case "IndexSignature":
-        return indexSignature(f(meta.value))
-      case "Array":
-        return array(f(meta.item))
-      case "Lazy":
-        return lazy(meta.symbol, () => f(meta.f()))
+      throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
     }
+    case "Never":
+      return never as any
+    case "Unknown":
+      return unknown
+    case "Any":
+      return any
+    case "String": {
+      let out = string
+      if (meta.minLength !== undefined) {
+        out = minLength(meta.minLength)(out)
+      }
+      if (meta.maxLength !== undefined) {
+        out = maxLength(meta.maxLength)(out)
+      }
+      return out
+    }
+    case "Number": {
+      let out = number
+      if (meta.minimum !== undefined) {
+        out = minimum(meta.minimum)(out)
+      }
+      if (meta.maximum !== undefined) {
+        out = maximum(meta.maximum)(out)
+      }
+      return out
+    }
+    case "Boolean":
+      return boolean
+    case "Of":
+      return of(meta.value)
+    case "Tuple": {
+      const components = meta.components.map(go)
+      const restElement = pipe(meta.restElement, O.map(go))
+      return make(
+        S.make(meta),
+        (a): a is any =>
+          Array.isArray(a) &&
+          components.every((guard, i) => guard.is(a[i])) &&
+          (pipe(
+            restElement,
+            O.map((rest) => a.slice(components.length).every(rest.is)),
+            O.getOrElse(true)
+          ))
+      )
+    }
+    case "Union": {
+      const members = meta.members.map(go)
+      return make(
+        S.make(meta),
+        (a): a is any => members.some((guard) => guard.is(a))
+      )
+    }
+    case "Struct": {
+      const fields = {}
+      meta.fields.forEach((field) => {
+        fields[field.key] = go(field.value)
+      })
+      return struct(fields)
+    }
+    case "IndexSignature":
+      return indexSignature(go(meta.value))
+    case "Array":
+      return array(go(meta.item))
+    case "Lazy":
+      return lazy(meta.symbol, () => go(meta.f()))
   }
-  return f(schema.meta)
+})
+
+/**
+ * @since 1.0.0
+ */
+export const unsafeGuardFor = S.memoize(<A>(schema: Schema<A>): Guard<A> => go(schema.meta))
+
+/**
+ * @since 1.0.0
+ */
+export const FromSchema: fromSchema.FromSchema<GuardTypeLambda> = {
+  fromSchema: unsafeGuardFor
 }
+
+/**
+ * @since 1.0.0
+ */
+export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
+  ...components: Components
+) => Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = fromSchema
+  .tuple(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const union: <Members extends ReadonlyArray<Schema<any>>>(
+  ...members: Members
+) => Guard<Parameters<Members[number]["A"]>[0]> = fromSchema
+  .union(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
+export const mapSchema = <A, B>(
+  f: (schema: Schema<A>) => Schema<B>
+) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
+
+/**
+ * @since 1.0.0
+ */
+export const SchemableFunctor: functor.SchemableFunctor<GuardTypeLambda> = {
+  mapSchema
+}
+
+/**
+ * @since 1.0.0
+ */
+export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = functor.optional(
+  SchemableFunctor
+)
+
+/**
+ * @since 1.0.0
+ */
+export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = functor.pick(
+  SchemableFunctor
+)
+
+/**
+ * @since 1.0.0
+ */
+export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = functor
+  .omit(SchemableFunctor)
