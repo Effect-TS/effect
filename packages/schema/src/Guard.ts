@@ -179,9 +179,9 @@ const go = S.memoize((meta: Meta): Guard<any> => {
     }
     case "Struct": {
       const fields = {}
-      meta.fields.forEach((field) => {
+      for (const field of meta.fields) {
         fields[field.key] = go(field.value)
-      })
+      }
       const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
       return make(
         S.make(meta),

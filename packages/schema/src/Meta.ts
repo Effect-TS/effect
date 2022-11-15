@@ -1,7 +1,9 @@
 /**
  * @since 1.0.0
  */
+import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
+import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
 /**
  * @since 1.0.0
@@ -25,7 +27,7 @@ export type Meta =
   | Boolean // `boolean` data type
   | Of // examples: type literals
   | Struct // examples: `{ a: string, b: number  }`, `{ [_: string]: string }`, `{ a: string, b: string, [_: string]: string  }`
-  | Tuple // examples: `[string, number]`, ``[string, number, ...boolean[]]`
+  | Tuple // examples: `[string, number]`, `[string, number, ...boolean[]]`
   | Union // examples: `string | number`
   | Lazy // recursive and mutually recursive data types
 
@@ -264,3 +266,50 @@ export const lazy = (symbol: symbol, f: () => Meta): Lazy => ({
  * @since 1.0.0
  */
 export const isLazy = (meta: Meta): meta is Lazy => meta._tag === "Lazy"
+
+/**
+ * @since 1.0.0
+ */
+export const getFields = (
+  meta: Meta
+): ReadonlyArray<Field> => {
+  switch (meta._tag) {
+    case "Lazy":
+      return getFields(meta.f())
+    case "Struct":
+      return meta.fields
+    case "Union": {
+      // TODO: handle indexSignatures
+      const memberFields = meta.members.map(getFields)
+      if (isNonEmpty(memberFields)) {
+        const candidates = []
+        const head = memberFields[0]
+        const tail = memberFields.slice(1)
+        for (const candidate of head) {
+          if (tail.every((fields) => fields.some((field) => field.key === candidate.key))) {
+            const members = pipe(
+              tail,
+              flatMap((fields) =>
+                fields.filter((field) => field.key === candidate.key).map((field) => field.value)
+              )
+            )
+            const optional = candidate.optional ||
+              tail.some((fields) => fields.some((field) => field.optional))
+            const readonly = candidate.readonly ||
+              tail.some((fields) => fields.some((field) => field.readonly))
+            candidates.push(field(
+              candidate.key,
+              union([candidate.value, ...members]),
+              optional,
+              readonly
+            ))
+          }
+        }
+        return candidates
+      }
+      return []
+    }
+    default:
+      return []
+  }
+}

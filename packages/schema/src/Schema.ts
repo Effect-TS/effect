@@ -2,11 +2,10 @@
  * @since 1.0.0
  */
 import type { Declaration, Declarations, Meta } from "@fp-ts/codec/Meta"
-import * as meta from "@fp-ts/codec/Meta"
+import * as M from "@fp-ts/codec/Meta"
 import type { Either } from "@fp-ts/data/Either"
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
@@ -84,12 +83,12 @@ export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   config: Option<unknown>,
   declaration: Declaration,
   ...schemas: Schemas
-): Schema<any> => make(meta.apply(symbol, config, declaration, schemas.map((s) => s.meta)))
+): Schema<any> => make(M.apply(symbol, config, declaration, schemas.map((s) => s.meta)))
 
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = make(meta.string({}))
+export const string: Schema<string> = make(M.string({}))
 
 /**
  * @since 1.0.0
@@ -98,9 +97,9 @@ export const minLength = (minLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
   ): Schema<A> => {
-    if (meta.isString(schema.meta)) {
+    if (M.isString(schema.meta)) {
       return make(
-        meta.string({
+        M.string({
           minLength,
           maxLength: schema.meta.maxLength
         })
@@ -116,9 +115,9 @@ export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
   ): Schema<A> => {
-    if (meta.isString(schema.meta)) {
+    if (M.isString(schema.meta)) {
       return make(
-        meta.string({
+        M.string({
           minLength: schema.meta.minLength,
           maxLength
         })
@@ -130,7 +129,7 @@ export const maxLength = (maxLength: number) =>
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = make(meta.number({}))
+export const number: Schema<number> = make(M.number({}))
 
 /**
  * @since 1.0.0
@@ -139,9 +138,9 @@ export const minimum = (minimum: number) =>
   <A extends number>(
     schema: Schema<A>
   ): Schema<A> => {
-    if (meta.isNumber(schema.meta)) {
+    if (M.isNumber(schema.meta)) {
       return make(
-        meta.number({
+        M.number({
           minimum,
           maximum: schema.meta.maximum,
           exclusiveMinimum: schema.meta.exclusiveMinimum,
@@ -159,9 +158,9 @@ export const maximum = (maximum: number) =>
   <A extends number>(
     schema: Schema<A>
   ): Schema<A> => {
-    if (meta.isNumber(schema.meta)) {
+    if (M.isNumber(schema.meta)) {
       return make(
-        meta.number({
+        M.number({
           minimum: schema.meta.minimum,
           maximum,
           exclusiveMinimum: schema.meta.exclusiveMinimum,
@@ -175,21 +174,21 @@ export const maximum = (maximum: number) =>
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = make(meta.boolean)
+export const boolean: Schema<boolean> = make(M.boolean)
 
 /**
  * @since 1.0.0
  */
 export const of = <A>(
   value: A
-): Schema<A> => make(meta.of(value))
+): Schema<A> => make(M.of(value))
 
 /**
  * @since 1.0.0
  */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Parameters<Members[number]["A"]>[0]> => make(meta.union(members.map((m) => m.meta)))
+): Schema<Parameters<Members[number]["A"]>[0]> => make(M.union(members.map((m) => m.meta)))
 
 /**
  * @since 1.0.0
@@ -203,7 +202,7 @@ export const tuple = <
 ): Schema<
   B extends true ? { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
     : { [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
-> => make(meta.tuple(components.map((c) => c.meta), O.none, readonly))
+> => make(M.tuple(components.map((c) => c.meta), O.none, readonly))
 
 /**
  * @since 1.0.0
@@ -213,7 +212,7 @@ export const nonEmptyArray = <B extends boolean, H, T>(
   head: Schema<H>,
   tail: Schema<T>
 ): Schema<B extends true ? readonly [H, ...Array<T>] : [H, ...Array<T>]> =>
-  make(meta.tuple([head.meta], O.some(tail.meta), readonly))
+  make(M.tuple([head.meta], O.some(tail.meta), readonly))
 
 /**
  * @since 1.0.0
@@ -222,8 +221,8 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
 ): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
   make(
-    meta.struct(
-      Object.keys(fields).map((key) => meta.field(key, fields[key].meta, false, true)),
+    M.struct(
+      Object.keys(fields).map((key) => M.field(key, fields[key].meta, false, true)),
       O.none
     )
   )
@@ -234,7 +233,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const indexSignature = <A>(
   value: Schema<A>
 ): Schema<{ readonly [_: string]: A }> =>
-  make(meta.struct([], O.some(meta.indexSignature("string", value.meta, true))))
+  make(M.struct([], O.some(M.indexSignature("string", value.meta, true))))
 
 /**
  * @since 1.0.0
@@ -243,7 +242,7 @@ export const array = <B extends boolean, A>(
   readonly: B,
   item: Schema<A>
 ): Schema<B extends true ? ReadonlyArray<A> : Array<A>> =>
-  make(meta.tuple([], O.some(item.meta), readonly))
+  make(M.tuple([], O.some(item.meta), readonly))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
@@ -267,7 +266,7 @@ export const lazy = <A>(
   symbol: symbol,
   f: () => Schema<A>
 ): Schema<A> => {
-  return make(meta.lazy(symbol, () => f().meta))
+  return make(M.lazy(symbol, () => f().meta))
 }
 
 /**
@@ -277,20 +276,23 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
 ) =>
   (schema: Schema<A>): Schema<{ [P in Keys[number]]: A[P] }> => {
-    if (meta.isStruct(schema.meta)) {
-      return make(
-        meta.struct(
-          schema.meta.fields.filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-          schema.meta.indexSignature
-        )
-      )
-    }
-    if (meta.isLazy(schema.meta)) {
-      const lazyMeta = schema.meta
-      return lazy(lazyMeta.symbol, () => pipe(make<A>(lazyMeta.f()), pick(...keys)))
-    }
-    throw new Error("cannot `pick` non-Struct schemas")
+    return make(M.struct(
+      M.getFields(schema.meta).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+      O.none
+    ))
   }
+
+/**
+ * @since 1.0.0
+ */
+export const keyOf = <A>(
+  schema: Schema<A>
+): Schema<keyof A> => {
+  if (M.isStruct(schema.meta)) {
+    return union(...schema.meta.fields.map((field) => of(field.key as keyof A)))
+  }
+  throw new Error("cannot `keyof` non-Struct schemas")
+}
 
 /**
  * @since 1.0.0
@@ -299,19 +301,10 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
 ) =>
   (schema: Schema<A>): Schema<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
-    if (meta.isStruct(schema.meta)) {
-      return make(
-        meta.struct(
-          schema.meta.fields.filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-          schema.meta.indexSignature
-        )
-      )
-    }
-    if (meta.isLazy(schema.meta)) {
-      const lazyMeta = schema.meta
-      return lazy(lazyMeta.symbol, () => pipe(make<A>(lazyMeta.f()), omit(...keys)))
-    }
-    throw new Error("cannot `omit` non-Struct schemas")
+    return make(M.struct(
+      M.getFields(schema.meta).filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+      O.none
+    ))
   }
 
 /**
@@ -320,10 +313,10 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
 export const partial = <A>(
   schema: Schema<A>
 ): Schema<Partial<A>> => {
-  if (meta.isStruct(schema.meta)) {
+  if (M.isStruct(schema.meta)) {
     return make(
-      meta.struct(
-        schema.meta.fields.map((f) => meta.field(f.key, f.value, true, f.readonly)),
+      M.struct(
+        schema.meta.fields.map((f) => M.field(f.key, f.value, true, f.readonly)),
         schema.meta.indexSignature
       )
     )
@@ -358,10 +351,10 @@ export const nullish = <A>(
 export const required = <A>(
   schema: Schema<A>
 ): Schema<{ [P in keyof A]-?: A[P] }> => {
-  if (meta.isStruct(schema.meta)) {
+  if (M.isStruct(schema.meta)) {
     return make(
-      meta.struct(
-        schema.meta.fields.map((f) => meta.field(f.key, f.value, false, f.readonly)),
+      M.struct(
+        schema.meta.fields.map((f) => M.field(f.key, f.value, false, f.readonly)),
         schema.meta.indexSignature
       )
     )

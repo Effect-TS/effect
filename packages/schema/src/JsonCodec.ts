@@ -86,9 +86,9 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
       return pipe(Json.Decoder, D.compose(D.union(...meta.members.map(goD))))
     case "Struct": {
       const fields: Record<PropertyKey, Decoder<J.Json, any>> = {}
-      meta.fields.forEach((field) => {
+      for (const field of meta.fields) {
         fields[field.key] = goD(field.value)
-      })
+      }
       const oIndexSignature = pipe(meta.indexSignature, O.map((is) => goD(is.value)))
       return pipe(
         Json.JsonObjectDecoder,

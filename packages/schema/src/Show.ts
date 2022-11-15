@@ -80,27 +80,27 @@ const go = S.memoize((meta: Meta): Show<any> => {
     }
     case "Struct": {
       const fields = {}
-      meta.fields.forEach((field) => {
+      for (const field of meta.fields) {
         fields[field.key] = go(field.value)
-      })
+      }
       const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
       return make(
         S.make(meta),
         (struct: { [_: PropertyKey]: unknown }) => {
           const keys = Object.keys(struct)
           let out = "{"
-          keys.forEach((key) => {
+          for (const key of keys) {
             if (key in fields) {
               out += `${JSON.stringify(key)}:${fields[key].show(struct[key])},`
             }
-          })
+          }
           if (O.isSome(oIndexSignature)) {
             const indexSignature = oIndexSignature.value
-            keys.forEach((key) => {
+            for (const key of keys) {
               if (!(key in fields)) {
                 out += `${JSON.stringify(key)}:${indexSignature.show(struct[key])},`
               }
-            })
+            }
           }
           out = out.substring(0, out.length - 1)
           out += "}"
