@@ -4,7 +4,7 @@ import * as O from "@fp-ts/data/Option"
 
 describe("Meta", () => {
   describe("getFields", () => {
-    it("Struct", () => {
+    it("struct", () => {
       const schema = S.struct({
         a: S.string,
         b: S.number
@@ -30,7 +30,7 @@ describe("Meta", () => {
     type K = keyof U
     */
 
-    it("Union", () => {
+    it("union", () => {
       const schema = S.union(
         S.struct({
           a: S.string,
@@ -46,7 +46,7 @@ describe("Meta", () => {
       ])
     })
 
-    it("Lazy", () => {
+    it("lazy", () => {
       interface Category {
         readonly name: string
         readonly categories: ReadonlyArray<Category>

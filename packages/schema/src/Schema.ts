@@ -285,13 +285,10 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
 /**
  * @since 1.0.0
  */
-export const keyOf = <A>(
+export const keyof = <A>(
   schema: Schema<A>
 ): Schema<keyof A> => {
-  if (M.isStruct(schema.meta)) {
-    return union(...schema.meta.fields.map((field) => of(field.key as keyof A)))
-  }
-  throw new Error("cannot `keyof` non-Struct schemas")
+  return union(...M.getFields(schema.meta).map((field) => of(field.key as keyof A)))
 }
 
 /**
