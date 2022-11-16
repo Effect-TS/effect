@@ -1,7 +1,9 @@
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import Ajv from "ajv"
 
 type JSONSchema =
@@ -22,7 +24,7 @@ type JSONSchema =
 export interface JSONSchemaAnnotation {
   readonly _tag: "JSONSchemaAnnotation"
   readonly jsonSchemaFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...jsonSchemas: ReadonlyArray<JSONSchema>
   ) => JSONSchema
 }
@@ -33,11 +35,13 @@ export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
 const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isJSONSchemaAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))
-      }
-      throw new Error(`Missing "JSONSchemaAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isJSONSchemaAnnotation),
+        O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
+        O.match(() => {
+          throw new Error(`Missing "JSONSchemaAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String": {
       return {

@@ -2,11 +2,12 @@
  * @since 1.0.0
  */
 
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -43,7 +44,7 @@ export const lazy = <A>(
 export interface ShowAnnotation {
   readonly _tag: "ShowAnnotation"
   readonly showFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...guards: ReadonlyArray<Show<any>>
   ) => Show<any>
 }
@@ -57,11 +58,13 @@ export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
 const go = S.memoize((ast: AST): Show<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isShowAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].showFor(ast.annotations, ...ast.nodes.map(go))
-      }
-      throw new Error(`Missing "ShowAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isShowAnnotation),
+        O.map((annotation) => annotation.showFor(ast.annotations, ...ast.nodes.map(go))),
+        O.match(() => {
+          throw new Error(`Missing "ShowAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String":
       return make(S.string, (a) => JSON.stringify(a))

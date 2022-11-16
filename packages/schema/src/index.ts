@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as annotation from "@fp-ts/codec/Annotation"
 import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as ast from "@fp-ts/codec/AST"
 import * as codec from "@fp-ts/codec/Codec"
@@ -25,6 +26,10 @@ import * as never from "@fp-ts/codec/data/never"
 import * as unknown from "@fp-ts/codec/data/unknown"
 
 export {
+  /**
+   * @since 1.0.0
+   */
+  annotation,
   /**
    * @since 1.0.0
    */

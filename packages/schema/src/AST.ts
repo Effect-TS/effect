@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Annotations } from "@fp-ts/codec/Annotation"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -18,11 +19,6 @@ export type AST =
   | Tuple
   | Union
   | Lazy
-
-/**
- * @since 1.0.0
- */
-export interface Annotations extends ReadonlyArray<unknown> {}
 
 /**
  * @since 1.0.0

@@ -1,4 +1,4 @@
-import type { Annotations } from "@fp-ts/codec/AST"
+import type { Annotations } from "@fp-ts/codec/Annotation"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"

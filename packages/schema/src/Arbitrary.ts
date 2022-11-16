@@ -1,13 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type * as FastCheck from "fast-check"
 
@@ -111,7 +112,7 @@ export const lazy = <A>(
 export interface ArbitraryAnnotation {
   readonly _tag: "ArbitraryAnnotation"
   readonly arbitraryFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...arbs: ReadonlyArray<Arbitrary<any>>
   ) => Arbitrary<any>
 }
@@ -125,11 +126,13 @@ export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
 const go = S.memoize((ast: AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isArbitraryAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].arbitraryFor(ast.annotations, ...ast.nodes.map(go))
-      }
-      throw new Error(`Missing "ArbitraryAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isArbitraryAnnotation),
+        O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
+        O.match(() => {
+          throw new Error(`Missing "ArbitraryAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String": {
       let out = string

@@ -1,7 +1,8 @@
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 interface TypeRep<in out A> extends S.Schema<A> {
@@ -30,7 +31,7 @@ const setS = <B extends boolean, A>(
       {
         _tag: "TypeRepAnnotation",
         typeRepFor: <A>(
-          _: Annotations,
+          _: A.Annotations,
           item: TypeRep<A>
         ) => set(readonly, item)
       }
@@ -72,7 +73,7 @@ export const lazy = <A>(
 export interface TypeRepAnnotation {
   readonly _tag: "TypeRepAnnotation"
   readonly typeRepFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...typeReps: ReadonlyArray<TypeRep<any>>
   ) => TypeRep<any>
 }
@@ -83,11 +84,13 @@ export const isTypeRepAnnotation = (u: unknown): u is TypeRepAnnotation =>
 const go = S.memoize((ast: AST): TypeRep<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isTypeRepAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].typeRepFor(ast.annotations, ...ast.nodes.map(go))
-      }
-      throw new Error(`Missing "TypeRepAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isTypeRepAnnotation),
+        O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
+        O.match(() => {
+          throw new Error(`Missing "TypeRepAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String":
       return make(S.string.ast, "string")

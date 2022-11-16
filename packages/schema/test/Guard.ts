@@ -1,4 +1,4 @@
-import type { Annotations } from "@fp-ts/codec/AST"
+import type { Annotations } from "@fp-ts/codec/Annotation"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"

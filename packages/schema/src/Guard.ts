@@ -2,13 +2,14 @@
  * @since 1.0.0
  */
 
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -126,7 +127,7 @@ const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unkno
 export interface GuardAnnotation {
   readonly _tag: "GuardAnnotation"
   readonly guardFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...guards: ReadonlyArray<Guard<any>>
   ) => Guard<any>
 }
@@ -140,11 +141,13 @@ export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
 const go = S.memoize((ast: AST): Guard<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isGuardAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].guardFor(ast.annotations, ...ast.nodes.map(go))
-      }
-      throw new Error(`Missing "GuardAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isGuardAnnotation),
+        O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
+        O.match(() => {
+          throw new Error(`Missing "GuardAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String": {
       let out = string

@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import type { Annotations, AST } from "@fp-ts/codec/AST"
+import * as A from "@fp-ts/codec/Annotation"
+import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
@@ -13,7 +14,7 @@ import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -22,7 +23,7 @@ import * as O from "@fp-ts/data/Option"
 export interface DecoderAnnotation {
   readonly _tag: "DecoderAnnotation"
   readonly decoderFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...decoders: ReadonlyArray<Decoder<J.Json, any>>
   ) => Decoder<J.Json, any>
 }
@@ -36,11 +37,13 @@ export const isDecoderAnnotation = (u: unknown): u is DecoderAnnotation =>
 const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isDecoderAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].decoderFor(ast.annotations, ...ast.nodes.map(goD))
-      }
-      throw new Error(`Missing "DecoderAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isDecoderAnnotation),
+        O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
+        O.match(() => {
+          throw new Error(`Missing "DecoderAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String": {
       let out = D.string
@@ -148,7 +151,7 @@ const unsafeDecoderFor = S.memoize(<A>(schema: Schema<A>): Decoder<J.Json, A> =>
 export interface EncoderAnnotation {
   readonly _tag: "EncoderAnnotation"
   readonly encoderFor: (
-    annotations: Annotations,
+    annotations: A.Annotations,
     ...encoderFor: ReadonlyArray<Encoder<J.Json, any>>
   ) => Encoder<J.Json, any>
 }
@@ -162,11 +165,13 @@ export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      const annotations = ast.annotations.filter(isEncoderAnnotation)
-      if (annotations.length > 0) {
-        return annotations[0].encoderFor(ast.annotations, ...ast.nodes.map(goE))
-      }
-      throw new Error(`Missing "EncoderAnnotation" for ${ast.symbol.description}`)
+      return pipe(
+        A.find(ast.annotations, isEncoderAnnotation),
+        O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
+        O.match(() => {
+          throw new Error(`Missing "EncoderAnnotation" for ${ast.symbol.description}`)
+        }, identity)
+      )
     }
     case "String":
       return E.string
