@@ -4,7 +4,6 @@
 
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
-import * as B from "@fp-ts/codec/data/boolean"
 import * as Str from "@fp-ts/codec/data/string"
 import * as G from "@fp-ts/codec/Guard"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -79,10 +78,10 @@ export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
 const go = S.memoize((ast: AST): Show<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (B.isBoolean(ast.annotations)) {
+      if (ast === S.boolean.ast) {
         return make(S.boolean, (a) => JSON.stringify(a))
       }
-      if (Str.isString(ast.annotations)) {
+      if (ast === Str.Schema.ast) {
         return make(S.string, (a) => JSON.stringify(a))
       }
       return pipe(

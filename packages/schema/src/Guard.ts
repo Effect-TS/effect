@@ -6,8 +6,6 @@ import * as A from "@fp-ts/codec/Annotation"
 import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
 import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
-import * as B from "@fp-ts/codec/data/boolean"
-import * as Str from "@fp-ts/codec/data/string"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -164,10 +162,10 @@ export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
 const go = S.memoize((ast: AST): Guard<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (B.isBoolean(ast.annotations)) {
+      if (ast === S.boolean.ast) {
         return boolean
       }
-      if (Str.isString(ast.annotations)) {
+      if (ast === S.string.ast) {
         let out = string
         const oMinLength = MinLength.get(ast.annotations)
         if (O.isSome(oMinLength)) {

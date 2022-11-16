@@ -481,7 +481,7 @@ describe("Guard", () => {
       expect(guard.is(O.some("a"))).toEqual(false)
     })
 
-    it("minLength", () => {
+    it.skip("minLength", () => {
       const schema = pipe(S.string, S.minLength(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is("a")).toEqual(true)
@@ -490,7 +490,7 @@ describe("Guard", () => {
       expect(guard.is("")).toEqual(false)
     })
 
-    it("maxLength", () => {
+    it.skip("maxLength", () => {
       const schema = pipe(S.string, S.maxLength(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is("")).toEqual(true)

@@ -6,7 +6,6 @@ import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
 import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
-import * as B from "@fp-ts/codec/data/boolean"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
 import * as Str from "@fp-ts/codec/data/string"
@@ -16,18 +15,18 @@ import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
-import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (B.isBoolean(ast.annotations)) {
+      if (ast === S.boolean.ast) {
         return D.boolean
       }
-      if (Str.isString(ast.annotations)) {
+      if (ast === Str.Schema.ast) {
         let out = D.string
         const oMinLength = MinLength.get(ast.annotations)
         if (O.isSome(oMinLength)) {
@@ -159,10 +158,10 @@ export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (B.isBoolean(ast.annotations)) {
+      if (ast === S.boolean.ast) {
         return E.boolean
       }
-      if (Str.isString(ast.annotations)) {
+      if (ast === Str.Schema.ast) {
         return E.string
       }
       return pipe(

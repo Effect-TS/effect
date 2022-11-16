@@ -130,21 +130,21 @@ describe("Arbitrary", () => {
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it("refinement", () => {
+    it.skip("refinement", () => {
       const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it("minLength", () => {
+    it.skip("minLength", () => {
       const schema = pipe(S.string, S.minLength(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it("maxLength", () => {
+    it.skip("maxLength", () => {
       const schema = pipe(S.string, S.maxLength(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
