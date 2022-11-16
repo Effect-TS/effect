@@ -318,16 +318,3 @@ export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
 ) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = covariantSchema
   .omit(CovariantSchema)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const alias = (symbol: symbol) =>
-//   <A>(guard: Guard<A>): Guard<A> => {
-//     const declaration: Declaration = {
-//       guardFor: (): Guard<A> => out
-//     }
-//     const schema = S.apply(symbol, O.none, declaration)
-//     const out = make(schema, guard.is)
-//     return out
-//   }

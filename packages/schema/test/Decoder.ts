@@ -3,7 +3,6 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 
 const nan: D.Decoder<unknown, number> = pipe(
   D.number,
@@ -26,9 +25,7 @@ describe("Decoder", () => {
   it("should allow custom errors", () => {
     const bigintSym = Symbol.for("bigint")
 
-    const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {
-      decoderFor: (): D.Decoder<unknown, bigint> => bigint
-    }, [])
+    const bigintS: S.Schema<bigint> = S.apply(bigintSym, [])
 
     interface NoBigInt {
       readonly _tag: "NoBigInt"

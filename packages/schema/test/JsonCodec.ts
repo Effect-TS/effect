@@ -6,19 +6,12 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(
     SetSym,
-    O.none,
-    {
-      decoderFor: <A>(
-        item: D.Decoder<J.Json, A>
-      ): D.Decoder<J.Json, Set<A>> => set(item)
-    },
     [
       {
         _tag: "DecoderAnnotation",

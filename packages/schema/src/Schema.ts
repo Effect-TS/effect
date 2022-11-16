@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Declaration, Declarations, Meta } from "@fp-ts/codec/Meta"
+import type { Meta } from "@fp-ts/codec/Meta"
 import * as M from "@fp-ts/codec/Meta"
 import type { Either } from "@fp-ts/data/Either"
 import type { Option } from "@fp-ts/data/Option"
@@ -23,69 +23,11 @@ export const make = <A>(meta: Meta): Schema<A> => ({ meta }) as any
 /**
  * @since 1.0.0
  */
-export const empty: Declarations = new Map()
-
-/**
- * @since 1.0.0
- */
-export const add = (
-  symbol: symbol,
-  declaration: Declaration
-) =>
-  (declarations: Declarations): Declarations => {
-    const map = new Map(declarations)
-    const found = declarations.get(symbol)
-    if (found !== undefined) {
-      map.set(symbol, { ...found, ...declaration })
-    } else {
-      map.set(symbol, declaration)
-    }
-    return map
-  }
-
-/**
- * @since 1.0.0
- */
-export const unsafeGet = (
-  symbol: symbol
-) =>
-  (declarations: Declarations): Declaration => {
-    if (!declarations.has(symbol)) {
-      throw new Error(`Declaration for ${symbol.description} not found`)
-    }
-    return declarations.get(symbol)!
-  }
-
-/**
- * @since 1.0.0
- */
-export const mergeMany = (tail: ReadonlyArray<Declarations>) =>
-  (head: Declarations): Declarations => {
-    const map = new Map(head)
-    for (const d of tail) {
-      for (const [symbol, declaration] of d) {
-        const found = d.get(symbol)
-        if (found !== undefined) {
-          map.set(symbol, { ...found, ...declaration })
-        } else {
-          map.set(symbol, declaration)
-        }
-      }
-    }
-    return map
-  }
-
-/**
- * @since 1.0.0
- */
 export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
-  config: Option<unknown>,
-  declaration: Declaration,
   annotations: ReadonlyArray<unknown>,
   ...schemas: Schemas
-): Schema<any> =>
-  make(M.apply(symbol, config, declaration, annotations, schemas.map((s) => s.meta)))
+): Schema<any> => make(M.apply(symbol, annotations, schemas.map((s) => s.meta)))
 
 /**
  * @since 1.0.0

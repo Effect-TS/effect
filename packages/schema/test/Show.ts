@@ -10,10 +10,6 @@ const SetSym = Symbol("Set")
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(
     SetSym,
-    O.none,
-    {
-      showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
-    },
     [
       {
         _tag: "ShowAnnotation",

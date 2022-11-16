@@ -3,7 +3,6 @@ import * as G from "@fp-ts/codec/Guard"
 import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import * as fc from "fast-check"
 
 const SetSym = Symbol("Set")
@@ -11,11 +10,6 @@ const SetSym = Symbol("Set")
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(
     SetSym,
-    O.none,
-    {
-      arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item),
-      guardFor: <A>(item: G.Guard<A>): G.Guard<Set<A>> => setG(item)
-    },
     [
       {
         _tag: "ArbitraryAnnotation",

@@ -26,10 +26,6 @@ const setS = <B extends boolean, A>(
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
   S.apply(
     SetSym,
-    O.some(readonly),
-    {
-      typeRepFor: <A>(readonly: boolean, item: TypeRep<A>) => set(readonly, item)
-    },
     [
       {
         _tag: "TypeRepAnnotation",
@@ -53,9 +49,7 @@ const set = <B extends boolean, A>(
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintS: Schema<bigint> = S.apply(bigintSym, O.none, {
-  typeRepFor: () => bigint
-}, [
+const bigintS: Schema<bigint> = S.apply(bigintSym, [
   {
     _tag: "TypeRepAnnotation",
     typeRepFor: () => bigint

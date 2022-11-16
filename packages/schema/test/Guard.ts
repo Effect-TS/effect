@@ -9,10 +9,6 @@ const SetSym = Symbol("Set")
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.apply(
     SetSym,
-    O.none,
-    {
-      guardFor: <A>(item: G.Guard<A>): G.Guard<Set<A>> => set(item)
-    },
     [
       {
         _tag: "GuardAnnotation",
@@ -30,7 +26,7 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {}, [{
+const bigintS: S.Schema<bigint> = S.apply(bigintSym, [{
   _tag: "GuardAnnotation",
   guardFor: (): G.Guard<bigint> => bigint
 }])

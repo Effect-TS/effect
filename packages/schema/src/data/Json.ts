@@ -7,7 +7,6 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
-import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
@@ -38,12 +37,7 @@ export const symbol = Symbol("@fp-ts/codec/data/Json")
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.apply(symbol, O.none, {
-  guardFor: () => Guard,
-  decoderFor: () => Decoder,
-  arbitraryFor: () => Arbitrary,
-  showFor: () => Show
-}, [
+export const Schema: S.Schema<Json> = S.apply(symbol, [
   {
     _tag: "GuardAnnotation",
     guardFor: () => Guard
