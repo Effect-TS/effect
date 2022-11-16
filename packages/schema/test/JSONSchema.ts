@@ -21,16 +21,36 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
+const JSONSchemaAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/JSONSchemaAnnotation"
+) as JSONSchemaAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type JSONSchemaAnnotationId = typeof JSONSchemaAnnotationId
+
 export interface JSONSchemaAnnotation {
-  readonly _tag: "JSONSchemaAnnotation"
+  readonly _id: JSONSchemaAnnotationId
   readonly jsonSchemaFor: (
     annotations: A.Annotations,
     ...jsonSchemas: ReadonlyArray<JSONSchema>
   ) => JSONSchema
 }
 
+/**
+ * @since 1.0.0
+ */
+export const jsonSchemaAnnotation = (
+  jsonSchemaFor: (
+    annotations: A.Annotations,
+    ...jsonSchemas: ReadonlyArray<JSONSchema>
+  ) => JSONSchema
+): JSONSchemaAnnotation => ({ _id: JSONSchemaAnnotationId, jsonSchemaFor })
+
 export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "JSONSchemaAnnotation")
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === JSONSchemaAnnotationId
 
 const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {

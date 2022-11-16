@@ -11,13 +11,47 @@ interface TypeRep<in out A> extends S.Schema<A> {
 
 const make = (ast: AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
 
-export interface SetAnnotation {
-  readonly _tag: "SetAnnotation"
-  readonly readonly: boolean
+export const lazy = <A>(
+  name: string,
+  f: () => TypeRep<A>
+): TypeRep<A> => {
+  const schema = S.lazy(f)
+  return make(
+    schema.ast,
+    name
+  )
 }
 
-export const isSetAnnotation = (u: unknown): u is SetAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "SetAnnotation")
+const TypeRepAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/TypeRepAnnotation"
+) as TypeRepAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type TypeRepAnnotationId = typeof TypeRepAnnotationId
+
+export interface TypeRepAnnotation {
+  readonly _id: TypeRepAnnotationId
+  readonly typeRepFor: (
+    annotations: A.Annotations,
+    ...typeReps: ReadonlyArray<TypeRep<any>>
+  ) => TypeRep<any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const typeRepAnnotation = (
+  typeRepFor: (
+    annotations: A.Annotations,
+    ...typeReps: ReadonlyArray<TypeRep<any>>
+  ) => TypeRep<any>
+): TypeRepAnnotation => ({ _id: TypeRepAnnotationId, typeRepFor })
+
+export const isTypeRepAnnotation = (u: unknown): u is TypeRepAnnotation =>
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === TypeRepAnnotationId
 
 const setS = <B extends boolean, A>(
   readonly: B,
@@ -26,13 +60,10 @@ const setS = <B extends boolean, A>(
   S.declare(
     [
       A.nameAnnotation("@fp-ts/codec/data/Set"),
-      {
-        _tag: "TypeRepAnnotation",
-        typeRepFor: <A>(
-          _: A.Annotations,
-          item: TypeRep<A>
-        ) => set(readonly, item)
-      }
+      typeRepAnnotation(<A>(
+        _: A.Annotations,
+        item: TypeRep<A>
+      ) => set(readonly, item))
     ],
     item
   )
@@ -48,35 +79,10 @@ const set = <B extends boolean, A>(
 
 const bigintS: Schema<bigint> = S.declare([
   A.nameAnnotation("@fp-ts/codec/data/bigint"),
-  {
-    _tag: "TypeRepAnnotation",
-    typeRepFor: () => bigint
-  }
+  typeRepAnnotation(() => bigint)
 ])
 
 const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
-
-export const lazy = <A>(
-  name: string,
-  f: () => TypeRep<A>
-): TypeRep<A> => {
-  const schema = S.lazy(f)
-  return make(
-    schema.ast,
-    name
-  )
-}
-
-export interface TypeRepAnnotation {
-  readonly _tag: "TypeRepAnnotation"
-  readonly typeRepFor: (
-    annotations: A.Annotations,
-    ...typeReps: ReadonlyArray<TypeRep<any>>
-  ) => TypeRep<any>
-}
-
-export const isTypeRepAnnotation = (u: unknown): u is TypeRepAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "TypeRepAnnotation")
 
 const go = S.memoize((ast: AST): TypeRep<any> => {
   switch (ast._tag) {

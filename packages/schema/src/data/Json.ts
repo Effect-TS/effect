@@ -35,22 +35,13 @@ export type Json =
  */
 export const Schema: S.Schema<Json> = S.declare([
   A.nameAnnotation("@fp-ts/codec/data/Json"),
-  {
-    _tag: "GuardAnnotation",
-    guardFor: () => Guard
-  },
+  G.guardAnnotation(() => Guard),
   {
     _tag: "DecoderAnnotation",
     decoderFor: () => Decoder
   },
-  {
-    _tag: "ArbitraryAnnotation",
-    arbitraryFor: () => Arbitrary
-  },
-  {
-    _tag: "ShowAnnotation",
-    showFor: () => Show
-  }
+  Arb.arbitraryAnnotation(() => Arbitrary),
+  Sh.showAnnotation(() => Show)
 ])
 
 /**

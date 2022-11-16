@@ -19,11 +19,21 @@ export const find = <A>(
   is: (annotation: unknown) => annotation is A
 ): Option<A> => pipe(annotations, RA.findFirst(is))
 
+const NameAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/NameAnnotationId"
+) as NameAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type NameAnnotationId = typeof NameAnnotationId
+
 /**
  * @since 1.0.0
  */
 export interface NameAnnotation {
-  readonly _tag: "NameAnnotation"
+  readonly _id: NameAnnotationId
   readonly name: string
 }
 
@@ -31,7 +41,7 @@ export interface NameAnnotation {
  * @since 1.0.0
  */
 export const isNameAnnotation = (u: unknown): u is NameAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "NameAnnotation")
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === NameAnnotationId
 
 /**
  * @since 1.0.0
@@ -42,4 +52,4 @@ export const getName = (annotations: Annotations): Option<string> =>
 /**
  * @since 1.0.0
  */
-export const nameAnnotation = (name: string): NameAnnotation => ({ _tag: "NameAnnotation", name })
+export const nameAnnotation = (name: string): NameAnnotation => ({ _id: NameAnnotationId, name })

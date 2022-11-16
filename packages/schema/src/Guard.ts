@@ -120,11 +120,21 @@ export const lazy = <A>(
 const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
+const GuardAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/GuardAnnotation"
+) as GuardAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type GuardAnnotationId = typeof GuardAnnotationId
+
 /**
  * @since 1.0.0
  */
 export interface GuardAnnotation {
-  readonly _tag: "GuardAnnotation"
+  readonly _id: GuardAnnotationId
   readonly guardFor: (
     annotations: A.Annotations,
     ...guards: ReadonlyArray<Guard<any>>
@@ -134,8 +144,18 @@ export interface GuardAnnotation {
 /**
  * @since 1.0.0
  */
+export const guardAnnotation = (
+  guardFor: (
+    annotations: A.Annotations,
+    ...guards: ReadonlyArray<Guard<any>>
+  ) => Guard<any>
+): GuardAnnotation => ({ _id: GuardAnnotationId, guardFor })
+
+/**
+ * @since 1.0.0
+ */
 export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "GuardAnnotation")
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === GuardAnnotationId
 
 const go = S.memoize((ast: AST): Guard<any> => {
   switch (ast._tag) {

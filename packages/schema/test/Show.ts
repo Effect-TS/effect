@@ -10,10 +10,7 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
       A.nameAnnotation("@fp-ts/codec/data/Set"),
-      {
-        _tag: "ShowAnnotation",
-        showFor: <A>(_: Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
-      }
+      Sh.showAnnotation(<A>(_: Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => set(item))
     ],
     item
   )

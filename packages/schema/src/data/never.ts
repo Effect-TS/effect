@@ -12,10 +12,7 @@ import * as S from "@fp-ts/codec/Schema"
  */
 export const Schema: S.Schema<never> = S.declare([
   A.nameAnnotation("@fp-ts/codec/data/never"),
-  {
-    _tag: "GuardAnnotation",
-    guardFor: () => Guard
-  },
+  G.guardAnnotation(() => Guard as any),
   {
     _tag: "DecoderAnnotation",
     decoderFor: () => Decoder

@@ -9,10 +9,7 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
       A.nameAnnotation("@fp-ts/codec/data/Set"),
-      {
-        _tag: "GuardAnnotation",
-        guardFor: <A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item)
-      }
+      G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item))
     ],
     item
   )
@@ -23,10 +20,10 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
-const bigintS: S.Schema<bigint> = S.declare([A.nameAnnotation("@fp-ts/codec/data/bigint"), {
-  _tag: "GuardAnnotation",
-  guardFor: (): G.Guard<bigint> => bigint
-}])
+const bigintS: S.Schema<bigint> = S.declare([
+  A.nameAnnotation("@fp-ts/codec/data/bigint"),
+  G.guardAnnotation((): G.Guard<bigint> => bigint)
+])
 
 const bigint = G.make(
   bigintS,

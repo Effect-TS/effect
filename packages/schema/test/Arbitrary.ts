@@ -10,15 +10,10 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
       A.nameAnnotation("@fp-ts/codec/data/Set"),
-      {
-        _tag: "ArbitraryAnnotation",
-        arbitraryFor: <A>(_: Annotations, item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
-          set(item)
-      },
-      {
-        _tag: "GuardAnnotation",
-        guardFor: <A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => setG(item)
-      }
+      Arb.arbitraryAnnotation(<A>(_: Annotations, item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
+        set(item)
+      ),
+      G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => setG(item))
     ],
     item
   )

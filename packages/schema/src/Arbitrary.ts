@@ -105,11 +105,21 @@ export const lazy = <A>(
   )
 }
 
+const ArbitraryAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/ArbitraryAnnotationId"
+) as ArbitraryAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type ArbitraryAnnotationId = typeof ArbitraryAnnotationId
+
 /**
  * @since 1.0.0
  */
 export interface ArbitraryAnnotation {
-  readonly _tag: "ArbitraryAnnotation"
+  readonly _id: ArbitraryAnnotationId
   readonly arbitraryFor: (
     annotations: A.Annotations,
     ...arbs: ReadonlyArray<Arbitrary<any>>
@@ -119,8 +129,18 @@ export interface ArbitraryAnnotation {
 /**
  * @since 1.0.0
  */
+export const arbitraryAnnotation = (
+  arbitraryFor: (
+    annotations: A.Annotations,
+    ...arbs: ReadonlyArray<Arbitrary<any>>
+  ) => Arbitrary<any>
+): ArbitraryAnnotation => ({ _id: ArbitraryAnnotationId, arbitraryFor })
+
+/**
+ * @since 1.0.0
+ */
 export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ArbitraryAnnotation")
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === ArbitraryAnnotationId
 
 const go = S.memoize((ast: AST): Arbitrary<any> => {
   switch (ast._tag) {

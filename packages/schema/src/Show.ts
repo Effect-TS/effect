@@ -37,11 +37,21 @@ export const lazy = <A>(
   )
 }
 
+const ShowAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/ShowAnnotation"
+) as ShowAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type ShowAnnotationId = typeof ShowAnnotationId
+
 /**
  * @since 1.0.0
  */
 export interface ShowAnnotation {
-  readonly _tag: "ShowAnnotation"
+  readonly _id: ShowAnnotationId
   readonly showFor: (
     annotations: A.Annotations,
     ...guards: ReadonlyArray<Show<any>>
@@ -51,8 +61,18 @@ export interface ShowAnnotation {
 /**
  * @since 1.0.0
  */
+export const showAnnotation = (
+  showFor: (
+    annotations: A.Annotations,
+    ...guards: ReadonlyArray<Show<any>>
+  ) => Show<any>
+): ShowAnnotation => ({ _id: ShowAnnotationId, showFor })
+
+/**
+ * @since 1.0.0
+ */
 export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ShowAnnotation")
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === ShowAnnotationId
 
 const go = S.memoize((ast: AST): Show<any> => {
   switch (ast._tag) {
