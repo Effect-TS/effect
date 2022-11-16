@@ -1,5 +1,5 @@
 import * as A from "@fp-ts/codec/Annotation"
-import * as M from "@fp-ts/codec/AST"
+import * as ast from "@fp-ts/codec/AST"
 import { unsafeGuardFor } from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -15,17 +15,31 @@ describe("Schema", () => {
     expect(A.getName(schema.ast.annotations)).toEqual(O.some("A"))
   })
 
+  it("nativeEnum", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const schema = S.nativeEnum(Fruits)
+    const guard = unsafeGuardFor(schema)
+    expect(guard.is(Fruits.Apple)).toEqual(true)
+    expect(guard.is(Fruits.Banana)).toEqual(true)
+    expect(guard.is(0)).toEqual(true)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is(3)).toEqual(false)
+  })
+
   it("rename", () => {
     const rename = <A, From extends keyof A, To extends PropertyKey>(
       from: From,
       to: To
     ) =>
       (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
-        if (M.isStruct(schema.ast)) {
+        if (ast.isStruct(schema.ast)) {
           const fields = schema.ast.fields.slice()
           const i = fields.findIndex((field) => field.key === from)
-          fields[i] = M.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
-          return S.make(M.struct(fields, schema.ast.indexSignature))
+          fields[i] = ast.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
+          return S.make(ast.struct(fields, schema.ast.indexSignature))
         }
         throw new Error("cannot rename")
       }

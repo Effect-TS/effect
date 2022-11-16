@@ -1,4 +1,4 @@
-import * as M from "@fp-ts/codec/AST"
+import * as ast from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
@@ -9,9 +9,9 @@ describe("Meta", () => {
         a: S.string,
         b: S.number
       })
-      expect(M.getFields(schema.ast)).toEqual([
-        M.field("a", M.string({}), false, true),
-        M.field("b", M.number({}), false, true)
+      expect(ast.getFields(schema.ast)).toEqual([
+        ast.field("a", ast.string({}), false, true),
+        ast.field("b", ast.number({}), false, true)
       ])
     })
 
@@ -41,8 +41,8 @@ describe("Meta", () => {
           c: S.number
         })
       )
-      expect(M.getFields(schema.ast)).toEqual([
-        M.field("a", M.union([M.string({}), M.boolean]), false, true)
+      expect(ast.getFields(schema.ast)).toEqual([
+        ast.field("a", ast.union([ast.string({}), ast.boolean]), false, true)
       ])
     })
 
@@ -58,9 +58,9 @@ describe("Meta", () => {
             categories: S.array(true, Category)
           })
       )
-      expect(M.getFields(Category.ast)).toEqual([
-        M.field("name", M.string({}), false, true),
-        M.field("categories", M.tuple([], O.some(Category.ast), true), false, true)
+      expect(ast.getFields(Category.ast)).toEqual([
+        ast.field("name", ast.string({}), false, true),
+        ast.field("categories", ast.tuple([], O.some(Category.ast), true), false, true)
       ])
     })
   })

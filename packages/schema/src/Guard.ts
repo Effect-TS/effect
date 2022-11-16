@@ -289,6 +289,12 @@ export const readonlyArray: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = of
 /**
  * @since 1.0.0
  */
+export const nativeEnum: <A extends { [_: string]: string | number }>(nativeEnum: A) => Guard<A> =
+  ofSchema.nativeEnum(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
 ) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))

@@ -87,3 +87,13 @@ export const readonlyArray = <F extends TypeLambda>(
   <I, O, E, A>(
     item: Schema<A>
   ): Kind<F, I, O, E, ReadonlyArray<A>> => F.ofSchema(S.array(true, item))
+
+/**
+ * @since 1.0.0
+ */
+export const nativeEnum = <F extends TypeLambda>(
+  F: OfSchema<F>
+) =>
+  <I, O, E, A extends { [_: string]: string | number }>(
+    nativeEnum: A
+  ): Kind<F, I, O, E, A> => F.ofSchema(S.nativeEnum(nativeEnum))

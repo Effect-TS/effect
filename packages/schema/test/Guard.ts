@@ -40,6 +40,19 @@ describe("Guard", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
+  it("nativeEnum", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const guard = G.nativeEnum(Fruits)
+    expect(guard.is(Fruits.Apple)).toEqual(true)
+    expect(guard.is(Fruits.Banana)).toEqual(true)
+    expect(guard.is(0)).toEqual(true)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is(3)).toEqual(false)
+  })
+
   describe("tuple", () => {
     it("tuple", () => {
       const guard = G.tuple(G.string, G.number)

@@ -260,6 +260,13 @@ export const readonlyArray: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> 
 /**
  * @since 1.0.0
  */
+export const nativeEnum: <A extends { [_: string]: string | number }>(
+  nativeEnum: A
+) => Arbitrary<A> = ofSchema.nativeEnum(FromSchema)
+
+/**
+ * @since 1.0.0
+ */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
 ) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
