@@ -158,7 +158,7 @@ export const nativeEnum = <A extends { [_: string]: string | number }>(
 ): Schema<A> =>
   make(ast.union(
     Object.keys(nativeEnum).filter(
-      (k) => typeof nativeEnum[nativeEnum[k]] !== "number"
+      (key) => typeof nativeEnum[nativeEnum[key]] !== "number"
     ).map((key) => ast.of(nativeEnum[key]))
   ))
 

@@ -40,7 +40,7 @@ describe("Guard", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
-  it("nativeEnum", () => {
+  it("Numeric enums", () => {
     enum Fruits {
       Apple,
       Banana
@@ -51,6 +51,34 @@ describe("Guard", () => {
     expect(guard.is(0)).toEqual(true)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is(3)).toEqual(false)
+  })
+
+  it("String enums", () => {
+    enum Fruits {
+      Apple = "apple",
+      Banana = "banana",
+      Cantaloupe = 0
+    }
+    const guard = G.nativeEnum(Fruits)
+    expect(guard.is(Fruits.Apple)).toEqual(true)
+    expect(guard.is(Fruits.Cantaloupe)).toEqual(true)
+    expect(guard.is("apple")).toEqual(true)
+    expect(guard.is("banana")).toEqual(true)
+    expect(guard.is(0)).toEqual(true)
+    expect(guard.is("Cantaloupe")).toEqual(false)
+  })
+
+  it("Const enums", () => {
+    const Fruits = {
+      Apple: "apple",
+      Banana: "banana",
+      Cantaloupe: 3
+    } as const
+    const guard = G.nativeEnum(Fruits)
+    expect(guard.is("apple")).toEqual(true)
+    expect(guard.is("banana")).toEqual(true)
+    expect(guard.is(3)).toEqual(true)
+    expect(guard.is("Cantaloupe")).toEqual(false)
   })
 
   describe("tuple", () => {
