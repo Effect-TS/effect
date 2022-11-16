@@ -1,4 +1,5 @@
 import * as ast from "@fp-ts/codec/AST"
+import * as B from "@fp-ts/codec/data/boolean"
 import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
@@ -42,7 +43,7 @@ describe("Meta", () => {
         })
       )
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.union([ast.string({}), ast.boolean]), false, true)
+        ast.field("a", ast.union([ast.string({}), B.Schema.ast]), false, true)
       ])
     })
 

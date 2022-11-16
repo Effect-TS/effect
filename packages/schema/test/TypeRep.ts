@@ -1,5 +1,6 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
+import * as B from "@fp-ts/codec/data/boolean"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
@@ -87,6 +88,9 @@ const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 const go = S.memoize((ast: AST): TypeRep<any> => {
   switch (ast._tag) {
     case "Declaration": {
+      if (B.isBoolean(ast.annotations)) {
+        return make(S.boolean.ast, "boolean")
+      }
       return pipe(
         A.find(ast.annotations, isTypeRepAnnotation),
         O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
@@ -103,8 +107,6 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
       return make(S.string.ast, "string")
     case "Number":
       return make(S.number.ast, "number")
-    case "Boolean":
-      return make(S.boolean.ast, "boolean")
     case "Of":
       return make(ast, JSON.stringify(ast.value))
     case "Tuple": {

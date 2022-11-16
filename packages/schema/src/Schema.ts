@@ -4,6 +4,8 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
+import * as B from "@fp-ts/codec/data/boolean"
+import * as internal from "@fp-ts/codec/internal/Schema"
 import type { Either } from "@fp-ts/data/Either"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
@@ -19,7 +21,7 @@ export interface Schema<in out A> {
 /**
  * @since 1.0.0
  */
-export const make = <A>(ast: AST): Schema<A> => ({ ast }) as any
+export const make: <A>(ast: AST) => Schema<A> = internal.make
 
 /**
  * @since 1.0.0
@@ -40,10 +42,10 @@ export const getName = <A>(schema: Schema<A>): Option<string> => A.getName(schem
 /**
  * @since 1.0.0
  */
-export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
+export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   annotations: ReadonlyArray<unknown>,
   ...schemas: Schemas
-): Schema<any> => make(ast.declare(annotations, schemas.map((s) => s.ast)))
+) => Schema<any> = internal.declare
 
 /**
  * @since 1.0.0
@@ -134,7 +136,7 @@ export const maximum = (maximum: number) =>
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = make(ast.boolean)
+export const boolean: Schema<boolean> = B.Schema
 
 /**
  * @since 1.0.0

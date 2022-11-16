@@ -4,6 +4,7 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
+import * as B from "@fp-ts/codec/data/boolean"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
 import type { Decoder } from "@fp-ts/codec/Decoder"
@@ -17,28 +18,14 @@ import type { Schema } from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-/**
- * @since 1.0.0
- */
-export interface DecoderAnnotation {
-  readonly _tag: "DecoderAnnotation"
-  readonly decoderFor: (
-    annotations: A.Annotations,
-    ...decoders: ReadonlyArray<Decoder<J.Json, any>>
-  ) => Decoder<J.Json, any>
-}
-
-/**
- * @since 1.0.0
- */
-export const isDecoderAnnotation = (u: unknown): u is DecoderAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "DecoderAnnotation")
-
 const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
+      if (B.isBoolean(ast.annotations)) {
+        return D.boolean
+      }
       return pipe(
-        A.find(ast.annotations, isDecoderAnnotation),
+        A.find(ast.annotations, D.isDecoderAnnotation),
         O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
         O.match(() => {
           throw new Error(
@@ -69,8 +56,6 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       }
       return out
     }
-    case "Boolean":
-      return D.boolean
     case "Of":
       return D.of(ast.value)
     case "Tuple": {
@@ -169,6 +154,9 @@ export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
+      if (B.isBoolean(ast.annotations)) {
+        return E.boolean
+      }
       return pipe(
         A.find(ast.annotations, isEncoderAnnotation),
         O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
@@ -185,8 +173,6 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
       return E.string
     case "Number":
       return E.number
-    case "Boolean":
-      return E.boolean
     case "Of":
       if (Json.Guard.is(ast.value)) {
         return E.of(ast.value)

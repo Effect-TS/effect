@@ -21,6 +21,7 @@ import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 
 // data types
 import * as any from "@fp-ts/codec/data/any"
+import * as boolean from "@fp-ts/codec/data/boolean"
 import * as json from "@fp-ts/codec/data/Json"
 import * as never from "@fp-ts/codec/data/never"
 import * as unknown from "@fp-ts/codec/data/unknown"
@@ -42,6 +43,10 @@ export {
    * @since 1.0.0
    */
   ast,
+  /**
+   * @since 1.0.0
+   */
+  boolean,
   /**
    * @since 1.0.0
    */

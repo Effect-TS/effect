@@ -14,10 +14,7 @@ import * as S from "@fp-ts/codec/Schema"
 export const Schema: S.Schema<unknown> = S.declare([
   A.nameAnnotation("@fp-ts/codec/data/unknown"),
   G.guardAnnotation(() => Guard),
-  {
-    _tag: "DecoderAnnotation",
-    decoderFor: () => Decoder
-  },
+  D.decoderAnnotation(() => Decoder),
   Arb.arbitraryAnnotation(() => Arbitrary)
 ])
 

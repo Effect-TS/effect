@@ -12,10 +12,7 @@ const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
       A.nameAnnotation("@fp-ts/codec/data/Set"),
-      {
-        _tag: "DecoderAnnotation",
-        decoderFor: <A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item)
-      }
+      D.decoderAnnotation(<A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item))
     ],
     item
   )

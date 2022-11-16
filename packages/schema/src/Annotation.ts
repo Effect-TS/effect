@@ -20,7 +20,7 @@ export const find = <A>(
 ): Option<A> => pipe(annotations, RA.findFirst(is))
 
 const NameAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/NameAnnotationId"
+  "@fp-ts/codec/NameAnnotation"
 ) as NameAnnotationId
 
 /**
@@ -53,3 +53,32 @@ export const getName = (annotations: Annotations): Option<string> =>
  * @since 1.0.0
  */
 export const nameAnnotation = (name: string): NameAnnotation => ({ _id: NameAnnotationId, name })
+
+const IdAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/IdAnnotation"
+) as IdAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type IdAnnotationId = typeof IdAnnotationId
+
+/**
+ * @since 1.0.0
+ */
+export interface IdAnnotation {
+  readonly _id: IdAnnotationId
+  readonly id: symbol
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isIdAnnotation = (u: unknown): u is IdAnnotation =>
+  typeof u === "object" && u != null && "_id" in u && u["_id"] === IdAnnotationId
+
+/**
+ * @since 1.0.0
+ */
+export const idAnnotation = (id: symbol): IdAnnotation => ({ _id: IdAnnotationId, id })

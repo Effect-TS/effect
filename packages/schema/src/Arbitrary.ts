@@ -3,6 +3,7 @@
  */
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
+import * as B from "@fp-ts/codec/data/boolean"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -145,6 +146,9 @@ export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
 const go = S.memoize((ast: AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration": {
+      if (B.isBoolean(ast.annotations)) {
+        return boolean
+      }
       return pipe(
         A.find(ast.annotations, isArbitraryAnnotation),
         O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
@@ -177,8 +181,6 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       }
       return out
     }
-    case "Boolean":
-      return boolean
     case "Of":
       return make(S.make(ast), (fc) => fc.constant(ast.value))
     case "Tuple": {

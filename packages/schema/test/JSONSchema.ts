@@ -1,5 +1,6 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
+import * as B from "@fp-ts/codec/data/boolean"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
@@ -55,6 +56,11 @@ export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
 const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {
     case "Declaration": {
+      if (B.isBoolean(ast.annotations)) {
+        return {
+          type: "boolean"
+        }
+      }
       return pipe(
         A.find(ast.annotations, isJSONSchemaAnnotation),
         O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
@@ -82,11 +88,6 @@ const go = S.memoize((ast: AST): JSONSchema => {
         exclusiveMinimum: ast.exclusiveMinimum,
         exclusiveMaximum: ast.exclusiveMaximum
       }
-    case "Boolean": {
-      return {
-        type: "boolean"
-      }
-    }
   }
   throw new Error(`Unhandled ${ast._tag}`)
 })

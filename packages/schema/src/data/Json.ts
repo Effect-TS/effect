@@ -36,10 +36,7 @@ export type Json =
 export const Schema: S.Schema<Json> = S.declare([
   A.nameAnnotation("@fp-ts/codec/data/Json"),
   G.guardAnnotation(() => Guard),
-  {
-    _tag: "DecoderAnnotation",
-    decoderFor: () => Decoder
-  },
+  D.decoderAnnotation(() => Decoder),
   Arb.arbitraryAnnotation(() => Arbitrary),
   Sh.showAnnotation(() => Show)
 ])
