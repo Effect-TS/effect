@@ -2,11 +2,15 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
+import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
+import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
+import * as S from "@fp-ts/codec/data/string"
 import * as internal from "@fp-ts/codec/internal/Schema"
 import type { Either } from "@fp-ts/data/Either"
+import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
@@ -50,7 +54,7 @@ export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = make(ast.string({}))
+export const string: Schema<string> = S.Schema
 
 /**
  * @since 1.0.0
@@ -58,17 +62,11 @@ export const string: Schema<string> = make(ast.string({}))
 export const minLength = (minLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
-  ): Schema<A> => {
-    if (ast.isString(schema.ast)) {
-      return make(
-        ast.string({
-          minLength,
-          maxLength: schema.ast.maxLength
-        })
-      )
-    }
-    throw new Error("cannot `minLength` non-String schemas")
-  }
+  ): Schema<A> =>
+    make({
+      ...schema.ast,
+      annotations: pipe(schema.ast.annotations, MinLength.add(minLength))
+    })
 
 /**
  * @since 1.0.0
@@ -76,17 +74,11 @@ export const minLength = (minLength: number) =>
 export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
-  ): Schema<A> => {
-    if (ast.isString(schema.ast)) {
-      return make(
-        ast.string({
-          minLength: schema.ast.minLength,
-          maxLength
-        })
-      )
-    }
-    throw new Error("cannot `maxLength` non-String schemas")
-  }
+  ): Schema<A> =>
+    make({
+      ...schema.ast,
+      annotations: pipe(schema.ast.annotations, MaxLength.add(maxLength))
+    })
 
 /**
  * @since 1.0.0

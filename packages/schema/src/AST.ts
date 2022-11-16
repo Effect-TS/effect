@@ -12,7 +12,6 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
  */
 export type AST =
   | Declaration
-  | String
   | Number
   | Of
   | Struct
@@ -40,31 +39,6 @@ export const declare = (
   annotations,
   nodes
 })
-
-/**
- * @since 1.0.0
- */
-export interface String {
-  readonly _tag: "String"
-  readonly minLength?: number
-  readonly maxLength?: number
-  readonly annotations: Annotations
-}
-
-/**
- * @since 1.0.0
- */
-export const string = (
-  options: {
-    readonly minLength?: number
-    readonly maxLength?: number
-  }
-): String => ({ _tag: "String", ...options, annotations: [A.nameAnnotation("string")] })
-
-/**
- * @since 1.0.0
- */
-export const isString = (ast: AST): ast is String => ast._tag === "String"
 
 /**
  * @since 1.0.0

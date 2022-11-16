@@ -2,8 +2,11 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
+import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
+import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
+import * as Str from "@fp-ts/codec/data/string"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -149,6 +152,18 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       if (B.isBoolean(ast.annotations)) {
         return boolean
       }
+      if (Str.isString(ast.annotations)) {
+        let out = string
+        const oMinLength = MinLength.get(ast.annotations)
+        if (O.isSome(oMinLength)) {
+          out = minLength(oMinLength.value)(out)
+        }
+        const oMaxLength = MaxLength.get(ast.annotations)
+        if (O.isSome(oMaxLength)) {
+          out = maxLength(oMaxLength.value)(out)
+        }
+        return out
+      }
       return pipe(
         A.find(ast.annotations, isArbitraryAnnotation),
         O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
@@ -160,16 +175,6 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
           )
         }, identity)
       )
-    }
-    case "String": {
-      let out = string
-      if (ast.minLength !== undefined) {
-        out = minLength(ast.minLength)(out)
-      }
-      if (ast.maxLength !== undefined) {
-        out = maxLength(ast.maxLength)(out)
-      }
-      return out
     }
     case "Number": {
       let out = number

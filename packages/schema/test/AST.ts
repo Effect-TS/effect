@@ -1,5 +1,6 @@
 import * as ast from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
+import * as Str from "@fp-ts/codec/data/string"
 import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
@@ -11,7 +12,7 @@ describe("Meta", () => {
         b: S.number
       })
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.string({}), false, true),
+        ast.field("a", Str.Schema.ast, false, true),
         ast.field("b", ast.number({}), false, true)
       ])
     })
@@ -43,7 +44,7 @@ describe("Meta", () => {
         })
       )
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.union([ast.string({}), B.Schema.ast]), false, true)
+        ast.field("a", ast.union([Str.Schema.ast, B.Schema.ast]), false, true)
       ])
     })
 
@@ -60,7 +61,7 @@ describe("Meta", () => {
           })
       )
       expect(ast.getFields(Category.ast)).toEqual([
-        ast.field("name", ast.string({}), false, true),
+        ast.field("name", Str.Schema.ast, false, true),
         ast.field("categories", ast.tuple([], O.some(Category.ast), true), false, true)
       ])
     })

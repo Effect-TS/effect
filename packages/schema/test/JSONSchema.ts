@@ -1,18 +1,23 @@
 import * as A from "@fp-ts/codec/Annotation"
+import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
+import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
+import * as Str from "@fp-ts/codec/data/string"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import Ajv from "ajv"
 
+type StringJSONSchema = {
+  readonly type: "string"
+  minLength?: number
+  maxLength?: number
+}
+
 type JSONSchema =
-  | {
-    readonly type: "string"
-    readonly minLength?: number
-    readonly maxLength?: number
-  }
+  | StringJSONSchema
   | {
     readonly type: "number"
     readonly exclusiveMaximum?: number
@@ -57,9 +62,19 @@ const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {
     case "Declaration": {
       if (B.isBoolean(ast.annotations)) {
-        return {
-          type: "boolean"
+        return { type: "boolean" }
+      }
+      if (Str.isString(ast.annotations)) {
+        const out: StringJSONSchema = { type: "string" }
+        const oMinLength = MinLength.get(ast.annotations)
+        if (O.isSome(oMinLength)) {
+          out.minLength = oMinLength.value
         }
+        const oMaxLength = MaxLength.get(ast.annotations)
+        if (O.isSome(oMaxLength)) {
+          out.maxLength = oMaxLength.value
+        }
+        return out
       }
       return pipe(
         A.find(ast.annotations, isJSONSchemaAnnotation),
@@ -72,13 +87,6 @@ const go = S.memoize((ast: AST): JSONSchema => {
           )
         }, identity)
       )
-    }
-    case "String": {
-      return {
-        type: "string",
-        minLength: ast.minLength,
-        maxLength: ast.maxLength
-      }
     }
     case "Number":
       return {

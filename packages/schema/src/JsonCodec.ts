@@ -2,11 +2,14 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
+import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
+import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
 import * as B from "@fp-ts/codec/data/boolean"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
+import * as Str from "@fp-ts/codec/data/string"
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import * as D from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
@@ -24,6 +27,18 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       if (B.isBoolean(ast.annotations)) {
         return D.boolean
       }
+      if (Str.isString(ast.annotations)) {
+        let out = D.string
+        const oMinLength = MinLength.get(ast.annotations)
+        if (O.isSome(oMinLength)) {
+          out = D.minLength(oMinLength.value)(out)
+        }
+        const oMaxLength = MaxLength.get(ast.annotations)
+        if (O.isSome(oMaxLength)) {
+          out = D.maxLength(oMaxLength.value)(out)
+        }
+        return out
+      }
       return pipe(
         A.find(ast.annotations, D.isDecoderAnnotation),
         O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
@@ -35,16 +50,6 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
           )
         }, identity)
       )
-    }
-    case "String": {
-      let out = D.string
-      if (ast.minLength !== undefined) {
-        out = D.minLength(ast.minLength)(out)
-      }
-      if (ast.maxLength !== undefined) {
-        out = D.maxLength(ast.maxLength)(out)
-      }
-      return out
     }
     case "Number": {
       let out = D.number
@@ -157,6 +162,9 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
       if (B.isBoolean(ast.annotations)) {
         return E.boolean
       }
+      if (Str.isString(ast.annotations)) {
+        return E.string
+      }
       return pipe(
         A.find(ast.annotations, isEncoderAnnotation),
         O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
@@ -169,8 +177,6 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
         }, identity)
       )
     }
-    case "String":
-      return E.string
     case "Number":
       return E.number
     case "Of":

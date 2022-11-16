@@ -46,13 +46,13 @@ export const isNameAnnotation = (u: unknown): u is NameAnnotation =>
 /**
  * @since 1.0.0
  */
-export const getName = (annotations: Annotations): Option<string> =>
-  pipe(find(annotations, isNameAnnotation), O.map((a) => a.name))
+export const nameAnnotation = (name: string): NameAnnotation => ({ _id: NameAnnotationId, name })
 
 /**
  * @since 1.0.0
  */
-export const nameAnnotation = (name: string): NameAnnotation => ({ _id: NameAnnotationId, name })
+export const getName = (annotations: Annotations): Option<string> =>
+  pipe(find(annotations, isNameAnnotation), O.map((a) => a.name))
 
 const IdAnnotationId: unique symbol = Symbol.for(
   "@fp-ts/codec/IdAnnotation"

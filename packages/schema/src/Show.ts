@@ -5,6 +5,7 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
+import * as Str from "@fp-ts/codec/data/string"
 import * as G from "@fp-ts/codec/Guard"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -81,6 +82,9 @@ const go = S.memoize((ast: AST): Show<any> => {
       if (B.isBoolean(ast.annotations)) {
         return make(S.boolean, (a) => JSON.stringify(a))
       }
+      if (Str.isString(ast.annotations)) {
+        return make(S.string, (a) => JSON.stringify(a))
+      }
       return pipe(
         A.find(ast.annotations, isShowAnnotation),
         O.map((annotation) => annotation.showFor(ast.annotations, ...ast.nodes.map(go))),
@@ -93,8 +97,6 @@ const go = S.memoize((ast: AST): Show<any> => {
         }, identity)
       )
     }
-    case "String":
-      return make(S.string, (a) => JSON.stringify(a))
     case "Number":
       return make(S.number, (a) => JSON.stringify(a))
     case "Of":
