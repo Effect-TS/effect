@@ -52,7 +52,6 @@ describe("Meta", () => {
         readonly categories: ReadonlyArray<Category>
       }
       const Category: S.Schema<Category> = S.lazy<Category>(
-        Symbol.for("Category"),
         () =>
           S.struct({
             name: S.string,

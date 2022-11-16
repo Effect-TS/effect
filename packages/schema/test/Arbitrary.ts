@@ -53,11 +53,12 @@ describe("Arbitrary", () => {
         readonly a: string
         readonly as: Set<A>
       }
-      const A: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+      const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           as: setS(A)
-        }))
+        })
+      )
       const schema = setS(A)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)

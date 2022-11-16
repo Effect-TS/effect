@@ -117,11 +117,12 @@ describe("Decoder", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const decoder: D.Decoder<unknown, A> = D.lazy<unknown, A>(Symbol.for("A"), () =>
+    const decoder: D.Decoder<unknown, A> = D.lazy<unknown, A>(() =>
       D.struct({
         a: D.string,
         as: D.readonlyArray(decoder)
-      }))
+      })
+    )
     expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))
     expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(
       D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })

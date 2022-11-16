@@ -60,13 +60,13 @@ const bigintS: Schema<bigint> = S.declare(bigintSym, [
 const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 
 export const lazy = <A>(
-  symbol: symbol,
+  name: string,
   f: () => TypeRep<A>
 ): TypeRep<A> => {
-  const schema = S.lazy(symbol, f)
+  const schema = S.lazy(f)
   return make(
     schema.ast,
-    symbol.description ?? "<Anonymous Lazy type>"
+    name
   )
 }
 
@@ -88,7 +88,11 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
         A.find(ast.annotations, isTypeRepAnnotation),
         O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
         O.match(() => {
-          throw new Error(`Missing "TypeRepAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "TypeRepAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -140,7 +144,10 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
       )
     }
     case "Lazy":
-      return lazy(ast.symbol, () => go(ast.f()))
+      return lazy(
+        pipe(A.getName(ast.annotations), O.getOrElse("<Anonymous Lazy type>")),
+        () => go(ast.f())
+      )
   }
 })
 
@@ -159,14 +166,17 @@ describe("unsafeTypeRepFor", () => {
         readonly name: string
         readonly categories: Set<Category>
       }
-      const CategoryS: S.Schema<Category> = S.lazy<Category>(
-        Symbol.for("Category"),
-        () =>
-          S.struct({
-            name: S.string,
-            categories: setS(false, CategoryS)
-          })
+      const CategoryS: S.Schema<Category> = pipe(
+        S.lazy<Category>(
+          () =>
+            S.struct({
+              name: S.string,
+              categories: setS(false, CategoryS)
+            })
+        ),
+        S.withName("Category")
       )
+      console.log(CategoryS.ast.annotations)
       const typeRep = pipe(CategoryS, unsafeTypeRepFor)
       expect(typeRep.typeRep).toEqual(
         "Category"

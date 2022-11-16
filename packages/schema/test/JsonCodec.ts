@@ -208,11 +208,12 @@ describe("JsonCodec", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+      const schema: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           as: S.array(true, schema)
-        }))
+        })
+      )
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))
       expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(

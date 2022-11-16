@@ -27,11 +27,10 @@ export const make = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
  * @since 1.0.0
  */
 export const lazy = <A>(
-  symbol: symbol,
   f: () => Show<A>
 ): Show<A> => {
   const get = S.memoize<void, Show<A>>(f)
-  const schema = S.lazy(symbol, f)
+  const schema = S.lazy(f)
   return make(
     schema,
     (a) => get().show(a)
@@ -62,7 +61,11 @@ const go = S.memoize((ast: AST): Show<any> => {
         A.find(ast.annotations, isShowAnnotation),
         O.map((annotation) => annotation.showFor(ast.annotations, ...ast.nodes.map(go))),
         O.match(() => {
-          throw new Error(`Missing "ShowAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "ShowAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -127,7 +130,7 @@ const go = S.memoize((ast: AST): Show<any> => {
       )
     }
     case "Lazy":
-      return lazy(ast.symbol, () => go(ast.f()))
+      return lazy(() => go(ast.f()))
   }
 })
 

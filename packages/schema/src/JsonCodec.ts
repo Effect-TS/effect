@@ -41,7 +41,11 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
         A.find(ast.annotations, isDecoderAnnotation),
         O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
         O.match(() => {
-          throw new Error(`Missing "DecoderAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "DecoderAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -139,7 +143,7 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       )
     }
     case "Lazy":
-      return D.lazy(ast.symbol, () => goD(ast.f()))
+      return D.lazy(() => goD(ast.f()))
   }
 })
 
@@ -169,7 +173,11 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
         A.find(ast.annotations, isEncoderAnnotation),
         O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
         O.match(() => {
-          throw new Error(`Missing "EncoderAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "EncoderAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -220,7 +228,7 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
       })
     }
     case "Lazy":
-      return E.lazy(ast.symbol, () => goE(ast.f()))
+      return E.lazy(() => goE(ast.f()))
   }
 })
 

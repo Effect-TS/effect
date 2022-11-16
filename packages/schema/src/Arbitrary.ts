@@ -95,11 +95,10 @@ export const boolean: Arbitrary<boolean> = make(S.boolean, (fc) => fc.boolean())
  * @since 1.0.0
  */
 export const lazy = <A>(
-  symbol: symbol,
   f: () => Arbitrary<A>
 ): Arbitrary<A> => {
   const get = S.memoize<void, Arbitrary<A>>(f)
-  const schema = S.lazy(symbol, f)
+  const schema = S.lazy(f)
   return make(
     schema,
     (fc) => get().arbitrary(fc)
@@ -130,7 +129,11 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
         A.find(ast.annotations, isArbitraryAnnotation),
         O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
         O.match(() => {
-          throw new Error(`Missing "ArbitraryAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "ArbitraryAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -196,7 +199,7 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       )
     }
     case "Lazy":
-      return lazy(ast.symbol, () => go(ast.f()))
+      return lazy(() => go(ast.f()))
   }
 })
 

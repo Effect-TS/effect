@@ -49,11 +49,12 @@ describe("Show", () => {
         readonly a: string
         readonly as: Set<A>
       }
-      const A: S.Schema<A> = S.lazy<A>(Symbol.for("A"), () =>
+      const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           as: setS(A)
-        }))
+        })
+      )
       expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual(
         "{\"a\":\"a\",\"as\":Set([])}"
       )

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as M from "@fp-ts/codec/AST"
 import type { Either } from "@fp-ts/data/Either"
@@ -23,11 +24,22 @@ export const make = <A>(ast: AST): Schema<A> => ({ ast }) as any
 /**
  * @since 1.0.0
  */
+export const withName = (name: string) =>
+  <A>(schema: Schema<A>): Schema<A> => {
+    const annotations = schema.ast.annotations.filter((a) => !A.isNameAnnotation(a)).concat([
+      A.nameAnnotation(name)
+    ])
+    return make({ ...schema.ast, annotations })
+  }
+
+/**
+ * @since 1.0.0
+ */
 export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
   annotations: ReadonlyArray<unknown>,
   ...schemas: Schemas
-): Schema<any> => make(M.declare(symbol, annotations, schemas.map((s) => s.ast)))
+): Schema<any> => make(M.declare(annotations, schemas.map((s) => s.ast)))
 
 /**
  * @since 1.0.0
@@ -207,10 +219,9 @@ export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
  * @since 1.0.0
  */
 export const lazy = <A>(
-  symbol: symbol,
   f: () => Schema<A>
 ): Schema<A> => {
-  return make(M.lazy(symbol, () => f().ast))
+  return make(M.lazy(() => f().ast))
 }
 
 /**

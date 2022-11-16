@@ -39,7 +39,11 @@ const go = S.memoize((ast: AST): JSONSchema => {
         A.find(ast.annotations, isJSONSchemaAnnotation),
         O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
         O.match(() => {
-          throw new Error(`Missing "JSONSchemaAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "JSONSchemaAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }

@@ -59,11 +59,10 @@ export const toIndexSignature = <O, A>(
  * @since 1.0.0
  */
 export const lazy = <O, A>(
-  symbol: symbol,
   f: () => Encoder<O, A>
 ): Encoder<O, A> => {
   const get = S.memoize<void, Encoder<O, A>>(f)
-  const schema = S.lazy(symbol, f)
+  const schema = S.lazy(f)
   return make(
     schema,
     (a) => get().encode(a)

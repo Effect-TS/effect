@@ -1,11 +1,18 @@
+import * as A from "@fp-ts/codec/Annotation"
 import * as M from "@fp-ts/codec/AST"
 import { unsafeGuardFor } from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 
 describe("Schema", () => {
   it("make", () => {
     expect(S.make).exist
+  })
+
+  it("withName", () => {
+    const schema = pipe(S.string, S.withName("A"))
+    expect(A.getName(schema.ast.annotations)).toEqual(O.some("A"))
   })
 
   it("rename", () => {

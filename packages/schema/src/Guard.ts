@@ -106,11 +106,10 @@ export const boolean: Guard<boolean> = make(
  * @since 1.0.0
  */
 export const lazy = <A>(
-  symbol: symbol,
   f: () => Guard<A>
 ): Guard<A> => {
   const get = S.memoize<void, Guard<A>>(f)
-  const schema = S.lazy(symbol, f)
+  const schema = S.lazy(f)
   return make(
     schema,
     (a): a is A => get().is(a)
@@ -145,7 +144,11 @@ const go = S.memoize((ast: AST): Guard<any> => {
         A.find(ast.annotations, isGuardAnnotation),
         O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
         O.match(() => {
-          throw new Error(`Missing "GuardAnnotation" for ${ast.symbol.description}`)
+          throw new Error(
+            `Missing "GuardAnnotation" for ${
+              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+            }`
+          )
         }, identity)
       )
     }
@@ -225,7 +228,7 @@ const go = S.memoize((ast: AST): Guard<any> => {
       )
     }
     case "Lazy":
-      return lazy(ast.symbol, () => go(ast.f()))
+      return lazy(() => go(ast.f()))
   }
 })
 

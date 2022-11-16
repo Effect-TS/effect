@@ -20,7 +20,7 @@ describe("Json", () => {
 
   it("Show", () => {
     const schema = Json.Schema
-    const manualSchema: S.Schema<Json.Json> = S.lazy<Json.Json>(Json.symbol, () =>
+    const manualSchema: S.Schema<Json.Json> = S.lazy<Json.Json>(() =>
       S.union(
         S.of(null),
         S.string,
@@ -28,7 +28,8 @@ describe("Json", () => {
         S.boolean,
         S.array(true, manualSchema),
         S.indexSignature(manualSchema)
-      ))
+      )
+    )
     const show = Sh.unsafeShowFor(schema)
     const manualShow = Sh.unsafeShowFor(manualSchema)
     const json: Json.Json = { a: [1, null] }

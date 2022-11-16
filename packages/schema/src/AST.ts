@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Annotations } from "@fp-ts/codec/Annotation"
+import * as A from "@fp-ts/codec/Annotation"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -25,7 +26,6 @@ export type AST =
  */
 export interface Declaration {
   readonly _tag: "Declaration"
-  readonly symbol: symbol
   readonly nodes: ReadonlyArray<AST>
   readonly annotations: Annotations
 }
@@ -34,12 +34,10 @@ export interface Declaration {
  * @since 1.0.0
  */
 export const declare = (
-  symbol: symbol,
   annotations: ReadonlyArray<unknown>,
   nodes: ReadonlyArray<AST>
 ): Declaration => ({
   _tag: "Declaration",
-  symbol,
   annotations,
   nodes
 })
@@ -51,6 +49,7 @@ export interface String {
   readonly _tag: "String"
   readonly minLength?: number
   readonly maxLength?: number
+  readonly annotations: Annotations
 }
 
 /**
@@ -61,7 +60,7 @@ export const string = (
     readonly minLength?: number
     readonly maxLength?: number
   }
-): String => ({ _tag: "String", ...options })
+): String => ({ _tag: "String", ...options, annotations: [A.nameAnnotation("string")] })
 
 /**
  * @since 1.0.0
@@ -78,6 +77,7 @@ export interface Number {
   readonly maximum?: number
   readonly minimum?: number
   readonly multipleOf?: number
+  readonly annotations: Annotations
 }
 
 /**
@@ -91,7 +91,7 @@ export const number = (
     readonly minimum?: number
     readonly multipleOf?: number
   }
-): Number => ({ _tag: "Number", ...options })
+): Number => ({ _tag: "Number", ...options, annotations: [A.nameAnnotation("number")] })
 
 /**
  * @since 1.0.0
@@ -103,12 +103,13 @@ export const isNumber = (ast: AST): ast is Number => ast._tag === "Number"
  */
 export interface Boolean {
   readonly _tag: "Boolean"
+  readonly annotations: Annotations
 }
 
 /**
  * @since 1.0.0
  */
-export const boolean: Boolean = { _tag: "Boolean" }
+export const boolean: Boolean = { _tag: "Boolean", annotations: [A.nameAnnotation("boolean")] }
 
 /**
  * @since 1.0.0
@@ -116,6 +117,7 @@ export const boolean: Boolean = { _tag: "Boolean" }
 export interface Of {
   readonly _tag: "Of"
   readonly value: unknown
+  readonly annotations: Annotations
 }
 
 /**
@@ -123,7 +125,8 @@ export interface Of {
  */
 export const of = (value: unknown): Of => ({
   _tag: "Of",
-  value
+  value,
+  annotations: [A.nameAnnotation("<Of>")]
 })
 
 /**
@@ -175,6 +178,7 @@ export interface Struct {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
   readonly indexSignature: Option<IndexSignature>
+  readonly annotations: Annotations
 }
 
 /**
@@ -183,7 +187,12 @@ export interface Struct {
 export const struct = (
   fields: ReadonlyArray<Field>,
   indexSignature: Option<IndexSignature>
-): Struct => ({ _tag: "Struct", fields, indexSignature })
+): Struct => ({
+  _tag: "Struct",
+  fields,
+  indexSignature,
+  annotations: [A.nameAnnotation("<Struct>")]
+})
 
 /**
  * @since 1.0.0
@@ -198,6 +207,7 @@ export interface Tuple {
   readonly components: ReadonlyArray<AST>
   readonly restElement: Option<AST>
   readonly readonly: boolean
+  readonly annotations: Annotations
 }
 
 /**
@@ -211,7 +221,8 @@ export const tuple = (
   _tag: "Tuple",
   components,
   restElement,
-  readonly
+  readonly,
+  annotations: [A.nameAnnotation("<Tuple>")]
 })
 
 /**
@@ -220,6 +231,7 @@ export const tuple = (
 export interface Union {
   readonly _tag: "Union"
   readonly members: ReadonlyArray<AST>
+  readonly annotations: Annotations
 }
 
 /**
@@ -227,7 +239,8 @@ export interface Union {
  */
 export const union = (members: ReadonlyArray<AST>): Union => ({
   _tag: "Union",
-  members
+  members,
+  annotations: [A.nameAnnotation("<Union>")]
 })
 
 /**
@@ -235,17 +248,17 @@ export const union = (members: ReadonlyArray<AST>): Union => ({
  */
 export interface Lazy {
   readonly _tag: "Lazy"
-  readonly symbol: symbol
   readonly f: () => AST
+  readonly annotations: Annotations
 }
 
 /**
  * @since 1.0.0
  */
-export const lazy = (symbol: symbol, f: () => AST): Lazy => ({
+export const lazy = (f: () => AST): Lazy => ({
   _tag: "Lazy",
-  symbol,
-  f
+  f,
+  annotations: [A.nameAnnotation("<Lazy>")]
 })
 
 /**
