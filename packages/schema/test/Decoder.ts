@@ -1,3 +1,4 @@
+import * as A from "@fp-ts/codec/Annotation"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
@@ -23,9 +24,9 @@ describe("Decoder", () => {
   })
 
   it("should allow custom errors", () => {
-    const bigintSym = Symbol.for("bigint")
-
-    const bigintS: S.Schema<bigint> = S.declare(bigintSym, [])
+    const bigintS: S.Schema<bigint> = S.declare([
+      A.nameAnnotation("@fp-ts/codec/data/bigint")
+    ])
 
     interface NoBigInt {
       readonly _tag: "NoBigInt"

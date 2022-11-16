@@ -11,8 +11,6 @@ interface TypeRep<in out A> extends S.Schema<A> {
 
 const make = (ast: AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
 
-const SetSym = Symbol("Set")
-
 export interface SetAnnotation {
   readonly _tag: "SetAnnotation"
   readonly readonly: boolean
@@ -26,8 +24,8 @@ const setS = <B extends boolean, A>(
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
   S.declare(
-    SetSym,
     [
+      A.nameAnnotation("@fp-ts/codec/data/Set"),
       {
         _tag: "TypeRepAnnotation",
         typeRepFor: <A>(
@@ -48,9 +46,8 @@ const set = <B extends boolean, A>(
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
-const bigintSym = Symbol.for("bigint")
-
-const bigintS: Schema<bigint> = S.declare(bigintSym, [
+const bigintS: Schema<bigint> = S.declare([
+  A.nameAnnotation("@fp-ts/codec/data/bigint"),
   {
     _tag: "TypeRepAnnotation",
     typeRepFor: () => bigint
@@ -176,7 +173,6 @@ describe("unsafeTypeRepFor", () => {
         ),
         S.withName("Category")
       )
-      console.log(CategoryS.ast.annotations)
       const typeRep = pipe(CategoryS, unsafeTypeRepFor)
       expect(typeRep.typeRep).toEqual(
         "Category"

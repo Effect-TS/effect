@@ -1,19 +1,19 @@
 import type { Annotations } from "@fp-ts/codec/Annotation"
-import * as A from "@fp-ts/codec/Arbitrary"
+import * as A from "@fp-ts/codec/Annotation"
+import * as Arb from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
-const SetSym = Symbol("Set")
-
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
-    SetSym,
     [
+      A.nameAnnotation("@fp-ts/codec/data/Set"),
       {
         _tag: "ArbitraryAnnotation",
-        arbitraryFor: <A>(_: Annotations, item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item)
+        arbitraryFor: <A>(_: Annotations, item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
+          set(item)
       },
       {
         _tag: "GuardAnnotation",
@@ -29,15 +29,15 @@ const setG = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
-const set = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
-  A.make(
+const set = <A>(item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
+  Arb.make(
     setS(item),
     (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
   )
 
 describe("Arbitrary", () => {
   describe("unsafeArbitraryFor", () => {
-    const unsafeArbitraryFor = A.unsafeArbitraryFor
+    const unsafeArbitraryFor = Arb.unsafeArbitraryFor
     const unsafeGuardFor = G.unsafeGuardFor
     const sampleSize = 100
 

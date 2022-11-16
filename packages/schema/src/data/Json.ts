@@ -1,7 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Arbitrary"
+import * as A from "@fp-ts/codec/Annotation"
+import * as Arb from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
@@ -32,12 +33,8 @@ export type Json =
 /**
  * @since 1.0.0
  */
-export const symbol = Symbol("@fp-ts/codec/data/Json")
-
-/**
- * @since 1.0.0
- */
-export const Schema: S.Schema<Json> = S.declare(symbol, [
+export const Schema: S.Schema<Json> = S.declare([
+  A.nameAnnotation("@fp-ts/codec/data/Json"),
   {
     _tag: "GuardAnnotation",
     guardFor: () => Guard
@@ -97,7 +94,7 @@ export const JsonObjectDecoder: D.Decoder<Json, JsonObject> = D.make(
 /**
  * @since 1.0.0
  */
-export const Arbitrary: A.Arbitrary<Json> = A.make(
+export const Arbitrary: Arb.Arbitrary<Json> = Arb.make(
   Schema,
   (fc) => fc.jsonValue().map((json) => json as Json)
 )

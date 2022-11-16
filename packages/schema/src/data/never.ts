@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as A from "@fp-ts/codec/Annotation"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
@@ -9,12 +10,8 @@ import * as S from "@fp-ts/codec/Schema"
 /**
  * @since 1.0.0
  */
-export const symbol = Symbol("@fp-ts/codec/data/never")
-
-/**
- * @since 1.0.0
- */
-export const Schema: S.Schema<never> = S.declare(symbol, [
+export const Schema: S.Schema<never> = S.declare([
+  A.nameAnnotation("@fp-ts/codec/data/never"),
   {
     _tag: "GuardAnnotation",
     guardFor: () => Guard

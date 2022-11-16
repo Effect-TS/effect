@@ -1,16 +1,15 @@
 import type { Annotations } from "@fp-ts/codec/Annotation"
+import * as A from "@fp-ts/codec/Annotation"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const SetSym = Symbol("Set")
-
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
-    SetSym,
     [
+      A.nameAnnotation("@fp-ts/codec/data/Set"),
       {
         _tag: "ShowAnnotation",
         showFor: <A>(_: Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)

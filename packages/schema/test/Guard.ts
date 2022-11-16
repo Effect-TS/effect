@@ -1,15 +1,14 @@
 import type { Annotations } from "@fp-ts/codec/Annotation"
+import * as A from "@fp-ts/codec/Annotation"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const SetSym = Symbol("Set")
-
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
-    SetSym,
     [
+      A.nameAnnotation("@fp-ts/codec/data/Set"),
       {
         _tag: "GuardAnnotation",
         guardFor: <A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item)
@@ -24,9 +23,7 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
 
-const bigintSym = Symbol.for("bigint")
-
-const bigintS: S.Schema<bigint> = S.declare(bigintSym, [{
+const bigintS: S.Schema<bigint> = S.declare([A.nameAnnotation("@fp-ts/codec/data/bigint"), {
   _tag: "GuardAnnotation",
   guardFor: (): G.Guard<bigint> => bigint
 }])
@@ -37,15 +34,6 @@ const bigint = G.make(
 )
 
 describe("Guard", () => {
-  // it("alias", () => {
-  //   const Name = pipe(G.string, G.alias(Symbol.for("Name")))
-  //   expect(Name.is(null)).toEqual(false)
-  //   expect(Name.is("a")).toEqual(true)
-  //   const ReName = G.unsafeGuardFor(Name)
-  //   expect(ReName.is(null)).toEqual(false)
-  //   expect(ReName.is("a")).toEqual(true)
-  // })
-
   it("bigint", () => {
     const guard = bigint
     expect(guard.is(null)).toEqual(false)

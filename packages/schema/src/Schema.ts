@@ -35,8 +35,12 @@ export const withName = (name: string) =>
 /**
  * @since 1.0.0
  */
+export const getName = <A>(schema: Schema<A>): Option<string> => A.getName(schema.ast.annotations)
+
+/**
+ * @since 1.0.0
+ */
 export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
-  symbol: symbol,
   annotations: ReadonlyArray<unknown>,
   ...schemas: Schemas
 ): Schema<any> => make(M.declare(annotations, schemas.map((s) => s.ast)))

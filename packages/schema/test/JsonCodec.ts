@@ -1,4 +1,5 @@
 import type { Annotations } from "@fp-ts/codec/Annotation"
+import * as A from "@fp-ts/codec/Annotation"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
@@ -7,12 +8,10 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
-const SetSym = Symbol("Set")
-
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
-    SetSym,
     [
+      A.nameAnnotation("@fp-ts/codec/data/Set"),
       {
         _tag: "DecoderAnnotation",
         decoderFor: <A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item)
