@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -120,16 +120,31 @@ export const lazy = <A>(
 const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
+/**
+ * @since 1.0.0
+ */
+export interface GuardAnnotation {
+  readonly _tag: "GuardAnnotation"
+  readonly guardFor: (
+    annotations: Annotations,
+    ...guards: ReadonlyArray<Guard<any>>
+  ) => Guard<any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "GuardAnnotation")
+
 const go = S.memoize((meta: Meta): Guard<any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.guardFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.guardFor(meta.config.value, ...meta.metas.map(go)) :
-          declaration.guardFor(...meta.metas.map(go))
+      const annotations = meta.annotations.filter(isGuardAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].guardFor(meta.annotations, ...meta.metas.map(go))
       }
-      throw new Error(`Missing "guardFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "GuardAnnotation" for ${meta.symbol.description}`)
     }
     case "String": {
       let out = string

@@ -18,7 +18,16 @@ export const symbol = Symbol("@fp-ts/codec/data/never")
 export const Schema: S.Schema<never> = S.apply(symbol, O.none, {
   guardFor: () => Guard,
   decoderFor: () => Decoder
-}) as any
+}, [
+  {
+    _tag: "GuardAnnotation",
+    guardFor: () => Guard
+  },
+  {
+    _tag: "DecoderAnnotation",
+    decoderFor: () => Decoder
+  }
+]) as any
 
 /**
  * @since 1.0.0

@@ -20,7 +20,20 @@ export const Schema: S.Schema<unknown> = S.apply(symbol, O.none, {
   guardFor: () => Guard,
   decoderFor: () => Decoder,
   arbitraryFor: () => Arbitrary
-})
+}, [
+  {
+    _tag: "GuardAnnotation",
+    guardFor: () => Guard
+  },
+  {
+    _tag: "DecoderAnnotation",
+    decoderFor: () => Decoder
+  },
+  {
+    _tag: "ArbitraryAnnotation",
+    arbitraryFor: () => Arbitrary
+  }
+])
 
 /**
  * @since 1.0.0

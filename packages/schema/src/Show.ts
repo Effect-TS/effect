@@ -3,7 +3,7 @@
  */
 
 import * as G from "@fp-ts/codec/Guard"
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -37,16 +37,31 @@ export const lazy = <A>(
   )
 }
 
+/**
+ * @since 1.0.0
+ */
+export interface ShowAnnotation {
+  readonly _tag: "ShowAnnotation"
+  readonly showFor: (
+    annotations: Annotations,
+    ...guards: ReadonlyArray<Show<any>>
+  ) => Show<any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ShowAnnotation")
+
 const go = S.memoize((meta: Meta): Show<any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.showFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.showFor(meta.config.value, ...meta.metas.map(go)) :
-          declaration.showFor(...meta.metas.map(go))
+      const annotations = meta.annotations.filter(isShowAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].showFor(meta.annotations, ...meta.metas.map(go))
       }
-      throw new Error(`Missing "showFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "ShowAnnotation" for ${meta.symbol.description}`)
     }
     case "String":
       return make(S.string, (a) => JSON.stringify(a))

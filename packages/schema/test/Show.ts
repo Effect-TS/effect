@@ -1,3 +1,4 @@
+import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
@@ -7,9 +8,20 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, {
-    showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
-  }, item)
+  S.apply(
+    SetSym,
+    O.none,
+    {
+      showFor: <A>(item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
+    },
+    [
+      {
+        _tag: "ShowAnnotation",
+        showFor: <A>(_: Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => set(item)
+      }
+    ],
+    item
+  )
 
 const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
   Sh.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)

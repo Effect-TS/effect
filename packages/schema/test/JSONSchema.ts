@@ -1,8 +1,7 @@
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import Ajv from "ajv"
 
 type JSONSchema =
@@ -20,20 +19,25 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
-const declarations = pipe(
-  S.empty
-)
+export interface JSONSchemaAnnotation {
+  readonly _tag: "JSONSchemaAnnotation"
+  readonly jsonSchemaFor: (
+    annotations: Annotations,
+    ...jsonSchemas: ReadonlyArray<JSONSchema>
+  ) => JSONSchema
+}
+
+export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "JSONSchemaAnnotation")
 
 const go = S.memoize((meta: Meta): JSONSchema => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = S.unsafeGet(meta.symbol)(declarations)
-      if (declaration.jsonSchemaFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.jsonSchemaFor(meta.config.value, ...meta.metas.map(go)) :
-          declaration.jsonSchemaFor(...meta.metas.map(go))
+      const annotations = meta.annotations.filter(isJSONSchemaAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].jsonSchemaFor(meta.annotations, ...meta.metas.map(go))
       }
-      throw new Error(`Missing "jsonSchemaFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "JSONSchemaAnnotation" for ${meta.symbol.description}`)
     }
     case "String": {
       return {

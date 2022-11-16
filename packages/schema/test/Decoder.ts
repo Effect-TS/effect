@@ -28,7 +28,7 @@ describe("Decoder", () => {
 
     const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {
       decoderFor: (): D.Decoder<unknown, bigint> => bigint
-    })
+    }, [])
 
     interface NoBigInt {
       readonly _tag: "NoBigInt"

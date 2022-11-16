@@ -10,22 +10,37 @@ import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
+/**
+ * @since 1.0.0
+ */
+export interface DecoderAnnotation {
+  readonly _tag: "DecoderAnnotation"
+  readonly decoderFor: (
+    annotations: Annotations,
+    ...decoders: ReadonlyArray<Decoder<J.Json, any>>
+  ) => Decoder<J.Json, any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isDecoderAnnotation = (u: unknown): u is DecoderAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "DecoderAnnotation")
+
 const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.decoderFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.decoderFor(meta.config.value, ...meta.metas.map(goD)) :
-          declaration.decoderFor(...meta.metas.map(goD))
+      const annotations = meta.annotations.filter(isDecoderAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].decoderFor(meta.annotations, ...meta.metas.map(goD))
       }
-      throw new Error(`Missing "decoderFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "DecoderAnnotation" for ${meta.symbol.description}`)
     }
     case "String": {
       let out = D.string
@@ -127,16 +142,31 @@ const goD = S.memoize((meta: Meta): Decoder<J.Json, any> => {
 
 const unsafeDecoderFor = S.memoize(<A>(schema: Schema<A>): Decoder<J.Json, A> => goD(schema.meta))
 
+/**
+ * @since 1.0.0
+ */
+export interface EncoderAnnotation {
+  readonly _tag: "EncoderAnnotation"
+  readonly encoderFor: (
+    annotations: Annotations,
+    ...encoderFor: ReadonlyArray<Encoder<J.Json, any>>
+  ) => Encoder<J.Json, any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "EncoderAnnotation")
+
 const goE = S.memoize((meta: Meta): Encoder<J.Json, any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.encoderFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.encoderFor(meta.config.value, ...meta.metas.map(goE)) :
-          declaration.encoderFor(...meta.metas.map(goE))
+      const annotations = meta.annotations.filter(isEncoderAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].encoderFor(meta.annotations, ...meta.metas.map(goE))
       }
-      throw new Error(`Missing "encoderFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "EncoderAnnotation" for ${meta.symbol.description}`)
     }
     case "String":
       return E.string

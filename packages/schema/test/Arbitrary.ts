@@ -1,5 +1,6 @@
 import * as A from "@fp-ts/codec/Arbitrary"
 import * as G from "@fp-ts/codec/Guard"
+import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -8,10 +9,25 @@ import * as fc from "fast-check"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, {
-    arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item),
-    guardFor: <A>(guard: G.Guard<A>): G.Guard<Set<A>> => setG(guard)
-  }, item)
+  S.apply(
+    SetSym,
+    O.none,
+    {
+      arbitraryFor: <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item),
+      guardFor: <A>(item: G.Guard<A>): G.Guard<Set<A>> => setG(item)
+    },
+    [
+      {
+        _tag: "ArbitraryAnnotation",
+        arbitraryFor: <A>(_: Annotations, item: A.Arbitrary<A>): A.Arbitrary<Set<A>> => set(item)
+      },
+      {
+        _tag: "GuardAnnotation",
+        guardFor: <A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => setG(item)
+      }
+    ],
+    item
+  )
 
 const setG = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(

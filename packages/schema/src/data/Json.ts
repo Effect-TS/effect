@@ -43,7 +43,24 @@ export const Schema: S.Schema<Json> = S.apply(symbol, O.none, {
   decoderFor: () => Decoder,
   arbitraryFor: () => Arbitrary,
   showFor: () => Show
-})
+}, [
+  {
+    _tag: "GuardAnnotation",
+    guardFor: () => Guard
+  },
+  {
+    _tag: "DecoderAnnotation",
+    decoderFor: () => Decoder
+  },
+  {
+    _tag: "ArbitraryAnnotation",
+    arbitraryFor: () => Arbitrary
+  },
+  {
+    _tag: "ShowAnnotation",
+    showFor: () => Show
+  }
+])
 
 /**
  * @since 1.0.0

@@ -82,8 +82,10 @@ export const apply = <Schemas extends ReadonlyArray<Schema<any>>>(
   symbol: symbol,
   config: Option<unknown>,
   declaration: Declaration,
+  annotations: ReadonlyArray<unknown>,
   ...schemas: Schemas
-): Schema<any> => make(M.apply(symbol, config, declaration, schemas.map((s) => s.meta)))
+): Schema<any> =>
+  make(M.apply(symbol, config, declaration, annotations, schemas.map((s) => s.meta)))
 
 /**
  * @since 1.0.0

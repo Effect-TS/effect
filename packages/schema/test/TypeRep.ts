@@ -1,4 +1,4 @@
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -12,13 +12,35 @@ const make = (meta: Meta, typeRep: string): TypeRep<any> => ({ meta, typeRep }) 
 
 const SetSym = Symbol("Set")
 
+export interface SetAnnotation {
+  readonly _tag: "SetAnnotation"
+  readonly readonly: boolean
+}
+
+export const isSetAnnotation = (u: unknown): u is SetAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "SetAnnotation")
+
 const setS = <B extends boolean, A>(
   readonly: B,
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
-  S.apply(SetSym, O.some(readonly), {
-    typeRepFor: <A>(readonly: boolean, item: TypeRep<A>) => set(readonly, item)
-  }, item)
+  S.apply(
+    SetSym,
+    O.some(readonly),
+    {
+      typeRepFor: <A>(readonly: boolean, item: TypeRep<A>) => set(readonly, item)
+    },
+    [
+      {
+        _tag: "TypeRepAnnotation",
+        typeRepFor: <A>(
+          _: Annotations,
+          item: TypeRep<A>
+        ) => set(readonly, item)
+      }
+    ],
+    item
+  )
 
 const set = <B extends boolean, A>(
   readonly: B,
@@ -33,7 +55,12 @@ const bigintSym = Symbol.for("bigint")
 
 const bigintS: Schema<bigint> = S.apply(bigintSym, O.none, {
   typeRepFor: () => bigint
-})
+}, [
+  {
+    _tag: "TypeRepAnnotation",
+    typeRepFor: () => bigint
+  }
+])
 
 const bigint: TypeRep<bigint> = make(bigintS.meta, "bigint")
 
@@ -48,16 +75,25 @@ export const lazy = <A>(
   )
 }
 
+export interface TypeRepAnnotation {
+  readonly _tag: "TypeRepAnnotation"
+  readonly typeRepFor: (
+    annotations: Annotations,
+    ...typeReps: ReadonlyArray<TypeRep<any>>
+  ) => TypeRep<any>
+}
+
+export const isTypeRepAnnotation = (u: unknown): u is TypeRepAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "TypeRepAnnotation")
+
 const go = S.memoize((meta: Meta): TypeRep<any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.typeRepFor !== undefined) {
-        return O.isSome(meta.config) ?
-          declaration.typeRepFor(meta.config.value, ...meta.metas.map(go)) :
-          declaration.typeRepFor(...meta.metas.map(go))
+      const annotations = meta.annotations.filter(isTypeRepAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].typeRepFor(meta.annotations, ...meta.metas.map(go))
       }
-      throw new Error(`Missing "typeRepFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "TypeRepAnnotation" for ${meta.symbol.description}`)
     }
     case "String":
       return make(S.string.meta, "string")

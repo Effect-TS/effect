@@ -34,11 +34,17 @@ export type Meta =
 /**
  * @since 1.0.0
  */
+export interface Annotations extends ReadonlyArray<unknown> {}
+
+/**
+ * @since 1.0.0
+ */
 export interface Apply {
   readonly _tag: "Apply"
   readonly symbol: symbol
-  readonly config: Option<unknown>
-  readonly declaration: Declaration
+  readonly config: Option<unknown> // TODO: remove
+  readonly declaration: Declaration // TODO: remove
+  readonly annotations: Annotations
   readonly metas: ReadonlyArray<Meta>
 }
 
@@ -49,12 +55,14 @@ export const apply = (
   symbol: symbol,
   config: Option<unknown>,
   declaration: Declaration,
+  annotations: ReadonlyArray<unknown>,
   metas: ReadonlyArray<Meta>
 ): Apply => ({
   _tag: "Apply",
   symbol,
   config,
   declaration,
+  annotations,
   metas
 })
 
@@ -249,7 +257,7 @@ export const union = (members: ReadonlyArray<Meta>): Union => ({
  */
 export interface Lazy {
   readonly _tag: "Lazy"
-  readonly symbol: symbol
+  readonly symbol: symbol // TODO: remove
   readonly f: () => Meta
 }
 

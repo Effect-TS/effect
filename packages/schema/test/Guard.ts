@@ -1,4 +1,5 @@
 import * as G from "@fp-ts/codec/Guard"
+import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -6,9 +7,20 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, {
-    guardFor: <A>(item: G.Guard<A>): G.Guard<Set<A>> => set(item)
-  }, item)
+  S.apply(
+    SetSym,
+    O.none,
+    {
+      guardFor: <A>(item: G.Guard<A>): G.Guard<Set<A>> => set(item)
+    },
+    [
+      {
+        _tag: "GuardAnnotation",
+        guardFor: <A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item)
+      }
+    ],
+    item
+  )
 
 const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
@@ -18,9 +30,10 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {
+const bigintS: S.Schema<bigint> = S.apply(bigintSym, O.none, {}, [{
+  _tag: "GuardAnnotation",
   guardFor: (): G.Guard<bigint> => bigint
-})
+}])
 
 const bigint = G.make(
   bigintS,

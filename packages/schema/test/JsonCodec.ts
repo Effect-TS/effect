@@ -3,6 +3,7 @@ import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
+import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -10,11 +11,22 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(SetSym, O.none, {
-    decoderFor: <A>(
-      item: D.Decoder<J.Json, A>
-    ): D.Decoder<J.Json, Set<A>> => set(item)
-  }, item)
+  S.apply(
+    SetSym,
+    O.none,
+    {
+      decoderFor: <A>(
+        item: D.Decoder<J.Json, A>
+      ): D.Decoder<J.Json, Set<A>> => set(item)
+    },
+    [
+      {
+        _tag: "DecoderAnnotation",
+        decoderFor: <A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item)
+      }
+    ],
+    item
+  )
 
 const set = <A>(item: D.Decoder<J.Json, A>): D.Decoder<J.Json, Set<A>> =>
   D.make(setS(item), (u) => {

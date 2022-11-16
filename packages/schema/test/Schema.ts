@@ -1,9 +1,38 @@
 import { unsafeGuardFor } from "@fp-ts/codec/Guard"
+import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
+import { pipe } from "@fp-ts/data/Function"
 
 describe("Schema", () => {
   it("make", () => {
     expect(S.make).exist
+  })
+
+  it("rename", () => {
+    const rename = <A, From extends keyof A, To extends PropertyKey>(
+      from: From,
+      to: To
+    ) =>
+      (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
+        if (M.isStruct(schema.meta)) {
+          const fields = schema.meta.fields.slice()
+          const i = fields.findIndex((field) => field.key === from)
+          fields[i] = M.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
+          return S.make(M.struct(fields, schema.meta.indexSignature))
+        }
+        throw new Error("cannot rename")
+      }
+
+    const schema = pipe(
+      S.struct({
+        a: S.string,
+        b: S.number
+      }),
+      rename("a", "aa")
+    )
+    const guard = unsafeGuardFor(schema)
+    expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
+    expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
   })
 
   describe("keyof", () => {

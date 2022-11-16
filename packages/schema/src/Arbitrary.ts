@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -105,16 +105,31 @@ export const lazy = <A>(
   )
 }
 
+/**
+ * @since 1.0.0
+ */
+export interface ArbitraryAnnotation {
+  readonly _tag: "ArbitraryAnnotation"
+  readonly arbitraryFor: (
+    annotations: Annotations,
+    ...arbs: ReadonlyArray<Arbitrary<any>>
+  ) => Arbitrary<any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
+  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ArbitraryAnnotation")
+
 const go = S.memoize((meta: Meta): Arbitrary<any> => {
   switch (meta._tag) {
     case "Apply": {
-      const declaration = meta.declaration
-      if (declaration.arbitraryFor != null) {
-        return O.isSome(meta.config) ?
-          declaration.arbitraryFor(meta.config.value, ...meta.metas.map(go)) :
-          declaration.arbitraryFor(...meta.metas.map(go))
+      const annotations = meta.annotations.filter(isArbitraryAnnotation)
+      if (annotations.length > 0) {
+        return annotations[0].arbitraryFor(meta.annotations, ...meta.metas.map(go))
       }
-      throw new Error(`Missing "arbitraryFor" declaration for ${meta.symbol.description}`)
+      throw new Error(`Missing "ArbitraryAnnotation" for ${meta.symbol.description}`)
     }
     case "String": {
       let out = string
