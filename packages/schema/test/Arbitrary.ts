@@ -1,6 +1,6 @@
 import * as A from "@fp-ts/codec/Arbitrary"
+import type { Annotations } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
-import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
@@ -8,7 +8,7 @@ import * as fc from "fast-check"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(
+  S.declare(
     SetSym,
     [
       {

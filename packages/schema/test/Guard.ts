@@ -1,5 +1,5 @@
+import type { Annotations } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
-import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -7,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(
+  S.declare(
     SetSym,
     [
       {
@@ -26,7 +26,7 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintS: S.Schema<bigint> = S.apply(bigintSym, [{
+const bigintS: S.Schema<bigint> = S.declare(bigintSym, [{
   _tag: "GuardAnnotation",
   guardFor: (): G.Guard<bigint> => bigint
 }])

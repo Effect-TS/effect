@@ -1,4 +1,4 @@
-import type { Annotations, Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, AST } from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -8,7 +8,7 @@ interface TypeRep<in out A> extends S.Schema<A> {
   readonly typeRep: string
 }
 
-const make = (meta: Meta, typeRep: string): TypeRep<any> => ({ meta, typeRep }) as any
+const make = (ast: AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
 
 const SetSym = Symbol("Set")
 
@@ -24,7 +24,7 @@ const setS = <B extends boolean, A>(
   readonly: B,
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
-  S.apply(
+  S.declare(
     SetSym,
     [
       {
@@ -43,20 +43,20 @@ const set = <B extends boolean, A>(
   item: TypeRep<A>
 ): TypeRep<B extends true ? ReadonlySet<A> : Set<A>> =>
   make(
-    setS(readonly, item).meta,
+    setS(readonly, item).ast,
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
 const bigintSym = Symbol.for("bigint")
 
-const bigintS: Schema<bigint> = S.apply(bigintSym, [
+const bigintS: Schema<bigint> = S.declare(bigintSym, [
   {
     _tag: "TypeRepAnnotation",
     typeRepFor: () => bigint
   }
 ])
 
-const bigint: TypeRep<bigint> = make(bigintS.meta, "bigint")
+const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 
 export const lazy = <A>(
   symbol: symbol,
@@ -64,7 +64,7 @@ export const lazy = <A>(
 ): TypeRep<A> => {
   const schema = S.lazy(symbol, f)
   return make(
-    schema.meta,
+    schema.ast,
     symbol.description ?? "<Anonymous Lazy type>"
   )
 }
@@ -80,56 +80,56 @@ export interface TypeRepAnnotation {
 export const isTypeRepAnnotation = (u: unknown): u is TypeRepAnnotation =>
   u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "TypeRepAnnotation")
 
-const go = S.memoize((meta: Meta): TypeRep<any> => {
-  switch (meta._tag) {
-    case "Apply": {
-      const annotations = meta.annotations.filter(isTypeRepAnnotation)
+const go = S.memoize((ast: AST): TypeRep<any> => {
+  switch (ast._tag) {
+    case "Declaration": {
+      const annotations = ast.annotations.filter(isTypeRepAnnotation)
       if (annotations.length > 0) {
-        return annotations[0].typeRepFor(meta.annotations, ...meta.metas.map(go))
+        return annotations[0].typeRepFor(ast.annotations, ...ast.nodes.map(go))
       }
-      throw new Error(`Missing "TypeRepAnnotation" for ${meta.symbol.description}`)
+      throw new Error(`Missing "TypeRepAnnotation" for ${ast.symbol.description}`)
     }
     case "String":
-      return make(S.string.meta, "string")
+      return make(S.string.ast, "string")
     case "Number":
-      return make(S.number.meta, "number")
+      return make(S.number.ast, "number")
     case "Boolean":
-      return make(S.boolean.meta, "boolean")
+      return make(S.boolean.ast, "boolean")
     case "Of":
-      return make(meta, JSON.stringify(meta.value))
+      return make(ast, JSON.stringify(ast.value))
     case "Tuple": {
-      const components = meta.components.map(go)
+      const components = ast.components.map(go)
       const restElement = pipe(
-        meta.restElement,
-        O.map((meta) => (components.length > 0 ? ", " : "") + `...${go(meta).typeRep}[]`),
+        ast.restElement,
+        O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
         O.getOrElse("")
       )
       return make(
-        meta,
-        `${meta.readonly ? "readonly " : ""}[${
+        ast,
+        `${ast.readonly ? "readonly " : ""}[${
           components.map((c) => c.typeRep).join(", ")
         }${restElement}]`
       )
     }
     case "Union": {
-      const members = meta.members.map(go)
+      const members = ast.members.map(go)
       return make(
-        meta,
+        ast,
         members.map((m) => m.typeRep).join(" | ")
       )
     }
     case "Struct": {
-      const fields = meta.fields.map((field) => go(field.value))
+      const fields = ast.fields.map((field) => go(field.value))
       return make(
-        meta,
+        ast,
         "{ " +
-          meta.fields.map((field, i) => {
+          ast.fields.map((field, i) => {
             return `${field.readonly ? "readonly " : ""}${String(field.key)}${
               field.optional ? "?" : ""
             }: ${fields[i].typeRep}`
           }).join(", ") +
           (pipe(
-            meta.indexSignature,
+            ast.indexSignature,
             O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
             O.getOrElse("")
           ))
@@ -137,11 +137,11 @@ const go = S.memoize((meta: Meta): TypeRep<any> => {
       )
     }
     case "Lazy":
-      return lazy(meta.symbol, () => go(meta.f()))
+      return lazy(ast.symbol, () => go(ast.f()))
   }
 })
 
-export const unsafeTypeRepFor = S.memoize(<A>(schema: Schema<A>): TypeRep<A> => go(schema.meta))
+export const unsafeTypeRepFor = S.memoize(<A>(schema: Schema<A>): TypeRep<A> => go(schema.ast))
 
 describe("unsafeTypeRepFor", () => {
   describe("declaration", () => {

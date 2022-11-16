@@ -15,7 +15,7 @@ export const symbol = Symbol("@fp-ts/codec/data/any")
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<any> = S.apply(symbol, [
+export const Schema: S.Schema<any> = S.declare(symbol, [
   {
     _tag: "GuardAnnotation",
     guardFor: () => Guard

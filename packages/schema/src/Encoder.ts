@@ -17,7 +17,7 @@ export interface Encoder<out O, in out A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make = <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]): Encoder<O, A> =>
-  ({ meta: schema.meta, encode }) as any
+  ({ ast: schema.ast, encode }) as any
 
 /**
  * @since 1.0.0

@@ -25,7 +25,7 @@ describe("Decoder", () => {
   it("should allow custom errors", () => {
     const bigintSym = Symbol.for("bigint")
 
-    const bigintS: S.Schema<bigint> = S.apply(bigintSym, [])
+    const bigintS: S.Schema<bigint> = S.declare(bigintSym, [])
 
     interface NoBigInt {
       readonly _tag: "NoBigInt"

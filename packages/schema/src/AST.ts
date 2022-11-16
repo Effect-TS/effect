@@ -8,16 +8,16 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export type Meta =
-  | Apply // customisations
-  | String // `string` data type
-  | Number // `number` data type
-  | Boolean // `boolean` data type
-  | Of // examples: type literals
-  | Struct // examples: `{ a: string, b: number  }`, `{ [_: string]: string }`, `{ a: string, b: string, [_: string]: string  }`
-  | Tuple // examples: `[string, number]`, `[string, number, ...boolean[]]`
-  | Union // examples: `string | number`
-  | Lazy // recursive and mutually recursive data types
+export type AST =
+  | Declaration
+  | String
+  | Number
+  | Boolean
+  | Of
+  | Struct
+  | Tuple
+  | Union
+  | Lazy
 
 /**
  * @since 1.0.0
@@ -27,25 +27,25 @@ export interface Annotations extends ReadonlyArray<unknown> {}
 /**
  * @since 1.0.0
  */
-export interface Apply {
-  readonly _tag: "Apply"
+export interface Declaration {
+  readonly _tag: "Declaration"
   readonly symbol: symbol
-  readonly metas: ReadonlyArray<Meta>
+  readonly nodes: ReadonlyArray<AST>
   readonly annotations: Annotations
 }
 
 /**
  * @since 1.0.0
  */
-export const apply = (
+export const declare = (
   symbol: symbol,
   annotations: ReadonlyArray<unknown>,
-  metas: ReadonlyArray<Meta>
-): Apply => ({
-  _tag: "Apply",
+  nodes: ReadonlyArray<AST>
+): Declaration => ({
+  _tag: "Declaration",
   symbol,
   annotations,
-  metas
+  nodes
 })
 
 /**
@@ -70,7 +70,7 @@ export const string = (
 /**
  * @since 1.0.0
  */
-export const isString = (meta: Meta): meta is String => meta._tag === "String"
+export const isString = (ast: AST): ast is String => ast._tag === "String"
 
 /**
  * @since 1.0.0
@@ -100,7 +100,7 @@ export const number = (
 /**
  * @since 1.0.0
  */
-export const isNumber = (meta: Meta): meta is Number => meta._tag === "Number"
+export const isNumber = (ast: AST): ast is Number => ast._tag === "Number"
 
 /**
  * @since 1.0.0
@@ -135,7 +135,7 @@ export const of = (value: unknown): Of => ({
  */
 export interface Field {
   readonly key: PropertyKey
-  readonly value: Meta
+  readonly value: AST
   readonly optional: boolean
   readonly readonly: boolean
 }
@@ -145,7 +145,7 @@ export interface Field {
  */
 export const field = (
   key: PropertyKey,
-  value: Meta,
+  value: AST,
   optional: boolean,
   readonly: boolean
 ): Field => ({ key, value, optional, readonly })
@@ -155,7 +155,7 @@ export const field = (
  */
 export interface IndexSignature {
   readonly key: "string" | "number" | "symbol"
-  readonly value: Meta
+  readonly value: AST
   readonly readonly: boolean
 }
 
@@ -164,7 +164,7 @@ export interface IndexSignature {
  */
 export const indexSignature = (
   key: "string" | "number" | "symbol",
-  value: Meta,
+  value: AST,
   readonly: boolean
 ): IndexSignature => ({
   key,
@@ -192,15 +192,15 @@ export const struct = (
 /**
  * @since 1.0.0
  */
-export const isStruct = (meta: Meta): meta is Struct => meta._tag === "Struct"
+export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
 
 /**
  * @since 1.0.0
  */
 export interface Tuple {
   readonly _tag: "Tuple"
-  readonly components: ReadonlyArray<Meta>
-  readonly restElement: Option<Meta>
+  readonly components: ReadonlyArray<AST>
+  readonly restElement: Option<AST>
   readonly readonly: boolean
 }
 
@@ -208,8 +208,8 @@ export interface Tuple {
  * @since 1.0.0
  */
 export const tuple = (
-  components: ReadonlyArray<Meta>,
-  restElement: Option<Meta>,
+  components: ReadonlyArray<AST>,
+  restElement: Option<AST>,
   readonly: boolean
 ): Tuple => ({
   _tag: "Tuple",
@@ -223,13 +223,13 @@ export const tuple = (
  */
 export interface Union {
   readonly _tag: "Union"
-  readonly members: ReadonlyArray<Meta>
+  readonly members: ReadonlyArray<AST>
 }
 
 /**
  * @since 1.0.0
  */
-export const union = (members: ReadonlyArray<Meta>): Union => ({
+export const union = (members: ReadonlyArray<AST>): Union => ({
   _tag: "Union",
   members
 })
@@ -239,14 +239,14 @@ export const union = (members: ReadonlyArray<Meta>): Union => ({
  */
 export interface Lazy {
   readonly _tag: "Lazy"
-  readonly symbol: symbol // TODO: remove
-  readonly f: () => Meta
+  readonly symbol: symbol
+  readonly f: () => AST
 }
 
 /**
  * @since 1.0.0
  */
-export const lazy = (symbol: symbol, f: () => Meta): Lazy => ({
+export const lazy = (symbol: symbol, f: () => AST): Lazy => ({
   _tag: "Lazy",
   symbol,
   f
@@ -255,22 +255,22 @@ export const lazy = (symbol: symbol, f: () => Meta): Lazy => ({
 /**
  * @since 1.0.0
  */
-export const isLazy = (meta: Meta): meta is Lazy => meta._tag === "Lazy"
+export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 
 /**
  * @since 1.0.0
  */
 export const getFields = (
-  meta: Meta
+  ast: AST
 ): ReadonlyArray<Field> => {
-  switch (meta._tag) {
+  switch (ast._tag) {
     case "Lazy":
-      return getFields(meta.f())
+      return getFields(ast.f())
     case "Struct":
-      return meta.fields
+      return ast.fields
     case "Union": {
       // TODO: handle indexSignatures
-      const memberFields = meta.members.map(getFields)
+      const memberFields = ast.members.map(getFields)
       if (isNonEmpty(memberFields)) {
         const candidates = []
         const head = memberFields[0]

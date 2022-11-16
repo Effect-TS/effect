@@ -1,4 +1,4 @@
-import type { Annotations } from "@fp-ts/codec/Meta"
+import type { Annotations } from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
@@ -8,7 +8,7 @@ import * as O from "@fp-ts/data/Option"
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(
+  S.declare(
     SetSym,
     [
       {

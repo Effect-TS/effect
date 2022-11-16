@@ -17,16 +17,16 @@ export type DecodeError =
  */
 export interface Custom {
   readonly _tag: "Custom"
-  readonly meta: unknown
+  readonly ast: unknown
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const custom = (meta: unknown, actual: unknown): Custom => ({
+export const custom = (ast: unknown, actual: unknown): Custom => ({
   _tag: "Custom",
-  meta,
+  ast,
   actual
 })
 

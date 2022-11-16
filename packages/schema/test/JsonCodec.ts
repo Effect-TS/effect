@@ -1,16 +1,16 @@
+import type { Annotations } from "@fp-ts/codec/AST"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
-import type { Annotations } from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
 const SetSym = Symbol("Set")
 
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.apply(
+  S.declare(
     SetSym,
     [
       {

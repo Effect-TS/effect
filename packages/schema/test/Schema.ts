@@ -1,5 +1,5 @@
+import * as M from "@fp-ts/codec/AST"
 import { unsafeGuardFor } from "@fp-ts/codec/Guard"
-import * as M from "@fp-ts/codec/Meta"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
@@ -14,11 +14,11 @@ describe("Schema", () => {
       to: To
     ) =>
       (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
-        if (M.isStruct(schema.meta)) {
-          const fields = schema.meta.fields.slice()
+        if (M.isStruct(schema.ast)) {
+          const fields = schema.ast.fields.slice()
           const i = fields.findIndex((field) => field.key === from)
           fields[i] = M.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
-          return S.make(M.struct(fields, schema.meta.indexSignature))
+          return S.make(M.struct(fields, schema.ast.indexSignature))
         }
         throw new Error("cannot rename")
       }

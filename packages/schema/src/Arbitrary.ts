@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Annotations, Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -29,7 +29,7 @@ export interface ArbitraryTypeLambda extends TypeLambda {
  * @since 1.0.0
  */
 export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
-  ({ meta: schema.meta, arbitrary }) as any
+  ({ ast: schema.ast, arbitrary }) as any
 
 /**
  * @since 1.0.0
@@ -122,45 +122,45 @@ export interface ArbitraryAnnotation {
 export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
   u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ArbitraryAnnotation")
 
-const go = S.memoize((meta: Meta): Arbitrary<any> => {
-  switch (meta._tag) {
-    case "Apply": {
-      const annotations = meta.annotations.filter(isArbitraryAnnotation)
+const go = S.memoize((ast: AST): Arbitrary<any> => {
+  switch (ast._tag) {
+    case "Declaration": {
+      const annotations = ast.annotations.filter(isArbitraryAnnotation)
       if (annotations.length > 0) {
-        return annotations[0].arbitraryFor(meta.annotations, ...meta.metas.map(go))
+        return annotations[0].arbitraryFor(ast.annotations, ...ast.nodes.map(go))
       }
-      throw new Error(`Missing "ArbitraryAnnotation" for ${meta.symbol.description}`)
+      throw new Error(`Missing "ArbitraryAnnotation" for ${ast.symbol.description}`)
     }
     case "String": {
       let out = string
-      if (meta.minLength !== undefined) {
-        out = minLength(meta.minLength)(out)
+      if (ast.minLength !== undefined) {
+        out = minLength(ast.minLength)(out)
       }
-      if (meta.maxLength !== undefined) {
-        out = maxLength(meta.maxLength)(out)
+      if (ast.maxLength !== undefined) {
+        out = maxLength(ast.maxLength)(out)
       }
       return out
     }
     case "Number": {
       let out = number
-      if (meta.minimum !== undefined) {
-        out = minimum(meta.minimum)(out)
+      if (ast.minimum !== undefined) {
+        out = minimum(ast.minimum)(out)
       }
-      if (meta.maximum !== undefined) {
-        out = maximum(meta.maximum)(out)
+      if (ast.maximum !== undefined) {
+        out = maximum(ast.maximum)(out)
       }
       return out
     }
     case "Boolean":
       return boolean
     case "Of":
-      return make(S.make(meta), (fc) => fc.constant(meta.value))
+      return make(S.make(ast), (fc) => fc.constant(ast.value))
     case "Tuple": {
-      const components = meta.components.map(go)
-      const restElement = pipe(meta.restElement, O.map(go))
+      const components = ast.components.map(go)
+      const restElement = pipe(ast.restElement, O.map(go))
       if (O.isSome(restElement)) {
         return make(
-          S.make(meta),
+          S.make(ast),
           (fc) =>
             fc.tuple(...components.map((c) => c.arbitrary(fc))).chain((as) =>
               fc.array(restElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
@@ -168,39 +168,39 @@ const go = S.memoize((meta: Meta): Arbitrary<any> => {
         )
       }
       return make(
-        S.make(meta),
+        S.make(ast),
         (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc)))
       )
     }
     case "Union": {
-      const members = meta.members.map(go)
+      const members = ast.members.map(go)
       return make(
-        S.make(meta),
+        S.make(ast),
         (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
       )
     }
     case "Struct": {
-      const fields = meta.fields.map((field) => go(field.value))
+      const fields = ast.fields.map((field) => go(field.value))
       return make(
-        S.make(meta),
+        S.make(ast),
         (fc) => {
           const arbs: any = {}
           for (let i = 0; i < fields.length; i++) {
-            arbs[meta.fields[i].key] = fields[i].arbitrary(fc)
+            arbs[ast.fields[i].key] = fields[i].arbitrary(fc)
           }
           return fc.record(arbs)
         }
       )
     }
     case "Lazy":
-      return lazy(meta.symbol, () => go(meta.f()))
+      return lazy(ast.symbol, () => go(ast.f()))
   }
 })
 
 /**
  * @since 1.0.0
  */
-export const unsafeArbitraryFor = S.memoize(<A>(schema: Schema<A>): Arbitrary<A> => go(schema.meta))
+export const unsafeArbitraryFor = S.memoize(<A>(schema: Schema<A>): Arbitrary<A> => go(schema.ast))
 
 /**
  * @since 1.0.0

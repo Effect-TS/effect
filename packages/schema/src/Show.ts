@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
+import type { Annotations, AST } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
-import type { Annotations, Meta } from "@fp-ts/codec/Meta"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -20,7 +20,7 @@ export interface Show<in out A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
-  ({ meta: schema.meta, show }) as any
+  ({ ast: schema.ast, show }) as any
 
 /**
  * @since 1.0.0
@@ -54,14 +54,14 @@ export interface ShowAnnotation {
 export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
   u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "ShowAnnotation")
 
-const go = S.memoize((meta: Meta): Show<any> => {
-  switch (meta._tag) {
-    case "Apply": {
-      const annotations = meta.annotations.filter(isShowAnnotation)
+const go = S.memoize((ast: AST): Show<any> => {
+  switch (ast._tag) {
+    case "Declaration": {
+      const annotations = ast.annotations.filter(isShowAnnotation)
       if (annotations.length > 0) {
-        return annotations[0].showFor(meta.annotations, ...meta.metas.map(go))
+        return annotations[0].showFor(ast.annotations, ...ast.nodes.map(go))
       }
-      throw new Error(`Missing "ShowAnnotation" for ${meta.symbol.description}`)
+      throw new Error(`Missing "ShowAnnotation" for ${ast.symbol.description}`)
     }
     case "String":
       return make(S.string, (a) => JSON.stringify(a))
@@ -70,37 +70,37 @@ const go = S.memoize((meta: Meta): Show<any> => {
     case "Boolean":
       return make(S.boolean, (a) => JSON.stringify(a))
     case "Of":
-      return make(S.make(meta), (a) => JSON.stringify(a))
+      return make(S.make(ast), (a) => JSON.stringify(a))
     case "Tuple": {
-      const components: ReadonlyArray<Show<unknown>> = meta.components.map(go)
-      return make(S.make(meta), (tuple: ReadonlyArray<unknown>) =>
+      const components: ReadonlyArray<Show<unknown>> = ast.components.map(go)
+      return make(S.make(ast), (tuple: ReadonlyArray<unknown>) =>
         "[" +
         tuple.map((c, i) =>
           i < components.length ?
             components[i].show(c) :
-            O.isSome(meta.restElement) ?
-            go(meta.restElement.value).show(c) :
+            O.isSome(ast.restElement) ?
+            go(ast.restElement.value).show(c) :
             ""
         ).join(
           ","
         ) + "]")
     }
     case "Union": {
-      const members = meta.members.map(go)
-      const guards = meta.members.map((member) => G.unsafeGuardFor(S.make(member)))
-      return make(S.make(meta), (a) => {
+      const members = ast.members.map(go)
+      const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
+      return make(S.make(ast), (a) => {
         const index = guards.findIndex((guard) => guard.is(a))
         return members[index].show(a)
       })
     }
     case "Struct": {
       const fields = {}
-      for (const field of meta.fields) {
+      for (const field of ast.fields) {
         fields[field.key] = go(field.value)
       }
-      const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
+      const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
       return make(
-        S.make(meta),
+        S.make(ast),
         (struct: { [_: PropertyKey]: unknown }) => {
           const keys = Object.keys(struct)
           let out = "{"
@@ -124,11 +124,11 @@ const go = S.memoize((meta: Meta): Show<any> => {
       )
     }
     case "Lazy":
-      return lazy(meta.symbol, () => go(meta.f()))
+      return lazy(ast.symbol, () => go(ast.f()))
   }
 })
 
 /**
  * @since 1.0.0
  */
-export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => go(schema.meta)
+export const unsafeShowFor = <A>(schema: Schema<A>): Show<A> => go(schema.ast)

@@ -37,7 +37,7 @@ export const symbol = Symbol("@fp-ts/codec/data/Json")
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.apply(symbol, [
+export const Schema: S.Schema<Json> = S.declare(symbol, [
   {
     _tag: "GuardAnnotation",
     guardFor: () => Guard

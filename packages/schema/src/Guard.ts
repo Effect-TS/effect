@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type { Annotations, Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -31,7 +31,7 @@ export interface GuardTypeLambda extends TypeLambda {
 export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
-): Guard<A> => ({ meta: schema.meta, is }) as any
+): Guard<A> => ({ ast: schema.ast, is }) as any
 
 /**
  * @since 1.0.0
@@ -137,44 +137,44 @@ export interface GuardAnnotation {
 export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
   u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "GuardAnnotation")
 
-const go = S.memoize((meta: Meta): Guard<any> => {
-  switch (meta._tag) {
-    case "Apply": {
-      const annotations = meta.annotations.filter(isGuardAnnotation)
+const go = S.memoize((ast: AST): Guard<any> => {
+  switch (ast._tag) {
+    case "Declaration": {
+      const annotations = ast.annotations.filter(isGuardAnnotation)
       if (annotations.length > 0) {
-        return annotations[0].guardFor(meta.annotations, ...meta.metas.map(go))
+        return annotations[0].guardFor(ast.annotations, ...ast.nodes.map(go))
       }
-      throw new Error(`Missing "GuardAnnotation" for ${meta.symbol.description}`)
+      throw new Error(`Missing "GuardAnnotation" for ${ast.symbol.description}`)
     }
     case "String": {
       let out = string
-      if (meta.minLength !== undefined) {
-        out = minLength(meta.minLength)(out)
+      if (ast.minLength !== undefined) {
+        out = minLength(ast.minLength)(out)
       }
-      if (meta.maxLength !== undefined) {
-        out = maxLength(meta.maxLength)(out)
+      if (ast.maxLength !== undefined) {
+        out = maxLength(ast.maxLength)(out)
       }
       return out
     }
     case "Number": {
       let out = number
-      if (meta.minimum !== undefined) {
-        out = minimum(meta.minimum)(out)
+      if (ast.minimum !== undefined) {
+        out = minimum(ast.minimum)(out)
       }
-      if (meta.maximum !== undefined) {
-        out = maximum(meta.maximum)(out)
+      if (ast.maximum !== undefined) {
+        out = maximum(ast.maximum)(out)
       }
       return out
     }
     case "Boolean":
       return boolean
     case "Of":
-      return make(S.make(meta), (u): u is any => u === meta.value)
+      return make(S.make(ast), (u): u is any => u === ast.value)
     case "Tuple": {
-      const components = meta.components.map(go)
-      const restElement = pipe(meta.restElement, O.map(go))
+      const components = ast.components.map(go)
+      const restElement = pipe(ast.restElement, O.map(go))
       return make(
-        S.make(meta),
+        S.make(ast),
         (a): a is any =>
           Array.isArray(a) &&
           components.every((guard, i) => guard.is(a[i])) &&
@@ -186,20 +186,20 @@ const go = S.memoize((meta: Meta): Guard<any> => {
       )
     }
     case "Union": {
-      const members = meta.members.map(go)
+      const members = ast.members.map(go)
       return make(
-        S.make(meta),
+        S.make(ast),
         (a): a is any => members.some((guard) => guard.is(a))
       )
     }
     case "Struct": {
       const fields = {}
-      for (const field of meta.fields) {
+      for (const field of ast.fields) {
         fields[field.key] = go(field.value)
       }
-      const oIndexSignature = pipe(meta.indexSignature, O.map((is) => go(is.value)))
+      const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
       return make(
-        S.make(meta),
+        S.make(ast),
         (a): a is any => {
           if (!isUnknownIndexSignature(a)) {
             return false
@@ -222,14 +222,14 @@ const go = S.memoize((meta: Meta): Guard<any> => {
       )
     }
     case "Lazy":
-      return lazy(meta.symbol, () => go(meta.f()))
+      return lazy(ast.symbol, () => go(ast.f()))
   }
 })
 
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor = S.memoize(<A>(schema: Schema<A>): Guard<A> => go(schema.meta))
+export const unsafeGuardFor = S.memoize(<A>(schema: Schema<A>): Guard<A> => go(schema.ast))
 
 /**
  * @since 1.0.0

@@ -1,4 +1,4 @@
-import * as M from "@fp-ts/codec/Meta"
+import * as M from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
@@ -9,7 +9,7 @@ describe("Meta", () => {
         a: S.string,
         b: S.number
       })
-      expect(M.getFields(schema.meta)).toEqual([
+      expect(M.getFields(schema.ast)).toEqual([
         M.field("a", M.string({}), false, true),
         M.field("b", M.number({}), false, true)
       ])
@@ -41,7 +41,7 @@ describe("Meta", () => {
           c: S.number
         })
       )
-      expect(M.getFields(schema.meta)).toEqual([
+      expect(M.getFields(schema.ast)).toEqual([
         M.field("a", M.union([M.string({}), M.boolean]), false, true)
       ])
     })
@@ -59,9 +59,9 @@ describe("Meta", () => {
             categories: S.array(true, Category)
           })
       )
-      expect(M.getFields(Category.meta)).toEqual([
+      expect(M.getFields(Category.ast)).toEqual([
         M.field("name", M.string({}), false, true),
-        M.field("categories", M.tuple([], O.some(Category.meta), true), false, true)
+        M.field("categories", M.tuple([], O.some(Category.ast), true), false, true)
       ])
     })
   })

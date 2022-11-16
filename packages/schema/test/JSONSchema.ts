@@ -1,4 +1,4 @@
-import type { Annotations, Meta } from "@fp-ts/codec/Meta"
+import type { Annotations, AST } from "@fp-ts/codec/AST"
 import * as S from "@fp-ts/codec/Schema"
 import type { Schema } from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -30,29 +30,29 @@ export interface JSONSchemaAnnotation {
 export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
   u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "JSONSchemaAnnotation")
 
-const go = S.memoize((meta: Meta): JSONSchema => {
-  switch (meta._tag) {
-    case "Apply": {
-      const annotations = meta.annotations.filter(isJSONSchemaAnnotation)
+const go = S.memoize((ast: AST): JSONSchema => {
+  switch (ast._tag) {
+    case "Declaration": {
+      const annotations = ast.annotations.filter(isJSONSchemaAnnotation)
       if (annotations.length > 0) {
-        return annotations[0].jsonSchemaFor(meta.annotations, ...meta.metas.map(go))
+        return annotations[0].jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))
       }
-      throw new Error(`Missing "JSONSchemaAnnotation" for ${meta.symbol.description}`)
+      throw new Error(`Missing "JSONSchemaAnnotation" for ${ast.symbol.description}`)
     }
     case "String": {
       return {
         type: "string",
-        minLength: meta.minLength,
-        maxLength: meta.maxLength
+        minLength: ast.minLength,
+        maxLength: ast.maxLength
       }
     }
     case "Number":
       return {
         type: "number",
-        minimum: meta.minimum,
-        maximum: meta.maximum,
-        exclusiveMinimum: meta.exclusiveMinimum,
-        exclusiveMaximum: meta.exclusiveMaximum
+        minimum: ast.minimum,
+        maximum: ast.maximum,
+        exclusiveMinimum: ast.exclusiveMinimum,
+        exclusiveMaximum: ast.exclusiveMaximum
       }
     case "Boolean": {
       return {
@@ -60,10 +60,10 @@ const go = S.memoize((meta: Meta): JSONSchema => {
       }
     }
   }
-  throw new Error(`Unhandled ${meta._tag}`)
+  throw new Error(`Unhandled ${ast._tag}`)
 })
 
-export const unsafeJsonSchemaFor = S.memoize(<A>(schema: Schema<A>): JSONSchema => go(schema.meta))
+export const unsafeJsonSchemaFor = S.memoize(<A>(schema: Schema<A>): JSONSchema => go(schema.ast))
 
 describe("unsafeJsonSchemaFor", () => {
   const jsonSchemaFor_ = unsafeJsonSchemaFor
