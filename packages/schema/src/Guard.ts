@@ -153,9 +153,6 @@ export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
 const go = (ast: AST): Guard<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.string.ast) {
-        return string
-      }
       return pipe(
         A.find(ast.annotations, isGuardAnnotation),
         O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
@@ -167,6 +164,9 @@ const go = (ast: AST): Guard<any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return string
     }
     case "Number": {
       let out = number

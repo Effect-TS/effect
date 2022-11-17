@@ -138,9 +138,6 @@ export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
 const go = S.memoize((ast: AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.string.ast) {
-        return string
-      }
       return pipe(
         A.find(ast.annotations, isArbitraryAnnotation),
         O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
@@ -152,6 +149,9 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return string
     }
     case "Number": {
       let out = number

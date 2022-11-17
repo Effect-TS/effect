@@ -4,7 +4,6 @@
 
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
-import * as Str from "@fp-ts/codec/data/string"
 import * as G from "@fp-ts/codec/Guard"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -78,9 +77,6 @@ export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
 const go = S.memoize((ast: AST): Show<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === Str.Schema.ast) {
-        return make(S.string, (a) => JSON.stringify(a))
-      }
       return pipe(
         A.find(ast.annotations, isShowAnnotation),
         O.map((annotation) => annotation.showFor(ast.annotations, ...ast.nodes.map(go))),
@@ -92,6 +88,9 @@ const go = S.memoize((ast: AST): Show<any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return make(S.string, (a) => JSON.stringify(a))
     }
     case "Number":
       return make(S.number, (a) => JSON.stringify(a))

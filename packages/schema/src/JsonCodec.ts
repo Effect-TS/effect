@@ -6,7 +6,6 @@ import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
-import * as Str from "@fp-ts/codec/data/string"
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import * as D from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
@@ -21,9 +20,6 @@ import * as O from "@fp-ts/data/Option"
 const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === Str.Schema.ast) {
-        return D.string
-      }
       return pipe(
         A.find(ast.annotations, D.isDecoderAnnotation),
         O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
@@ -35,6 +31,9 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return D.string
     }
     case "Number": {
       let out = D.number
@@ -161,9 +160,6 @@ export const isEncoderAnnotation = (
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === Str.Schema.ast) {
-        return E.string
-      }
       return pipe(
         A.find(ast.annotations, isEncoderAnnotation),
         O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
@@ -175,6 +171,9 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return E.string
     }
     case "Number":
       return E.number

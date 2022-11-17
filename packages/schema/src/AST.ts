@@ -14,6 +14,7 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
  */
 export type AST =
   | Declaration
+  | String
   | Number
   | Boolean
   | Of
@@ -43,6 +44,26 @@ export const declare = (
   annotations,
   nodes
 })
+
+/**
+ * @since 1.0.0
+ */
+export interface String {
+  readonly _tag: "String"
+  readonly maxLength?: number
+  readonly minLength?: number
+  readonly annotations: Annotations
+}
+
+/**
+ * @since 1.0.0
+ */
+export const string = (
+  options: {
+    readonly maxLength?: number
+    readonly minLength?: number
+  }
+): String => ({ _tag: "String", ...options, annotations: [A.makeNameAnnotation("string")] })
 
 /**
  * @since 1.0.0
@@ -86,7 +107,7 @@ export interface Boolean {
 /**
  * @since 1.0.0
  */
-export const boolean: Boolean = { _tag: "Boolean", annotations: [] }
+export const boolean: Boolean = { _tag: "Boolean", annotations: [A.makeNameAnnotation("boolean")] }
 
 /**
  * @since 1.0.0

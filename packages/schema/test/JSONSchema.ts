@@ -57,9 +57,6 @@ export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
 const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.string.ast) {
-        return { type: "string" }
-      }
       return pipe(
         A.find(ast.annotations, isJSONSchemaAnnotation),
         O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
@@ -72,6 +69,8 @@ const go = S.memoize((ast: AST): JSONSchema => {
         }, identity)
       )
     }
+    case "String":
+      return { type: "string" }
     case "Number":
       return {
         type: "number",

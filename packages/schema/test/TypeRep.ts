@@ -87,9 +87,6 @@ const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 const go = S.memoize((ast: AST): TypeRep<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.string.ast) {
-        return make(S.string.ast, "string")
-      }
       return pipe(
         A.find(ast.annotations, isTypeRepAnnotation),
         O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
@@ -101,6 +98,9 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
           )
         }, identity)
       )
+    }
+    case "String": {
+      return make(S.string.ast, "string")
     }
     case "Number":
       return make(S.number.ast, "number")

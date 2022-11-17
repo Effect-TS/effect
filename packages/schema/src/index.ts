@@ -25,7 +25,6 @@ import * as any from "@fp-ts/codec/data/any"
 import * as json from "@fp-ts/codec/data/Json"
 import * as never from "@fp-ts/codec/data/never"
 import * as set from "@fp-ts/codec/data/Set"
-import * as string from "@fp-ts/codec/data/string"
 import * as unknown from "@fp-ts/codec/data/unknown"
 
 export {
@@ -105,10 +104,6 @@ export {
    * @since 1.0.0
    */
   show,
-  /**
-   * @since 1.0.0
-   */
-  string,
   /**
    * @since 1.0.0
    */

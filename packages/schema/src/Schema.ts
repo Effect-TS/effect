@@ -4,7 +4,6 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
-import * as S from "@fp-ts/codec/data/string"
 import * as DE from "@fp-ts/codec/DecodeError"
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
@@ -50,7 +49,7 @@ export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = S.Schema
+export const string: Schema<string> = make(ast.string({}))
 
 /**
  * @since 1.0.0
