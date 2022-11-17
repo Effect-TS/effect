@@ -209,11 +209,11 @@ describe("Guard", () => {
   it("pick", () => {
     const baseGuard = G.struct({ a: G.string, b: bigint.Guard, c: G.boolean })
     expect(baseGuard.is(null)).toEqual(false)
-    // const guard = pipe(baseGuard, G.pick("a", "b"))
-    // expect(guard.is(null)).toEqual(false)
-    // expect(guard.is({ a: "a", b: BigInt("1") })).toEqual(true)
-    // expect(guard.is({ a: "a", b: BigInt("1"), c: true })).toEqual(true)
-    // expect(guard.is({ a: "a", b: BigInt("1"), c: "a" })).toEqual(true)
+    const guard = pipe(baseGuard, G.pick("a", "b"))
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({ a: "a", b: BigInt("1") })).toEqual(true)
+    expect(guard.is({ a: "a", b: BigInt("1"), c: true })).toEqual(true)
+    expect(guard.is({ a: "a", b: BigInt("1"), c: "a" })).toEqual(true)
   })
 
   describe("unsafeGuardFor", () => {
