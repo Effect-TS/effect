@@ -70,7 +70,11 @@ const go = S.memoize((ast: AST): JSONSchema => {
       )
     }
     case "String":
-      return { type: "string" }
+      return {
+        type: "string",
+        minLength: ast.minLength,
+        maxLength: ast.maxLength
+      }
     case "Number":
       return {
         type: "number",
@@ -81,12 +85,6 @@ const go = S.memoize((ast: AST): JSONSchema => {
       }
     case "Boolean":
       return { type: "boolean" }
-    case "Refinement": {
-      const from = go(ast.from)
-      return {
-        ...from
-      }
-    }
   }
   throw new Error(`Unhandled ${ast._tag}`)
 })
@@ -111,13 +109,13 @@ describe("unsafeJsonSchemaFor", () => {
     expect(validate(1)).toEqual(false)
   })
 
-  it.skip("minLength", () => {
+  it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     const jsonSchema = jsonSchemaFor_(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
-  it.skip("maxLength", () => {
+  it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
     const validate = new Ajv().compile(jsonSchemaFor_(schema))
     expect(validate("")).toEqual(true)

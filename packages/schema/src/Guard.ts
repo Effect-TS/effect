@@ -4,7 +4,6 @@
 
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
-import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -46,16 +45,24 @@ export const string: Guard<string> = make(
 /**
  * @since 1.0.0
  */
-export const maxLength = (maxLength: number) =>
+export const minLength = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    unsafeGuardFor(S.maxLength(maxLength)(self))
+    make(
+      S.minLength(minLength)(self),
+      (a): a is A => self.is(a) && a.length >= minLength
+    )
 
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
+export const maxLength = (
+  maxLength: number
+) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    unsafeGuardFor(S.minLength(minLength)(self))
+    make(
+      S.maxLength(maxLength)(self),
+      (a): a is A => self.is(a) && a.length <= maxLength
+    )
 
 /**
  * @since 1.0.0
@@ -150,7 +157,7 @@ export const makeGuardAnnotation = (
 export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
   typeof u === "object" && u != null && "_id" in u && u["_id"] === GuardAnnotationId
 
-const go = (ast: AST): Guard<any> => {
+const go = S.memoize((ast: AST): Guard<any> => {
   switch (ast._tag) {
     case "Declaration": {
       return pipe(
@@ -166,7 +173,14 @@ const go = (ast: AST): Guard<any> => {
       )
     }
     case "String": {
-      return string
+      let out = string
+      if (ast.minLength !== undefined) {
+        out = minLength(ast.minLength)(out)
+      }
+      if (ast.maxLength !== undefined) {
+        out = maxLength(ast.maxLength)(out)
+      }
+      return out
     }
     case "Number": {
       let out = number
@@ -235,12 +249,8 @@ const go = (ast: AST): Guard<any> => {
     }
     case "Lazy":
       return lazy(() => go(ast.f()))
-    case "Refinement": {
-      const from = go(ast.from)
-      return make(S.make(ast.to), (u): u is any => from.is(u) && !T.isLeft(ast.decode(u)))
-    }
   }
-}
+})
 
 /**
  * @since 1.0.0

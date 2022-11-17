@@ -4,13 +4,8 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
-import * as DE from "@fp-ts/codec/DecodeError"
-import type { Decoder } from "@fp-ts/codec/Decoder"
-import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as internal from "@fp-ts/codec/internal/Schema"
-import * as T from "@fp-ts/codec/internal/These"
 import type { Either } from "@fp-ts/data/Either"
-import { identity } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
@@ -54,12 +49,20 @@ export const string: Schema<string> = make(ast.string({}))
 /**
  * @since 1.0.0
  */
-export const refinement = <A, B>(
-  from: Schema<A>,
-  to: Schema<B>,
-  decode: Decoder<A, B>["decode"],
-  encode: Encoder<A, B>["encode"]
-): Schema<B> => make(ast.refinement(from.ast, to.ast, decode, encode))
+export const minLength = (minLength: number) =>
+  <A extends { length: number }>(
+    schema: Schema<A>
+  ): Schema<A> => {
+    if (ast.isString(schema.ast)) {
+      return make(
+        ast.string({
+          minLength,
+          maxLength: schema.ast.maxLength
+        })
+      )
+    }
+    throw new Error("cannot `minLength` non-String schemas")
+  }
 
 /**
  * @since 1.0.0
@@ -67,19 +70,17 @@ export const refinement = <A, B>(
 export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
-  ): Schema<A> =>
-    refinement(schema, schema, (a) =>
-      a.length <= maxLength ? T.right(a) : T.left([DE.maxLength(maxLength)]), identity)
-
-/**
- * @since 1.0.0
- */
-export const minLength = (minLength: number) =>
-  <A extends { length: number }>(
-    schema: Schema<A>
-  ): Schema<A> =>
-    refinement(schema, schema, (a) =>
-      a.length >= minLength ? T.right(a) : T.left([DE.minLength(minLength)]), identity)
+  ): Schema<A> => {
+    if (ast.isString(schema.ast)) {
+      return make(
+        ast.string({
+          minLength: schema.ast.minLength,
+          maxLength
+        })
+      )
+    }
+    throw new Error("cannot `maxLength` non-String schemas")
+  }
 
 /**
  * @since 1.0.0

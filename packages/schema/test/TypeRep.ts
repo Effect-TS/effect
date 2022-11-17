@@ -152,8 +152,6 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
         pipe(A.getName(ast.annotations), O.getOrElse("<Anonymous Lazy type>")),
         () => go(ast.f())
       )
-    case "Refinement":
-      throw new Error("Unhandled Refinement case")
   }
 })
 
@@ -270,8 +268,15 @@ describe("unsafeTypeRepFor", () => {
     )
   })
 
-  it.skip("refinement", () => {
-    const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
+  it("minLength", () => {
+    const schema = pipe(S.string, S.minLength(2))
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+      "string"
+    )
+  })
+
+  it("maxLength", () => {
+    const schema = pipe(S.string, S.maxLength(4))
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"
     )

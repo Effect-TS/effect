@@ -3,8 +3,6 @@
  */
 import type { Annotations } from "@fp-ts/codec/Annotation"
 import * as A from "@fp-ts/codec/Annotation"
-import type { Decoder } from "@fp-ts/codec/Decoder"
-import type { Encoder } from "@fp-ts/codec/Encoder"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -22,7 +20,6 @@ export type AST =
   | Tuple
   | Union
   | Lazy
-  | Refinement
 
 /**
  * @since 1.0.0
@@ -64,6 +61,11 @@ export const string = (
     readonly minLength?: number
   }
 ): String => ({ _tag: "String", ...options, annotations: [A.makeNameAnnotation("string")] })
+
+/**
+ * @since 1.0.0
+ */
+export const isString = (ast: AST): ast is String => ast._tag === "String"
 
 /**
  * @since 1.0.0
@@ -239,35 +241,6 @@ export const union = (members: ReadonlyArray<AST>): Union => ({
   _tag: "Union",
   members,
   annotations: [A.makeNameAnnotation("<Union>")]
-})
-
-/**
- * @since 1.0.0
- */
-export interface Refinement {
-  readonly _tag: "Refinement"
-  readonly from: AST
-  readonly to: AST
-  readonly decode: Decoder<any, any>["decode"]
-  readonly encode: Encoder<any, any>["encode"]
-  readonly annotations: Annotations
-}
-
-/**
- * @since 1.0.0
- */
-export const refinement = (
-  from: AST,
-  to: AST,
-  decode: Decoder<any, any>["decode"],
-  encode: Encoder<any, any>["encode"]
-): Refinement => ({
-  _tag: "Refinement",
-  from,
-  to,
-  decode,
-  encode,
-  annotations: [A.makeNameAnnotation("<Refinement>")]
 })
 
 /**

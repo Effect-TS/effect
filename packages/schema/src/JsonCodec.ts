@@ -33,7 +33,14 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       )
     }
     case "String": {
-      return D.string
+      let out = D.string
+      if (ast.minLength !== undefined) {
+        out = D.minLength(ast.minLength)(out)
+      }
+      if (ast.maxLength !== undefined) {
+        out = D.maxLength(ast.maxLength)(out)
+      }
+      return out
     }
     case "Number": {
       let out = D.number
@@ -120,10 +127,6 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
     }
     case "Lazy":
       return D.lazy(() => goD(ast.f()))
-    case "Refinement": {
-      const from = goD(ast.from)
-      return D.make(S.make(ast.to), (i) => pipe(from.decode(i), D.flatMap(ast.decode)))
-    }
   }
 })
 
@@ -221,10 +224,6 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
     }
     case "Lazy":
       return E.lazy(() => goE(ast.f()))
-    case "Refinement": {
-      const from = goE(ast.from)
-      return E.make(S.make(ast.to), (i) => from.encode(ast.encode(i)))
-    }
   }
 })
 

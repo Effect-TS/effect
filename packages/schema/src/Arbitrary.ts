@@ -3,7 +3,6 @@
  */
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
-import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -41,16 +40,24 @@ export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 /**
  * @since 1.0.0
  */
-export const maxLength = (maxLength: number) =>
+export const minLength = (minLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    unsafeArbitraryFor(S.maxLength(maxLength)(self))
+    make(
+      S.minLength(minLength)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a.length >= minLength)
+    )
 
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
+export const maxLength = (
+  maxLength: number
+) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    unsafeArbitraryFor(S.minLength(minLength)(self))
+    make(
+      S.maxLength(maxLength)(self),
+      (fc) => self.arbitrary(fc).filter((a) => a.length <= maxLength)
+    )
 
 /**
  * @since 1.0.0
@@ -151,7 +158,14 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       )
     }
     case "String": {
-      return string
+      let out = string
+      if (ast.minLength !== undefined) {
+        out = minLength(ast.minLength)(out)
+      }
+      if (ast.maxLength !== undefined) {
+        out = maxLength(ast.maxLength)(out)
+      }
+      return out
     }
     case "Number": {
       let out = number
@@ -206,16 +220,6 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
     }
     case "Lazy":
       return lazy(() => go(ast.f()))
-    case "Refinement": {
-      const from = go(ast.from)
-      return make(
-        S.make(ast.to),
-        (fc) =>
-          from.arbitrary(fc).filter((i) => !T.isLeft(ast.decode(i))).map((i) =>
-            (ast.decode(i) as T.Both<any, any>).right
-          )
-      )
-    }
   }
 })
 
