@@ -2,8 +2,6 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
-import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Codec } from "@fp-ts/codec/Codec"
 import type * as J from "@fp-ts/codec/data/Json"
@@ -27,16 +25,7 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
         return D.boolean
       }
       if (ast === Str.Schema.ast) {
-        let out = D.string
-        const oMinLength = MinLength.getMinLength(ast.annotations)
-        if (O.isSome(oMinLength)) {
-          out = D.minLength(oMinLength.value)(out)
-        }
-        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
-        if (O.isSome(oMaxLength)) {
-          out = D.maxLength(oMaxLength.value)(out)
-        }
-        return out
+        return D.string
       }
       return pipe(
         A.find(ast.annotations, D.isDecoderAnnotation),
@@ -133,6 +122,10 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
     }
     case "Lazy":
       return D.lazy(() => goD(ast.f()))
+    case "Refinement": {
+      const from = goD(ast.from)
+      return D.make(S.make(ast.to), (i) => pipe(from.decode(i), D.flatMap(ast.decode)))
+    }
   }
 })
 
@@ -231,6 +224,10 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
     }
     case "Lazy":
       return E.lazy(() => goE(ast.f()))
+    case "Refinement": {
+      const from = goE(ast.from)
+      return E.make(S.make(ast.to), (i) => from.encode(ast.encode(i)))
+    }
   }
 })
 

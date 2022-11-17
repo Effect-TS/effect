@@ -1,6 +1,4 @@
 import * as A from "@fp-ts/codec/Annotation"
-import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -63,16 +61,7 @@ const go = S.memoize((ast: AST): JSONSchema => {
         return { type: "boolean" }
       }
       if (ast === S.string.ast) {
-        const out: StringJSONSchema = { type: "string" }
-        const oMinLength = MinLength.getMinLength(ast.annotations)
-        if (O.isSome(oMinLength)) {
-          out.minLength = oMinLength.value
-        }
-        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
-        if (O.isSome(oMaxLength)) {
-          out.maxLength = oMaxLength.value
-        }
-        return out
+        return { type: "string" }
       }
       return pipe(
         A.find(ast.annotations, isJSONSchemaAnnotation),
@@ -94,6 +83,12 @@ const go = S.memoize((ast: AST): JSONSchema => {
         exclusiveMinimum: ast.exclusiveMinimum,
         exclusiveMaximum: ast.exclusiveMaximum
       }
+    case "Refinement": {
+      const from = go(ast.from)
+      return {
+        ...from
+      }
+    }
   }
   throw new Error(`Unhandled ${ast._tag}`)
 })

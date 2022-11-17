@@ -2,9 +2,8 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
-import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
+import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -42,24 +41,16 @@ export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
+export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    make(
-      S.minLength(minLength)(self),
-      (fc) => self.arbitrary(fc).filter((a) => a.length >= minLength)
-    )
+    unsafeArbitraryFor(S.maxLength(maxLength)(self))
 
 /**
  * @since 1.0.0
  */
-export const maxLength = (
-  maxLength: number
-) =>
+export const minLength = (minLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    make(
-      S.maxLength(maxLength)(self),
-      (fc) => self.arbitrary(fc).filter((a) => a.length <= maxLength)
-    )
+    unsafeArbitraryFor(S.minLength(minLength)(self))
 
 /**
  * @since 1.0.0
@@ -151,16 +142,7 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
         return boolean
       }
       if (ast === S.string.ast) {
-        let out = string
-        const oMinLength = MinLength.getMinLength(ast.annotations)
-        if (O.isSome(oMinLength)) {
-          out = minLength(oMinLength.value)(out)
-        }
-        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
-        if (O.isSome(oMaxLength)) {
-          out = maxLength(oMaxLength.value)(out)
-        }
-        return out
+        return string
       }
       return pipe(
         A.find(ast.annotations, isArbitraryAnnotation),
@@ -225,6 +207,16 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
     }
     case "Lazy":
       return lazy(() => go(ast.f()))
+    case "Refinement": {
+      const from = go(ast.from)
+      return make(
+        S.make(ast.to),
+        (fc) =>
+          from.arbitrary(fc).filter((i) => !T.isLeft(ast.decode(i))).map((i) =>
+            (ast.decode(i) as T.Both<any, any>).right
+          )
+      )
+    }
   }
 })
 

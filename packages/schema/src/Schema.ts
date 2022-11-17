@@ -2,15 +2,17 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
-import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import * as B from "@fp-ts/codec/data/boolean"
 import * as S from "@fp-ts/codec/data/string"
+import * as DE from "@fp-ts/codec/DecodeError"
+import type { Decoder } from "@fp-ts/codec/Decoder"
+import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as internal from "@fp-ts/codec/internal/Schema"
+import * as T from "@fp-ts/codec/internal/These"
 import type { Either } from "@fp-ts/data/Either"
-import { pipe } from "@fp-ts/data/Function"
+import { identity } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
@@ -54,14 +56,12 @@ export const string: Schema<string> = S.Schema
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
-  <A extends { length: number }>(
-    schema: Schema<A>
-  ): Schema<A> =>
-    make({
-      ...schema.ast,
-      annotations: pipe(schema.ast.annotations, MinLength.addMinLengthAnnotation(minLength))
-    })
+export const refinement = <A, B>(
+  from: Schema<A>,
+  to: Schema<B>,
+  decode: Decoder<A, B>["decode"],
+  encode: Encoder<A, B>["encode"]
+): Schema<B> => make(ast.refinement(from.ast, to.ast, decode, encode))
 
 /**
  * @since 1.0.0
@@ -70,10 +70,18 @@ export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(
     schema: Schema<A>
   ): Schema<A> =>
-    make({
-      ...schema.ast,
-      annotations: pipe(schema.ast.annotations, MaxLength.addMaxLengthAnnotation(maxLength))
-    })
+    refinement(schema, schema, (a) =>
+      a.length <= maxLength ? T.right(a) : T.left([DE.maxLength(maxLength)]), identity)
+
+/**
+ * @since 1.0.0
+ */
+export const minLength = (minLength: number) =>
+  <A extends { length: number }>(
+    schema: Schema<A>
+  ): Schema<A> =>
+    refinement(schema, schema, (a) =>
+      a.length >= minLength ? T.right(a) : T.left([DE.minLength(minLength)]), identity)
 
 /**
  * @since 1.0.0

@@ -153,6 +153,8 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
         pipe(A.getName(ast.annotations), O.getOrElse("<Anonymous Lazy type>")),
         () => go(ast.f())
       )
+    case "Refinement":
+      throw new Error("Unhandled Refinement case")
   }
 })
 

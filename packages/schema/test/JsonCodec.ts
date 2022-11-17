@@ -1,43 +1,10 @@
-import type { Annotations } from "@fp-ts/codec/Annotation"
-import * as A from "@fp-ts/codec/Annotation"
-import type * as J from "@fp-ts/codec/data/Json"
+import * as set from "@fp-ts/codec/data/Set"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
-
-const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      D.makeDecoderAnnotation(<A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item))
-    ],
-    item
-  )
-
-const set = <A>(item: D.Decoder<J.Json, A>): D.Decoder<J.Json, Set<A>> =>
-  D.make(setS(item), (u) => {
-    if (!(Array.isArray(u))) {
-      return D.fail(DE.custom(setError, u))
-    }
-    const out: Set<unknown> = new Set()
-    for (let i = 0; i < u.length; i++) {
-      const t = item.decode(u[i])
-      if (T.isLeft(t)) {
-        return T.left(t.left)
-      }
-      out.add(t.right)
-    }
-    return D.succeed(out as any)
-  })
-
-interface SetError {
-  readonly _tag: "SetError"
-}
-
-const setError: SetError = { _tag: "SetError" }
 
 describe("JsonCodec", () => {
   describe("unsafeEncoderFor", () => {
@@ -66,12 +33,12 @@ describe("JsonCodec", () => {
     const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor
 
     it("declaration", () => {
-      const schema = setS(S.number)
+      const schema = set.Schema(S.number)
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Array", null)))
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.notType("number", "a")))
     })
 
@@ -152,7 +119,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
     })
 
-    it.skip("minLength", () => {
+    it("minLength", () => {
       const schema = pipe(S.string, S.minLength(1))
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode("a")).toEqual(D.succeed("a"))
@@ -161,13 +128,14 @@ describe("JsonCodec", () => {
       expect(decoder.decode("")).toEqual(D.fail(DE.minLength(1)))
     })
 
-    it.skip("maxLength", () => {
-      const schema = pipe(S.string, S.maxLength(1))
+    it("maxLength", () => {
+      const schema = pipe(S.string, S.maxLength(2))
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode("")).toEqual(D.succeed(""))
       expect(decoder.decode("a")).toEqual(D.succeed("a"))
+      expect(decoder.decode("aa")).toEqual(D.succeed("aa"))
 
-      expect(decoder.decode("aa")).toEqual(D.fail(DE.maxLength(1)))
+      expect(decoder.decode("aaa")).toEqual(D.fail(DE.maxLength(2)))
     })
 
     it("minimum", () => {

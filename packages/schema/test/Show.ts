@@ -1,24 +1,9 @@
-import type { Annotations } from "@fp-ts/codec/Annotation"
-import * as A from "@fp-ts/codec/Annotation"
+import * as set from "@fp-ts/codec/data/Set"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-
-const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      show.makeShowAnnotation(<A>(_: Annotations, item: show.Show<A>): show.Show<Set<A>> =>
-        set(item)
-      )
-    ],
-    item
-  )
-
-const set = <A>(item: show.Show<A>): show.Show<Set<A>> =>
-  show.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 describe("Show", () => {
   it("struct", () => {
@@ -36,7 +21,7 @@ describe("Show", () => {
     const unsafeShowFor = show.unsafeShowFor
 
     it("declaration", () => {
-      const schema = setS(S.string)
+      const schema = set.Schema(S.string)
       expect(unsafeShowFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"
       )
@@ -50,7 +35,7 @@ describe("Show", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: setS(A)
+          as: set.Schema(A)
         })
       )
       expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual(

@@ -1,28 +1,13 @@
-import type { Annotations } from "@fp-ts/codec/Annotation"
 import * as A from "@fp-ts/codec/Annotation"
+import * as set from "@fp-ts/codec/data/Set"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item))
-    ],
-    item
-  )
-
-const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
-  G.make(
-    setS(item),
-    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
-  )
-
 const bigintS: S.Schema<bigint> = S.declare([
   A.makeNameAnnotation("@fp-ts/codec/data/bigint"),
-  G.guardAnnotation((): G.Guard<bigint> => bigint)
+  G.makeGuardAnnotation((): G.Guard<bigint> => bigint)
 ])
 
 const bigint = G.make(
@@ -78,6 +63,22 @@ describe("Guard", () => {
     expect(guard.is("Cantaloupe")).toEqual(false)
   })
 
+  it("maxLength", () => {
+    const guard = pipe(G.string, G.maxLength(1))
+    expect(guard.is("")).toEqual(true)
+    expect(guard.is("a")).toEqual(true)
+
+    expect(guard.is("aa")).toEqual(false)
+  })
+
+  it("minLength", () => {
+    const guard = pipe(G.string, G.minLength(1))
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is("aa")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+  })
+
   describe("tuple", () => {
     it("tuple", () => {
       const guard = G.tuple(G.string, G.number)
@@ -129,7 +130,7 @@ describe("Guard", () => {
     const guard: G.Guard<Category> = G.lazy<Category>(() =>
       G.struct({
         name: G.string,
-        categories: set(guard)
+        categories: set.Guard(guard)
       })
     )
     expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
@@ -157,13 +158,13 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        bs: set(B)
+        bs: set.Guard(B)
       })
     )
     const B: G.Guard<B> = G.lazy<B>(() =>
       G.struct({
         b: G.number,
-        as: set(A)
+        as: set.Guard(A)
       })
     )
     expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
@@ -184,7 +185,7 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        as: set(A)
+        as: set.Guard(A)
       })
     )
     const B = pipe(A, G.pick("as"))
@@ -201,7 +202,7 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        as: set(A)
+        as: set.Guard(A)
       })
     )
     const B = pipe(A, G.omit("a"))
@@ -232,7 +233,7 @@ describe("Guard", () => {
         () =>
           S.struct({
             name: S.string,
-            categories: setS(CategoryS)
+            categories: set.Schema(CategoryS)
           })
       )
       const guard = unsafeGuardFor(CategoryS)
@@ -261,13 +262,13 @@ describe("Guard", () => {
       const AS: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          bs: setS(BS)
+          bs: set.Schema(BS)
         })
       )
       const BS: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
-          as: setS(AS)
+          as: set.Schema(AS)
         })
       )
       const A = unsafeGuardFor(AS)
@@ -291,14 +292,14 @@ describe("Guard", () => {
     })
 
     it("Set", () => {
-      const schema = setS(S.number)
+      const schema = set.Schema(S.number)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
     })
 
     it("Set & bigint", () => {
-      const schema = setS(bigintS)
+      const schema = set.Schema(bigintS)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set())).toEqual(true)
@@ -481,7 +482,7 @@ describe("Guard", () => {
       expect(guard.is(O.some("a"))).toEqual(false)
     })
 
-    it.skip("minLength", () => {
+    it("minLength", () => {
       const schema = pipe(S.string, S.minLength(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is("a")).toEqual(true)
@@ -490,7 +491,7 @@ describe("Guard", () => {
       expect(guard.is("")).toEqual(false)
     })
 
-    it.skip("maxLength", () => {
+    it("maxLength", () => {
       const schema = pipe(S.string, S.maxLength(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is("")).toEqual(true)

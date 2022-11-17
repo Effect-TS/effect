@@ -1,44 +1,31 @@
-import type { Annotations } from "@fp-ts/codec/Annotation"
-import * as A from "@fp-ts/codec/Annotation"
 import * as Arb from "@fp-ts/codec/Arbitrary"
+import * as set from "@fp-ts/codec/data/Set"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
-const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      Arb.makeArbitraryAnnotation(<A>(
-        _: Annotations,
-        item: Arb.Arbitrary<A>
-      ): Arb.Arbitrary<Set<A>> => set(item)),
-      G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => setG(item))
-    ],
-    item
-  )
-
-const setG = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
-  G.make(
-    setS(item),
-    (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
-  )
-
-const set = <A>(item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
-  Arb.make(
-    setS(item),
-    (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
-  )
-
 describe("Arbitrary", () => {
+  const sampleSize = 100
+
+  it("minLength", () => {
+    const arbitrary = pipe(Arb.string, Arb.minLength(1))
+    const guard = G.unsafeGuardFor(arbitrary)
+    expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
+  })
+
+  it("maxLength", () => {
+    const arbitrary = pipe(Arb.string, Arb.maxLength(2))
+    const guard = G.unsafeGuardFor(arbitrary)
+    expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
+  })
+
   describe("unsafeArbitraryFor", () => {
     const unsafeArbitraryFor = Arb.unsafeArbitraryFor
     const unsafeGuardFor = G.unsafeGuardFor
-    const sampleSize = 100
 
     it("declaration", () => {
-      const schema = setS(S.string)
+      const schema = set.Schema(S.string)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
@@ -52,10 +39,10 @@ describe("Arbitrary", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: setS(A)
+          as: set.Schema(A)
         })
       )
-      const schema = setS(A)
+      const schema = set.Schema(A)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
@@ -131,22 +118,15 @@ describe("Arbitrary", () => {
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it.skip("refinement", () => {
-      const schema = pipe(S.string, S.minLength(2), S.maxLength(4))
-      const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
-      const guard = unsafeGuardFor(schema)
-      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
-    })
-
-    it.skip("minLength", () => {
+    it("minLength", () => {
       const schema = pipe(S.string, S.minLength(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it.skip("maxLength", () => {
-      const schema = pipe(S.string, S.maxLength(1))
+    it("maxLength", () => {
+      const schema = pipe(S.string, S.maxLength(2))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

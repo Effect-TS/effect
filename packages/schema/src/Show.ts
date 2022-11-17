@@ -154,6 +154,8 @@ const go = S.memoize((ast: AST): Show<any> => {
     }
     case "Lazy":
       return lazy(() => go(ast.f()))
+    case "Refinement":
+      throw new Error("Unhandled Refinement case")
   }
 })
 

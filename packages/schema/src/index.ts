@@ -24,12 +24,9 @@ import * as any from "@fp-ts/codec/data/any"
 import * as boolean from "@fp-ts/codec/data/boolean"
 import * as json from "@fp-ts/codec/data/Json"
 import * as never from "@fp-ts/codec/data/never"
+import * as set from "@fp-ts/codec/data/Set"
 import * as string from "@fp-ts/codec/data/string"
 import * as unknown from "@fp-ts/codec/data/unknown"
-
-// annotations
-import * as maxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as minLength from "@fp-ts/codec/annotation/MinLength"
 
 export {
   /**
@@ -95,14 +92,6 @@ export {
   /**
    * @since 1.0.0
    */
-  maxLength,
-  /**
-   * @since 1.0.0
-   */
-  minLength,
-  /**
-   * @since 1.0.0
-   */
   never,
   /**
    * @since 1.0.0
@@ -112,6 +101,10 @@ export {
    * @since 1.0.0
    */
   schema,
+  /**
+   * @since 1.0.0
+   */
+  set,
   /**
    * @since 1.0.0
    */

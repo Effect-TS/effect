@@ -3,9 +3,8 @@
  */
 
 import * as A from "@fp-ts/codec/Annotation"
-import * as MaxLength from "@fp-ts/codec/annotation/MaxLength"
-import * as MinLength from "@fp-ts/codec/annotation/MinLength"
 import type { AST } from "@fp-ts/codec/AST"
+import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
@@ -47,24 +46,16 @@ export const string: Guard<string> = make(
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
+export const maxLength = (maxLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make(
-      S.minLength(minLength)(self),
-      (a): a is A => self.is(a) && a.length >= minLength
-    )
+    unsafeGuardFor(S.maxLength(maxLength)(self))
 
 /**
  * @since 1.0.0
  */
-export const maxLength = (
-  maxLength: number
-) =>
+export const minLength = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make(
-      S.maxLength(maxLength)(self),
-      (a): a is A => self.is(a) && a.length <= maxLength
-    )
+    unsafeGuardFor(S.minLength(minLength)(self))
 
 /**
  * @since 1.0.0
@@ -146,7 +137,7 @@ export interface GuardAnnotation {
 /**
  * @since 1.0.0
  */
-export const guardAnnotation = (
+export const makeGuardAnnotation = (
   guardFor: (
     annotations: A.Annotations,
     ...guards: ReadonlyArray<Guard<any>>
@@ -166,16 +157,7 @@ const go = S.memoize((ast: AST): Guard<any> => {
         return boolean
       }
       if (ast === S.string.ast) {
-        let out = string
-        const oMinLength = MinLength.getMinLength(ast.annotations)
-        if (O.isSome(oMinLength)) {
-          out = minLength(oMinLength.value)(out)
-        }
-        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
-        if (O.isSome(oMaxLength)) {
-          out = maxLength(oMaxLength.value)(out)
-        }
-        return out
+        return string
       }
       return pipe(
         A.find(ast.annotations, isGuardAnnotation),
@@ -254,6 +236,10 @@ const go = S.memoize((ast: AST): Guard<any> => {
     }
     case "Lazy":
       return lazy(() => go(ast.f()))
+    case "Refinement": {
+      const from = go(ast.from)
+      return make(S.make(ast.to), (u): u is any => from.is(u) && !T.isLeft(ast.decode(u)))
+    }
   }
 })
 
