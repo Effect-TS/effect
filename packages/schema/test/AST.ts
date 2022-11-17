@@ -1,10 +1,9 @@
 import * as ast from "@fp-ts/codec/AST"
-import * as B from "@fp-ts/codec/data/boolean"
 import * as Str from "@fp-ts/codec/data/string"
 import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
 
-describe("Meta", () => {
+describe("AST", () => {
   describe("getFields", () => {
     it("struct", () => {
       const schema = S.struct({
@@ -44,7 +43,7 @@ describe("Meta", () => {
         })
       )
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.union([Str.Schema.ast, B.Schema.ast]), false, true)
+        ast.field("a", ast.union([Str.Schema.ast, ast.boolean]), false, true)
       ])
     })
 

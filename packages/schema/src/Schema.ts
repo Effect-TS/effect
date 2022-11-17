@@ -4,7 +4,6 @@
 import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
-import * as B from "@fp-ts/codec/data/boolean"
 import * as S from "@fp-ts/codec/data/string"
 import * as DE from "@fp-ts/codec/DecodeError"
 import type { Decoder } from "@fp-ts/codec/Decoder"
@@ -131,7 +130,7 @@ export const maximum = (maximum: number) =>
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = B.Schema
+export const boolean: Schema<boolean> = make(ast.boolean)
 
 /**
  * @since 1.0.0

@@ -12,6 +12,7 @@ import * as guard from "@fp-ts/codec/Guard"
 import * as jsonCodec from "@fp-ts/codec/JsonCodec"
 import * as schema from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
+import * as support from "@fp-ts/codec/Support"
 
 // typeclass
 import * as contravariantSchema from "@fp-ts/codec/typeclass/ContravariantSchema"
@@ -21,7 +22,6 @@ import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 
 // data types
 import * as any from "@fp-ts/codec/data/any"
-import * as boolean from "@fp-ts/codec/data/boolean"
 import * as json from "@fp-ts/codec/data/Json"
 import * as never from "@fp-ts/codec/data/never"
 import * as set from "@fp-ts/codec/data/Set"
@@ -45,10 +45,6 @@ export {
    * @since 1.0.0
    */
   ast,
-  /**
-   * @since 1.0.0
-   */
-  boolean,
   /**
    * @since 1.0.0
    */
@@ -113,6 +109,10 @@ export {
    * @since 1.0.0
    */
   string,
+  /**
+   * @since 1.0.0
+   */
+  support,
   /**
    * @since 1.0.0
    */

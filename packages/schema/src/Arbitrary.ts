@@ -138,9 +138,6 @@ export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
 const go = S.memoize((ast: AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return boolean
-      }
       if (ast === S.string.ast) {
         return string
       }
@@ -166,6 +163,8 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       }
       return out
     }
+    case "Boolean":
+      return boolean
     case "Of":
       return make(S.make(ast), (fc) => fc.constant(ast.value))
     case "Tuple": {

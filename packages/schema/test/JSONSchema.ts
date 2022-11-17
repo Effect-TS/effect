@@ -57,9 +57,6 @@ export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
 const go = S.memoize((ast: AST): JSONSchema => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return { type: "boolean" }
-      }
       if (ast === S.string.ast) {
         return { type: "string" }
       }
@@ -83,6 +80,8 @@ const go = S.memoize((ast: AST): JSONSchema => {
         exclusiveMinimum: ast.exclusiveMinimum,
         exclusiveMaximum: ast.exclusiveMaximum
       }
+    case "Boolean":
+      return { type: "boolean" }
     case "Refinement": {
       const from = go(ast.from)
       return {
@@ -115,11 +114,8 @@ describe("unsafeJsonSchemaFor", () => {
 
   it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
-    expect(validate("a")).toEqual(true)
-    expect(validate("aa")).toEqual(true)
-
-    expect(validate("")).toEqual(false)
+    const jsonSchema = jsonSchemaFor_(schema)
+    expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
   it.skip("maxLength", () => {

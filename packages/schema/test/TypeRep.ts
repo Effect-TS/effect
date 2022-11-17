@@ -87,9 +87,6 @@ const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 const go = S.memoize((ast: AST): TypeRep<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return make(S.boolean.ast, "boolean")
-      }
       if (ast === S.string.ast) {
         return make(S.string.ast, "string")
       }
@@ -107,6 +104,8 @@ const go = S.memoize((ast: AST): TypeRep<any> => {
     }
     case "Number":
       return make(S.number.ast, "number")
+    case "Boolean":
+      return make(S.boolean.ast, "boolean")
     case "Of":
       return make(ast, JSON.stringify(ast.value))
     case "Tuple": {

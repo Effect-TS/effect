@@ -21,9 +21,6 @@ import * as O from "@fp-ts/data/Option"
 const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return D.boolean
-      }
       if (ast === Str.Schema.ast) {
         return D.string
       }
@@ -49,6 +46,8 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       }
       return out
     }
+    case "Boolean":
+      return D.boolean
     case "Of":
       return D.of(ast.value)
     case "Tuple": {
@@ -162,9 +161,6 @@ export const isEncoderAnnotation = (
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return E.boolean
-      }
       if (ast === Str.Schema.ast) {
         return E.string
       }
@@ -182,6 +178,8 @@ const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
     }
     case "Number":
       return E.number
+    case "Boolean":
+      return E.boolean
     case "Of":
       if (Json.Guard.is(ast.value)) {
         return E.of(ast.value)

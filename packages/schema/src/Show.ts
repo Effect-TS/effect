@@ -78,9 +78,6 @@ export const isShowAnnotation = (u: unknown): u is ShowAnnotation =>
 const go = S.memoize((ast: AST): Show<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return make(S.boolean, (a) => JSON.stringify(a))
-      }
       if (ast === Str.Schema.ast) {
         return make(S.string, (a) => JSON.stringify(a))
       }
@@ -98,6 +95,8 @@ const go = S.memoize((ast: AST): Show<any> => {
     }
     case "Number":
       return make(S.number, (a) => JSON.stringify(a))
+    case "Boolean":
+      return make(S.boolean, (a) => JSON.stringify(a))
     case "Of":
       return make(S.make(ast), (a) => JSON.stringify(a))
     case "Tuple": {

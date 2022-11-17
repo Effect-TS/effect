@@ -150,12 +150,9 @@ export const makeGuardAnnotation = (
 export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
   typeof u === "object" && u != null && "_id" in u && u["_id"] === GuardAnnotationId
 
-const go = S.memoize((ast: AST): Guard<any> => {
+const go = (ast: AST): Guard<any> => {
   switch (ast._tag) {
     case "Declaration": {
-      if (ast === S.boolean.ast) {
-        return boolean
-      }
       if (ast === S.string.ast) {
         return string
       }
@@ -181,6 +178,8 @@ const go = S.memoize((ast: AST): Guard<any> => {
       }
       return out
     }
+    case "Boolean":
+      return boolean
     case "Of":
       return make(S.make(ast), (u): u is any => u === ast.value)
     case "Tuple": {
@@ -241,12 +240,12 @@ const go = S.memoize((ast: AST): Guard<any> => {
       return make(S.make(ast.to), (u): u is any => from.is(u) && !T.isLeft(ast.decode(u)))
     }
   }
-})
+}
 
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor = S.memoize(<A>(schema: Schema<A>): Guard<A> => go(schema.ast))
+export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => go(schema.ast)
 
 /**
  * @since 1.0.0
