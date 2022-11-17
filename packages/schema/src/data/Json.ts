@@ -33,7 +33,7 @@ export type Json =
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.declare([
+export const Schema: S.Schema<Json> = S.declare(Symbol("@fp-ts/codec/data/Json"), [
   A.makeNameAnnotation("@fp-ts/codec/data/Json"),
   G.makeGuardAnnotation(() => Guard),
   D.makeDecoderAnnotation(() => Decoder),

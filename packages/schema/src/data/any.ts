@@ -11,7 +11,7 @@ import * as S from "@fp-ts/codec/Schema"
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<any> = S.declare([
+export const Schema: S.Schema<any> = S.declare(Symbol("@fp-ts/codec/data/any"), [
   A.makeNameAnnotation("@fp-ts/codec/data/any"),
   G.makeGuardAnnotation(() => Guard),
   D.makeDecoderAnnotation(() => Decoder),

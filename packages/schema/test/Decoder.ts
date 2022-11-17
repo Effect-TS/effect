@@ -24,7 +24,7 @@ describe("Decoder", () => {
   })
 
   it("should allow custom errors", () => {
-    const bigintS: S.Schema<bigint> = S.declare([
+    const bigintS: S.Schema<bigint> = S.declare(Symbol("@fp-ts/codec/data/bigint"), [
       A.makeNameAnnotation("@fp-ts/codec/data/bigint")
     ])
 

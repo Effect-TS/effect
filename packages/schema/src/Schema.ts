@@ -37,6 +37,7 @@ export const withName = (name: string) =>
  * @since 1.0.0
  */
 export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
+  id: symbol,
   annotations: A.Annotations,
   ...schemas: Schemas
 ) => Schema<any> = internal.declare

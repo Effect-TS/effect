@@ -15,24 +15,19 @@ import * as Sh from "@fp-ts/codec/Show"
  * @since 1.0.0
  */
 export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      arbitrary.makeArbitraryAnnotation(<A>(
-        _: A.Annotations,
-        item: arbitrary.Arbitrary<A>
-      ): arbitrary.Arbitrary<Set<A>> => Arbitrary(item)),
-      D.makeDecoderAnnotation(<A>(
-        _: A.Annotations,
-        item: D.Decoder<J.Json, A>
-      ): D.Decoder<J.Json, Set<A>> => Decoder(item)),
-      G.makeGuardAnnotation(<A>(_: A.Annotations, item: G.Guard<A>): G.Guard<Set<A>> =>
-        Guard(item)
-      ),
-      Sh.makeShowAnnotation(<A>(_: A.Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => Show(item))
-    ],
-    item
-  )
+  S.declare(Symbol("@fp-ts/codec/data/Set"), [
+    A.makeNameAnnotation("@fp-ts/codec/data/Set"),
+    arbitrary.makeArbitraryAnnotation(<A>(
+      _: A.Annotations,
+      item: arbitrary.Arbitrary<A>
+    ): arbitrary.Arbitrary<Set<A>> => Arbitrary(item)),
+    D.makeDecoderAnnotation(<A>(
+      _: A.Annotations,
+      item: D.Decoder<J.Json, A>
+    ): D.Decoder<J.Json, Set<A>> => Decoder(item)),
+    G.makeGuardAnnotation(<A>(_: A.Annotations, item: G.Guard<A>): G.Guard<Set<A>> => Guard(item)),
+    Sh.makeShowAnnotation(<A>(_: A.Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => Show(item))
+  ], item)
 
 /**
  * @since 1.0.0

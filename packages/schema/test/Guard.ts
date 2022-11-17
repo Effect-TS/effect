@@ -5,7 +5,7 @@ import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const bigintS: S.Schema<bigint> = S.declare([
+const bigintS: S.Schema<bigint> = S.declare(Symbol("@fp-ts/codec/data/bigint"), [
   A.makeNameAnnotation("@fp-ts/codec/data/bigint"),
   G.makeGuardAnnotation((): G.Guard<bigint> => bigint)
 ])

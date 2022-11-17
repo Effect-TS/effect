@@ -9,6 +9,7 @@ import type { Schema } from "@fp-ts/codec/Schema"
 export const make = <A>(ast: AST): Schema<A> => ({ ast }) as any
 
 export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
+  id: symbol,
   annotations: Annotations,
   ...schemas: Schemas
-): Schema<any> => make(ast.declare(annotations, schemas.map((s) => s.ast)))
+): Schema<any> => make(ast.declare(id, annotations, schemas.map((s) => s.ast)))

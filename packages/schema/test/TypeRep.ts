@@ -57,16 +57,13 @@ const setS = <B extends boolean, A>(
   readonly: B,
   item: S.Schema<A>
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
-  S.declare(
-    [
-      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-      typeRepAnnotation(<A>(
-        _: A.Annotations,
-        item: TypeRep<A>
-      ) => set(readonly, item))
-    ],
-    item
-  )
+  S.declare(Symbol("@fp-ts/codec/data/Set"), [
+    A.makeNameAnnotation("@fp-ts/codec/data/Set"),
+    typeRepAnnotation(<A>(
+      _: A.Annotations,
+      item: TypeRep<A>
+    ) => set(readonly, item))
+  ], item)
 
 const set = <B extends boolean, A>(
   readonly: B,
@@ -77,7 +74,7 @@ const set = <B extends boolean, A>(
     readonly ? `ReadonlySet<${item.typeRep}>` : `Set<${item.typeRep}>`
   )
 
-const bigintS: Schema<bigint> = S.declare([
+const bigintS: Schema<bigint> = S.declare(Symbol("@fp-ts/codec/data/bigint"), [
   A.makeNameAnnotation("@fp-ts/codec/data/bigint"),
   typeRepAnnotation(() => bigint)
 ])

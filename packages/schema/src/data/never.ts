@@ -10,7 +10,7 @@ import * as S from "@fp-ts/codec/Schema"
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<never> = S.declare([
+export const Schema: S.Schema<never> = S.declare(Symbol("@fp-ts/codec/data/never"), [
   A.makeNameAnnotation("@fp-ts/codec/data/never"),
   G.makeGuardAnnotation(() => Guard as any),
   D.makeDecoderAnnotation(() => Decoder as any)
