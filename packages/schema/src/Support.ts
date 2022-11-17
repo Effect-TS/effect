@@ -49,8 +49,7 @@ export const Semigroup: semigroup.Semigroup<Support> = semigroup.fromCombine((th
     const out = new Map(self)
     for (const [k, v] of that.entries()) {
       if (out.has(k)) {
-        const sv = out.get(k)!
-        out.set(k, new Map([...sv, ...v]))
+        out.set(k, new Map([...out.get(k)!, ...v]))
       } else {
         out.set(k, v)
       }
