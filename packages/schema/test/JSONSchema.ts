@@ -54,42 +54,44 @@ export const jsonSchemaAnnotation = (
 export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
   typeof u === "object" && u != null && "_id" in u && u["_id"] === JSONSchemaAnnotationId
 
-const go = S.memoize((ast: AST): JSONSchema => {
-  switch (ast._tag) {
-    case "Declaration": {
-      return pipe(
-        A.find(ast.annotations, isJSONSchemaAnnotation),
-        O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
-        O.match(() => {
-          throw new Error(
-            `Missing "JSONSchemaAnnotation" for ${
-              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-            }`
-          )
-        }, identity)
-      )
+export const unsafeJsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
+  const go = (ast: AST): JSONSchema => {
+    switch (ast._tag) {
+      case "Declaration": {
+        return pipe(
+          A.find(ast.annotations, isJSONSchemaAnnotation),
+          O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
+          O.match(() => {
+            throw new Error(
+              `Missing "JSONSchemaAnnotation" for ${
+                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+              }`
+            )
+          }, identity)
+        )
+      }
+      case "String":
+        return {
+          type: "string",
+          minLength: ast.minLength,
+          maxLength: ast.maxLength
+        }
+      case "Number":
+        return {
+          type: "number",
+          minimum: ast.minimum,
+          maximum: ast.maximum,
+          exclusiveMinimum: ast.exclusiveMinimum,
+          exclusiveMaximum: ast.exclusiveMaximum
+        }
+      case "Boolean":
+        return { type: "boolean" }
     }
-    case "String":
-      return {
-        type: "string",
-        minLength: ast.minLength,
-        maxLength: ast.maxLength
-      }
-    case "Number":
-      return {
-        type: "number",
-        minimum: ast.minimum,
-        maximum: ast.maximum,
-        exclusiveMinimum: ast.exclusiveMinimum,
-        exclusiveMaximum: ast.exclusiveMaximum
-      }
-    case "Boolean":
-      return { type: "boolean" }
+    throw new Error(`Unhandled ${ast._tag}`)
   }
-  throw new Error(`Unhandled ${ast._tag}`)
-})
 
-export const unsafeJsonSchemaFor = S.memoize(<A>(schema: Schema<A>): JSONSchema => go(schema.ast))
+  return go(schema.ast)
+}
 
 describe("unsafeJsonSchemaFor", () => {
   const jsonSchemaFor_ = unsafeJsonSchemaFor

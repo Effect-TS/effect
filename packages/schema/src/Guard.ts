@@ -157,105 +157,107 @@ export const makeGuardAnnotation = (
 export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
   typeof u === "object" && u != null && "_id" in u && u["_id"] === GuardAnnotationId
 
-const go = S.memoize((ast: AST): Guard<any> => {
-  switch (ast._tag) {
-    case "Declaration": {
-      return pipe(
-        A.find(ast.annotations, isGuardAnnotation),
-        O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
-        O.match(() => {
-          throw new Error(
-            `Missing "GuardAnnotation" for ${
-              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-            }`
-          )
-        }, identity)
-      )
-    }
-    case "String": {
-      let out = string
-      if (ast.minLength !== undefined) {
-        out = minLength(ast.minLength)(out)
-      }
-      if (ast.maxLength !== undefined) {
-        out = maxLength(ast.maxLength)(out)
-      }
-      return out
-    }
-    case "Number": {
-      let out = number
-      if (ast.minimum !== undefined) {
-        out = minimum(ast.minimum)(out)
-      }
-      if (ast.maximum !== undefined) {
-        out = maximum(ast.maximum)(out)
-      }
-      return out
-    }
-    case "Boolean":
-      return boolean
-    case "Of":
-      return make(S.make(ast), (u): u is any => u === ast.value)
-    case "Tuple": {
-      const components = ast.components.map(go)
-      const restElement = pipe(ast.restElement, O.map(go))
-      return make(
-        S.make(ast),
-        (a): a is any =>
-          Array.isArray(a) &&
-          components.every((guard, i) => guard.is(a[i])) &&
-          (pipe(
-            restElement,
-            O.map((rest) => a.slice(components.length).every(rest.is)),
-            O.getOrElse(true)
-          ))
-      )
-    }
-    case "Union": {
-      const members = ast.members.map(go)
-      return make(
-        S.make(ast),
-        (a): a is any => members.some((guard) => guard.is(a))
-      )
-    }
-    case "Struct": {
-      const fields = {}
-      for (const field of ast.fields) {
-        fields[field.key] = go(field.value)
-      }
-      const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
-      return make(
-        S.make(ast),
-        (a): a is any => {
-          if (!isUnknownIndexSignature(a)) {
-            return false
-          }
-          for (const key of Object.keys(fields)) {
-            if (!fields[key].is(a[key])) {
-              return false
-            }
-          }
-          if (O.isSome(oIndexSignature)) {
-            const indexSignature = oIndexSignature.value
-            for (const key of Object.keys(a)) {
-              if (!(key in fields) && !indexSignature.is(a[key])) {
-                return false
-              }
-            }
-          }
-          return true
-        }
-      )
-    }
-    case "Lazy":
-      return lazy(() => go(ast.f()))
-  }
-})
-
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => go(schema.ast)
+export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
+  const go = (ast: AST): Guard<any> => {
+    switch (ast._tag) {
+      case "Declaration": {
+        return pipe(
+          A.find(ast.annotations, isGuardAnnotation),
+          O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
+          O.match(() => {
+            throw new Error(
+              `Missing "GuardAnnotation" for ${
+                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+              }`
+            )
+          }, identity)
+        )
+      }
+      case "String": {
+        let out = string
+        if (ast.minLength !== undefined) {
+          out = minLength(ast.minLength)(out)
+        }
+        if (ast.maxLength !== undefined) {
+          out = maxLength(ast.maxLength)(out)
+        }
+        return out
+      }
+      case "Number": {
+        let out = number
+        if (ast.minimum !== undefined) {
+          out = minimum(ast.minimum)(out)
+        }
+        if (ast.maximum !== undefined) {
+          out = maximum(ast.maximum)(out)
+        }
+        return out
+      }
+      case "Boolean":
+        return boolean
+      case "Of":
+        return make(S.make(ast), (u): u is any => u === ast.value)
+      case "Tuple": {
+        const components = ast.components.map(go)
+        const restElement = pipe(ast.restElement, O.map(go))
+        return make(
+          S.make(ast),
+          (a): a is any =>
+            Array.isArray(a) &&
+            components.every((guard, i) => guard.is(a[i])) &&
+            (pipe(
+              restElement,
+              O.map((rest) => a.slice(components.length).every(rest.is)),
+              O.getOrElse(true)
+            ))
+        )
+      }
+      case "Union": {
+        const members = ast.members.map(go)
+        return make(
+          S.make(ast),
+          (a): a is any => members.some((guard) => guard.is(a))
+        )
+      }
+      case "Struct": {
+        const fields = {}
+        for (const field of ast.fields) {
+          fields[field.key] = go(field.value)
+        }
+        const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+        return make(
+          S.make(ast),
+          (a): a is any => {
+            if (!isUnknownIndexSignature(a)) {
+              return false
+            }
+            for (const key of Object.keys(fields)) {
+              if (!fields[key].is(a[key])) {
+                return false
+              }
+            }
+            if (O.isSome(oIndexSignature)) {
+              const indexSignature = oIndexSignature.value
+              for (const key of Object.keys(a)) {
+                if (!(key in fields) && !indexSignature.is(a[key])) {
+                  return false
+                }
+              }
+            }
+            return true
+          }
+        )
+      }
+      case "Lazy":
+        return lazy(() => go(ast.f()))
+    }
+  }
+
+  return go(schema.ast)
+}
 
 /**
  * @since 1.0.0

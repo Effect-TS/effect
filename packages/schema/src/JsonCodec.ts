@@ -17,120 +17,122 @@ import * as S from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
-  switch (ast._tag) {
-    case "Declaration": {
-      return pipe(
-        A.find(ast.annotations, D.isDecoderAnnotation),
-        O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(goD))),
-        O.match(() => {
-          throw new Error(
-            `Missing "DecoderAnnotation" for ${
-              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-            }`
-          )
-        }, identity)
-      )
-    }
-    case "String": {
-      let out = D.string
-      if (ast.minLength !== undefined) {
-        out = D.minLength(ast.minLength)(out)
+const unsafeDecoderFor = <A>(schema: Schema<A>): Decoder<J.Json, A> => {
+  const go = (ast: AST): Decoder<J.Json, any> => {
+    switch (ast._tag) {
+      case "Declaration": {
+        return pipe(
+          A.find(ast.annotations, D.isDecoderAnnotation),
+          O.map((annotation) => annotation.decoderFor(ast.annotations, ...ast.nodes.map(go))),
+          O.match(() => {
+            throw new Error(
+              `Missing "DecoderAnnotation" for ${
+                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+              }`
+            )
+          }, identity)
+        )
       }
-      if (ast.maxLength !== undefined) {
-        out = D.maxLength(ast.maxLength)(out)
+      case "String": {
+        let out = D.string
+        if (ast.minLength !== undefined) {
+          out = D.minLength(ast.minLength)(out)
+        }
+        if (ast.maxLength !== undefined) {
+          out = D.maxLength(ast.maxLength)(out)
+        }
+        return out
       }
-      return out
-    }
-    case "Number": {
-      let out = D.number
-      if (ast.minimum !== undefined) {
-        out = D.minimum(ast.minimum)(out)
+      case "Number": {
+        let out = D.number
+        if (ast.minimum !== undefined) {
+          out = D.minimum(ast.minimum)(out)
+        }
+        if (ast.maximum !== undefined) {
+          out = D.maximum(ast.maximum)(out)
+        }
+        return out
       }
-      if (ast.maximum !== undefined) {
-        out = D.maximum(ast.maximum)(out)
-      }
-      return out
-    }
-    case "Boolean":
-      return D.boolean
-    case "Of":
-      return D.of(ast.value)
-    case "Tuple": {
-      const components = ast.components.map(goD)
-      const oRestElement = pipe(ast.restElement, O.map(goD))
-      return pipe(
-        Json.JsonArrayDecoder,
-        D.compose(D.make(
-          S.make(ast),
-          (is) => {
-            const out: Array<unknown> = []
-            for (let i = 0; i < components.length; i++) {
-              const t = components[i].decode(is[i])
-              if (T.isLeft(t)) {
-                return T.left(t.left)
-              }
-              out[i] = t.right
-            }
-            if (O.isSome(oRestElement)) {
-              const restElement = oRestElement.value
-              for (let i = components.length; i < is.length; i++) {
-                const t = restElement.decode(is[i])
+      case "Boolean":
+        return D.boolean
+      case "Of":
+        return D.of(ast.value)
+      case "Tuple": {
+        const components = ast.components.map(go)
+        const oRestElement = pipe(ast.restElement, O.map(go))
+        return pipe(
+          Json.JsonArrayDecoder,
+          D.compose(D.make(
+            S.make(ast),
+            (is) => {
+              const out: Array<unknown> = []
+              for (let i = 0; i < components.length; i++) {
+                const t = components[i].decode(is[i])
                 if (T.isLeft(t)) {
                   return T.left(t.left)
                 }
                 out[i] = t.right
               }
-            }
-            return D.succeed(out as any)
-          }
-        ))
-      )
-    }
-    case "Union":
-      return pipe(Json.Decoder, D.compose(D.union(...ast.members.map(goD))))
-    case "Struct": {
-      const fields: Record<PropertyKey, Decoder<J.Json, any>> = {}
-      for (const field of ast.fields) {
-        fields[field.key] = goD(field.value)
-      }
-      const oIndexSignature = pipe(ast.indexSignature, O.map((is) => goD(is.value)))
-      return pipe(
-        Json.JsonObjectDecoder,
-        D.compose(D.make(
-          S.make(ast),
-          (input) => {
-            const a = {}
-            for (const key of Object.keys(fields)) {
-              const t = fields[key].decode(input[key])
-              if (T.isLeft(t)) {
-                return T.left(t.left)
-              }
-              a[key] = t.right
-            }
-            if (O.isSome(oIndexSignature)) {
-              const indexSignature = oIndexSignature.value
-              for (const key of Object.keys(input)) {
-                if (!(key in fields)) {
-                  const t = indexSignature.decode(input[key])
+              if (O.isSome(oRestElement)) {
+                const restElement = oRestElement.value
+                for (let i = components.length; i < is.length; i++) {
+                  const t = restElement.decode(is[i])
                   if (T.isLeft(t)) {
                     return T.left(t.left)
                   }
-                  a[key] = t.right
+                  out[i] = t.right
                 }
               }
+              return D.succeed(out as any)
             }
-            return D.succeed(a as any)
-          }
-        ))
-      )
+          ))
+        )
+      }
+      case "Union":
+        return pipe(Json.Decoder, D.compose(D.union(...ast.members.map(go))))
+      case "Struct": {
+        const fields: Record<PropertyKey, Decoder<J.Json, any>> = {}
+        for (const field of ast.fields) {
+          fields[field.key] = go(field.value)
+        }
+        const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+        return pipe(
+          Json.JsonObjectDecoder,
+          D.compose(D.make(
+            S.make(ast),
+            (input) => {
+              const a = {}
+              for (const key of Object.keys(fields)) {
+                const t = fields[key].decode(input[key])
+                if (T.isLeft(t)) {
+                  return T.left(t.left)
+                }
+                a[key] = t.right
+              }
+              if (O.isSome(oIndexSignature)) {
+                const indexSignature = oIndexSignature.value
+                for (const key of Object.keys(input)) {
+                  if (!(key in fields)) {
+                    const t = indexSignature.decode(input[key])
+                    if (T.isLeft(t)) {
+                      return T.left(t.left)
+                    }
+                    a[key] = t.right
+                  }
+                }
+              }
+              return D.succeed(a as any)
+            }
+          ))
+        )
+      }
+      case "Lazy":
+        return D.lazy(() => go(ast.f()))
     }
-    case "Lazy":
-      return D.lazy(() => goD(ast.f()))
   }
-})
 
-const unsafeDecoderFor = S.memoize(<A>(schema: Schema<A>): Decoder<J.Json, A> => goD(schema.ast))
+  return go(schema.ast)
+}
 
 const EncoderAnnotationId: unique symbol = Symbol.for(
   "@fp-ts/codec/annotation/EncoderAnnotation"
@@ -160,74 +162,76 @@ export const isEncoderAnnotation = (
   annotation: A.Annotation
 ): annotation is EncoderAnnotation => annotation._id === EncoderAnnotationId
 
-const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
-  switch (ast._tag) {
-    case "Declaration": {
-      return pipe(
-        A.find(ast.annotations, isEncoderAnnotation),
-        O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(goE))),
-        O.match(() => {
-          throw new Error(
-            `Missing "EncoderAnnotation" for ${
-              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-            }`
-          )
-        }, identity)
-      )
-    }
-    case "String": {
-      return E.string
-    }
-    case "Number":
-      return E.number
-    case "Boolean":
-      return E.boolean
-    case "Of":
-      if (Json.Guard.is(ast.value)) {
-        return E.of(ast.value)
-      }
-      throw new Error("Of value is not a JSON")
-    case "Tuple": {
-      const components = ast.components.map(goE)
-      if (O.isSome(ast.restElement)) {
-        const restElement = goE(ast.restElement.value)
-        return E.make<Array<J.Json>, ReadonlyArray<any>>(
-          S.make(ast),
-          (a) =>
-            a.map((ai, i) =>
-              i < components.length ? components[i].encode(ai) : restElement.encode(ai)
+const unsafeEncoderFor = <A>(schema: Schema<A>): Encoder<J.Json, A> => {
+  const go = (ast: AST): Encoder<J.Json, any> => {
+    switch (ast._tag) {
+      case "Declaration": {
+        return pipe(
+          A.find(ast.annotations, isEncoderAnnotation),
+          O.map((annotation) => annotation.encoderFor(ast.annotations, ...ast.nodes.map(go))),
+          O.match(() => {
+            throw new Error(
+              `Missing "EncoderAnnotation" for ${
+                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+              }`
             )
+          }, identity)
         )
       }
-      return E.make<Array<J.Json>, ReadonlyArray<any>>(
-        S.make(ast),
-        (a) => a.map((ai, i) => components[i].encode(ai))
-      )
-    }
-    case "Union": {
-      const members = ast.members.map(goE)
-      const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
-      return E.make(S.make(ast), (a) => {
-        const index = guards.findIndex((guard) => guard.is(a))
-        return members[index].encode(a)
-      })
-    }
-    case "Struct": {
-      return E.make(S.make(ast), (a) => {
-        const out = {}
-        for (let i = 0; i < ast.fields.length; i++) {
-          const key = ast.fields[i].key
-          out[key] = a[key]
+      case "String": {
+        return E.string
+      }
+      case "Number":
+        return E.number
+      case "Boolean":
+        return E.boolean
+      case "Of":
+        if (Json.Guard.is(ast.value)) {
+          return E.of(ast.value)
         }
-        return out
-      })
+        throw new Error("Of value is not a JSON")
+      case "Tuple": {
+        const components = ast.components.map(go)
+        if (O.isSome(ast.restElement)) {
+          const restElement = go(ast.restElement.value)
+          return E.make<Array<J.Json>, ReadonlyArray<any>>(
+            S.make(ast),
+            (a) =>
+              a.map((ai, i) =>
+                i < components.length ? components[i].encode(ai) : restElement.encode(ai)
+              )
+          )
+        }
+        return E.make<Array<J.Json>, ReadonlyArray<any>>(
+          S.make(ast),
+          (a) => a.map((ai, i) => components[i].encode(ai))
+        )
+      }
+      case "Union": {
+        const members = ast.members.map(go)
+        const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
+        return E.make(S.make(ast), (a) => {
+          const index = guards.findIndex((guard) => guard.is(a))
+          return members[index].encode(a)
+        })
+      }
+      case "Struct": {
+        return E.make(S.make(ast), (a) => {
+          const out = {}
+          for (let i = 0; i < ast.fields.length; i++) {
+            const key = ast.fields[i].key
+            out[key] = a[key]
+          }
+          return out
+        })
+      }
+      case "Lazy":
+        return E.lazy(() => go(ast.f()))
     }
-    case "Lazy":
-      return E.lazy(() => goE(ast.f()))
   }
-})
 
-const unsafeEncoderFor = S.memoize(<A>(schema: Schema<A>): Encoder<J.Json, A> => goE(schema.ast))
+  return go(schema.ast)
+}
 
 /**
  * @since 1.0.0

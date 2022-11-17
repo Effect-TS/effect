@@ -84,78 +84,80 @@ const bigintS: Schema<bigint> = S.declare([
 
 const bigint: TypeRep<bigint> = make(bigintS.ast, "bigint")
 
-const go = S.memoize((ast: AST): TypeRep<any> => {
-  switch (ast._tag) {
-    case "Declaration": {
-      return pipe(
-        A.find(ast.annotations, isTypeRepAnnotation),
-        O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
-        O.match(() => {
-          throw new Error(
-            `Missing "TypeRepAnnotation" for ${
-              pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-            }`
-          )
-        }, identity)
-      )
+export const unsafeTypeRepFor = <A>(schema: Schema<A>): TypeRep<A> => {
+  const go = (ast: AST): TypeRep<any> => {
+    switch (ast._tag) {
+      case "Declaration": {
+        return pipe(
+          A.find(ast.annotations, isTypeRepAnnotation),
+          O.map((annotation) => annotation.typeRepFor(ast.annotations, ...ast.nodes.map(go))),
+          O.match(() => {
+            throw new Error(
+              `Missing "TypeRepAnnotation" for ${
+                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
+              }`
+            )
+          }, identity)
+        )
+      }
+      case "String": {
+        return make(S.string.ast, "string")
+      }
+      case "Number":
+        return make(S.number.ast, "number")
+      case "Boolean":
+        return make(S.boolean.ast, "boolean")
+      case "Of":
+        return make(ast, JSON.stringify(ast.value))
+      case "Tuple": {
+        const components = ast.components.map(go)
+        const restElement = pipe(
+          ast.restElement,
+          O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
+          O.getOrElse("")
+        )
+        return make(
+          ast,
+          `${ast.readonly ? "readonly " : ""}[${
+            components.map((c) => c.typeRep).join(", ")
+          }${restElement}]`
+        )
+      }
+      case "Union": {
+        const members = ast.members.map(go)
+        return make(
+          ast,
+          members.map((m) => m.typeRep).join(" | ")
+        )
+      }
+      case "Struct": {
+        const fields = ast.fields.map((field) => go(field.value))
+        return make(
+          ast,
+          "{ " +
+            ast.fields.map((field, i) => {
+              return `${field.readonly ? "readonly " : ""}${String(field.key)}${
+                field.optional ? "?" : ""
+              }: ${fields[i].typeRep}`
+            }).join(", ") +
+            (pipe(
+              ast.indexSignature,
+              O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
+              O.getOrElse("")
+            ))
+            + " }"
+        )
+      }
+      case "Lazy":
+        return lazy(
+          pipe(A.getName(ast.annotations), O.getOrElse("<Anonymous Lazy type>")),
+          () => go(ast.f())
+        )
     }
-    case "String": {
-      return make(S.string.ast, "string")
-    }
-    case "Number":
-      return make(S.number.ast, "number")
-    case "Boolean":
-      return make(S.boolean.ast, "boolean")
-    case "Of":
-      return make(ast, JSON.stringify(ast.value))
-    case "Tuple": {
-      const components = ast.components.map(go)
-      const restElement = pipe(
-        ast.restElement,
-        O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
-        O.getOrElse("")
-      )
-      return make(
-        ast,
-        `${ast.readonly ? "readonly " : ""}[${
-          components.map((c) => c.typeRep).join(", ")
-        }${restElement}]`
-      )
-    }
-    case "Union": {
-      const members = ast.members.map(go)
-      return make(
-        ast,
-        members.map((m) => m.typeRep).join(" | ")
-      )
-    }
-    case "Struct": {
-      const fields = ast.fields.map((field) => go(field.value))
-      return make(
-        ast,
-        "{ " +
-          ast.fields.map((field, i) => {
-            return `${field.readonly ? "readonly " : ""}${String(field.key)}${
-              field.optional ? "?" : ""
-            }: ${fields[i].typeRep}`
-          }).join(", ") +
-          (pipe(
-            ast.indexSignature,
-            O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
-            O.getOrElse("")
-          ))
-          + " }"
-      )
-    }
-    case "Lazy":
-      return lazy(
-        pipe(A.getName(ast.annotations), O.getOrElse("<Anonymous Lazy type>")),
-        () => go(ast.f())
-      )
   }
-})
 
-export const unsafeTypeRepFor = S.memoize(<A>(schema: Schema<A>): TypeRep<A> => go(schema.ast))
+  return go(schema.ast)
+}
 
 describe("unsafeTypeRepFor", () => {
   describe("declaration", () => {
