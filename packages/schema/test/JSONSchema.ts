@@ -26,7 +26,7 @@ type JSONSchema =
   | { readonly type: "boolean" }
 
 const JSONSchemaAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/JSONSchemaAnnotation"
+  "@fp-ts/codec/annotation/JSONSchemaAnnotation"
 ) as JSONSchemaAnnotationId
 
 /**
@@ -64,11 +64,11 @@ const go = S.memoize((ast: AST): JSONSchema => {
       }
       if (ast === S.string.ast) {
         const out: StringJSONSchema = { type: "string" }
-        const oMinLength = MinLength.get(ast.annotations)
+        const oMinLength = MinLength.getMinLength(ast.annotations)
         if (O.isSome(oMinLength)) {
           out.minLength = oMinLength.value
         }
-        const oMaxLength = MaxLength.get(ast.annotations)
+        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
         if (O.isSome(oMaxLength)) {
           out.maxLength = oMaxLength.value
         }

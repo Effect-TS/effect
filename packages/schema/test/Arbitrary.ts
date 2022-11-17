@@ -9,10 +9,11 @@ import * as fc from "fast-check"
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
-      A.nameAnnotation("@fp-ts/codec/data/Set"),
-      Arb.arbitraryAnnotation(<A>(_: Annotations, item: Arb.Arbitrary<A>): Arb.Arbitrary<Set<A>> =>
-        set(item)
-      ),
+      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
+      Arb.makeArbitraryAnnotation(<A>(
+        _: Annotations,
+        item: Arb.Arbitrary<A>
+      ): Arb.Arbitrary<Set<A>> => set(item)),
       G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => setG(item))
     ],
     item

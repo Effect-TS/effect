@@ -4,7 +4,7 @@ import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
-import * as Sh from "@fp-ts/codec/Show"
+import * as show from "@fp-ts/codec/Show"
 import * as fc from "fast-check"
 
 describe("Json", () => {
@@ -30,9 +30,9 @@ describe("Json", () => {
         S.indexSignature(manualSchema)
       )
     )
-    const show = Sh.unsafeShowFor(schema)
-    const manualShow = Sh.unsafeShowFor(manualSchema)
+    const jsonShow = show.unsafeShowFor(schema)
+    const manualJsonShow = show.unsafeShowFor(manualSchema)
     const json: Json.Json = { a: [1, null] }
-    expect(show.show(json)).toEqual(manualShow.show(json))
+    expect(jsonShow.show(json)).toEqual(manualJsonShow.show(json))
   })
 })

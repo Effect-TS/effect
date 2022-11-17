@@ -1,7 +1,7 @@
 import type { Annotations } from "@fp-ts/codec/Annotation"
 import * as A from "@fp-ts/codec/Annotation"
 import * as S from "@fp-ts/codec/Schema"
-import * as Sh from "@fp-ts/codec/Show"
+import * as show from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -9,29 +9,31 @@ import * as O from "@fp-ts/data/Option"
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
-      A.nameAnnotation("@fp-ts/codec/data/Set"),
-      Sh.showAnnotation(<A>(_: Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => set(item))
+      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
+      show.makeShowAnnotation(<A>(_: Annotations, item: show.Show<A>): show.Show<Set<A>> =>
+        set(item)
+      )
     ],
     item
   )
 
-const set = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
-  Sh.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
+const set = <A>(item: show.Show<A>): show.Show<Set<A>> =>
+  show.make(setS(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 describe("Show", () => {
   it("struct", () => {
     const schema = S.struct({ a: S.string, b: S.struct({ c: S.number }) })
-    expect(Sh.unsafeShowFor(schema).show({ a: "a", b: { c: 1 } })).toEqual(
+    expect(show.unsafeShowFor(schema).show({ a: "a", b: { c: 1 } })).toEqual(
       "{\"a\":\"a\",\"b\":{\"c\":1}}"
     )
     const schema2 = pipe(schema, S.pick("b"))
-    expect(Sh.unsafeShowFor(schema2).show({ b: { c: 1 } })).toEqual(
+    expect(show.unsafeShowFor(schema2).show({ b: { c: 1 } })).toEqual(
       "{\"b\":{\"c\":1}}"
     )
   })
 
   describe("unsafeShowFor", () => {
-    const unsafeShowFor = Sh.unsafeShowFor
+    const unsafeShowFor = show.unsafeShowFor
 
     it("declaration", () => {
       const schema = setS(S.string)

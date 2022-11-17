@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 import * as A from "@fp-ts/codec/Annotation"
-import * as Arb from "@fp-ts/codec/Arbitrary"
+import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
-import * as Sh from "@fp-ts/codec/Show"
+import * as show from "@fp-ts/codec/Show"
 
 /**
  * @since 1.0.0
@@ -34,11 +34,11 @@ export type Json =
  * @since 1.0.0
  */
 export const Schema: S.Schema<Json> = S.declare([
-  A.nameAnnotation("@fp-ts/codec/data/Json"),
+  A.makeNameAnnotation("@fp-ts/codec/data/Json"),
   G.guardAnnotation(() => Guard),
-  D.decoderAnnotation(() => Decoder),
-  Arb.arbitraryAnnotation(() => Arbitrary),
-  Sh.showAnnotation(() => Show)
+  D.makeDecoderAnnotation(() => Decoder),
+  arbitrary.makeArbitraryAnnotation(() => Arbitrary),
+  show.makeShowAnnotation(() => Show)
 ])
 
 /**
@@ -82,7 +82,7 @@ export const JsonObjectDecoder: D.Decoder<Json, JsonObject> = D.make(
 /**
  * @since 1.0.0
  */
-export const Arbitrary: Arb.Arbitrary<Json> = Arb.make(
+export const Arbitrary: arbitrary.Arbitrary<Json> = arbitrary.make(
   Schema,
   (fc) => fc.jsonValue().map((json) => json as Json)
 )
@@ -90,7 +90,7 @@ export const Arbitrary: Arb.Arbitrary<Json> = Arb.make(
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<Json> = Sh.make(
+export const Show: show.Show<Json> = show.make(
   Schema,
   (json) => JSON.stringify(json)
 )

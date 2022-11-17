@@ -28,11 +28,11 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
       }
       if (ast === Str.Schema.ast) {
         let out = D.string
-        const oMinLength = MinLength.get(ast.annotations)
+        const oMinLength = MinLength.getMinLength(ast.annotations)
         if (O.isSome(oMinLength)) {
           out = D.minLength(oMinLength.value)(out)
         }
-        const oMaxLength = MaxLength.get(ast.annotations)
+        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
         if (O.isSome(oMaxLength)) {
           out = D.maxLength(oMaxLength.value)(out)
         }
@@ -138,11 +138,21 @@ const goD = S.memoize((ast: AST): Decoder<J.Json, any> => {
 
 const unsafeDecoderFor = S.memoize(<A>(schema: Schema<A>): Decoder<J.Json, A> => goD(schema.ast))
 
+const EncoderAnnotationId: unique symbol = Symbol.for(
+  "@fp-ts/codec/annotation/EncoderAnnotation"
+) as EncoderAnnotationId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type EncoderAnnotationId = typeof EncoderAnnotationId
+
 /**
  * @since 1.0.0
  */
 export interface EncoderAnnotation {
-  readonly _tag: "EncoderAnnotation"
+  readonly _id: EncoderAnnotationId
   readonly encoderFor: (
     annotations: A.Annotations,
     ...encoderFor: ReadonlyArray<Encoder<J.Json, any>>
@@ -152,8 +162,9 @@ export interface EncoderAnnotation {
 /**
  * @since 1.0.0
  */
-export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
-  u !== null && typeof u === "object" && ("_tag" in u) && (u["_tag"] === "EncoderAnnotation")
+export const isEncoderAnnotation = (
+  annotation: A.Annotation
+): annotation is EncoderAnnotation => annotation._id === EncoderAnnotationId
 
 const goE = S.memoize((ast: AST): Encoder<J.Json, any> => {
   switch (ast._tag) {

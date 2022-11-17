@@ -108,7 +108,7 @@ export const lazy = <A>(
 }
 
 const ArbitraryAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/ArbitraryAnnotationId"
+  "@fp-ts/codec/annotation/ArbitraryAnnotation"
 ) as ArbitraryAnnotationId
 
 /**
@@ -131,7 +131,7 @@ export interface ArbitraryAnnotation {
 /**
  * @since 1.0.0
  */
-export const arbitraryAnnotation = (
+export const makeArbitraryAnnotation = (
   arbitraryFor: (
     annotations: A.Annotations,
     ...arbs: ReadonlyArray<Arbitrary<any>>
@@ -152,11 +152,11 @@ const go = S.memoize((ast: AST): Arbitrary<any> => {
       }
       if (ast === S.string.ast) {
         let out = string
-        const oMinLength = MinLength.get(ast.annotations)
+        const oMinLength = MinLength.getMinLength(ast.annotations)
         if (O.isSome(oMinLength)) {
           out = minLength(oMinLength.value)(out)
         }
-        const oMaxLength = MaxLength.get(ast.annotations)
+        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
         if (O.isSome(oMaxLength)) {
           out = maxLength(oMaxLength.value)(out)
         }

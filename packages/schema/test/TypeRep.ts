@@ -23,7 +23,7 @@ export const lazy = <A>(
 }
 
 const TypeRepAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/TypeRepAnnotation"
+  "@fp-ts/codec/annotation/TypeRepAnnotation"
 ) as TypeRepAnnotationId
 
 /**
@@ -59,7 +59,7 @@ const setS = <B extends boolean, A>(
 ): S.Schema<B extends true ? ReadonlySet<A> : Set<A>> =>
   S.declare(
     [
-      A.nameAnnotation("@fp-ts/codec/data/Set"),
+      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
       typeRepAnnotation(<A>(
         _: A.Annotations,
         item: TypeRep<A>
@@ -78,7 +78,7 @@ const set = <B extends boolean, A>(
   )
 
 const bigintS: Schema<bigint> = S.declare([
-  A.nameAnnotation("@fp-ts/codec/data/bigint"),
+  A.makeNameAnnotation("@fp-ts/codec/data/bigint"),
   typeRepAnnotation(() => bigint)
 ])
 

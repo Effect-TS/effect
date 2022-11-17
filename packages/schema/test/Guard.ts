@@ -8,7 +8,7 @@ import * as O from "@fp-ts/data/Option"
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
-      A.nameAnnotation("@fp-ts/codec/data/Set"),
+      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
       G.guardAnnotation(<A>(_: Annotations, item: G.Guard<A>): G.Guard<Set<A>> => set(item))
     ],
     item
@@ -21,7 +21,7 @@ const set = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   )
 
 const bigintS: S.Schema<bigint> = S.declare([
-  A.nameAnnotation("@fp-ts/codec/data/bigint"),
+  A.makeNameAnnotation("@fp-ts/codec/data/bigint"),
   G.guardAnnotation((): G.Guard<bigint> => bigint)
 ])
 

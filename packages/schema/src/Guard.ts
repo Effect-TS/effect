@@ -123,7 +123,7 @@ const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unkno
   typeof u === "object" && u != null && !Array.isArray(u)
 
 const GuardAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/GuardAnnotation"
+  "@fp-ts/codec/annotation/GuardAnnotation"
 ) as GuardAnnotationId
 
 /**
@@ -167,11 +167,11 @@ const go = S.memoize((ast: AST): Guard<any> => {
       }
       if (ast === S.string.ast) {
         let out = string
-        const oMinLength = MinLength.get(ast.annotations)
+        const oMinLength = MinLength.getMinLength(ast.annotations)
         if (O.isSome(oMinLength)) {
           out = minLength(oMinLength.value)(out)
         }
-        const oMaxLength = MaxLength.get(ast.annotations)
+        const oMaxLength = MaxLength.getMaxLength(ast.annotations)
         if (O.isSome(oMaxLength)) {
           out = maxLength(oMaxLength.value)(out)
         }

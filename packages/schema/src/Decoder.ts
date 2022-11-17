@@ -25,7 +25,7 @@ export const make = <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]): 
   ({ ast: schema.ast, decode }) as any
 
 const DecoderAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/DecoderAnnotation"
+  "@fp-ts/codec/annotation/DecoderAnnotation"
 ) as DecoderAnnotationId
 
 /**
@@ -48,7 +48,7 @@ export interface DecoderAnnotation {
 /**
  * @since 1.0.0
  */
-export const decoderAnnotation = (
+export const makeDecoderAnnotation = (
   decoderFor: (
     annotations: A.Annotations,
     ...decoders: ReadonlyArray<Decoder<any, any>>

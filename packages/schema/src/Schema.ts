@@ -33,7 +33,7 @@ export const make: <A>(ast: AST) => Schema<A> = internal.make
 export const withName = (name: string) =>
   <A>(schema: Schema<A>): Schema<A> => {
     const annotations = schema.ast.annotations.filter((a) => !A.isNameAnnotation(a)).concat([
-      A.nameAnnotation(name)
+      A.makeNameAnnotation(name)
     ])
     return make({ ...schema.ast, annotations })
   }
@@ -41,13 +41,8 @@ export const withName = (name: string) =>
 /**
  * @since 1.0.0
  */
-export const getName = <A>(schema: Schema<A>): Option<string> => A.getName(schema.ast.annotations)
-
-/**
- * @since 1.0.0
- */
 export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
-  annotations: ReadonlyArray<unknown>,
+  annotations: A.Annotations,
   ...schemas: Schemas
 ) => Schema<any> = internal.declare
 
@@ -65,7 +60,7 @@ export const minLength = (minLength: number) =>
   ): Schema<A> =>
     make({
       ...schema.ast,
-      annotations: pipe(schema.ast.annotations, MinLength.add(minLength))
+      annotations: pipe(schema.ast.annotations, MinLength.addMinLengthAnnotation(minLength))
     })
 
 /**
@@ -77,7 +72,7 @@ export const maxLength = (maxLength: number) =>
   ): Schema<A> =>
     make({
       ...schema.ast,
-      annotations: pipe(schema.ast.annotations, MaxLength.add(maxLength))
+      annotations: pipe(schema.ast.annotations, MaxLength.addMaxLengthAnnotation(maxLength))
     })
 
 /**

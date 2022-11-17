@@ -11,8 +11,8 @@ import { pipe } from "@fp-ts/data/Function"
 const setS = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
   S.declare(
     [
-      A.nameAnnotation("@fp-ts/codec/data/Set"),
-      D.decoderAnnotation(<A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item))
+      A.makeNameAnnotation("@fp-ts/codec/data/Set"),
+      D.makeDecoderAnnotation(<A>(_: Annotations, item: D.Decoder<J.Json, A>) => set(item))
     ],
     item
   )

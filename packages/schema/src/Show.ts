@@ -39,7 +39,7 @@ export const lazy = <A>(
 }
 
 const ShowAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/ShowAnnotation"
+  "@fp-ts/codec/annotation/ShowAnnotation"
 ) as ShowAnnotationId
 
 /**
@@ -62,7 +62,7 @@ export interface ShowAnnotation {
 /**
  * @since 1.0.0
  */
-export const showAnnotation = (
+export const makeShowAnnotation = (
   showFor: (
     annotations: A.Annotations,
     ...guards: ReadonlyArray<Show<any>>

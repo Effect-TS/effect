@@ -9,18 +9,25 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 /**
  * @since 1.0.0
  */
-export interface Annotations extends ReadonlyArray<unknown> {}
+export interface Annotation {
+  _id: symbol
+}
 
 /**
  * @since 1.0.0
  */
-export const find = <A>(
+export interface Annotations extends ReadonlyArray<Annotation> {}
+
+/**
+ * @since 1.0.0
+ */
+export const find = <A extends Annotation>(
   annotations: Annotations,
-  is: (annotation: unknown) => annotation is A
+  is: (annotation: Annotation) => annotation is A
 ): Option<A> => pipe(annotations, RA.findFirst(is))
 
 const NameAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/NameAnnotation"
+  "@fp-ts/codec/annotation/NameAnnotation"
 ) as NameAnnotationId
 
 /**
@@ -40,13 +47,16 @@ export interface NameAnnotation {
 /**
  * @since 1.0.0
  */
-export const isNameAnnotation = (u: unknown): u is NameAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === NameAnnotationId
+export const isNameAnnotation = (annotation: Annotation): annotation is NameAnnotation =>
+  annotation._id === NameAnnotationId
 
 /**
  * @since 1.0.0
  */
-export const nameAnnotation = (name: string): NameAnnotation => ({ _id: NameAnnotationId, name })
+export const makeNameAnnotation = (name: string): NameAnnotation => ({
+  _id: NameAnnotationId,
+  name
+})
 
 /**
  * @since 1.0.0
@@ -55,7 +65,7 @@ export const getName = (annotations: Annotations): Option<string> =>
   pipe(find(annotations, isNameAnnotation), O.map((a) => a.name))
 
 const IdAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/IdAnnotation"
+  "@fp-ts/codec/annotation/IdAnnotation"
 ) as IdAnnotationId
 
 /**
@@ -75,10 +85,10 @@ export interface IdAnnotation {
 /**
  * @since 1.0.0
  */
-export const isIdAnnotation = (u: unknown): u is IdAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === IdAnnotationId
+export const isIdAnnotation = (annotation: Annotation): annotation is IdAnnotation =>
+  annotation._id === IdAnnotationId
 
 /**
  * @since 1.0.0
  */
-export const idAnnotation = (id: symbol): IdAnnotation => ({ _id: IdAnnotationId, id })
+export const makeIdAnnotation = (id: symbol): IdAnnotation => ({ _id: IdAnnotationId, id })

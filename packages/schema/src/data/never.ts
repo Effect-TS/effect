@@ -11,9 +11,9 @@ import * as S from "@fp-ts/codec/Schema"
  * @since 1.0.0
  */
 export const Schema: S.Schema<never> = S.declare([
-  A.nameAnnotation("@fp-ts/codec/data/never"),
+  A.makeNameAnnotation("@fp-ts/codec/data/never"),
   G.guardAnnotation(() => Guard as any),
-  D.decoderAnnotation(() => Decoder as any)
+  D.makeDecoderAnnotation(() => Decoder as any)
 ]) as any
 
 /**

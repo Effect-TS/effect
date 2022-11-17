@@ -32,7 +32,7 @@ export interface Declaration {
  * @since 1.0.0
  */
 export const declare = (
-  annotations: ReadonlyArray<unknown>,
+  annotations: ReadonlyArray<A.Annotation>,
   nodes: ReadonlyArray<AST>
 ): Declaration => ({
   _tag: "Declaration",
@@ -64,7 +64,7 @@ export const number = (
     readonly minimum?: number
     readonly multipleOf?: number
   }
-): Number => ({ _tag: "Number", ...options, annotations: [A.nameAnnotation("number")] })
+): Number => ({ _tag: "Number", ...options, annotations: [A.makeNameAnnotation("number")] })
 
 /**
  * @since 1.0.0
@@ -86,7 +86,7 @@ export interface Of {
 export const of = (value: unknown): Of => ({
   _tag: "Of",
   value,
-  annotations: [A.nameAnnotation("<Of>")]
+  annotations: [A.makeNameAnnotation("<Of>")]
 })
 
 /**
@@ -151,7 +151,7 @@ export const struct = (
   _tag: "Struct",
   fields,
   indexSignature,
-  annotations: [A.nameAnnotation("<Struct>")]
+  annotations: [A.makeNameAnnotation("<Struct>")]
 })
 
 /**
@@ -182,7 +182,7 @@ export const tuple = (
   components,
   restElement,
   readonly,
-  annotations: [A.nameAnnotation("<Tuple>")]
+  annotations: [A.makeNameAnnotation("<Tuple>")]
 })
 
 /**
@@ -200,7 +200,7 @@ export interface Union {
 export const union = (members: ReadonlyArray<AST>): Union => ({
   _tag: "Union",
   members,
-  annotations: [A.nameAnnotation("<Union>")]
+  annotations: [A.makeNameAnnotation("<Union>")]
 })
 
 /**
@@ -218,7 +218,7 @@ export interface Lazy {
 export const lazy = (f: () => AST): Lazy => ({
   _tag: "Lazy",
   f,
-  annotations: [A.nameAnnotation("<Lazy>")]
+  annotations: [A.makeNameAnnotation("<Lazy>")]
 })
 
 /**

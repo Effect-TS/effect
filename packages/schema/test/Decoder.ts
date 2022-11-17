@@ -25,7 +25,7 @@ describe("Decoder", () => {
 
   it("should allow custom errors", () => {
     const bigintS: S.Schema<bigint> = S.declare([
-      A.nameAnnotation("@fp-ts/codec/data/bigint")
+      A.makeNameAnnotation("@fp-ts/codec/data/bigint")
     ])
 
     interface NoBigInt {

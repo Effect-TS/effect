@@ -9,5 +9,5 @@ import type * as S from "@fp-ts/codec/Schema"
  * @since 1.0.0
  */
 export const Schema: S.Schema<string> = internal.declare([
-  A.nameAnnotation("@fp-ts/codec/data/string")
+  A.makeNameAnnotation("@fp-ts/codec/data/string")
 ])
