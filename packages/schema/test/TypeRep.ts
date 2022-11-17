@@ -1,8 +1,8 @@
 import type { AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
-import { empty, findSupport } from "@fp-ts/codec/Support"
+import type { Support } from "@fp-ts/codec/Support"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -36,19 +36,20 @@ export interface JSONSchemaSupport {
 }
 
 export const unsafeTypeRepFor = (
-  supports: InterpreterSupport
+  support: Support
 ) =>
   <A>(schema: Schema<A>): TypeRep<A> => {
     const go = (ast: AST): TypeRep<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const support: O.Option<JSONSchemaSupport> = findSupport(
-            supports,
+          const merge = Semigroup.combine(support)(ast.support)
+          const handler: O.Option<JSONSchemaSupport> = findHandler(
+            merge,
             TypeRepInterpreterId,
             ast.id
           )
-          if (O.isSome(support)) {
-            return support.value(...ast.nodes.map(go))
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for TypeRep interpreter, data type ${String(ast.id.description)}`

@@ -6,8 +6,8 @@ import type { AST } from "@fp-ts/codec/AST"
 import { GuardInterpreterId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
-import { empty, findSupport } from "@fp-ts/codec/Support"
+import type { Support } from "@fp-ts/codec/Support"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
@@ -125,21 +125,22 @@ const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unkno
 /**
  * @since 1.0.0
  */
-export interface GuardSupport {
+export interface GuardHandler {
   (...guards: ReadonlyArray<Guard<any>>): Guard<any>
 }
 
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor = (supports: InterpreterSupport) =>
+export const unsafeGuardFor = (support: Support) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const go = (ast: AST): Guard<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const support: O.Option<GuardSupport> = findSupport(supports, GuardInterpreterId, ast.id)
-          if (O.isSome(support)) {
-            return support.value(...ast.nodes.map(go))
+          const merge = Semigroup.combine(support)(ast.support)
+          const handler: O.Option<GuardHandler> = findHandler(merge, GuardInterpreterId, ast.id)
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`

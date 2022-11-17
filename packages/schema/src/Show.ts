@@ -7,8 +7,8 @@ import * as G from "@fp-ts/codec/Guard"
 import { ShowInterpreterId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
-import { empty, findSupport } from "@fp-ts/codec/Support"
+import type { Support } from "@fp-ts/codec/Support"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -49,14 +49,15 @@ export interface ShowSupport {
 /**
  * @since 1.0.0
  */
-export const unsafeShowFor = (supports: InterpreterSupport) =>
+export const unsafeShowFor = (support: Support) =>
   <A>(schema: Schema<A>): Show<A> => {
     const go = (ast: AST): Show<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const support: O.Option<ShowSupport> = findSupport(supports, ShowInterpreterId, ast.id)
-          if (O.isSome(support)) {
-            return support.value(...ast.nodes.map(go))
+          const merge = Semigroup.combine(support)(ast.support)
+          const handler: O.Option<ShowSupport> = findHandler(merge, ShowInterpreterId, ast.id)
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`

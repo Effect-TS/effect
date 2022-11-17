@@ -11,7 +11,7 @@ import {
   JsonDecoderInterpreterId
 } from "@fp-ts/codec/internal/Interpreter"
 import * as S from "@fp-ts/codec/Schema"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
+import type * as support from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
@@ -21,7 +21,15 @@ export const id = Symbol.for("@fp-ts/codec/data/unknown")
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<unknown> = S.declare(id)
+export const Support: support.Support = new Map([
+  [GuardInterpreterId, new Map<symbol, Function>([[id, () => Guard]])],
+  [ArbitraryInterpreterId, new Map<symbol, Function>([[id, () => Arbitrary]])],
+  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, () => Decoder]])]
+])
+/**
+ * @since 1.0.0
+ */
+export const Schema: S.Schema<unknown> = S.declare(id, Support)
 
 /**
  * @since 1.0.0
@@ -40,12 +48,3 @@ export const Decoder: D.Decoder<unknown, unknown> = D.fromGuard(
  * @since 1.0.0
  */
 export const Arbitrary: Arb.Arbitrary<unknown> = Arb.make(Schema, (fc) => fc.anything())
-
-/**
- * @since 1.0.0
- */
-export const Support: InterpreterSupport = new Map([
-  [GuardInterpreterId, new Map<symbol, Function>([[id, () => Guard]])],
-  [ArbitraryInterpreterId, new Map<symbol, Function>([[id, () => Arbitrary]])],
-  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, () => Decoder]])]
-])

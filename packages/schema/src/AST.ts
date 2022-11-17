@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Support } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -25,6 +26,7 @@ export type AST =
 export interface Declaration {
   readonly _tag: "Declaration"
   readonly id: symbol
+  readonly support: Support
   readonly nodes: ReadonlyArray<AST>
 }
 
@@ -33,10 +35,12 @@ export interface Declaration {
  */
 export const declare = (
   id: symbol,
+  support: Support,
   nodes: ReadonlyArray<AST>
 ): Declaration => ({
   _tag: "Declaration",
   id,
+  support,
   nodes
 })
 

@@ -17,8 +17,8 @@ import {
 import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
-import { empty, findSupport } from "@fp-ts/codec/Support"
+import type { Support } from "@fp-ts/codec/Support"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -29,18 +29,19 @@ export interface JsonDecoderSupport {
   (...decoders: ReadonlyArray<Decoder<J.Json, any>>): Decoder<J.Json, any>
 }
 
-const unsafeDecoderFor = (supports: InterpreterSupport) =>
+const unsafeDecoderFor = (support: Support) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const support: O.Option<JsonDecoderSupport> = findSupport(
-            supports,
+          const merge = Semigroup.combine(support)(ast.support)
+          const handler: O.Option<JsonDecoderSupport> = findHandler(
+            merge,
             JsonDecoderInterpreterId,
             ast.id
           )
-          if (O.isSome(support)) {
-            return support.value(...ast.nodes.map(go))
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
@@ -155,19 +156,20 @@ export interface JSONEncodeSupport {
 }
 
 const unsafeEncoderFor = (
-  supports: InterpreterSupport
+  support: Support
 ) =>
   <A>(schema: Schema<A>): Encoder<J.Json, A> => {
     const go = (ast: AST): Encoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const support: O.Option<JSONEncodeSupport> = findSupport(
-            supports,
+          const merge = Semigroup.combine(support)(ast.support)
+          const handler: O.Option<JSONEncodeSupport> = findHandler(
+            merge,
             JsonEncoderInterpreterId,
             ast.id
           )
-          if (O.isSome(support)) {
-            return support.value(...ast.nodes.map(go))
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`

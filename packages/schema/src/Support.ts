@@ -10,36 +10,42 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface Support extends Map<symbol, Function> {}
+export interface Handlers extends Map<symbol, Function> {}
 
 /**
  * @since 1.0.0
  */
-export interface InterpreterSupport extends Map<symbol, Support> {}
+export interface Support extends Map<symbol, Handlers> {}
 
 /**
  * @since 1.0.0
  */
-export const empty: InterpreterSupport = new Map()
+export const empty: Support = new Map()
 
 /**
  * @since 1.0.0
  */
-export const findSupport = <A>(
-  supports: InterpreterSupport,
+export const findHandler = <A>(
+  support: Support,
   interpreterId: symbol,
   typeId: symbol
 ): Option<A> =>
   pipe(
-    O.fromNullable(supports.get(interpreterId)),
-    O.flatMapNullable((supports) => supports.get(typeId) as any)
+    O.fromNullable(support.get(interpreterId)),
+    O.flatMapNullable((handlers) => handlers.get(typeId) as any)
   )
 
 /**
  * @since 1.0.0
  */
-export const Semigroup: semigroup.Semigroup<InterpreterSupport> = semigroup.fromCombine((that) =>
+export const Semigroup: semigroup.Semigroup<Support> = semigroup.fromCombine((that) =>
   (self) => {
+    if (self === empty || self.size === 0) {
+      return that
+    }
+    if (that === empty || that.size === 0) {
+      return self
+    }
     const out = new Map(self)
     for (const [k, v] of that.entries()) {
       if (out.has(k)) {
@@ -56,4 +62,4 @@ export const Semigroup: semigroup.Semigroup<InterpreterSupport> = semigroup.from
 /**
  * @since 1.0.0
  */
-export const Monoid: monoid.Monoid<InterpreterSupport> = monoid.fromSemigroup(Semigroup, empty)
+export const Monoid: monoid.Monoid<Support> = monoid.fromSemigroup(Semigroup, empty)

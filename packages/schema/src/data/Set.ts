@@ -15,17 +15,12 @@ import {
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
-import type { InterpreterSupport } from "@fp-ts/codec/Support"
+import type * as support from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
  */
 export const id = Symbol.for("@fp-ts/codec/data/Set")
-
-/**
- * @since 1.0.0
- */
-export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, item)
 
 /**
  * @since 1.0.0
@@ -73,9 +68,14 @@ export const Show = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
 /**
  * @since 1.0.0
  */
-export const Support: InterpreterSupport = new Map([
+export const Support: support.Support = new Map([
   [GuardInterpreterId, new Map<symbol, Function>([[id, Guard]])],
   [ArbitraryInterpreterId, new Map<symbol, Function>([[id, Arbitrary]])],
   [ShowInterpreterId, new Map<symbol, Function>([[id, Show]])],
   [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, Decoder]])]
 ])
+
+/**
+ * @since 1.0.0
+ */
+export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, Support, item)
