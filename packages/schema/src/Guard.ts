@@ -2,14 +2,16 @@
  * @since 1.0.0
  */
 
-import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
+import { GuardInterpreterId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import type { InterpreterSupport } from "@fp-ts/codec/Support"
+import { empty, findSupport } from "@fp-ts/codec/Support"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import { identity, pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -120,150 +122,117 @@ export const lazy = <A>(
 const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
-const GuardAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/annotation/GuardAnnotation"
-) as GuardAnnotationId
-
-/**
- * @since 1.0.0
- * @category symbol
- */
-export type GuardAnnotationId = typeof GuardAnnotationId
-
 /**
  * @since 1.0.0
  */
-export interface GuardAnnotation {
-  readonly _id: GuardAnnotationId
-  readonly guardFor: (
-    annotations: A.Annotations,
-    ...guards: ReadonlyArray<Guard<any>>
-  ) => Guard<any>
+export interface GuardSupport {
+  (...guards: ReadonlyArray<Guard<any>>): Guard<any>
 }
 
 /**
  * @since 1.0.0
  */
-export const makeGuardAnnotation = (
-  guardFor: (
-    annotations: A.Annotations,
-    ...guards: ReadonlyArray<Guard<any>>
-  ) => Guard<any>
-): GuardAnnotation => ({ _id: GuardAnnotationId, guardFor })
-
-/**
- * @since 1.0.0
- */
-export const isGuardAnnotation = (u: unknown): u is GuardAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === GuardAnnotationId
-
-/**
- * @since 1.0.0
- */
-export const unsafeGuardFor = <A>(schema: Schema<A>): Guard<A> => {
-  const go = (ast: AST): Guard<any> => {
-    switch (ast._tag) {
-      case "Declaration": {
-        return pipe(
-          A.find(ast.annotations, isGuardAnnotation),
-          O.map((annotation) => annotation.guardFor(ast.annotations, ...ast.nodes.map(go))),
-          O.match(() => {
-            throw new Error(
-              `Missing "GuardAnnotation" for ${
-                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-              }`
-            )
-          }, identity)
-        )
-      }
-      case "String": {
-        let out = string
-        if (ast.minLength !== undefined) {
-          out = minLength(ast.minLength)(out)
+export const unsafeGuardFor = (supports: InterpreterSupport) =>
+  <A>(schema: Schema<A>): Guard<A> => {
+    const go = (ast: AST): Guard<any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const support: O.Option<GuardSupport> = findSupport(supports, GuardInterpreterId, ast.id)
+          if (O.isSome(support)) {
+            return support.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
+          )
         }
-        if (ast.maxLength !== undefined) {
-          out = maxLength(ast.maxLength)(out)
+        case "String": {
+          let out = string
+          if (ast.minLength !== undefined) {
+            out = minLength(ast.minLength)(out)
+          }
+          if (ast.maxLength !== undefined) {
+            out = maxLength(ast.maxLength)(out)
+          }
+          return out
         }
-        return out
-      }
-      case "Number": {
-        let out = number
-        if (ast.minimum !== undefined) {
-          out = minimum(ast.minimum)(out)
+        case "Number": {
+          let out = number
+          if (ast.minimum !== undefined) {
+            out = minimum(ast.minimum)(out)
+          }
+          if (ast.maximum !== undefined) {
+            out = maximum(ast.maximum)(out)
+          }
+          return out
         }
-        if (ast.maximum !== undefined) {
-          out = maximum(ast.maximum)(out)
+        case "Boolean":
+          return boolean
+        case "Of":
+          return make(S.make(ast), (u): u is any => u === ast.value)
+        case "Tuple": {
+          const components = ast.components.map(go)
+          const restElement = pipe(ast.restElement, O.map(go))
+          return make(
+            S.make(ast),
+            (a): a is any =>
+              Array.isArray(a) &&
+              components.every((guard, i) => guard.is(a[i])) &&
+              (pipe(
+                restElement,
+                O.map((rest) => a.slice(components.length).every(rest.is)),
+                O.getOrElse(true)
+              ))
+          )
         }
-        return out
-      }
-      case "Boolean":
-        return boolean
-      case "Of":
-        return make(S.make(ast), (u): u is any => u === ast.value)
-      case "Tuple": {
-        const components = ast.components.map(go)
-        const restElement = pipe(ast.restElement, O.map(go))
-        return make(
-          S.make(ast),
-          (a): a is any =>
-            Array.isArray(a) &&
-            components.every((guard, i) => guard.is(a[i])) &&
-            (pipe(
-              restElement,
-              O.map((rest) => a.slice(components.length).every(rest.is)),
-              O.getOrElse(true)
-            ))
-        )
-      }
-      case "Union": {
-        const members = ast.members.map(go)
-        return make(
-          S.make(ast),
-          (a): a is any => members.some((guard) => guard.is(a))
-        )
-      }
-      case "Struct": {
-        const fields = {}
-        for (const field of ast.fields) {
-          fields[field.key] = go(field.value)
+        case "Union": {
+          const members = ast.members.map(go)
+          return make(
+            S.make(ast),
+            (a): a is any => members.some((guard) => guard.is(a))
+          )
         }
-        const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
-        return make(
-          S.make(ast),
-          (a): a is any => {
-            if (!isUnknownIndexSignature(a)) {
-              return false
-            }
-            for (const key of Object.keys(fields)) {
-              if (!fields[key].is(a[key])) {
+        case "Struct": {
+          const fields = {}
+          for (const field of ast.fields) {
+            fields[field.key] = go(field.value)
+          }
+          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          return make(
+            S.make(ast),
+            (a): a is any => {
+              if (!isUnknownIndexSignature(a)) {
                 return false
               }
-            }
-            if (O.isSome(oIndexSignature)) {
-              const indexSignature = oIndexSignature.value
-              for (const key of Object.keys(a)) {
-                if (!(key in fields) && !indexSignature.is(a[key])) {
+              for (const key of Object.keys(fields)) {
+                if (!fields[key].is(a[key])) {
                   return false
                 }
               }
+              if (O.isSome(oIndexSignature)) {
+                const indexSignature = oIndexSignature.value
+                for (const key of Object.keys(a)) {
+                  if (!(key in fields) && !indexSignature.is(a[key])) {
+                    return false
+                  }
+                }
+              }
+              return true
             }
-            return true
-          }
-        )
+          )
+        }
+        case "Lazy":
+          return lazy(() => go(ast.f()))
       }
-      case "Lazy":
-        return lazy(() => go(ast.f()))
     }
-  }
 
-  return go(schema.ast)
-}
+    return go(schema.ast)
+  }
 
 /**
  * @since 1.0.0
  */
 export const FromSchema: ofSchema.OfSchema<GuardTypeLambda> = {
-  ofSchema: unsafeGuardFor
+  ofSchema: unsafeGuardFor(empty)
 }
 
 /**
@@ -319,7 +288,7 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(nativeEnum
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
+) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(empty)(f(guard))
 
 /**
  * @since 1.0.0

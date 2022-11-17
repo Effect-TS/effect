@@ -1,13 +1,19 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Annotation"
 import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
+import {
+  ArbitraryInterpreterId,
+  GuardInterpreterId,
+  JsonDecoderInterpreterId,
+  ShowInterpreterId
+} from "@fp-ts/codec/internal/Interpreter"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
+import type { InterpreterSupport } from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
@@ -33,13 +39,12 @@ export type Json =
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.declare(Symbol("@fp-ts/codec/data/Json"), [
-  A.makeNameAnnotation("@fp-ts/codec/data/Json"),
-  G.makeGuardAnnotation(() => Guard),
-  D.makeDecoderAnnotation(() => Decoder),
-  arbitrary.makeArbitraryAnnotation(() => Arbitrary),
-  show.makeShowAnnotation(() => Show)
-])
+export const id = Symbol.for("@fp-ts/codec/data/Json")
+
+/**
+ * @since 1.0.0
+ */
+export const Schema: S.Schema<Json> = S.declare(id)
 
 /**
  * @since 1.0.0
@@ -94,3 +99,13 @@ export const Show: show.Show<Json> = show.make(
   Schema,
   (json) => JSON.stringify(json)
 )
+
+/**
+ * @since 1.0.0
+ */
+export const Support: InterpreterSupport = new Map([
+  [GuardInterpreterId, new Map<symbol, Function>([[id, () => Guard]])],
+  [ArbitraryInterpreterId, new Map<symbol, Function>([[id, () => Arbitrary]])],
+  [ShowInterpreterId, new Map<symbol, Function>([[id, () => Show]])],
+  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, () => Decoder]])]
+])

@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as A from "@fp-ts/codec/Annotation"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
@@ -23,43 +22,6 @@ export interface Decoder<in I, in out A> extends Schema<A> {
  */
 export const make = <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]): Decoder<I, A> =>
   ({ ast: schema.ast, decode }) as any
-
-const DecoderAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/annotation/DecoderAnnotation"
-) as DecoderAnnotationId
-
-/**
- * @since 1.0.0
- * @category symbol
- */
-export type DecoderAnnotationId = typeof DecoderAnnotationId
-
-/**
- * @since 1.0.0
- */
-export interface DecoderAnnotation {
-  readonly _id: DecoderAnnotationId
-  readonly decoderFor: (
-    annotations: A.Annotations,
-    ...decoders: ReadonlyArray<Decoder<any, any>>
-  ) => Decoder<any, any>
-}
-
-/**
- * @since 1.0.0
- */
-export const makeDecoderAnnotation = (
-  decoderFor: (
-    annotations: A.Annotations,
-    ...decoders: ReadonlyArray<Decoder<any, any>>
-  ) => Decoder<any, any>
-): DecoderAnnotation => ({ _id: DecoderAnnotationId, decoderFor })
-
-/**
- * @since 1.0.0
- */
-export const isDecoderAnnotation = (u: unknown): u is DecoderAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === DecoderAnnotationId
 
 /**
  * @since 1.0.0

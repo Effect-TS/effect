@@ -1,8 +1,9 @@
-import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import { identity, pipe } from "@fp-ts/data/Function"
+import type { InterpreterSupport } from "@fp-ts/codec/Support"
+import { empty, findSupport } from "@fp-ts/codec/Support"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import Ajv from "ajv"
 
@@ -23,89 +24,74 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
-const JSONSchemaAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/annotation/JSONSchemaAnnotation"
-) as JSONSchemaAnnotationId
+export const JSONSchemaInterpreterId: unique symbol = Symbol.for(
+  "@fp-ts/codec/interpreter/JSONSchemaInterpreter"
+)
+
+export type JSONSchemaInterpreterId = typeof JSONSchemaInterpreterId
 
 /**
  * @since 1.0.0
- * @category symbol
  */
-export type JSONSchemaAnnotationId = typeof JSONSchemaAnnotationId
-
-export interface JSONSchemaAnnotation {
-  readonly _id: JSONSchemaAnnotationId
-  readonly jsonSchemaFor: (
-    annotations: A.Annotations,
-    ...jsonSchemas: ReadonlyArray<JSONSchema>
-  ) => JSONSchema
+export interface JSONSchemaSupport {
+  (...jsonSchemas: ReadonlyArray<JSONSchema>): JSONSchema
 }
 
-/**
- * @since 1.0.0
- */
-export const jsonSchemaAnnotation = (
-  jsonSchemaFor: (
-    annotations: A.Annotations,
-    ...jsonSchemas: ReadonlyArray<JSONSchema>
-  ) => JSONSchema
-): JSONSchemaAnnotation => ({ _id: JSONSchemaAnnotationId, jsonSchemaFor })
-
-export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === JSONSchemaAnnotationId
-
-export const unsafeJsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
-  const go = (ast: AST): JSONSchema => {
-    switch (ast._tag) {
-      case "Declaration": {
-        return pipe(
-          A.find(ast.annotations, isJSONSchemaAnnotation),
-          O.map((annotation) => annotation.jsonSchemaFor(ast.annotations, ...ast.nodes.map(go))),
-          O.match(() => {
-            throw new Error(
-              `Missing "JSONSchemaAnnotation" for ${
-                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-              }`
-            )
-          }, identity)
-        )
+export const unsafeJsonSchemaFor = (
+  supports: InterpreterSupport
+) =>
+  <A>(schema: Schema<A>): JSONSchema => {
+    const go = (ast: AST): JSONSchema => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const support: O.Option<JSONSchemaSupport> = findSupport(
+            supports,
+            JSONSchemaInterpreterId,
+            ast.id
+          )
+          if (O.isSome(support)) {
+            return support.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for JSONSchema interpreter, data type ${String(ast.id.description)}`
+          )
+        }
+        case "String":
+          return {
+            type: "string",
+            minLength: ast.minLength,
+            maxLength: ast.maxLength
+          }
+        case "Number":
+          return {
+            type: "number",
+            minimum: ast.minimum,
+            maximum: ast.maximum,
+            exclusiveMinimum: ast.exclusiveMinimum,
+            exclusiveMaximum: ast.exclusiveMaximum
+          }
+        case "Boolean":
+          return { type: "boolean" }
       }
-      case "String":
-        return {
-          type: "string",
-          minLength: ast.minLength,
-          maxLength: ast.maxLength
-        }
-      case "Number":
-        return {
-          type: "number",
-          minimum: ast.minimum,
-          maximum: ast.maximum,
-          exclusiveMinimum: ast.exclusiveMinimum,
-          exclusiveMaximum: ast.exclusiveMaximum
-        }
-      case "Boolean":
-        return { type: "boolean" }
+      throw new Error(`Unhandled ${ast._tag}`)
     }
-    throw new Error(`Unhandled ${ast._tag}`)
+
+    return go(schema.ast)
   }
 
-  return go(schema.ast)
-}
-
 describe("unsafeJsonSchemaFor", () => {
-  const jsonSchemaFor_ = unsafeJsonSchemaFor
+  const unsafeJsonSchemaFor_ = unsafeJsonSchemaFor(empty)
 
   it("string", () => {
     const schema = S.string
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
+    const validate = new Ajv().compile(unsafeJsonSchemaFor_(schema))
     expect(validate("a")).toEqual(true)
     expect(validate(1)).toEqual(false)
   })
 
   it("boolean", () => {
     const schema = S.boolean
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
+    const validate = new Ajv().compile(unsafeJsonSchemaFor_(schema))
     expect(validate(true)).toEqual(true)
     expect(validate(false)).toEqual(true)
     expect(validate(1)).toEqual(false)
@@ -113,13 +99,13 @@ describe("unsafeJsonSchemaFor", () => {
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const jsonSchema = jsonSchemaFor_(schema)
+    const jsonSchema = unsafeJsonSchemaFor_(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
+    const validate = new Ajv().compile(unsafeJsonSchemaFor_(schema))
     expect(validate("")).toEqual(true)
     expect(validate("a")).toEqual(true)
 
@@ -128,7 +114,7 @@ describe("unsafeJsonSchemaFor", () => {
 
   it("minimum", () => {
     const schema = pipe(S.number, S.minimum(1))
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
+    const validate = new Ajv().compile(unsafeJsonSchemaFor_(schema))
     expect(validate(1)).toEqual(true)
     expect(validate(2)).toEqual(true)
 
@@ -137,7 +123,7 @@ describe("unsafeJsonSchemaFor", () => {
 
   it("maximum", () => {
     const schema = pipe(S.number, S.maximum(1))
-    const validate = new Ajv().compile(jsonSchemaFor_(schema))
+    const validate = new Ajv().compile(unsafeJsonSchemaFor_(schema))
     expect(validate(0)).toEqual(true)
     expect(validate(1)).toEqual(true)
 

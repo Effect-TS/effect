@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as annotation from "@fp-ts/codec/Annotation"
 import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as ast from "@fp-ts/codec/AST"
 import * as codec from "@fp-ts/codec/Codec"
@@ -22,16 +21,13 @@ import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 
 // data types
 import * as any from "@fp-ts/codec/data/any"
+import * as bigint from "@fp-ts/codec/data/bigint"
 import * as json from "@fp-ts/codec/data/Json"
 import * as never from "@fp-ts/codec/data/never"
 import * as set from "@fp-ts/codec/data/Set"
 import * as unknown from "@fp-ts/codec/data/unknown"
 
 export {
-  /**
-   * @since 1.0.0
-   */
-  annotation,
   /**
    * @since 1.0.0
    */
@@ -44,6 +40,10 @@ export {
    * @since 1.0.0
    */
   ast,
+  /**
+   * @since 1.0.0
+   */
+  bigint,
   /**
    * @since 1.0.0
    */

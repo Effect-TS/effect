@@ -1,33 +1,31 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Annotation"
 import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
+import {
+  ArbitraryInterpreterId,
+  GuardInterpreterId,
+  JsonDecoderInterpreterId,
+  ShowInterpreterId
+} from "@fp-ts/codec/internal/Interpreter"
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
+import type { InterpreterSupport } from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
  */
-export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> =>
-  S.declare(Symbol("@fp-ts/codec/data/Set"), [
-    A.makeNameAnnotation("@fp-ts/codec/data/Set"),
-    arbitrary.makeArbitraryAnnotation(<A>(
-      _: A.Annotations,
-      item: arbitrary.Arbitrary<A>
-    ): arbitrary.Arbitrary<Set<A>> => Arbitrary(item)),
-    D.makeDecoderAnnotation(<A>(
-      _: A.Annotations,
-      item: D.Decoder<J.Json, A>
-    ): D.Decoder<J.Json, Set<A>> => Decoder(item)),
-    G.makeGuardAnnotation(<A>(_: A.Annotations, item: G.Guard<A>): G.Guard<Set<A>> => Guard(item)),
-    Sh.makeShowAnnotation(<A>(_: A.Annotations, item: Sh.Show<A>): Sh.Show<Set<A>> => Show(item))
-  ], item)
+export const id = Symbol.for("@fp-ts/codec/data/Set")
+
+/**
+ * @since 1.0.0
+ */
+export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, item)
 
 /**
  * @since 1.0.0
@@ -71,3 +69,13 @@ export const Arbitrary = <A>(item: arbitrary.Arbitrary<A>): arbitrary.Arbitrary<
  */
 export const Show = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
   Sh.make(Schema(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
+
+/**
+ * @since 1.0.0
+ */
+export const Support: InterpreterSupport = new Map([
+  [GuardInterpreterId, new Map<symbol, Function>([[id, Guard]])],
+  [ArbitraryInterpreterId, new Map<symbol, Function>([[id, Arbitrary]])],
+  [ShowInterpreterId, new Map<symbol, Function>([[id, Show]])],
+  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, Decoder]])]
+])

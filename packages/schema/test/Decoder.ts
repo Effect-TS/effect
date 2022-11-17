@@ -1,4 +1,3 @@
-import * as A from "@fp-ts/codec/Annotation"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as T from "@fp-ts/codec/internal/These"
@@ -21,30 +20,6 @@ describe("Decoder", () => {
     expect(pipe(T.both(["e1"], 1), D.flatMap(() => T.both(["e2"], 2)))).toEqual(
       T.both(["e1", "e2"], 2)
     )
-  })
-
-  it("should allow custom errors", () => {
-    const bigintS: S.Schema<bigint> = S.declare(Symbol("@fp-ts/codec/data/bigint"), [
-      A.makeNameAnnotation("@fp-ts/codec/data/bigint")
-    ])
-
-    interface NoBigInt {
-      readonly _tag: "NoBigInt"
-    }
-
-    const noBigInt: NoBigInt = { _tag: "NoBigInt" }
-
-    const bigint = D.make(
-      bigintS,
-      (u) => typeof u === "bigint" ? D.succeed(u) : D.fail(DE.custom(noBigInt, u))
-    )
-
-    const decoder = bigint
-    expect(decoder.decode(BigInt("1"))).toEqual(D.succeed(BigInt("1")))
-    // expect(decoder.decode(new Set([1, 2, 3]))).toEqual(D.succeed(new Set([1, 2, 3])))
-
-    // expect(decoder.decode(null)).toEqual(D.fail(DE.custom(setError, null)))
-    // expect(decoder.decode(new Set([1, "a", 3]))).toEqual(D.fail(DE.notType("number", "a")))
   })
 
   it("string", () => {

@@ -7,12 +7,17 @@ import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
 import * as fc from "fast-check"
 
+const unsafeGuardFor = G.unsafeGuardFor(Json.Support)
+const unsafeArbitraryFor = A.unsafeArbitraryFor(Json.Support)
+const unsafeShowFor = show.unsafeShowFor(Json.Support)
+const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor(Json.Support)
+
 describe("Json", () => {
   it("Json", () => {
     const schema = Json.Schema
-    const arbitrary = A.unsafeArbitraryFor(schema)
-    const guard = G.unsafeGuardFor(schema)
-    const decoder = JC.JsonCodec.unsafeDecoderFor(schema)
+    const arbitrary = unsafeArbitraryFor(schema)
+    const guard = unsafeGuardFor(schema)
+    const decoder = unsafeDecoderFor(schema)
     fc.assert(fc.property(arbitrary.arbitrary(fc), (json) => {
       guard.is(json) && T.isRight(decoder.decode(json))
     }))
@@ -30,8 +35,8 @@ describe("Json", () => {
         S.indexSignature(manualSchema)
       )
     )
-    const jsonShow = show.unsafeShowFor(schema)
-    const manualJsonShow = show.unsafeShowFor(manualSchema)
+    const jsonShow = unsafeShowFor(schema)
+    const manualJsonShow = unsafeShowFor(manualSchema)
     const json: Json.Json = { a: [1, null] }
     expect(jsonShow.show(json)).toEqual(manualJsonShow.show(json))
   })

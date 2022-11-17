@@ -5,25 +5,25 @@ import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
+const unsafeGuardFor = G.unsafeGuardFor(set.Support)
+const unsafeArbitraryFor = Arb.unsafeArbitraryFor(set.Support)
+
 describe("Arbitrary", () => {
   const sampleSize = 100
 
   it("minLength", () => {
     const arbitrary = pipe(Arb.string, Arb.minLength(1))
-    const guard = G.unsafeGuardFor(arbitrary)
+    const guard = unsafeGuardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
   })
 
   it("maxLength", () => {
     const arbitrary = pipe(Arb.string, Arb.maxLength(2))
-    const guard = G.unsafeGuardFor(arbitrary)
+    const guard = unsafeGuardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
   })
 
   describe("unsafeArbitraryFor", () => {
-    const unsafeArbitraryFor = Arb.unsafeArbitraryFor
-    const unsafeGuardFor = G.unsafeGuardFor
-
     it("declaration", () => {
       const schema = set.Schema(S.string)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)

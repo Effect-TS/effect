@@ -6,32 +6,11 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
+const unsafeEncoderFor = JC.JsonCodec.unsafeEncoderFor(set.Support)
+const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor(set.Support)
+
 describe("JsonCodec", () => {
-  describe("unsafeEncoderFor", () => {
-    const unsafeEncoderFor = JC.JsonCodec.unsafeEncoderFor
-
-    it("string", () => {
-      const schema = S.string
-      const encoder = unsafeEncoderFor(schema)
-      expect(encoder.encode("a")).toEqual("a")
-    })
-
-    it("number", () => {
-      const schema = S.number
-      const encoder = unsafeEncoderFor(schema)
-      expect(encoder.encode(1)).toEqual(1)
-    })
-
-    it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
-      const encoder = unsafeEncoderFor(schema)
-      expect(encoder.encode(["a", 1])).toEqual(["a", 1])
-    })
-  })
-
   describe("unsafeDecoderFor", () => {
-    const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor
-
     it("declaration", () => {
       const schema = set.Schema(S.number)
       const decoder = unsafeDecoderFor(schema)
@@ -195,6 +174,26 @@ describe("JsonCodec", () => {
       expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
         D.fail(DE.notType("Object", 1))
       )
+    })
+  })
+
+  describe("unsafeEncoderFor", () => {
+    it("string", () => {
+      const schema = S.string
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode("a")).toEqual("a")
+    })
+
+    it("number", () => {
+      const schema = S.number
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode(1)).toEqual(1)
+    })
+
+    it("tuple", () => {
+      const schema = S.tuple(true, S.string, S.number)
+      const encoder = unsafeEncoderFor(schema)
+      expect(encoder.encode(["a", 1])).toEqual(["a", 1])
     })
   })
 })

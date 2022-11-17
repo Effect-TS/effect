@@ -5,21 +5,21 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
+const unsafeShowFor = show.unsafeShowFor(set.Support)
+
 describe("Show", () => {
   it("struct", () => {
     const schema = S.struct({ a: S.string, b: S.struct({ c: S.number }) })
-    expect(show.unsafeShowFor(schema).show({ a: "a", b: { c: 1 } })).toEqual(
+    expect(unsafeShowFor(schema).show({ a: "a", b: { c: 1 } })).toEqual(
       "{\"a\":\"a\",\"b\":{\"c\":1}}"
     )
     const schema2 = pipe(schema, S.pick("b"))
-    expect(show.unsafeShowFor(schema2).show({ b: { c: 1 } })).toEqual(
+    expect(unsafeShowFor(schema2).show({ b: { c: 1 } })).toEqual(
       "{\"b\":{\"c\":1}}"
     )
   })
 
   describe("unsafeShowFor", () => {
-    const unsafeShowFor = show.unsafeShowFor
-
     it("declaration", () => {
       const schema = set.Schema(S.string)
       expect(unsafeShowFor(schema).show(new Set("a"))).toEqual(

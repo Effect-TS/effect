@@ -1,14 +1,16 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
+import { ArbitraryInterpreterId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import type { InterpreterSupport } from "@fp-ts/codec/Support"
+import { empty, findSupport } from "@fp-ts/codec/Support"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import { identity, pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type * as FastCheck from "fast-check"
 
@@ -105,136 +107,107 @@ export const lazy = <A>(
   )
 }
 
-const ArbitraryAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/codec/annotation/ArbitraryAnnotation"
-) as ArbitraryAnnotationId
-
-/**
- * @since 1.0.0
- * @category symbol
- */
-export type ArbitraryAnnotationId = typeof ArbitraryAnnotationId
-
 /**
  * @since 1.0.0
  */
-export interface ArbitraryAnnotation {
-  readonly _id: ArbitraryAnnotationId
-  readonly arbitraryFor: (
-    annotations: A.Annotations,
-    ...arbs: ReadonlyArray<Arbitrary<any>>
-  ) => Arbitrary<any>
+export interface ArbitrarySupport {
+  (...arbitraries: ReadonlyArray<Arbitrary<any>>): Arbitrary<any>
 }
 
 /**
  * @since 1.0.0
  */
-export const makeArbitraryAnnotation = (
-  arbitraryFor: (
-    annotations: A.Annotations,
-    ...arbs: ReadonlyArray<Arbitrary<any>>
-  ) => Arbitrary<any>
-): ArbitraryAnnotation => ({ _id: ArbitraryAnnotationId, arbitraryFor })
-
-/**
- * @since 1.0.0
- */
-export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
-  typeof u === "object" && u != null && "_id" in u && u["_id"] === ArbitraryAnnotationId
-
-/**
- * @since 1.0.0
- */
-export const unsafeArbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
-  const go = (ast: AST): Arbitrary<any> => {
-    switch (ast._tag) {
-      case "Declaration": {
-        return pipe(
-          A.find(ast.annotations, isArbitraryAnnotation),
-          O.map((annotation) => annotation.arbitraryFor(ast.annotations, ...ast.nodes.map(go))),
-          O.match(() => {
-            throw new Error(
-              `Missing "ArbitraryAnnotation" for ${
-                pipe(A.getName(ast.annotations), O.getOrElse("<anonymous data type>"))
-              }`
-            )
-          }, identity)
-        )
-      }
-      case "String": {
-        let out = string
-        if (ast.minLength !== undefined) {
-          out = minLength(ast.minLength)(out)
-        }
-        if (ast.maxLength !== undefined) {
-          out = maxLength(ast.maxLength)(out)
-        }
-        return out
-      }
-      case "Number": {
-        let out = number
-        if (ast.minimum !== undefined) {
-          out = minimum(ast.minimum)(out)
-        }
-        if (ast.maximum !== undefined) {
-          out = maximum(ast.maximum)(out)
-        }
-        return out
-      }
-      case "Boolean":
-        return boolean
-      case "Of":
-        return make(S.make(ast), (fc) => fc.constant(ast.value))
-      case "Tuple": {
-        const components = ast.components.map(go)
-        const restElement = pipe(ast.restElement, O.map(go))
-        if (O.isSome(restElement)) {
-          return make(
-            S.make(ast),
-            (fc) =>
-              fc.tuple(...components.map((c) => c.arbitrary(fc))).chain((as) =>
-                fc.array(restElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
-              )
+export const unsafeArbitraryFor = (supports: InterpreterSupport) =>
+  <A>(schema: Schema<A>): Arbitrary<A> => {
+    const go = (ast: AST): Arbitrary<any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const support: O.Option<ArbitrarySupport> = findSupport(
+            supports,
+            ArbitraryInterpreterId,
+            ast.id
+          )
+          if (O.isSome(support)) {
+            return support.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
           )
         }
-        return make(
-          S.make(ast),
-          (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc)))
-        )
-      }
-      case "Union": {
-        const members = ast.members.map(go)
-        return make(
-          S.make(ast),
-          (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
-        )
-      }
-      case "Struct": {
-        const fields = ast.fields.map((field) => go(field.value))
-        return make(
-          S.make(ast),
-          (fc) => {
-            const arbs: any = {}
-            for (let i = 0; i < fields.length; i++) {
-              arbs[ast.fields[i].key] = fields[i].arbitrary(fc)
-            }
-            return fc.record(arbs)
+        case "String": {
+          let out = string
+          if (ast.minLength !== undefined) {
+            out = minLength(ast.minLength)(out)
           }
-        )
+          if (ast.maxLength !== undefined) {
+            out = maxLength(ast.maxLength)(out)
+          }
+          return out
+        }
+        case "Number": {
+          let out = number
+          if (ast.minimum !== undefined) {
+            out = minimum(ast.minimum)(out)
+          }
+          if (ast.maximum !== undefined) {
+            out = maximum(ast.maximum)(out)
+          }
+          return out
+        }
+        case "Boolean":
+          return boolean
+        case "Of":
+          return make(S.make(ast), (fc) => fc.constant(ast.value))
+        case "Tuple": {
+          const components = ast.components.map(go)
+          const restElement = pipe(ast.restElement, O.map(go))
+          if (O.isSome(restElement)) {
+            return make(
+              S.make(ast),
+              (fc) =>
+                fc.tuple(...components.map((c) => c.arbitrary(fc))).chain((as) =>
+                  fc.array(restElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
+                )
+            )
+          }
+          return make(
+            S.make(ast),
+            (fc) => fc.tuple(...components.map((c) => c.arbitrary(fc)))
+          )
+        }
+        case "Union": {
+          const members = ast.members.map(go)
+          return make(
+            S.make(ast),
+            (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+          )
+        }
+        case "Struct": {
+          const fields = ast.fields.map((field) => go(field.value))
+          return make(
+            S.make(ast),
+            (fc) => {
+              const arbs: any = {}
+              for (let i = 0; i < fields.length; i++) {
+                arbs[ast.fields[i].key] = fields[i].arbitrary(fc)
+              }
+              return fc.record(arbs)
+            }
+          )
+        }
+        case "Lazy":
+          return lazy(() => go(ast.f()))
       }
-      case "Lazy":
-        return lazy(() => go(ast.f()))
     }
-  }
 
-  return go(schema.ast)
-}
+    return go(schema.ast)
+  }
 
 /**
  * @since 1.0.0
  */
 export const FromSchema: ofSchema.OfSchema<ArbitraryTypeLambda> = {
-  ofSchema: unsafeArbitraryFor
+  ofSchema: unsafeArbitraryFor(empty)
 }
 
 /**
@@ -291,7 +264,7 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
+) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(empty)(f(arb))
 
 /**
  * @since 1.0.0

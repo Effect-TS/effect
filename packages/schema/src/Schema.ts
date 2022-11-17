@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Annotation"
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import * as internal from "@fp-ts/codec/internal/Schema"
@@ -25,20 +24,8 @@ export const make: <A>(ast: AST) => Schema<A> = internal.make
 /**
  * @since 1.0.0
  */
-export const withName = (name: string) =>
-  <A>(schema: Schema<A>): Schema<A> => {
-    const annotations = schema.ast.annotations.filter((a) => !A.isNameAnnotation(a)).concat([
-      A.makeNameAnnotation(name)
-    ])
-    return make({ ...schema.ast, annotations })
-  }
-
-/**
- * @since 1.0.0
- */
 export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
-  annotations: A.Annotations,
   ...schemas: Schemas
 ) => Schema<any> = internal.declare
 
