@@ -4,27 +4,17 @@
 
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { InvariantSchema } from "@fp-ts/codec/typeclass/InvariantSchema"
-import type { Kind, TypeLambda } from "@fp-ts/core/HKT"
+import type { Kind, TypeClass, TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 
 /**
  * @since 1.0.0
  */
-export interface CovariantSchema<F extends TypeLambda> extends InvariantSchema<F> {
+export interface CovariantSchema<F extends TypeLambda> extends TypeClass<F> {
   readonly mapSchema: <A, B>(
     f: (schema: Schema<A>) => Schema<B>
   ) => <I, O, E>(self: Kind<F, I, O, E, A>) => Kind<F, I, O, E, B>
 }
-
-/**
- * Returns a default `imapSchema` implementation.
- *
- * @since 1.0.0
- */
-export const imap = <F extends TypeLambda>(
-  mapSchema: CovariantSchema<F>["mapSchema"]
-): InvariantSchema<F>["imapSchema"] => (to, _) => mapSchema(to)
 
 /**
  * @since 1.0.0

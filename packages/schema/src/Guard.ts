@@ -238,7 +238,7 @@ export const unsafeGuardFor: <A>(schema: Schema<A>) => Guard<A> = provideUnsafeG
  * @since 1.0.0
  */
 export const FromSchema: ofSchema.OfSchema<GuardTypeLambda> = {
-  ofSchema: provideUnsafeGuardFor(empty)
+  ofSchema: unsafeGuardFor
 }
 
 /**
@@ -294,13 +294,12 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(nativeEnum
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => provideUnsafeGuardFor(empty)(f(guard))
+) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
 
 /**
  * @since 1.0.0
  */
 export const CovariantSchema: covariantSchema.CovariantSchema<GuardTypeLambda> = {
-  imapSchema: covariantSchema.imap<GuardTypeLambda>(mapSchema),
   mapSchema
 }
 

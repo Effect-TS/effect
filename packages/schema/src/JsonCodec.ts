@@ -214,7 +214,7 @@ export const provideUnsafeEncoderFor = (
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.provideUnsafeGuardFor(empty)(S.make(member)))
+          const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
           return E.make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].encode(a)

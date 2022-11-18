@@ -208,8 +208,15 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
+export const unsafeArbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideUnsafeArbitraryFor(
+  empty
+)
+
+/**
+ * @since 1.0.0
+ */
 export const FromSchema: ofSchema.OfSchema<ArbitraryTypeLambda> = {
-  ofSchema: provideUnsafeArbitraryFor(empty)
+  ofSchema: unsafeArbitraryFor
 }
 
 /**
@@ -266,13 +273,12 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => provideUnsafeArbitraryFor(empty)(f(arb))
+) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
 
 /**
  * @since 1.0.0
  */
 export const CovariantSchema: covariantSchema.CovariantSchema<ArbitraryTypeLambda> = {
-  imapSchema: covariantSchema.imap<ArbitraryTypeLambda>(mapSchema),
   mapSchema
 }
 

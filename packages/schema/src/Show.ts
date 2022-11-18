@@ -88,7 +88,7 @@ export const provideUnsafeShowFor = (provider: Provider) =>
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.provideUnsafeGuardFor(empty)(S.make(member)))
+          const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
           return make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].show(a)
@@ -135,4 +135,4 @@ export const provideUnsafeShowFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeShowFor = provideUnsafeShowFor(empty)
+export const unsafeShowFor: <A>(schema: Schema<A>) => Show<A> = provideUnsafeShowFor(empty)
