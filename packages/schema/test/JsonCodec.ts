@@ -6,10 +6,27 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
-const unsafeEncoderFor = JC.JsonCodec.unsafeEncoderFor(set.Support)
-const unsafeDecoderFor = JC.JsonCodec.unsafeDecoderFor(set.Support)
+const unsafeEncoderFor = JC.unsafeEncoderForProvider(set.Support)
+const unsafeDecoderFor = JC.unsafeDecoderForProvider(set.Support)
 
 describe("JsonCodec", () => {
+  describe("README", () => {
+    it("Creating a simple string schema", () => {
+      const mySchema = S.string
+      const decoder = JC.unsafeDecoderFor(mySchema)
+      expect(decoder.decode("tuna")).toEqual(D.succeed("tuna"))
+    })
+
+    it("Creating an object schema", () => {
+      const User = S.struct({
+        username: S.string
+      })
+      const decoder = JC.unsafeDecoderFor(User)
+      expect(decoder.decode({ username: "Ludwig" })).toEqual(D.succeed({ username: "Ludwig" }))
+      type User = S.Infer<typeof User>
+    })
+  })
+
   describe("unsafeDecoderFor", () => {
     it("declaration", () => {
       const schema = set.Schema(S.number)

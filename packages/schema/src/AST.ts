@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+
 import type { Support } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"

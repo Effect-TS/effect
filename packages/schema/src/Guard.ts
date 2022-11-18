@@ -246,7 +246,7 @@ export const of: <A>(a: A) => Guard<A> = ofSchema.of(FromSchema)
  */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-) => Guard<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = ofSchema
+) => Guard<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = ofSchema
   .tuple(FromSchema)
 
 /**
@@ -254,7 +254,7 @@ export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Guard<Parameters<Members[number]["A"]>[0]> = ofSchema
+) => Guard<S.Infer<Members[number]>> = ofSchema
   .union(FromSchema)
 
 /**
@@ -262,7 +262,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-) => Guard<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = ofSchema
+) => Guard<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = ofSchema
   .struct(FromSchema)
 
 /**

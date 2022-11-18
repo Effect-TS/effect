@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import type { AST } from "@fp-ts/codec/AST"
-import type { Codec } from "@fp-ts/codec/Codec"
 import type * as J from "@fp-ts/codec/data/Json"
 import * as Json from "@fp-ts/codec/data/Json"
 import type { Decoder } from "@fp-ts/codec/Decoder"
@@ -29,7 +28,10 @@ export interface JsonDecoderSupport {
   (...decoders: ReadonlyArray<Decoder<J.Json, any>>): Decoder<J.Json, any>
 }
 
-const unsafeDecoderFor = (support: Support) =>
+/**
+ * @since 1.0.0
+ */
+export const unsafeDecoderForProvider = (support: Support) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
@@ -151,11 +153,19 @@ const unsafeDecoderFor = (support: Support) =>
 /**
  * @since 1.0.0
  */
+export const unsafeDecoderFor = unsafeDecoderForProvider(empty)
+
+/**
+ * @since 1.0.0
+ */
 export interface JSONEncodeSupport {
   (...encoders: ReadonlyArray<Encoder<J.Json, any>>): Encoder<J.Json, any>
 }
 
-const unsafeEncoderFor = (
+/**
+ * @since 1.0.0
+ */
+export const unsafeEncoderForProvider = (
   support: Support
 ) =>
   <A>(schema: Schema<A>): Encoder<J.Json, A> => {
@@ -233,7 +243,4 @@ const unsafeEncoderFor = (
 /**
  * @since 1.0.0
  */
-export const JsonCodec: Codec<J.Json> = {
-  unsafeDecoderFor,
-  unsafeEncoderFor
-}
+export const unsafeEncoderFor = unsafeEncoderForProvider(empty)

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+
 import type { AST } from "@fp-ts/codec/AST"
 import { ArbitraryInterpreterId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -221,7 +222,7 @@ export const of: <A>(a: A) => Arbitrary<A> = ofSchema.of(FromSchema)
  */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-) => Arbitrary<{ readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> = ofSchema
+) => Arbitrary<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = ofSchema
   .tuple(FromSchema)
 
 /**
@@ -229,7 +230,7 @@ export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Arbitrary<Parameters<Members[number]["A"]>[0]> = ofSchema
+) => Arbitrary<S.Infer<Members[number]>> = ofSchema
   .union(FromSchema)
 
 /**
@@ -237,7 +238,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-) => Arbitrary<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> = ofSchema
+) => Arbitrary<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = ofSchema
   .struct(FromSchema)
 
 /**

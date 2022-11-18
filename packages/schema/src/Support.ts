@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+
 import * as monoid from "@fp-ts/core/typeclass/Monoid"
 import * as semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"

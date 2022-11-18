@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
@@ -170,7 +171,7 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
   ...components: Components
 ): Decoder<
   ReadonlyArray<I>,
-  { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
+  { readonly [K in keyof Components]: S.Infer<Components[K]> }
 > =>
   make(
     S.tuple(true, ...components),
@@ -192,15 +193,15 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
  */
 export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
   ...components: Components
-): Decoder<unknown, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> => {
+): Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> => {
   const decoder = fromTuple<unknown, Components>(...components)
   return make(
     S.tuple<true, Components>(true, ...components),
-    (is) => {
-      if (!Array.isArray(is)) {
-        return fail(DE.notType("Array", is))
+    (us) => {
+      if (!Array.isArray(us)) {
+        return fail(DE.notType("Array", us))
       }
-      return decoder.decode(is)
+      return decoder.decode(us)
     }
   )
 }
@@ -259,7 +260,7 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
   fields: Fields
 ): Decoder<
   { readonly [_: string]: I },
-  { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }
+  { readonly [K in keyof Fields]: S.Infer<Fields[K]> }
 > => {
   const keys = Object.keys(fields)
   return make(S.struct(fields), (input: { readonly [_: string]: I }) => {
@@ -285,7 +286,7 @@ const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unkno
  */
 export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>>(
   fields: Fields
-): Decoder<unknown, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> => {
+): Decoder<unknown, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> => {
   const decoder = fromStruct(fields)
   return make(S.struct(fields), (u) => {
     if (!isUnknownIndexSignature(u)) {
@@ -300,7 +301,7 @@ export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>
  */
 export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ...members: Members
-): Decoder<I, Parameters<Members[number]["A"]>[0]> =>
+): Decoder<I, S.Infer<Members[number]>> =>
   make(S.union(...members), (u) => {
     const lefts: Array<DE.DecodeError> = []
     for (const member of members) {

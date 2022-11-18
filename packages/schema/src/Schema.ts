@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import * as internal from "@fp-ts/codec/internal/Schema"
@@ -16,6 +17,11 @@ export interface Schema<in out A> {
   readonly A: (_: A) => A
   readonly ast: AST
 }
+
+/**
+ * @since 1.0.0
+ */
+export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /**
  * @since 1.0.0
@@ -134,7 +140,7 @@ export const of = <A>(
  */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Parameters<Members[number]["A"]>[0]> => make(ast.union(members.map((m) => m.ast)))
+): Schema<Infer<Members[number]>> => make(ast.union(members.map((m) => m.ast)))
 
 /**
  * @since 1.0.0
@@ -158,8 +164,8 @@ export const tuple = <
   readonly: B,
   ...components: Components
 ): Schema<
-  B extends true ? { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
-    : { [K in keyof Components]: Parameters<Components[K]["A"]>[0] }
+  B extends true ? { readonly [K in keyof Components]: Infer<Components[K]> }
+    : { [K in keyof Components]: Infer<Components[K]> }
 > => make(ast.tuple(components.map((c) => c.ast), O.none, readonly))
 
 /**
@@ -177,7 +183,7 @@ export const nonEmptyArray = <B extends boolean, H, T>(
  */
 export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-): Schema<{ readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
+): Schema<{ readonly [K in keyof Fields]: Infer<Fields[K]> }> =>
   make(
     ast.struct(
       Object.keys(fields).map((key) => ast.field(key, fields[key].ast, false, true)),
@@ -353,8 +359,8 @@ type RequiredKeys<A> = {
  export const crazyStruct = <Fields extends Record<PropertyKey, Schema<unknown>>>(
   fields: Fields
 ): Schema<
-  & { readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: Parameters<Fields[K]["A"]>[0] }
-  & { readonly [K in RequiredKeys<Fields>]: Parameters<Fields[K]["A"]>[0] }
+  & { readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: Infer<Fields[K]> }
+  & { readonly [K in RequiredKeys<Fields>]: Infer<Fields[K]> }
 > =>
   make(
     ast.struct(

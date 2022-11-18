@@ -44,7 +44,7 @@ export const tuple = <F extends TypeLambda>(
 ) =>
   <I, O, E, Components extends ReadonlyArray<Schema<any>>>(
     ...components: Components
-  ): Kind<F, I, O, E, { readonly [K in keyof Components]: Parameters<Components[K]["A"]>[0] }> =>
+  ): Kind<F, I, O, E, { readonly [K in keyof Components]: S.Infer<Components[K]> }> =>
     F.ofSchema(S.tuple<true, Components>(true, ...components))
 
 /**
@@ -55,7 +55,7 @@ export const union = <F extends TypeLambda>(
 ) =>
   <I, O, E, Members extends ReadonlyArray<Schema<any>>>(
     ...members: Members
-  ): Kind<F, I, O, E, Parameters<Members[number]["A"]>[0]> => F.ofSchema(S.union(...members))
+  ): Kind<F, I, O, E, S.Infer<Members[number]>> => F.ofSchema(S.union(...members))
 
 /**
  * @since 1.0.0
@@ -65,7 +65,7 @@ export const struct = <F extends TypeLambda>(
 ) =>
   <I, O, E, Fields extends Record<PropertyKey, Schema<any>>>(
     fields: Fields
-  ): Kind<F, I, O, E, { readonly [K in keyof Fields]: Parameters<Fields[K]["A"]>[0] }> =>
+  ): Kind<F, I, O, E, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> =>
     F.ofSchema(S.struct(fields))
 
 /**

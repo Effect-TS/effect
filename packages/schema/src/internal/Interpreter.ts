@@ -1,3 +1,9 @@
+export const CodecInterpreterId: unique symbol = Symbol.for(
+  "@fp-ts/codec/interpreter/CodecInterpreter"
+)
+
+export type CodecInterpreterId = typeof CodecInterpreterId
+
 export const GuardInterpreterId: unique symbol = Symbol.for(
   "@fp-ts/codec/interpreter/Guard"
 )
