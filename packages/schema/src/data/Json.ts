@@ -74,7 +74,7 @@ export const Decoder: D.Decoder<unknown, Json> = D.fromGuard(
  * @since 1.0.0
  */
 export const JsonArrayDecoder: D.Decoder<Json, JsonArray> = D.make(
-  S.array(true, Schema),
+  S.array(Schema),
   (json) => Array.isArray(json) ? D.succeed(json) : D.fail(DE.notType("Array", json))
 )
 

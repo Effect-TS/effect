@@ -72,14 +72,14 @@ describe("Show", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
+      const schema = S.tuple(S.string, S.number)
       expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
         "[\"a\",1]"
       )
     })
 
     it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(true, S.string, S.number)
+      const schema = S.nonEmptyArray(S.string, S.number)
       expect(unsafeShowFor(schema).show(["a", 1])).toEqual(
         "[\"a\",1]"
       )
@@ -111,7 +111,7 @@ describe("Show", () => {
     })
 
     it("array", () => {
-      const schema = S.array(true, S.string)
+      const schema = S.array(S.string)
       expect(unsafeShowFor(schema).show(["a", "b"])).toEqual(
         "[\"a\",\"b\"]"
       )

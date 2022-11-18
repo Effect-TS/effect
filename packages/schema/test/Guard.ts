@@ -75,7 +75,7 @@ describe("Guard", () => {
   })
 
   describe("tuple", () => {
-    it("tuple", () => {
+    it("baseline", () => {
       const guard = G.tuple(G.string, G.number)
       expect(guard.is(["a", 1])).toEqual(true)
       expect(guard.is([1, 1])).toEqual(false)
@@ -110,8 +110,8 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1 })).toEqual(false)
   })
 
-  it("readonlyArray", () => {
-    const guard = G.readonlyArray(G.string)
+  it("array", () => {
+    const guard = G.array(G.string)
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(false)
@@ -418,7 +418,7 @@ describe("Guard", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
+      const schema = S.tuple(S.string, S.number)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(["a", 1])).toEqual(true)
       expect(guard.is([1, 1])).toEqual(false)
@@ -451,7 +451,7 @@ describe("Guard", () => {
     })
 
     it("array", () => {
-      const schema = S.array(true, S.string)
+      const schema = S.array(S.string)
       const guard = unsafeGuardFor(schema)
       expect(guard.is([])).toEqual(true)
       expect(guard.is(["a"])).toEqual(true)
@@ -459,7 +459,7 @@ describe("Guard", () => {
     })
 
     it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(true, S.string, S.number)
+      const schema = S.nonEmptyArray(S.string, S.number)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(["a"])).toEqual(true)
       expect(guard.is(["a", 1])).toEqual(true)

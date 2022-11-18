@@ -45,7 +45,7 @@ export const tuple = <F extends TypeLambda>(
   <I, O, E, Components extends ReadonlyArray<Schema<any>>>(
     ...components: Components
   ): Kind<F, I, O, E, { readonly [K in keyof Components]: S.Infer<Components[K]> }> =>
-    F.ofSchema(S.tuple<true, Components>(true, ...components))
+    F.ofSchema(S.tuple<Components>(...components))
 
 /**
  * @since 1.0.0
@@ -81,12 +81,12 @@ export const indexSignature = <F extends TypeLambda>(
 /**
  * @since 1.0.0
  */
-export const readonlyArray = <F extends TypeLambda>(
+export const array = <F extends TypeLambda>(
   F: OfSchema<F>
 ) =>
   <I, O, E, A>(
     item: Schema<A>
-  ): Kind<F, I, O, E, ReadonlyArray<A>> => F.ofSchema(S.array(true, item))
+  ): Kind<F, I, O, E, ReadonlyArray<A>> => F.ofSchema(S.array(item))
 
 /**
  * @since 1.0.0

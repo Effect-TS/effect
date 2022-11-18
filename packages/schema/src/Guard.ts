@@ -280,8 +280,8 @@ export const indexSignature: <A>(value: Schema<A>) => Guard<{
 /**
  * @since 1.0.0
  */
-export const readonlyArray: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = ofSchema
-  .readonlyArray(FromSchema)
+export const array: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = ofSchema
+  .array(FromSchema)
 
 /**
  * @since 1.0.0

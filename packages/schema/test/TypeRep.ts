@@ -126,22 +126,15 @@ describe("unsafeTypeRepFor", () => {
     )
   })
 
-  it("ReadonlyArray", () => {
-    const schema = S.array(true, S.string)
+  it("array", () => {
+    const schema = S.array(S.string)
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [...string[]]"
     )
   })
 
-  it("Array", () => {
-    const schema = S.array(false, S.string)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
-      "[...string[]]"
-    )
-  })
-
   it("nonEmptyArray", () => {
-    const schema = S.nonEmptyArray(true, S.string, S.number)
+    const schema = S.nonEmptyArray(S.string, S.number)
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, ...number[]]"
     )
@@ -169,7 +162,7 @@ describe("unsafeTypeRepFor", () => {
   })
 
   it("tuple", () => {
-    const schema = S.tuple(true, S.string, S.number)
+    const schema = S.tuple(S.string, S.number)
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, number]"
     )

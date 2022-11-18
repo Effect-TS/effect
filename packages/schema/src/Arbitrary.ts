@@ -258,8 +258,8 @@ export const indexSignature: <A>(value: Schema<A>) => Arbitrary<{
 /**
  * @since 1.0.0
  */
-export const readonlyArray: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = ofSchema
-  .readonlyArray(FromSchema)
+export const array: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = ofSchema
+  .array(FromSchema)
 
 /**
  * @since 1.0.0

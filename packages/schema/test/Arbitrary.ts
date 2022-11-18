@@ -77,14 +77,7 @@ describe("Arbitrary", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
-      const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
-      const guard = unsafeGuardFor(schema)
-      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
-    })
-
-    it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
+      const schema = S.tuple(S.string, S.number)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
@@ -112,7 +105,7 @@ describe("Arbitrary", () => {
     })
 
     it("array", () => {
-      const schema = S.array(true, S.string)
+      const schema = S.array(S.string)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

@@ -31,7 +31,7 @@ describe("Json", () => {
         S.string,
         S.number,
         S.boolean,
-        S.array(true, manualSchema),
+        S.array(manualSchema),
         S.indexSignature(manualSchema)
       )
     )

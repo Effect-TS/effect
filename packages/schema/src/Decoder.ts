@@ -174,7 +174,7 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
   { readonly [K in keyof Components]: S.Infer<Components[K]> }
 > =>
   make(
-    S.tuple(true, ...components),
+    S.tuple(...components),
     (is) => {
       const out: Array<unknown> = []
       for (let i = 0; i < components.length; i++) {
@@ -196,7 +196,7 @@ export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
 ): Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> => {
   const decoder = fromTuple<unknown, Components>(...components)
   return make(
-    S.tuple<true, Components>(true, ...components),
+    S.tuple<Components>(...components),
     (us) => {
       if (!Array.isArray(us)) {
         return fail(DE.notType("Array", us))
@@ -209,10 +209,10 @@ export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
 /**
  * @since 1.0.0
  */
-export const fromReadonlyArray = <I, A>(
+export const fromArray = <I, A>(
   item: Decoder<I, A>
 ): Decoder<ReadonlyArray<I>, ReadonlyArray<A>> =>
-  make(S.array(true, item), (is) => {
+  make(S.array(item), (is) => {
     const es: Array<DE.DecodeError> = []
     const as: Array<A> = []
     let isBoth = true
@@ -238,12 +238,12 @@ export const fromReadonlyArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export const readonlyArray = <A>(
+export const array = <A>(
   item: Decoder<unknown, A>
 ): Decoder<unknown, ReadonlyArray<A>> => {
-  const decoder = fromReadonlyArray(item)
+  const decoder = fromArray(item)
   return make(
-    S.array(true, item),
+    S.array(item),
     (is) => {
       if (!Array.isArray(is)) {
         return fail(DE.notType("Array", is))

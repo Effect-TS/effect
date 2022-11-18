@@ -158,25 +158,19 @@ export const nativeEnum = <A extends { [_: string]: string | number }>(
  * @since 1.0.0
  */
 export const tuple = <
-  B extends boolean,
   Components extends ReadonlyArray<Schema<any>>
 >(
-  readonly: B,
   ...components: Components
-): Schema<
-  B extends true ? { readonly [K in keyof Components]: Infer<Components[K]> }
-    : { [K in keyof Components]: Infer<Components[K]> }
-> => make(ast.tuple(components.map((c) => c.ast), O.none, readonly))
+): Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
+  make(ast.tuple(components.map((c) => c.ast), O.none, true))
 
 /**
  * @since 1.0.0
  */
-export const nonEmptyArray = <B extends boolean, H, T>(
-  readonly: B,
+export const nonEmptyArray = <H, T>(
   head: Schema<H>,
   tail: Schema<T>
-): Schema<B extends true ? readonly [H, ...Array<T>] : [H, ...Array<T>]> =>
-  make(ast.tuple([head.ast], O.some(tail.ast), readonly))
+): Schema<readonly [H, ...Array<T>]> => make(ast.tuple([head.ast], O.some(tail.ast), true))
 
 /**
  * @since 1.0.0
@@ -202,11 +196,9 @@ export const indexSignature = <A>(
 /**
  * @since 1.0.0
  */
-export const array = <B extends boolean, A>(
-  readonly: B,
+export const array = <A>(
   item: Schema<A>
-): Schema<B extends true ? ReadonlyArray<A> : Array<A>> =>
-  make(ast.tuple([], O.some(item.ast), readonly))
+): Schema<ReadonlyArray<A>> => make(ast.tuple([], O.some(item.ast), true))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {

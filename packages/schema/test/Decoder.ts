@@ -80,9 +80,9 @@ describe("Decoder", () => {
     expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
   })
 
-  describe("readonlyArray", () => {
+  describe("array", () => {
     it("baseline", () => {
-      const decoder = D.readonlyArray(D.string)
+      const decoder = D.array(D.string)
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
@@ -91,7 +91,7 @@ describe("Decoder", () => {
     })
 
     it("using both", () => {
-      const decoder = D.readonlyArray(nan)
+      const decoder = D.array(nan)
       expect(decoder.decode([1, NaN, 3])).toEqual(T.both([DE.nan], [1, NaN, 3]))
     })
   })
@@ -121,7 +121,7 @@ describe("Decoder", () => {
     const decoder: D.Decoder<unknown, A> = D.lazy<unknown, A>(() =>
       D.struct({
         a: D.string,
-        as: D.readonlyArray(decoder)
+        as: D.array(decoder)
       })
     )
     expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))

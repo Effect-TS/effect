@@ -51,7 +51,7 @@ describe("JsonCodec", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
+      const schema = S.tuple(S.string, S.number)
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
@@ -89,7 +89,7 @@ describe("JsonCodec", () => {
     })
 
     it("array", () => {
-      const schema = S.array(true, S.string)
+      const schema = S.array(S.string)
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
@@ -163,7 +163,7 @@ describe("JsonCodec", () => {
       const schema: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: S.array(true, schema)
+          as: S.array(schema)
         })
       )
       const decoder = unsafeDecoderFor(schema)
@@ -191,7 +191,7 @@ describe("JsonCodec", () => {
     })
 
     it("tuple", () => {
-      const schema = S.tuple(true, S.string, S.number)
+      const schema = S.tuple(S.string, S.number)
       const encoder = unsafeEncoderFor(schema)
       expect(encoder.encode(["a", 1])).toEqual(["a", 1])
     })

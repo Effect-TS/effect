@@ -55,7 +55,7 @@ describe("AST", () => {
         () =>
           S.struct({
             name: S.string,
-            categories: S.array(true, Category)
+            categories: S.array(Category)
           })
       )
       expect(ast.getFields(Category.ast)).toEqual([
