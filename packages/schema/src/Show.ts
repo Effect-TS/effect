@@ -4,7 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
-import { ShowInterpreterId } from "@fp-ts/codec/internal/Interpreter"
+import { ShowId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import type { Support } from "@fp-ts/codec/Support"
@@ -55,7 +55,7 @@ export const unsafeShowFor = (support: Support) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<ShowHandler> = findHandler(merge, ShowInterpreterId, ast.id)
+          const handler: O.Option<ShowHandler> = findHandler(merge, ShowId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }

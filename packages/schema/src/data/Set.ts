@@ -6,12 +6,7 @@ import type * as J from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import {
-  ArbitraryInterpreterId,
-  GuardInterpreterId,
-  JsonDecoderInterpreterId,
-  ShowInterpreterId
-} from "@fp-ts/codec/internal/Interpreter"
+import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
@@ -69,10 +64,10 @@ export const Show = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
  * @since 1.0.0
  */
 export const Support: support.Support = new Map([
-  [GuardInterpreterId, new Map<symbol, Function>([[id, Guard]])],
+  [GuardId, new Map<symbol, Function>([[id, Guard]])],
   [ArbitraryInterpreterId, new Map<symbol, Function>([[id, Arbitrary]])],
-  [ShowInterpreterId, new Map<symbol, Function>([[id, Show]])],
-  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, Decoder]])]
+  [ShowId, new Map<symbol, Function>([[id, Show]])],
+  [JsonDecoderId, new Map<symbol, Function>([[id, Decoder]])]
 ])
 
 /**

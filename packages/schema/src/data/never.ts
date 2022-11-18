@@ -4,7 +4,7 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import { GuardInterpreterId, JsonDecoderInterpreterId } from "@fp-ts/codec/internal/Interpreter"
+import { GuardId, JsonDecoderId } from "@fp-ts/codec/internal/Interpreter"
 import * as S from "@fp-ts/codec/Schema"
 import type * as support from "@fp-ts/codec/Support"
 
@@ -17,8 +17,8 @@ export const id = Symbol.for("@fp-ts/codec/data/never")
  * @since 1.0.0
  */
 export const Support: support.Support = new Map([
-  [GuardInterpreterId, new Map<symbol, Function>([[id, () => Guard]])],
-  [JsonDecoderInterpreterId, new Map<symbol, Function>([[id, () => Decoder]])]
+  [GuardId, new Map<symbol, Function>([[id, () => Guard]])],
+  [JsonDecoderId, new Map<symbol, Function>([[id, () => Decoder]])]
 ])
 /**
  * @since 1.0.0

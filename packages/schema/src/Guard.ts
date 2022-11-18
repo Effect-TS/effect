@@ -3,7 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import { GuardInterpreterId } from "@fp-ts/codec/internal/Interpreter"
+import { GuardId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import type { Support } from "@fp-ts/codec/Support"
@@ -138,7 +138,7 @@ export const unsafeGuardFor = (support: Support) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<GuardHandler> = findHandler(merge, GuardInterpreterId, ast.id)
+          const handler: O.Option<GuardHandler> = findHandler(merge, GuardId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }

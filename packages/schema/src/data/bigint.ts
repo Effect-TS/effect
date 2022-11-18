@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import * as G from "@fp-ts/codec/Guard"
-import { GuardInterpreterId } from "@fp-ts/codec/internal/Interpreter"
+import { GuardId } from "@fp-ts/codec/internal/Interpreter"
 import * as S from "@fp-ts/codec/Schema"
 import type * as support from "@fp-ts/codec/Support"
 
@@ -15,7 +15,7 @@ export const id = Symbol.for("@fp-ts/codec/data/bigint")
  * @since 1.0.0
  */
 export const Support: support.Support = new Map([
-  [GuardInterpreterId, new Map<symbol, Function>([[id, () => Guard]])]
+  [GuardId, new Map<symbol, Function>([[id, () => Guard]])]
 ])
 /**
  * @since 1.0.0

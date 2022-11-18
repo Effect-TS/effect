@@ -3,7 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import { ArbitraryInterpreterId } from "@fp-ts/codec/internal/Interpreter"
+import { ArbitraryId } from "@fp-ts/codec/internal/Interpreter"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import type { Support } from "@fp-ts/codec/Support"
@@ -126,7 +126,7 @@ export const unsafeArbitraryFor = (support: Support) =>
           const merge = Semigroup.combine(support)(ast.support)
           const handler: O.Option<ArbitraryHandler> = findHandler(
             merge,
-            ArbitraryInterpreterId,
+            ArbitraryId,
             ast.id
           )
           if (O.isSome(handler)) {

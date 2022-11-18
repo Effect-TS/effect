@@ -9,10 +9,7 @@ import * as D from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
-import {
-  JsonDecoderInterpreterId,
-  JsonEncoderInterpreterId
-} from "@fp-ts/codec/internal/Interpreter"
+import { JsonDecoderId, JsonEncoderId } from "@fp-ts/codec/internal/Interpreter"
 import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -39,7 +36,7 @@ export const unsafeDecoderForProvider = (support: Support) =>
           const merge = Semigroup.combine(support)(ast.support)
           const handler: O.Option<JsonDecoderHandler> = findHandler(
             merge,
-            JsonDecoderInterpreterId,
+            JsonDecoderId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -175,7 +172,7 @@ export const unsafeEncoderForProvider = (
           const merge = Semigroup.combine(support)(ast.support)
           const handler: O.Option<JSONEncodeHandler> = findHandler(
             merge,
-            JsonEncoderInterpreterId,
+            JsonEncoderId,
             ast.id
           )
           if (O.isSome(handler)) {
