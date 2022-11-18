@@ -194,17 +194,24 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
           return make(S.make(ast), (u): u is any => u === ast.value)
         case "Tuple": {
           const components = ast.components.map(go)
-          const restElement = pipe(ast.restElement, O.map(go))
+          const oRestElement = pipe(ast.restElement, O.map(go))
           return make(
             S.make(ast),
-            (a): a is any =>
-              UnknownArray.is(a) &&
-              components.every((guard, i) => guard.is(a[i])) &&
-              (pipe(
-                restElement,
-                O.map((rest) => a.slice(components.length).every(rest.is)),
-                O.getOrElse(true)
-              ))
+            (a): a is any => {
+              if (UnknownArray.is(a)) {
+                if (components.every((guard, i) => guard.is(a[i]))) {
+                  if (O.isSome(oRestElement)) {
+                    const restElement = oRestElement.value
+                    // skip when `ReadonlyArray<unknown>`
+                    if (restElement.ast !== S.unknown.ast) {
+                      return a.slice(components.length).every(restElement.is)
+                    }
+                  }
+                  return true
+                }
+              }
+              return false
+            }
           )
         }
         case "Union": {
@@ -233,9 +240,12 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
               }
               if (O.isSome(oIndexSignature)) {
                 const indexSignature = oIndexSignature.value
-                for (const key of Object.keys(a)) {
-                  if (!(key in fields) && !indexSignature.is(a[key])) {
-                    return false
+                // skip when `{ readonly [_: string]: unknown }`
+                if (indexSignature.ast !== S.unknown.ast) {
+                  for (const key of Object.keys(a)) {
+                    if (!(key in fields) && !indexSignature.is(a[key])) {
+                      return false
+                    }
                   }
                 }
               }

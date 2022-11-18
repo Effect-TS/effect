@@ -217,6 +217,18 @@ describe("Guard", () => {
   })
 
   describe("unsafeGuardFor", () => {
+    it("UnknownArray", () => {
+      const guard = unsafeGuardFor(S.array(S.unknown))
+      expect(guard.is([])).toEqual(true)
+      expect(guard.is(["a", 1, true])).toEqual(true)
+    })
+
+    it("UnknownIndexSignature", () => {
+      const guard = unsafeGuardFor(S.indexSignature(S.unknown))
+      expect(guard.is({})).toEqual(true)
+      expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
+    })
+
     it("recursive", () => {
       interface Category {
         readonly name: string
