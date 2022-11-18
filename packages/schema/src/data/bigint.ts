@@ -3,7 +3,7 @@
  */
 import * as G from "@fp-ts/codec/Guard"
 import { GuardId } from "@fp-ts/codec/internal/Interpreter"
-import type * as provider from "@fp-ts/codec/Provider"
+import * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 
 /**
@@ -14,9 +14,10 @@ export const id = Symbol.for("@fp-ts/codec/data/bigint")
 /**
  * @since 1.0.0
  */
-export const Provider: provider.Provider = new Map([
-  [GuardId, new Map<symbol, Function>([[id, () => Guard]])]
-])
+export const Provider: provider.Provider = provider.make(id, {
+  [GuardId]: () => Guard
+})
+
 /**
  * @since 1.0.0
  */

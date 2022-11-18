@@ -26,6 +26,20 @@ export const empty: Provider = new Map()
 /**
  * @since 1.0.0
  */
+export const make = (typeId: symbol, interpreters: Record<symbol, Function>): Provider => {
+  const handlers: Array<[symbol, Map<symbol, Function>]> = []
+  for (const interpreterId of Object.getOwnPropertySymbols(interpreters)) {
+    handlers.push([
+      interpreterId,
+      new Map<symbol, Function>([[typeId, interpreters[interpreterId]]])
+    ])
+  }
+  return new Map(handlers)
+}
+
+/**
+ * @since 1.0.0
+ */
 export const findHandler = <A>(
   provider: Provider,
   interpreterId: symbol,
