@@ -89,7 +89,18 @@ export const InterruptedSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/Interrupted"
 )
 
-export class InterruptedException extends Error {
+export abstract class ErrorWithSuppressed extends Error {
+  suppressed: readonly unknown[] = []
+  constructor(message?: string) {
+    super(message)
+  }
+
+  addSuppressed(this: ErrorWithSuppressed, e: unknown) {
+    this.suppressed = [...this.suppressed, e]
+  }
+}
+
+export class InterruptedException extends ErrorWithSuppressed {
   readonly [InterruptedSymbol] = "InterruptedException"
 
   constructor(message?: string) {
@@ -110,7 +121,7 @@ export const IllegalStateExceptionSymbol: unique symbol = Symbol.for(
   "@effect/core/Cause/errors/IllegalState"
 )
 
-export class IllegalStateException extends Error {
+export class IllegalStateException extends ErrorWithSuppressed {
   readonly [IllegalStateExceptionSymbol] = "IllegalStateException"
 
   constructor(message?: string) {

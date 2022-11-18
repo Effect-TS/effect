@@ -17,8 +17,14 @@ export function squashWith<E>(f: (e: E) => unknown) {
               "",
               (acc, id) => `${acc}, ${id}`
             )
-          return new InterruptedException(`Interrupted by fibers: ${fibers}`)
+          const error = new InterruptedException(`Interrupted by fibers: ${fibers}`)
+          error.addSuppressed(self)
+          return error
         }
-        return self.defects.head.getOrElse(new InterruptedException())
+        return self.defects.head.getOrElse(() => {
+          const error = new InterruptedException()
+          error.addSuppressed(self)
+          return error
+        })
       })
 }
