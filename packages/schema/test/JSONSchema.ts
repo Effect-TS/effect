@@ -33,7 +33,7 @@ export type JSONSchemaInterpreterId = typeof JSONSchemaInterpreterId
 /**
  * @since 1.0.0
  */
-export interface JSONSchemaSupport {
+export interface JSONSchemaHandler {
   (...jsonSchemas: ReadonlyArray<JSONSchema>): JSONSchema
 }
 
@@ -45,7 +45,7 @@ export const unsafeJsonSchemaFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<JSONSchemaSupport> = findHandler(
+          const handler: O.Option<JSONSchemaHandler> = findHandler(
             merge,
             JSONSchemaInterpreterId,
             ast.id

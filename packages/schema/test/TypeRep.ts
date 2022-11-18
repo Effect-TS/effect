@@ -31,7 +31,7 @@ export type TypeRepInterpreterId = typeof TypeRepInterpreterId
 /**
  * @since 1.0.0
  */
-export interface JSONSchemaSupport {
+export interface JSONSchemaHandler {
   (...typeReps: ReadonlyArray<TypeRep<any>>): TypeRep<any>
 }
 
@@ -43,7 +43,7 @@ export const unsafeTypeRepFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<JSONSchemaSupport> = findHandler(
+          const handler: O.Option<JSONSchemaHandler> = findHandler(
             merge,
             TypeRepInterpreterId,
             ast.id

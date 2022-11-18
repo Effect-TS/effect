@@ -111,7 +111,7 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export interface ArbitrarySupport {
+export interface ArbitraryHandler {
   (...arbitraries: ReadonlyArray<Arbitrary<any>>): Arbitrary<any>
 }
 
@@ -124,7 +124,7 @@ export const unsafeArbitraryFor = (support: Support) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<ArbitrarySupport> = findHandler(
+          const handler: O.Option<ArbitraryHandler> = findHandler(
             merge,
             ArbitraryInterpreterId,
             ast.id

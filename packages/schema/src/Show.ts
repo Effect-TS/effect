@@ -42,7 +42,7 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export interface ShowSupport {
+export interface ShowHandler {
   (...shows: ReadonlyArray<Show<any>>): Show<any>
 }
 
@@ -55,7 +55,7 @@ export const unsafeShowFor = (support: Support) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<ShowSupport> = findHandler(merge, ShowInterpreterId, ast.id)
+          const handler: O.Option<ShowHandler> = findHandler(merge, ShowInterpreterId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }

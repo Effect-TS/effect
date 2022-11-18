@@ -24,7 +24,7 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
-export interface JsonDecoderSupport {
+export interface JsonDecoderHandler {
   (...decoders: ReadonlyArray<Decoder<J.Json, any>>): Decoder<J.Json, any>
 }
 
@@ -37,7 +37,7 @@ export const unsafeDecoderForProvider = (support: Support) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<JsonDecoderSupport> = findHandler(
+          const handler: O.Option<JsonDecoderHandler> = findHandler(
             merge,
             JsonDecoderInterpreterId,
             ast.id
@@ -158,7 +158,7 @@ export const unsafeDecoderFor = unsafeDecoderForProvider(empty)
 /**
  * @since 1.0.0
  */
-export interface JSONEncodeSupport {
+export interface JSONEncodeHandler {
   (...encoders: ReadonlyArray<Encoder<J.Json, any>>): Encoder<J.Json, any>
 }
 
@@ -173,7 +173,7 @@ export const unsafeEncoderForProvider = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.support)
-          const handler: O.Option<JSONEncodeSupport> = findHandler(
+          const handler: O.Option<JSONEncodeHandler> = findHandler(
             merge,
             JsonEncoderInterpreterId,
             ast.id
