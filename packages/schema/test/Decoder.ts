@@ -5,11 +5,6 @@ import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
-const nan: D.Decoder<unknown, number> = pipe(
-  D.number,
-  D.compose(D.make(S.of(NaN), (n) => Number.isNaN(n) ? T.both([DE.nan], n) : D.succeed(n)))
-)
-
 describe("Decoder", () => {
   describe("README", () => {
     it("Creating a simple string schema", () => {
@@ -91,7 +86,7 @@ describe("Decoder", () => {
     })
 
     it("using both", () => {
-      const decoder = D.array(nan)
+      const decoder = D.array(D.number)
       expect(decoder.decode([1, NaN, 3])).toEqual(T.both([DE.nan], [1, NaN, 3]))
     })
   })

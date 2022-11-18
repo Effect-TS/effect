@@ -12,6 +12,8 @@ import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import * as schemable from "@fp-ts/codec/typeclass/Schemable"
+import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -22,6 +24,13 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 export interface Decoder<in I, in out A> extends Schema<A> {
   readonly I: (_: I) => void
   readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface DecoderTypeLambda extends TypeLambda {
+  readonly type: Decoder<this["In"], this["Target"]>
 }
 
 /**
@@ -47,6 +56,11 @@ export const succeed: <A>(a: A) => T.These<never, A> = T.right
  * @since 1.0.0
  */
 export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
+
+/**
+ * @since 1.0.0
+ */
+export const warn = <E, A>(e: E, a: A): T.These<ReadonlyArray<E>, A> => T.both([e], a)
 
 /**
  * @since 1.0.0
@@ -148,9 +162,9 @@ export const maximum = (
 /**
  * @since 1.0.0
  */
-export const number: Decoder<unknown, number> = fromGuard(
-  G.number,
-  (u) => DE.notType("number", u)
+export const number: Decoder<unknown, number> = make(
+  S.number,
+  (u) => G.number.is(u) ? isNaN(u) ? warn(DE.nan, u) : succeed(u) : fail(DE.notType("number", u))
 )
 
 /**
@@ -160,17 +174,6 @@ export const boolean: Decoder<unknown, boolean> = fromGuard(
   G.boolean,
   (u) => DE.notType("boolean", u)
 )
-
-/**
- * @since 1.0.0
- */
-export const of = <A>(
-  value: A
-): Decoder<unknown, A> =>
-  fromGuard(
-    G.of(value),
-    (u) => DE.notEqual(value, u)
-  )
 
 /**
  * @since 1.0.0
@@ -190,29 +193,11 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
         if (T.isLeft(t)) {
           return T.left(t.left)
         }
-        out[i] = t.right
+        out[i] = t.right // TODO: handle warnings
       }
       return succeed(out as any)
     }
   )
-
-/**
- * @since 1.0.0
- */
-export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
-  ...components: Components
-): Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> => {
-  const decoder = fromTuple<unknown, Components>(...components)
-  return make(
-    S.tuple<Components>(...components),
-    (us) => {
-      if (!isUnknownArray(us)) {
-        return fail(DE.notType("Array", us))
-      }
-      return decoder.decode(us)
-    }
-  )
-}
 
 /**
  * @since 1.0.0
@@ -246,24 +231,6 @@ export const fromArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export const array = <A>(
-  item: Decoder<unknown, A>
-): Decoder<unknown, ReadonlyArray<A>> => {
-  const decoder = fromArray(item)
-  return make(
-    S.array(item),
-    (u) => {
-      if (!isUnknownArray(u)) {
-        return fail(DE.notType("Array", u))
-      }
-      return decoder.decode(u)
-    }
-  )
-}
-
-/**
- * @since 1.0.0
- */
 export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>>>(
   fields: Fields
 ): Decoder<
@@ -277,46 +244,13 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
       const key = keys[i]
       const t = fields[key].decode(input[key])
       if (T.isLeft(t)) {
-        return T.left(t.left)
+        return t
       }
-      a[key] = t.right
+      a[key] = t.right // TODO handle both
     }
     return succeed(a as any)
   })
 }
-
-/**
- * @since 1.0.0
- */
-export const struct = <Fields extends Record<PropertyKey, Decoder<unknown, any>>>(
-  fields: Fields
-): Decoder<unknown, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> => {
-  const decoder = fromStruct(fields)
-  return make(S.struct(fields), (u) => {
-    if (!isUnknownIndexSignature(u)) {
-      return fail(DE.notType("Object", u))
-    }
-    return decoder.decode(u)
-  })
-}
-
-/**
- * @since 1.0.0
- */
-export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
-  ...members: Members
-): Decoder<I, S.Infer<Members[number]>> =>
-  make(S.union(...members), (u) => {
-    const lefts: Array<DE.DecodeError> = []
-    for (const member of members) {
-      const t = member.decode(u)
-      if (T.isRightOrBoth(t)) {
-        return t
-      }
-      lefts.push(...t.left)
-    }
-    return T.left(lefts)
-  })
 
 /**
  * @since 1.0.0
@@ -335,21 +269,6 @@ export const fromIndexSignature = <I, A>(
     }
     return succeed(out as any)
   })
-
-/**
- * @since 1.0.0
- */
-export const indexSignature = <A>(
-  value: Decoder<unknown, A>
-): Decoder<unknown, { readonly [_: string]: A }> => {
-  const decoder = fromIndexSignature(value)
-  return make(S.indexSignature(value), (u) => {
-    if (!isUnknownIndexSignature(u)) {
-      return fail(DE.notType("Object", u))
-    }
-    return decoder.decode(u)
-  })
-}
 
 /**
  * @since 1.0.0
@@ -416,23 +335,76 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         case "Boolean":
           return boolean
         case "Of":
-          return of(ast.value)
+          return make(
+            S.make(ast),
+            (u) => u === ast.value ? succeed(u) : fail(DE.notEqual(ast.value, u))
+          )
         case "Tuple": {
-          const components = ast.components.map(go)
-          // TODO
-          // const oRestElement = pipe(ast.restElement, O.map(go))
-          return tuple(...components)
+          const decoder = fromTuple(...ast.components.map(go))
+          const oRestElement = pipe(ast.restElement, O.map(go))
+          return make(
+            S.make(ast),
+            (us) => {
+              if (!isUnknownArray(us)) {
+                return fail(DE.notType("Array", us))
+              }
+              const t = decoder.decode(us)
+              if (O.isSome(oRestElement)) {
+                const restElement = fromArray(oRestElement.value)
+                return pipe(
+                  t,
+                  flatMap((as) =>
+                    pipe(
+                      restElement.decode(us.slice(ast.components.length)),
+                      T.map((rest) => [...as, ...rest])
+                    )
+                  )
+                )
+              }
+              return t
+            }
+          )
         }
-        case "Union":
-          return union(...ast.members.map(go))
+        case "Union": {
+          const members = ast.members.map(go)
+          return make(S.make(ast), (u) => {
+            const lefts: Array<DE.DecodeError> = []
+            for (const member of members) {
+              const t = member.decode(u)
+              if (T.isRightOrBoth(t)) {
+                return t
+              }
+              lefts.push(...t.left)
+            }
+            return T.left(lefts)
+          })
+        }
         case "Struct": {
           const fields: Record<PropertyKey, Decoder<unknown, any>> = {}
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          // TODO
-          // const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
-          return struct(fields)
+          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          const decoder = fromStruct(fields)
+          return make(S.make(ast), (u) => {
+            if (!isUnknownIndexSignature(u)) {
+              return fail(DE.notType("Object", u))
+            }
+            const t = decoder.decode(u)
+            if (O.isSome(oIndexSignature)) {
+              const indexSignature = fromIndexSignature(oIndexSignature.value)
+              return pipe(
+                t,
+                flatMap((out) =>
+                  pipe(
+                    indexSignature.decode(u),
+                    T.map((rest) => ({ ...out, ...rest }))
+                  )
+                )
+              )
+            }
+            return t
+          })
         }
         case "Lazy":
           return lazy(() => go(ast.f()))
@@ -447,3 +419,101 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
  */
 export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> =
   provideUnsafeDecoderFor(empty)
+
+/**
+ * @since 1.0.0
+ */
+export const Schemable: schemable.Schemable<DecoderTypeLambda> = {
+  fromSchema: unsafeDecoderFor
+}
+
+/**
+ * @since 1.0.0
+ */
+export const of: <A>(a: A) => Decoder<unknown, A> = schemable.of(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
+  ...components: Components
+) => Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
+  .tuple(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const union: <I, Members extends ReadonlyArray<Schema<any>>>(
+  ...members: Members
+) => Decoder<I, S.Infer<Members[number]>> = schemable
+  .union(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) => Decoder<unknown, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
+  .struct(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature: <A>(value: Schema<A>) => Decoder<unknown, {
+  readonly [_: string]: A
+}> = schemable.indexSignature(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const array: <A>(item: Schema<A>) => Decoder<unknown, ReadonlyArray<A>> = schemable
+  .array(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const nativeEnum: <A extends { [_: string]: string | number }>(
+  nativeEnum: A
+) => Decoder<unknown, A> = schemable.nativeEnum(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const optional: <A>(self: Schema<A>) => Decoder<unknown, A | undefined> = schemable
+  .optional(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullable: <A>(self: Schema<A>) => Decoder<unknown, A | null> = schemable
+  .nullable(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullish: <A>(self: Schema<A>) => Decoder<unknown, A | null | undefined> = schemable
+  .nullish(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Schema<A>) => Decoder<unknown, { [P in Keys[number]]: A[P] }> = schemable.pick(
+  Schemable
+)
+
+/**
+ * @since 1.0.0
+ */
+export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Schema<A>) => Decoder<unknown, { [P in Exclude<keyof A, Keys[number]>]: A[P] }> =
+  schemable
+    .omit(Schemable)
