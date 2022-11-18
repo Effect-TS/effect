@@ -74,7 +74,7 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
           const components = ast.components.map(go)
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            Json.JsonArrayDecoder,
+            Json.JsonArrayJsonDecoder,
             D.compose(D.make(
               S.make(ast),
               (is) => {
@@ -110,7 +110,7 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
           }
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
-            Json.JsonObjectDecoder,
+            Json.JsonObjectJsonDecoder,
             D.compose(D.make(
               S.make(ast),
               (input) => {

@@ -4,6 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import { GuardId } from "@fp-ts/codec/internal/Interpreter"
+import { isUnknownArray, isUnknownIndexSignature } from "@fp-ts/codec/internal/Refinement"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -118,10 +119,6 @@ export const lazy = <A>(
   )
 }
 
-// TODO: move to internal
-const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
-  typeof u === "object" && u != null && !Array.isArray(u)
-
 /**
  * @since 1.0.0
  */
@@ -176,7 +173,7 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
           return make(
             S.make(ast),
             (a): a is any =>
-              Array.isArray(a) &&
+              isUnknownArray(a) &&
               components.every((guard, i) => guard.is(a[i])) &&
               (pipe(
                 restElement,

@@ -4,6 +4,7 @@
 
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
+import { isUnknownArray, isUnknownIndexSignature } from "@fp-ts/codec/internal/Refinement"
 import * as T from "@fp-ts/codec/internal/These"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -42,7 +43,9 @@ export const succeed: <A>(a: A) => T.These<never, A> = T.right
  */
 export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const flatMap = <A, E2, B>(
   f: (a: A) => T.These<ReadonlyArray<E2>, B>
 ) =>
@@ -198,7 +201,7 @@ export const tuple = <Components extends ReadonlyArray<Decoder<unknown, any>>>(
   return make(
     S.tuple<Components>(...components),
     (us) => {
-      if (!Array.isArray(us)) {
+      if (!isUnknownArray(us)) {
         return fail(DE.notType("Array", us))
       }
       return decoder.decode(us)
@@ -244,11 +247,11 @@ export const array = <A>(
   const decoder = fromArray(item)
   return make(
     S.array(item),
-    (is) => {
-      if (!Array.isArray(is)) {
-        return fail(DE.notType("Array", is))
+    (u) => {
+      if (!isUnknownArray(u)) {
+        return fail(DE.notType("Array", u))
       }
-      return decoder.decode(is)
+      return decoder.decode(u)
     }
   )
 }
@@ -276,10 +279,6 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
     return succeed(a as any)
   })
 }
-
-// TODO: move to internal
-const isUnknownIndexSignature = (u: unknown): u is { readonly [_: string]: unknown } =>
-  typeof u === "object" && u != null && !Array.isArray(u)
 
 /**
  * @since 1.0.0
