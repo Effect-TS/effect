@@ -46,6 +46,8 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
           )
         }
+        case "Unknown":
+          return D.unknown
         case "String": {
           let out = D.string
           if (ast.minLength !== undefined) {
@@ -71,32 +73,29 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
-          const components = ast.components.map(go)
+          const decoder = D.fromTuple<J.Json, ReadonlyArray<Decoder<J.Json, unknown>>>(
+            ...ast.components.map(go)
+          )
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
             Json.JsonArrayJsonDecoder,
             D.compose(D.make(
               S.make(ast),
-              (is) => {
-                const out: Array<unknown> = []
-                for (let i = 0; i < components.length; i++) {
-                  const t = components[i].decode(is[i])
-                  if (T.isLeft(t)) {
-                    return T.left(t.left)
-                  }
-                  out[i] = t.right
-                }
+              (us) => {
+                const t = decoder.decode(us)
                 if (O.isSome(oRestElement)) {
-                  const restElement = oRestElement.value
-                  for (let i = components.length; i < is.length; i++) {
-                    const t = restElement.decode(is[i])
-                    if (T.isLeft(t)) {
-                      return T.left(t.left)
-                    }
-                    out[i] = t.right
-                  }
+                  const restElement = D.fromArray(oRestElement.value)
+                  return pipe(
+                    t,
+                    D.flatMap((as) =>
+                      pipe(
+                        restElement.decode(us.slice(ast.components.length)),
+                        T.map((rest) => [...as, ...rest])
+                      )
+                    )
+                  )
                 }
-                return D.succeed(out as any)
+                return t
               }
             ))
           )
@@ -108,35 +107,26 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
+          const decoder = D.fromStruct<J.Json, Record<PropertyKey, Decoder<J.Json, any>>>(fields)
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
             Json.JsonObjectJsonDecoder,
-            D.compose(D.make(
-              S.make(ast),
-              (input) => {
-                const a = {}
-                for (const key of Object.keys(fields)) {
-                  const t = fields[key].decode(input[key])
-                  if (T.isLeft(t)) {
-                    return T.left(t.left)
-                  }
-                  a[key] = t.right
-                }
-                if (O.isSome(oIndexSignature)) {
-                  const indexSignature = oIndexSignature.value
-                  for (const key of Object.keys(input)) {
-                    if (!(key in fields)) {
-                      const t = indexSignature.decode(input[key])
-                      if (T.isLeft(t)) {
-                        return T.left(t.left)
-                      }
-                      a[key] = t.right
-                    }
-                  }
-                }
-                return D.succeed(a as any)
+            D.compose(D.make(S.make(ast), (u) => {
+              const t = decoder.decode(u)
+              if (O.isSome(oIndexSignature)) {
+                const indexSignature = D.fromIndexSignature(oIndexSignature.value)
+                return pipe(
+                  t,
+                  D.flatMap((out) =>
+                    pipe(
+                      indexSignature.decode(u),
+                      T.map((rest) => ({ ...out, ...rest }))
+                    )
+                  )
+                )
               }
-            ))
+              return t
+            }))
           )
         }
         case "Lazy":
@@ -183,9 +173,10 @@ export const provideUnsafeJsonEncoderFor = (
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
+        case "Unknown":
+          throw new Error("cannot Json encode an unknown value")
+        case "String":
           return E.string
-        }
         case "Number":
           return E.number
         case "Boolean":

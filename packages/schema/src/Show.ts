@@ -37,6 +37,11 @@ export const make = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
 /**
  * @since 1.0.0
  */
+export const unknown: Show<unknown> = make(S.unknown, () => "<unknown>")
+
+/**
+ * @since 1.0.0
+ */
 export const string: Show<string> = make(S.string, (a) => JSON.stringify(a))
 
 /**
@@ -87,6 +92,8 @@ export const provideUnsafeShowFor = (provider: Provider) =>
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`
           )
         }
+        case "Unknown":
+          return unknown
         case "String":
           return string
         case "Number":

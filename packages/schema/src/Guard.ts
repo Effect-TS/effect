@@ -4,7 +4,6 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import { GuardId } from "@fp-ts/codec/internal/Interpreter"
-import { isUnknownArray, isUnknownIndexSignature } from "@fp-ts/codec/internal/Refinement"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -35,6 +34,31 @@ export const make = <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
 ): Guard<A> => ({ ast: schema.ast, is }) as any
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Guard<unknown> = make(
+  S.unknown,
+  (_u: unknown): _u is unknown => true
+)
+
+/**
+ * @since 1.0.0
+ */
+export const UnknownArray: Guard<ReadonlyArray<unknown>> = make(
+  S.array(S.unknown),
+  (u: unknown): u is ReadonlyArray<unknown> => Array.isArray(u)
+)
+
+/**
+ * @since 1.0.0
+ */
+export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = make(
+  S.indexSignature(S.unknown),
+  (u: unknown): u is { readonly [_: string]: unknown } =>
+    typeof u === "object" && u != null && !Array.isArray(u)
+)
 
 /**
  * @since 1.0.0
@@ -142,6 +166,8 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
           )
         }
+        case "Unknown":
+          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {
@@ -172,7 +198,7 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
           return make(
             S.make(ast),
             (a): a is any =>
-              isUnknownArray(a) &&
+              UnknownArray.is(a) &&
               components.every((guard, i) => guard.is(a[i])) &&
               (pipe(
                 restElement,
@@ -197,7 +223,7 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
           return make(
             S.make(ast),
             (a): a is any => {
-              if (!isUnknownIndexSignature(a)) {
+              if (!UnknownIndexSignature.is(a)) {
                 return false
               }
               for (const key of Object.keys(fields)) {

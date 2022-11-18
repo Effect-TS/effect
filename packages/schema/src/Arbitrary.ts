@@ -37,6 +37,11 @@ export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"])
 /**
  * @since 1.0.0
  */
+export const unknown: Arbitrary<unknown> = make(S.unknown, (fc) => fc.anything())
+
+/**
+ * @since 1.0.0
+ */
 export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 
 /**
@@ -135,6 +140,8 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
           )
         }
+        case "Unknown":
+          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {

@@ -12,6 +12,7 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
  */
 export type AST =
   | Declaration
+  | Unknown
   | String
   | Number
   | Boolean
@@ -44,6 +45,18 @@ export const declare = (
   provider,
   nodes
 })
+
+/**
+ * @since 1.0.0
+ */
+export interface Unknown {
+  readonly _tag: "Unknown"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Unknown = { _tag: "Unknown" }
 
 /**
  * @since 1.0.0

@@ -6,7 +6,6 @@ import type { AST } from "@fp-ts/codec/AST"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import { DecoderId } from "@fp-ts/codec/internal/Interpreter"
-import { isUnknownArray, isUnknownIndexSignature } from "@fp-ts/codec/internal/Refinement"
 import * as T from "@fp-ts/codec/internal/These"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
@@ -90,6 +89,30 @@ export const flatMap = <A, E2, B>(
  */
 export const compose = <B, C>(bc: Decoder<B, C>) =>
   <A>(ab: Decoder<A, B>): Decoder<A, C> => make(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Decoder<unknown, unknown> = fromGuard(
+  G.unknown,
+  (u) => DE.notType("unknown", u)
+)
+
+/**
+ * @since 1.0.0
+ */
+export const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = fromGuard(
+  G.UnknownArray,
+  (u) => DE.notType("ReadonlyArray<unknown>", u)
+)
+
+/**
+ * @since 1.0.0
+ */
+export const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = fromGuard(
+  G.UnknownIndexSignature,
+  (u) => DE.notType("{ readonly [_: string]: unknown }", u)
+)
 
 /**
  * @since 1.0.0
@@ -312,6 +335,8 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
             `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
           )
         }
+        case "Unknown":
+          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {
@@ -342,27 +367,27 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         case "Tuple": {
           const decoder = fromTuple(...ast.components.map(go))
           const oRestElement = pipe(ast.restElement, O.map(go))
-          return make(
-            S.make(ast),
-            (us) => {
-              if (!isUnknownArray(us)) {
-                return fail(DE.notType("Array", us))
-              }
-              const t = decoder.decode(us)
-              if (O.isSome(oRestElement)) {
-                const restElement = fromArray(oRestElement.value)
-                return pipe(
-                  t,
-                  flatMap((as) =>
-                    pipe(
-                      restElement.decode(us.slice(ast.components.length)),
-                      T.map((rest) => [...as, ...rest])
+          return pipe(
+            UnknownArray,
+            compose(make(
+              S.make(ast),
+              (us) => {
+                const t = decoder.decode(us)
+                if (O.isSome(oRestElement)) {
+                  const restElement = fromArray(oRestElement.value)
+                  return pipe(
+                    t,
+                    flatMap((as) =>
+                      pipe(
+                        restElement.decode(us.slice(ast.components.length)),
+                        T.map((rest) => [...as, ...rest])
+                      )
                     )
                   )
-                )
+                }
+                return t
               }
-              return t
-            }
+            ))
           )
         }
         case "Union": {
@@ -386,25 +411,25 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
           }
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           const decoder = fromStruct(fields)
-          return make(S.make(ast), (u) => {
-            if (!isUnknownIndexSignature(u)) {
-              return fail(DE.notType("Object", u))
-            }
-            const t = decoder.decode(u)
-            if (O.isSome(oIndexSignature)) {
-              const indexSignature = fromIndexSignature(oIndexSignature.value)
-              return pipe(
-                t,
-                flatMap((out) =>
-                  pipe(
-                    indexSignature.decode(u),
-                    T.map((rest) => ({ ...out, ...rest }))
+          return pipe(
+            UnknownIndexSignature,
+            compose(make(S.make(ast), (u) => {
+              const t = decoder.decode(u)
+              if (O.isSome(oIndexSignature)) {
+                const indexSignature = fromIndexSignature(oIndexSignature.value)
+                return pipe(
+                  t,
+                  flatMap((out) =>
+                    pipe(
+                      indexSignature.decode(u),
+                      T.map((rest) => ({ ...out, ...rest }))
+                    )
                   )
                 )
-              )
-            }
-            return t
-          })
+              }
+              return t
+            }))
+          )
         }
         case "Lazy":
           return lazy(() => go(ast.f()))

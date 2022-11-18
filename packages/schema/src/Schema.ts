@@ -39,6 +39,11 @@ export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
+export const unknown: Schema<unknown> = make(ast.unknown)
+
+/**
+ * @since 1.0.0
+ */
 export const string: Schema<string> = make(ast.string({}))
 
 /**

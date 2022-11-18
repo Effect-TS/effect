@@ -81,7 +81,7 @@ describe("Decoder", () => {
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Array", null)))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("ReadonlyArray<unknown>", null)))
       expect(decoder.decode([1])).toEqual(D.fail(DE.notType("string", 1)))
     })
 
@@ -95,7 +95,9 @@ describe("Decoder", () => {
     const decoder = D.struct({ a: D.string, b: D.number })
     expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
-    expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Object", null)))
+    expect(decoder.decode(null)).toEqual(
+      D.fail(DE.notType("{ readonly [_: string]: unknown }", null))
+    )
     expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
     expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
   })
@@ -124,7 +126,7 @@ describe("Decoder", () => {
       D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
     )
     expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
-      D.fail(DE.notType("Object", 1))
+      D.fail(DE.notType("{ readonly [_: string]: unknown }", 1))
     )
   })
 
@@ -134,7 +136,9 @@ describe("Decoder", () => {
       const decoder = D.unsafeDecoderFor(schema)
       expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Object", null)))
+      expect(decoder.decode(null)).toEqual(
+        D.fail(DE.notType("{ readonly [_: string]: unknown }", null))
+      )
       expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
       expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
     })
