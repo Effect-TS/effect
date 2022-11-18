@@ -1,10 +1,10 @@
 import * as ast from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
+import { empty } from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
-import { empty } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 
-const unsafeGuardFor = G.unsafeGuardFor(empty)
+const unsafeGuardFor = G.provideUnsafeGuardFor(empty)
 
 describe("Schema", () => {
   it("make", () => {

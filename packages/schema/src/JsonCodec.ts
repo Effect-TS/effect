@@ -11,10 +11,10 @@ import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
 import { JsonDecoderId, JsonEncoderId } from "@fp-ts/codec/internal/Interpreter"
 import * as T from "@fp-ts/codec/internal/These"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { Support } from "@fp-ts/codec/Support"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -28,12 +28,12 @@ export interface JsonDecoderHandler {
 /**
  * @since 1.0.0
  */
-export const unsafeDecoderForProvider = (support: Support) =>
+export const provideUnsafeDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(provider)(ast.provider)
           const handler: O.Option<JsonDecoderHandler> = findHandler(
             merge,
             JsonDecoderId,
@@ -150,7 +150,8 @@ export const unsafeDecoderForProvider = (support: Support) =>
 /**
  * @since 1.0.0
  */
-export const unsafeDecoderFor = unsafeDecoderForProvider(empty)
+export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> =
+  provideUnsafeDecoderFor(empty)
 
 /**
  * @since 1.0.0
@@ -162,14 +163,14 @@ export interface JSONEncodeHandler {
 /**
  * @since 1.0.0
  */
-export const unsafeEncoderForProvider = (
-  support: Support
+export const provideUnsafeEncoderFor = (
+  provider: Provider
 ) =>
   <A>(schema: Schema<A>): Encoder<J.Json, A> => {
     const go = (ast: AST): Encoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(provider)(ast.provider)
           const handler: O.Option<JSONEncodeHandler> = findHandler(
             merge,
             JsonEncoderId,
@@ -213,7 +214,7 @@ export const unsafeEncoderForProvider = (
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.unsafeGuardFor(empty)(S.make(member)))
+          const guards = ast.members.map((member) => G.provideUnsafeGuardFor(empty)(S.make(member)))
           return E.make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].encode(a)
@@ -240,4 +241,5 @@ export const unsafeEncoderForProvider = (
 /**
  * @since 1.0.0
  */
-export const unsafeEncoderFor = unsafeEncoderForProvider(empty)
+export const unsafeEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> =
+  provideUnsafeEncoderFor(empty)

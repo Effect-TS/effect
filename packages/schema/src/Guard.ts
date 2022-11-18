@@ -4,10 +4,10 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import { GuardId } from "@fp-ts/codec/internal/Interpreter"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { Support } from "@fp-ts/codec/Support"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
@@ -132,12 +132,12 @@ export interface GuardHandler {
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor = (support: Support) =>
+export const provideUnsafeGuardFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const go = (ast: AST): Guard<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(provider)(ast.provider)
           const handler: O.Option<GuardHandler> = findHandler(merge, GuardId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
@@ -232,8 +232,13 @@ export const unsafeGuardFor = (support: Support) =>
 /**
  * @since 1.0.0
  */
+export const unsafeGuardFor: <A>(schema: Schema<A>) => Guard<A> = provideUnsafeGuardFor(empty)
+
+/**
+ * @since 1.0.0
+ */
 export const FromSchema: ofSchema.OfSchema<GuardTypeLambda> = {
-  ofSchema: unsafeGuardFor(empty)
+  ofSchema: provideUnsafeGuardFor(empty)
 }
 
 /**
@@ -289,7 +294,7 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(nativeEnum
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(empty)(f(guard))
+) => (guard: Guard<A>): Guard<B> => provideUnsafeGuardFor(empty)(f(guard))
 
 /**
  * @since 1.0.0

@@ -7,10 +7,10 @@ import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
 import * as fc from "fast-check"
 
-const unsafeGuardFor = G.unsafeGuardFor(Json.Support)
-const unsafeArbitraryFor = A.unsafeArbitraryFor(Json.Support)
-const unsafeShowFor = show.unsafeShowFor(Json.Support)
-const unsafeDecoderFor = JC.unsafeDecoderForProvider(Json.Support)
+const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)
+const unsafeArbitraryFor = A.provideUnsafeArbitraryFor(Json.Provider)
+const unsafeShowFor = show.provideUnsafeShowFor(Json.Provider)
+const unsafeDecoderFor = JC.provideUnsafeDecoderFor(Json.Provider)
 
 describe("Json", () => {
   it("Json", () => {

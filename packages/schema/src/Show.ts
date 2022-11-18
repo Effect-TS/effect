@@ -5,10 +5,10 @@
 import type { AST } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
 import { ShowId } from "@fp-ts/codec/internal/Interpreter"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { Support } from "@fp-ts/codec/Support"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -49,12 +49,12 @@ export interface ShowHandler {
 /**
  * @since 1.0.0
  */
-export const unsafeShowFor = (support: Support) =>
+export const provideUnsafeShowFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Show<A> => {
     const go = (ast: AST): Show<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(provider)(ast.provider)
           const handler: O.Option<ShowHandler> = findHandler(merge, ShowId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
@@ -88,7 +88,7 @@ export const unsafeShowFor = (support: Support) =>
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.unsafeGuardFor(empty)(S.make(member)))
+          const guards = ast.members.map((member) => G.provideUnsafeGuardFor(empty)(S.make(member)))
           return make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].show(a)
@@ -131,3 +131,8 @@ export const unsafeShowFor = (support: Support) =>
 
     return go(schema.ast)
   }
+
+/**
+ * @since 1.0.0
+ */
+export const unsafeShowFor = provideUnsafeShowFor(empty)

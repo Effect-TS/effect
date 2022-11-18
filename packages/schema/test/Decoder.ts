@@ -1,5 +1,6 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
+import * as G from "@fp-ts/codec/Guard"
 import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
@@ -10,6 +11,30 @@ const nan: D.Decoder<unknown, number> = pipe(
 )
 
 describe("Decoder", () => {
+  describe("README", () => {
+    it("Creating a simple string schema", () => {
+      const mySchema = D.string
+      expect(mySchema.decode("tuna")).toEqual(D.succeed("tuna"))
+    })
+
+    it("Creating an object schema", () => {
+      const User = D.struct({
+        username: D.string
+      })
+      expect(User.decode({ username: "Ludwig" })).toEqual(D.succeed({ username: "Ludwig" }))
+      type User = S.Infer<typeof User>
+    })
+
+    it("Deriving a guard", () => {
+      const User = D.struct({
+        username: D.string
+      })
+      const guard = G.unsafeGuardFor(User)
+      expect(guard.is({ username: "Ludwig" })).toEqual(true)
+      type User = S.Infer<typeof User>
+    })
+  })
+
   it("compose", () => {
     expect(D.compose).exist
   })

@@ -5,7 +5,7 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const unsafeShowFor = show.unsafeShowFor(set.Support)
+const unsafeShowFor = show.provideUnsafeShowFor(set.Provider)
 
 describe("Show", () => {
   it("struct", () => {

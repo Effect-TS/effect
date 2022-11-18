@@ -6,9 +6,9 @@ import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
+import type * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
-import type * as support from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
@@ -39,7 +39,7 @@ export const id = Symbol.for("@fp-ts/codec/data/Json")
 /**
  * @since 1.0.0
  */
-export const Support: support.Support = new Map([
+export const Provider: provider.Provider = new Map([
   [GuardId, new Map<symbol, Function>([[id, () => Guard]])],
   [ArbitraryId, new Map<symbol, Function>([[id, () => Arbitrary]])],
   [ShowId, new Map<symbol, Function>([[id, () => Show]])],
@@ -49,7 +49,7 @@ export const Support: support.Support = new Map([
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.declare(id, Support)
+export const Schema: S.Schema<Json> = S.declare(id, Provider)
 
 /**
  * @since 1.0.0

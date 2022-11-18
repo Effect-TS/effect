@@ -4,10 +4,10 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import { ArbitraryId } from "@fp-ts/codec/internal/Interpreter"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { Support } from "@fp-ts/codec/Support"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
 import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
 import type { TypeLambda } from "@fp-ts/core/HKT"
@@ -118,12 +118,12 @@ export interface ArbitraryHandler {
 /**
  * @since 1.0.0
  */
-export const unsafeArbitraryFor = (support: Support) =>
+export const provideUnsafeArbitraryFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Arbitrary<A> => {
     const go = (ast: AST): Arbitrary<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(provider)(ast.provider)
           const handler: O.Option<ArbitraryHandler> = findHandler(
             merge,
             ArbitraryId,
@@ -209,7 +209,7 @@ export const unsafeArbitraryFor = (support: Support) =>
  * @since 1.0.0
  */
 export const FromSchema: ofSchema.OfSchema<ArbitraryTypeLambda> = {
-  ofSchema: unsafeArbitraryFor(empty)
+  ofSchema: provideUnsafeArbitraryFor(empty)
 }
 
 /**
@@ -266,7 +266,7 @@ export const nativeEnum: <A extends { [_: string]: string | number }>(
  */
 export const mapSchema = <A, B>(
   f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(empty)(f(arb))
+) => (arb: Arbitrary<A>): Arbitrary<B> => provideUnsafeArbitraryFor(empty)(f(arb))
 
 /**
  * @since 1.0.0

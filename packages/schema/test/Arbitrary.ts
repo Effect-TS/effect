@@ -5,8 +5,8 @@ import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
-const unsafeGuardFor = G.unsafeGuardFor(set.Support)
-const unsafeArbitraryFor = Arb.unsafeArbitraryFor(set.Support)
+const unsafeGuardFor = G.provideUnsafeGuardFor(set.Provider)
+const unsafeArbitraryFor = Arb.provideUnsafeArbitraryFor(set.Provider)
 
 describe("Arbitrary", () => {
   const sampleSize = 100

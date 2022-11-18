@@ -1,8 +1,8 @@
 import type { AST } from "@fp-ts/codec/AST"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import type { Support } from "@fp-ts/codec/Support"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -35,14 +35,14 @@ export interface JSONSchemaHandler {
   (...typeReps: ReadonlyArray<TypeRep<any>>): TypeRep<any>
 }
 
-export const unsafeTypeRepFor = (
-  support: Support
+export const provideUnsafeTypeRepFor = (
+  support: Provider
 ) =>
   <A>(schema: Schema<A>): TypeRep<A> => {
     const go = (ast: AST): TypeRep<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.support)
+          const merge = Semigroup.combine(support)(ast.provider)
           const handler: O.Option<JSONSchemaHandler> = findHandler(
             merge,
             TypeRepInterpreterId,
@@ -115,76 +115,76 @@ export const unsafeTypeRepFor = (
   }
 
 describe("unsafeTypeRepFor", () => {
-  const unsafeTypeRepFor_ = unsafeTypeRepFor(empty)
+  const unsafeTypeRepFor = provideUnsafeTypeRepFor(empty)
   it("struct", () => {
     const schema = S.struct({
       a: S.string,
       b: S.number
     })
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly a: string, readonly b: number }"
     )
   })
 
   it("ReadonlyArray", () => {
     const schema = S.array(true, S.string)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [...string[]]"
     )
   })
 
   it("Array", () => {
     const schema = S.array(false, S.string)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "[...string[]]"
     )
   })
 
   it("nonEmptyArray", () => {
     const schema = S.nonEmptyArray(true, S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, ...number[]]"
     )
   })
 
   it("of", () => {
     const schema = S.of("a")
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "\"a\""
     )
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly [_: string]: string }"
     )
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string | number"
     )
   })
 
   it("tuple", () => {
     const schema = S.tuple(true, S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "readonly [string, number]"
     )
   })
 
   it("option (as structure)", () => {
     const schema = S.option(S.string)
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
     )
   })
 
   it("either (as structure)", () => {
     const schema = S.either(S.string, S.number)
-    const typeRep = pipe(schema, unsafeTypeRepFor_)
+    const typeRep = pipe(schema, unsafeTypeRepFor)
     expect(typeRep.typeRep).toEqual(
       "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
     )
@@ -192,14 +192,14 @@ describe("unsafeTypeRepFor", () => {
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(2))
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"
     )
   })
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(4))
-    expect(pipe(schema, unsafeTypeRepFor_).typeRep).toEqual(
+    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"
     )
   })

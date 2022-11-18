@@ -16,30 +16,30 @@ export interface Handlers extends Map<symbol, Function> {}
 /**
  * @since 1.0.0
  */
-export interface Support extends Map<symbol, Handlers> {}
+export interface Provider extends Map<symbol, Handlers> {}
 
 /**
  * @since 1.0.0
  */
-export const empty: Support = new Map()
+export const empty: Provider = new Map()
 
 /**
  * @since 1.0.0
  */
 export const findHandler = <A>(
-  support: Support,
+  provider: Provider,
   interpreterId: symbol,
   typeId: symbol
 ): Option<A> =>
   pipe(
-    O.fromNullable(support.get(interpreterId)),
+    O.fromNullable(provider.get(interpreterId)),
     O.flatMapNullable((handlers) => handlers.get(typeId) as any)
   )
 
 /**
  * @since 1.0.0
  */
-export const Semigroup: semigroup.Semigroup<Support> = semigroup.fromCombine((that) =>
+export const Semigroup: semigroup.Semigroup<Provider> = semigroup.fromCombine((that) =>
   (self) => {
     if (self === empty || self.size === 0) {
       return that
@@ -62,4 +62,4 @@ export const Semigroup: semigroup.Semigroup<Support> = semigroup.fromCombine((th
 /**
  * @since 1.0.0
  */
-export const Monoid: monoid.Monoid<Support> = monoid.fromSemigroup(Semigroup, empty)
+export const Monoid: monoid.Monoid<Provider> = monoid.fromSemigroup(Semigroup, empty)

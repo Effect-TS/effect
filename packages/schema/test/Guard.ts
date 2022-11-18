@@ -2,13 +2,13 @@ import * as bigint from "@fp-ts/codec/data/bigint"
 import * as json from "@fp-ts/codec/data/Json"
 import * as set from "@fp-ts/codec/data/Set"
 import * as G from "@fp-ts/codec/Guard"
+import { Monoid } from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
-import { Monoid } from "@fp-ts/codec/Support"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
-const support = Monoid.combineAll([json.Support, set.Support, bigint.Support])
-const unsafeGuardFor = G.unsafeGuardFor(support)
+const support = Monoid.combineAll([json.Provider, set.Provider, bigint.Provider])
+const unsafeGuardFor = G.provideUnsafeGuardFor(support)
 
 describe("Guard", () => {
   it("bigint", () => {

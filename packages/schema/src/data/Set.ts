@@ -8,9 +8,9 @@ import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
 import * as T from "@fp-ts/codec/internal/These"
+import type * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
-import type * as support from "@fp-ts/codec/Support"
 
 /**
  * @since 1.0.0
@@ -63,9 +63,9 @@ export const Show = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
 /**
  * @since 1.0.0
  */
-export const Support: support.Support = new Map([
+export const Provider: provider.Provider = new Map([
   [GuardId, new Map<symbol, Function>([[id, Guard]])],
-  [ArbitraryInterpreterId, new Map<symbol, Function>([[id, Arbitrary]])],
+  [ArbitraryId, new Map<symbol, Function>([[id, Arbitrary]])],
   [ShowId, new Map<symbol, Function>([[id, Show]])],
   [JsonDecoderId, new Map<symbol, Function>([[id, Decoder]])]
 ])
@@ -73,4 +73,4 @@ export const Support: support.Support = new Map([
 /**
  * @since 1.0.0
  */
-export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, Support, item)
+export const Schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, Provider, item)

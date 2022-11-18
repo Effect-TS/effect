@@ -5,7 +5,7 @@
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import * as internal from "@fp-ts/codec/internal/Schema"
-import type { Support } from "@fp-ts/codec/Support"
+import type { Provider } from "@fp-ts/codec/Provider"
 import type { Either } from "@fp-ts/data/Either"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
@@ -33,7 +33,7 @@ export const make: <A>(ast: AST) => Schema<A> = internal.make
  */
 export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
-  support: Support,
+  provider: Provider,
   ...schemas: Schemas
 ) => Schema<any> = internal.declare
 
