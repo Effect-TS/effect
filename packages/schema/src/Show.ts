@@ -9,6 +9,8 @@ import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
+import * as schemable from "@fp-ts/codec/typeclass/Schemable"
+import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -22,8 +24,30 @@ export interface Show<in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
+export interface ShowTypeLambda extends TypeLambda {
+  readonly type: Show<this["Target"]>
+}
+
+/**
+ * @since 1.0.0
+ */
 export const make = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
   ({ ast: schema.ast, show }) as any
+
+/**
+ * @since 1.0.0
+ */
+export const string: Show<string> = make(S.string, (a) => JSON.stringify(a))
+
+/**
+ * @since 1.0.0
+ */
+export const number: Show<number> = make(S.number, (a) => JSON.stringify(a))
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Show<boolean> = make(S.boolean, (a) => JSON.stringify(a))
 
 /**
  * @since 1.0.0
@@ -63,13 +87,12 @@ export const provideUnsafeShowFor = (provider: Provider) =>
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
-          return make(S.string, (a) => JSON.stringify(a))
-        }
+        case "String":
+          return string
         case "Number":
-          return make(S.number, (a) => JSON.stringify(a))
+          return number
         case "Boolean":
-          return make(S.boolean, (a) => JSON.stringify(a))
+          return boolean
         case "Of":
           return make(S.make(ast), (a) => JSON.stringify(a))
         case "Tuple": {
@@ -90,7 +113,7 @@ export const provideUnsafeShowFor = (provider: Provider) =>
           const members = ast.members.map(go)
           const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
           return make(S.make(ast), (a) => {
-            const index = guards.findIndex((guard) => guard.is(a))
+            const index = guards.findIndex((Show) => Show.is(a))
             return members[index].show(a)
           })
         }
@@ -136,3 +159,100 @@ export const provideUnsafeShowFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const unsafeShowFor: <A>(schema: Schema<A>) => Show<A> = provideUnsafeShowFor(empty)
+
+/**
+ * @since 1.0.0
+ */
+export const Schemable: schemable.Schemable<ShowTypeLambda> = {
+  fromSchema: unsafeShowFor
+}
+
+/**
+ * @since 1.0.0
+ */
+export const of: <A>(a: A) => Show<A> = schemable.of(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
+  ...components: Components
+) => Show<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
+  .tuple(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const union: <Members extends ReadonlyArray<Schema<any>>>(
+  ...members: Members
+) => Show<S.Infer<Members[number]>> = schemable
+  .union(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) => Show<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
+  .struct(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignature: <A>(value: Schema<A>) => Show<{
+  readonly [_: string]: A
+}> = schemable.indexSignature(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const array: <A>(item: Schema<A>) => Show<ReadonlyArray<A>> = schemable
+  .array(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const nativeEnum: <A extends { [_: string]: string | number }>(
+  nativeEnum: A
+) => Show<A> = schemable.nativeEnum(Schemable)
+
+/**
+ * @since 1.0.0
+ */
+export const optional: <A>(self: Schema<A>) => Show<A | undefined> = schemable
+  .optional(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullable: <A>(self: Schema<A>) => Show<A | null> = schemable
+  .nullable(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullish: <A>(self: Schema<A>) => Show<A | null | undefined> = schemable
+  .nullish(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Schema<A>) => Show<{ [P in Keys[number]]: A[P] }> = schemable.pick(
+  Schemable
+)
+
+/**
+ * @since 1.0.0
+ */
+export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
+  ...keys: Keys
+) => (self: Schema<A>) => Show<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemable
+  .omit(Schemable)

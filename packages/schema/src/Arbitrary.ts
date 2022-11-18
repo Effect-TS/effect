@@ -8,8 +8,7 @@ import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
-import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
+import * as schemable from "@fp-ts/codec/typeclass/Schemable"
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -215,79 +214,81 @@ export const unsafeArbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provid
 /**
  * @since 1.0.0
  */
-export const FromSchema: ofSchema.OfSchema<ArbitraryTypeLambda> = {
-  ofSchema: unsafeArbitraryFor
+export const Schemable: schemable.Schemable<ArbitraryTypeLambda> = {
+  fromSchema: unsafeArbitraryFor
 }
 
 /**
  * @since 1.0.0
  */
-export const of: <A>(a: A) => Arbitrary<A> = ofSchema.of(FromSchema)
+export const of: <A>(a: A) => Arbitrary<A> = schemable.of(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-) => Arbitrary<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = ofSchema
-  .tuple(FromSchema)
+) => Arbitrary<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
+  .tuple(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Arbitrary<S.Infer<Members[number]>> = ofSchema
-  .union(FromSchema)
+) => Arbitrary<S.Infer<Members[number]>> = schemable
+  .union(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-) => Arbitrary<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = ofSchema
-  .struct(FromSchema)
+) => Arbitrary<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
+  .struct(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const indexSignature: <A>(value: Schema<A>) => Arbitrary<{
   readonly [_: string]: A
-}> = ofSchema.indexSignature(FromSchema)
+}> = schemable.indexSignature(Schemable)
 
 /**
  * @since 1.0.0
  */
-export const array: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = ofSchema
-  .array(FromSchema)
+export const array: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = schemable
+  .array(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const nativeEnum: <A extends { [_: string]: string | number }>(
   nativeEnum: A
-) => Arbitrary<A> = ofSchema.nativeEnum(FromSchema)
+) => Arbitrary<A> = schemable.nativeEnum(Schemable)
 
 /**
  * @since 1.0.0
  */
-export const mapSchema = <A, B>(
-  f: (schema: Schema<A>) => Schema<B>
-) => (arb: Arbitrary<A>): Arbitrary<B> => unsafeArbitraryFor(f(arb))
-
-/**
- * @since 1.0.0
- */
-export const CovariantSchema: covariantSchema.CovariantSchema<ArbitraryTypeLambda> = {
-  mapSchema
-}
-
-/**
- * @since 1.0.0
- */
-export const optional: <A>(self: Arbitrary<A>) => Arbitrary<A | undefined> = covariantSchema
+export const optional: <A>(self: Schema<A>) => Arbitrary<A | undefined> = schemable
   .optional(
-    CovariantSchema
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullable: <A>(self: Schema<A>) => Arbitrary<A | null> = schemable
+  .nullable(
+    Schemable
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const nullish: <A>(self: Schema<A>) => Arbitrary<A | null | undefined> = schemable
+  .nullish(
+    Schemable
   )
 
 /**
@@ -295,8 +296,8 @@ export const optional: <A>(self: Arbitrary<A>) => Arbitrary<A | undefined> = cov
  */
 export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Arbitrary<A>) => Arbitrary<{ [P in Keys[number]]: A[P] }> = covariantSchema.pick(
-  CovariantSchema
+) => (self: Schema<A>) => Arbitrary<{ [P in Keys[number]]: A[P] }> = schemable.pick(
+  Schemable
 )
 
 /**
@@ -304,6 +305,5 @@ export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
  */
 export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Arbitrary<A>) => Arbitrary<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> =
-  covariantSchema
-    .omit(CovariantSchema)
+) => (self: Schema<A>) => Arbitrary<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemable
+  .omit(Schemable)

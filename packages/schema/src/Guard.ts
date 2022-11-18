@@ -9,8 +9,7 @@ import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as covariantSchema from "@fp-ts/codec/typeclass/CovariantSchema"
-import * as ofSchema from "@fp-ts/codec/typeclass/OfSchema"
+import * as schemable from "@fp-ts/codec/typeclass/Schemable"
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
@@ -234,86 +233,90 @@ export const unsafeGuardFor: <A>(schema: Schema<A>) => Guard<A> = provideUnsafeG
 /**
  * @since 1.0.0
  */
-export const FromSchema: ofSchema.OfSchema<GuardTypeLambda> = {
-  ofSchema: unsafeGuardFor
+export const Schemable: schemable.Schemable<GuardTypeLambda> = {
+  fromSchema: unsafeGuardFor
 }
 
 /**
  * @since 1.0.0
  */
-export const of: <A>(a: A) => Guard<A> = ofSchema.of(FromSchema)
+export const of: <A>(a: A) => Guard<A> = schemable.of(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-) => Guard<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = ofSchema
-  .tuple(FromSchema)
+) => Guard<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
+  .tuple(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Guard<S.Infer<Members[number]>> = ofSchema
-  .union(FromSchema)
+) => Guard<S.Infer<Members[number]>> = schemable
+  .union(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
   fields: Fields
-) => Guard<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = ofSchema
-  .struct(FromSchema)
+) => Guard<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
+  .struct(Schemable)
 
 /**
  * @since 1.0.0
  */
 export const indexSignature: <A>(value: Schema<A>) => Guard<{
   readonly [_: string]: A
-}> = ofSchema.indexSignature(FromSchema)
+}> = schemable.indexSignature(Schemable)
 
 /**
  * @since 1.0.0
  */
-export const array: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = ofSchema
-  .array(FromSchema)
+export const array: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = schemable
+  .array(Schemable)
 
 /**
  * @since 1.0.0
  */
-export const nativeEnum: <A extends { [_: string]: string | number }>(nativeEnum: A) => Guard<A> =
-  ofSchema.nativeEnum(FromSchema)
+export const nativeEnum: <A extends { [_: string]: string | number }>(
+  nativeEnum: A
+) => Guard<A> = schemable.nativeEnum(Schemable)
 
 /**
  * @since 1.0.0
  */
-export const mapSchema = <A, B>(
-  f: (schema: Schema<A>) => Schema<B>
-) => (guard: Guard<A>): Guard<B> => unsafeGuardFor(f(guard))
+export const optional: <A>(self: Schema<A>) => Guard<A | undefined> = schemable
+  .optional(
+    Schemable
+  )
 
 /**
  * @since 1.0.0
  */
-export const CovariantSchema: covariantSchema.CovariantSchema<GuardTypeLambda> = {
-  mapSchema
-}
+export const nullable: <A>(self: Schema<A>) => Guard<A | null> = schemable
+  .nullable(
+    Schemable
+  )
 
 /**
  * @since 1.0.0
  */
-export const optional: <A>(self: Guard<A>) => Guard<A | undefined> = covariantSchema.optional(
-  CovariantSchema
-)
+export const nullish: <A>(self: Schema<A>) => Guard<A | null | undefined> = schemable
+  .nullish(
+    Schemable
+  )
 
 /**
  * @since 1.0.0
  */
 export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Keys[number]]: A[P] }> = covariantSchema.pick(
-  CovariantSchema
+) => (self: Schema<A>) => Guard<{ [P in Keys[number]]: A[P] }> = schemable.pick(
+  Schemable
 )
 
 /**
@@ -321,5 +324,5 @@ export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
  */
 export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
   ...keys: Keys
-) => (self: Guard<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = covariantSchema
-  .omit(CovariantSchema)
+) => (self: Schema<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemable
+  .omit(Schemable)
