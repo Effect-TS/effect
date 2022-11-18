@@ -10,7 +10,7 @@ import * as fc from "fast-check"
 const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)
 const unsafeArbitraryFor = A.provideUnsafeArbitraryFor(Json.Provider)
 const unsafeShowFor = show.provideUnsafeShowFor(Json.Provider)
-const unsafeDecoderFor = JC.provideUnsafeDecoderFor(Json.Provider)
+const unsafeDecoderFor = JC.provideUnsafeJsonDecoderFor(Json.Provider)
 
 describe("Json", () => {
   it("Json", () => {

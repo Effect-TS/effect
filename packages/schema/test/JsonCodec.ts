@@ -6,8 +6,8 @@ import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 
-const unsafeEncoderFor = JC.provideUnsafeEncoderFor(set.Provider)
-const unsafeDecoderFor = JC.provideUnsafeDecoderFor(set.Provider)
+const unsafeEncoderFor = JC.provideUnsafeJsonEncoderFor(set.Provider)
+const unsafeDecoderFor = JC.provideUnsafeJsonDecoderFor(set.Provider)
 
 describe("JsonCodec", () => {
   describe("unsafeDecoderFor", () => {

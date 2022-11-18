@@ -132,4 +132,16 @@ describe("Decoder", () => {
       D.fail(DE.notType("Object", 1))
     )
   })
+
+  describe("usafeDecoderFor", () => {
+    it("struct", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = D.unsafeDecoderFor(schema)
+      expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
+
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Object", null)))
+      expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
+      expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
+    })
+  })
 })

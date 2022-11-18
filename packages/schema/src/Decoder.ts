@@ -2,13 +2,18 @@
  * @since 1.0.0
  */
 
+import type { AST } from "@fp-ts/codec/AST"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
+import { DecoderId } from "@fp-ts/codec/internal/Interpreter"
 import { isUnknownArray, isUnknownIndexSignature } from "@fp-ts/codec/internal/Refinement"
 import * as T from "@fp-ts/codec/internal/These"
+import type { Provider } from "@fp-ts/codec/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 
 /**
@@ -359,3 +364,86 @@ export const lazy = <I, A>(
     (a) => get().decode(a)
   )
 }
+
+/**
+ * @since 1.0.0
+ */
+export interface DecoderHandler {
+  (...decoders: ReadonlyArray<Decoder<unknown, any>>): Decoder<unknown, any>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const provideUnsafeDecoderFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Decoder<unknown, A> => {
+    const go = (ast: AST): Decoder<unknown, any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const merge = Semigroup.combine(provider)(ast.provider)
+          const handler: O.Option<DecoderHandler> = findHandler(
+            merge,
+            DecoderId,
+            ast.id
+          )
+          if (O.isSome(handler)) {
+            return handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
+          )
+        }
+        case "String": {
+          let out = string
+          if (ast.minLength !== undefined) {
+            out = minLength(ast.minLength)(out)
+          }
+          if (ast.maxLength !== undefined) {
+            out = maxLength(ast.maxLength)(out)
+          }
+          return out
+        }
+        case "Number": {
+          let out = number
+          if (ast.minimum !== undefined) {
+            out = minimum(ast.minimum)(out)
+          }
+          if (ast.maximum !== undefined) {
+            out = maximum(ast.maximum)(out)
+          }
+          return out
+        }
+        case "Boolean":
+          return boolean
+        case "Of":
+          return of(ast.value)
+        case "Tuple": {
+          const components = ast.components.map(go)
+          // TODO
+          // const oRestElement = pipe(ast.restElement, O.map(go))
+          return tuple(...components)
+        }
+        case "Union":
+          return union(...ast.members.map(go))
+        case "Struct": {
+          const fields: Record<PropertyKey, Decoder<unknown, any>> = {}
+          for (const field of ast.fields) {
+            fields[field.key] = go(field.value)
+          }
+          // TODO
+          // const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          return struct(fields)
+        }
+        case "Lazy":
+          return lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> =
+  provideUnsafeDecoderFor(empty)

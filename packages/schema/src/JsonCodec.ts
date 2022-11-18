@@ -28,7 +28,7 @@ export interface JsonDecoderHandler {
 /**
  * @since 1.0.0
  */
-export const provideUnsafeDecoderFor = (provider: Provider) =>
+export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
@@ -150,20 +150,20 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> =
-  provideUnsafeDecoderFor(empty)
+export const unsafeJsonDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> =
+  provideUnsafeJsonDecoderFor(empty)
 
 /**
  * @since 1.0.0
  */
-export interface JSONEncodeHandler {
+export interface JSONEncoderHandler {
   (...encoders: ReadonlyArray<Encoder<J.Json, any>>): Encoder<J.Json, any>
 }
 
 /**
  * @since 1.0.0
  */
-export const provideUnsafeEncoderFor = (
+export const provideUnsafeJsonEncoderFor = (
   provider: Provider
 ) =>
   <A>(schema: Schema<A>): Encoder<J.Json, A> => {
@@ -171,7 +171,7 @@ export const provideUnsafeEncoderFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<JSONEncodeHandler> = findHandler(
+          const handler: O.Option<JSONEncoderHandler> = findHandler(
             merge,
             JsonEncoderId,
             ast.id
@@ -241,5 +241,5 @@ export const provideUnsafeEncoderFor = (
 /**
  * @since 1.0.0
  */
-export const unsafeEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> =
-  provideUnsafeEncoderFor(empty)
+export const unsafeJsonEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> =
+  provideUnsafeJsonEncoderFor(empty)
