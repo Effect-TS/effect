@@ -30,13 +30,6 @@ const JSONSchemaInterpreterId: unique symbol = Symbol.for(
 
 type JSONSchemaInterpreterId = typeof JSONSchemaInterpreterId
 
-/**
- * @since 1.0.0
- */
-interface JSONSchemaHandler {
-  (...jsonSchemas: ReadonlyArray<JSONSchema>): JSONSchema
-}
-
 const provideUnsafeJsonSchemaFor = (
   support: Provider
 ) =>
@@ -45,7 +38,7 @@ const provideUnsafeJsonSchemaFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.provider)
-          const handler: O.Option<JSONSchemaHandler> = findHandler(
+          const handler = findHandler(
             merge,
             JSONSchemaInterpreterId,
             ast.id

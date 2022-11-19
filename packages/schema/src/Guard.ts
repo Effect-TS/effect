@@ -145,20 +145,13 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export interface GuardHandler {
-  (...guards: ReadonlyArray<Guard<any>>): Guard<any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeGuardFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const go = (ast: AST): Guard<any> => {
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<GuardHandler> = findHandler(merge, GuardId, ast.id)
+          const handler = findHandler(merge, GuardId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }

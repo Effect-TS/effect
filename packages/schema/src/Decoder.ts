@@ -310,20 +310,13 @@ export const lazy = <I, A>(
 /**
  * @since 1.0.0
  */
-export interface DecoderHandler {
-  (...decoders: ReadonlyArray<Decoder<unknown, any>>): Decoder<unknown, any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<unknown, A> => {
     const go = (ast: AST): Decoder<unknown, any> => {
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<DecoderHandler> = findHandler(
+          const handler = findHandler(
             merge,
             DecoderId,
             ast.id

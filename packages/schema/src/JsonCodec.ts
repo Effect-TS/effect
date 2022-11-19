@@ -21,20 +21,13 @@ import * as T from "@fp-ts/data/These"
 /**
  * @since 1.0.0
  */
-export interface JsonDecoderHandler {
-  (...decoders: ReadonlyArray<Decoder<J.Json, any>>): Decoder<J.Json, any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<JsonDecoderHandler> = findHandler(
+          const handler = findHandler(
             merge,
             JsonDecoderId,
             ast.id
@@ -146,13 +139,6 @@ export const unsafeJsonDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> 
 /**
  * @since 1.0.0
  */
-export interface JSONEncoderHandler {
-  (...encoders: ReadonlyArray<Encoder<J.Json, any>>): Encoder<J.Json, any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeJsonEncoderFor = (
   provider: Provider
 ) =>
@@ -161,7 +147,7 @@ export const provideUnsafeJsonEncoderFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<JSONEncoderHandler> = findHandler(
+          const handler = findHandler(
             merge,
             JsonEncoderId,
             ast.id

@@ -115,20 +115,13 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export interface ArbitraryHandler {
-  (...arbitraries: ReadonlyArray<Arbitrary<any>>): Arbitrary<any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeArbitraryFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Arbitrary<A> => {
     const go = (ast: AST): Arbitrary<any> => {
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<ArbitraryHandler> = findHandler(
+          const handler = findHandler(
             merge,
             ArbitraryId,
             ast.id

@@ -71,20 +71,13 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export interface ShowHandler {
-  (...shows: ReadonlyArray<Show<any>>): Show<any>
-}
-
-/**
- * @since 1.0.0
- */
 export const provideUnsafeShowFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Show<A> => {
     const go = (ast: AST): Show<any> => {
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler: O.Option<ShowHandler> = findHandler(merge, ShowId, ast.id)
+          const handler = findHandler(merge, ShowId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }

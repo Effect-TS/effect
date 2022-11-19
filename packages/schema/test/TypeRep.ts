@@ -28,13 +28,6 @@ export const TypeRepInterpreterId: unique symbol = Symbol.for(
 
 export type TypeRepInterpreterId = typeof TypeRepInterpreterId
 
-/**
- * @since 1.0.0
- */
-export interface JSONSchemaHandler {
-  (...typeReps: ReadonlyArray<TypeRep<any>>): TypeRep<any>
-}
-
 export const provideUnsafeTypeRepFor = (
   support: Provider
 ) =>
@@ -43,7 +36,7 @@ export const provideUnsafeTypeRepFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(support)(ast.provider)
-          const handler: O.Option<JSONSchemaHandler> = findHandler(
+          const handler = findHandler(
             merge,
             TypeRepInterpreterId,
             ast.id
