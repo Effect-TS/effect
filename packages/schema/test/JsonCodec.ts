@@ -1,10 +1,10 @@
 import * as set from "@fp-ts/codec/data/Set"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
-import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as T from "@fp-ts/data/These"
 
 const unsafeEncoderFor = JC.provideUnsafeJsonEncoderFor(set.Provider)
 const unsafeDecoderFor = JC.provideUnsafeJsonDecoderFor(set.Provider)

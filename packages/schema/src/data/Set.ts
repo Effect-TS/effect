@@ -7,10 +7,10 @@ import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
-import * as T from "@fp-ts/codec/internal/These"
 import * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
+import * as T from "@fp-ts/data/These"
 
 /**
  * @since 1.0.0

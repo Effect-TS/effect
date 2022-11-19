@@ -1,10 +1,10 @@
 import * as A from "@fp-ts/codec/Arbitrary"
 import * as Json from "@fp-ts/codec/data/Json"
 import * as G from "@fp-ts/codec/Guard"
-import * as T from "@fp-ts/codec/internal/These"
 import * as JC from "@fp-ts/codec/JsonCodec"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
+import * as T from "@fp-ts/data/These"
 import * as fc from "fast-check"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)

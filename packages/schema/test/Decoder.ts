@@ -1,9 +1,9 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import * as T from "@fp-ts/codec/internal/These"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as T from "@fp-ts/data/These"
 
 describe("Decoder", () => {
   describe("README", () => {

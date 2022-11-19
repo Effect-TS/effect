@@ -6,7 +6,6 @@ import type { AST } from "@fp-ts/codec/AST"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import { DecoderId } from "@fp-ts/codec/internal/Interpreter"
-import * as T from "@fp-ts/codec/internal/These"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -16,6 +15,7 @@ import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
+import * as T from "@fp-ts/data/These"
 
 /**
  * @since 1.0.0

@@ -10,13 +10,13 @@ import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
 import { JsonDecoderId, JsonEncoderId } from "@fp-ts/codec/internal/Interpreter"
-import * as T from "@fp-ts/codec/internal/These"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as T from "@fp-ts/data/These"
 
 /**
  * @since 1.0.0
