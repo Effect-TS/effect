@@ -100,7 +100,7 @@ describe("unsafeJsonSchemaFor", () => {
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
-  it("maxLength", () => {
+  it.skip("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
     const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
     expect(validate("")).toEqual(true)

@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
@@ -115,18 +116,9 @@ export const minLength: (
 /**
  * @since 1.0.0
  */
-export const maxLength = (
+export const maxLength: (
   maxLength: number
-) =>
-  <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
-    make(
-      S.maxLength(maxLength)(self),
-      (i) =>
-        pipe(
-          self.decode(i),
-          flatMap((a) => a.length <= maxLength ? succeed(a) : fail(DE.maxLength(maxLength)))
-        )
-    )
+) => <I, A extends { length: number }>(self: Decoder<I, A>) => Decoder<I, A> = maxLength_.decoder
 
 /**
  * @since 1.0.0
@@ -307,13 +299,8 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
             `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
-          let out = string
-          if (ast.maxLength !== undefined) {
-            out = maxLength(ast.maxLength)(out)
-          }
-          return out
-        }
+        case "String":
+          return string
         case "Number": {
           let out = number
           if (ast.minimum !== undefined) {

@@ -185,7 +185,7 @@ describe("unsafeTypeRepFor", () => {
     )
   })
 
-  it("maxLength", () => {
+  it.skip("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(4))
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"

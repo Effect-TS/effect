@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
@@ -77,14 +78,9 @@ export const minLength: (
 /**
  * @since 1.0.0
  */
-export const maxLength = (
+export const maxLength: (
   maxLength: number
-) =>
-  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make(
-      S.maxLength(maxLength)(self),
-      (a): a is A => self.is(a) && a.length <= maxLength
-    )
+) => <A extends { length: number }>(self: Guard<A>) => Guard<A> = maxLength_.guard
 
 /**
  * @since 1.0.0
@@ -158,13 +154,8 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
-          let out = string
-          if (ast.maxLength !== undefined) {
-            out = maxLength(ast.maxLength)(out)
-          }
-          return out
-        }
+        case "String":
+          return string
         case "Number": {
           let out = number
           if (ast.minimum !== undefined) {

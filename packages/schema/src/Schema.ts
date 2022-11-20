@@ -4,6 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
+import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
@@ -53,29 +54,16 @@ export const string: Schema<string> = make(ast.string({}))
 /**
  * @since 1.0.0
  */
-export const minLength: (minLength: number) => <
-  A extends {
-    length: number
-  }
->(self: Schema<A>) => Schema<A> = minLength_.schema
+export const minLength: (
+  minLength: number
+) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = minLength_.schema
 
 /**
  * @since 1.0.0
  */
-export const maxLength = (maxLength: number) =>
-  <A extends { length: number }>(
-    schema: Schema<A>
-  ): Schema<A> => {
-    if (ast.isString(schema.ast)) {
-      return make(
-        ast.string({
-          minLength: schema.ast.minLength,
-          maxLength
-        })
-      )
-    }
-    throw new Error("cannot `maxLength` non-String schemas")
-  }
+export const maxLength: (
+  maxLength: number
+) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = maxLength_.schema
 
 /**
  * @since 1.0.0

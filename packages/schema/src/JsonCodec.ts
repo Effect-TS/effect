@@ -42,13 +42,8 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
-          let out = D.string
-          if (ast.maxLength !== undefined) {
-            out = D.maxLength(ast.maxLength)(out)
-          }
-          return out
-        }
+        case "String":
+          return D.string
         case "Number": {
           let out = D.number
           if (ast.minimum !== undefined) {

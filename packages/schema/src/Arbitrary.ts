@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
@@ -56,14 +57,9 @@ export const minLength: (
 /**
  * @since 1.0.0
  */
-export const maxLength = (
+export const maxLength: (
   maxLength: number
-) =>
-  <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    make(
-      S.maxLength(maxLength)(self),
-      (fc) => self.arbitrary(fc).filter((a) => a.length <= maxLength)
-    )
+) => <A extends { length: number }>(self: Arbitrary<A>) => Arbitrary<A> = maxLength_.arbitrary
 
 /**
  * @since 1.0.0
@@ -135,13 +131,8 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String": {
-          let out = string
-          if (ast.maxLength !== undefined) {
-            out = maxLength(ast.maxLength)(out)
-          }
-          return out
-        }
+        case "String":
+          return string
         case "Number": {
           let out = number
           if (ast.minimum !== undefined) {
