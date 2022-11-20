@@ -4,7 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as G from "@fp-ts/codec/Guard"
-import { ShowId } from "@fp-ts/codec/internal/Interpreter"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -31,13 +31,7 @@ export interface ShowTypeLambda extends TypeLambda {
 /**
  * @since 1.0.0
  */
-export const make = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
-  ({ ast: schema.ast, show }) as any
-
-/**
- * @since 1.0.0
- */
-export const unknown: Show<unknown> = make(S.unknown, () => "<unknown>")
+export const make: <A>(schema: Schema<A>, show: Show<A>["show"]) => Show<A> = I.makeShow
 
 /**
  * @since 1.0.0
@@ -77,7 +71,7 @@ export const provideUnsafeShowFor = (provider: Provider) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, ShowId, ast.id)
+          const handler = findHandler(merge, I.ShowId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }
@@ -85,8 +79,6 @@ export const provideUnsafeShowFor = (provider: Provider) =>
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return unknown
         case "String":
           return string
         case "Number":

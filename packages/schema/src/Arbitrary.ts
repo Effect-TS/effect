@@ -3,7 +3,8 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import { ArbitraryId } from "@fp-ts/codec/internal/Interpreter"
+import * as unknown_ from "@fp-ts/codec/data/unknown"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -31,13 +32,13 @@ export interface ArbitraryTypeLambda extends TypeLambda {
 /**
  * @since 1.0.0
  */
-export const make = <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]): Arbitrary<A> =>
-  ({ ast: schema.ast, arbitrary }) as any
+export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
+  I.makeArbitrary
 
 /**
  * @since 1.0.0
  */
-export const unknown: Arbitrary<unknown> = make(S.unknown, (fc) => fc.anything())
+export const unknown: Arbitrary<unknown> = unknown_.Arbitrary
 
 /**
  * @since 1.0.0
@@ -123,7 +124,7 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(
             merge,
-            ArbitraryId,
+            I.ArbitraryId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -133,8 +134,6 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {

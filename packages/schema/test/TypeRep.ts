@@ -48,8 +48,6 @@ export const provideUnsafeTypeRepFor = (
             `Missing support for TypeRep interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return make(S.unknown.ast, "unknown")
         case "String":
           return make(S.string.ast, "string")
         case "Number":

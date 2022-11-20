@@ -4,6 +4,8 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
+import * as unknown_ from "@fp-ts/codec/data/unknown"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import type { Either } from "@fp-ts/data/Either"
 import type { Option } from "@fp-ts/data/Option"
@@ -25,21 +27,21 @@ export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 /**
  * @since 1.0.0
  */
-export const make = <A>(ast: AST): Schema<A> => ({ ast }) as any
+export const make: <A>(ast: AST) => Schema<A> = I.makeSchema
 
 /**
  * @since 1.0.0
  */
-export const declare = <Schemas extends ReadonlyArray<Schema<any>>>(
+export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
   provider: Provider,
   ...schemas: Schemas
-): Schema<any> => make(ast.declare(id, provider, schemas.map((s) => s.ast)))
+) => Schema<any> = I.declareSchema
 
 /**
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = make(ast.unknown)
+export const unknown: Schema<unknown> = unknown_.Schema
 
 /**
  * @since 1.0.0

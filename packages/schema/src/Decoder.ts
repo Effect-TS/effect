@@ -3,9 +3,10 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
-import { DecoderId } from "@fp-ts/codec/internal/Interpreter"
+import * as internal from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -35,31 +36,31 @@ export interface DecoderTypeLambda extends TypeLambda {
 /**
  * @since 1.0.0
  */
-export const make = <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]): Decoder<I, A> =>
-  ({ ast: schema.ast, decode }) as any
+export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) => Decoder<I, A> =
+  internal.makeDecoder
 
 /**
  * @since 1.0.0
  */
-export const fromGuard = <A>(
+export const fromGuard: <A>(
   guard: G.Guard<A>,
   onFalse: (u: unknown) => DE.DecodeError
-): Decoder<unknown, A> => make(guard, (u) => guard.is(u) ? succeed(u) : fail(onFalse(u)))
+) => Decoder<unknown, A> = internal.fromGuard
 
 /**
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => T.These<never, A> = T.right
+export const succeed: <A>(a: A) => T.These<never, A> = internal.succeed
 
 /**
  * @since 1.0.0
  */
-export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
+export const fail: <E>(e: E) => T.These<ReadonlyArray<E>, never> = internal.fail
 
 /**
  * @since 1.0.0
  */
-export const warn = <E, A>(e: E, a: A): T.These<ReadonlyArray<E>, A> => T.both([e], a)
+export const warn: <E, A>(e: E, a: A) => T.These<ReadonlyArray<E>, A> = internal.warn
 
 /**
  * @since 1.0.0
@@ -93,10 +94,7 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
 /**
  * @since 1.0.0
  */
-export const unknown: Decoder<unknown, unknown> = fromGuard(
-  G.unknown,
-  (u) => DE.notType("unknown", u)
-)
+export const unknown: Decoder<unknown, unknown> = unknown_.Decoder
 
 /**
  * @since 1.0.0
@@ -318,7 +316,7 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(
             merge,
-            DecoderId,
+            internal.DecoderId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -328,8 +326,6 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
             `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {

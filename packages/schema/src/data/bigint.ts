@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as G from "@fp-ts/codec/Guard"
-import { GuardId } from "@fp-ts/codec/internal/Interpreter"
-import * as provider from "@fp-ts/codec/Provider"
-import * as S from "@fp-ts/codec/Schema"
+import * as I from "@fp-ts/codec/internal/common"
+import * as P from "@fp-ts/codec/Provider"
+import type * as S from "@fp-ts/codec/Schema"
+import type * as Sh from "@fp-ts/codec/Show"
 
 /**
  * @since 1.0.0
@@ -14,19 +14,27 @@ export const id = Symbol.for("@fp-ts/codec/data/bigint")
 /**
  * @since 1.0.0
  */
-export const Provider: provider.Provider = provider.make(id, {
-  [GuardId]: () => Guard
+export const Provider: P.Provider = P.make(id, {
+  [I.GuardId]: () => Guard
 })
 
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<bigint> = S.declare(id, Provider)
+export const Schema: S.Schema<bigint> = I.declareSchema(id, Provider)
 
 /**
  * @since 1.0.0
  */
-export const Guard = G.make(
+export const Guard = I.makeGuard(
   Schema,
   (input): input is bigint => typeof input === "bigint"
+)
+
+/**
+ * @since 1.0.0
+ */
+export const Show: Sh.Show<bigint> = I.makeShow(
+  Schema,
+  (bigint) => bigint.toString()
 )

@@ -9,7 +9,7 @@ import * as D from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
 import * as E from "@fp-ts/codec/Encoder"
 import * as G from "@fp-ts/codec/Guard"
-import { JsonDecoderId, JsonEncoderId } from "@fp-ts/codec/internal/Interpreter"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -29,7 +29,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(
             merge,
-            JsonDecoderId,
+            I.JsonDecoderId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -39,8 +39,6 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return D.unknown
         case "String": {
           let out = D.string
           if (ast.minLength !== undefined) {
@@ -149,7 +147,7 @@ export const provideUnsafeJsonEncoderFor = (
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(
             merge,
-            JsonEncoderId,
+            I.JsonEncoderId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -159,8 +157,6 @@ export const provideUnsafeJsonEncoderFor = (
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          throw new Error("cannot Json encode an unknown value")
         case "String":
           return E.string
         case "Number":

@@ -3,7 +3,8 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import { GuardId } from "@fp-ts/codec/internal/Interpreter"
+import * as unknown_ from "@fp-ts/codec/data/unknown"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -30,18 +31,15 @@ export interface GuardTypeLambda extends TypeLambda {
 /**
  * @since 1.0.0
  */
-export const make = <A>(
+export const make: <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
-): Guard<A> => ({ ast: schema.ast, is }) as any
+) => Guard<A> = I.makeGuard
 
 /**
  * @since 1.0.0
  */
-export const unknown: Guard<unknown> = make(
-  S.unknown,
-  (_u): _u is unknown => true
-)
+export const unknown: Guard<unknown> = unknown_.Guard
 
 /**
  * @since 1.0.0
@@ -151,7 +149,7 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, GuardId, ast.id)
+          const handler = findHandler(merge, I.GuardId, ast.id)
           if (O.isSome(handler)) {
             return handler.value(...ast.nodes.map(go))
           }
@@ -159,8 +157,6 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Unknown":
-          return unknown
         case "String": {
           let out = string
           if (ast.minLength !== undefined) {

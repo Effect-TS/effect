@@ -13,7 +13,7 @@ import type * as Sh from "@fp-ts/codec/Show"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/codec/data/any")
+export const id = Symbol.for("@fp-ts/codec/data/unknown")
 
 /**
  * @since 1.0.0
@@ -29,19 +29,19 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<any> = I.declareSchema(id, Provider)
+export const Schema: S.Schema<unknown> = I.declareSchema(id, Provider)
 
 /**
  * @since 1.0.0
  */
-export const Guard: G.Guard<any> = I.makeGuard(Schema, (_u): _u is any => true)
+export const Guard: G.Guard<unknown> = I.makeGuard(Schema, (_u): _u is unknown => true)
 
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, unknown> = I.fromGuard(
+export const Decoder: D.Decoder<unknown, any> = I.fromGuard(
   Guard,
-  (u) => DE.notType("unknown", u)
+  (u) => DE.notType("any", u)
 )
 
 /**
@@ -54,5 +54,5 @@ export const Arbitrary: A.Arbitrary<unknown> = I.makeArbitrary(Schema, (fc) => f
  */
 export const Show: Sh.Show<unknown> = I.makeShow(
   Schema,
-  () => "<any>"
+  () => "<unknown>"
 )

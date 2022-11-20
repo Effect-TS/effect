@@ -1,15 +1,15 @@
 /**
  * @since 1.0.0
  */
-import * as arbitrary_ from "@fp-ts/codec/Arbitrary"
-import type * as J from "@fp-ts/codec/data/Json"
+import type { Arbitrary } from "@fp-ts/codec/Arbitrary"
+import type { Json } from "@fp-ts/codec/data/Json"
 import * as DE from "@fp-ts/codec/DecodeError"
-import * as D from "@fp-ts/codec/Decoder"
-import * as G from "@fp-ts/codec/Guard"
-import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
-import * as provider from "@fp-ts/codec/Provider"
-import * as S from "@fp-ts/codec/Schema"
-import * as show_ from "@fp-ts/codec/Show"
+import type { Decoder } from "@fp-ts/codec/Decoder"
+import type { Guard } from "@fp-ts/codec/Guard"
+import * as I from "@fp-ts/codec/internal/common"
+import * as P from "@fp-ts/codec/Provider"
+import type { Schema } from "@fp-ts/codec/Schema"
+import type { Show } from "@fp-ts/codec/Show"
 import * as T from "@fp-ts/data/These"
 
 /**
@@ -20,8 +20,8 @@ export const id = Symbol.for("@fp-ts/codec/data/Set")
 /**
  * @since 1.0.0
  */
-export const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
-  G.make(
+export const guard = <A>(item: Guard<A>): Guard<Set<A>> =>
+  I.makeGuard(
     schema(item),
     (input): input is Set<A> => input instanceof Set && Array.from(input.values()).every(item.is)
   )
@@ -31,10 +31,10 @@ export const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 /**
  * @since 1.0.0
  */
-export const jsonDecoder = <A>(item: D.Decoder<J.Json, A>): D.Decoder<J.Json, Set<A>> =>
-  D.make(schema(item), (json) => {
+export const jsonDecoder = <A>(item: Decoder<Json, A>): Decoder<Json, Set<A>> =>
+  I.makeDecoder(schema(item), (json) => {
     if (!(Array.isArray(json))) {
-      return D.fail(DE.notType("Array", json))
+      return I.fail(DE.notType("Array", json))
     }
     const out: Set<unknown> = new Set()
     for (let i = 0; i < json.length; i++) {
@@ -44,14 +44,14 @@ export const jsonDecoder = <A>(item: D.Decoder<J.Json, A>): D.Decoder<J.Json, Se
       }
       out.add(t.right) // TODO handle both
     }
-    return D.succeed(out as any)
+    return I.succeed(out as any)
   })
 
 /**
  * @since 1.0.0
  */
-export const arbitrary = <A>(item: arbitrary_.Arbitrary<A>): arbitrary_.Arbitrary<Set<A>> =>
-  arbitrary_.make(
+export const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<Set<A>> =>
+  I.makeArbitrary(
     schema(item),
     (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
   )
@@ -59,20 +59,23 @@ export const arbitrary = <A>(item: arbitrary_.Arbitrary<A>): arbitrary_.Arbitrar
 /**
  * @since 1.0.0
  */
-export const show = <A>(item: show_.Show<A>): show_.Show<Set<A>> =>
-  show_.make(schema(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
+export const show = <A>(item: Show<A>): Show<Set<A>> =>
+  I.makeShow(
+    schema(item),
+    (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`
+  )
 
 /**
  * @since 1.0.0
  */
-export const Provider: provider.Provider = provider.make(id, {
-  [GuardId]: guard,
-  [ArbitraryId]: arbitrary,
-  [ShowId]: show,
-  [JsonDecoderId]: jsonDecoder
+export const Provider: P.Provider = P.make(id, {
+  [I.GuardId]: guard,
+  [I.ArbitraryId]: arbitrary,
+  [I.ShowId]: show,
+  [I.JsonDecoderId]: jsonDecoder
 })
 
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: S.Schema<A>): S.Schema<Set<A>> => S.declare(id, Provider, item)
+export const schema = <A>(item: Schema<A>): Schema<Set<A>> => I.declareSchema(id, Provider, item)

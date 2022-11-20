@@ -1,20 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as arbitrary from "@fp-ts/codec/Arbitrary"
+import type * as A from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import {
-  ArbitraryId,
-  DecoderId,
-  GuardId,
-  JsonDecoderId,
-  ShowId
-} from "@fp-ts/codec/internal/Interpreter"
-import * as provider from "@fp-ts/codec/Provider"
+import * as I from "@fp-ts/codec/internal/common"
+import * as P from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
-import * as show from "@fp-ts/codec/Show"
+import type * as Sh from "@fp-ts/codec/Show"
 
 /**
  * @since 1.0.0
@@ -45,23 +39,23 @@ export const id = Symbol.for("@fp-ts/codec/data/Json")
 /**
  * @since 1.0.0
  */
-export const Provider: provider.Provider = provider.make(id, {
-  [GuardId]: () => Guard,
-  [ArbitraryId]: () => Arbitrary,
-  [ShowId]: () => Show,
-  [DecoderId]: () => Decoder,
-  [JsonDecoderId]: () => Decoder
+export const Provider: P.Provider = P.make(id, {
+  [I.GuardId]: () => Guard,
+  [I.ArbitraryId]: () => Arbitrary,
+  [I.ShowId]: () => Show,
+  [I.DecoderId]: () => Decoder,
+  [I.JsonDecoderId]: () => Decoder
 })
 
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = S.declare(id, Provider)
+export const Schema: S.Schema<Json> = I.declareSchema(id, Provider)
 
 /**
  * @since 1.0.0
  */
-export const Guard: G.Guard<Json> = G.make(
+export const Guard: G.Guard<Json> = I.makeGuard(
   Schema,
   (u): u is Json =>
     u === null || G.string.is(u) || G.number.is(u) || G.boolean.is(u) ||
@@ -72,7 +66,7 @@ export const Guard: G.Guard<Json> = G.make(
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, Json> = D.fromGuard(
+export const Decoder: D.Decoder<unknown, Json> = I.fromGuard(
   Guard,
   (u) => DE.notType("Json", u)
 )
@@ -80,7 +74,7 @@ export const Decoder: D.Decoder<unknown, Json> = D.fromGuard(
 /**
  * @since 1.0.0
  */
-export const JsonArrayJsonDecoder: D.Decoder<Json, JsonArray> = D.make(
+export const JsonArrayJsonDecoder: D.Decoder<Json, JsonArray> = I.makeDecoder(
   S.array(Schema),
   (json) => Array.isArray(json) ? D.succeed(json) : D.fail(DE.notType("Array", json))
 )
@@ -88,7 +82,7 @@ export const JsonArrayJsonDecoder: D.Decoder<Json, JsonArray> = D.make(
 /**
  * @since 1.0.0
  */
-export const JsonObjectJsonDecoder: D.Decoder<Json, JsonObject> = D.make(
+export const JsonObjectJsonDecoder: D.Decoder<Json, JsonObject> = I.makeDecoder(
   S.indexSignature(Schema),
   (json) =>
     typeof json === "object" && json != null && !Array.isArray(json) ?
@@ -99,7 +93,7 @@ export const JsonObjectJsonDecoder: D.Decoder<Json, JsonObject> = D.make(
 /**
  * @since 1.0.0
  */
-export const Arbitrary: arbitrary.Arbitrary<Json> = arbitrary.make(
+export const Arbitrary: A.Arbitrary<Json> = I.makeArbitrary(
   Schema,
   (fc) => fc.jsonValue().map((json) => json as Json)
 )
@@ -107,7 +101,7 @@ export const Arbitrary: arbitrary.Arbitrary<Json> = arbitrary.make(
 /**
  * @since 1.0.0
  */
-export const Show: show.Show<Json> = show.make(
+export const Show: Sh.Show<Json> = I.makeShow(
   Schema,
   (json) => JSON.stringify(json)
 )

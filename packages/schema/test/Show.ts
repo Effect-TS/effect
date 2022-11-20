@@ -43,6 +43,13 @@ describe("Show", () => {
       )
     })
 
+    it("unknown", () => {
+      const schema = S.unknown
+      expect(unsafeShowFor(schema).show("a")).toEqual(
+        "<unknown>"
+      )
+    })
+
     it("string", () => {
       const schema = S.string
       expect(unsafeShowFor(schema).show("a")).toEqual(
