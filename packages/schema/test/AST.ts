@@ -11,7 +11,7 @@ describe("AST", () => {
       })
       expect(ast.getFields(schema.ast)).toEqual([
         ast.field("a", ast.string({}), false, true),
-        ast.field("b", ast.number({}), false, true)
+        ast.field("b", S.number.ast, false, true)
       ])
     })
 

@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 
+import * as number_ from "@fp-ts/codec/data/number"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
 import { identity } from "@fp-ts/data/Function"
@@ -16,8 +18,8 @@ export interface Encoder<out O, in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
-export const make = <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]): Encoder<O, A> =>
-  ({ ast: schema.ast, encode }) as any
+export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
+  I.makeEncoder
 
 /**
  * @since 1.0.0
@@ -27,7 +29,7 @@ export const string: Encoder<string, string> = make(S.string, identity)
 /**
  * @since 1.0.0
  */
-export const number: Encoder<number, number> = make(S.number, identity)
+export const number: Encoder<number, number> = number_.Encoder
 
 /**
  * @since 1.0.0

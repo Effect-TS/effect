@@ -1,4 +1,5 @@
 import type { AST } from "@fp-ts/codec/AST"
+import * as number_ from "@fp-ts/codec/data/number"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -49,6 +50,9 @@ const provideUnsafeJsonSchemaFor = (
             }
             return handler.value(...ast.nodes.map(go))
           }
+          if (ast.id === number_.id) {
+            return { type: "number" }
+          }
           throw new Error(
             `Missing support for JSONSchema interpreter, data type ${String(ast.id.description)}`
           )
@@ -58,14 +62,6 @@ const provideUnsafeJsonSchemaFor = (
             type: "string",
             minLength: ast.minLength,
             maxLength: ast.maxLength
-          }
-        case "Number":
-          return {
-            type: "number",
-            minimum: ast.minimum,
-            maximum: ast.maximum,
-            exclusiveMinimum: ast.exclusiveMinimum,
-            exclusiveMaximum: ast.exclusiveMaximum
           }
         case "Boolean":
           return { type: "boolean" }

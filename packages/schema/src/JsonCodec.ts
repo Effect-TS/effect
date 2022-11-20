@@ -44,8 +44,6 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
         }
         case "String":
           return D.string
-        case "Number":
-          return D.number
         case "Boolean":
           return D.boolean
         case "Of":
@@ -149,8 +147,6 @@ export const provideUnsafeJsonEncoderFor = (
         }
         case "String":
           return E.string
-        case "Number":
-          return E.number
         case "Boolean":
           return E.boolean
         case "Of":

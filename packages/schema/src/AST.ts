@@ -13,7 +13,6 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 export type AST =
   | Declaration
   | String
-  | Number
   | Boolean
   | Of
   | Struct
@@ -71,36 +70,6 @@ export const string = (
  * @since 1.0.0
  */
 export const isString = (ast: AST): ast is String => ast._tag === "String"
-
-/**
- * @since 1.0.0
- */
-export interface Number {
-  readonly _tag: "Number"
-  readonly exclusiveMaximum?: number
-  readonly exclusiveMinimum?: number
-  readonly maximum?: number
-  readonly minimum?: number
-  readonly multipleOf?: number
-}
-
-/**
- * @since 1.0.0
- */
-export const number = (
-  options: {
-    readonly exclusiveMaximum?: number
-    readonly exclusiveMinimum?: number
-    readonly maximum?: number
-    readonly minimum?: number
-    readonly multipleOf?: number
-  }
-): Number => ({ _tag: "Number", ...options })
-
-/**
- * @since 1.0.0
- */
-export const isNumber = (ast: AST): ast is Number => ast._tag === "Number"
 
 /**
  * @since 1.0.0

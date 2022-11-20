@@ -7,6 +7,7 @@ import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
+import * as number_ from "@fp-ts/codec/data/number"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
@@ -139,10 +140,7 @@ export const max: (
 /**
  * @since 1.0.0
  */
-export const number: Decoder<unknown, number> = make(
-  S.number,
-  (u) => G.number.is(u) ? isNaN(u) ? warn(DE.nan, u) : succeed(u) : fail(DE.notType("number", u))
-)
+export const number: Decoder<unknown, number> = number_.Decoder
 
 /**
  * @since 1.0.0
@@ -287,8 +285,6 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Number":
-          return number
         case "Boolean":
           return boolean
         case "Of":

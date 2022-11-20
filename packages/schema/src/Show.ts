@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as number_ from "@fp-ts/codec/data/number"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -41,7 +42,7 @@ export const string: Show<string> = make(S.string, (a) => JSON.stringify(a))
 /**
  * @since 1.0.0
  */
-export const number: Show<number> = make(S.number, (a) => JSON.stringify(a))
+export const number: Show<number> = number_.Show
 
 /**
  * @since 1.0.0
@@ -84,8 +85,6 @@ export const provideUnsafeShowFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Number":
-          return number
         case "Boolean":
           return boolean
         case "Of":

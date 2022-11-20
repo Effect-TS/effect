@@ -7,6 +7,7 @@ import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
 import type * as DE from "@fp-ts/codec/DecodeError"
 import type { Decoder } from "@fp-ts/codec/Decoder"
+import type { Encoder } from "@fp-ts/codec/Encoder"
 import type { Guard } from "@fp-ts/codec/Guard"
 import type { Provider } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -107,3 +108,8 @@ export const makeGuard = <A>(
 
 export const makeShow = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
   ({ ast: schema.ast, show }) as any
+
+export const makeEncoder = <O, A>(
+  schema: Schema<A>,
+  encode: Encoder<O, A>["encode"]
+): Encoder<O, A> => ({ ast: schema.ast, encode }) as any

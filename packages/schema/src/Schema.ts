@@ -8,6 +8,7 @@ import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
+import * as number_ from "@fp-ts/codec/data/number"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -70,7 +71,7 @@ export const maxLength: (
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = make(ast.number({}))
+export const number: Schema<number> = number_.Schema
 
 /**
  * @since 1.0.0
