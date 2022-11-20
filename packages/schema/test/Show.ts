@@ -21,7 +21,7 @@ describe("Show", () => {
 
   describe("unsafeShowFor", () => {
     it("declaration", () => {
-      const schema = set.Schema(S.string)
+      const schema = set.schema(S.string)
       expect(unsafeShowFor(schema).show(new Set("a"))).toEqual(
         "Set([\"a\"])"
       )
@@ -35,7 +35,7 @@ describe("Show", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: set.Schema(A)
+          as: set.schema(A)
         })
       )
       expect(unsafeShowFor(A).show({ a: "a", as: new Set() })).toEqual(

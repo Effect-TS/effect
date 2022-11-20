@@ -5,7 +5,7 @@ import * as Arb from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import { ArbitraryId, GuardId, JsonDecoderId } from "@fp-ts/codec/internal/Interpreter"
+import { ArbitraryId, DecoderId, GuardId, JsonDecoderId } from "@fp-ts/codec/internal/Interpreter"
 import * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 
@@ -20,6 +20,7 @@ export const id = Symbol.for("@fp-ts/codec/data/any")
 export const Provider: provider.Provider = provider.make(id, {
   [GuardId]: () => Guard,
   [ArbitraryId]: () => Arbitrary,
+  [DecoderId]: () => Decoder,
   [JsonDecoderId]: () => Decoder
 })
 

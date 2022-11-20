@@ -4,7 +4,7 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import { GuardId, JsonDecoderId } from "@fp-ts/codec/internal/Interpreter"
+import { DecoderId, GuardId, JsonDecoderId } from "@fp-ts/codec/internal/Interpreter"
 import * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 
@@ -18,6 +18,7 @@ export const id = Symbol.for("@fp-ts/codec/data/never")
  */
 export const Provider: provider.Provider = provider.make(id, {
   [GuardId]: () => Guard,
+  [DecoderId]: () => Decoder,
   [JsonDecoderId]: () => Decoder
 })
 

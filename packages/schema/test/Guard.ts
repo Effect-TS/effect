@@ -125,7 +125,7 @@ describe("Guard", () => {
     const guard: G.Guard<Category> = G.lazy<Category>(() =>
       G.struct({
         name: G.string,
-        categories: set.Guard(guard)
+        categories: set.guard(guard)
       })
     )
     expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
@@ -153,13 +153,13 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        bs: set.Guard(B)
+        bs: set.guard(B)
       })
     )
     const B: G.Guard<B> = G.lazy<B>(() =>
       G.struct({
         b: G.number,
-        as: set.Guard(A)
+        as: set.guard(A)
       })
     )
     expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
@@ -180,7 +180,7 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        as: set.Guard(A)
+        as: set.guard(A)
       })
     )
     const B = pipe(A, G.pick("as"))
@@ -197,7 +197,7 @@ describe("Guard", () => {
     const A: G.Guard<A> = G.lazy<A>(() =>
       G.struct({
         a: G.string,
-        as: set.Guard(A)
+        as: set.guard(A)
       })
     )
     const B = pipe(A, G.omit("a"))
@@ -238,7 +238,7 @@ describe("Guard", () => {
         () =>
           S.struct({
             name: S.string,
-            categories: set.Schema(CategoryS)
+            categories: set.schema(CategoryS)
           })
       )
       const guard = unsafeGuardFor(CategoryS)
@@ -267,13 +267,13 @@ describe("Guard", () => {
       const AS: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          bs: set.Schema(BS)
+          bs: set.schema(BS)
         })
       )
       const BS: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
-          as: set.Schema(AS)
+          as: set.schema(AS)
         })
       )
       const A = unsafeGuardFor(AS)
@@ -297,14 +297,14 @@ describe("Guard", () => {
     })
 
     it("Set", () => {
-      const schema = set.Schema(S.number)
+      const schema = set.schema(S.number)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
     })
 
     it("Set & bigint", () => {
-      const schema = set.Schema(bigint.Schema)
+      const schema = set.schema(bigint.Schema)
       const guard = unsafeGuardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(new Set())).toEqual(true)

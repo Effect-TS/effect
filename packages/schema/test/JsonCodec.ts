@@ -12,7 +12,7 @@ const unsafeDecoderFor = JC.provideUnsafeJsonDecoderFor(set.Provider)
 describe("JsonCodec", () => {
   describe("unsafeDecoderFor", () => {
     it("declaration", () => {
-      const schema = set.Schema(S.number)
+      const schema = set.schema(S.number)
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))

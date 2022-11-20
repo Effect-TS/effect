@@ -5,7 +5,13 @@ import * as arbitrary from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
-import { ArbitraryId, GuardId, JsonDecoderId, ShowId } from "@fp-ts/codec/internal/Interpreter"
+import {
+  ArbitraryId,
+  DecoderId,
+  GuardId,
+  JsonDecoderId,
+  ShowId
+} from "@fp-ts/codec/internal/Interpreter"
 import * as provider from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
@@ -43,6 +49,7 @@ export const Provider: provider.Provider = provider.make(id, {
   [GuardId]: () => Guard,
   [ArbitraryId]: () => Arbitrary,
   [ShowId]: () => Show,
+  [DecoderId]: () => Decoder,
   [JsonDecoderId]: () => Decoder
 })
 
@@ -56,7 +63,7 @@ export const Schema: S.Schema<Json> = S.declare(id, Provider)
  */
 export const Guard: G.Guard<Json> = G.make(
   Schema,
-  (u: unknown): u is Json =>
+  (u): u is Json =>
     u === null || G.string.is(u) || G.number.is(u) || G.boolean.is(u) ||
     (Array.isArray(u) && u.every(Guard.is)) ||
     (typeof u === "object" && Object.keys(u).every((key) => Guard.is(u[key])))

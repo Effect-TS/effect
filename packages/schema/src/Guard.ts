@@ -40,7 +40,7 @@ export const make = <A>(
  */
 export const unknown: Guard<unknown> = make(
   S.unknown,
-  (_u: unknown): _u is unknown => true
+  (_u): _u is unknown => true
 )
 
 /**
@@ -48,7 +48,7 @@ export const unknown: Guard<unknown> = make(
  */
 export const UnknownArray: Guard<ReadonlyArray<unknown>> = make(
   S.array(S.unknown),
-  (u: unknown): u is ReadonlyArray<unknown> => Array.isArray(u)
+  (u): u is ReadonlyArray<unknown> => Array.isArray(u)
 )
 
 /**
@@ -56,7 +56,7 @@ export const UnknownArray: Guard<ReadonlyArray<unknown>> = make(
  */
 export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = make(
   S.indexSignature(S.unknown),
-  (u: unknown): u is { readonly [_: string]: unknown } =>
+  (u): u is { readonly [_: string]: unknown } =>
     typeof u === "object" && u != null && !Array.isArray(u)
 )
 
@@ -65,7 +65,7 @@ export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = m
  */
 export const string: Guard<string> = make(
   S.string,
-  (u: unknown): u is string => typeof u === "string"
+  (u): u is string => typeof u === "string"
 )
 
 /**
@@ -95,7 +95,7 @@ export const maxLength = (
  */
 export const number: Guard<number> = make(
   S.number,
-  (u: unknown): u is number => typeof u === "number"
+  (u): u is number => typeof u === "number"
 )
 
 /**
@@ -105,7 +105,7 @@ export const minimum = (minimum: number) =>
   <A extends number>(self: Guard<A>): Guard<A> =>
     make(
       S.minimum(minimum)(self),
-      (a): a is A => self.is(a) && a >= minimum
+      (u): u is A => self.is(u) && u >= minimum
     )
 
 /**
@@ -117,7 +117,7 @@ export const maximum = (
   <A extends number>(self: Guard<A>): Guard<A> =>
     make(
       S.maximum(maximum)(self),
-      (a): a is A => self.is(a) && a <= maximum
+      (u): u is A => self.is(u) && u <= maximum
     )
 
 /**
@@ -125,7 +125,7 @@ export const maximum = (
  */
 export const boolean: Guard<boolean> = make(
   S.boolean,
-  (u: unknown): u is boolean => typeof u === "boolean"
+  (u): u is boolean => typeof u === "boolean"
 )
 
 /**

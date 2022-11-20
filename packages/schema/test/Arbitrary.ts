@@ -25,7 +25,7 @@ describe("Arbitrary", () => {
 
   describe("unsafeArbitraryFor", () => {
     it("declaration", () => {
-      const schema = set.Schema(S.string)
+      const schema = set.schema(S.string)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
@@ -39,10 +39,10 @@ describe("Arbitrary", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: set.Schema(A)
+          as: set.schema(A)
         })
       )
-      const schema = set.Schema(A)
+      const schema = set.schema(A)
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
