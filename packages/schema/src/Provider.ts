@@ -63,8 +63,9 @@ export const Semigroup: semigroup.Semigroup<Provider> = semigroup.fromCombine((t
     }
     const out = new Map(self)
     for (const [k, v] of that.entries()) {
-      if (out.has(k)) {
-        out.set(k, new Map([...out.get(k)!, ...v]))
+      const found = out.get(k)
+      if (found !== undefined) {
+        out.set(k, new Map([...found, ...v]))
       } else {
         out.set(k, v)
       }
@@ -77,3 +78,21 @@ export const Semigroup: semigroup.Semigroup<Provider> = semigroup.fromCombine((t
  * @since 1.0.0
  */
 export const Monoid: monoid.Monoid<Provider> = monoid.fromSemigroup(Semigroup, empty)
+
+/**
+ * @since 1.0.0
+ */
+export const replace = (from: symbol, to: symbol) =>
+  (self: Provider): Provider => {
+    const out = new Map(self)
+    for (const [interpreterId, handlers] of self.entries()) {
+      out.set(interpreterId, new Map(handlers))
+      for (const [id, handler] of handlers.entries()) {
+        if (id === from) {
+          out.get(interpreterId)?.delete(from)
+          out.get(interpreterId)?.set(to, handler)
+        }
+      }
+    }
+    return out
+  }

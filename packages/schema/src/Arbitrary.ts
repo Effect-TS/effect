@@ -25,6 +25,11 @@ import type * as FastCheck from "fast-check"
 /**
  * @since 1.0.0
  */
+export const ArbitraryId = I.ArbitraryId
+
+/**
+ * @since 1.0.0
+ */
 export interface Arbitrary<in out A> extends S.Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }

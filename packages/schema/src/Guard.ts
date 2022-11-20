@@ -24,6 +24,11 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
+export const GuardId = I.GuardId
+
+/**
+ * @since 1.0.0
+ */
 export interface Guard<in out A> extends Schema<A> {
   readonly is: (input: unknown) => input is A
 }

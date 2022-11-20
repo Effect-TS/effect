@@ -14,7 +14,9 @@ import * as string_ from "@fp-ts/codec/data/string"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
+import * as P from "@fp-ts/codec/Provider"
 import type { Either } from "@fp-ts/data/Either"
+import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 
@@ -45,6 +47,24 @@ export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   provider: Provider,
   ...schemas: Schemas
 ) => Schema<any> = I.declareSchema
+
+/**
+ * @since 1.0.0
+ */
+export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
+  <A>(schema: Schema<A>): Schema<A> => {
+    if (ast.isDeclaration(schema.ast)) {
+      return I.declareSchema(
+        id,
+        schema.ast.config,
+        P.Semigroup.combine(P.make(id, interpreters))(
+          pipe(schema.ast.provider, P.replace(schema.ast.id, id))
+        ),
+        ...schema.ast.nodes.map(make)
+      )
+    }
+    throw new Error("cannot `clone` non-Declaration schemas")
+  }
 
 /**
  * @since 1.0.0

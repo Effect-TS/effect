@@ -48,6 +48,11 @@ export const declare = (
 /**
  * @since 1.0.0
  */
+export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
+
+/**
+ * @since 1.0.0
+ */
 export interface Of {
   readonly _tag: "Of"
   readonly value: unknown

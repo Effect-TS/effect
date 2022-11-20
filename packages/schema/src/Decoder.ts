@@ -28,6 +28,11 @@ import * as T from "@fp-ts/data/These"
 /**
  * @since 1.0.0
  */
+export const DecoderId = I.DecoderId
+
+/**
+ * @since 1.0.0
+ */
 export interface Decoder<in I, in out A> extends Schema<A> {
   readonly I: (_: I) => void
   readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>

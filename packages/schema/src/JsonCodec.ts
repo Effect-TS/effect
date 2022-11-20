@@ -21,6 +21,11 @@ import * as T from "@fp-ts/data/These"
 /**
  * @since 1.0.0
  */
+export const JsonDecoderId = I.JsonDecoderId
+
+/**
+ * @since 1.0.0
+ */
 export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<J.Json, A> => {
     const go = (ast: AST): Decoder<J.Json, any> => {
@@ -110,6 +115,11 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
  */
 export const unsafeJsonDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> =
   provideUnsafeJsonDecoderFor(empty)
+
+/**
+ * @since 1.0.0
+ */
+export const JsonEncoderId = I.JsonEncoderId
 
 /**
  * @since 1.0.0

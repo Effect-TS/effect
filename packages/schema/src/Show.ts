@@ -20,6 +20,11 @@ import * as O from "@fp-ts/data/Option"
 /**
  * @since 1.0.0
  */
+export const ShowId = I.ShowId
+
+/**
+ * @since 1.0.0
+ */
 export interface Show<in out A> extends Schema<A> {
   readonly show: (a: A) => string
 }

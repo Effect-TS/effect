@@ -1,4 +1,4 @@
-import * as Arb from "@fp-ts/codec/Arbitrary"
+import * as A from "@fp-ts/codec/Arbitrary"
 import * as set from "@fp-ts/codec/data/Set"
 import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
@@ -6,19 +6,34 @@ import { pipe } from "@fp-ts/data/Function"
 import * as fc from "fast-check"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(set.Provider)
-const unsafeArbitraryFor = Arb.provideUnsafeArbitraryFor(set.Provider)
+const unsafeArbitraryFor = A.provideUnsafeArbitraryFor(set.Provider)
 
 describe("Arbitrary", () => {
   const sampleSize = 100
 
+  it("clone", () => {
+    const NameId = Symbol.for("@fp-ts/codec/test/Arbitrary/NameId")
+    const Name = pipe(
+      S.string,
+      S.clone(NameId, {
+        [A.ArbitraryId]: () => A.make(Name, (fc) => fc.constant("Name"))
+      })
+    )
+    const arbitrary = unsafeArbitraryFor(Name)
+    expect(fc.sample(arbitrary.arbitrary(fc), 2)).toEqual(["Name", "Name"])
+    const guard = unsafeGuardFor(arbitrary)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is("a")).toEqual(true)
+  })
+
   it("minLength", () => {
-    const arbitrary = pipe(Arb.string, Arb.minLength(1))
+    const arbitrary = pipe(A.string, A.minLength(1))
     const guard = unsafeGuardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
   })
 
   it("maxLength", () => {
-    const arbitrary = pipe(Arb.string, Arb.maxLength(2))
+    const arbitrary = pipe(A.string, A.maxLength(2))
     const guard = unsafeGuardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), sampleSize).every(guard.is)).toEqual(true)
   })
