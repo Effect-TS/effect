@@ -73,6 +73,9 @@ export const provideUnsafeShowFor = (provider: Provider) =>
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(merge, I.ShowId, ast.id)
           if (O.isSome(handler)) {
+            if (O.isSome(ast.config)) {
+              return handler.value(ast.config.value)(...ast.nodes.map(go))
+            }
             return handler.value(...ast.nodes.map(go))
           }
           throw new Error(

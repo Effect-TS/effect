@@ -34,6 +34,7 @@ export const make: <A>(ast: AST) => Schema<A> = I.makeSchema
  */
 export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
+  config: Option<unknown>,
   provider: Provider,
   ...schemas: Schemas
 ) => Schema<any> = I.declareSchema

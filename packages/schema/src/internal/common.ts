@@ -10,9 +10,9 @@ import type { Decoder } from "@fp-ts/codec/Decoder"
 import type { Guard } from "@fp-ts/codec/Guard"
 import type { Provider } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
-import * as T from "@fp-ts/data/These"
-
 import type { Show } from "@fp-ts/codec/Show"
+import type { Option } from "@fp-ts/data/Option"
+import * as T from "@fp-ts/data/These"
 
 export const GuardId: unique symbol = Symbol.for(
   "@fp-ts/codec/Guard"
@@ -54,9 +54,10 @@ export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
 
 export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
+  config: Option<unknown>,
   provider: Provider,
   ...schemas: Schemas
-): Schema<any> => makeSchema(ast.declare(id, provider, schemas.map((s) => s.ast)))
+): Schema<any> => makeSchema(ast.declare(id, config, provider, schemas.map((s) => s.ast)))
 
 export const makeArbitrary = <A>(
   schema: Schema<A>,

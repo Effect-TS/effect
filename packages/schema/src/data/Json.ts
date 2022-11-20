@@ -9,6 +9,7 @@ import * as I from "@fp-ts/codec/internal/common"
 import * as P from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import type * as Sh from "@fp-ts/codec/Show"
+import * as O from "@fp-ts/data/Option"
 
 /**
  * @since 1.0.0
@@ -50,7 +51,7 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.declareSchema(id, Provider)
+export const Schema: S.Schema<Json> = I.declareSchema(id, O.none, Provider)
 
 /**
  * @since 1.0.0

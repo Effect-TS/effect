@@ -135,26 +135,6 @@ describe("JsonCodec", () => {
       expect(decoder.decode(2)).toEqual(D.fail(DE.maximum(1)))
     })
 
-    it("minLength", () => {
-      const schema = pipe(S.string, S.minLength(2))
-      const decoder = unsafeDecoderFor(schema)
-      expect(decoder.decode("aa")).toEqual(D.succeed("aa"))
-      expect(decoder.decode("aaa")).toEqual(D.succeed("aaa"))
-      expect(decoder.decode("aaaa")).toEqual(D.succeed("aaaa"))
-
-      expect(decoder.decode("a")).toEqual(D.fail(DE.minLength(2)))
-    })
-
-    it("maxLength", () => {
-      const schema = pipe(S.string, S.maxLength(4))
-      const decoder = unsafeDecoderFor(schema)
-      expect(decoder.decode("aa")).toEqual(D.succeed("aa"))
-      expect(decoder.decode("aaa")).toEqual(D.succeed("aaa"))
-      expect(decoder.decode("aaaa")).toEqual(D.succeed("aaaa"))
-
-      expect(decoder.decode("aaaaa")).toEqual(D.fail(DE.maxLength(4)))
-    })
-
     it("lazy", () => {
       interface A {
         readonly a: string

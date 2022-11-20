@@ -10,6 +10,7 @@ import * as I from "@fp-ts/codec/internal/common"
 import * as P from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import type { Show } from "@fp-ts/codec/Show"
+import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 
 /**
@@ -34,7 +35,7 @@ export const guard = <A>(item: Guard<A>): Guard<Set<A>> =>
 export const jsonDecoder = <A>(item: Decoder<Json, A>): Decoder<Json, Set<A>> =>
   I.makeDecoder(schema(item), (json) => {
     if (!(Array.isArray(json))) {
-      return I.fail(DE.notType("Array", json))
+      return I.fail(DE.notType("Array", json)) // TODO
     }
     const out: Set<unknown> = new Set()
     for (let i = 0; i < json.length; i++) {
@@ -78,4 +79,5 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: Schema<A>): Schema<Set<A>> => I.declareSchema(id, Provider, item)
+export const schema = <A>(item: Schema<A>): Schema<Set<A>> =>
+  I.declareSchema(id, O.none, Provider, item)

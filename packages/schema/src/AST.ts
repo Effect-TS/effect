@@ -27,6 +27,7 @@ export type AST =
 export interface Declaration {
   readonly _tag: "Declaration"
   readonly id: symbol
+  readonly config: Option<unknown>
   readonly provider: Provider
   readonly nodes: ReadonlyArray<AST>
 }
@@ -36,11 +37,13 @@ export interface Declaration {
  */
 export const declare = (
   id: symbol,
+  config: Option<unknown>,
   provider: Provider,
   nodes: ReadonlyArray<AST>
 ): Declaration => ({
   _tag: "Declaration",
   id,
+  config,
   provider,
   nodes
 })
