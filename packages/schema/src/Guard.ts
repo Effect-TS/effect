@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -69,12 +70,9 @@ export const string: Guard<string> = make(
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
-  <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    make(
-      S.minLength(minLength)(self),
-      (a): a is A => self.is(a) && a.length >= minLength
-    )
+export const minLength: (
+  minLength: number
+) => <A extends { length: number }>(self: Guard<A>) => Guard<A> = minLength_.guard
 
 /**
  * @since 1.0.0
@@ -162,9 +160,6 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
         }
         case "String": {
           let out = string
-          if (ast.minLength !== undefined) {
-            out = minLength(ast.minLength)(out)
-          }
           if (ast.maxLength !== undefined) {
             out = maxLength(ast.maxLength)(out)
           }

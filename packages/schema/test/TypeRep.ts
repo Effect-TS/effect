@@ -178,7 +178,7 @@ describe("unsafeTypeRepFor", () => {
     )
   })
 
-  it("minLength", () => {
+  it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(2))
     expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
       "string"

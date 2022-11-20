@@ -48,6 +48,13 @@ describe("Decoder", () => {
     expect(D.string.decode(1)).toEqual(D.fail(DE.notType("string", 1)))
   })
 
+  it("minLength", () => {
+    const decoder = pipe(D.string, D.minLength(1))
+    expect(decoder.decode("a")).toEqual(D.succeed("a"))
+
+    expect(decoder.decode("")).toEqual(D.fail(DE.minLength(1)))
+  })
+
   it("number", () => {
     expect(D.number.decode(1)).toEqual(D.succeed(1))
 

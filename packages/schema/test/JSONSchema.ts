@@ -94,7 +94,7 @@ describe("unsafeJsonSchemaFor", () => {
     expect(validate(1)).toEqual(false)
   })
 
-  it("minLength", () => {
+  it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     const jsonSchema = unsafeJsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })

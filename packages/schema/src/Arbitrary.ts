@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -48,12 +49,9 @@ export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
-  <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
-    make(
-      S.minLength(minLength)(self),
-      (fc) => self.arbitrary(fc).filter((a) => a.length >= minLength)
-    )
+export const minLength: (
+  minLength: number
+) => <A extends { length: number }>(self: Arbitrary<A>) => Arbitrary<A> = minLength_.arbitrary
 
 /**
  * @since 1.0.0
@@ -139,9 +137,6 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
         }
         case "String": {
           let out = string
-          if (ast.minLength !== undefined) {
-            out = minLength(ast.minLength)(out)
-          }
           if (ast.maxLength !== undefined) {
             out = maxLength(ast.maxLength)(out)
           }

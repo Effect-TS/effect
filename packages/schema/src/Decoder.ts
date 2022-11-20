@@ -3,10 +3,11 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
-import * as internal from "@fp-ts/codec/internal/common"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -37,7 +38,7 @@ export interface DecoderTypeLambda extends TypeLambda {
  * @since 1.0.0
  */
 export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) => Decoder<I, A> =
-  internal.makeDecoder
+  I.makeDecoder
 
 /**
  * @since 1.0.0
@@ -45,45 +46,29 @@ export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) =>
 export const fromGuard: <A>(
   guard: G.Guard<A>,
   onFalse: (u: unknown) => DE.DecodeError
-) => Decoder<unknown, A> = internal.fromGuard
+) => Decoder<unknown, A> = I.fromGuard
 
 /**
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => T.These<never, A> = internal.succeed
+export const succeed: <A>(a: A) => T.These<never, A> = I.succeed
 
 /**
  * @since 1.0.0
  */
-export const fail: <E>(e: E) => T.These<ReadonlyArray<E>, never> = internal.fail
+export const fail: <E>(e: E) => T.These<ReadonlyArray<E>, never> = I.fail
 
 /**
  * @since 1.0.0
  */
-export const warn: <E, A>(e: E, a: A) => T.These<ReadonlyArray<E>, A> = internal.warn
+export const warn: <E, A>(e: E, a: A) => T.These<ReadonlyArray<E>, A> = I.warn
 
 /**
  * @since 1.0.0
  */
-export const flatMap = <A, E2, B>(
+export const flatMap: <A, E2, B>(
   f: (a: A) => T.These<ReadonlyArray<E2>, B>
-) =>
-  <E1>(self: T.These<ReadonlyArray<E1>, A>): T.These<ReadonlyArray<E1 | E2>, B> => {
-    if (T.isLeft(self)) {
-      return self
-    }
-    if (T.isRight(self)) {
-      return f(self.right)
-    }
-    const that = f(self.right)
-    if (T.isLeft(that)) {
-      return T.left([...self.left, ...that.left])
-    }
-    if (T.isRight(that)) {
-      return T.both(self.left, that.right)
-    }
-    return T.both([...self.left, ...that.left], that.right)
-  }
+) => <E1>(self: T.These<ReadonlyArray<E1>, A>) => T.These<ReadonlyArray<E1 | E2>, B> = I.flatMap
 
 /**
  * @since 1.0.0
@@ -123,16 +108,9 @@ export const string: Decoder<unknown, string> = fromGuard(
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number) =>
-  <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
-    make(
-      S.minLength(minLength)(self),
-      (i) =>
-        pipe(
-          self.decode(i),
-          flatMap((a) => a.length >= minLength ? succeed(a) : fail(DE.minLength(minLength)))
-        )
-    )
+export const minLength: (
+  minLength: number
+) => <I, A extends { length: number }>(self: Decoder<I, A>) => Decoder<I, A> = minLength_.decoder
 
 /**
  * @since 1.0.0
@@ -316,7 +294,7 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
           const merge = Semigroup.combine(provider)(ast.provider)
           const handler = findHandler(
             merge,
-            internal.DecoderId,
+            I.DecoderId,
             ast.id
           )
           if (O.isSome(handler)) {
@@ -331,9 +309,6 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         }
         case "String": {
           let out = string
-          if (ast.minLength !== undefined) {
-            out = minLength(ast.minLength)(out)
-          }
           if (ast.maxLength !== undefined) {
             out = maxLength(ast.maxLength)(out)
           }

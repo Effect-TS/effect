@@ -75,6 +75,26 @@ export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
 
 export const warn = <E, A>(e: E, a: A): T.These<ReadonlyArray<E>, A> => T.both([e], a)
 
+export const flatMap = <A, E2, B>(
+  f: (a: A) => T.These<ReadonlyArray<E2>, B>
+) =>
+  <E1>(self: T.These<ReadonlyArray<E1>, A>): T.These<ReadonlyArray<E1 | E2>, B> => {
+    if (T.isLeft(self)) {
+      return self
+    }
+    if (T.isRight(self)) {
+      return f(self.right)
+    }
+    const that = f(self.right)
+    if (T.isLeft(that)) {
+      return T.left([...self.left, ...that.left])
+    }
+    if (T.isRight(that)) {
+      return T.both(self.left, that.right)
+    }
+    return T.both([...self.left, ...that.left], that.right)
+  }
+
 export const fromGuard = <A>(
   guard: Guard<A>,
   onFalse: (u: unknown) => DE.DecodeError
