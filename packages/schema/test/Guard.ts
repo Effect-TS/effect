@@ -506,7 +506,7 @@ describe("Guard", () => {
     })
 
     it("minimum", () => {
-      const schema = pipe(S.number, S.minimum(1))
+      const schema = pipe(S.number, S.min(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is(1)).toEqual(true)
       expect(guard.is(2)).toEqual(true)

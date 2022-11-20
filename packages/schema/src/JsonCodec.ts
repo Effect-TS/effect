@@ -46,9 +46,6 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           return D.string
         case "Number": {
           let out = D.number
-          if (ast.minimum !== undefined) {
-            out = D.minimum(ast.minimum)(out)
-          }
           if (ast.maximum !== undefined) {
             out = D.maximum(ast.maximum)(out)
           }

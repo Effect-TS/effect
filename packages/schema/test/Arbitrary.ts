@@ -126,7 +126,7 @@ describe("Arbitrary", () => {
     })
 
     it("minimum", () => {
-      const schema = pipe(S.number, S.minimum(1))
+      const schema = pipe(S.number, S.min(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

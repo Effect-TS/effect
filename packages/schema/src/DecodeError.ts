@@ -9,8 +9,8 @@ export type DecodeError =
   | NaN
   | MinLength
   | MaxLength
-  | Minimum
-  | Maximum
+  | Min
+  | Max
 
 /**
  * @since 1.0.0
@@ -112,31 +112,31 @@ export const maxLength = (maxLength: number): MaxLength => ({
 /**
  * @since 1.0.0
  */
-export interface Minimum {
-  readonly _tag: "Minimum"
-  readonly minimum: number
+export interface Min {
+  readonly _tag: "Min"
+  readonly min: number
 }
 
 /**
  * @since 1.0.0
  */
-export const minimum = (minimum: number): Minimum => ({
-  _tag: "Minimum",
-  minimum
+export const min = (min: number): Min => ({
+  _tag: "Min",
+  min
 })
 
 /**
  * @since 1.0.0
  */
-export interface Maximum {
-  readonly _tag: "Maximum"
-  readonly maximum: number
+export interface Max {
+  readonly _tag: "Max"
+  readonly max: number
 }
 
 /**
  * @since 1.0.0
  */
-export const maximum = (maximum: number): Maximum => ({
-  _tag: "Maximum",
-  maximum
+export const max = (max: number): Max => ({
+  _tag: "Max",
+  max
 })
