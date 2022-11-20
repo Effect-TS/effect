@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type * as A from "@fp-ts/codec/Arbitrary"
-import * as DE from "@fp-ts/codec/DecodeError"
+import * as unknown from "@fp-ts/codec/data/unknown"
 import type * as D from "@fp-ts/codec/Decoder"
 import type * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
@@ -35,22 +35,19 @@ export const Schema: S.Schema<any> = I.declareSchema(id, O.none, Provider)
 /**
  * @since 1.0.0
  */
-export const Guard: G.Guard<any> = I.makeGuard(Schema, (_u): _u is any => true)
+export const Guard: G.Guard<any> = unknown.Guard
 
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, unknown> = I.fromGuard(
-  Guard,
-  (u) => DE.notType("unknown", u)
-)
+export const Decoder: D.Decoder<unknown, any> = unknown.Decoder
 
 /**
  * @since 1.0.0
  */
-export const Arbitrary: A.Arbitrary<unknown> = I.makeArbitrary(Schema, (fc) => fc.anything())
+export const Arbitrary: A.Arbitrary<any> = unknown.Arbitrary
 
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<unknown> = I.makeShow(Schema, () => "<any>")
+export const Show: Sh.Show<any> = I.makeShow(Schema, () => "<any>")
