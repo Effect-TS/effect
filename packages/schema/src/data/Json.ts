@@ -67,10 +67,7 @@ export const Guard: G.Guard<Json> = I.makeGuard(
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, Json> = I.fromGuard(
-  Guard,
-  (u) => DE.notType("Json", u)
-)
+export const Decoder: D.Decoder<unknown, Json> = I.fromGuard(Guard, (u) => DE.notType("Json", u))
 
 /**
  * @since 1.0.0
@@ -102,7 +99,4 @@ export const Arbitrary: A.Arbitrary<Json> = I.makeArbitrary(
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<Json> = I.makeShow(
-  Schema,
-  (json) => JSON.stringify(json)
-)
+export const Show: Sh.Show<Json> = I.makeShow(Schema, (json) => JSON.stringify(json))

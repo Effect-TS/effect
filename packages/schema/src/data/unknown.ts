@@ -53,7 +53,4 @@ export const Arbitrary: A.Arbitrary<unknown> = I.makeArbitrary(Schema, (fc) => f
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<unknown> = I.makeShow(
-  Schema,
-  () => "<unknown>"
-)
+export const Show: Sh.Show<unknown> = I.makeShow(Schema, () => "<unknown>")

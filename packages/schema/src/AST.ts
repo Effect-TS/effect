@@ -13,7 +13,6 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 export type AST =
   | Declaration
   | String
-  | Boolean
   | Of
   | Struct
   | Tuple
@@ -70,18 +69,6 @@ export const string = (
  * @since 1.0.0
  */
 export const isString = (ast: AST): ast is String => ast._tag === "String"
-
-/**
- * @since 1.0.0
- */
-export interface Boolean {
-  readonly _tag: "Boolean"
-}
-
-/**
- * @since 1.0.0
- */
-export const boolean: Boolean = { _tag: "Boolean" }
 
 /**
  * @since 1.0.0

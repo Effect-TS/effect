@@ -52,19 +52,13 @@ export const jsonDecoder = <A>(item: Decoder<Json, A>): Decoder<Json, Set<A>> =>
  * @since 1.0.0
  */
 export const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<Set<A>> =>
-  I.makeArbitrary(
-    schema(item),
-    (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as))
-  )
+  I.makeArbitrary(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
 /**
  * @since 1.0.0
  */
 export const show = <A>(item: Show<A>): Show<Set<A>> =>
-  I.makeShow(
-    schema(item),
-    (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`
-  )
+  I.makeShow(schema(item), (a) => `Set([${Array.from(a.values()).map(item.show).join(", ")}])`)
 
 /**
  * @since 1.0.0

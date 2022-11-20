@@ -23,21 +23,21 @@ export const id = Symbol.for("@fp-ts/codec/data/minLength")
  */
 export const guard = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
-    I.makeGuard(
-      schema(minLength)(self),
-      (u): u is A => self.is(u) && u.length >= minLength
-    )
+    I.makeGuard(schema(minLength)(self), (u): u is A => self.is(u) && u.length >= minLength)
 
 /**
  * @since 1.0.0
  */
 export const decoder = (minLength: number) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
-    I.makeDecoder(schema(minLength)(self), (i) =>
-      pipe(
-        self.decode(i),
-        I.flatMap((a) => a.length >= minLength ? I.succeed(a) : I.fail(DE.minLength(minLength)))
-      ))
+    I.makeDecoder(
+      schema(minLength)(self),
+      (i) =>
+        pipe(
+          self.decode(i),
+          I.flatMap((a) => a.length >= minLength ? I.succeed(a) : I.fail(DE.minLength(minLength)))
+        )
+    )
 
 /**
  * @since 1.0.0
@@ -54,10 +54,7 @@ export const arbitrary = (minLength: number) =>
  */
 export const show = (minLength: number) =>
   <A extends { length: number }>(self: Show<A>): Show<A> =>
-    I.makeShow(
-      schema(minLength)(self),
-      (a) => self.show(a)
-    )
+    I.makeShow(schema(minLength)(self), (a) => self.show(a))
 
 /**
  * @since 1.0.0
@@ -75,9 +72,4 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const schema = (minLength: number) =>
   <A extends { length: number }>(self: Schema<A>): Schema<A> =>
-    I.declareSchema(
-      id,
-      O.some(minLength),
-      Provider,
-      self
-    )
+    I.declareSchema(id, O.some(minLength), Provider, self)

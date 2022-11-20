@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
@@ -86,7 +87,7 @@ export const max: (
 /**
  * @since 1.0.0
  */
-export const boolean: Arbitrary<boolean> = make(S.boolean, (fc) => fc.boolean())
+export const boolean: Arbitrary<boolean> = boolean_.Arbitrary
 
 /**
  * @since 1.0.0
@@ -128,8 +129,6 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Boolean":
-          return boolean
         case "Of":
           return make(S.make(ast), (fc) => fc.constant(ast.value))
         case "Tuple": {

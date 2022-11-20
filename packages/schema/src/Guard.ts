@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
@@ -107,10 +108,7 @@ export const max: (
 /**
  * @since 1.0.0
  */
-export const boolean: Guard<boolean> = make(
-  S.boolean,
-  (u): u is boolean => typeof u === "boolean"
-)
+export const boolean: Guard<boolean> = boolean_.Guard
 
 /**
  * @since 1.0.0
@@ -148,8 +146,6 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Boolean":
-          return boolean
         case "Of":
           return make(S.make(ast), (u): u is any => u === ast.value)
         case "Tuple": {

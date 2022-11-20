@@ -4,6 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
@@ -90,7 +91,7 @@ export const max: (
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = make(ast.boolean)
+export const boolean: Schema<boolean> = boolean_.Schema
 
 /**
  * @since 1.0.0

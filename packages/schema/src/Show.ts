@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
@@ -47,7 +48,7 @@ export const number: Show<number> = number_.Show
 /**
  * @since 1.0.0
  */
-export const boolean: Show<boolean> = make(S.boolean, (a) => JSON.stringify(a))
+export const boolean: Show<boolean> = boolean_.Show
 
 /**
  * @since 1.0.0
@@ -85,8 +86,6 @@ export const provideUnsafeShowFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Boolean":
-          return boolean
         case "Of":
           return make(S.make(ast), (a) => JSON.stringify(a))
         case "Tuple": {

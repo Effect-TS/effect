@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
@@ -145,10 +146,7 @@ export const number: Decoder<unknown, number> = number_.Decoder
 /**
  * @since 1.0.0
  */
-export const boolean: Decoder<unknown, boolean> = fromGuard(
-  G.boolean,
-  (u) => DE.notType("boolean", u)
-)
+export const boolean: Decoder<unknown, boolean> = boolean_.Decoder
 
 /**
  * @since 1.0.0
@@ -285,8 +283,6 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Boolean":
-          return boolean
         case "Of":
           return make(
             S.make(ast),

@@ -42,7 +42,7 @@ describe("AST", () => {
         })
       )
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.union([ast.string({}), ast.boolean]), false, true)
+        ast.field("a", ast.union([ast.string({}), S.boolean.ast]), false, true)
       ])
     })
 

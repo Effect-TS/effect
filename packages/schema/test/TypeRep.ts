@@ -1,4 +1,5 @@
 import type { AST } from "@fp-ts/codec/AST"
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
@@ -51,14 +52,15 @@ export const provideUnsafeTypeRepFor = (
           if (ast.id === number_.id) {
             return make(S.number.ast, "number")
           }
+          if (ast.id === boolean_.id) {
+            return make(S.boolean.ast, "boolean")
+          }
           throw new Error(
             `Missing support for TypeRep interpreter, data type ${String(ast.id.description)}`
           )
         }
         case "String":
           return make(S.string.ast, "string")
-        case "Boolean":
-          return make(S.boolean.ast, "boolean")
         case "Of":
           return make(ast, JSON.stringify(ast.value))
         case "Tuple": {

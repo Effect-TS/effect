@@ -27,15 +27,9 @@ export const Schema: S.Schema<bigint> = I.declareSchema(id, O.none, Provider)
 /**
  * @since 1.0.0
  */
-export const Guard = I.makeGuard(
-  Schema,
-  (input): input is bigint => typeof input === "bigint"
-)
+export const Guard = I.makeGuard(Schema, (input): input is bigint => typeof input === "bigint")
 
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<bigint> = I.makeShow(
-  Schema,
-  (bigint) => bigint.toString()
-)
+export const Show: Sh.Show<bigint> = I.makeShow(Schema, (bigint) => bigint.toString())

@@ -44,8 +44,6 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
         }
         case "String":
           return D.string
-        case "Boolean":
-          return D.boolean
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
@@ -147,8 +145,6 @@ export const provideUnsafeJsonEncoderFor = (
         }
         case "String":
           return E.string
-        case "Boolean":
-          return E.boolean
         case "Of":
           if (Json.Guard.is(ast.value)) {
             return E.of(ast.value)

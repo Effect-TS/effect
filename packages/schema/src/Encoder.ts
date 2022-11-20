@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -34,7 +35,7 @@ export const number: Encoder<number, number> = number_.Encoder
 /**
  * @since 1.0.0
  */
-export const boolean: Encoder<boolean, boolean> = make(S.boolean, identity)
+export const boolean: Encoder<boolean, boolean> = boolean_.Encoder
 
 /**
  * @since 1.0.0

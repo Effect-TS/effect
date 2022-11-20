@@ -36,7 +36,4 @@ export const Guard: G.Guard<never> = I.makeGuard(Schema, (_u: unknown): _u is ne
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, never> = I.fromGuard(
-  Guard,
-  (u) => DE.notType("never", u)
-)
+export const Decoder: D.Decoder<unknown, never> = I.fromGuard(Guard, (u) => DE.notType("never", u))

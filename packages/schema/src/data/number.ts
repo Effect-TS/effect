@@ -61,7 +61,4 @@ export const Arbitrary: A.Arbitrary<number> = I.makeArbitrary(Schema, (fc) => fc
 /**
  * @since 1.0.0
  */
-export const Show: Sh.Show<number> = I.makeShow(
-  Schema,
-  (n) => JSON.stringify(n)
-)
+export const Show: Sh.Show<number> = I.makeShow(Schema, (n) => JSON.stringify(n))
