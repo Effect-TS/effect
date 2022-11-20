@@ -119,7 +119,7 @@ describe("unsafeJsonSchemaFor", () => {
   })
 
   it.skip("max", () => {
-    const schema = pipe(S.number, S.maximum(1))
+    const schema = pipe(S.number, S.max(1))
     const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
     expect(validate(0)).toEqual(true)
     expect(validate(1)).toEqual(true)

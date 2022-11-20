@@ -125,15 +125,15 @@ describe("Arbitrary", () => {
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it("minimum", () => {
+    it("min", () => {
       const schema = pipe(S.number, S.min(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
     })
 
-    it("maximum", () => {
-      const schema = pipe(S.number, S.maximum(1))
+    it("max", () => {
+      const schema = pipe(S.number, S.max(1))
       const arbitrary = unsafeArbitraryFor(schema).arbitrary(fc)
       const guard = unsafeGuardFor(schema)
       expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

@@ -4,6 +4,7 @@
 
 import type { AST } from "@fp-ts/codec/AST"
 import * as ast from "@fp-ts/codec/AST"
+import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
@@ -81,22 +82,9 @@ export const min: (
 /**
  * @since 1.0.0
  */
-export const maximum = (maximum: number) =>
-  <A extends number>(
-    schema: Schema<A>
-  ): Schema<A> => {
-    if (ast.isNumber(schema.ast)) {
-      return make(
-        ast.number({
-          minimum: schema.ast.minimum,
-          maximum,
-          exclusiveMinimum: schema.ast.exclusiveMinimum,
-          exclusiveMaximum: schema.ast.exclusiveMaximum
-        })
-      )
-    }
-    throw new Error("cannot `maximum` non-Number schemas")
-  }
+export const max: (
+  min: number
+) => <A extends number>(self: Schema<A>) => Schema<A> = max_.schema
 
 /**
  * @since 1.0.0

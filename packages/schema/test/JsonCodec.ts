@@ -117,7 +117,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode("aaa")).toEqual(D.fail(DE.maxLength(2)))
     })
 
-    it("minimum", () => {
+    it("min", () => {
       const schema = pipe(S.number, S.min(1))
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.succeed(1))
@@ -126,8 +126,8 @@ describe("JsonCodec", () => {
       expect(decoder.decode(0)).toEqual(D.fail(DE.min(1)))
     })
 
-    it("maximum", () => {
-      const schema = pipe(S.number, S.maximum(1))
+    it("max", () => {
+      const schema = pipe(S.number, S.max(1))
       const decoder = unsafeDecoderFor(schema)
       expect(decoder.decode(0)).toEqual(D.succeed(0))
       expect(decoder.decode(1)).toEqual(D.succeed(1))

@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
@@ -131,18 +132,9 @@ export const min: (
 /**
  * @since 1.0.0
  */
-export const maximum = (
-  maximum: number
-) =>
-  <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
-    make(
-      S.maximum(maximum)(self),
-      (i) =>
-        pipe(
-          self.decode(i),
-          flatMap((a) => a <= maximum ? succeed(a) : fail(DE.max(maximum)))
-        )
-    )
+export const max: (
+  max: number
+) => <I, A extends number>(self: Decoder<I, A>) => Decoder<I, A> = max_.decoder
 
 /**
  * @since 1.0.0
@@ -295,13 +287,8 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Number": {
-          let out = number
-          if (ast.maximum !== undefined) {
-            out = maximum(ast.maximum)(out)
-          }
-          return out
-        }
+        case "Number":
+          return number
         case "Boolean":
           return boolean
         case "Of":

@@ -3,6 +3,7 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
+import * as max_ from "@fp-ts/codec/data/max"
 import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
@@ -77,14 +78,9 @@ export const min: (
 /**
  * @since 1.0.0
  */
-export const maximum = (
-  maximum: number
-) =>
-  <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
-    make(
-      S.maximum(maximum)(self),
-      (fc) => self.arbitrary(fc).filter((a) => a <= maximum)
-    )
+export const max: (
+  max: number
+) => <A extends number>(self: Arbitrary<A>) => Arbitrary<A> = max_.arbitrary
 
 /**
  * @since 1.0.0
@@ -131,13 +127,8 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
         }
         case "String":
           return string
-        case "Number": {
-          let out = number
-          if (ast.maximum !== undefined) {
-            out = maximum(ast.maximum)(out)
-          }
-          return out
-        }
+        case "Number":
+          return number
         case "Boolean":
           return boolean
         case "Of":

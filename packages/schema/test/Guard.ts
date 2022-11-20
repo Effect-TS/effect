@@ -505,7 +505,7 @@ describe("Guard", () => {
       expect(guard.is("aa")).toEqual(false)
     })
 
-    it("minimum", () => {
+    it("min", () => {
       const schema = pipe(S.number, S.min(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is(1)).toEqual(true)
@@ -514,8 +514,8 @@ describe("Guard", () => {
       expect(guard.is(0)).toEqual(false)
     })
 
-    it("maximum", () => {
-      const schema = pipe(S.number, S.maximum(1))
+    it("max", () => {
+      const schema = pipe(S.number, S.max(1))
       const guard = unsafeGuardFor(schema)
       expect(guard.is(0)).toEqual(true)
       expect(guard.is(1)).toEqual(true)
