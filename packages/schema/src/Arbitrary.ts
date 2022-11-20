@@ -9,6 +9,7 @@ import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -49,7 +50,7 @@ export const unknown: Arbitrary<unknown> = unknown_.Arbitrary
 /**
  * @since 1.0.0
  */
-export const string: Arbitrary<string> = make(S.string, (fc) => fc.string())
+export const string: Arbitrary<string> = string_.Arbitrary
 
 /**
  * @since 1.0.0
@@ -112,11 +113,7 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(
-            merge,
-            I.ArbitraryId,
-            ast.id
-          )
+          const handler = findHandler(merge, I.ArbitraryId, ast.id)
           if (O.isSome(handler)) {
             if (O.isSome(ast.config)) {
               return handler.value(ast.config.value)(...ast.nodes.map(go))
@@ -127,8 +124,6 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return string
         case "Of":
           return make(S.make(ast), (fc) => fc.constant(ast.value))
         case "Tuple": {

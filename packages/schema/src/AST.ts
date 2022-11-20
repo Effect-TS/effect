@@ -12,7 +12,6 @@ import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
  */
 export type AST =
   | Declaration
-  | String
   | Of
   | Struct
   | Tuple
@@ -45,30 +44,6 @@ export const declare = (
   provider,
   nodes
 })
-
-/**
- * @since 1.0.0
- */
-export interface String {
-  readonly _tag: "String"
-  readonly maxLength?: number
-  readonly minLength?: number
-}
-
-/**
- * @since 1.0.0
- */
-export const string = (
-  options: {
-    readonly maxLength?: number
-    readonly minLength?: number
-  }
-): String => ({ _tag: "String", ...options })
-
-/**
- * @since 1.0.0
- */
-export const isString = (ast: AST): ast is String => ast._tag === "String"
 
 /**
  * @since 1.0.0

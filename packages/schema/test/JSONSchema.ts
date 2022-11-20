@@ -1,6 +1,7 @@
 import type { AST } from "@fp-ts/codec/AST"
 import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -51,6 +52,9 @@ const provideUnsafeJsonSchemaFor = (
             }
             return handler.value(...ast.nodes.map(go))
           }
+          if (ast.id === string_.id) {
+            return { type: "string" }
+          }
           if (ast.id === number_.id) {
             return { type: "number" }
           }
@@ -61,12 +65,6 @@ const provideUnsafeJsonSchemaFor = (
             `Missing support for JSONSchema interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return {
-            type: "string",
-            minLength: ast.minLength,
-            maxLength: ast.maxLength
-          }
       }
       throw new Error(`Unhandled ${ast._tag}`)
     }

@@ -9,6 +9,7 @@ import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -67,10 +68,7 @@ export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = m
 /**
  * @since 1.0.0
  */
-export const string: Guard<string> = make(
-  S.string,
-  (u): u is string => typeof u === "string"
-)
+export const string: Guard<string> = string_.Guard
 
 /**
  * @since 1.0.0
@@ -144,8 +142,6 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return string
         case "Of":
           return make(S.make(ast), (u): u is any => u === ast.value)
         case "Tuple": {

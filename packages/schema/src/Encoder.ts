@@ -4,6 +4,7 @@
 
 import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
@@ -25,7 +26,7 @@ export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) =>
 /**
  * @since 1.0.0
  */
-export const string: Encoder<string, string> = make(S.string, identity)
+export const string: Encoder<string, string> = string_.Encoder
 
 /**
  * @since 1.0.0

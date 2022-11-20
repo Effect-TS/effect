@@ -9,6 +9,7 @@ import * as maxLength_ from "@fp-ts/codec/data/maxLength"
 import * as min_ from "@fp-ts/codec/data/min"
 import * as minLength_ from "@fp-ts/codec/data/minLength"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
@@ -105,10 +106,7 @@ export const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unk
 /**
  * @since 1.0.0
  */
-export const string: Decoder<unknown, string> = fromGuard(
-  G.string,
-  (u) => DE.notType("string", u)
-)
+export const string: Decoder<unknown, string> = string_.Decoder
 
 /**
  * @since 1.0.0
@@ -266,11 +264,7 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(
-            merge,
-            I.DecoderId,
-            ast.id
-          )
+          const handler = findHandler(merge, I.DecoderId, ast.id)
           if (O.isSome(handler)) {
             if (O.isSome(ast.config)) {
               return handler.value(ast.config.value)(...ast.nodes.map(go))
@@ -281,8 +275,6 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
             `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return string
         case "Of":
           return make(
             S.make(ast),

@@ -10,7 +10,7 @@ describe("AST", () => {
         b: S.number
       })
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.string({}), false, true),
+        ast.field("a", S.string.ast, false, true),
         ast.field("b", S.number.ast, false, true)
       ])
     })
@@ -42,7 +42,7 @@ describe("AST", () => {
         })
       )
       expect(ast.getFields(schema.ast)).toEqual([
-        ast.field("a", ast.union([ast.string({}), S.boolean.ast]), false, true)
+        ast.field("a", ast.union([S.string.ast, S.boolean.ast]), false, true)
       ])
     })
 
@@ -59,7 +59,7 @@ describe("AST", () => {
           })
       )
       expect(ast.getFields(Category.ast)).toEqual([
-        ast.field("name", ast.string({}), false, true),
+        ast.field("name", S.string.ast, false, true),
         ast.field("categories", ast.tuple([], O.some(Category.ast), true), false, true)
       ])
     })

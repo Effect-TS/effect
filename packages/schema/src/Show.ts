@@ -5,6 +5,7 @@
 import type { AST } from "@fp-ts/codec/AST"
 import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
@@ -38,7 +39,7 @@ export const make: <A>(schema: Schema<A>, show: Show<A>["show"]) => Show<A> = I.
 /**
  * @since 1.0.0
  */
-export const string: Show<string> = make(S.string, (a) => JSON.stringify(a))
+export const string: Show<string> = string_.Show
 
 /**
  * @since 1.0.0
@@ -84,8 +85,6 @@ export const provideUnsafeShowFor = (provider: Provider) =>
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return string
         case "Of":
           return make(S.make(ast), (a) => JSON.stringify(a))
         case "Tuple": {

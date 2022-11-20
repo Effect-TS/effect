@@ -27,11 +27,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(
-            merge,
-            I.JsonDecoderId,
-            ast.id
-          )
+          const handler = findHandler(merge, I.JsonDecoderId, ast.id)
           if (O.isSome(handler)) {
             if (O.isSome(ast.config)) {
               return handler.value(ast.config.value)(...ast.nodes.map(go))
@@ -42,8 +38,6 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return D.string
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
@@ -128,11 +122,7 @@ export const provideUnsafeJsonEncoderFor = (
       switch (ast._tag) {
         case "Declaration": {
           const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(
-            merge,
-            I.JsonEncoderId,
-            ast.id
-          )
+          const handler = findHandler(merge, I.JsonEncoderId, ast.id)
           if (O.isSome(handler)) {
             if (O.isSome(ast.config)) {
               return handler.value(ast.config.value)(...ast.nodes.map(go))
@@ -143,8 +133,6 @@ export const provideUnsafeJsonEncoderFor = (
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return E.string
         case "Of":
           if (Json.Guard.is(ast.value)) {
             return E.of(ast.value)

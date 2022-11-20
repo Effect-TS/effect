@@ -1,6 +1,7 @@
 import type { AST } from "@fp-ts/codec/AST"
 import * as boolean_ from "@fp-ts/codec/data/boolean"
 import * as number_ from "@fp-ts/codec/data/number"
+import * as string_ from "@fp-ts/codec/data/string"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
@@ -49,6 +50,9 @@ export const provideUnsafeTypeRepFor = (
             }
             return handler.value(...ast.nodes.map(go))
           }
+          if (ast.id === string_.id) {
+            return make(S.string.ast, "string")
+          }
           if (ast.id === number_.id) {
             return make(S.number.ast, "number")
           }
@@ -59,8 +63,6 @@ export const provideUnsafeTypeRepFor = (
             `Missing support for TypeRep interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "String":
-          return make(S.string.ast, "string")
         case "Of":
           return make(ast, JSON.stringify(ast.value))
         case "Tuple": {
