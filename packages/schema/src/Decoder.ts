@@ -84,8 +84,8 @@ export const flatMap: <A, E2, B>(
 /**
  * @since 1.0.0
  */
-export const compose = <B, C>(bc: Decoder<B, C>) =>
-  <A>(ab: Decoder<A, B>): Decoder<A, C> => make(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
+export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Decoder<A, C> =
+  I.compose
 
 /**
  * @since 1.0.0
@@ -201,7 +201,7 @@ export const fromArray = <I, A>(
     if (isNonEmpty(es)) {
       return isBoth ? T.both(es, as) : T.left(es)
     }
-    return T.right(as as ReadonlyArray<A>)
+    return T.right(as)
   })
 
 /**

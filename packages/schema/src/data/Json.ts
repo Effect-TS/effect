@@ -74,7 +74,7 @@ export const Decoder: D.Decoder<unknown, Json> = I.fromGuard(Guard, (u) => DE.no
  */
 export const JsonArrayJsonDecoder: D.Decoder<Json, JsonArray> = I.makeDecoder(
   S.array(Schema),
-  (json) => Array.isArray(json) ? D.succeed(json) : D.fail(DE.notType("Array", json))
+  (json) => Array.isArray(json) ? D.succeed(json) : D.fail(DE.notType("JsonArray", json))
 )
 
 /**
@@ -85,7 +85,7 @@ export const JsonObjectJsonDecoder: D.Decoder<Json, JsonObject> = I.makeDecoder(
   (json) =>
     typeof json === "object" && json != null && !Array.isArray(json) ?
       D.succeed(json as JsonObject) :
-      D.fail(DE.notType("Object", json))
+      D.fail(DE.notType("JsonObject", json))
 )
 
 /**

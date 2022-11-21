@@ -12,6 +12,7 @@ import type { Guard } from "@fp-ts/codec/Guard"
 import type { Provider } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import type { Show } from "@fp-ts/codec/Show"
+import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 
@@ -95,6 +96,10 @@ export const flatMap = <A, E2, B>(
     }
     return T.both([...self.left, ...that.left], that.right)
   }
+
+export const compose = <B, C>(bc: Decoder<B, C>) =>
+  <A>(ab: Decoder<A, B>): Decoder<A, C> =>
+    makeDecoder(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
 export const fromGuard = <A>(
   guard: Guard<A>,

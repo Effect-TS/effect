@@ -26,9 +26,14 @@ export const JsonDecoderId = I.JsonDecoderId
 /**
  * @since 1.0.0
  */
+export interface JsonDecoder<A> extends Decoder<J.Json, A> {}
+
+/**
+ * @since 1.0.0
+ */
 export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Decoder<J.Json, A> => {
-    const go = (ast: AST): Decoder<J.Json, any> => {
+  <A>(schema: Schema<A>): JsonDecoder<A> => {
+    const go = (ast: AST): JsonDecoder<any> => {
       switch (ast._tag) {
         case "Declaration": {
           const handler = pipe(
@@ -48,7 +53,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
-          const decoder = D.fromTuple<J.Json, ReadonlyArray<Decoder<J.Json, unknown>>>(
+          const decoder = D.fromTuple<J.Json, ReadonlyArray<JsonDecoder<unknown>>>(
             ...ast.components.map(go)
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
@@ -78,11 +83,11 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
         case "Union":
           return pipe(Json.Decoder, D.compose(D.union(...ast.members.map(go))))
         case "Struct": {
-          const fields: Record<PropertyKey, Decoder<J.Json, any>> = {}
+          const fields: Record<PropertyKey, JsonDecoder<any>> = {}
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const decoder = D.fromStruct<J.Json, Record<PropertyKey, Decoder<J.Json, any>>>(fields)
+          const decoder = D.fromStruct<J.Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
             Json.JsonObjectJsonDecoder,
@@ -115,7 +120,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeJsonDecoderFor: <A>(schema: Schema<A>) => Decoder<J.Json, A> =
+export const unsafeJsonDecoderFor: <A>(schema: Schema<A>) => JsonDecoder<A> =
   provideUnsafeJsonDecoderFor(empty)
 
 /**

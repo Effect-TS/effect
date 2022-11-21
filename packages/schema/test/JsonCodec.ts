@@ -17,7 +17,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("Array", null)))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("JsonArray", null)))
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.notType("number", "a")))
     })
 
@@ -56,7 +56,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
       expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
-      expect(decoder.decode({})).toEqual(D.fail(DE.notType("Array", {})))
+      expect(decoder.decode({})).toEqual(D.fail(DE.notType("JsonArray", {})))
     })
 
     it("union", () => {
@@ -84,7 +84,7 @@ describe("JsonCodec", () => {
       expect(decoder.decode({})).toEqual(D.succeed({}))
       expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
-      expect(decoder.decode([])).toEqual(D.fail(DE.notType("Object", [])))
+      expect(decoder.decode([])).toEqual(D.fail(DE.notType("JsonObject", [])))
       expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
     })
 
@@ -152,7 +152,7 @@ describe("JsonCodec", () => {
         D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
       )
       expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
-        D.fail(DE.notType("Object", 1))
+        D.fail(DE.notType("JsonObject", 1))
       )
     })
   })
