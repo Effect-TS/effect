@@ -163,7 +163,7 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
   make(
     S.tuple(...components),
     (is) => {
-      const out: Array<unknown> = []
+      const out: any = []
       for (let i = 0; i < components.length; i++) {
         const t = components[i].decode(is[i])
         if (T.isLeft(t)) {
@@ -171,7 +171,7 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
         }
         out[i] = t.right // TODO: handle warnings
       }
-      return succeed(out as any)
+      return succeed(out)
     }
   )
 
@@ -215,7 +215,7 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
 > => {
   const keys = Object.keys(fields)
   return make(S.struct(fields), (input: { readonly [_: string]: I }) => {
-    const a = {}
+    const a: any = {}
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
       const t = fields[key].decode(input[key])
@@ -224,7 +224,7 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
       }
       a[key] = t.right // TODO handle both
     }
-    return succeed(a as any)
+    return succeed(a)
   })
 }
 
@@ -235,7 +235,7 @@ export const fromIndexSignature = <I, A>(
   value: Decoder<I, A>
 ): Decoder<{ readonly [_: string]: I }, { readonly [_: string]: A }> =>
   make(S.indexSignature(value), (ri) => {
-    const out = {}
+    const out: any = {}
     for (const key of Object.keys(ri)) {
       const t = value.decode(ri[key])
       if (T.isLeft(t)) {
@@ -243,7 +243,7 @@ export const fromIndexSignature = <I, A>(
       }
       out[key] = t.right
     }
-    return succeed(out as any)
+    return succeed(out)
   })
 
 /**

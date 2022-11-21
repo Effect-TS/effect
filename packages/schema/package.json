@@ -37,6 +37,7 @@
     "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
     "build-all": "tsc -b tsconfig.json",
     "build-watch": "tsc -b tsconfig.json --watch",
+    "dtslint": "dtslint dtslint",
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "pnpm lint --fix",
     "tc": "tsc --noEmit",
@@ -44,6 +45,7 @@
     "docs-update": "git add --force --all docs/modules || true",
     "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "test": "vitest",
+    "test-all": "npm run circular && npm run dtslint && vitest run",
     "coverage": "vitest run --coverage"
   },
   "exports": {
@@ -83,6 +85,7 @@
     "concurrently": "^7.2.2",
     "cpx": "^1.5.0",
     "docs-ts": "^0.6.10",
+    "dtslint": "github:gcanti/dtslint",
     "eslint": "^8.25.0",
     "eslint-import-resolver-typescript": "^3.5.1",
     "eslint-plugin-codegen": "0.16.1",

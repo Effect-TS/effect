@@ -52,7 +52,7 @@ export const toIndexSignature = <O, A>(
   value: Encoder<O, A>
 ): Encoder<{ readonly [_: string]: O }, { readonly [_: string]: A }> =>
   make(S.indexSignature(value), (a) => {
-    const out = {}
+    const out: any = {}
     for (const key in a) {
       out[key] = value.encode(a[key])
     }

@@ -181,7 +181,7 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
           )
         }
         case "Struct": {
-          const fields = {}
+          const fields: any = {}
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
