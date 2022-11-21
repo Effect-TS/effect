@@ -25,30 +25,28 @@ export const lazy = <A>(
     name
   )
 }
-export const TypeRepInterpreterId: unique symbol = Symbol.for(
+export const TypeRepId: unique symbol = Symbol.for(
   "@fp-ts/codec/interpreter/TypeRepInterpreter"
 )
 
-export type TypeRepInterpreterId = typeof TypeRepInterpreterId
+export type TypeRepId = typeof TypeRepId
 
 export const provideUnsafeTypeRepFor = (
-  support: Provider
+  provider: Provider
 ) =>
   <A>(schema: Schema<A>): TypeRep<A> => {
     const go = (ast: AST): TypeRep<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.provider)
-          const handler = findHandler(
-            merge,
-            TypeRepInterpreterId,
-            ast.id
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(TypeRepId, ast.id)
           )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           if (ast.id === string_.id) {
             return make(S.string.ast, "string")

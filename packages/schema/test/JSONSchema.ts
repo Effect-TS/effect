@@ -27,30 +27,28 @@ type JSONSchema =
   }
   | { readonly type: "boolean" }
 
-const JSONSchemaInterpreterId: unique symbol = Symbol.for(
+const JSONSchemaId: unique symbol = Symbol.for(
   "@fp-ts/codec/interpreter/JSONSchemaInterpreter"
 )
 
-type JSONSchemaInterpreterId = typeof JSONSchemaInterpreterId
+type JSONSchemaId = typeof JSONSchemaId
 
 const provideUnsafeJsonSchemaFor = (
-  support: Provider
+  provider: Provider
 ) =>
   <A>(schema: Schema<A>): JSONSchema => {
     const go = (ast: AST): JSONSchema => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(support)(ast.provider)
-          const handler = findHandler(
-            merge,
-            JSONSchemaInterpreterId,
-            ast.id
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(JSONSchemaId, ast.id)
           )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           if (ast.id === string_.id) {
             return { type: "string" }

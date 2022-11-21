@@ -41,14 +41,14 @@ export const make = (typeId: symbol, interpreters: Record<symbol, Function>): Pr
  * @since 1.0.0
  */
 export const findHandler = (
-  provider: Provider,
   interpreterId: symbol,
   typeId: symbol
-): Option<Function> =>
-  pipe(
-    O.fromNullable(provider.get(interpreterId)),
-    O.flatMapNullable((handlers) => handlers.get(typeId) as any)
-  )
+) =>
+  (provider: Provider): Option<Function> =>
+    pipe(
+      O.fromNullable(provider.get(interpreterId)),
+      O.flatMapNullable((handlers) => handlers.get(typeId) as any)
+    )
 
 /**
  * @since 1.0.0

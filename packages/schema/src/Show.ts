@@ -78,13 +78,15 @@ export const provideUnsafeShowFor = (provider: Provider) =>
     const go = (ast: AST): Show<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.ShowId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.ShowId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Show interpreter, data type ${String(ast.id.description)}`

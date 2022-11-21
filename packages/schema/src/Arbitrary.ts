@@ -117,13 +117,15 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
     const go = (ast: AST): Arbitrary<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.ArbitraryId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.ArbitraryId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`

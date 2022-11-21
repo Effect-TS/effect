@@ -268,13 +268,15 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
     const go = (ast: AST): Decoder<unknown, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.DecoderId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.DecoderId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`

@@ -135,13 +135,15 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
     const go = (ast: AST): Guard<any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.GuardId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.GuardId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for Guard interpreter, data type ${String(ast.id.description)}`

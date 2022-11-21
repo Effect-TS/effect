@@ -31,13 +31,15 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
     const go = (ast: AST): Decoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.JsonDecoderId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.JsonDecoderId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for JsonDecoder interpreter, data type ${String(ast.id.description)}`
@@ -131,13 +133,15 @@ export const provideUnsafeJsonEncoderFor = (
     const go = (ast: AST): Encoder<J.Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
-          const merge = Semigroup.combine(provider)(ast.provider)
-          const handler = findHandler(merge, I.JsonEncoderId, ast.id)
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.JsonEncoderId, ast.id)
+          )
           if (O.isSome(handler)) {
-            if (O.isSome(ast.config)) {
-              return handler.value(ast.config.value)(...ast.nodes.map(go))
-            }
-            return handler.value(...ast.nodes.map(go))
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
           }
           throw new Error(
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
