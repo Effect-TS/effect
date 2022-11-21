@@ -18,10 +18,10 @@
  */
 
 import * as D from "@effect/printer/internal/Doc"
-import type { Functor as _Functor } from "@fp-ts/core/Functor"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Monoid } from "@fp-ts/core/Monoid"
-import type { Semigroup } from "@fp-ts/core/Semigroup"
+import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
+import type { Monoid } from "@fp-ts/core/typeclass/Monoid"
+import type { Semigroup } from "@fp-ts/core/typeclass/Semigroup"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -86,7 +86,7 @@ export const Doc: DocOps = {
  * @since 1.0.0
  */
 export interface DocTypeLambda extends TypeLambda {
-  readonly type: Doc<this["Out1"]>
+  readonly type: Doc<this["Target"]>
 }
 
 /**

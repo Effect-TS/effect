@@ -1,9 +1,9 @@
 import type * as DT from "@effect/printer/DocTree"
 import type { DocTreeToken } from "@effect/printer/internal/DocTree/token"
 import * as DTT from "@effect/printer/internal/DocTree/token"
-import type * as functor from "@fp-ts/core/Functor"
-import type * as monoid from "@fp-ts/core/Monoid"
-import type * as semigroup from "@fp-ts/core/Semigroup"
+import * as functor from "@fp-ts/core/typeclass/Covariant"
+import type * as monoid from "@fp-ts/core/typeclass/Monoid"
+import type * as semigroup from "@fp-ts/core/typeclass/Semigroup"
 import * as Chunk from "@fp-ts/data/Chunk"
 import * as Equal from "@fp-ts/data/Equal"
 import { pipe } from "@fp-ts/data/Function"
@@ -246,7 +246,7 @@ function alterAnnotationsSafe<A, B>(
         Chunk.fromIterable(f(self.annotation)),
         Chunk.reduceRight(
           SafeEval.suspend(() => alterAnnotationsSafe(self.tree, f)),
-          (b, acc) => pipe(acc, SafeEval.map(annotation(b)))
+          (acc, b) => pipe(acc, SafeEval.map(annotation(b)))
         )
       )
     }
@@ -546,6 +546,4 @@ export function getMonoid<A>(): monoid.Monoid<DocTree<A>> {
 }
 
 /** @internal */
-export const Functor: functor.Functor<DocTree.TypeLambda> = {
-  map: reAnnotate
-}
+export const Functor: functor.Covariant<DocTree.TypeLambda> = functor.make(reAnnotate)

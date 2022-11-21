@@ -1,5 +1,5 @@
-import * as monoid from "@fp-ts/core/Monoid"
-import * as semigroup from "@fp-ts/core/Semigroup"
+import * as monoid from "@fp-ts/core/typeclass/Monoid"
+import * as semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
 import * as Option from "@fp-ts/data/Option"
 import * as ReadonlyArray from "@fp-ts/data/ReadonlyArray"

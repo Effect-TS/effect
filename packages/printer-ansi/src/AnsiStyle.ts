@@ -3,8 +3,8 @@
  */
 
 import * as AS from "@effect/printer-ansi/internal/AnsiStyle"
-import type { Monoid as _Monoid } from "@fp-ts/core/Monoid"
-import type { Semigroup as _Semigroup } from "@fp-ts/core/Semigroup"
+import type { Monoid as _Monoid } from "@fp-ts/core/typeclass/Monoid"
+import type { Semigroup as _Semigroup } from "@fp-ts/core/typeclass/Semigroup"
 import type { Option } from "@fp-ts/data/Option"
 
 // -----------------------------------------------------------------------------

@@ -35,8 +35,8 @@
   },
   "dependencies": {
     "@effect/printer": "*",
-    "@fp-ts/core": "^0.0.5",
-    "@fp-ts/data": "^0.0.3"
+    "@fp-ts/core": "^0.0.8",
+    "@fp-ts/data": "^0.0.12"
   },
   "config": {
     "side": [],

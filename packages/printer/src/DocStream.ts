@@ -3,9 +3,9 @@
  */
 
 import * as DS from "@effect/printer/internal/DocStream"
-import type { Functor as _Functor } from "@fp-ts/core/Functor"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Monoid } from "@fp-ts/core/Monoid"
+import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
+import type { Monoid } from "@fp-ts/core/typeclass/Monoid"
 import type { Option } from "@fp-ts/data/Option"
 
 // -----------------------------------------------------------------------------
@@ -71,7 +71,7 @@ export const DocStream: DocStreamOps = {
  * @since 1.0.0
  */
 export interface DocStreamTypeLambda extends TypeLambda {
-  readonly type: DocStream<this["Out1"]>
+  readonly type: DocStream<this["Target"]>
 }
 
 /**

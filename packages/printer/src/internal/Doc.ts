@@ -1,7 +1,7 @@
 import type * as D from "@effect/printer/Doc"
-import type * as functor from "@fp-ts/core/Functor"
-import type * as monoid from "@fp-ts/core/Monoid"
-import type * as semigroup from "@fp-ts/core/Semigroup"
+import * as functor from "@fp-ts/core/typeclass/Covariant"
+import type * as monoid from "@fp-ts/core/typeclass/Monoid"
+import type * as semigroup from "@fp-ts/core/typeclass/Semigroup"
 import * as Equal from "@fp-ts/data/Equal"
 import { pipe } from "@fp-ts/data/Function"
 import * as ReadonlyArray from "@fp-ts/data/ReadonlyArray"
@@ -825,7 +825,7 @@ function alterAnnotationsSafe<A, B>(self: Doc<A>, f: (a: A) => Iterable<B>): Saf
         SafeEval.map((doc) =>
           pipe(
             ReadonlyArray.fromIterable(f(self.annotation)),
-            ReadonlyArray.reduceRight(doc, (b, doc) => annotate(b)(doc))
+            ReadonlyArray.reduceRight(doc, (doc, b) => annotate(b)(doc))
           )
         )
       )
@@ -871,9 +871,7 @@ export function getMonoid<A>(): monoid.Monoid<Doc<A>> {
 }
 
 /** @internal */
-export const Functor: functor.Functor<Doc.TypeLambda> = {
-  map: reAnnotate
-}
+export const Functor: functor.Covariant<Doc.TypeLambda> = functor.make(reAnnotate)
 
 // -----------------------------------------------------------------------------
 // Utilities
@@ -941,7 +939,7 @@ export function punctuate<A, B>(punctuator: Doc<A>) {
     const docs0 = ReadonlyArray.fromIterable(docs)
     return pipe(
       docs0,
-      ReadonlyArray.mapWithIndex((i, x) => docs0.length - 1 === i ? x : cat(punctuator)(x))
+      ReadonlyArray.mapWithIndex((x, i) => docs0.length - 1 === i ? x : cat(punctuator)(x))
     )
   }
 }

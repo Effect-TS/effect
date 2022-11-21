@@ -1,5 +1,5 @@
 import type * as F from "@effect/printer/Flatten"
-import type * as functor from "@fp-ts/core/Functor"
+import * as functor from "@fp-ts/core/typeclass/Covariant"
 import * as Equal from "@fp-ts/data/Equal"
 
 // -----------------------------------------------------------------------------
@@ -126,6 +126,4 @@ export function match<A, R>(patterns: {
 }
 
 /** @internal */
-export const Functor: functor.Functor<Flatten.TypeLambda> = {
-  map
-}
+export const Functor: functor.Covariant<Flatten.TypeLambda> = functor.make(map)

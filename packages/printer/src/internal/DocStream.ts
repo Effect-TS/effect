@@ -1,6 +1,6 @@
 import type * as DS from "@effect/printer/DocStream"
-import type * as functor from "@fp-ts/core/Functor"
-import type * as monoid from "@fp-ts/core/Monoid"
+import * as functor from "@fp-ts/core/typeclass/Covariant"
+import type * as monoid from "@fp-ts/core/typeclass/Monoid"
 import * as Equal from "@fp-ts/data/Equal"
 import { pipe } from "@fp-ts/data/Function"
 import * as Option from "@fp-ts/data/Option"
@@ -454,6 +454,4 @@ export function match<A, R>(
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export const Functor: functor.Functor<DocStream.TypeLambda> = {
-  map: reAnnotate
-}
+export const Functor: functor.Covariant<DocStream.TypeLambda> = functor.make(reAnnotate)

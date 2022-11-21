@@ -3,8 +3,8 @@
  */
 
 import * as F from "@effect/printer/internal/Flatten"
-import type { Functor as _Functor } from "@fp-ts/core/Functor"
 import type { TypeLambda } from "@fp-ts/core/HKT"
+import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -59,7 +59,7 @@ export const Flatten: FlattenOps = {
  * @since 1.0.0
  */
 export interface FlattenTypeLambda extends TypeLambda {
-  readonly type: Flatten<this["Out1"]>
+  readonly type: Flatten<this["Target"]>
 }
 
 /**

@@ -3,10 +3,10 @@
  */
 
 import * as DT from "@effect/printer/internal/DocTree"
-import type { Functor as _Functor } from "@fp-ts/core/Functor"
 import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Monoid } from "@fp-ts/core/Monoid"
-import type { Semigroup } from "@fp-ts/core/Semigroup"
+import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
+import type { Monoid } from "@fp-ts/core/typeclass/Monoid"
+import type { Semigroup } from "@fp-ts/core/typeclass/Semigroup"
 import type { Chunk } from "@fp-ts/data/Chunk"
 
 // -----------------------------------------------------------------------------
@@ -66,7 +66,7 @@ export const DocTree: DocTreeOps = {
 }
 
 export interface DocTreeTypeLambda extends TypeLambda {
-  readonly type: DocTree<this["Out1"]>
+  readonly type: DocTree<this["Target"]>
 }
 
 /**
