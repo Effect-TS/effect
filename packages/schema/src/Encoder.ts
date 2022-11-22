@@ -13,14 +13,14 @@ import { identity } from "@fp-ts/data/Function"
 /**
  * @since 1.0.0
  */
-export interface Encoder<out O, in out A> extends Schema<A> {
-  readonly encode: (value: A) => O
+export interface Encoder<out S, in out A> extends Schema<A> {
+  readonly encode: (value: A) => S
 }
 
 /**
  * @since 1.0.0
  */
-export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
+export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
 
 /**
@@ -48,9 +48,9 @@ export const of = <A>(
 /**
  * @since 1.0.0
  */
-export const toIndexSignature = <O, A>(
-  value: Encoder<O, A>
-): Encoder<{ readonly [_: string]: O }, { readonly [_: string]: A }> =>
+export const toIndexSignature = <S, A>(
+  value: Encoder<S, A>
+): Encoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
   make(S.indexSignature(value), (a) => {
     const out: any = {}
     for (const key in a) {
@@ -62,10 +62,10 @@ export const toIndexSignature = <O, A>(
 /**
  * @since 1.0.0
  */
-export const lazy = <O, A>(
-  f: () => Encoder<O, A>
-): Encoder<O, A> => {
-  const get = S.memoize<void, Encoder<O, A>>(f)
+export const lazy = <S, A>(
+  f: () => Encoder<S, A>
+): Encoder<S, A> => {
+  const get = S.memoize<void, Encoder<S, A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,

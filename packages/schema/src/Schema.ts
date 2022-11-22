@@ -124,6 +124,18 @@ export const of = <A>(
 /**
  * @since 1.0.0
  */
+export type Literal = string | number | boolean | null | undefined | symbol | bigint
+
+/**
+ * @since 1.0.0
+ */
+export const literal = <A extends ReadonlyArray<Literal>>(
+  ...a: A
+): Schema<A[number]> => union(...a.map(of))
+
+/**
+ * @since 1.0.0
+ */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Schema<Infer<Members[number]>> => make(ast.union(members.map((m) => m.ast)))

@@ -21,7 +21,7 @@ export interface Schemable<F extends TypeLambda> extends TypeClass<F> {
  */
 export const of = <F extends TypeLambda>(
   F: Schemable<F>
-) => <A>(a: A): Kind<F, unknown, never, never, A> => F.fromSchema(S.of(a))
+) => <I, O, E, A>(a: A): Kind<F, I, O, E, A> => F.fromSchema(S.of(a))
 
 /**
  * @since 1.0.0
@@ -43,6 +43,16 @@ export const union = <F extends TypeLambda>(
   <I, O, E, Members extends ReadonlyArray<Schema<any>>>(
     ...members: Members
   ): Kind<F, I, O, E, S.Infer<Members[number]>> => F.fromSchema(S.union(...members))
+
+/**
+ * @since 1.0.0
+ */
+export const literal = <F extends TypeLambda>(
+  F: Schemable<F>
+) =>
+  <I, O, E, A extends ReadonlyArray<S.Literal>>(
+    ...a: A
+  ): Kind<F, I, O, E, A[number]> => F.fromSchema<I, O, E, A[number]>(S.literal(...a))
 
 /**
  * @since 1.0.0

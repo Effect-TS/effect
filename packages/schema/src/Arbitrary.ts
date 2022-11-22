@@ -200,6 +200,13 @@ export const of: <A>(a: A) => Arbitrary<A> = schemable.of(Schemable)
 /**
  * @since 1.0.0
  */
+export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Arbitrary<A[number]> =
+  schemable
+    .literal(Schemable)
+
+/**
+ * @since 1.0.0
+ */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ) => Arbitrary<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable

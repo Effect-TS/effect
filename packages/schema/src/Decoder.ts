@@ -33,9 +33,9 @@ export const DecoderId = I.DecoderId
 /**
  * @since 1.0.0
  */
-export interface Decoder<in I, in out A> extends Schema<A> {
-  readonly I: (_: I) => void
-  readonly decode: (i: I) => T.These<ReadonlyArray<DE.DecodeError>, A>
+export interface Decoder<in S, in out A> extends Schema<A> {
+  readonly I: (_: S) => void
+  readonly decode: (i: S) => T.These<ReadonlyArray<DE.DecodeError>, A>
 }
 
 /**
@@ -48,7 +48,7 @@ export interface DecoderTypeLambda extends TypeLambda {
 /**
  * @since 1.0.0
  */
-export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) => Decoder<I, A> =
+export const make: <S, A>(schema: Schema<A>, decode: Decoder<S, A>["decode"]) => Decoder<S, A> =
   I.makeDecoder
 
 /**
@@ -154,10 +154,10 @@ export const boolean: Decoder<unknown, boolean> = boolean_.Decoder
 /**
  * @since 1.0.0
  */
-export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown>>>(
+export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown>>>(
   ...components: Components
 ): Decoder<
-  ReadonlyArray<I>,
+  ReadonlyArray<S>,
   { readonly [K in keyof Components]: S.Infer<Components[K]> }
 > =>
   make(
@@ -178,9 +178,9 @@ export const fromTuple = <I, Components extends ReadonlyArray<Decoder<I, unknown
 /**
  * @since 1.0.0
  */
-export const fromArray = <I, A>(
-  item: Decoder<I, A>
-): Decoder<ReadonlyArray<I>, ReadonlyArray<A>> =>
+export const fromArray = <S, A>(
+  item: Decoder<S, A>
+): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
   make(S.array(item), (is) => {
     const es: Array<DE.DecodeError> = []
     const as: Array<A> = []
@@ -207,14 +207,14 @@ export const fromArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>>>(
+export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>>>(
   fields: Fields
 ): Decoder<
-  { readonly [_: string]: I },
+  { readonly [_: string]: S },
   { readonly [K in keyof Fields]: S.Infer<Fields[K]> }
 > => {
   const keys = Object.keys(fields)
-  return make(S.struct(fields), (input: { readonly [_: string]: I }) => {
+  return make(S.struct(fields), (input: { readonly [_: string]: S }) => {
     const a: any = {}
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
@@ -231,9 +231,9 @@ export const fromStruct = <I, Fields extends Record<PropertyKey, Decoder<I, any>
 /**
  * @since 1.0.0
  */
-export const fromIndexSignature = <I, A>(
-  value: Decoder<I, A>
-): Decoder<{ readonly [_: string]: I }, { readonly [_: string]: A }> =>
+export const fromIndexSignature = <S, A>(
+  value: Decoder<S, A>
+): Decoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
   make(S.indexSignature(value), (ri) => {
     const out: any = {}
     for (const key of Object.keys(ri)) {
@@ -249,10 +249,10 @@ export const fromIndexSignature = <I, A>(
 /**
  * @since 1.0.0
  */
-export const lazy = <I, A>(
-  f: () => Decoder<I, A>
-): Decoder<I, A> => {
-  const get = S.memoize<void, Decoder<I, A>>(f)
+export const lazy = <S, A>(
+  f: () => Decoder<S, A>
+): Decoder<S, A> => {
+  const get = S.memoize<void, Decoder<S, A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,
@@ -383,6 +383,13 @@ export const of: <A>(a: A) => Decoder<unknown, A> = schemable.of(Schemable)
 /**
  * @since 1.0.0
  */
+export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Decoder<unknown, A[number]> =
+  schemable
+    .literal(Schemable)
+
+/**
+ * @since 1.0.0
+ */
 export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ) => Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
@@ -391,9 +398,9 @@ export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const union: <I, Members extends ReadonlyArray<Schema<any>>>(
+export const union: <S, Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Decoder<I, S.Infer<Members[number]>> = schemable
+) => Decoder<S, S.Infer<Members[number]>> = schemable
   .union(Schemable)
 
 /**

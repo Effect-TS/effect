@@ -17,6 +17,13 @@ describe("Guard", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
+  it("literal", () => {
+    const guard = G.literal(1, "a")
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is(null)).toEqual(false)
+  })
+
   it("Numeric enums", () => {
     enum Fruits {
       Apple,
