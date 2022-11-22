@@ -3,6 +3,7 @@
  */
 
 export type DecodeError =
+  | Custom
   | NotType
   | NotEqual
   | NaN
@@ -10,6 +11,24 @@ export type DecodeError =
   | MaxLength
   | Min
   | Max
+
+/**
+ * @since 1.0.0
+ */
+export interface Custom {
+  readonly _tag: "Custom"
+  readonly config: unknown
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const custom = (config: unknown, actual: unknown): Custom => ({
+  _tag: "Custom",
+  config,
+  actual
+})
 
 /**
  * @since 1.0.0

@@ -5,6 +5,34 @@ import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
 
 describe("Decoder", () => {
+  it("should allow custom errors", () => {
+    const mystring = pipe(
+      S.string,
+      S.clone(Symbol.for("mystring"), {
+        [D.DecoderId]: () => mystringDecoder
+      })
+    )
+
+    const mystringDecoder = D.make(
+      mystring,
+      (u) =>
+        typeof u === "string" ?
+          D.succeed(u) :
+          D.fail(DE.custom({ myCustomErrorConfig: "not a string" }, u))
+    )
+
+    const Person = S.struct({
+      name: mystring,
+      age: S.number
+    })
+    const decoder = D.unsafeDecoderFor(Person)
+
+    expect(decoder.decode({ name: "name", age: 18 })).toEqual(D.succeed({ name: "name", age: 18 }))
+    expect(decoder.decode({ name: null, age: 18 })).toEqual(
+      D.fail(DE.custom({ myCustomErrorConfig: "not a string" }, null))
+    )
+  })
+
   it("compose", () => {
     expect(D.compose).exist
   })
