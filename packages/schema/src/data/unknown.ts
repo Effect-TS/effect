@@ -35,30 +35,15 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<unknown> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<unknown> = I.makeGuard(Schema, (_u): _u is unknown => true)
+const Guard: G.Guard<unknown> = I.makeGuard(Schema, (_u): _u is unknown => true)
 
-/**
- * @since 1.0.0
- */
-export const Decoder: D.Decoder<unknown, any> = I.fromGuard(
+const Decoder: D.Decoder<unknown, any> = I.fromGuard(
   Guard,
-  (u) => DE.notType("any", u)
+  (u) => DE.notType("unknown", u)
 )
 
-/**
- * @since 1.0.0
- */
-export const Encoder: E.Encoder<unknown, unknown> = I.makeEncoder(Schema, identity)
+const Encoder: E.Encoder<unknown, unknown> = I.makeEncoder(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary: A.Arbitrary<unknown> = I.makeArbitrary(Schema, (fc) => fc.anything())
+const Arbitrary: A.Arbitrary<unknown> = I.makeArbitrary(Schema, (fc) => fc.anything())
 
-/**
- * @since 1.0.0
- */
-export const Show: Sh.Show<unknown> = I.makeShow(Schema, () => "<unknown>")
+const Show: Sh.Show<unknown> = I.makeShow(Schema, () => "<unknown>")

@@ -1,38 +1,61 @@
 import * as A from "@fp-ts/codec/Arbitrary"
-import * as DC from "@fp-ts/codec/data/Chunk"
+import * as C from "@fp-ts/codec/data/Chunk"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
+import * as JD from "@fp-ts/codec/JsonDecoder"
+import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
-import * as C from "@fp-ts/data/Chunk"
+import * as DC from "@fp-ts/data/Chunk"
 import * as fc from "fast-check"
 
 describe("Chunk", () => {
   it("id", () => {
-    expect(DC.id).exist
+    expect(C.id).exist
   })
 
   it("Provider", () => {
-    expect(DC.Provider).exist
+    expect(C.Provider).exist
   })
 
   it("guard", () => {
-    const guard = DC.guard(G.string)
-    expect(guard.is(C.empty)).toEqual(true)
-    expect(guard.is(C.unsafeFromArray(["a", "b", "c"]))).toEqual(true)
+    const schema = C.schema(S.string)
+    const guard = G.unsafeGuardFor(schema)
+    expect(guard.is(DC.empty)).toEqual(true)
+    expect(guard.is(DC.unsafeFromArray(["a", "b", "c"]))).toEqual(true)
 
-    expect(guard.is(C.unsafeFromArray(["a", "b", 1]))).toEqual(false)
+    expect(guard.is(DC.unsafeFromArray(["a", "b", 1]))).toEqual(false)
   })
 
   it("decoder", () => {
-    const jsonDecoder = DC.decoder(D.number)
-    expect(jsonDecoder.decode([])).toEqual(D.succeed(C.empty))
+    const schema = C.schema(S.number)
+    const decoder = D.unsafeDecoderFor(schema)
+    expect(decoder.decode([])).toEqual(D.succeed(DC.empty))
+    expect(decoder.decode([1, 2, 3])).toEqual(
+      D.succeed(DC.unsafeFromArray([1, 2, 3]))
+    )
+    // should handle warnings
+    expect(decoder.decode([1, NaN, 3])).toEqual(
+      D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
+    )
+    expect(decoder.decode(null)).toEqual(
+      D.fail(DE.notType("ReadonlyArray<unknown>", null))
+    )
+    expect(decoder.decode([1, "a"])).toEqual(
+      D.fail(DE.notType("number", "a"))
+    )
+  })
+
+  it("jsonDecoder", () => {
+    const schema = C.schema(S.number)
+    const jsonDecoder = JD.unsafeJsonDecoderFor(schema)
+    expect(jsonDecoder.decode([])).toEqual(D.succeed(DC.empty))
     expect(jsonDecoder.decode([1, 2, 3])).toEqual(
-      D.succeed(C.unsafeFromArray([1, 2, 3]))
+      D.succeed(DC.unsafeFromArray([1, 2, 3]))
     )
     // should handle warnings
     expect(jsonDecoder.decode([1, NaN, 3])).toEqual(
-      D.warn(DE.nan, C.unsafeFromArray([1, NaN, 3]))
+      D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(jsonDecoder.decode(null)).toEqual(
       D.fail(DE.notType("ReadonlyArray<unknown>", null))
@@ -42,32 +65,16 @@ describe("Chunk", () => {
     )
   })
 
-  it("jsonDecoder", () => {
-    const jsonDecoder = DC.jsonDecoder(D.number)
-    expect(jsonDecoder.decode([])).toEqual(D.succeed(C.empty))
-    expect(jsonDecoder.decode([1, 2, 3])).toEqual(
-      D.succeed(C.unsafeFromArray([1, 2, 3]))
-    )
-    // should handle warnings
-    expect(jsonDecoder.decode([1, NaN, 3])).toEqual(
-      D.warn(DE.nan, C.unsafeFromArray([1, NaN, 3]))
-    )
-    expect(jsonDecoder.decode(null)).toEqual(
-      D.fail(DE.notType("JsonArray", null))
-    )
-    expect(jsonDecoder.decode([1, "a"])).toEqual(
-      D.fail(DE.notType("number", "a"))
-    )
-  })
-
   it("show", () => {
-    const show = DC.show(Sh.number)
-    expect(show.show(C.empty)).toEqual("chunk.unsafeFromArray([])")
-    expect(show.show(C.unsafeFromArray([1, 2, 3]))).toEqual("chunk.unsafeFromArray([1, 2, 3])")
+    const schema = C.schema(S.number)
+    const show = Sh.unsafeShowFor(schema)
+    expect(show.show(DC.empty)).toEqual("chunk.unsafeFromArray([])")
+    expect(show.show(DC.unsafeFromArray([1, 2, 3]))).toEqual("chunk.unsafeFromArray([1, 2, 3])")
   })
 
   it("arbitrary", () => {
-    const arbitrary = DC.arbitrary(A.number)
+    const schema = C.schema(S.number)
+    const arbitrary = A.unsafeArbitraryFor(schema)
     const guard = G.unsafeGuardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
   })

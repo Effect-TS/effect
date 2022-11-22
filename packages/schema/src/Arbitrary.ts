@@ -3,21 +3,11 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as max_ from "@fp-ts/codec/data/max"
-import * as maxLength_ from "@fp-ts/codec/data/maxLength"
-import * as min_ from "@fp-ts/codec/data/min"
-import * as minLength_ from "@fp-ts/codec/data/minLength"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as schemable from "@fp-ts/codec/typeclass/Schemable"
-import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type * as FastCheck from "fast-check"
@@ -37,63 +27,8 @@ export interface Arbitrary<in out A> extends S.Schema<A> {
 /**
  * @since 1.0.0
  */
-export interface ArbitraryTypeLambda extends TypeLambda {
-  readonly type: Arbitrary<this["Target"]>
-}
-
-/**
- * @since 1.0.0
- */
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
-
-/**
- * @since 1.0.0
- */
-export const unknown: Arbitrary<unknown> = unknown_.Arbitrary
-
-/**
- * @since 1.0.0
- */
-export const string: Arbitrary<string> = string_.Arbitrary
-
-/**
- * @since 1.0.0
- */
-export const minLength: (
-  minLength: number
-) => <A extends { length: number }>(self: Arbitrary<A>) => Arbitrary<A> = minLength_.arbitrary
-
-/**
- * @since 1.0.0
- */
-export const maxLength: (
-  maxLength: number
-) => <A extends { length: number }>(self: Arbitrary<A>) => Arbitrary<A> = maxLength_.arbitrary
-
-/**
- * @since 1.0.0
- */
-export const number: Arbitrary<number> = number_.Arbitrary
-
-/**
- * @since 1.0.0
- */
-export const min: (
-  min: number
-) => <A extends number>(self: Arbitrary<A>) => Arbitrary<A> = min_.arbitrary
-
-/**
- * @since 1.0.0
- */
-export const max: (
-  max: number
-) => <A extends number>(self: Arbitrary<A>) => Arbitrary<A> = max_.arbitrary
-
-/**
- * @since 1.0.0
- */
-export const boolean: Arbitrary<boolean> = boolean_.Arbitrary
 
 /**
  * @since 1.0.0
@@ -184,107 +119,3 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
 export const unsafeArbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideUnsafeArbitraryFor(
   empty
 )
-
-/**
- * @since 1.0.0
- */
-export const Schemable: schemable.Schemable<ArbitraryTypeLambda> = {
-  fromSchema: unsafeArbitraryFor
-}
-
-/**
- * @since 1.0.0
- */
-export const of: <A>(a: A) => Arbitrary<A> = schemable.of(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Arbitrary<A[number]> =
-  schemable
-    .literal(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
-  ...components: Components
-) => Arbitrary<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
-  .tuple(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const union: <Members extends ReadonlyArray<Schema<any>>>(
-  ...members: Members
-) => Arbitrary<S.Infer<Members[number]>> = schemable
-  .union(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
-  fields: Fields
-) => Arbitrary<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
-  .struct(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const indexSignature: <A>(value: Schema<A>) => Arbitrary<{
-  readonly [_: string]: A
-}> = schemable.indexSignature(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const array: <A>(item: Schema<A>) => Arbitrary<ReadonlyArray<A>> = schemable
-  .array(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const nativeEnum: <A extends { [_: string]: string | number }>(
-  nativeEnum: A
-) => Arbitrary<A> = schemable.nativeEnum(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const optional: <A>(self: Schema<A>) => Arbitrary<A | undefined> = schemable
-  .optional(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullable: <A>(self: Schema<A>) => Arbitrary<A | null> = schemable
-  .nullable(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullish: <A>(self: Schema<A>) => Arbitrary<A | null | undefined> = schemable
-  .nullish(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Arbitrary<{ [P in Keys[number]]: A[P] }> = schemable.pick(
-  Schemable
-)
-
-/**
- * @since 1.0.0
- */
-export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Arbitrary<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemable
-  .omit(Schemable)

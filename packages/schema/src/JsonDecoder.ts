@@ -2,8 +2,7 @@
  * @since 1.0.0
  */
 import type { AST } from "@fp-ts/codec/AST"
-import type * as J from "@fp-ts/codec/data/Json"
-import * as Json from "@fp-ts/codec/data/Json"
+import * as J from "@fp-ts/codec/data/Json"
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import * as D from "@fp-ts/codec/Decoder"
 import * as I from "@fp-ts/codec/internal/common"
@@ -28,8 +27,11 @@ export interface JsonDecoder<A> extends Decoder<J.Json, A> {}
 /**
  * @since 1.0.0
  */
-export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): JsonDecoder<A> => {
+export const provideUnsafeJsonDecoderFor = (provider: Provider) => {
+  const unsafeDecoderFor: <A>(schema: Schema<A>) => JsonDecoder<A> = D.provideUnsafeDecoderFor(
+    provider
+  )
+  return <A>(schema: Schema<A>): JsonDecoder<A> => {
     const go = (ast: AST): JsonDecoder<any> => {
       switch (ast._tag) {
         case "Declaration": {
@@ -48,14 +50,14 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return D.of(ast.value)
+          return unsafeDecoderFor(S.make(ast))
         case "Tuple": {
           const decoder = D.fromTuple<J.Json, ReadonlyArray<JsonDecoder<unknown>>>(
             ...ast.components.map(go)
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            Json.JsonArrayJsonDecoder,
+            unsafeDecoderFor(S.array(J.Schema)),
             D.compose(D.make(
               S.make(ast),
               (us) => {
@@ -78,7 +80,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           )
         }
         case "Union":
-          return pipe(Json.Decoder, D.compose(D.union(...ast.members.map(go))))
+          return pipe(unsafeDecoderFor(J.Schema), D.compose(unsafeDecoderFor(S.make(ast))))
         case "Struct": {
           const fields: Record<PropertyKey, JsonDecoder<any>> = {}
           for (const field of ast.fields) {
@@ -87,7 +89,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
           const decoder = D.fromStruct<J.Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
-            Json.JsonObjectJsonDecoder,
+            unsafeDecoderFor(S.indexSignature(J.Schema)),
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oIndexSignature)) {
@@ -113,6 +115,7 @@ export const provideUnsafeJsonDecoderFor = (provider: Provider) =>
 
     return go(schema.ast)
   }
+}
 
 /**
  * @since 1.0.0

@@ -3,14 +3,6 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as max_ from "@fp-ts/codec/data/max"
-import * as maxLength_ from "@fp-ts/codec/data/maxLength"
-import * as min_ from "@fp-ts/codec/data/min"
-import * as minLength_ from "@fp-ts/codec/data/minLength"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
@@ -18,8 +10,6 @@ import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as schemable from "@fp-ts/codec/typeclass/Schemable"
-import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
@@ -36,13 +26,6 @@ export const DecoderId = I.DecoderId
 export interface Decoder<in S, in out A> extends Schema<A> {
   readonly I: (_: S) => void
   readonly decode: (i: S) => T.These<ReadonlyArray<DE.DecodeError>, A>
-}
-
-/**
- * @since 1.0.0
- */
-export interface DecoderTypeLambda extends TypeLambda {
-  readonly type: Decoder<this["In"], this["Target"]>
 }
 
 /**
@@ -90,11 +73,6 @@ export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Dec
 /**
  * @since 1.0.0
  */
-export const unknown: Decoder<unknown, unknown> = unknown_.Decoder
-
-/**
- * @since 1.0.0
- */
 export const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = fromGuard(
   G.UnknownArray,
   (u) => DE.notType("ReadonlyArray<unknown>", u)
@@ -107,49 +85,6 @@ export const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unk
   G.UnknownIndexSignature,
   (u) => DE.notType("{ readonly [_: string]: unknown }", u)
 )
-
-/**
- * @since 1.0.0
- */
-export const string: Decoder<unknown, string> = string_.Decoder
-
-/**
- * @since 1.0.0
- */
-export const minLength: (
-  minLength: number
-) => <I, A extends { length: number }>(self: Decoder<I, A>) => Decoder<I, A> = minLength_.decoder
-
-/**
- * @since 1.0.0
- */
-export const maxLength: (
-  maxLength: number
-) => <I, A extends { length: number }>(self: Decoder<I, A>) => Decoder<I, A> = maxLength_.decoder
-
-/**
- * @since 1.0.0
- */
-export const min: (
-  min: number
-) => <I, A extends number>(self: Decoder<I, A>) => Decoder<I, A> = min_.decoder
-
-/**
- * @since 1.0.0
- */
-export const max: (
-  max: number
-) => <I, A extends number>(self: Decoder<I, A>) => Decoder<I, A> = max_.decoder
-
-/**
- * @since 1.0.0
- */
-export const number: Decoder<unknown, number> = number_.Decoder
-
-/**
- * @since 1.0.0
- */
-export const boolean: Decoder<unknown, boolean> = boolean_.Decoder
 
 /**
  * @since 1.0.0
@@ -367,108 +302,3 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
  */
 export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> =
   provideUnsafeDecoderFor(empty)
-
-/**
- * @since 1.0.0
- */
-export const Schemable: schemable.Schemable<DecoderTypeLambda> = {
-  fromSchema: unsafeDecoderFor
-}
-
-/**
- * @since 1.0.0
- */
-export const of: <A>(a: A) => Decoder<unknown, A> = schemable.of(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Decoder<unknown, A[number]> =
-  schemable
-    .literal(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
-  ...components: Components
-) => Decoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
-  .tuple(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const union: <S, Members extends ReadonlyArray<Schema<any>>>(
-  ...members: Members
-) => Decoder<S, S.Infer<Members[number]>> = schemable
-  .union(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
-  fields: Fields
-) => Decoder<unknown, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
-  .struct(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const indexSignature: <A>(value: Schema<A>) => Decoder<unknown, {
-  readonly [_: string]: A
-}> = schemable.indexSignature(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const array: <A>(item: Schema<A>) => Decoder<unknown, ReadonlyArray<A>> = schemable
-  .array(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const nativeEnum: <A extends { [_: string]: string | number }>(
-  nativeEnum: A
-) => Decoder<unknown, A> = schemable.nativeEnum(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const optional: <A>(self: Schema<A>) => Decoder<unknown, A | undefined> = schemable
-  .optional(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullable: <A>(self: Schema<A>) => Decoder<unknown, A | null> = schemable
-  .nullable(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullish: <A>(self: Schema<A>) => Decoder<unknown, A | null | undefined> = schemable
-  .nullish(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Decoder<unknown, { [P in Keys[number]]: A[P] }> = schemable.pick(
-  Schemable
-)
-
-/**
- * @since 1.0.0
- */
-export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Decoder<unknown, { [P in Exclude<keyof A, Keys[number]>]: A[P] }> =
-  schemable
-    .omit(Schemable)

@@ -36,30 +36,15 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<string> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<string> = I.makeGuard(Schema, (u): u is string => typeof u === "string")
+const Guard: G.Guard<string> = I.makeGuard(Schema, (u): u is string => typeof u === "string")
 
-/**
- * @since 1.0.0
- */
-export const Decoder: D.Decoder<unknown, string> = I.makeDecoder(
+const Decoder: D.Decoder<unknown, string> = I.makeDecoder(
   Schema,
   (u) => Guard.is(u) ? I.succeed(u) : I.fail(DE.notType("string", u))
 )
 
-/**
- * @since 1.0.0
- */
-export const Encoder: E.Encoder<string, string> = I.makeEncoder(Schema, identity)
+const Encoder: E.Encoder<string, string> = I.makeEncoder(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary: A.Arbitrary<string> = I.makeArbitrary(Schema, (fc) => fc.string())
+const Arbitrary: A.Arbitrary<string> = I.makeArbitrary(Schema, (fc) => fc.string())
 
-/**
- * @since 1.0.0
- */
-export const Show: Sh.Show<string> = I.makeShow(Schema, (n) => JSON.stringify(n))
+const Show: Sh.Show<string> = I.makeShow(Schema, (n) => JSON.stringify(n))

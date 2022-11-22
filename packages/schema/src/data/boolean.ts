@@ -35,33 +35,18 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<boolean> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<boolean> = I.makeGuard(
+const Guard: G.Guard<boolean> = I.makeGuard(
   Schema,
   (u): u is boolean => typeof u === "boolean"
 )
 
-/**
- * @since 1.0.0
- */
-export const Decoder: D.Decoder<unknown, boolean> = I.fromGuard(
+const Decoder: D.Decoder<unknown, boolean> = I.fromGuard(
   Guard,
   (u) => DE.notType("boolean", u)
 )
 
-/**
- * @since 1.0.0
- */
-export const Encoder: E.Encoder<boolean, boolean> = I.makeEncoder(Schema, identity)
+const Encoder: E.Encoder<boolean, boolean> = I.makeEncoder(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary: A.Arbitrary<boolean> = I.makeArbitrary(Schema, (fc) => fc.boolean())
+const Arbitrary: A.Arbitrary<boolean> = I.makeArbitrary(Schema, (fc) => fc.boolean())
 
-/**
- * @since 1.0.0
- */
-export const Show: Sh.Show<boolean> = I.makeShow(Schema, (b) => JSON.stringify(b))
+const Show: Sh.Show<boolean> = I.makeShow(Schema, (b) => JSON.stringify(b))

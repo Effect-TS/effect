@@ -3,18 +3,12 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-// import * as schemable from "@fp-ts/codec/typeclass/Schemable"
-import type { TypeLambda } from "@fp-ts/core/HKT"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -33,35 +27,8 @@ export interface Encoder<out S, in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
-export interface EncoderTypeLambda extends TypeLambda {
-  readonly type: Encoder<this["Out1"], this["Target"]>
-}
-
-/**
- * @since 1.0.0
- */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
-
-/**
- * @since 1.0.0
- */
-export const unknown: Encoder<unknown, unknown> = unknown_.Encoder
-
-/**
- * @since 1.0.0
- */
-export const string: Encoder<string, string> = string_.Encoder
-
-/**
- * @since 1.0.0
- */
-export const number: Encoder<number, number> = number_.Encoder
-
-/**
- * @since 1.0.0
- */
-export const boolean: Encoder<boolean, boolean> = boolean_.Encoder
 
 /**
  * @since 1.0.0
@@ -181,108 +148,3 @@ export const provideUnsafeEncoderFor = (provider: Provider) =>
  */
 export const unsafeEncoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> =
   provideUnsafeEncoderFor(empty)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const Schemable: schemable.Schemable<EncoderTypeLambda> = {
-//   fromSchema: unsafeEncoderFor
-// }
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const of: <A>(a: A) => Encoder<unknown, A> = schemable.of(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Encoder<unknown, A[number]> =
-//   schemable
-//     .literal(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
-//   ...components: Components
-// ) => Encoder<unknown, { readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
-//   .tuple(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const union: <S, Members extends ReadonlyArray<Schema<any>>>(
-//   ...members: Members
-// ) => Encoder<S, S.Infer<Members[number]>> = schemable
-//   .union(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
-//   fields: Fields
-// ) => Encoder<unknown, { readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
-//   .struct(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const indexSignature: <A>(value: Schema<A>) => Encoder<unknown, {
-//   readonly [_: string]: A
-// }> = schemable.indexSignature(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const array: <A>(item: Schema<A>) => Encoder<unknown, ReadonlyArray<A>> = schemable
-//   .array(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const nativeEnum: <A extends { [_: string]: string | number }>(
-//   nativeEnum: A
-// ) => Encoder<unknown, A> = schemable.nativeEnum(Schemable)
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const optional: <A>(self: Schema<A>) => Encoder<unknown, A | undefined> = schemable
-//   .optional(
-//     Schemable
-//   )
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const nullable: <A>(self: Schema<A>) => Encoder<unknown, A | null> = schemable
-//   .nullable(
-//     Schemable
-//   )
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const nullish: <A>(self: Schema<A>) => Encoder<unknown, A | null | undefined> = schemable
-//   .nullish(
-//     Schemable
-//   )
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
-//   ...keys: Keys
-// ) => (self: Schema<A>) => Encoder<unknown, { [P in Keys[number]]: A[P] }> = schemable.pick(
-//   Schemable
-// )
-
-// /**
-//  * @since 1.0.0
-//  */
-// export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
-//   ...keys: Keys
-// ) => (self: Schema<A>) => Encoder<unknown, { [P in Exclude<keyof A, Keys[number]>]: A[P] }> =
-//   schemable
-//     .omit(Schemable)

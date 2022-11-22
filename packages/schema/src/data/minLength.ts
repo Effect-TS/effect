@@ -18,17 +18,11 @@ import * as O from "@fp-ts/data/Option"
  */
 export const id = Symbol.for("@fp-ts/codec/data/minLength")
 
-/**
- * @since 1.0.0
- */
-export const guard = (minLength: number) =>
+const guard = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(minLength)(self), (u): u is A => self.is(u) && u.length >= minLength)
 
-/**
- * @since 1.0.0
- */
-export const decoder = (minLength: number) =>
+const decoder = (minLength: number) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(minLength)(self),
@@ -39,20 +33,14 @@ export const decoder = (minLength: number) =>
         )
     )
 
-/**
- * @since 1.0.0
- */
-export const arbitrary = (minLength: number) =>
+const arbitrary = (minLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(
       schema(minLength)(self),
       (fc) => self.arbitrary(fc).filter((a) => a.length >= minLength)
     )
 
-/**
- * @since 1.0.0
- */
-export const show = (minLength: number) =>
+const show = (minLength: number) =>
   <A extends { length: number }>(self: Show<A>): Show<A> =>
     I.makeShow(schema(minLength)(self), (a) => self.show(a))
 

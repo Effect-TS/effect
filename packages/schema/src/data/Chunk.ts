@@ -20,45 +20,25 @@ import * as O from "@fp-ts/data/Option"
  */
 export const id = Symbol.for("@fp-ts/codec/data/Chunk")
 
-/**
- * @since 1.0.0
- */
-export const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
+const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   I.makeGuard(
     schema(item),
     (u): u is Chunk<A> => C.isChunk(u) && C.toReadonlyArray(u).every(item.is)
   )
 
-/**
- * @since 1.0.0
- */
-export const fromArray = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Chunk<A>> =>
+const fromArray = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Chunk<A>> =>
   pipe(D.fromArray(item), D.compose(D.make(schema(item), (as) => D.succeed(C.unsafeFromArray(as)))))
 
-/**
- * @since 1.0.0
- */
-export const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =>
+const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =>
   pipe(D.UnknownArray, D.compose(fromArray(item)))
 
-/**
- * @since 1.0.0
- */
-export const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Chunk<A>> =>
-  pipe(J.JsonArrayJsonDecoder, D.compose(fromArray(item)))
+const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Chunk<A>> =>
+  pipe(JD.unsafeJsonDecoderFor(S.array(J.Schema)), D.compose(fromArray(item)))
 
-/**
- * @since 1.0.0
- */
-export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
+const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))
 
-C.unsafeFromArray
-
-/**
- * @since 1.0.0
- */
-export const show = <A>(item: Sh.Show<A>): Sh.Show<Chunk<A>> =>
+const show = <A>(item: Sh.Show<A>): Sh.Show<Chunk<A>> =>
   Sh.make(
     schema(item),
     (chunk) => `chunk.unsafeFromArray([${C.toReadonlyArray(chunk).map(item.show).join(", ")}])`

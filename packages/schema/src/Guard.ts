@@ -3,21 +3,11 @@
  */
 
 import type { AST } from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as max_ from "@fp-ts/codec/data/max"
-import * as maxLength_ from "@fp-ts/codec/data/maxLength"
-import * as min_ from "@fp-ts/codec/data/min"
-import * as minLength_ from "@fp-ts/codec/data/minLength"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import * as unknown_ from "@fp-ts/codec/data/unknown"
 import * as I from "@fp-ts/codec/internal/common"
 import type { Provider } from "@fp-ts/codec/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
 import type { Schema } from "@fp-ts/codec/Schema"
 import * as S from "@fp-ts/codec/Schema"
-import * as schemable from "@fp-ts/codec/typeclass/Schemable"
-import type { TypeLambda } from "@fp-ts/core/HKT"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
@@ -36,22 +26,10 @@ export interface Guard<in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
-export interface GuardTypeLambda extends TypeLambda {
-  readonly type: Guard<this["Target"]>
-}
-
-/**
- * @since 1.0.0
- */
 export const make: <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
 ) => Guard<A> = I.makeGuard
-
-/**
- * @since 1.0.0
- */
-export const unknown: Guard<unknown> = unknown_.Guard
 
 /**
  * @since 1.0.0
@@ -69,49 +47,6 @@ export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = m
   (u): u is { readonly [_: string]: unknown } =>
     typeof u === "object" && u != null && !Array.isArray(u)
 )
-
-/**
- * @since 1.0.0
- */
-export const string: Guard<string> = string_.Guard
-
-/**
- * @since 1.0.0
- */
-export const minLength: (
-  minLength: number
-) => <A extends { length: number }>(self: Guard<A>) => Guard<A> = minLength_.guard
-
-/**
- * @since 1.0.0
- */
-export const maxLength: (
-  maxLength: number
-) => <A extends { length: number }>(self: Guard<A>) => Guard<A> = maxLength_.guard
-
-/**
- * @since 1.0.0
- */
-export const number: Guard<number> = number_.Guard
-
-/**
- * @since 1.0.0
- */
-export const min: (
-  min: number
-) => <A extends number>(self: Guard<A>) => Guard<A> = min_.guard
-
-/**
- * @since 1.0.0
- */
-export const max: (
-  max: number
-) => <A extends number>(self: Guard<A>) => Guard<A> = max_.guard
-
-/**
- * @since 1.0.0
- */
-export const boolean: Guard<boolean> = boolean_.Guard
 
 /**
  * @since 1.0.0
@@ -224,106 +159,3 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const unsafeGuardFor: <A>(schema: Schema<A>) => Guard<A> = provideUnsafeGuardFor(empty)
-
-/**
- * @since 1.0.0
- */
-export const Schemable: schemable.Schemable<GuardTypeLambda> = {
-  fromSchema: unsafeGuardFor
-}
-
-/**
- * @since 1.0.0
- */
-export const of: <A>(a: A) => Guard<A> = schemable.of(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const literal: <A extends ReadonlyArray<S.Literal>>(...a: A) => Guard<A[number]> = schemable
-  .literal(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
-  ...components: Components
-) => Guard<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> = schemable
-  .tuple(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const union: <Members extends ReadonlyArray<Schema<any>>>(
-  ...members: Members
-) => Guard<S.Infer<Members[number]>> = schemable
-  .union(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
-  fields: Fields
-) => Guard<{ readonly [K in keyof Fields]: S.Infer<Fields[K]> }> = schemable
-  .struct(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const indexSignature: <A>(value: Schema<A>) => Guard<{
-  readonly [_: string]: A
-}> = schemable.indexSignature(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const array: <A>(item: Schema<A>) => Guard<ReadonlyArray<A>> = schemable
-  .array(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const nativeEnum: <A extends { [_: string]: string | number }>(
-  nativeEnum: A
-) => Guard<A> = schemable.nativeEnum(Schemable)
-
-/**
- * @since 1.0.0
- */
-export const optional: <A>(self: Schema<A>) => Guard<A | undefined> = schemable
-  .optional(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullable: <A>(self: Schema<A>) => Guard<A | null> = schemable
-  .nullable(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const nullish: <A>(self: Schema<A>) => Guard<A | null | undefined> = schemable
-  .nullish(
-    Schemable
-  )
-
-/**
- * @since 1.0.0
- */
-export const pick: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Guard<{ [P in Keys[number]]: A[P] }> = schemable.pick(
-  Schemable
-)
-
-/**
- * @since 1.0.0
- */
-export const omit: <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) => (self: Schema<A>) => Guard<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> = schemable
-  .omit(Schemable)

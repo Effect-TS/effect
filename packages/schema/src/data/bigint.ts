@@ -16,7 +16,8 @@ export const id = Symbol.for("@fp-ts/codec/data/bigint")
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
-  [I.GuardId]: () => Guard
+  [I.GuardId]: () => Guard,
+  [I.ShowId]: () => Show
 })
 
 /**
@@ -24,12 +25,6 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<bigint> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard = I.makeGuard(Schema, (u): u is bigint => typeof u === "bigint")
+const Guard = I.makeGuard(Schema, (u): u is bigint => typeof u === "bigint")
 
-/**
- * @since 1.0.0
- */
-export const Show: Sh.Show<bigint> = I.makeShow(Schema, (bigint) => bigint.toString())
+const Show: Sh.Show<bigint> = I.makeShow(Schema, (bigint) => bigint.toString())

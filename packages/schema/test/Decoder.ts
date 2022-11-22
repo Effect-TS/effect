@@ -1,35 +1,10 @@
 import * as DE from "@fp-ts/codec/DecodeError"
 import * as D from "@fp-ts/codec/Decoder"
-import * as G from "@fp-ts/codec/Guard"
 import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
 
 describe("Decoder", () => {
-  describe("README", () => {
-    it("Creating a simple string schema", () => {
-      const mySchema = D.string
-      expect(mySchema.decode("tuna")).toEqual(D.succeed("tuna"))
-    })
-
-    it("Creating an object schema", () => {
-      const User = D.struct({
-        username: D.string
-      })
-      expect(User.decode({ username: "Ludwig" })).toEqual(D.succeed({ username: "Ludwig" }))
-      type User = S.Infer<typeof User>
-    })
-
-    it("Deriving a guard", () => {
-      const User = D.struct({
-        username: D.string
-      })
-      const guard = G.unsafeGuardFor(User)
-      expect(guard.is({ username: "Ludwig" })).toEqual(true)
-      type User = S.Infer<typeof User>
-    })
-  })
-
   it("compose", () => {
     expect(D.compose).exist
   })
@@ -43,40 +18,49 @@ describe("Decoder", () => {
   })
 
   it("string", () => {
-    expect(D.string.decode("a")).toEqual(D.succeed("a"))
+    const schema = S.string
+    const decoder = D.unsafeDecoderFor(schema)
+    expect(decoder.decode("a")).toEqual(D.succeed("a"))
 
-    expect(D.string.decode(1)).toEqual(D.fail(DE.notType("string", 1)))
+    expect(decoder.decode(1)).toEqual(D.fail(DE.notType("string", 1)))
   })
 
   it("minLength", () => {
-    const decoder = pipe(D.string, D.minLength(1))
+    const schema = pipe(S.string, S.minLength(1))
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode("a")).toEqual(D.succeed("a"))
 
     expect(decoder.decode("")).toEqual(D.fail(DE.minLength(1)))
   })
 
   it("number", () => {
-    expect(D.number.decode(1)).toEqual(D.succeed(1))
+    const schema = S.number
+    const decoder = D.unsafeDecoderFor(schema)
+    expect(decoder.decode(1)).toEqual(D.succeed(1))
 
-    expect(D.number.decode("a")).toEqual(D.fail(DE.notType("number", "a")))
+    expect(decoder.decode("a")).toEqual(D.fail(DE.notType("number", "a")))
   })
 
   it("boolean", () => {
-    expect(D.boolean.decode(true)).toEqual(D.succeed(true))
-    expect(D.boolean.decode(false)).toEqual(D.succeed(false))
+    const schema = S.boolean
+    const decoder = D.unsafeDecoderFor(schema)
+    expect(decoder.decode(true)).toEqual(D.succeed(true))
+    expect(decoder.decode(false)).toEqual(D.succeed(false))
 
-    expect(D.boolean.decode("a")).toEqual(D.fail(DE.notType("boolean", "a")))
+    expect(decoder.decode("a")).toEqual(D.fail(DE.notType("boolean", "a")))
   })
 
   it("of", () => {
-    const decoder = D.of(1)
+    const schema = S.of(1)
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode(1)).toEqual(D.succeed(1))
 
     expect(decoder.decode("a")).toEqual(D.fail(DE.notEqual(1, "a")))
   })
 
   it("tuple", () => {
-    const decoder = D.tuple(D.string, D.number)
+    const schema = S.tuple(S.string, S.number)
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
     expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
@@ -84,7 +68,8 @@ describe("Decoder", () => {
 
   describe("array", () => {
     it("baseline", () => {
-      const decoder = D.array(D.string)
+      const schema = S.array(S.string)
+      const decoder = D.unsafeDecoderFor(schema)
       expect(decoder.decode([])).toEqual(D.succeed([]))
       expect(decoder.decode(["a"])).toEqual(D.succeed(["a"]))
 
@@ -93,13 +78,15 @@ describe("Decoder", () => {
     })
 
     it("using both", () => {
-      const decoder = D.array(D.number)
+      const schema = S.array(S.number)
+      const decoder = D.unsafeDecoderFor(schema)
       expect(decoder.decode([1, NaN, 3])).toEqual(T.both([DE.nan], [1, NaN, 3]))
     })
   })
 
   it("struct", () => {
-    const decoder = D.struct({ a: D.string, b: D.number })
+    const schema = S.struct({ a: S.string, b: S.number })
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
 
     expect(decoder.decode(null)).toEqual(
@@ -110,7 +97,8 @@ describe("Decoder", () => {
   })
 
   it("indexSignature", () => {
-    const decoder = D.indexSignature(D.string)
+    const schema = S.indexSignature(S.string)
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode({ a: "a", b: "b" })).toEqual(D.succeed({ a: "a", b: "b" }))
 
     expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
@@ -122,12 +110,13 @@ describe("Decoder", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const decoder: D.Decoder<unknown, A> = D.lazy<unknown, A>(() =>
-      D.struct({
-        a: D.string,
-        as: D.array(decoder)
+    const schema: S.Schema<A> = S.lazy<A>(() =>
+      S.struct({
+        a: S.string,
+        as: S.array(schema)
       })
     )
+    const decoder = D.unsafeDecoderFor(schema)
     expect(decoder.decode({ a: "a1", as: [] })).toEqual(D.succeed({ a: "a1", as: [] }))
     expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(
       D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
@@ -135,19 +124,5 @@ describe("Decoder", () => {
     expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
       D.fail(DE.notType("{ readonly [_: string]: unknown }", 1))
     )
-  })
-
-  describe("usafeDecoderFor", () => {
-    it("struct", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
-      const decoder = D.unsafeDecoderFor(schema)
-      expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.succeed({ a: "a", b: 1 }))
-
-      expect(decoder.decode(null)).toEqual(
-        D.fail(DE.notType("{ readonly [_: string]: unknown }", null))
-      )
-      expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.fail(DE.notType("number", "a")))
-      expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
-    })
   })
 })

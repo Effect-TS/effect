@@ -36,30 +36,15 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<number> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<number> = I.makeGuard(Schema, (u): u is number => typeof u === "number")
+const Guard: G.Guard<number> = I.makeGuard(Schema, (u): u is number => typeof u === "number")
 
-/**
- * @since 1.0.0
- */
-export const Decoder: D.Decoder<unknown, number> = I.makeDecoder(
+const Decoder: D.Decoder<unknown, number> = I.makeDecoder(
   Schema,
   (u) => Guard.is(u) ? isNaN(u) ? I.warn(DE.nan, u) : I.succeed(u) : I.fail(DE.notType("number", u))
 )
 
-/**
- * @since 1.0.0
- */
-export const Encoder: E.Encoder<number, number> = I.makeEncoder(Schema, identity)
+const Encoder: E.Encoder<number, number> = I.makeEncoder(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary: A.Arbitrary<number> = I.makeArbitrary(Schema, (fc) => fc.float())
+const Arbitrary: A.Arbitrary<number> = I.makeArbitrary(Schema, (fc) => fc.float())
 
-/**
- * @since 1.0.0
- */
-export const Show: Sh.Show<number> = I.makeShow(Schema, (n) => JSON.stringify(n))
+const Show: Sh.Show<number> = I.makeShow(Schema, (n) => JSON.stringify(n))
