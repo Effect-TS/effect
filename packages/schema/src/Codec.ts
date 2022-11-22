@@ -4,17 +4,15 @@
 
 import type { Decoder } from "@fp-ts/codec/Decoder"
 import type { Encoder } from "@fp-ts/codec/Encoder"
-import type { Provider } from "@fp-ts/codec/Provider"
+import * as I from "@fp-ts/codec/internal/common"
 import type { Schema } from "@fp-ts/codec/Schema"
 
 /**
  * @since 1.0.0
  */
-export interface Codec<in out IO> {
-  readonly unsafeDecoderFor: (
-    provider: Provider
-  ) => <A>(schema: Schema<A>) => Decoder<IO, A>
-  readonly unsafeEncoderFor: (
-    provider: Provider
-  ) => <A>(schema: Schema<A>) => Encoder<IO, A>
-}
+export const CodecId = I.CodecId
+
+/**
+ * @since 1.0.0
+ */
+export interface Codec<in out S, in out A> extends Schema<A>, Decoder<S, A>, Encoder<S, A> {}

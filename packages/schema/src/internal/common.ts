@@ -52,6 +52,12 @@ export const DecoderId: unique symbol = Symbol.for(
 
 export type DecoderId = typeof DecoderId
 
+export const EncoderId: unique symbol = Symbol.for(
+  "@fp-ts/codec/Encoder"
+)
+
+export type EncoderId = typeof EncoderId
+
 export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
 
 export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
@@ -118,3 +124,9 @@ export const makeEncoder = <O, A>(
   schema: Schema<A>,
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
+
+export const CodecId: unique symbol = Symbol.for(
+  "@fp-ts/codec/Codec"
+)
+
+export type CodecId = typeof CodecId

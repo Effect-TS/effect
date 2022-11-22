@@ -1,7 +1,7 @@
 import * as A from "@fp-ts/codec/Arbitrary"
 import * as Json from "@fp-ts/codec/data/Json"
 import * as G from "@fp-ts/codec/Guard"
-import * as JC from "@fp-ts/codec/JsonCodec"
+import * as JD from "@fp-ts/codec/JsonDecoder"
 import * as S from "@fp-ts/codec/Schema"
 import * as show from "@fp-ts/codec/Show"
 import * as T from "@fp-ts/data/These"
@@ -10,14 +10,14 @@ import * as fc from "fast-check"
 const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)
 const unsafeArbitraryFor = A.provideUnsafeArbitraryFor(Json.Provider)
 const unsafeShowFor = show.provideUnsafeShowFor(Json.Provider)
-const unsafeDecoderFor = JC.provideUnsafeJsonDecoderFor(Json.Provider)
+const unsafeJsonDecoderFor = JD.provideUnsafeJsonDecoderFor(Json.Provider)
 
 describe("Json", () => {
   it("Json", () => {
     const schema = Json.Schema
     const arbitrary = unsafeArbitraryFor(schema)
     const guard = unsafeGuardFor(schema)
-    const decoder = unsafeDecoderFor(schema)
+    const decoder = unsafeJsonDecoderFor(schema)
     fc.assert(fc.property(arbitrary.arbitrary(fc), (json) => {
       guard.is(json) && T.isRight(decoder.decode(json))
     }))

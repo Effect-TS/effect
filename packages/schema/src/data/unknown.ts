@@ -4,11 +4,13 @@
 import type * as A from "@fp-ts/codec/Arbitrary"
 import * as DE from "@fp-ts/codec/DecodeError"
 import type * as D from "@fp-ts/codec/Decoder"
+import type * as E from "@fp-ts/codec/Encoder"
 import type * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
 import * as P from "@fp-ts/codec/Provider"
 import type * as S from "@fp-ts/codec/Schema"
 import type * as Sh from "@fp-ts/codec/Show"
+import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 
 /**
@@ -24,6 +26,7 @@ export const Provider: P.Provider = P.make(id, {
   [I.ArbitraryId]: () => Arbitrary,
   [I.DecoderId]: () => Decoder,
   [I.JsonDecoderId]: () => Decoder,
+  [I.EncoderId]: () => Encoder,
   [I.ShowId]: () => Show
 })
 
@@ -44,6 +47,11 @@ export const Decoder: D.Decoder<unknown, any> = I.fromGuard(
   Guard,
   (u) => DE.notType("any", u)
 )
+
+/**
+ * @since 1.0.0
+ */
+export const Encoder: E.Encoder<unknown, unknown> = I.makeEncoder(Schema, identity)
 
 /**
  * @since 1.0.0

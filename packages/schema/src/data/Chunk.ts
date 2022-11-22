@@ -6,7 +6,7 @@ import * as J from "@fp-ts/codec/data/Json"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
-import * as JC from "@fp-ts/codec/JsonCodec"
+import * as JD from "@fp-ts/codec/JsonDecoder"
 import * as P from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
@@ -44,7 +44,7 @@ export const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chun
 /**
  * @since 1.0.0
  */
-export const jsonDecoder = <A>(item: JC.JsonDecoder<A>): JC.JsonDecoder<Chunk<A>> =>
+export const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Chunk<A>> =>
   pipe(J.JsonArrayJsonDecoder, D.compose(fromArray(item)))
 
 /**
@@ -72,7 +72,7 @@ export const Provider: P.Provider = P.make(id, {
   [A.ArbitraryId]: arbitrary,
   [Sh.ShowId]: show,
   [D.DecoderId]: decoder,
-  [JC.JsonDecoderId]: jsonDecoder
+  [JD.JsonDecoderId]: jsonDecoder
 })
 
 /**

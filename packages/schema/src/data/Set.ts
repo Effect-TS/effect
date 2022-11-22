@@ -6,7 +6,7 @@ import * as J from "@fp-ts/codec/data/Json"
 import * as D from "@fp-ts/codec/Decoder"
 import * as G from "@fp-ts/codec/Guard"
 import * as I from "@fp-ts/codec/internal/common"
-import type * as JC from "@fp-ts/codec/JsonCodec"
+import type * as JD from "@fp-ts/codec/JsonDecoder"
 import * as P from "@fp-ts/codec/Provider"
 import * as S from "@fp-ts/codec/Schema"
 import * as Sh from "@fp-ts/codec/Show"
@@ -42,7 +42,7 @@ export const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Set<
 /**
  * @since 1.0.0
  */
-export const jsonDecoder = <A>(item: JC.JsonDecoder<A>): JC.JsonDecoder<Set<A>> =>
+export const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Set<A>> =>
   pipe(J.JsonArrayJsonDecoder, D.compose(fromArray(item)))
 
 /**
