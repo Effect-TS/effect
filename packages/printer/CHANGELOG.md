@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.1.2
+
+### Patch Changes
+
+- [#354](https://github.com/Effect-TS/printer/pull/354) [`c4216cb`](https://github.com/Effect-TS/printer/commit/c4216cbf2a7283cbe08dcc6236cba964c219208a) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update fp-ts/data
+
 ## 0.1.1
 
 ### Patch Changes
