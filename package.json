@@ -1,65 +1,121 @@
 {
   "name": "effect",
-  "private": true,
+  "version": "1.2.0",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/core.git"
   },
-  "workspaces": [
-    "packages/*"
+  "author": "Michael Arnaldi <ma@matechs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Effect-TS/core/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/core",
+  "description": "Functional programming in TypeScript",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
   ],
   "scripts": {
-    "changeset": "changeset",
-    "release": "changeset publish",
-    "clean": "ultra -r clean && rimraf tsconfig.tsbuildinfo",
-    "build": "pnpm build-all && ultra -r -b build-pack",
+    "example": "ts-node --project tsconfig.examples.json",
+    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
+    "release": "pnpm run build && changeset publish",
+    "clean": "rimraf build tsbuildinfo dist .ultra.cache.json",
+    "build": "pnpm build-all && pnpm build-pack",
+    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
+    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
+    "build-post": "build-utils pack-v3",
+    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
     "build-all": "tsc -b tsconfig.json",
     "build-watch": "tsc -b tsconfig.json --watch",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning packages/*/build/esm packages/*/build/test packages/*/build/examples",
+    "lint": "eslint . --ext .ts,.tsx",
+    "autofix": "pnpm lint --fix",
+    "tc": "tsc --noEmit",
+    "docs": "docs-ts",
+    "docs-update": "git add --force --all docs/modules || true",
+    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "test": "vitest",
-    "autofix": "ultra -r autofix",
-    "lint": "ultra -r lint",
-    "tc": "ultra -r tc",
-    "postinstall": "tsplus-install"
+    "coverage": "vitest run --coverage",
+    "changeset": "changeset"
+  },
+  "exports": {
+    ".": {
+      "require": "./build/cjs/index.js"
+    },
+    "./*": {
+      "require": "./build/cjs/*.js"
+    }
+  },
+  "dependencies": {
+    "@effect/io": "^0.0.6",
+    "@effect/printer": "^0.1.1",
+    "@fp-ts/core": "^0.0.8",
+    "@fp-ts/data": "^0.0.12"
   },
   "devDependencies": {
-    "@babel/cli": "^7.19.3",
-    "@babel/core": "^7.19.3",
-    "@babel/plugin-transform-modules-commonjs": "^7.18.6",
+    "@babel/cli": "^7.18.6",
+    "@babel/core": "^7.20.2",
+    "@babel/plugin-transform-modules-commonjs": "^7.19.6",
     "@changesets/changelog-github": "^0.4.7",
-    "@changesets/cli": "^2.25.0",
-    "@effect-ts/build-utils": "0.40.3",
-    "@effect-ts/core": "^0.60.4",
-    "@effect/core": "workspace:^",
+    "@changesets/cli": "^2.25.2",
+    "@effect-ts/build-utils": "0.40.5",
+    "@effect-ts/core": "^0.60.2",
+    "@effect/language-service": "^0.0.1",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
-    "@tsplus/installer": "0.0.147",
-    "@types/node": "^18.8.3",
+    "@rollup/pluginutils": "^5.0.2",
+    "@types/benchmark": "^2.1.2",
+    "@types/chai": "^4.3.4",
+    "@types/glob": "^8.0.0",
+    "@types/jest": "^29.2.3",
+    "@types/node": "^18.11.9",
+    "@types/prettier": "2.7.1",
     "@types/rimraf": "^3.0.2",
-    "@typescript-eslint/eslint-plugin": "^5.39.0",
-    "@typescript-eslint/parser": "^5.39.0",
+    "@typescript-eslint/eslint-plugin": "^5.44.0",
+    "@typescript-eslint/parser": "^5.44.0",
+    "@vitest/coverage-c8": "^0.25.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "babel-plugin-replace-import-extension": "^1.1.3",
-    "c8": "^7.12.0",
-    "concurrently": "^7.4.0",
+    "concurrently": "^7.6.0",
     "cpx": "^1.5.0",
-    "eslint": "^8.24.0",
-    "eslint-import-resolver-typescript": "^3.5.1",
+    "docs-ts": "0.6.10",
+    "eslint": "^8.28.0",
+    "eslint-import-resolver-typescript": "^3.5.2",
     "eslint-plugin-codegen": "0.16.1",
+    "eslint-plugin-deprecation": "^1.3.3",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-simple-import-sort": "^8.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.4.0",
+    "fast-check": "^3.3.0",
+    "glob": "^8.0.3",
     "madge": "^5.0.1",
     "picocolors": "^1.0.0",
+    "prettier": "^2.7.1",
     "rimraf": "^3.0.2",
-    "typescript": "^4.8.4",
+    "ts-node": "^10.9.1",
+    "tslint": "^6.1.3",
+    "typescript": "https://cdn.jsdelivr.net/npm/@tsplus/installer@0.0.155/compiler/typescript.tgz",
     "ultra-runner": "^3.10.5",
-    "vite": "3.1.6",
-    "vitest": "0.14.2"
+    "vite": "^3.2.4",
+    "vitest": "0.25.2"
   },
   "pnpm": {
     "patchedDependencies": {
       "@effect-ts/build-utils@0.40.3": "patches/@effect-ts__build-utils@0.40.3.patch",
-      "eslint-plugin-codegen@0.16.1": "patches/eslint-plugin-codegen@0.16.1.patch"
+      "docs-ts@0.6.10": "patches/docs-ts@0.6.10.patch"
     }
+  },
+  "config": {
+    "side": [],
+    "modules": [],
+    "global": []
   }
 }

@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     strategy:
       matrix:
@@ -41,15 +41,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - run: pnpm install
-      - run: pnpm build
-      - run: pnpm test
-      - name: Create Version PR or Publish to NPM
-        if: github.repository == 'Effect-TS/core'
+      - run: pnpm run build
+      - run: pnpm run circular
+      - run: pnpm run test
+      - run: pnpm run lint
+      - run: pnpm run docs
+      - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1
         with:
-          version: node .github/changeset-version.cjs
-          publish: pnpm release
+          version: pnpm run version
+          publish: pnpm exec changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.EFFECT_BOT_NPM }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

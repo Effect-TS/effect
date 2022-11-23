@@ -8,10 +8,8 @@ Effect is an ecosystem of libraries to write highly productive, purely functiona
 
 ## Install
 
-We recommend the usage of `yarn` and if you have multiple packages the usage of `yarn workspaces` that sting of dependencies:
-
 ```sh
-yarn add @effect-ts/core
+pnpm install effect
 ```
 
 ## TSConfig
