@@ -1,0 +1,55 @@
+diff --git a/lib/Core.js b/lib/Core.js
+index c0f282ca9e3ddd93e44a62e1d05c1cc45b9f5c6a..616f7f6223459e0621522279ea7fc1cf1868abe8 100644
+--- a/lib/Core.js
++++ b/lib/Core.js
+@@ -167,7 +167,30 @@ var typeCheckExamples = function (modules) {
+     return function_1.pipe(getExampleFiles(modules), RTE.chain(handleImports), RTE.chain(function (examples) {
+         return examples.length === 0
+             ? cleanExamples
+-            : function_1.pipe(writeExamples(examples), RTE.chain(function () { return spawnTsNode; }), RTE.chain(function () { return cleanExamples; }));
++            : function_1.pipe(writeExamples(examples), RTE.chain(function () { return writeFile({"path": "./docs/examples/tsconfig.json", "content": JSON.stringify({
++                "compilerOptions": {
++                  "noEmit": true,
++                  "strict": true,
++                  "noImplicitAny": true,
++                  "noImplicitThis": true,
++                  "strictNullChecks": true,
++                  "strictFunctionTypes": true,
++                  "noImplicitReturns": false,
++                  "noUnusedLocals": false,
++                  "noUnusedParameters": false,
++                  "noFallthroughCasesInSwitch": true,
++                  "moduleResolution": "node",
++                  "target": "es2015",
++                  "lib": ["es2015"],
++                  "paths": {
++                    "@effect/io": ["../../src/index.ts"],
++                    "@effect/io/test/*": ["../../test/*"],
++                    "@effect/io/examples/*": ["../../examples/*"],
++                    "@effect/io/*": ["../../src/*"]
++                  }
++                }
++              }
++              )}); }), RTE.chain(function () { return spawnTsNode; }), RTE.chain(function () { return cleanExamples; }));
+     }));
+ };
+ // -------------------------------------------------------------------------------------
+diff --git a/lib/index.js b/lib/index.js
+index 51bdb346c4c33e8835bbda0c16aea71bc0c3115e..7d084d363efd3f8aad76051f4253b0b59cd0c5cd 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -33,7 +33,13 @@ exports.exit = TE.fold(onLeft, function () { return onRight; });
+  * @internal
+  */
+ exports.compilerOptions = {
+-    strict: true
++    strict: true,
++    paths: {
++      "@effect/io": ["./src/index.ts"],
++      "@effect/io/test/*": ["./test/*"],
++      "@effect/io/examples/*": ["./examples/*"],
++      "@effect/io/*": ["./src/*"]
++    }
+ };
+ var capabilities = {
+     example: Example_1.Example,

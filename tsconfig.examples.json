@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "build/tsbuildinfo/examples.tsbuildinfo",
+    "rootDir": "examples",
+    "module": "CommonJS",
+    "outDir": "build/examples"
+  },
+  "include": ["examples/**/*.ts"],
+  "references": [{ "path": "./tsconfig.build.json" }]
+}

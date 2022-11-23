@@ -1,0 +1,8 @@
+{
+  "mode": "pre",
+  "tag": "next",
+  "initialVersions": {
+    "effect": "1.2.0"
+  },
+  "changesets": []
+}

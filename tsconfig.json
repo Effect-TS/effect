@@ -1,8 +1,8 @@
 {
   "extends": "./tsconfig.base.json",
   "references": [
-    {
-      "path": "packages/core"
-    }
+    { "path": "./tsconfig.build.json" },
+    { "path": "./tsconfig.test.json" },
+    { "path": "./tsconfig.examples.json" }
   ]
 }

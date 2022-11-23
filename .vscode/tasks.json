@@ -4,14 +4,14 @@
     {
       "label": "clean",
       "type": "shell",
-      "command": "pnpm clean",
+      "command": "pnpm run clean",
       "isBackground": false,
       "problemMatcher": []
     },
     {
       "label": "build-watch",
       "type": "shell",
-      "command": "pnpm build-watch",
+      "command": "pnpm run build-watch",
       "problemMatcher": ["$tsc-watch"],
       "isBackground": true,
       "presentation": {
@@ -25,7 +25,7 @@
     {
       "label": "build",
       "type": "shell",
-      "command": "pnpm build",
+      "command": "pnpm run build",
       "problemMatcher": [],
       "isBackground": false
     },
@@ -33,7 +33,7 @@
       "label": "test-watch",
       "dependsOn": ["build-watch"],
       "type": "shell",
-      "command": "pnpm test",
+      "command": "pnpm run test",
       "problemMatcher": []
     }
   ]
