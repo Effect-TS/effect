@@ -5,6 +5,34 @@
 import * as Effect from "@effect/io/Effect"
 import * as Logger from "@effect/io/Logger"
 
+import * as HKT from "@fp-ts/core/HKT"
+import * as Alternative from "@fp-ts/core/typeclass/Alternative"
+import * as Applicative from "@fp-ts/core/typeclass/Applicative"
+import * as Bicovariant from "@fp-ts/core/typeclass/Bicovariant"
+import * as Bounded from "@fp-ts/core/typeclass/Bounded"
+import * as Chainable from "@fp-ts/core/typeclass/Chainable"
+import * as Compactable from "@fp-ts/core/typeclass/Compactable"
+import * as Contravariant from "@fp-ts/core/typeclass/Contravariant"
+import * as Coproduct from "@fp-ts/core/typeclass/Coproduct"
+import * as Covariant from "@fp-ts/core/typeclass/Covariant"
+import * as Filterable from "@fp-ts/core/typeclass/Filterable"
+import * as FlatMap from "@fp-ts/core/typeclass/FlatMap"
+import * as Foldable from "@fp-ts/core/typeclass/Foldable"
+import * as Invariant from "@fp-ts/core/typeclass/Invariant"
+import * as Monad from "@fp-ts/core/typeclass/Monad"
+import * as Monoid from "@fp-ts/core/typeclass/Monoid"
+import * as NonEmptyTraversable from "@fp-ts/core/typeclass/NonEmptyTraversable"
+import * as Of from "@fp-ts/core/typeclass/Of"
+import * as Order from "@fp-ts/core/typeclass/Order"
+import * as Pointed from "@fp-ts/core/typeclass/Pointed"
+import * as Product from "@fp-ts/core/typeclass/Product"
+import * as SemiAlternative from "@fp-ts/core/typeclass/SemiAlternative"
+import * as SemiApplicative from "@fp-ts/core/typeclass/SemiApplicative"
+import * as SemiCoproduct from "@fp-ts/core/typeclass/SemiCoproduct"
+import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
+import * as SemiProduct from "@fp-ts/core/typeclass/SemiProduct"
+import * as Traversable from "@fp-ts/core/typeclass/Traversable"
+import * as TraversableFilterable from "@fp-ts/core/typeclass/TraversableFilterable"
 import * as Boolean from "@fp-ts/data/Boolean"
 import * as Chunk from "@fp-ts/data/Chunk"
 import * as Context from "@fp-ts/data/Context"
@@ -44,7 +72,27 @@ export {
   /**
    * @since 2.0.0
    */
+  Alternative,
+  /**
+   * @since 2.0.0
+   */
+  Applicative,
+  /**
+   * @since 2.0.0
+   */
+  Bicovariant,
+  /**
+   * @since 2.0.0
+   */
   Boolean,
+  /**
+   * @since 2.0.0
+   */
+  Bounded,
+  /**
+   * @since 2.0.0
+   */
+  Chainable,
   /**
    * @since 2.0.0
    */
@@ -52,7 +100,23 @@ export {
   /**
    * @since 2.0.0
    */
+  Compactable,
+  /**
+   * @since 2.0.0
+   */
   Context,
+  /**
+   * @since 2.0.0
+   */
+  Contravariant,
+  /**
+   * @since 2.0.0
+   */
+  Coproduct,
+  /**
+   * @since 2.0.0
+   */
+  Covariant,
   /**
    * @since 2.0.0
    */
@@ -76,7 +140,19 @@ export {
   /**
    * @since 2.0.0
    */
+  Filterable,
+  /**
+   * @since 2.0.0
+   */
+  FlatMap,
+  /**
+   * @since 2.0.0
+   */
   flow,
+  /**
+   * @since 2.0.0
+   */
+  Foldable,
   /**
    * @since 2.0.0
    */
@@ -89,6 +165,10 @@ export {
    * @since 2.0.0
    */
   HashSet,
+  /**
+   * @since 2.0.0
+   */
+  HKT,
   /**
    * @since 2.0.0
    */
@@ -108,6 +188,10 @@ export {
   /**
    * @since 2.0.0
    */
+  Invariant,
+  /**
+   * @since 2.0.0
+   */
   Json,
   /**
    * @since 2.0.0
@@ -117,6 +201,14 @@ export {
    * @since 2.0.0
    */
   Logger,
+  /**
+   * @since 2.0.0
+   */
+  Monad,
+  /**
+   * @since 2.0.0
+   */
+  Monoid,
   /**
    * @since 2.0.0
    */
@@ -144,11 +236,23 @@ export {
   /**
    * @since 2.0.0
    */
+  NonEmptyTraversable,
+  /**
+   * @since 2.0.0
+   */
   Number,
   /**
    * @since 2.0.0
    */
+  Of,
+  /**
+   * @since 2.0.0
+   */
   Option,
+  /**
+   * @since 2.0.0
+   */
+  Order,
   /**
    * @since 2.0.0
    */
@@ -160,11 +264,39 @@ export {
   /**
    * @since 2.0.0
    */
+  Pointed,
+  /**
+   * @since 2.0.0
+   */
   Predicate,
   /**
    * @since 2.0.0
    */
+  Product,
+  /**
+   * @since 2.0.0
+   */
   ReadonlyArray,
+  /**
+   * @since 2.0.0
+   */
+  SemiAlternative,
+  /**
+   * @since 2.0.0
+   */
+  SemiApplicative,
+  /**
+   * @since 2.0.0
+   */
+  SemiCoproduct,
+  /**
+   * @since 2.0.0
+   */
+  Semigroup,
+  /**
+   * @since 2.0.0
+   */
+  SemiProduct,
   /**
    * @since 2.0.0
    */
@@ -177,6 +309,14 @@ export {
    * @since 2.0.0
    */
   String,
+  /**
+   * @since 2.0.0
+   */
+  Traversable,
+  /**
+   * @since 2.0.0
+   */
+  TraversableFilterable,
   /**
    * @since 2.0.0
    */
