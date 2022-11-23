@@ -4,7 +4,9 @@
     "tsBuildInfoFile": "build/tsbuildinfo/examples.tsbuildinfo",
     "rootDir": "examples",
     "module": "CommonJS",
-    "outDir": "build/examples"
+    "outDir": "build/examples",
+    "skipLibCheck": false,
+    "esModuleInterop": true
   },
   "include": ["examples/**/*.ts"],
   "references": [{ "path": "./tsconfig.build.json" }]
