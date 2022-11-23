@@ -5,7 +5,6 @@
 import * as Cached from "@effect/io/Cached"
 import * as Cause from "@effect/io/Cause"
 import * as Clock from "@effect/io/Clock"
-import * as Debug from "@effect/io/Debug"
 import * as DefaultServices from "@effect/io/DefaultServices"
 import * as Deferred from "@effect/io/Deferred"
 import * as Effect from "@effect/io/Effect"
@@ -79,6 +78,9 @@ import * as ReadonlyArray from "@fp-ts/data/ReadonlyArray"
 import * as SortedMap from "@fp-ts/data/SortedMap"
 import * as SortedSet from "@fp-ts/data/SortedSet"
 import * as String from "@fp-ts/data/String"
+import * as CovariantWithIndex from "@fp-ts/data/typeclass/CovariantWithIndex"
+import * as FilterableWithIndex from "@fp-ts/data/typeclass/FilterableWithIndex"
+import * as Seq from "@fp-ts/data/typeclass/Seq"
 import * as Differ from "effect/Differ"
 import * as Fiber from "effect/Fiber"
 import * as FiberRefs from "effect/FiberRefs"
@@ -154,7 +156,7 @@ export {
   /**
    * @since 2.0.0
    */
-  Debug,
+  CovariantWithIndex,
   /**
    * @since 2.0.0
    */
@@ -207,6 +209,10 @@ export {
    * @since 2.0.0
    */
   Filterable,
+  /**
+   * @since 2.0.0
+   */
+  FilterableWithIndex,
   /**
    * @since 2.0.0
    */
@@ -407,6 +413,10 @@ export {
    * @since 2.0.0
    */
   SemiProduct,
+  /**
+   * @since 2.0.0
+   */
+  Seq,
   /**
    * @since 2.0.0
    */

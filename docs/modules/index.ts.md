@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 1
+nav_order: 2
 parent: Modules
 ---
 
@@ -28,7 +28,7 @@ Added in v2.0.0
   - [Contravariant](#contravariant)
   - [Coproduct](#coproduct)
   - [Covariant](#covariant)
-  - [Debug](#debug)
+  - [CovariantWithIndex](#covariantwithindex)
   - [DefaultServices](#defaultservices)
   - [Deferred](#deferred)
   - [Differ](#differ)
@@ -42,6 +42,7 @@ Added in v2.0.0
   - [FiberRef](#fiberref)
   - [FiberRefs](#fiberrefs)
   - [Filterable](#filterable)
+  - [FilterableWithIndex](#filterablewithindex)
   - [FlatMap](#flatmap)
   - [Foldable](#foldable)
   - [Function](#function)
@@ -88,6 +89,7 @@ Added in v2.0.0
   - [SemiCoproduct](#semicoproduct)
   - [SemiProduct](#semiproduct)
   - [Semigroup](#semigroup)
+  - [Seq](#seq)
   - [SortedMap](#sortedmap)
   - [SortedSet](#sortedset)
   - [String](#string)
@@ -256,12 +258,12 @@ export declare const Covariant: typeof Covariant
 
 Added in v2.0.0
 
-## Debug
+## CovariantWithIndex
 
 **Signature**
 
 ```ts
-export declare const Debug: typeof Debug
+export declare const CovariantWithIndex: typeof CovariantWithIndex
 ```
 
 Added in v2.0.0
@@ -392,6 +394,16 @@ Added in v2.0.0
 
 ```ts
 export declare const Filterable: typeof Filterable
+```
+
+Added in v2.0.0
+
+## FilterableWithIndex
+
+**Signature**
+
+```ts
+export declare const FilterableWithIndex: typeof FilterableWithIndex
 ```
 
 Added in v2.0.0
@@ -852,6 +864,16 @@ Added in v2.0.0
 
 ```ts
 export declare const Semigroup: typeof Semigroup
+```
+
+Added in v2.0.0
+
+## Seq
+
+**Signature**
+
+```ts
+export declare const Seq: typeof Seq
 ```
 
 Added in v2.0.0
