@@ -18,18 +18,29 @@ Added in v2.0.0
   - [Bicovariant](#bicovariant)
   - [Boolean](#boolean)
   - [Bounded](#bounded)
+  - [Cached](#cached)
+  - [Cause](#cause)
   - [Chainable](#chainable)
   - [Chunk](#chunk)
+  - [Clock](#clock)
   - [Compactable](#compactable)
   - [Context](#context)
   - [Contravariant](#contravariant)
   - [Coproduct](#coproduct)
   - [Covariant](#covariant)
+  - [Debug](#debug)
+  - [DefaultServices](#defaultservices)
+  - [Deferred](#deferred)
   - [Differ](#differ)
   - [Duration](#duration)
   - [Effect](#effect)
   - [Either](#either)
   - [Equal](#equal)
+  - [ExecutionStrategy](#executionstrategy)
+  - [Exit](#exit)
+  - [Fiber](#fiber)
+  - [FiberRef](#fiberref)
+  - [FiberRefs](#fiberrefs)
   - [Filterable](#filterable)
   - [FlatMap](#flatmap)
   - [Foldable](#foldable)
@@ -37,12 +48,15 @@ Added in v2.0.0
   - [HKT](#hkt)
   - [HashMap](#hashmap)
   - [HashSet](#hashset)
+  - [Hub](#hub)
   - [Identity](#identity)
   - [ImmutableQueue](#immutablequeue)
   - [Invariant](#invariant)
   - [Json](#json)
+  - [Layer](#layer)
   - [List](#list)
   - [Logger](#logger)
+  - [Metric](#metric)
   - [Monad](#monad)
   - [Monoid](#monoid)
   - [MutableHashMap](#mutablehashmap)
@@ -57,10 +71,18 @@ Added in v2.0.0
   - [Option](#option)
   - [Order](#order)
   - [Ordering](#ordering)
+  - [PCGRandom](#pcgrandom)
   - [Pointed](#pointed)
   - [Predicate](#predicate)
   - [Product](#product)
+  - [Queue](#queue)
+  - [Random](#random)
   - [ReadonlyArray](#readonlyarray)
+  - [Ref](#ref)
+  - [Reloadable](#reloadable)
+  - [Runtime](#runtime)
+  - [Schedule](#schedule)
+  - [Scope](#scope)
   - [SemiAlternative](#semialternative)
   - [SemiApplicative](#semiapplicative)
   - [SemiCoproduct](#semicoproduct)
@@ -69,6 +91,8 @@ Added in v2.0.0
   - [SortedMap](#sortedmap)
   - [SortedSet](#sortedset)
   - [String](#string)
+  - [Supervisor](#supervisor)
+  - [Tracer](#tracer)
   - [Traversable](#traversable)
   - [TraversableFilterable](#traversablefilterable)
   - [absurd](#absurd)
@@ -132,6 +156,26 @@ export declare const Bounded: typeof Bounded
 
 Added in v2.0.0
 
+## Cached
+
+**Signature**
+
+```ts
+export declare const Cached: typeof Cached
+```
+
+Added in v2.0.0
+
+## Cause
+
+**Signature**
+
+```ts
+export declare const Cause: typeof Cause
+```
+
+Added in v2.0.0
+
 ## Chainable
 
 **Signature**
@@ -148,6 +192,16 @@ Added in v2.0.0
 
 ```ts
 export declare const Chunk: typeof Chunk
+```
+
+Added in v2.0.0
+
+## Clock
+
+**Signature**
+
+```ts
+export declare const Clock: typeof Clock
 ```
 
 Added in v2.0.0
@@ -202,12 +256,42 @@ export declare const Covariant: typeof Covariant
 
 Added in v2.0.0
 
+## Debug
+
+**Signature**
+
+```ts
+export declare const Debug: typeof Debug
+```
+
+Added in v2.0.0
+
+## DefaultServices
+
+**Signature**
+
+```ts
+export declare const DefaultServices: typeof DefaultServices
+```
+
+Added in v2.0.0
+
+## Deferred
+
+**Signature**
+
+```ts
+export declare const Deferred: typeof Deferred
+```
+
+Added in v2.0.0
+
 ## Differ
 
 **Signature**
 
 ```ts
-export declare const Differ: typeof Differ
+export declare const Differ: any
 ```
 
 Added in v2.0.0
@@ -248,6 +332,56 @@ Added in v2.0.0
 
 ```ts
 export declare const Equal: typeof Equal
+```
+
+Added in v2.0.0
+
+## ExecutionStrategy
+
+**Signature**
+
+```ts
+export declare const ExecutionStrategy: typeof ExecutionStrategy
+```
+
+Added in v2.0.0
+
+## Exit
+
+**Signature**
+
+```ts
+export declare const Exit: typeof Exit
+```
+
+Added in v2.0.0
+
+## Fiber
+
+**Signature**
+
+```ts
+export declare const Fiber: any
+```
+
+Added in v2.0.0
+
+## FiberRef
+
+**Signature**
+
+```ts
+export declare const FiberRef: typeof FiberRef
+```
+
+Added in v2.0.0
+
+## FiberRefs
+
+**Signature**
+
+```ts
+export declare const FiberRefs: any
 ```
 
 Added in v2.0.0
@@ -322,6 +456,16 @@ export declare const HashSet: typeof HashSet
 
 Added in v2.0.0
 
+## Hub
+
+**Signature**
+
+```ts
+export declare const Hub: typeof Hub
+```
+
+Added in v2.0.0
+
 ## Identity
 
 **Signature**
@@ -362,6 +506,16 @@ export declare const Json: typeof Json
 
 Added in v2.0.0
 
+## Layer
+
+**Signature**
+
+```ts
+export declare const Layer: typeof Layer
+```
+
+Added in v2.0.0
+
 ## List
 
 **Signature**
@@ -378,6 +532,16 @@ Added in v2.0.0
 
 ```ts
 export declare const Logger: typeof Logger
+```
+
+Added in v2.0.0
+
+## Metric
+
+**Signature**
+
+```ts
+export declare const Metric: any
 ```
 
 Added in v2.0.0
@@ -522,6 +686,16 @@ export declare const Ordering: typeof Ordering
 
 Added in v2.0.0
 
+## PCGRandom
+
+**Signature**
+
+```ts
+export declare const PCGRandom: typeof PCGRandom
+```
+
+Added in v2.0.0
+
 ## Pointed
 
 **Signature**
@@ -552,12 +726,82 @@ export declare const Product: typeof Product
 
 Added in v2.0.0
 
+## Queue
+
+**Signature**
+
+```ts
+export declare const Queue: typeof Queue
+```
+
+Added in v2.0.0
+
+## Random
+
+**Signature**
+
+```ts
+export declare const Random: typeof Random
+```
+
+Added in v2.0.0
+
 ## ReadonlyArray
 
 **Signature**
 
 ```ts
 export declare const ReadonlyArray: typeof ReadonlyArray
+```
+
+Added in v2.0.0
+
+## Ref
+
+**Signature**
+
+```ts
+export declare const Ref: any
+```
+
+Added in v2.0.0
+
+## Reloadable
+
+**Signature**
+
+```ts
+export declare const Reloadable: typeof Reloadable
+```
+
+Added in v2.0.0
+
+## Runtime
+
+**Signature**
+
+```ts
+export declare const Runtime: typeof Runtime
+```
+
+Added in v2.0.0
+
+## Schedule
+
+**Signature**
+
+```ts
+export declare const Schedule: any
+```
+
+Added in v2.0.0
+
+## Scope
+
+**Signature**
+
+```ts
+export declare const Scope: typeof Scope
 ```
 
 Added in v2.0.0
@@ -638,6 +882,26 @@ Added in v2.0.0
 
 ```ts
 export declare const String: typeof String
+```
+
+Added in v2.0.0
+
+## Supervisor
+
+**Signature**
+
+```ts
+export declare const Supervisor: typeof Supervisor
+```
+
+Added in v2.0.0
+
+## Tracer
+
+**Signature**
+
+```ts
+export declare const Tracer: typeof Tracer
 ```
 
 Added in v2.0.0

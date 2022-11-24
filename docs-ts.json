@@ -1,4 +1,11 @@
 {
-  "exclude": ["src/internal/**/*.ts"],
+  "exclude": [
+    "src/Fiber.ts",
+    "src/FiberRefs.ts",
+    "src/Metric.ts",
+    "src/Ref.ts",
+    "src/Differ.ts",
+    "src/Schedule.ts"
+  ],
   "theme": "mikearnaldi/just-the-docs"
 }
