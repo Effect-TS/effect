@@ -2,9 +2,26 @@
  * @since 2.0.0
  */
 
+import * as Cached from "@effect/io/Cached"
+import * as Cause from "@effect/io/Cause"
+import * as Clock from "@effect/io/Clock"
+import * as Debug from "@effect/io/Debug"
+import * as DefaultServices from "@effect/io/DefaultServices"
+import * as Deferred from "@effect/io/Deferred"
 import * as Effect from "@effect/io/Effect"
+import * as ExecutionStrategy from "@effect/io/ExecutionStrategy"
+import * as Exit from "@effect/io/Exit"
+import * as FiberRef from "@effect/io/FiberRef"
+import * as Hub from "@effect/io/Hub"
+import * as Layer from "@effect/io/Layer"
 import * as Logger from "@effect/io/Logger"
-
+import * as Queue from "@effect/io/Queue"
+import * as Random from "@effect/io/Random"
+import * as Reloadable from "@effect/io/Reloadable"
+import * as Runtime from "@effect/io/Runtime"
+import * as Scope from "@effect/io/Scope"
+import * as Supervisor from "@effect/io/Supervisor"
+import * as Tracer from "@effect/io/Tracer"
 import * as HKT from "@fp-ts/core/HKT"
 import * as Alternative from "@fp-ts/core/typeclass/Alternative"
 import * as Applicative from "@fp-ts/core/typeclass/Applicative"
@@ -36,11 +53,11 @@ import * as TraversableFilterable from "@fp-ts/core/typeclass/TraversableFiltera
 import * as Boolean from "@fp-ts/data/Boolean"
 import * as Chunk from "@fp-ts/data/Chunk"
 import * as Context from "@fp-ts/data/Context"
-import * as Differ from "@fp-ts/data/Differ"
 import * as Duration from "@fp-ts/data/Duration"
 import * as Either from "@fp-ts/data/Either"
 import * as Equal from "@fp-ts/data/Equal"
 import * as Function from "@fp-ts/data/Function"
+import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "@fp-ts/data/Function"
 import * as HashMap from "@fp-ts/data/HashMap"
 import * as HashSet from "@fp-ts/data/HashSet"
 import * as Identity from "@fp-ts/data/Identity"
@@ -57,12 +74,17 @@ import * as Option from "@fp-ts/data/Option"
 import * as Ordering from "@fp-ts/data/Ordering"
 import * as Predicate from "@fp-ts/data/Predicate"
 import * as ImmutableQueue from "@fp-ts/data/Queue"
+import * as PCGRandom from "@fp-ts/data/Random"
 import * as ReadonlyArray from "@fp-ts/data/ReadonlyArray"
 import * as SortedMap from "@fp-ts/data/SortedMap"
 import * as SortedSet from "@fp-ts/data/SortedSet"
 import * as String from "@fp-ts/data/String"
-
-import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "@fp-ts/data/Function"
+import * as Differ from "effect/Differ"
+import * as Fiber from "effect/Fiber"
+import * as FiberRefs from "effect/FiberRefs"
+import * as Metric from "effect/Metric"
+import * as Ref from "effect/Ref"
+import * as Schedule from "effect/Schedule"
 
 export {
   /**
@@ -92,11 +114,23 @@ export {
   /**
    * @since 2.0.0
    */
+  Cached,
+  /**
+   * @since 2.0.0
+   */
+  Cause,
+  /**
+   * @since 2.0.0
+   */
   Chainable,
   /**
    * @since 2.0.0
    */
   Chunk,
+  /**
+   * @since 2.0.0
+   */
+  Clock,
   /**
    * @since 2.0.0
    */
@@ -120,6 +154,18 @@ export {
   /**
    * @since 2.0.0
    */
+  Debug,
+  /**
+   * @since 2.0.0
+   */
+  DefaultServices,
+  /**
+   * @since 2.0.0
+   */
+  Deferred,
+  /**
+   * @since 2.0.0
+   */
   Differ,
   /**
    * @since 2.0.0
@@ -137,6 +183,26 @@ export {
    * @since 2.0.0
    */
   Equal,
+  /**
+   * @since 2.0.0
+   */
+  ExecutionStrategy,
+  /**
+   * @since 2.0.0
+   */
+  Exit,
+  /**
+   * @since 2.0.0
+   */
+  Fiber,
+  /**
+   * @since 2.0.0
+   */
+  FiberRef,
+  /**
+   * @since 2.0.0
+   */
+  FiberRefs,
   /**
    * @since 2.0.0
    */
@@ -176,6 +242,10 @@ export {
   /**
    * @since 2.0.0
    */
+  Hub,
+  /**
+   * @since 2.0.0
+   */
   Identity,
   /**
    * @since 2.0.0
@@ -196,11 +266,19 @@ export {
   /**
    * @since 2.0.0
    */
+  Layer,
+  /**
+   * @since 2.0.0
+   */
   List,
   /**
    * @since 2.0.0
    */
   Logger,
+  /**
+   * @since 2.0.0
+   */
+  Metric,
   /**
    * @since 2.0.0
    */
@@ -260,6 +338,10 @@ export {
   /**
    * @since 2.0.0
    */
+  PCGRandom,
+  /**
+   * @since 2.0.0
+   */
   pipe,
   /**
    * @since 2.0.0
@@ -276,7 +358,35 @@ export {
   /**
    * @since 2.0.0
    */
+  Queue,
+  /**
+   * @since 2.0.0
+   */
+  Random,
+  /**
+   * @since 2.0.0
+   */
   ReadonlyArray,
+  /**
+   * @since 2.0.0
+   */
+  Ref,
+  /**
+   * @since 2.0.0
+   */
+  Reloadable,
+  /**
+   * @since 2.0.0
+   */
+  Runtime,
+  /**
+   * @since 2.0.0
+   */
+  Schedule,
+  /**
+   * @since 2.0.0
+   */
+  Scope,
   /**
    * @since 2.0.0
    */
@@ -309,6 +419,14 @@ export {
    * @since 2.0.0
    */
   String,
+  /**
+   * @since 2.0.0
+   */
+  Supervisor,
+  /**
+   * @since 2.0.0
+   */
+  Tracer,
   /**
    * @since 2.0.0
    */
