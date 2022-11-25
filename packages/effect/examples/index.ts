@@ -6,10 +6,10 @@ export interface Name {
 
 export const Name = Context.Tag<Name>()
 
-export const program = Effect.gen(function*() {
-  const { getName } = yield* Effect.service(Name)
+export const program = Effect.gen(function*($) {
+  const { getName } = yield* $(Effect.service(Name))
 
-  yield* Effect.log(`Hello ${yield* getName}`)
+  yield* $(Effect.log(`Hello ${yield* $(getName)}`))
 })
 
 export const NameLive = Layer.fromEffect(Name)(
