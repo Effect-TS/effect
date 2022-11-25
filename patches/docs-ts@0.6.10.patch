@@ -23,10 +23,10 @@ index c0f282ca9e3ddd93e44a62e1d05c1cc45b9f5c6a..616f7f6223459e0621522279ea7fc1cf
 +                  "target": "es2015",
 +                  "lib": ["es2015"],
 +                  "paths": {
-+                    "@effect/io": ["../../src/index.ts"],
-+                    "@effect/io/test/*": ["../../test/*"],
-+                    "@effect/io/examples/*": ["../../examples/*"],
-+                    "@effect/io/*": ["../../src/*"]
++                    "effect": ["../../src/index.ts"],
++                    "effect/test/*": ["../../test/*"],
++                    "effect/examples/*": ["../../examples/*"],
++                    "effect/*": ["../../src/*"]
 +                  }
 +                }
 +              }
@@ -45,10 +45,10 @@ index 51bdb346c4c33e8835bbda0c16aea71bc0c3115e..7d084d363efd3f8aad76051f4253b0b5
 -    strict: true
 +    strict: true,
 +    paths: {
-+      "@effect/io": ["./src/index.ts"],
-+      "@effect/io/test/*": ["./test/*"],
-+      "@effect/io/examples/*": ["./examples/*"],
-+      "@effect/io/*": ["./src/*"]
++      "effect": ["./src/index.ts"],
++      "effect/test/*": ["./test/*"],
++      "effect/examples/*": ["./examples/*"],
++      "effect/*": ["./src/*"]
 +    }
  };
  var capabilities = {

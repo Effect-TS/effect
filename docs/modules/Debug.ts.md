@@ -8,6 +8,9 @@ parent: Modules
 
 Added in v2.0.0
 
+Docs: https://effect-ts.github.io/io/modules/Debug.ts.html
+Module: @effect/io/Debug
+
 ---
 
 <h2 class="text-delta">Table of contents</h2>
@@ -38,7 +41,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const getCallTrace: any
+export declare const getCallTrace: () => string | undefined
 ```
 
 Added in v2.0.0
@@ -48,7 +51,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const nodeSourceMapExtractor: any
+export declare const nodeSourceMapExtractor: (at: number) => string | undefined
 ```
 
 Added in v2.0.0
@@ -58,7 +61,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const runtimeDebug: any
+export declare const runtimeDebug: Debug
 ```
 
 Added in v2.0.0
@@ -68,7 +71,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const withCallTrace: any
+export declare const withCallTrace: (trace: string) => <A>(value: A) => A
 ```
 
 Added in v2.0.0
