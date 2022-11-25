@@ -1,4 +1,4 @@
-## Welcome to Effect [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/core)
+## Welcome to Effect [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/effect)
 
 Effect is an ecosystem of libraries to write highly productive, purely functional TypeScript at scale.
 
