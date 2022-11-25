@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.3
+
+### Patch Changes
+
+- [#1337](https://github.com/Effect-TS/effect/pull/1337) [`4f805f5c1`](https://github.com/Effect-TS/effect/commit/4f805f5c1f7306c8af144a9a5d888121c0a1488d) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update docs
+
 ## 2.0.0-next.2
 
 ### Patch Changes
