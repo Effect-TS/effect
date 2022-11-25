@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.7
+
+### Patch Changes
+
+- [#1346](https://github.com/Effect-TS/effect/pull/1346) [`2d6cdbc2a`](https://github.com/Effect-TS/effect/commit/2d6cdbc2a842b25e56136735953e32f851094d74) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Add Logger extensions
+
 ## 2.0.0-next.6
 
 ### Patch Changes
