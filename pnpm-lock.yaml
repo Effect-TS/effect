@@ -19,11 +19,12 @@ importers:
       '@changesets/cli': ^2.25.2
       '@effect-ts/build-utils': 0.40.5
       '@effect-ts/core': ^0.60.2
-      '@effect/io': ^0.0.11
-      '@effect/language-service': ^0.0.2
-      '@effect/printer': ^0.1.2
+      '@effect/io': ^0.0.12
+      '@effect/language-service': ^0.0.4
+      '@effect/printer': ^0.1.3
       '@fp-ts/core': ^0.0.8
-      '@fp-ts/data': ^0.0.14
+      '@fp-ts/data': ^0.0.15
+      '@fp-ts/optic': ^0.0.2
       '@jest/expect-utils': ^29.3.1
       '@jest/schemas': ^29.0.0
       '@repo-tooling/eslint-plugin-dprint': ^0.0.4
@@ -70,10 +71,11 @@ importers:
       vite: ^3.2.4
       vitest: 0.25.3
     dependencies:
-      '@effect/io': 0.0.11
-      '@effect/printer': 0.1.2
+      '@effect/io': 0.0.12
+      '@effect/printer': 0.1.3
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.14
+      '@fp-ts/data': 0.0.15
+      '@fp-ts/optic': 0.0.2
     devDependencies:
       '@babel/cli': 7.19.3_@babel+core@7.20.2
       '@babel/core': 7.20.2
@@ -82,7 +84,7 @@ importers:
       '@changesets/cli': 2.25.2
       '@effect-ts/build-utils': 0.40.5_smskbqsf3q6kbozdrpluio47kq
       '@effect-ts/core': 0.60.4
-      '@effect/language-service': 0.0.2
+      '@effect/language-service': 0.0.4
       '@jest/expect-utils': 29.3.1
       '@jest/schemas': 29.0.0
       '@repo-tooling/eslint-plugin-dprint': 0.0.4_delwud2hnnlzcq6m6ihqj3umw4
@@ -723,21 +725,21 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/io/0.0.11:
-    resolution: {integrity: sha512-WeSMP9ehVLmPKf2FWCp+PNZigzVGj+yvo+NyaCIhAB1ja2MxASg1EPM+cm9EHN+oWLowk19ciPRijQuQOxsqHQ==}
+  /@effect/io/0.0.12:
+    resolution: {integrity: sha512-uv1GctNuKzIf91Xvod9dxjRFPPWj4u5Kd2y7tRHCn/yUE+OTixOVMtFRouMvYsVBkXllgKR1wqIGQk6K6HWDqA==}
     dependencies:
-      '@effect/printer': 0.1.2
+      '@effect/printer': 0.1.3
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.14
+      '@fp-ts/data': 0.0.15
     dev: false
 
-  /@effect/language-service/0.0.2:
-    resolution: {integrity: sha512-kAfP8BoT0Sv2IaFP1uqpLqaX61TyNisMSQPTSv9n4NQcHNFI7acYg2gJqCLgK83mWTdzKSqYasQH9sujHtzgUw==}
+  /@effect/language-service/0.0.4:
+    resolution: {integrity: sha512-k9DhSvit40DBxIGUqso1UTNaGRwQ43v6r6E4dNo9GGtUPS/LH/cXjUk+IJVfQ/3wOxRJxWKkItrEhwDswnQlTQ==}
     dependencies:
       '@effect/core': 0.0.16
-      '@effect/printer': 0.1.2
+      '@effect/printer': 0.1.3
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.9
+      '@fp-ts/data': 0.0.15
       '@tsplus/stdlib': 0.2.8
     dev: true
 
@@ -747,11 +749,11 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/printer/0.1.2:
-    resolution: {integrity: sha512-Y4sxEHEp6gxU6UWoxt8KPWyXV24j6//ZqggRZRFYT8L4MhiawR4O4T01BHtBMNJRuQEX+Q9dR7ClqWs05ArsBw==}
+  /@effect/printer/0.1.3:
+    resolution: {integrity: sha512-3ujmcuxMSg5ZyNHpgwHxYH4uru5KoCLN/t6OQdhsqwOjZuLhOtlUt4YD4XGV7zZELTzPhf54+M9nrOD2x7BHZA==}
     dependencies:
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.14
+      '@fp-ts/data': 0.0.15
 
   /@esbuild/android-arm/0.15.15:
     resolution: {integrity: sha512-JJjZjJi2eBL01QJuWjfCdZxcIgot+VoK6Fq7eKF9w4YHm9hwl7nhBR1o2Wnt/WcANk5l9SkpvrldW1PLuXxcbw==}
@@ -797,23 +799,20 @@ packages:
       - supports-color
     dev: true
 
-  /@fp-ts/core/0.0.7:
-    resolution: {integrity: sha512-Gp8sApjYzWa0HrmntZnmCxb9XUldISPaI9HXHE5UD5bzrzRTw77w55xYmLZi8kYptsQyuI280qfmQ9XCsmOGIQ==}
-    dev: true
-
   /@fp-ts/core/0.0.8:
     resolution: {integrity: sha512-TcZnP2Oc5b2eJ949z81sI3wdt9GpFFufwpEb6VOIlTQTucx18xNXPWmKv+1jrDacfdDh6Q8rP9kUSRohRUz5pQ==}
 
-  /@fp-ts/data/0.0.14:
-    resolution: {integrity: sha512-rFEl63SkPvgUm6al1KbcBenXvKr/O7u/HQrphFeBfoVhUVgqqdMGmsjt9WWlfIeeNOU3ug7nxQJFrY1+lS5ncw==}
+  /@fp-ts/data/0.0.15:
+    resolution: {integrity: sha512-l4CFWx6wl9Nk5MSyeZa+kzAZVVZQZATTEHfQb05QiDgCI+hqQ77O5Ox0smvJALRze6vh/Sz4GLmPwUrdcANVwQ==}
     dependencies:
       '@fp-ts/core': 0.0.8
 
-  /@fp-ts/data/0.0.9:
-    resolution: {integrity: sha512-uik6VrT4PehvRf1rFQ0VJksCethYI0+wXD4BPgZdm7BOVfpcFtZ9OLUUvHXJxey/eS0GWIF2CPjh+xM2hECH9g==}
+  /@fp-ts/optic/0.0.2:
+    resolution: {integrity: sha512-FrshAl6+NJm/kK8klk2ISlRZICQHVjFdseG59t/ZHWMGy5PKpFN8ctrzxaz/alKCfmeSmnChgQKzLsN3yIj/Tw==}
     dependencies:
-      '@fp-ts/core': 0.0.7
-    dev: true
+      '@fp-ts/core': 0.0.8
+      '@fp-ts/data': 0.0.15
+    dev: false
 
   /@humanwhocodes/config-array/0.11.7:
     resolution: {integrity: sha512-kBbPWzN8oVMLb0hOUYXhmxggL/1cJE6ydvjDIGi9EnAGUyA7cLVKQg+d/Dsm+KZwx2czGHrCmMVLiyg8s5JPKw==}

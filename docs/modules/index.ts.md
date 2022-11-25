@@ -24,7 +24,7 @@ Includes modules from:
 - "@fp-ts/core"
 - "@fp-ts/data"
 - "@fp-ts/schema" (tbd)
-- "@fp-ts/optic" (tbd)
+- "@fp-ts/optic"
 - "@effect/io"
 - "@effect/stm" (tbd)
 - "@effect/stream" (tbd)
@@ -93,6 +93,7 @@ individual dependencies.
   - [NonEmptyTraversable](#nonemptytraversable)
   - [Number](#number)
   - [Of](#of)
+  - [Optic](#optic)
   - [Option](#option)
   - [Order](#order)
   - [Ordering](#ordering)
@@ -971,6 +972,21 @@ Added in v2.0.0
 ```md
 - Docs: https://fp-ts.github.io/core/modules/typeclass/Of.ts.html
 - Module: "@fp-ts/core/typeclass/Of"
+```
+
+## Optic
+
+**Signature**
+
+```ts
+export declare const Optic: typeof Optic
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/optic/modules/index.ts.html
+- Module: "@fp-ts/optic"
 ```
 
 ## Option
