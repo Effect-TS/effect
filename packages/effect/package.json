@@ -7,14 +7,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Effect-TS/core.git"
+    "url": "https://github.com/Effect-TS/effect.git"
   },
   "author": "Michael Arnaldi <ma@matechs.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Effect-TS/core/issues"
+    "url": "https://github.com/Effect-TS/effect/issues"
   },
-  "homepage": "https://github.com/Effect-TS/core",
+  "homepage": "https://github.com/Effect-TS/effect",
   "description": "Functional programming in TypeScript",
   "tags": [
     "typescript",
