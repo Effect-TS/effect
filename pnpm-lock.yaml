@@ -19,7 +19,7 @@ importers:
       '@changesets/cli': ^2.25.2
       '@effect-ts/build-utils': 0.40.5
       '@effect-ts/core': ^0.60.2
-      '@effect/io': ^0.0.10
+      '@effect/io': ^0.0.11
       '@effect/language-service': ^0.0.2
       '@effect/printer': ^0.1.2
       '@fp-ts/core': ^0.0.8
@@ -28,7 +28,7 @@ importers:
       '@jest/schemas': ^29.0.0
       '@repo-tooling/eslint-plugin-dprint': ^0.0.4
       '@rollup/pluginutils': ^5.0.2
-      '@sinclair/typebox': ^0.25.9
+      '@sinclair/typebox': ^0.25.10
       '@types/benchmark': ^2.1.2
       '@types/chai': ^4.3.4
       '@types/glob': ^8.0.0
@@ -70,7 +70,7 @@ importers:
       vite: ^3.2.4
       vitest: 0.25.3
     dependencies:
-      '@effect/io': 0.0.10
+      '@effect/io': 0.0.11
       '@effect/printer': 0.1.2
       '@fp-ts/core': 0.0.8
       '@fp-ts/data': 0.0.14
@@ -87,7 +87,7 @@ importers:
       '@jest/schemas': 29.0.0
       '@repo-tooling/eslint-plugin-dprint': 0.0.4_delwud2hnnlzcq6m6ihqj3umw4
       '@rollup/pluginutils': 5.0.2
-      '@sinclair/typebox': 0.25.9
+      '@sinclair/typebox': 0.25.10
       '@types/benchmark': 2.1.2
       '@types/chai': 4.3.4
       '@types/glob': 8.0.0
@@ -723,8 +723,8 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/io/0.0.10:
-    resolution: {integrity: sha512-KSQKURYFbNqrYyausRs8eX1SQLo0t81n7n1KMCqwH5gcD7v+iTVge0px9Csu9jCA4qBIvnnThV1nBolyv4U51Q==}
+  /@effect/io/0.0.11:
+    resolution: {integrity: sha512-WeSMP9ehVLmPKf2FWCp+PNZigzVGj+yvo+NyaCIhAB1ja2MxASg1EPM+cm9EHN+oWLowk19ciPRijQuQOxsqHQ==}
     dependencies:
       '@effect/printer': 0.1.2
       '@fp-ts/core': 0.0.8
@@ -1019,8 +1019,8 @@ packages:
     resolution: {integrity: sha512-1P1OROm/rdubP5aFDSZQILU0vrLCJ4fvHt6EoqHEM+2D/G5MK3bIaymUKLit8Js9gbns5UyJnkP/TZROLw4tUA==}
     dev: true
 
-  /@sinclair/typebox/0.25.9:
-    resolution: {integrity: sha512-FDfpDJJ589OME6W01GUbPoNDovU72N8LPtCTopmRttzWpeDVNFefWzzJVXmL9lw7712kXgPfcyb3/AkGZfHNeg==}
+  /@sinclair/typebox/0.25.10:
+    resolution: {integrity: sha512-B7yEaT5yPZUS7kL/Ogh94n7Rb7p1DJEjCqOaPMuwAy4XXnlZchFrxIeE5pbrPsHOn5NMhWZtOnKtksaNQzCq1A==}
     dev: true
 
   /@ts-morph/common/0.7.5:
