@@ -19,11 +19,11 @@ importers:
       '@changesets/cli': ^2.25.2
       '@effect-ts/build-utils': 0.40.5
       '@effect-ts/core': ^0.60.2
-      '@effect/io': ^0.0.15
+      '@effect/io': ^0.0.16
       '@effect/language-service': ^0.0.4
-      '@effect/printer': ^0.1.3
+      '@effect/printer': ^0.1.4
       '@fp-ts/core': ^0.0.8
-      '@fp-ts/data': ^0.0.15
+      '@fp-ts/data': ^0.0.16
       '@fp-ts/optic': ^0.0.2
       '@jest/expect-utils': ^29.3.1
       '@jest/schemas': ^29.0.0
@@ -71,10 +71,10 @@ importers:
       vite: ^3.2.4
       vitest: 0.25.3
     dependencies:
-      '@effect/io': 0.0.15
-      '@effect/printer': 0.1.3
+      '@effect/io': 0.0.16
+      '@effect/printer': 0.1.4
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.15
+      '@fp-ts/data': 0.0.16
       '@fp-ts/optic': 0.0.2
     devDependencies:
       '@babel/cli': 7.19.3_@babel+core@7.20.2
@@ -725,19 +725,19 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/io/0.0.15:
-    resolution: {integrity: sha512-XknvP01+RyEw+zaND61dWau6mTOOr4Af0J3hzajz4LIsM6Z9GlpPYbEX81KO6ZBIc0qJljSW7ZWnIY911LW2Vg==}
+  /@effect/io/0.0.16:
+    resolution: {integrity: sha512-+IzIuy5XMdbbCewMh8WMXhdF8nXcnVUWTUqNlnMR84LFsBEfSRJlk62oNr4Rf4XZXVPrjcE6CE3ckMDWJm9vjA==}
     dependencies:
-      '@effect/printer': 0.1.3
+      '@effect/printer': 0.1.4
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.15
+      '@fp-ts/data': 0.0.16
     dev: false
 
   /@effect/language-service/0.0.4:
     resolution: {integrity: sha512-k9DhSvit40DBxIGUqso1UTNaGRwQ43v6r6E4dNo9GGtUPS/LH/cXjUk+IJVfQ/3wOxRJxWKkItrEhwDswnQlTQ==}
     dependencies:
       '@effect/core': 0.0.16
-      '@effect/printer': 0.1.3
+      '@effect/printer': 0.1.4
       '@fp-ts/core': 0.0.8
       '@fp-ts/data': 0.0.15
       '@tsplus/stdlib': 0.2.8
@@ -749,11 +749,11 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/printer/0.1.3:
-    resolution: {integrity: sha512-3ujmcuxMSg5ZyNHpgwHxYH4uru5KoCLN/t6OQdhsqwOjZuLhOtlUt4YD4XGV7zZELTzPhf54+M9nrOD2x7BHZA==}
+  /@effect/printer/0.1.4:
+    resolution: {integrity: sha512-xilOF8IbVG91de5huTvzO7PYZ2naF1LLux98Ci1ygwlVJUcyR52ZS28S+wODy3lbfxN+Q/DOxZODL3vhdjh0Cw==}
     dependencies:
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.15
+      '@fp-ts/data': 0.0.16
 
   /@esbuild/android-arm/0.15.15:
     resolution: {integrity: sha512-JJjZjJi2eBL01QJuWjfCdZxcIgot+VoK6Fq7eKF9w4YHm9hwl7nhBR1o2Wnt/WcANk5l9SkpvrldW1PLuXxcbw==}
@@ -804,6 +804,11 @@ packages:
 
   /@fp-ts/data/0.0.15:
     resolution: {integrity: sha512-l4CFWx6wl9Nk5MSyeZa+kzAZVVZQZATTEHfQb05QiDgCI+hqQ77O5Ox0smvJALRze6vh/Sz4GLmPwUrdcANVwQ==}
+    dependencies:
+      '@fp-ts/core': 0.0.8
+
+  /@fp-ts/data/0.0.16:
+    resolution: {integrity: sha512-pfWpZaFHkWMQZfxoUYawahWKsuDANTgu8g4VSyE3Gv0ChprM+0f455e2i0Jy84Wyd8tumL9Fj4ff8oaCNC5d/g==}
     dependencies:
       '@fp-ts/core': 0.0.8
 
