@@ -19,7 +19,7 @@ importers:
       '@changesets/cli': ^2.25.2
       '@effect-ts/build-utils': 0.40.5
       '@effect-ts/core': ^0.60.2
-      '@effect/io': ^0.0.9
+      '@effect/io': ^0.0.10
       '@effect/language-service': ^0.0.2
       '@effect/printer': ^0.1.2
       '@fp-ts/core': ^0.0.8
@@ -70,7 +70,7 @@ importers:
       vite: ^3.2.4
       vitest: 0.25.3
     dependencies:
-      '@effect/io': 0.0.9
+      '@effect/io': 0.0.10
       '@effect/printer': 0.1.2
       '@fp-ts/core': 0.0.8
       '@fp-ts/data': 0.0.14
@@ -723,12 +723,12 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/io/0.0.9:
-    resolution: {integrity: sha512-Eo4kmn9fKlZvTqT5AKrc8wRrDwAKN2S6gesUTEjk/dnoYpVL7lw7xUJdjdm7LFmO2Q9K0omJaEiaPWH2lfuuCQ==}
+  /@effect/io/0.0.10:
+    resolution: {integrity: sha512-KSQKURYFbNqrYyausRs8eX1SQLo0t81n7n1KMCqwH5gcD7v+iTVge0px9Csu9jCA4qBIvnnThV1nBolyv4U51Q==}
     dependencies:
       '@effect/printer': 0.1.2
       '@fp-ts/core': 0.0.8
-      '@fp-ts/data': 0.0.12
+      '@fp-ts/data': 0.0.14
     dev: false
 
   /@effect/language-service/0.0.2:
@@ -803,12 +803,6 @@ packages:
 
   /@fp-ts/core/0.0.8:
     resolution: {integrity: sha512-TcZnP2Oc5b2eJ949z81sI3wdt9GpFFufwpEb6VOIlTQTucx18xNXPWmKv+1jrDacfdDh6Q8rP9kUSRohRUz5pQ==}
-
-  /@fp-ts/data/0.0.12:
-    resolution: {integrity: sha512-ns/CBDrnX3bodCV8VvFm4zRfU6PE8nj01AwIOeyBIOwOGG3rQG5qVdpjKMYG8hyeO5jB3mMUgEfTH3PwywfYDw==}
-    dependencies:
-      '@fp-ts/core': 0.0.8
-    dev: false
 
   /@fp-ts/data/0.0.14:
     resolution: {integrity: sha512-rFEl63SkPvgUm6al1KbcBenXvKr/O7u/HQrphFeBfoVhUVgqqdMGmsjt9WWlfIeeNOU3ug7nxQJFrY1+lS5ncw==}
