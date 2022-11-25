@@ -1,8 +1,10 @@
 /**
  * @since 2.0.0
  *
- * Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
- * Module: @fp-ts/data/Differ
+ * ```md
+ * - Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
+ * - Module: "@fp-ts/data/Differ"
+ * ```
  */
 
 import * as ChunkPatch from "@fp-ts/data/Differ/ChunkPatch"
@@ -17,36 +19,46 @@ export {
   /**
    * @since 2.0.0
    *
-   * Docs: https://fp-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
-   * Module: @fp-ts/data/Differ/ChunkPatch
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
+   * - Module: "@fp-ts/data/Differ/ChunkPatch"
+   * ```
    */
   ChunkPatch,
   /**
    * @since 2.0.0
    *
-   * Docs: https://fp-ts.github.io/data/modules/Differ/ContextPatch.ts.html
-   * Module: @fp-ts/data/Differ/ContextPatch
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Differ/ContextPatch.ts.html
+   * - Module: "@fp-ts/data/Differ/ContextPatch"
+   * ```
    */
   ContextPatch,
   /**
    * @since 2.0.0
    *
-   * Docs: https://fp-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
-   * Module: @fp-ts/data/Differ/HashMapPatch
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
+   * - Module: "@fp-ts/data/Differ/HashMapPatch"
+   * ```
    */
   HashMapPatch,
   /**
    * @since 2.0.0
    *
-   * Docs: https://fp-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
-   * Module: @fp-ts/data/Differ/HashSetPatch
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
+   * - Module: "@fp-ts/data/Differ/HashSetPatch"
+   * ```
    */
   HashSetPatch,
   /**
    * @since 2.0.0
    *
-   * Docs: https://fp-ts.github.io/data/modules/Differ/OrPatch.ts.html
-   * Module: @fp-ts/data/Differ/OrPatch
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Differ/OrPatch.ts.html
+   * - Module: "@fp-ts/data/Differ/OrPatch"
+   * ```
    */
   OrPatch
 }
