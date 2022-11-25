@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.1
+
+### Patch Changes
+
+- [#1330](https://github.com/Effect-TS/core/pull/1330) [`75780dea1`](https://github.com/Effect-TS/core/commit/75780dea16555c8eef8053d3cd167a60cdd2e1d9) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update dependencies
+
 ## 2.0.0-next.0
 
 ### Major Changes
