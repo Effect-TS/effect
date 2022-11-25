@@ -30,7 +30,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const LogLevel: typeof LogLevel
+export declare const LogLevel: typeof Level
 ```
 
 Added in v2.0.0
