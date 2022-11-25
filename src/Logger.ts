@@ -7,8 +7,8 @@
  * ```
  */
 
+import * as Level from "@effect/io/Logger/Level"
 import * as Span from "@effect/io/Logger/Span"
-import * as LogLevel from "effect/Logger/LogLevel"
 
 export * from "@effect/io/Logger"
 
@@ -21,7 +21,7 @@ export {
    * - Module: "@effect/io/Logger/Level"
    * ```
    */
-  LogLevel,
+  Level as LogLevel,
   /**
    * @since 2.0.0
    *
