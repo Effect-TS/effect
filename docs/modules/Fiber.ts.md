@@ -8,8 +8,10 @@ parent: Modules
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
-Module: @effect/io/Fiber
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
+- Module: "@effect/io/Fiber"
+```
 
 ---
 
@@ -35,8 +37,10 @@ export declare const Id: typeof Id
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
-Module: @effect/io/Fiber/Id
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
+- Module: "@effect/io/Fiber/Id"
+```
 
 ## RuntimeFlags
 
@@ -48,8 +52,10 @@ export declare const RuntimeFlags: typeof RuntimeFlags
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
-Module: @effect/io/Fiber/Runtime/Flags
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
+- Module: "@effect/io/Fiber/Runtime/Flags"
+```
 
 ## RuntimeFlagsPatch
 
@@ -61,8 +67,10 @@ export declare const RuntimeFlagsPatch: typeof RuntimeFlagsPatch
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
-Module: @effect/io/Fiber/Runtime/Flags/Patch
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
+- Module: "@effect/io/Fiber/Runtime/Flags/Patch"
+```
 
 ## Status
 
@@ -74,5 +82,7 @@ export declare const Status: typeof Status
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
-Module: @effect/io/Fiber/Status
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
+- Module: "@effect/io/Fiber/Status"
+```

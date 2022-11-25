@@ -8,8 +8,10 @@ parent: Modules
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
-Module: @effect/io/Metric
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
+- Module: "@effect/io/Metric"
+```
 
 ---
 
@@ -40,8 +42,10 @@ export declare const Boundaries: typeof Boundaries
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
-Module: @effect/io/Metric/Boundaries
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
+- Module: "@effect/io/Metric/Boundaries"
+```
 
 ## Hook
 
@@ -53,8 +57,10 @@ export declare const Hook: typeof Hook
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Hook.ts.html
-Module: @effect/io/Metric/Hook
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Hook.ts.html
+- Module: "@effect/io/Metric/Hook"
+```
 
 ## Key
 
@@ -66,8 +72,10 @@ export declare const Key: typeof Key
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
-Module: @effect/io/Metric/Key
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
+- Module: "@effect/io/Metric/Key"
+```
 
 ## KeyType
 
@@ -79,8 +87,10 @@ export declare const KeyType: typeof KeyType
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
-Module: @effect/io/Metric/KeyType
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
+- Module: "@effect/io/Metric/KeyType"
+```
 
 ## Label
 
@@ -92,8 +102,10 @@ export declare const Label: typeof Label
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
-Module: @effect/io/Metric/Label
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
+- Module: "@effect/io/Metric/Label"
+```
 
 ## Pair
 
@@ -105,8 +117,10 @@ export declare const Pair: typeof Pair
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
-Module: @effect/io/Metric/Pair
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
+- Module: "@effect/io/Metric/Pair"
+```
 
 ## Polling
 
@@ -118,8 +132,10 @@ export declare const Polling: typeof Polling
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Polling.ts.html
-Module: @effect/io/Metric/Polling
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Polling.ts.html
+- Module: "@effect/io/Metric/Polling"
+```
 
 ## Registry
 
@@ -131,8 +147,10 @@ export declare const Registry: typeof Registry
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
-Module: @effect/io/Metric/Registry
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
+- Module: "@effect/io/Metric/Registry"
+```
 
 ## State
 
@@ -144,5 +162,7 @@ export declare const State: typeof State
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
-Module: @effect/io/Metric/State
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
+- Module: "@effect/io/Metric/State"
+```

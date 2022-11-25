@@ -8,8 +8,10 @@ parent: Modules
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-Module: @effect/io/FiberRefs
+```md
+- Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+- Module: "@effect/io/FiberRefs"
+```
 
 ---
 
@@ -32,5 +34,7 @@ export declare const Patch: typeof Patch
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/FiberRefs/Patch.ts.html
-Module: @effect/io/FiberRefs/Patch
+```md
+- Docs: https://effect-ts.github.io/io/modules/FiberRefs/Patch.ts.html
+- Module: "@effect/io/FiberRefs/Patch"
+```

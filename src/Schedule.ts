@@ -1,8 +1,10 @@
 /**
  * @since 2.0.0
  *
- * Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
- * Module: @effect/io/Schedule
+ * ```md
+ * - Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
+ * - Module: "@effect/io/Schedule"
+ * ```
  */
 
 import * as Decision from "@effect/io/Schedule/Decision"
@@ -15,22 +17,28 @@ export {
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
-   * Module: @effect/io/Schedule/Decision
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
+   * - Module: "@effect/io/Schedule/Decision"
+   * ```
    */
   Decision,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Schedule/Interval.ts.html
-   * Module: @effect/io/Schedule/Interval
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Interval.ts.html
+   * - Module: "@effect/io/Schedule/Interval"
+   * ```
    */
   Interval,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
-   * Module: @effect/io/Schedule/Intervals
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
+   * - Module: "@effect/io/Schedule/Intervals"
+   * ```
    */
   Intervals
 }

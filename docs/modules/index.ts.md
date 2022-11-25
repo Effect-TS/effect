@@ -143,8 +143,10 @@ export declare const Alternative: typeof Alternative
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Alternative.ts.html
-Module: @fp-ts/core/typeclass/Alternative
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Alternative.ts.html
+- Module: "@fp-ts/core/typeclass/Alternative"
+```
 
 ## Applicative
 
@@ -156,8 +158,10 @@ export declare const Applicative: typeof Applicative
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Applicative.ts.html
-Module: @fp-ts/core/typeclass/Applicative
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Applicative.ts.html
+- Module: "@fp-ts/core/typeclass/Applicative"
+```
 
 ## Bicovariant
 
@@ -169,8 +173,10 @@ export declare const Bicovariant: typeof Bicovariant
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Bicovariant.ts.html
-Module: @fp-ts/core/typeclass/Bicovariant
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Bicovariant.ts.html
+- Module: "@fp-ts/core/typeclass/Bicovariant"
+```
 
 ## Boolean
 
@@ -182,8 +188,10 @@ export declare const Boolean: typeof Boolean
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Boolean.ts.html
-Module: @fp-ts/data/Boolean
+```md
+- Docs: https://fp-ts.github.io/data/modules/Boolean.ts.html
+- Module: "@fp-ts/data/Boolean"
+```
 
 ## Bounded
 
@@ -195,8 +203,10 @@ export declare const Bounded: typeof Bounded
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Bounded.ts.html
-Module: @fp-ts/core/typeclass/Bounded
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Bounded.ts.html
+- Module: "@fp-ts/core/typeclass/Bounded"
+```
 
 ## Cached
 
@@ -208,8 +218,10 @@ export declare const Cached: typeof Cached
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Cached.ts.html
-Module: @effect/io/Cached
+```md
+- Docs: https://effect-ts.github.io/io/modules/Cached.ts.html
+- Module: "@effect/io/Cached"
+```
 
 ## Cause
 
@@ -221,8 +233,10 @@ export declare const Cause: typeof Cause
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
-Module: @effect/io/Cause
+```md
+- Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
+- Module: "@effect/io/Cause"
+```
 
 ## Chainable
 
@@ -234,8 +248,10 @@ export declare const Chainable: typeof Chainable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Chainable.ts.html
-Module: @fp-ts/core/typeclass/Chainable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Chainable.ts.html
+- Module: "@fp-ts/core/typeclass/Chainable"
+```
 
 ## Chunk
 
@@ -247,8 +263,10 @@ export declare const Chunk: typeof Chunk
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Chunk.ts.html
-Module: @fp-ts/data/Chunk
+```md
+- Docs: https://fp-ts.github.io/data/modules/Chunk.ts.html
+- Module: "@fp-ts/data/Chunk"
+```
 
 ## Clock
 
@@ -260,8 +278,10 @@ export declare const Clock: typeof Clock
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
-Module: @effect/io/Clock
+```md
+- Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
+- Module: "@effect/io/Clock"
+```
 
 ## Compactable
 
@@ -273,8 +293,10 @@ export declare const Compactable: typeof Compactable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Compactable.ts.html
-Module: @fp-ts/core/typeclass/Compactable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Compactable.ts.html
+- Module: "@fp-ts/core/typeclass/Compactable"
+```
 
 ## Context
 
@@ -286,8 +308,10 @@ export declare const Context: typeof Context
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Context.ts.html
-Module: @fp-ts/data/Context
+```md
+- Docs: https://fp-ts.github.io/data/modules/Context.ts.html
+- Module: "@fp-ts/data/Context"
+```
 
 ## Contravariant
 
@@ -299,8 +323,10 @@ export declare const Contravariant: typeof Contravariant
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Contravatiant.ts.html
-Module: @fp-ts/core/typeclass/Contravariant
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Contravatiant.ts.html
+- Module: "@fp-ts/core/typeclass/Contravariant"
+```
 
 ## Coproduct
 
@@ -312,8 +338,10 @@ export declare const Coproduct: typeof Coproduct
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Coproduct.ts.html
-Module: @fp-ts/core/typeclass/Coproduct
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Coproduct.ts.html
+- Module: "@fp-ts/core/typeclass/Coproduct"
+```
 
 ## Covariant
 
@@ -325,8 +353,10 @@ export declare const Covariant: typeof Covariant
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Covariant.ts.html
-Module: @fp-ts/core/typeclass/Covariant
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Covariant.ts.html
+- Module: "@fp-ts/core/typeclass/Covariant"
+```
 
 ## CovariantWithIndex
 
@@ -338,8 +368,10 @@ export declare const CovariantWithIndex: typeof CovariantWithIndex
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/typeclass/ContravatiantWithIndex.ts.html
-Module: @fp-ts/data/typeclass/ContravariantWithIndex
+```md
+- Docs: https://fp-ts.github.io/data/modules/typeclass/ContravatiantWithIndex.ts.html
+- Module: "@fp-ts/data/typeclass/ContravariantWithIndex"
+```
 
 ## DefaultServices
 
@@ -351,8 +383,10 @@ export declare const DefaultServices: typeof DefaultServices
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
-Module: @effect/io/DefaultServices
+```md
+- Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
+- Module: "@effect/io/DefaultServices"
+```
 
 ## Deferred
 
@@ -364,8 +398,10 @@ export declare const Deferred: typeof Deferred
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
-Module: @effect/io/Deferred
+```md
+- Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
+- Module: "@effect/io/Deferred"
+```
 
 ## Differ
 
@@ -377,8 +413,10 @@ export declare const Differ: typeof Differ
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
-Module: @fp-ts/data/Differ
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
+- Module: "@fp-ts/data/Differ"
+```
 
 ## Duration
 
@@ -390,8 +428,10 @@ export declare const Duration: typeof Duration
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Duration.ts.html
-Module: @fp-ts/data/Duration
+```md
+- Docs: https://fp-ts.github.io/data/modules/Duration.ts.html
+- Module: "@fp-ts/data/Duration"
+```
 
 ## Effect
 
@@ -403,8 +443,10 @@ export declare const Effect: typeof Effect
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
-Module: @effect/io/Effect
+```md
+- Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
+- Module: "@effect/io/Effect"
+```
 
 ## Either
 
@@ -416,8 +458,10 @@ export declare const Either: typeof Either
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Either.ts.html
-Module: @fp-ts/data/Either
+```md
+- Docs: https://fp-ts.github.io/data/modules/Either.ts.html
+- Module: "@fp-ts/data/Either"
+```
 
 ## Equal
 
@@ -429,8 +473,10 @@ export declare const Equal: typeof Equal
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Equal.ts.html
-Module: @fp-ts/data/Equal
+```md
+- Docs: https://fp-ts.github.io/data/modules/Equal.ts.html
+- Module: "@fp-ts/data/Equal"
+```
 
 ## ExecutionStrategy
 
@@ -442,8 +488,10 @@ export declare const ExecutionStrategy: typeof ExecutionStrategy
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
-Module: @effect/io/ExecutionStrategy
+```md
+- Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
+- Module: "@effect/io/ExecutionStrategy"
+```
 
 ## Exit
 
@@ -455,8 +503,10 @@ export declare const Exit: typeof Exit
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
-Module: @effect/io/Exit
+```md
+- Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
+- Module: "@effect/io/Exit"
+```
 
 ## Fiber
 
@@ -468,8 +518,10 @@ export declare const Fiber: typeof Fiber
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
-Module: @effect/io/Fiber
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
+- Module: "@effect/io/Fiber"
+```
 
 ## FiberRef
 
@@ -481,8 +533,10 @@ export declare const FiberRef: typeof FiberRef
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
-Module: @effect/io/FiberRef
+```md
+- Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
+- Module: "@effect/io/FiberRef"
+```
 
 ## FiberRefs
 
@@ -494,8 +548,10 @@ export declare const FiberRefs: typeof FiberRefs
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-Module: @effect/io/FiberRefs
+```md
+- Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+- Module: "@effect/io/FiberRefs"
+```
 
 ## Filterable
 
@@ -507,8 +563,10 @@ export declare const Filterable: typeof Filterable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Filterable.ts.html
-Module: @fp-ts/core/typeclass/Filterable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Filterable.ts.html
+- Module: "@fp-ts/core/typeclass/Filterable"
+```
 
 ## FilterableWithIndex
 
@@ -520,8 +578,10 @@ export declare const FilterableWithIndex: typeof FilterableWithIndex
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/typeclass/FilterableWithIndex.ts.html
-Module: @fp-ts/data/typeclass/FilterableWithIndex
+```md
+- Docs: https://fp-ts.github.io/data/modules/typeclass/FilterableWithIndex.ts.html
+- Module: "@fp-ts/data/typeclass/FilterableWithIndex"
+```
 
 ## FlatMap
 
@@ -533,8 +593,10 @@ export declare const FlatMap: typeof FlatMap
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/FlatMap.ts.html
-Module: @fp-ts/core/typeclass/FlatMap
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/FlatMap.ts.html
+- Module: "@fp-ts/core/typeclass/FlatMap"
+```
 
 ## Foldable
 
@@ -546,8 +608,10 @@ export declare const Foldable: typeof Foldable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Foldable.ts.html
-Module: @fp-ts/core/typeclass/Foldable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Foldable.ts.html
+- Module: "@fp-ts/core/typeclass/Foldable"
+```
 
 ## Function
 
@@ -559,8 +623,10 @@ export declare const Function: typeof Function
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html
+- Module: "@fp-ts/data/Function"
+```
 
 ## HKT
 
@@ -572,8 +638,10 @@ export declare const HKT: typeof HKT
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-Module: @fp-ts/core/HKT
+```md
+- Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
+- Module: "@fp-ts/core/HKT"
+```
 
 ## HashMap
 
@@ -585,8 +653,10 @@ export declare const HashMap: typeof HashMap
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/HashMap.ts.html
-Module: @fp-ts/data/HashMap
+```md
+- Docs: https://fp-ts.github.io/data/modules/HashMap.ts.html
+- Module: "@fp-ts/data/HashMap"
+```
 
 ## HashSet
 
@@ -598,8 +668,10 @@ export declare const HashSet: typeof HashSet
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/HashSet.ts.html
-Module: @fp-ts/data/HashSet
+```md
+- Docs: https://fp-ts.github.io/data/modules/HashSet.ts.html
+- Module: "@fp-ts/data/HashSet"
+```
 
 ## Hub
 
@@ -611,8 +683,10 @@ export declare const Hub: typeof Hub
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
-Module: @effect/io/Hub
+```md
+- Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
+- Module: "@effect/io/Hub"
+```
 
 ## Identity
 
@@ -624,8 +698,10 @@ export declare const Identity: typeof Identity
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Identity.ts.html
-Module: @fp-ts/data/Identity
+```md
+- Docs: https://fp-ts.github.io/data/modules/Identity.ts.html
+- Module: "@fp-ts/data/Identity"
+```
 
 ## ImmutableQueue
 
@@ -637,8 +713,10 @@ export declare const ImmutableQueue: typeof ImmutableQueue
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Queue.ts.html
-Module: @fp-ts/data/Queue
+```md
+- Docs: https://fp-ts.github.io/data/modules/Queue.ts.html
+- Module: "@fp-ts/data/Queue"
+```
 
 ## Invariant
 
@@ -650,8 +728,10 @@ export declare const Invariant: typeof Invariant
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Invariant.ts.html
-Module: @fp-ts/core/typeclass/Invariant
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Invariant.ts.html
+- Module: "@fp-ts/core/typeclass/Invariant"
+```
 
 ## Json
 
@@ -663,8 +743,10 @@ export declare const Json: typeof Json
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Json.ts.html
-Module: @fp-ts/data/Json
+```md
+- Docs: https://fp-ts.github.io/data/modules/Json.ts.html
+- Module: "@fp-ts/data/Json"
+```
 
 ## Layer
 
@@ -676,8 +758,10 @@ export declare const Layer: typeof Layer
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
-Module: @effect/io/Layer
+```md
+- Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
+- Module: "@effect/io/Layer"
+```
 
 ## List
 
@@ -689,8 +773,10 @@ export declare const List: typeof List
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/List.ts.html
-Module: @fp-ts/data/List
+```md
+- Docs: https://fp-ts.github.io/data/modules/List.ts.html
+- Module: "@fp-ts/data/List"
+```
 
 ## Logger
 
@@ -702,8 +788,10 @@ export declare const Logger: typeof Logger
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
-Module: @effect/io/Logger
+```md
+- Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
+- Module: "@effect/io/Logger"
+```
 
 ## Metric
 
@@ -715,8 +803,10 @@ export declare const Metric: typeof Metric
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
-Module: @effect/io/Metric
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
+- Module: "@effect/io/Metric"
+```
 
 ## Monad
 
@@ -728,8 +818,10 @@ export declare const Monad: typeof Monad
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Monad.ts.html
-Module: @fp-ts/core/typeclass/Monad
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Monad.ts.html
+- Module: "@fp-ts/core/typeclass/Monad"
+```
 
 ## Monoid
 
@@ -741,8 +833,10 @@ export declare const Monoid: typeof Monoid
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Monoid.ts.html
-Module: @fp-ts/core/typeclass/Monoid
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Monoid.ts.html
+- Module: "@fp-ts/core/typeclass/Monoid"
+```
 
 ## MutableHashMap
 
@@ -754,8 +848,10 @@ export declare const MutableHashMap: typeof MutableHashMap
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableHashMap.ts.html
-Module: @fp-ts/data/mutable/MutableHashMap
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableHashMap.ts.html
+- Module: "@fp-ts/data/mutable/MutableHashMap"
+```
 
 ## MutableHashSet
 
@@ -767,8 +863,10 @@ export declare const MutableHashSet: typeof MutableHashSet
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableHashSet.ts.html
-Module: @fp-ts/data/mutable/MutableHashSet
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableHashSet.ts.html
+- Module: "@fp-ts/data/mutable/MutableHashSet"
+```
 
 ## MutableList
 
@@ -780,8 +878,10 @@ export declare const MutableList: typeof MutableList
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableList.ts.html
-Module: @fp-ts/data/mutable/MutableList
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableList.ts.html
+- Module: "@fp-ts/data/mutable/MutableList"
+```
 
 ## MutableListBuilder
 
@@ -793,8 +893,10 @@ export declare const MutableListBuilder: typeof MutableListBuilder
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableListBuilder.ts.html
-Module: @fp-ts/data/mutable/MutableListBuilder
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableListBuilder.ts.html
+- Module: "@fp-ts/data/mutable/MutableListBuilder"
+```
 
 ## MutableQueue
 
@@ -806,8 +908,10 @@ export declare const MutableQueue: typeof MutableQueue
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableQueue.ts.html
-Module: @fp-ts/data/mutable/MutableQueue
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableQueue.ts.html
+- Module: "@fp-ts/data/mutable/MutableQueue"
+```
 
 ## MutableRef
 
@@ -819,8 +923,10 @@ export declare const MutableRef: typeof MutableRef
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/mutable/MutableRef.ts.html
-Module: @fp-ts/data/mutable/MutableRef
+```md
+- Docs: https://fp-ts.github.io/data/modules/mutable/MutableRef.ts.html
+- Module: "@fp-ts/data/mutable/MutableRef"
+```
 
 ## NonEmptyTraversable
 
@@ -832,8 +938,10 @@ export declare const NonEmptyTraversable: typeof NonEmptyTraversable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/NonEmptyTraversable.ts.html
-Module: @fp-ts/core/typeclass/NonEmptyTraversable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/NonEmptyTraversable.ts.html
+- Module: "@fp-ts/core/typeclass/NonEmptyTraversable"
+```
 
 ## Number
 
@@ -845,8 +953,10 @@ export declare const Number: typeof Number
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Number.ts.html
-Module: @fp-ts/data/Number
+```md
+- Docs: https://fp-ts.github.io/data/modules/Number.ts.html
+- Module: "@fp-ts/data/Number"
+```
 
 ## Of
 
@@ -858,8 +968,10 @@ export declare const Of: typeof Of
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Of.ts.html
-Module: @fp-ts/core/typeclass/Of
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Of.ts.html
+- Module: "@fp-ts/core/typeclass/Of"
+```
 
 ## Option
 
@@ -871,8 +983,10 @@ export declare const Option: typeof Option
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Option.ts.html
-Module: @fp-ts/data/Option
+```md
+- Docs: https://fp-ts.github.io/data/modules/Option.ts.html
+- Module: "@fp-ts/data/Option"
+```
 
 ## Order
 
@@ -884,8 +998,10 @@ export declare const Order: typeof Order
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Order.ts.html
-Module: @fp-ts/core/typeclass/Order
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Order.ts.html
+- Module: "@fp-ts/core/typeclass/Order"
+```
 
 ## Ordering
 
@@ -897,8 +1013,10 @@ export declare const Ordering: typeof Ordering
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Ordering.ts.html
-Module: @fp-ts/data/Ordering
+```md
+- Docs: https://fp-ts.github.io/data/modules/Ordering.ts.html
+- Module: "@fp-ts/data/Ordering"
+```
 
 ## PCGRandom
 
@@ -910,8 +1028,10 @@ export declare const PCGRandom: typeof PCGRandom
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Random.ts.html
-Module: @fp-ts/data/Random
+```md
+- Docs: https://fp-ts.github.io/data/modules/Random.ts.html
+- Module: "@fp-ts/data/Random"
+```
 
 ## Pointed
 
@@ -923,8 +1043,10 @@ export declare const Pointed: typeof Pointed
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Pointed.ts.html
-Module: @fp-ts/core/typeclass/Pointed
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Pointed.ts.html
+- Module: "@fp-ts/core/typeclass/Pointed"
+```
 
 ## Predicate
 
@@ -936,8 +1058,10 @@ export declare const Predicate: typeof Predicate
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Predicate.ts.html
-Module: @fp-ts/data/Predicate
+```md
+- Docs: https://fp-ts.github.io/data/modules/Predicate.ts.html
+- Module: "@fp-ts/data/Predicate"
+```
 
 ## Product
 
@@ -949,8 +1073,10 @@ export declare const Product: typeof Product
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Product.ts.html
-Module: @fp-ts/core/typeclass/Product
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Product.ts.html
+- Module: "@fp-ts/core/typeclass/Product"
+```
 
 ## Queue
 
@@ -962,8 +1088,10 @@ export declare const Queue: typeof Queue
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
-Module: @effect/io/Queue
+```md
+- Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
+- Module: "@effect/io/Queue"
+```
 
 ## Random
 
@@ -975,8 +1103,10 @@ export declare const Random: typeof Random
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Random.ts.html
-Module: @effect/io/Random
+```md
+- Docs: https://effect-ts.github.io/io/modules/Random.ts.html
+- Module: "@effect/io/Random"
+```
 
 ## ReadonlyArray
 
@@ -988,8 +1118,10 @@ export declare const ReadonlyArray: typeof ReadonlyArray
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/ReadonlyArray.ts.html
-Module: @fp-ts/data/ReadonlyArray
+```md
+- Docs: https://fp-ts.github.io/data/modules/ReadonlyArray.ts.html
+- Module: "@fp-ts/data/ReadonlyArray"
+```
 
 ## RedBlackTree
 
@@ -1001,8 +1133,10 @@ export declare const RedBlackTree: typeof RedBlackTree
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/RedBlackTree.ts.html
-Module: @fp-ts/data/RedBlackTree
+```md
+- Docs: https://fp-ts.github.io/data/modules/RedBlackTree.ts.html
+- Module: "@fp-ts/data/RedBlackTree"
+```
 
 ## Ref
 
@@ -1014,8 +1148,10 @@ export declare const Ref: typeof Ref
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
-Module: @effect/io/Ref
+```md
+- Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
+- Module: "@effect/io/Ref"
+```
 
 ## Reloadable
 
@@ -1027,8 +1163,10 @@ export declare const Reloadable: typeof Reloadable
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
-Module: @effect/io/Reloadable
+```md
+- Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
+- Module: "@effect/io/Reloadable"
+```
 
 ## Runtime
 
@@ -1040,8 +1178,10 @@ export declare const Runtime: typeof Runtime
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
-Module: @effect/io/Runtime
+```md
+- Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
+- Module: "@effect/io/Runtime"
+```
 
 ## Schedule
 
@@ -1053,8 +1193,10 @@ export declare const Schedule: typeof Schedule
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
-Module: @effect/io/Schedule
+```md
+- Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
+- Module: "@effect/io/Schedule"
+```
 
 ## Scope
 
@@ -1066,8 +1208,10 @@ export declare const Scope: typeof Scope
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
-Module: @effect/io/Scope
+```md
+- Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
+- Module: "@effect/io/Scope"
+```
 
 ## SemiAlternative
 
@@ -1079,8 +1223,10 @@ export declare const SemiAlternative: typeof SemiAlternative
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/SemiAlternative.ts.html
-Module: @fp-ts/core/typeclass/SemiAlternative
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/SemiAlternative.ts.html
+- Module: "@fp-ts/core/typeclass/SemiAlternative"
+```
 
 ## SemiApplicative
 
@@ -1092,8 +1238,10 @@ export declare const SemiApplicative: typeof SemiApplicative
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/SemiApplicative.ts.html
-Module: @fp-ts/core/typeclass/SemiApplicative
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/SemiApplicative.ts.html
+- Module: "@fp-ts/core/typeclass/SemiApplicative"
+```
 
 ## SemiCoproduct
 
@@ -1105,8 +1253,10 @@ export declare const SemiCoproduct: typeof SemiCoproduct
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/SemiCoproduct.ts.html
-Module: @fp-ts/core/typeclass/SemiCoproduct
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/SemiCoproduct.ts.html
+- Module: "@fp-ts/core/typeclass/SemiCoproduct"
+```
 
 ## SemiProduct
 
@@ -1118,8 +1268,10 @@ export declare const SemiProduct: typeof SemiProduct
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/SemiProduct.ts.html
-Module: @fp-ts/core/typeclass/SemiProduct
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/SemiProduct.ts.html
+- Module: "@fp-ts/core/typeclass/SemiProduct"
+```
 
 ## Semigroup
 
@@ -1131,8 +1283,10 @@ export declare const Semigroup: typeof Semigroup
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Semigroup.ts.html
-Module: @fp-ts/core/typeclass/Semigroup
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Semigroup.ts.html
+- Module: "@fp-ts/core/typeclass/Semigroup"
+```
 
 ## Seq
 
@@ -1144,8 +1298,10 @@ export declare const Seq: typeof Seq
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/typeclass/Seq.ts.html
-Module: @fp-ts/data/typeclass/Seq
+```md
+- Docs: https://fp-ts.github.io/data/modules/typeclass/Seq.ts.html
+- Module: "@fp-ts/data/typeclass/Seq"
+```
 
 ## SortedMap
 
@@ -1157,8 +1313,10 @@ export declare const SortedMap: typeof SortedMap
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/SortedMap.ts.html
-Module: @fp-ts/data/SortedMap
+```md
+- Docs: https://fp-ts.github.io/data/modules/SortedMap.ts.html
+- Module: "@fp-ts/data/SortedMap"
+```
 
 ## SortedSet
 
@@ -1170,8 +1328,10 @@ export declare const SortedSet: typeof SortedSet
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/SortedSet.ts.html
-Module: @fp-ts/data/SortedSet
+```md
+- Docs: https://fp-ts.github.io/data/modules/SortedSet.ts.html
+- Module: "@fp-ts/data/SortedSet"
+```
 
 ## String
 
@@ -1183,8 +1343,10 @@ export declare const String: typeof String
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/String.ts.html
-Module: @fp-ts/data/String
+```md
+- Docs: https://fp-ts.github.io/data/modules/String.ts.html
+- Module: "@fp-ts/data/String"
+```
 
 ## Supervisor
 
@@ -1196,8 +1358,10 @@ export declare const Supervisor: typeof Supervisor
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
-Module: @effect/io/Supervisor
+```md
+- Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
+- Module: "@effect/io/Supervisor"
+```
 
 ## Tracer
 
@@ -1209,8 +1373,10 @@ export declare const Tracer: typeof Tracer
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
-Module: @effect/io/Tracer
+```md
+- Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
+- Module: "@effect/io/Tracer"
+```
 
 ## Traversable
 
@@ -1222,8 +1388,10 @@ export declare const Traversable: typeof Traversable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/Traversable.ts.html
-Module: @fp-ts/core/typeclass/Traversable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/Traversable.ts.html
+- Module: "@fp-ts/core/typeclass/Traversable"
+```
 
 ## TraversableFilterable
 
@@ -1235,8 +1403,10 @@ export declare const TraversableFilterable: typeof TraversableFilterable
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/core/modules/typeclass/TraversableFilterable.ts.html
-Module: @fp-ts/core/typeclass/TraversableFilterable
+```md
+- Docs: https://fp-ts.github.io/core/modules/typeclass/TraversableFilterable.ts.html
+- Module: "@fp-ts/core/typeclass/TraversableFilterable"
+```
 
 ## absurd
 
@@ -1248,8 +1418,10 @@ export declare const absurd: <A>(_: never) => A
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html#absurd
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#absurd
+- Module: "@fp-ts/data/Function"
+```
 
 ## flow
 
@@ -1261,8 +1433,10 @@ export declare const flow: typeof Function.flow
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html
+- Module: "@fp-ts/data/Function"
+```
 
 ## hole
 
@@ -1274,8 +1448,10 @@ export declare const hole: <T>() => T
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html#hole
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#hole
+- Module: "@fp-ts/data/Function"
+```
 
 ## identity
 
@@ -1287,8 +1463,10 @@ export declare const identity: <A>(a: A) => A
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html#identity
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#identity
+- Module: "@fp-ts/data/Function"
+```
 
 ## pipe
 
@@ -1300,8 +1478,10 @@ export declare const pipe: typeof Function.pipe
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Function.ts.html#pipe
-Module: @fp-ts/data/Function
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#pipe
+- Module: "@fp-ts/data/Function"
+```
 
 ## unsafeCoerce
 
