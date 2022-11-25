@@ -4,5 +4,12 @@
   "initialVersions": {
     "effect": "1.2.0"
   },
-  "changesets": []
+  "changesets": [
+    "chilly-crabs-roll",
+    "fair-masks-deliver",
+    "late-bikes-vanish",
+    "pink-planes-arrive",
+    "polite-ladybugs-bake",
+    "warm-numbers-check"
+  ]
 }
