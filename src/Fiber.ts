@@ -1,8 +1,10 @@
 /**
  * @since 2.0.0
  *
- * Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
- * Module: @effect/io/Fiber
+ * ```md
+ * - Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
+ * - Module: "@effect/io/Fiber"
+ * ```
  */
 
 import * as Id from "@effect/io/Fiber/Id"
@@ -16,29 +18,37 @@ export {
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
-   * Module: @effect/io/Fiber/Id
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
+   * - Module: "@effect/io/Fiber/Id"
+   * ```
    */
   Id,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
-   * Module: @effect/io/Fiber/Runtime/Flags
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
+   * - Module: "@effect/io/Fiber/Runtime/Flags"
+   * ```
    */
   RuntimeFlags,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
-   * Module: @effect/io/Fiber/Runtime/Flags/Patch
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
+   * - Module: "@effect/io/Fiber/Runtime/Flags/Patch"
+   * ```
    */
   RuntimeFlagsPatch,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
-   * Module: @effect/io/Fiber/Status
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
+   * - Module: "@effect/io/Fiber/Status"
+   * ```
    */
   Status
 }

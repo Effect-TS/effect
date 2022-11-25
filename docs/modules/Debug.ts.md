@@ -8,8 +8,10 @@ parent: Modules
 
 Added in v2.0.0
 
-Docs: https://effect-ts.github.io/io/modules/Debug.ts.html
-Module: @effect/io/Debug
+```md
+- Docs: https://effect-ts.github.io/io/modules/Debug.ts.html
+- Module: "@effect/io/Debug"
+```
 
 ---
 

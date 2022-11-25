@@ -8,8 +8,10 @@ parent: Modules
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
-Module: @fp-ts/data/Differ
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ.ts.html
+- Module: "@fp-ts/data/Differ"
+```
 
 ---
 
@@ -36,8 +38,10 @@ export declare const ChunkPatch: typeof ChunkPatch
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
-Module: @fp-ts/data/Differ/ChunkPatch
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
+- Module: "@fp-ts/data/Differ/ChunkPatch"
+```
 
 ## ContextPatch
 
@@ -49,8 +53,10 @@ export declare const ContextPatch: typeof ContextPatch
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ/ContextPatch.ts.html
-Module: @fp-ts/data/Differ/ContextPatch
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ/ContextPatch.ts.html
+- Module: "@fp-ts/data/Differ/ContextPatch"
+```
 
 ## HashMapPatch
 
@@ -62,8 +68,10 @@ export declare const HashMapPatch: typeof HashMapPatch
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
-Module: @fp-ts/data/Differ/HashMapPatch
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
+- Module: "@fp-ts/data/Differ/HashMapPatch"
+```
 
 ## HashSetPatch
 
@@ -75,8 +83,10 @@ export declare const HashSetPatch: typeof HashSetPatch
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
-Module: @fp-ts/data/Differ/HashSetPatch
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
+- Module: "@fp-ts/data/Differ/HashSetPatch"
+```
 
 ## OrPatch
 
@@ -88,5 +98,7 @@ export declare const OrPatch: typeof OrPatch
 
 Added in v2.0.0
 
-Docs: https://fp-ts.github.io/data/modules/Differ/OrPatch.ts.html
-Module: @fp-ts/data/Differ/OrPatch
+```md
+- Docs: https://fp-ts.github.io/data/modules/Differ/OrPatch.ts.html
+- Module: "@fp-ts/data/Differ/OrPatch"
+```

@@ -1,8 +1,10 @@
 /**
  * @since 2.0.0
  *
- * Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
- * Module: @effect/io/Ref
+ * ```md
+ * - Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
+ * - Module: "@effect/io/Ref"
+ * ```
  */
 
 import * as SynchronizedRef from "@effect/io/Ref/Synchronized"
@@ -14,15 +16,19 @@ export {
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
-   * Module: @effect/io/ScopedRef
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
+   * - Module: "@effect/io/ScopedRef"
+   * ```
    */
   ScopedRef,
   /**
    * @since 2.0.0
    *
-   * Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
-   * Module: @effect/io/Ref/Synchronized
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
+   * - Module: "@effect/io/Ref/Synchronized"
+   * ```
    */
   SynchronizedRef
 }
