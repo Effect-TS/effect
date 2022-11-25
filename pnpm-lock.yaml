@@ -19,7 +19,7 @@ importers:
       '@changesets/cli': ^2.25.2
       '@effect-ts/build-utils': 0.40.5
       '@effect-ts/core': ^0.60.2
-      '@effect/io': ^0.0.12
+      '@effect/io': ^0.0.13
       '@effect/language-service': ^0.0.4
       '@effect/printer': ^0.1.3
       '@fp-ts/core': ^0.0.8
@@ -71,7 +71,7 @@ importers:
       vite: ^3.2.4
       vitest: 0.25.3
     dependencies:
-      '@effect/io': 0.0.12
+      '@effect/io': 0.0.13
       '@effect/printer': 0.1.3
       '@fp-ts/core': 0.0.8
       '@fp-ts/data': 0.0.15
@@ -725,8 +725,8 @@ packages:
       '@tsplus/stdlib': 0.2.8
     dev: true
 
-  /@effect/io/0.0.12:
-    resolution: {integrity: sha512-uv1GctNuKzIf91Xvod9dxjRFPPWj4u5Kd2y7tRHCn/yUE+OTixOVMtFRouMvYsVBkXllgKR1wqIGQk6K6HWDqA==}
+  /@effect/io/0.0.13:
+    resolution: {integrity: sha512-awNuSDO9t/3eTwMHowkxdrjf8bx6wDW/aK+5TrzKhCCj4uIiqpd6Ye3Xolfflf6wzys2UaD868lFZm0cMjN6WA==}
     dependencies:
       '@effect/printer': 0.1.3
       '@fp-ts/core': 0.0.8
