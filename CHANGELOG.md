@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.8
+
+### Patch Changes
+
+- [#1348](https://github.com/Effect-TS/effect/pull/1348) [`a789742bd`](https://github.com/Effect-TS/effect/commit/a789742bd5ef48e3023f3e47499ee11e9874501e) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Isolate LogLevel export
+
 ## 2.0.0-next.7
 
 ### Patch Changes
