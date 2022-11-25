@@ -17,7 +17,7 @@
  * - "@fp-ts/core"
  * - "@fp-ts/data"
  * - "@fp-ts/schema" (tbd)
- * - "@fp-ts/optic" (tbd)
+ * - "@fp-ts/optic"
  * - "@effect/io"
  * - "@effect/stm" (tbd)
  * - "@effect/stream" (tbd)
@@ -110,6 +110,7 @@ import * as Differ from "effect/Differ"
 import * as Fiber from "effect/Fiber"
 import * as FiberRefs from "effect/FiberRefs"
 import * as Metric from "effect/Metric"
+import * as Optic from "effect/Optic"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 
@@ -654,6 +655,15 @@ export {
    * ```
    */
   Of,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/optic/modules/index.ts.html
+   * - Module: "@fp-ts/optic"
+   * ```
+   */
+  Optic,
   /**
    * @since 2.0.0
    *
