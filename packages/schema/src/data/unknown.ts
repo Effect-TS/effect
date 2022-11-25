@@ -1,22 +1,22 @@
 /**
  * @since 1.0.0
  */
-import type * as A from "@fp-ts/codec/Arbitrary"
-import * as DE from "@fp-ts/codec/DecodeError"
-import type * as D from "@fp-ts/codec/Decoder"
-import type * as E from "@fp-ts/codec/Encoder"
-import type * as G from "@fp-ts/codec/Guard"
-import * as I from "@fp-ts/codec/internal/common"
-import * as P from "@fp-ts/codec/Provider"
-import type * as S from "@fp-ts/codec/Schema"
-import type * as Sh from "@fp-ts/codec/Show"
 import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import type * as A from "@fp-ts/schema/Arbitrary"
+import * as DE from "@fp-ts/schema/DecodeError"
+import type * as D from "@fp-ts/schema/Decoder"
+import type * as E from "@fp-ts/schema/Encoder"
+import type * as G from "@fp-ts/schema/Guard"
+import * as I from "@fp-ts/schema/internal/common"
+import * as P from "@fp-ts/schema/Provider"
+import type * as S from "@fp-ts/schema/Schema"
+import type * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/codec/data/unknown")
+export const id = Symbol.for("@fp-ts/schema/data/unknown")
 
 /**
  * @since 1.0.0

@@ -1,8 +1,8 @@
-import * as E from "@fp-ts/codec/Encoder"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as E from "@fp-ts/schema/Encoder"
+import * as S from "@fp-ts/schema/Schema"
 
-const stringId = Symbol.for("@fp-ts/codec/test/Encoder/string")
+const stringId = Symbol.for("@fp-ts/schema/test/Encoder/string")
 
 const string = pipe(
   S.string,
@@ -11,7 +11,7 @@ const string = pipe(
   })
 )
 
-const numberId = Symbol.for("@fp-ts/codec/test/Encoder/number")
+const numberId = Symbol.for("@fp-ts/schema/test/Encoder/number")
 
 const number = pipe(
   S.number,

@@ -1,10 +1,10 @@
-import * as set from "@fp-ts/codec/data/Set"
-import * as DE from "@fp-ts/codec/DecodeError"
-import * as D from "@fp-ts/codec/Decoder"
-import * as JD from "@fp-ts/codec/JsonDecoder"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
+import * as set from "@fp-ts/schema/data/Set"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
+import * as JD from "@fp-ts/schema/JsonDecoder"
+import * as S from "@fp-ts/schema/Schema"
 
 const unsafeDecoderFor = JD.provideUnsafeJsonDecoderFor(set.Provider)
 

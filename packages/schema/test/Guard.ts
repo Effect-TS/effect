@@ -1,11 +1,11 @@
-import * as bigint from "@fp-ts/codec/data/bigint"
-import * as json from "@fp-ts/codec/data/Json"
-import * as set from "@fp-ts/codec/data/Set"
-import * as G from "@fp-ts/codec/Guard"
-import { Monoid } from "@fp-ts/codec/Provider"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as bigint from "@fp-ts/schema/data/bigint"
+import * as json from "@fp-ts/schema/data/Json"
+import * as set from "@fp-ts/schema/data/Set"
+import * as G from "@fp-ts/schema/Guard"
+import { Monoid } from "@fp-ts/schema/Provider"
+import * as S from "@fp-ts/schema/Schema"
 
 const support = Monoid.combineAll([json.Provider, set.Provider, bigint.Provider])
 const unsafeGuardFor = G.provideUnsafeGuardFor(support)

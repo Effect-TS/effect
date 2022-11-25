@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import * as arbitrary from "@fp-ts/codec/Arbitrary"
-import * as decoder from "@fp-ts/codec/Decoder"
-import * as guard from "@fp-ts/codec/Guard"
-import * as schema from "@fp-ts/codec/Schema"
+import * as arbitrary from "@fp-ts/schema/Arbitrary"
+import * as decoder from "@fp-ts/schema/Decoder"
+import * as guard from "@fp-ts/schema/Guard"
+import * as schema from "@fp-ts/schema/Schema"
 
 export {
   /**

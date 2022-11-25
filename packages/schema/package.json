@@ -1,5 +1,5 @@
 {
-  "name": "@fp-ts/codec",
+  "name": "@fp-ts/schema",
   "version": "0.0.0",
   "publishConfig": {
     "access": "public",
@@ -7,14 +7,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/fp-ts/codec.git"
+    "url": "https://github.com/fp-ts/schema.git"
   },
   "author": "Giulio Canti <giulio.canti@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/fp-ts/codec/issues"
+    "url": "https://github.com/fp-ts/schema/issues"
   },
-  "homepage": "https://github.com/fp-ts/codec",
+  "homepage": "https://github.com/fp-ts/schema",
   "description": "Functional programming in TypeScript",
   "tags": [
     "typescript",

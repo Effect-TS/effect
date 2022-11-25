@@ -1,8 +1,8 @@
-// import * as A from "@fp-ts/codec/Arbitrary"
-import * as DE from "@fp-ts/codec/DecodeError"
-import * as D from "@fp-ts/codec/Decoder"
-import * as G from "@fp-ts/codec/Guard"
-import * as S from "@fp-ts/codec/Schema"
+// import * as A from "@fp-ts/schema/Arbitrary"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
+import * as G from "@fp-ts/schema/Guard"
+import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
 

@@ -2,21 +2,21 @@
  * @since 1.0.0
  */
 
-import type { Arbitrary } from "@fp-ts/codec/Arbitrary"
-import * as DE from "@fp-ts/codec/DecodeError"
-import type { Decoder } from "@fp-ts/codec/Decoder"
-import type { Guard } from "@fp-ts/codec/Guard"
-import * as I from "@fp-ts/codec/internal/common"
-import * as P from "@fp-ts/codec/Provider"
-import type { Schema } from "@fp-ts/codec/Schema"
-import type { Show } from "@fp-ts/codec/Show"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
+import * as DE from "@fp-ts/schema/DecodeError"
+import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Guard } from "@fp-ts/schema/Guard"
+import * as I from "@fp-ts/schema/internal/common"
+import * as P from "@fp-ts/schema/Provider"
+import type { Schema } from "@fp-ts/schema/Schema"
+import type { Show } from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/codec/data/min")
+export const id = Symbol.for("@fp-ts/schema/data/min")
 
 const guard = (min: number) =>
   <A extends number>(self: Guard<A>): Guard<A> =>

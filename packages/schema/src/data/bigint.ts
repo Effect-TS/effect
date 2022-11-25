@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import * as I from "@fp-ts/codec/internal/common"
-import * as P from "@fp-ts/codec/Provider"
-import type * as S from "@fp-ts/codec/Schema"
-import type * as Sh from "@fp-ts/codec/Show"
 import * as O from "@fp-ts/data/Option"
+import * as I from "@fp-ts/schema/internal/common"
+import * as P from "@fp-ts/schema/Provider"
+import type * as S from "@fp-ts/schema/Schema"
+import type * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/codec/data/bigint")
+export const id = Symbol.for("@fp-ts/schema/data/bigint")
 
 /**
  * @since 1.0.0

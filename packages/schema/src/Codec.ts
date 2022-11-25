@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import type { Decoder } from "@fp-ts/codec/Decoder"
-import type { Encoder } from "@fp-ts/codec/Encoder"
-import * as I from "@fp-ts/codec/internal/common"
-import type { Schema } from "@fp-ts/codec/Schema"
+import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Encoder } from "@fp-ts/schema/Encoder"
+import * as I from "@fp-ts/schema/internal/common"
+import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0

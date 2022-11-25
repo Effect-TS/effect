@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import type { Provider } from "@fp-ts/codec/Provider"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
+import type { Provider } from "@fp-ts/schema/Provider"
 
 /**
  * @since 1.0.0

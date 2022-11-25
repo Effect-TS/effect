@@ -1,10 +1,10 @@
-import * as A from "@fp-ts/codec/Arbitrary"
-import * as Json from "@fp-ts/codec/data/Json"
-import * as G from "@fp-ts/codec/Guard"
-import * as JD from "@fp-ts/codec/JsonDecoder"
-import * as S from "@fp-ts/codec/Schema"
-import * as show from "@fp-ts/codec/Show"
 import * as T from "@fp-ts/data/These"
+import * as A from "@fp-ts/schema/Arbitrary"
+import * as Json from "@fp-ts/schema/data/Json"
+import * as G from "@fp-ts/schema/Guard"
+import * as JD from "@fp-ts/schema/JsonDecoder"
+import * as S from "@fp-ts/schema/Schema"
+import * as show from "@fp-ts/schema/Show"
 import * as fc from "fast-check"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)

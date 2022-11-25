@@ -1,6 +1,6 @@
-import * as set from "@fp-ts/codec/data/Set"
-import * as JE from "@fp-ts/codec/JsonEncoder"
-import * as S from "@fp-ts/codec/Schema"
+import * as set from "@fp-ts/schema/data/Set"
+import * as JE from "@fp-ts/schema/JsonEncoder"
+import * as S from "@fp-ts/schema/Schema"
 
 const unsafeEncoderFor = JE.provideUnsafeJsonEncoderFor(set.Provider)
 

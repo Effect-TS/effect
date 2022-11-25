@@ -1,8 +1,8 @@
-import * as ast from "@fp-ts/codec/AST"
-import * as G from "@fp-ts/codec/Guard"
-import { empty } from "@fp-ts/codec/Provider"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as ast from "@fp-ts/schema/AST"
+import * as G from "@fp-ts/schema/Guard"
+import { empty } from "@fp-ts/schema/Provider"
+import * as S from "@fp-ts/schema/Schema"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(empty)
 

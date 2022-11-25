@@ -1,6 +1,6 @@
-import * as ast from "@fp-ts/codec/AST"
-import * as S from "@fp-ts/codec/Schema"
 import * as O from "@fp-ts/data/Option"
+import * as ast from "@fp-ts/schema/AST"
+import * as S from "@fp-ts/schema/Schema"
 
 describe("AST", () => {
   describe("getFields", () => {

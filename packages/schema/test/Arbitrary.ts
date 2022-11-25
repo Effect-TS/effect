@@ -1,8 +1,8 @@
-import * as A from "@fp-ts/codec/Arbitrary"
-import * as set from "@fp-ts/codec/data/Set"
-import * as G from "@fp-ts/codec/Guard"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
+import * as A from "@fp-ts/schema/Arbitrary"
+import * as set from "@fp-ts/schema/data/Set"
+import * as G from "@fp-ts/schema/Guard"
+import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(set.Provider)
@@ -12,7 +12,7 @@ describe("Arbitrary", () => {
   const sampleSize = 100
 
   it("clone", () => {
-    const NameId = Symbol.for("@fp-ts/codec/test/Arbitrary/NameId")
+    const NameId = Symbol.for("@fp-ts/schema/test/Arbitrary/NameId")
     const Name = pipe(
       S.string,
       S.clone(NameId, {

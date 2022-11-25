@@ -2,23 +2,23 @@
  * @since 1.0.0
  */
 
-import type { AST } from "@fp-ts/codec/AST"
-import * as ast from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as max_ from "@fp-ts/codec/data/max"
-import * as maxLength_ from "@fp-ts/codec/data/maxLength"
-import * as min_ from "@fp-ts/codec/data/min"
-import * as minLength_ from "@fp-ts/codec/data/minLength"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import * as unknown_ from "@fp-ts/codec/data/unknown"
-import * as I from "@fp-ts/codec/internal/common"
-import type { Provider } from "@fp-ts/codec/Provider"
-import * as P from "@fp-ts/codec/Provider"
 import type { Either } from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
+import type { AST } from "@fp-ts/schema/AST"
+import * as ast from "@fp-ts/schema/AST"
+import * as boolean_ from "@fp-ts/schema/data/boolean"
+import * as max_ from "@fp-ts/schema/data/max"
+import * as maxLength_ from "@fp-ts/schema/data/maxLength"
+import * as min_ from "@fp-ts/schema/data/min"
+import * as minLength_ from "@fp-ts/schema/data/minLength"
+import * as number_ from "@fp-ts/schema/data/number"
+import * as string_ from "@fp-ts/schema/data/string"
+import * as unknown_ from "@fp-ts/schema/data/unknown"
+import * as I from "@fp-ts/schema/internal/common"
+import type { Provider } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 
 /**
  * @since 1.0.0

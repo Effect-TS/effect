@@ -1,9 +1,9 @@
-import * as set from "@fp-ts/codec/data/Set"
-import * as S from "@fp-ts/codec/Schema"
-import * as show from "@fp-ts/codec/Show"
 import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as set from "@fp-ts/schema/data/Set"
+import * as S from "@fp-ts/schema/Schema"
+import * as show from "@fp-ts/schema/Show"
 
 const unsafeShowFor = show.provideUnsafeShowFor(set.Provider)
 

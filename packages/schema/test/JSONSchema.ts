@@ -1,13 +1,13 @@
-import type { AST } from "@fp-ts/codec/AST"
-import * as boolean_ from "@fp-ts/codec/data/boolean"
-import * as number_ from "@fp-ts/codec/data/number"
-import * as string_ from "@fp-ts/codec/data/string"
-import type { Provider } from "@fp-ts/codec/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
-import type { Schema } from "@fp-ts/codec/Schema"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import type { AST } from "@fp-ts/schema/AST"
+import * as boolean_ from "@fp-ts/schema/data/boolean"
+import * as number_ from "@fp-ts/schema/data/number"
+import * as string_ from "@fp-ts/schema/data/string"
+import type { Provider } from "@fp-ts/schema/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import type { Schema } from "@fp-ts/schema/Schema"
+import * as S from "@fp-ts/schema/Schema"
 import Ajv from "ajv"
 
 type StringJSONSchema = {
@@ -28,7 +28,7 @@ type JSONSchema =
   | { readonly type: "boolean" }
 
 const JSONSchemaId: unique symbol = Symbol.for(
-  "@fp-ts/codec/interpreter/JSONSchemaInterpreter"
+  "@fp-ts/schema/interpreter/JSONSchemaInterpreter"
 )
 
 type JSONSchemaId = typeof JSONSchemaId

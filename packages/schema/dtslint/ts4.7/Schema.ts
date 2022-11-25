@@ -1,4 +1,4 @@
-import * as S from "@fp-ts/codec/Schema"
+import * as S from "@fp-ts/schema/Schema"
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.struct({

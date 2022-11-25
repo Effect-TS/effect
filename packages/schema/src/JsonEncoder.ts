@@ -1,18 +1,18 @@
 /**
  * @since 1.0.0
  */
-import type { AST } from "@fp-ts/codec/AST"
-import type * as J from "@fp-ts/codec/data/Json"
-import type { Encoder } from "@fp-ts/codec/Encoder"
-import * as E from "@fp-ts/codec/Encoder"
-import * as G from "@fp-ts/codec/Guard"
-import * as I from "@fp-ts/codec/internal/common"
-import type { Provider } from "@fp-ts/codec/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
-import type { Schema } from "@fp-ts/codec/Schema"
-import * as S from "@fp-ts/codec/Schema"
 import { identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import type { AST } from "@fp-ts/schema/AST"
+import type * as J from "@fp-ts/schema/data/Json"
+import type { Encoder } from "@fp-ts/schema/Encoder"
+import * as E from "@fp-ts/schema/Encoder"
+import * as G from "@fp-ts/schema/Guard"
+import * as I from "@fp-ts/schema/internal/common"
+import type { Provider } from "@fp-ts/schema/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import type { Schema } from "@fp-ts/schema/Schema"
+import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0

@@ -2,58 +2,58 @@
  * @since 1.0.0
  */
 
-import type { Arbitrary } from "@fp-ts/codec/Arbitrary"
-import type { AST } from "@fp-ts/codec/AST"
-import * as ast from "@fp-ts/codec/AST"
-import type * as DE from "@fp-ts/codec/DecodeError"
-import type { Decoder } from "@fp-ts/codec/Decoder"
-import type { Encoder } from "@fp-ts/codec/Encoder"
-import type { Guard } from "@fp-ts/codec/Guard"
-import type { Provider } from "@fp-ts/codec/Provider"
-import type { Schema } from "@fp-ts/codec/Schema"
-import type { Show } from "@fp-ts/codec/Show"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
+import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
+import type { AST } from "@fp-ts/schema/AST"
+import * as ast from "@fp-ts/schema/AST"
+import type * as DE from "@fp-ts/schema/DecodeError"
+import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Encoder } from "@fp-ts/schema/Encoder"
+import type { Guard } from "@fp-ts/schema/Guard"
+import type { Provider } from "@fp-ts/schema/Provider"
+import type { Schema } from "@fp-ts/schema/Schema"
+import type { Show } from "@fp-ts/schema/Show"
 
 export const GuardId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Guard"
+  "@fp-ts/schema/Guard"
 )
 
 export type GuardId = typeof GuardId
 
 export const ArbitraryId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Arbitrary"
+  "@fp-ts/schema/Arbitrary"
 )
 
 export type ArbitraryId = typeof ArbitraryId
 
 export const ShowId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Show"
+  "@fp-ts/schema/Show"
 )
 
 export type ShowId = typeof ShowId
 
 export const JsonDecoderId: unique symbol = Symbol.for(
-  "@fp-ts/codec/JsonDecoder"
+  "@fp-ts/schema/JsonDecoder"
 )
 
 export type JsonDecoderId = typeof JsonDecoderId
 
 export const JsonEncoderId: unique symbol = Symbol.for(
-  "@fp-ts/codec/JsonEncoder"
+  "@fp-ts/schema/JsonEncoder"
 )
 
 export type JsonEncoderId = typeof JsonEncoderId
 
 export const DecoderId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Decoder"
+  "@fp-ts/schema/Decoder"
 )
 
 export type DecoderId = typeof DecoderId
 
 export const EncoderId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Encoder"
+  "@fp-ts/schema/Encoder"
 )
 
 export type EncoderId = typeof EncoderId
@@ -126,7 +126,7 @@ export const makeEncoder = <O, A>(
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
 
 export const CodecId: unique symbol = Symbol.for(
-  "@fp-ts/codec/Codec"
+  "@fp-ts/schema/Codec"
 )
 
 export type CodecId = typeof CodecId

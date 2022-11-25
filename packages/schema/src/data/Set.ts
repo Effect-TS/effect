@@ -1,22 +1,22 @@
 /**
  * @since 1.0.0
  */
-import * as A from "@fp-ts/codec/Arbitrary"
-import * as J from "@fp-ts/codec/data/Json"
-import * as D from "@fp-ts/codec/Decoder"
-import * as G from "@fp-ts/codec/Guard"
-import * as I from "@fp-ts/codec/internal/common"
-import * as JD from "@fp-ts/codec/JsonDecoder"
-import * as P from "@fp-ts/codec/Provider"
-import * as S from "@fp-ts/codec/Schema"
-import * as Sh from "@fp-ts/codec/Show"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as A from "@fp-ts/schema/Arbitrary"
+import * as J from "@fp-ts/schema/data/Json"
+import * as D from "@fp-ts/schema/Decoder"
+import * as G from "@fp-ts/schema/Guard"
+import * as I from "@fp-ts/schema/internal/common"
+import * as JD from "@fp-ts/schema/JsonDecoder"
+import * as P from "@fp-ts/schema/Provider"
+import * as S from "@fp-ts/schema/Schema"
+import * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/codec/data/Set")
+export const id = Symbol.for("@fp-ts/schema/data/Set")
 
 const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(

@@ -14,10 +14,10 @@
     "target": "es2015",
     "lib": ["es2015"],
     "paths": {
-      "@fp-ts/codec": ["../../src/index.ts"],
-      "@fp-ts/codec/test/*": ["../../test/*"],
-      "@fp-ts/codec/examples/*": ["../../examples/*"],
-      "@fp-ts/codec/*": ["../../src/*"]
+      "@fp-ts/schema": ["../../src/index.ts"],
+      "@fp-ts/schema/test/*": ["../../test/*"],
+      "@fp-ts/schema/examples/*": ["../../examples/*"],
+      "@fp-ts/schema/*": ["../../src/*"]
     }
   }
 }

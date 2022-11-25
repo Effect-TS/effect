@@ -2,14 +2,14 @@
  * @since 1.0.0
  */
 
-import type { AST } from "@fp-ts/codec/AST"
-import * as I from "@fp-ts/codec/internal/common"
-import type { Provider } from "@fp-ts/codec/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/codec/Provider"
-import type { Schema } from "@fp-ts/codec/Schema"
-import * as S from "@fp-ts/codec/Schema"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import type { AST } from "@fp-ts/schema/AST"
+import * as I from "@fp-ts/schema/internal/common"
+import type { Provider } from "@fp-ts/schema/Provider"
+import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import type { Schema } from "@fp-ts/schema/Schema"
+import * as S from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
