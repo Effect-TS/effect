@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.10
+
+### Patch Changes
+
+- [#1353](https://github.com/Effect-TS/effect/pull/1353) [`6285a7712`](https://github.com/Effect-TS/effect/commit/6285a7712b0fd630f5031fec360eb42a68d9b788) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update @effect/io
+
 ## 2.0.0-next.9
 
 ### Patch Changes
