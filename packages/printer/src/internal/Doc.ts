@@ -23,7 +23,6 @@ class Fail<A> implements D.Fail<A>, Equal.Equal {
   readonly _tag = "Fail"
   readonly _id: D.TypeId = DocTypeId
   readonly _A: (_: never) => A = variance;
-  // constructor(readonly id: (_: never) => A) {}
   [Equal.symbolHash](): number {
     return Equal.hashCombine(Equal.hash("@effect/printer/Doc/Fail"))(Equal.hash(DocSymbolKey))
   }
@@ -36,7 +35,6 @@ class Empty<A> implements D.Empty<A>, Equal.Equal {
   readonly _tag = "Empty"
   readonly _id: D.TypeId = DocTypeId
   readonly _A: (_: never) => A = variance;
-  // constructor(readonly id: (_: never) => A) {}
   [Equal.symbolHash](): number {
     return Equal.hashCombine(Equal.hash("@effect/printer/Doc/Empty"))(Equal.hash(DocSymbolKey))
   }
@@ -49,7 +47,7 @@ class Char<A> implements D.Char<A>, Equal.Equal {
   readonly _tag = "Char"
   readonly _id: D.TypeId = DocTypeId
   readonly _A: (_: never) => A = variance
-  constructor(readonly char: string /*, readonly id: (_: never) => A */) {}
+  constructor(readonly char: string) {}
   [Equal.symbolHash](): number {
     return Equal.hashCombine(Equal.hash(this.char))(Equal.hash(DocSymbolKey))
   }
@@ -62,7 +60,7 @@ class Text<A> implements D.Text<A>, Equal.Equal {
   readonly _tag = "Text"
   readonly _id: D.TypeId = DocTypeId
   readonly _A: (_: never) => A = variance
-  constructor(readonly text: string /*, readonly id: (_: never) => A */) {}
+  constructor(readonly text: string) {}
   [Equal.symbolHash](): number {
     return Equal.hashCombine(Equal.hash(this.text))(Equal.hash(DocSymbolKey))
   }
@@ -75,7 +73,6 @@ class Line<A> implements D.Line<A>, Equal.Equal {
   readonly _tag = "Line"
   readonly _id: D.TypeId = DocTypeId
   readonly _A: (_: never) => A = variance;
-  // constructor(readonly id: (_: never) => A) {}
   [Equal.symbolHash](): number {
     return Equal.hashCombine(Equal.hash("@effect/printer/Doc/Line"))(Equal.hash(DocSymbolKey))
   }
@@ -558,8 +555,8 @@ export function nesting<A>(react: (level: number) => Doc<A>): Doc<A> {
 }
 
 /** @internal */
-export function width<A, B>(react: (width: number) => Doc<A>) {
-  return (self: Doc<B>): Doc<A | B> => {
+export function width<A>(react: (width: number) => Doc<A>) {
+  return <B>(self: Doc<B>): Doc<A | B> => {
     return column((colStart) => cat(column((colEnd) => react(colEnd - colStart)))(self))
   }
 }
@@ -584,13 +581,13 @@ export function align<A>(self: Doc<A>): Doc<A> {
 }
 
 /** @internal */
-export function hang<A>(indent: number) {
-  return (self: Doc<A>): Doc<A> => align(nest(indent)(self))
+export function hang(indent: number) {
+  return <A>(self: Doc<A>): Doc<A> => align(nest(indent)(self))
 }
 
 /** @internal */
-export function indent<A>(indent: number) {
-  return (self: Doc<A>): Doc<A> => hang<A>(indent)(cat(self)(spaces(indent)))
+export function indent(indent: number) {
+  return <A>(self: Doc<A>): Doc<A> => hang(indent)(cat(self)(spaces(indent)))
 }
 
 /** @internal */
@@ -639,14 +636,14 @@ export function tupled<A>(docs: Iterable<Doc<A>>): Doc<A> {
 // -----------------------------------------------------------------------------
 
 /** @internal */
-export function fill<A>(w: number) {
-  return (self: Doc<A>): Doc<A> => width<A, A>((i) => spaces(w - i))(self)
+export function fill(w: number) {
+  return <A>(self: Doc<A>): Doc<A> => width((i) => spaces(w - i))(self)
 }
 
 /** @internal */
-export function fillBreak<A>(w: number) {
-  return (self: Doc<A>): Doc<A> => {
-    return width<A, A>((i) => (i > w ?
+export function fillBreak(w: number) {
+  return <A>(self: Doc<A>): Doc<A> => {
+    return width((i) => (i > w ?
       nest(w)(lineBreak) :
       spaces(w - i))
     )(self)
