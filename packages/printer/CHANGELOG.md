@@ -1,5 +1,13 @@
 # @effect/printer
 
+## 0.1.5
+
+### Patch Changes
+
+- [#362](https://github.com/Effect-TS/printer/pull/362) [`228e8b8`](https://github.com/Effect-TS/printer/commit/228e8b8b4785ad9a7f2338566afd64a4b8b1c9ed) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update dependencies
+
+- [#360](https://github.com/Effect-TS/printer/pull/360) [`507a520`](https://github.com/Effect-TS/printer/commit/507a520b6a2910cb2e4d1994ebc9a9ec09384ba7) Thanks [@IMax153](https://github.com/IMax153)! - fix several combinator signatures for Doc
+
 ## 0.1.4
 
 ### Patch Changes
