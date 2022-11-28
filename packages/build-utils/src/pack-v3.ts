@@ -79,6 +79,13 @@ const writePackageJsonContent = pipe(
     carry("gitHead", content, packageJson)
     carry("bin", content, packageJson)
 
+    if (fs.existsSync(`./build/_tsplus`)) {
+      packageJson["tsPlusTypes"] = fs
+        .readdirSync("./build/_tsplus")
+        .filter((path) => path.endsWith(".json"))
+        .map((path) => `./_tsplus/${path}`)
+    }
+
     const exports = {}
     const mainExports = {}
 
@@ -220,6 +227,11 @@ pipe(
   ),
   TE.tap(() =>
     TE.when(() => fs.existsSync(`./build/dts`))(exec(`cp -r ./build/dts/* ./dist`))
+  ),
+  TE.tap(() =>
+    TE.when(() => fs.existsSync(`./build/_tsplus`))(
+      exec(`mkdir -p ./dist/_tsplus && cp -r ./build/_tsplus/* ./dist/_tsplus`)
+    )
   ),
   TE.tap(() => writePackageJsonContent),
   TE.tap(() => copyReadme),
