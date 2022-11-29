@@ -16,21 +16,49 @@ describe("Schema", () => {
     expect(S.make).exist
   })
 
-  it("refine", () => {
-    type Int = number & { __brand: "Int" }
-    const isInt = (n: number): n is Int => Number.isInteger(n)
-    const IntSym = Symbol.for("@fp-ts/schema/test/Int")
+  describe("refine", () => {
+    it("primitive", () => {
+      type Int = number & { __brand: "Int" }
+      const isInt = (n: number): n is Int => Number.isInteger(n)
+      const IntSym = Symbol.for("@fp-ts/schema/test/Int")
 
-    const schema = pipe(S.number, S.refine(IntSym, isInt))
+      const schema = pipe(S.number, S.refine(IntSym, isInt))
 
-    const guard = G.unsafeGuardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(1.2)).toEqual(false)
-    const decoder = D.unsafeDecoderFor(schema)
-    expect(decoder.decode(1)).toEqual(E.right(1))
-    expect(decoder.decode(1.2)).toEqual(E.left([DE.custom({}, 1.2)]))
-    const arbitrary = A.unsafeArbitraryFor(schema)
-    expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
+      const guard = G.unsafeGuardFor(schema)
+      expect(guard.is(1)).toEqual(true)
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is(1.2)).toEqual(false)
+      const decoder = D.unsafeDecoderFor(schema)
+      expect(decoder.decode(1)).toEqual(E.right(1))
+      expect(decoder.decode(1.2)).toEqual(E.left([DE.custom({}, 1.2)]))
+      const arbitrary = A.unsafeArbitraryFor(schema)
+      expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
+    })
+
+    it("struct", () => {
+      const struct = S.struct({
+        a: S.number,
+        b: S.number
+      })
+      type S = S.Infer<typeof struct>
+      type BrandedStruct = S & { __brand: "BrandedStruct" }
+      const isBrandedStruct = (s: S): s is BrandedStruct => s.a === s.b
+      const BrandedStructSym = Symbol.for("@fp-ts/schema/test/BrandedStruct")
+
+      const schema = pipe(struct, S.refine(BrandedStructSym, isBrandedStruct))
+
+      const guard = G.unsafeGuardFor(schema)
+      expect(guard.is({ a: 1, b: 1 })).toEqual(true)
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({})).toEqual(false)
+      expect(guard.is({ a: 1 })).toEqual(false)
+      expect(guard.is({ a: 1, b: 2 })).toEqual(false)
+      const decoder = D.unsafeDecoderFor(schema)
+      expect(decoder.decode({ a: 1, b: 1 })).toEqual(E.right({ a: 1, b: 1 }))
+      expect(decoder.decode({ a: 1, b: 2 })).toEqual(E.left([DE.custom({}, { a: 1, b: 2 })]))
+      const arbitrary = A.unsafeArbitraryFor(schema)
+      expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
+    })
   })
 
   it("nativeEnum", () => {
