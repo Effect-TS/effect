@@ -4,15 +4,18 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { AST } from "@fp-ts/schema/AST"
 import * as ast from "@fp-ts/schema/AST"
-import type * as DE from "@fp-ts/schema/DecodeError"
+import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Provider } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type { Show } from "@fp-ts/schema/Show"
 
@@ -130,3 +133,33 @@ export const CodecId: unique symbol = Symbol.for(
 )
 
 export type CodecId = typeof CodecId
+
+export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>) =>
+  (schema: Schema<A>): Schema<B> => {
+    if (ast.isDeclaration(schema.ast)) {
+      const arbitrary = (self: Arbitrary<A>): Arbitrary<B> =>
+        makeArbitrary(Schema, (fc) => self.arbitrary(fc).filter(refinement))
+      const guard = (self: Guard<A>): Guard<B> =>
+        makeGuard(Schema, (u): u is A => self.is(u) && refinement(u))
+      const decoder = <I>(self: Decoder<I, A>): Decoder<I, B> =>
+        makeDecoder(
+          Schema,
+          (i) =>
+            pipe(
+              self.decode(i),
+              flatMap((a) => refinement(a) ? succeed(a) : fail(DE.custom({}, a)))
+            )
+        )
+      const show = (self: Show<A>): Show<B> => makeShow(Schema, (a) => self.show(a))
+      const Provider: P.Provider = P.make(id, {
+        [ArbitraryId]: arbitrary,
+        [GuardId]: guard,
+        [DecoderId]: decoder,
+        [JsonDecoderId]: decoder,
+        [ShowId]: show
+      })
+      const Schema = declareSchema(id, O.none, Provider, schema)
+      return Schema
+    }
+    throw new Error("cannot `refine` non-Declaration schemas")
+  }

@@ -6,6 +6,7 @@ import type { Either } from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import type { AST } from "@fp-ts/schema/AST"
 import * as ast from "@fp-ts/schema/AST"
 import * as boolean_ from "@fp-ts/schema/data/boolean"
@@ -65,6 +66,14 @@ export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
     }
     throw new Error("cannot `clone` non-Declaration schemas")
   }
+
+/**
+ * @since 1.0.0
+ */
+export const refine: <A, B extends A>(
+  id: symbol,
+  refinement: Refinement<A, B>
+) => (schema: Schema<A>) => Schema<B> = I.refine
 
 /**
  * @since 1.0.0

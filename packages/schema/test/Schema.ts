@@ -1,14 +1,36 @@
+import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
+import * as A from "@fp-ts/schema/Arbitrary"
 import * as ast from "@fp-ts/schema/AST"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
+import * as fc from "fast-check"
 
 const unsafeGuardFor = G.provideUnsafeGuardFor(empty)
 
 describe("Schema", () => {
   it("make", () => {
     expect(S.make).exist
+  })
+
+  it("refine", () => {
+    type Int = number & { __brand: "Int" }
+    const isInt = (n: number): n is Int => Number.isInteger(n)
+    const IntSym = Symbol.for("@fp-ts/schema/test/Int")
+
+    const schema = pipe(S.number, S.refine(IntSym, isInt))
+
+    const guard = G.unsafeGuardFor(schema)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is(1.2)).toEqual(false)
+    const decoder = D.unsafeDecoderFor(schema)
+    expect(decoder.decode(1)).toEqual(E.right(1))
+    expect(decoder.decode(1.2)).toEqual(E.left([DE.custom({}, 1.2)]))
+    const arbitrary = A.unsafeArbitraryFor(schema)
+    expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
   })
 
   it("nativeEnum", () => {
