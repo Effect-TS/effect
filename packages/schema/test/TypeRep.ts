@@ -68,7 +68,7 @@ export const provideUnsafeTypeRepFor = (
           const restElement = pipe(
             ast.restElement,
             O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
-            O.getOrElse("")
+            O.getOrElse(() => "")
           )
           return make(
             ast,
@@ -97,7 +97,7 @@ export const provideUnsafeTypeRepFor = (
               (pipe(
                 ast.indexSignature,
                 O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
-                O.getOrElse("")
+                O.getOrElse(() => "")
               ))
               + " }"
           )
