@@ -23,13 +23,13 @@ const number = pipe(
 describe("Encoder", () => {
   it("tuple", () => {
     const schema = S.tuple(string, number)
-    const encoder = E.unsafeEncoderFor(schema)
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(["a", 1])).toEqual(["a!", 2])
   })
 
   it("union", () => {
     const schema = S.union(string, number)
-    const encoder = E.unsafeEncoderFor(schema)
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode("a")).toEqual("a!")
     expect(encoder.encode(1)).toEqual(2)
   })
@@ -39,7 +39,7 @@ describe("Encoder", () => {
       a: string,
       b: number
     })
-    const encoder = E.unsafeEncoderFor(schema)
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a!", b: 2 })
   })
 })

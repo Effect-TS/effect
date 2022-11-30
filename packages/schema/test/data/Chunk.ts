@@ -20,7 +20,7 @@ describe("Chunk", () => {
 
   it("guard", () => {
     const schema = C.schema(S.string)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(DC.empty)).toEqual(true)
     expect(guard.is(DC.unsafeFromArray(["a", "b", "c"]))).toEqual(true)
 
@@ -29,7 +29,7 @@ describe("Chunk", () => {
 
   it("decoder", () => {
     const schema = C.schema(S.number)
-    const decoder = D.unsafeDecoderFor(schema)
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.succeed(DC.empty))
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.succeed(DC.unsafeFromArray([1, 2, 3]))
@@ -48,7 +48,7 @@ describe("Chunk", () => {
 
   it("jsonDecoder", () => {
     const schema = C.schema(S.number)
-    const jsonDecoder = JD.unsafeJsonDecoderFor(schema)
+    const jsonDecoder = JD.jsonDecoderFor(schema)
     expect(jsonDecoder.decode([])).toEqual(D.succeed(DC.empty))
     expect(jsonDecoder.decode([1, 2, 3])).toEqual(
       D.succeed(DC.unsafeFromArray([1, 2, 3]))
@@ -67,15 +67,15 @@ describe("Chunk", () => {
 
   it("show", () => {
     const schema = C.schema(S.number)
-    const show = Sh.unsafeShowFor(schema)
+    const show = Sh.showFor(schema)
     expect(show.show(DC.empty)).toEqual("chunk.unsafeFromArray([])")
     expect(show.show(DC.unsafeFromArray([1, 2, 3]))).toEqual("chunk.unsafeFromArray([1, 2, 3])")
   })
 
   it("arbitrary", () => {
     const schema = C.schema(S.number)
-    const arbitrary = A.unsafeArbitraryFor(schema)
-    const guard = G.unsafeGuardFor(arbitrary)
+    const arbitrary = A.arbitraryFor(schema)
+    const guard = G.guardFor(arbitrary)
     expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
   })
 })

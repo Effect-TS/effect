@@ -32,12 +32,12 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<never> = S.union()
 
-const Guard: G.Guard<never> = G.unsafeGuardFor(Schema)
+const Guard: G.Guard<never> = G.guardFor(Schema)
 
-const Decoder: D.Decoder<unknown, never> = D.unsafeDecoderFor(Schema)
+const Decoder: D.Decoder<unknown, never> = D.decoderFor(Schema)
 
-const Encoder: E.Encoder<unknown, never> = E.unsafeEncoderFor(Schema)
+const Encoder: E.Encoder<unknown, never> = E.encoderFor(Schema)
 
-const Arbitrary: A.Arbitrary<never> = A.unsafeArbitraryFor(Schema)
+const Arbitrary: A.Arbitrary<never> = A.arbitraryFor(Schema)
 
-const Show: Sh.Show<never> = Sh.unsafeShowFor(Schema)
+const Show: Sh.Show<never> = Sh.showFor(Schema)

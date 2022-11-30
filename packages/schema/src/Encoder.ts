@@ -75,7 +75,7 @@ export const lazy = <S, A>(
 /**
  * @since 1.0.0
  */
-export const provideUnsafeEncoderFor = (provider: Provider) =>
+export const provideEncoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Encoder<unknown, A> => {
     const go = (ast: AST): Encoder<unknown, any> => {
       switch (ast._tag) {
@@ -111,7 +111,7 @@ export const provideUnsafeEncoderFor = (provider: Provider) =>
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
+          const guards = ast.members.map((member) => G.guardFor(S.make(member)))
           return make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].encode(a)
@@ -146,5 +146,4 @@ export const provideUnsafeEncoderFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeEncoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> =
-  provideUnsafeEncoderFor(empty)
+export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provideEncoderFor(empty)

@@ -47,7 +47,7 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export const provideUnsafeArbitraryFor = (provider: Provider) =>
+export const provideArbitraryFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Arbitrary<A> => {
     const go = (ast: AST): Arbitrary<any> => {
       switch (ast._tag) {
@@ -116,6 +116,6 @@ export const provideUnsafeArbitraryFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeArbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideUnsafeArbitraryFor(
+export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(
   empty
 )

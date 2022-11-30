@@ -198,7 +198,7 @@ export const lazy = <S, A>(
 /**
  * @since 1.0.0
  */
-export const provideUnsafeDecoderFor = (provider: Provider) =>
+export const provideDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<unknown, A> => {
     const go = (ast: AST): Decoder<unknown, any> => {
       switch (ast._tag) {
@@ -300,5 +300,4 @@ export const provideUnsafeDecoderFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeDecoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> =
-  provideUnsafeDecoderFor(empty)
+export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(empty)

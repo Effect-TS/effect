@@ -21,7 +21,7 @@ describe("README", () => {
       age: S.number
     })
 
-    const decoder = D.unsafeDecoderFor(schema)
+    const decoder = D.decoderFor(schema)
     /*
     const decoder: D.Decoder<unknown, {
       readonly name: string;
@@ -41,7 +41,7 @@ describe("README", () => {
       age: S.number
     })
 
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     /*
     const decoder: G.Guard<{
       readonly name: string;
@@ -59,7 +59,7 @@ describe("README", () => {
   //     age: S.number
   //   })
 
-  //   const arb = A.unsafeArbitraryFor(schema).arbitrary(fc)
+  //   const arb = A.arbitraryFor(schema).arbitrary(fc)
   //   /*
   //   const arb: fc.Arbitrary<{
   //     readonly name: string;

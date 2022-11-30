@@ -33,7 +33,7 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
   pipe(D.UnknownArray, D.compose(fromArray(item)))
 
 const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Chunk<A>> =>
-  pipe(JD.unsafeJsonDecoderFor(S.array(J.Schema)), D.compose(fromArray(item)))
+  pipe(JD.jsonDecoderFor(S.array(J.Schema)), D.compose(fromArray(item)))
 
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))

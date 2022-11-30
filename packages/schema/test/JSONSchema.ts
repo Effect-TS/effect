@@ -33,7 +33,7 @@ const JSONSchemaId: unique symbol = Symbol.for(
 
 type JSONSchemaId = typeof JSONSchemaId
 
-const provideUnsafeJsonSchemaFor = (
+const provideJsonSchemaFor = (
   provider: Provider
 ) =>
   <A>(schema: Schema<A>): JSONSchema => {
@@ -70,19 +70,19 @@ const provideUnsafeJsonSchemaFor = (
     return go(schema.ast)
   }
 
-const unsafeJsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideUnsafeJsonSchemaFor(empty)
+const jsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideJsonSchemaFor(empty)
 
-describe("unsafeJsonSchemaFor", () => {
+describe("jsonSchemaFor", () => {
   it("string", () => {
     const schema = S.string
-    const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate("a")).toEqual(true)
     expect(validate(1)).toEqual(false)
   })
 
   it("boolean", () => {
     const schema = S.boolean
-    const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate(true)).toEqual(true)
     expect(validate(false)).toEqual(true)
     expect(validate(1)).toEqual(false)
@@ -90,13 +90,13 @@ describe("unsafeJsonSchemaFor", () => {
 
   it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const jsonSchema = unsafeJsonSchemaFor(schema)
+    const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
   it.skip("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate("")).toEqual(true)
     expect(validate("a")).toEqual(true)
 
@@ -105,7 +105,7 @@ describe("unsafeJsonSchemaFor", () => {
 
   it.skip("min", () => {
     const schema = pipe(S.number, S.min(1))
-    const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate(1)).toEqual(true)
     expect(validate(2)).toEqual(true)
 
@@ -114,7 +114,7 @@ describe("unsafeJsonSchemaFor", () => {
 
   it.skip("max", () => {
     const schema = pipe(S.number, S.max(1))
-    const validate = new Ajv().compile(unsafeJsonSchemaFor(schema))
+    const validate = new Ajv().compile(jsonSchemaFor(schema))
     expect(validate(0)).toEqual(true)
     expect(validate(1)).toEqual(true)
 

@@ -22,7 +22,7 @@ export const JsonEncoderId = I.JsonEncoderId
 /**
  * @since 1.0.0
  */
-export const provideUnsafeJsonEncoderFor = (
+export const provideJsonEncoderFor = (
   provider: Provider
 ) =>
   <A>(schema: Schema<A>): Encoder<J.Json, A> => {
@@ -64,7 +64,7 @@ export const provideUnsafeJsonEncoderFor = (
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
+          const guards = ast.members.map((member) => G.guardFor(S.make(member)))
           return E.make(S.make(ast), (a) => {
             const index = guards.findIndex((guard) => guard.is(a))
             return members[index].encode(a)
@@ -91,5 +91,6 @@ export const provideUnsafeJsonEncoderFor = (
 /**
  * @since 1.0.0
  */
-export const unsafeJsonEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> =
-  provideUnsafeJsonEncoderFor(empty)
+export const jsonEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> = provideJsonEncoderFor(
+  empty
+)

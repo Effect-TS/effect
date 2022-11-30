@@ -9,7 +9,7 @@ import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
-const unsafeGuardFor = G.provideUnsafeGuardFor(empty)
+const guardFor = G.provideGuardFor(empty)
 
 describe("Schema", () => {
   it("make", () => {
@@ -24,14 +24,14 @@ describe("Schema", () => {
 
       const schema = pipe(S.number, S.refine(IntSym, isInt))
 
-      const guard = G.unsafeGuardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is(1)).toEqual(true)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(1.2)).toEqual(false)
-      const decoder = D.unsafeDecoderFor(schema)
+      const decoder = D.decoderFor(schema)
       expect(decoder.decode(1)).toEqual(E.right(1))
       expect(decoder.decode(1.2)).toEqual(E.left([DE.custom({}, 1.2)]))
-      const arbitrary = A.unsafeArbitraryFor(schema)
+      const arbitrary = A.arbitraryFor(schema)
       expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
     })
 
@@ -47,16 +47,16 @@ describe("Schema", () => {
 
       const schema = pipe(struct, S.refine(BrandedStructSym, isBrandedStruct))
 
-      const guard = G.unsafeGuardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is({ a: 1, b: 1 })).toEqual(true)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({})).toEqual(false)
       expect(guard.is({ a: 1 })).toEqual(false)
       expect(guard.is({ a: 1, b: 2 })).toEqual(false)
-      const decoder = D.unsafeDecoderFor(schema)
+      const decoder = D.decoderFor(schema)
       expect(decoder.decode({ a: 1, b: 1 })).toEqual(E.right({ a: 1, b: 1 }))
       expect(decoder.decode({ a: 1, b: 2 })).toEqual(E.left([DE.custom({}, { a: 1, b: 2 })]))
-      const arbitrary = A.unsafeArbitraryFor(schema)
+      const arbitrary = A.arbitraryFor(schema)
       expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
     })
   })
@@ -67,7 +67,7 @@ describe("Schema", () => {
       Banana
     }
     const schema = S.nativeEnum(Fruits)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)
     expect(guard.is(0)).toEqual(true)
@@ -97,7 +97,7 @@ describe("Schema", () => {
       }),
       rename("a", "aa")
     )
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
     expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
   })
@@ -109,7 +109,7 @@ describe("Schema", () => {
         b: S.number
       })
       const keyOf = S.keyof(schema)
-      const guard = unsafeGuardFor(keyOf)
+      const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(true)
       expect(guard.is("c")).toEqual(false)
@@ -127,7 +127,7 @@ describe("Schema", () => {
         })
       )
       const keyOf = S.keyof(schema)
-      const guard = unsafeGuardFor(keyOf)
+      const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(false)
       expect(guard.is("c")).toEqual(false)

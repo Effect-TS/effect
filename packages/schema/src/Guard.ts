@@ -65,7 +65,7 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export const provideUnsafeGuardFor = (provider: Provider) =>
+export const provideGuardFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const go = (ast: AST): Guard<any> => {
       switch (ast._tag) {
@@ -158,4 +158,4 @@ export const provideUnsafeGuardFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeGuardFor: <A>(schema: Schema<A>) => Guard<A> = provideUnsafeGuardFor(empty)
+export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)

@@ -31,7 +31,7 @@ export const TypeRepId: unique symbol = Symbol.for(
 
 export type TypeRepId = typeof TypeRepId
 
-export const provideUnsafeTypeRepFor = (
+export const provideTypeRepFor = (
   provider: Provider
 ) =>
   <A>(schema: Schema<A>): TypeRep<A> => {
@@ -113,70 +113,70 @@ export const provideUnsafeTypeRepFor = (
     return go(schema.ast)
   }
 
-describe("unsafeTypeRepFor", () => {
-  const unsafeTypeRepFor = provideUnsafeTypeRepFor(empty)
+describe("typeRepFor", () => {
+  const typeRepFor = provideTypeRepFor(empty)
   it("struct", () => {
     const schema = S.struct({
       a: S.string,
       b: S.number
     })
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "{ readonly a: string, readonly b: number }"
     )
   })
 
   it("array", () => {
     const schema = S.array(S.string)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "readonly [...string[]]"
     )
   })
 
   it("nonEmptyArray", () => {
     const schema = S.nonEmptyArray(S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "readonly [string, ...number[]]"
     )
   })
 
   it("of", () => {
     const schema = S.of("a")
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "\"a\""
     )
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "{ readonly [_: string]: string }"
     )
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "string | number"
     )
   })
 
   it("tuple", () => {
     const schema = S.tuple(S.string, S.number)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "readonly [string, number]"
     )
   })
 
   it("option (as structure)", () => {
     const schema = S.option(S.string)
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
     )
   })
 
   it("either (as structure)", () => {
     const schema = S.either(S.string, S.number)
-    const typeRep = pipe(schema, unsafeTypeRepFor)
+    const typeRep = pipe(schema, typeRepFor)
     expect(typeRep.typeRep).toEqual(
       "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
     )
@@ -184,14 +184,14 @@ describe("unsafeTypeRepFor", () => {
 
   it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(2))
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "string"
     )
   })
 
   it.skip("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(4))
-    expect(pipe(schema, unsafeTypeRepFor).typeRep).toEqual(
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "string"
     )
   })

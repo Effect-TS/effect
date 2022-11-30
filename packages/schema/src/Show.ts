@@ -46,7 +46,7 @@ export const lazy = <A>(
 /**
  * @since 1.0.0
  */
-export const provideUnsafeShowFor = (provider: Provider) =>
+export const provideShowFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Show<A> => {
     const go = (ast: AST): Show<any> => {
       switch (ast._tag) {
@@ -83,7 +83,7 @@ export const provideUnsafeShowFor = (provider: Provider) =>
         }
         case "Union": {
           const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.unsafeGuardFor(S.make(member)))
+          const guards = ast.members.map((member) => G.guardFor(S.make(member)))
           return make(S.make(ast), (a) => {
             const index = guards.findIndex((Show) => Show.is(a))
             return members[index].show(a)
@@ -130,4 +130,4 @@ export const provideUnsafeShowFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const unsafeShowFor: <A>(schema: Schema<A>) => Show<A> = provideUnsafeShowFor(empty)
+export const showFor: <A>(schema: Schema<A>) => Show<A> = provideShowFor(empty)

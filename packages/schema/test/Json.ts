@@ -7,17 +7,17 @@ import * as S from "@fp-ts/schema/Schema"
 import * as show from "@fp-ts/schema/Show"
 import * as fc from "fast-check"
 
-const unsafeGuardFor = G.provideUnsafeGuardFor(Json.Provider)
-const unsafeArbitraryFor = A.provideUnsafeArbitraryFor(Json.Provider)
-const unsafeShowFor = show.provideUnsafeShowFor(Json.Provider)
-const unsafeJsonDecoderFor = JD.provideUnsafeJsonDecoderFor(Json.Provider)
+const guardFor = G.provideGuardFor(Json.Provider)
+const arbitraryFor = A.provideArbitraryFor(Json.Provider)
+const showFor = show.provideShowFor(Json.Provider)
+const jsonDecoderFor = JD.provideJsonDecoderFor(Json.Provider)
 
 describe("Json", () => {
   it("Json", () => {
     const schema = Json.Schema
-    const arbitrary = unsafeArbitraryFor(schema)
-    const guard = unsafeGuardFor(schema)
-    const decoder = unsafeJsonDecoderFor(schema)
+    const arbitrary = arbitraryFor(schema)
+    const guard = guardFor(schema)
+    const decoder = jsonDecoderFor(schema)
     fc.assert(fc.property(arbitrary.arbitrary(fc), (json) => {
       guard.is(json) && T.isRight(decoder.decode(json))
     }))
@@ -35,8 +35,8 @@ describe("Json", () => {
         S.indexSignature(manualSchema)
       )
     )
-    const jsonShow = unsafeShowFor(schema)
-    const manualJsonShow = unsafeShowFor(manualSchema)
+    const jsonShow = showFor(schema)
+    const manualJsonShow = showFor(manualSchema)
     const json: Json.Json = { a: [1, null] }
     expect(jsonShow.show(json)).toEqual(manualJsonShow.show(json))
   })

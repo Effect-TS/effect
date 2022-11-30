@@ -8,19 +8,19 @@ import { Monoid } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
 const support = Monoid.combineAll([json.Provider, set.Provider, bigint.Provider])
-const unsafeGuardFor = G.provideUnsafeGuardFor(support)
+const guardFor = G.provideGuardFor(support)
 
 describe("Guard", () => {
   it("bigint", () => {
     const schema = bigint.Schema
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
   it("literal", () => {
     const schema = S.literal(1, "a")
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is(null)).toEqual(false)
@@ -32,7 +32,7 @@ describe("Guard", () => {
       Banana
     }
     const schema = S.nativeEnum(Fruits)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)
     expect(guard.is(0)).toEqual(true)
@@ -47,7 +47,7 @@ describe("Guard", () => {
       Cantaloupe = 0
     }
     const schema = S.nativeEnum(Fruits)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Cantaloupe)).toEqual(true)
     expect(guard.is("apple")).toEqual(true)
@@ -63,7 +63,7 @@ describe("Guard", () => {
       Cantaloupe: 3
     } as const
     const schema = S.nativeEnum(Fruits)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is("apple")).toEqual(true)
     expect(guard.is("banana")).toEqual(true)
     expect(guard.is(3)).toEqual(true)
@@ -72,7 +72,7 @@ describe("Guard", () => {
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is("")).toEqual(true)
     expect(guard.is("a")).toEqual(true)
 
@@ -81,7 +81,7 @@ describe("Guard", () => {
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is("aa")).toEqual(true)
 
@@ -91,7 +91,7 @@ describe("Guard", () => {
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
-      const guard = G.unsafeGuardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is(["a", 1])).toEqual(true)
       expect(guard.is([1, 1])).toEqual(false)
       expect(guard.is(["a", "b"])).toEqual(false)
@@ -99,14 +99,14 @@ describe("Guard", () => {
 
     it("empty tuple", () => {
       const schema = S.tuple()
-      const guard = G.unsafeGuardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is([])).toEqual(true)
     })
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is("a")).toEqual(true)
@@ -114,14 +114,14 @@ describe("Guard", () => {
 
   it("struct", () => {
     const schema = S.struct({ a: S.string, b: S.number })
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
@@ -131,7 +131,7 @@ describe("Guard", () => {
 
   it("array", () => {
     const schema = S.array(S.string)
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(false)
@@ -148,7 +148,7 @@ describe("Guard", () => {
         categories: set.schema(schema)
       })
     )
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
     expect(
       guard.is({
@@ -183,8 +183,8 @@ describe("Guard", () => {
         as: set.schema(schemaA)
       })
     )
-    const A = G.unsafeGuardFor(schemaA)
-    const B = G.unsafeGuardFor(schemaB)
+    const A = G.guardFor(schemaA)
+    const B = G.guardFor(schemaB)
     expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
     expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)
     expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([]) }]) }]) }))
@@ -207,7 +207,7 @@ describe("Guard", () => {
       })
     )
     const schemaB = pipe(A, S.pick("as"))
-    const B = G.unsafeGuardFor(schemaB)
+    const B = G.guardFor(schemaB)
     expect(B.is({ as: new Set([]) })).toEqual(true)
     expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
     expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
@@ -225,7 +225,7 @@ describe("Guard", () => {
       })
     )
     const schemaB = pipe(A, S.omit("a"))
-    const B = G.unsafeGuardFor(schemaB)
+    const B = G.guardFor(schemaB)
     expect(B.is({ as: new Set([]) })).toEqual(true)
     expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
     expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
@@ -233,10 +233,10 @@ describe("Guard", () => {
 
   it("pick", () => {
     const baseSchema = S.struct({ a: S.string, b: bigint.Schema, c: S.boolean })
-    const baseGuard = G.unsafeGuardFor(baseSchema)
+    const baseGuard = G.guardFor(baseSchema)
     expect(baseGuard.is(null)).toEqual(false)
     const schema = pipe(baseSchema, S.pick("a", "b"))
-    const guard = G.unsafeGuardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: BigInt("1") })).toEqual(true)
     expect(guard.is({ a: "a", b: BigInt("1"), c: true })).toEqual(true)
@@ -244,34 +244,34 @@ describe("Guard", () => {
   })
 
   it("UnknownArray", () => {
-    const guard = unsafeGuardFor(S.array(S.unknown))
+    const guard = guardFor(S.array(S.unknown))
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a", 1, true])).toEqual(true)
   })
 
   it("UnknownIndexSignature", () => {
-    const guard = unsafeGuardFor(S.indexSignature(S.unknown))
+    const guard = guardFor(S.indexSignature(S.unknown))
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
   })
 
   it("bigint", () => {
     const schema = bigint.Schema
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
   it("Set", () => {
     const schema = set.schema(S.number)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
   })
 
   it("Set & bigint", () => {
     const schema = set.schema(bigint.Schema)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(new Set())).toEqual(true)
     expect(guard.is(new Set([BigInt("1"), BigInt("2")]))).toEqual(true)
@@ -281,7 +281,7 @@ describe("Guard", () => {
   it("pick", () => {
     const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
     const schema = pipe(base, S.pick("a", "b"))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
@@ -291,7 +291,7 @@ describe("Guard", () => {
   it("omit", () => {
     const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
     const schema = pipe(base, S.omit("c"))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
@@ -301,7 +301,7 @@ describe("Guard", () => {
   it.skip("partial", () => {
     const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
     const schema = S.partial(base)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
@@ -312,7 +312,7 @@ describe("Guard", () => {
 
   it("optional", () => {
     const schema = S.struct({ a: S.optional(S.string) })
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: undefined })).toEqual(true)
@@ -322,7 +322,7 @@ describe("Guard", () => {
 
   it("nullable", () => {
     const schema = S.struct({ a: S.nullable(S.string) })
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(false)
     expect(guard.is({ a: undefined })).toEqual(false)
@@ -333,7 +333,7 @@ describe("Guard", () => {
 
   it("nullish", () => {
     const schema = S.struct({ a: S.nullish(S.string) })
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: undefined })).toEqual(true)
@@ -348,7 +348,7 @@ describe("Guard", () => {
       b: S.optional(S.number),
       c: S.optional(S.boolean)
     })
-    const baseGuard = unsafeGuardFor(base)
+    const baseGuard = guardFor(base)
     expect(baseGuard.is(null)).toEqual(false)
     expect(baseGuard.is({})).toEqual(true)
     expect(baseGuard.is({ a: "a" })).toEqual(true)
@@ -357,7 +357,7 @@ describe("Guard", () => {
     expect(baseGuard.is({ a: "a", b: 1, c: "a" })).toEqual(false)
 
     const schema = S.required(base)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(false)
     expect(guard.is({ a: "a" })).toEqual(false)
@@ -368,21 +368,21 @@ describe("Guard", () => {
 
   it("string", () => {
     const schema = S.string
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is(1)).toEqual(false)
   })
 
   it("number", () => {
     const schema = S.number
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is("a")).toEqual(false)
   })
 
   it("boolean", () => {
     const schema = S.boolean
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(true)).toEqual(true)
     expect(guard.is(false)).toEqual(true)
     expect(guard.is(1)).toEqual(false)
@@ -390,14 +390,14 @@ describe("Guard", () => {
 
   it("of", () => {
     const schema = S.of(1)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is(2)).toEqual(false)
   })
 
   it("tuple", () => {
     const schema = S.tuple(S.string, S.number)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(["a", 1])).toEqual(true)
     expect(guard.is([1, 1])).toEqual(false)
     expect(guard.is(["a", "b"])).toEqual(false)
@@ -405,7 +405,7 @@ describe("Guard", () => {
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is("a")).toEqual(true)
@@ -413,14 +413,14 @@ describe("Guard", () => {
 
   it("struct", () => {
     const schema = S.struct({ a: S.string, b: S.number })
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
   })
 
   it("indexSignature", () => {
     const schema = S.indexSignature(S.string)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
@@ -430,7 +430,7 @@ describe("Guard", () => {
 
   it("array", () => {
     const schema = S.array(S.string)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is([])).toEqual(true)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(false)
@@ -438,7 +438,7 @@ describe("Guard", () => {
 
   it("nonEmptyArray", () => {
     const schema = S.nonEmptyArray(S.string, S.number)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(["a"])).toEqual(true)
     expect(guard.is(["a", 1])).toEqual(true)
 
@@ -447,7 +447,7 @@ describe("Guard", () => {
 
   it("option (as structure)", () => {
     const schema = S.option(S.number)
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(O.none)).toEqual(true)
     expect(guard.is(O.some(1))).toEqual(true)
     expect(guard.is(O.some("a"))).toEqual(false)
@@ -455,7 +455,7 @@ describe("Guard", () => {
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is("aa")).toEqual(true)
 
@@ -464,7 +464,7 @@ describe("Guard", () => {
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is("")).toEqual(true)
     expect(guard.is("a")).toEqual(true)
 
@@ -473,7 +473,7 @@ describe("Guard", () => {
 
   it("min", () => {
     const schema = pipe(S.number, S.min(1))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is(2)).toEqual(true)
 
@@ -482,7 +482,7 @@ describe("Guard", () => {
 
   it("max", () => {
     const schema = pipe(S.number, S.max(1))
-    const guard = unsafeGuardFor(schema)
+    const guard = guardFor(schema)
     expect(guard.is(0)).toEqual(true)
     expect(guard.is(1)).toEqual(true)
 
