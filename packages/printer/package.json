@@ -35,7 +35,7 @@
   },
   "dependencies": {
     "@fp-ts/core": "^0.0.9",
-    "@fp-ts/data": "^0.0.18"
+    "@fp-ts/data": "^0.0.19"
   },
   "config": {
     "side": [],
