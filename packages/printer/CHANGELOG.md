@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.1.7
+
+### Patch Changes
+
+- [#365](https://github.com/Effect-TS/printer/pull/365) [`795d27a`](https://github.com/Effect-TS/printer/commit/795d27a63b2db97663db90efc844f2f9e183fa28) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update dependencies
+
 ## 0.1.6
 
 ### Patch Changes
