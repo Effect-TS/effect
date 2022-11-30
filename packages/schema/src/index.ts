@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import * as arbitrary from "@fp-ts/schema/Arbitrary"
-import * as decoder from "@fp-ts/schema/Decoder"
 import * as guard from "@fp-ts/schema/Guard"
+import * as jsonCodec from "@fp-ts/schema/JsonCodec"
 import * as schema from "@fp-ts/schema/Schema"
 
 export {
@@ -14,11 +14,11 @@ export {
   /**
    * @since 1.0.0
    */
-  decoder,
+  guard,
   /**
    * @since 1.0.0
    */
-  guard,
+  jsonCodec,
   /**
    * @since 1.0.0
    */

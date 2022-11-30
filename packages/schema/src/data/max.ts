@@ -9,6 +9,7 @@ import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
+import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -28,6 +29,10 @@ const decoder = (max: number) =>
       (i) => pipe(self.decode(i), I.flatMap((a) => a <= max ? I.succeed(a) : I.fail(DE.max(max))))
     )
 
+const encoder = (max: number) =>
+  <A extends number>(self: JsonEncoder<A>): JsonEncoder<A> =>
+    I.makeEncoder(schema(max)(self), self.encode)
+
 const arbitrary = (max: number) =>
   <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(schema(max)(self), (fc) => self.arbitrary(fc).filter((a) => a <= max))
@@ -36,10 +41,12 @@ const arbitrary = (max: number) =>
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
+  [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.DecoderId]: decoder,
-  [I.GuardId]: guard,
-  [I.JsonDecoderId]: decoder
+  [I.EncoderId]: encoder,
+  [I.JsonDecoderId]: decoder,
+  [I.JsonEncoderId]: encoder
 })
 
 /**

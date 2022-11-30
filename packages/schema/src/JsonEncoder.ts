@@ -22,6 +22,11 @@ export const JsonEncoderId = I.JsonEncoderId
 /**
  * @since 1.0.0
  */
+export interface JsonEncoder<A> extends Encoder<J.Json, A> {}
+
+/**
+ * @since 1.0.0
+ */
 export const provideJsonEncoderFor = (
   provider: Provider
 ) =>

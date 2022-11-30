@@ -1,7 +1,8 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
+import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
+import * as JC from "@fp-ts/schema/JsonCodec"
 import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
@@ -15,27 +16,29 @@ describe("README", () => {
   //   type Person = S.Infer<typeof Person>
   // })
 
-  it("Deriving a decoder from a schema", () => {
+  it("Deriving a `JsonCodec` from a schema", () => {
     const schema = S.struct({
       name: S.string,
       age: S.number
     })
 
-    const decoder = D.decoderFor(schema)
+    const jsonCodec = JC.jsonCodecFor(schema)
     /*
-    const decoder: D.Decoder<unknown, {
+    const jsonCodec: JC.JsonCodec<{
       readonly name: string;
       readonly age: number;
     }>
     */
 
-    expect(decoder.decode({ name: "name", age: 18 })).toEqual(D.succeed({ name: "name", age: 18 }))
-    expect(decoder.decode(null)).toEqual(
-      D.fail(DE.notType("{ readonly [_: string]: unknown }", null))
+    expect(jsonCodec.decode({ name: "name", age: 18 })).toEqual(
+      T.right({ name: "name", age: 18 })
+    )
+    expect(jsonCodec.decode(null)).toEqual(
+      T.left([DE.notType("{ readonly [_: string]: unknown }", null)])
     )
   })
 
-  it("Deriving a guard from a schema", () => {
+  it("Deriving a `Guard` from a schema", () => {
     const schema = S.struct({
       name: S.string,
       age: S.number
@@ -53,7 +56,7 @@ describe("README", () => {
     expect(guard.is(null)).toEqual(false)
   })
 
-  // it("Deriving an arbitrary from a schema", () => {
+  // it("Deriving an `Arbitrary` from a schema", () => {
   //   const schema = S.struct({
   //     name: S.string,
   //     age: S.number

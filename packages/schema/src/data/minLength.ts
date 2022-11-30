@@ -9,6 +9,7 @@ import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
+import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -32,6 +33,10 @@ const decoder = (minLength: number) =>
         )
     )
 
+const encoder = (minLength: number) =>
+  <A extends { length: number }>(self: JsonEncoder<A>): JsonEncoder<A> =>
+    I.makeEncoder(schema(minLength)(self), self.encode)
+
 const arbitrary = (minLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(
@@ -43,10 +48,12 @@ const arbitrary = (minLength: number) =>
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
+  [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.DecoderId]: decoder,
-  [I.GuardId]: guard,
-  [I.JsonDecoderId]: decoder
+  [I.EncoderId]: encoder,
+  [I.JsonDecoderId]: decoder,
+  [I.JsonEncoderId]: encoder
 })
 
 /**

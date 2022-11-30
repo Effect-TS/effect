@@ -118,12 +118,6 @@ export const makeEncoder = <O, A>(
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
 
-export const CodecId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Codec"
-)
-
-export type CodecId = typeof CodecId
-
 export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>) =>
   (schema: Schema<A>): Schema<B> => {
     const arbitrary = (self: Arbitrary<A>): Arbitrary<B> =>
