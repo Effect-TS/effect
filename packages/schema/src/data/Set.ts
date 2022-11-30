@@ -11,7 +11,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
-import * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
@@ -36,16 +35,12 @@ const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Set<A>> =>
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
-const show = <A>(item: Sh.Show<A>): Sh.Show<Set<A>> =>
-  Sh.make(schema(item), (set) => `Set([${Array.from(set.values()).map(item.show).join(", ")}])`)
-
 /**
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.ShowId]: show,
   [I.DecoderId]: decoder,
   [I.JsonDecoderId]: jsonDecoder
 })

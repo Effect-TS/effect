@@ -11,7 +11,6 @@ import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import type { Show } from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
@@ -33,9 +32,6 @@ const arbitrary = (min: number) =>
   <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(schema(min)(self), (fc) => self.arbitrary(fc).filter((a) => a >= min))
 
-const show = (min: number) =>
-  <A extends number>(self: Show<A>): Show<A> => I.makeShow(schema(min)(self), (a) => self.show(a))
-
 /**
  * @since 1.0.0
  */
@@ -43,8 +39,7 @@ export const Provider: P.Provider = P.make(id, {
   [I.ArbitraryId]: arbitrary,
   [I.DecoderId]: decoder,
   [I.GuardId]: guard,
-  [I.JsonDecoderId]: decoder,
-  [I.ShowId]: show
+  [I.JsonDecoderId]: decoder
 })
 
 /**

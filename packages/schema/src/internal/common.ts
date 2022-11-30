@@ -17,7 +17,6 @@ import type { Guard } from "@fp-ts/schema/Guard"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import type { Show } from "@fp-ts/schema/Show"
 
 export const GuardId: unique symbol = Symbol.for(
   "@fp-ts/schema/Guard"
@@ -30,12 +29,6 @@ export const ArbitraryId: unique symbol = Symbol.for(
 )
 
 export type ArbitraryId = typeof ArbitraryId
-
-export const ShowId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Show"
-)
-
-export type ShowId = typeof ShowId
 
 export const JsonDecoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/JsonDecoder"
@@ -120,9 +113,6 @@ export const makeGuard = <A>(
   is: Guard<A>["is"]
 ): Guard<A> => ({ ast: schema.ast, is }) as any
 
-export const makeShow = <A>(schema: Schema<A>, show: Show<A>["show"]): Show<A> =>
-  ({ ast: schema.ast, show }) as any
-
 export const makeEncoder = <O, A>(
   schema: Schema<A>,
   encode: Encoder<O, A>["encode"]
@@ -149,13 +139,11 @@ export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>)
             flatMap((a) => refinement(a) ? succeed(a) : fail(DE.custom({}, a)))
           )
       )
-    const show = (self: Show<A>): Show<B> => makeShow(Schema, (a) => self.show(a))
     const Provider: P.Provider = P.make(id, {
       [ArbitraryId]: arbitrary,
       [GuardId]: guard,
       [DecoderId]: decoder,
-      [JsonDecoderId]: decoder,
-      [ShowId]: show
+      [JsonDecoderId]: decoder
     })
     const Schema = declareSchema(id, O.none, Provider, schema)
     return Schema

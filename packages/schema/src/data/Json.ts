@@ -9,7 +9,6 @@ import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
 import type * as S from "@fp-ts/schema/Schema"
-import type * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
@@ -43,7 +42,6 @@ export const id = Symbol.for("@fp-ts/schema/data/Json")
 export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.ShowId]: () => Show,
   [I.DecoderId]: () => Decoder,
   [I.JsonDecoderId]: () => Decoder
 })
@@ -67,5 +65,3 @@ const Arbitrary: A.Arbitrary<Json> = I.makeArbitrary(
   Schema,
   (fc) => fc.jsonValue().map((json) => json as Json)
 )
-
-const Show: Sh.Show<Json> = I.makeShow(Schema, (json) => JSON.stringify(json))

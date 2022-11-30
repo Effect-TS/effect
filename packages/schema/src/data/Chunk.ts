@@ -13,7 +13,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
-import * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
@@ -38,19 +37,12 @@ const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Chunk<A>> =>
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))
 
-const show = <A>(item: Sh.Show<A>): Sh.Show<Chunk<A>> =>
-  Sh.make(
-    schema(item),
-    (chunk) => `chunk.unsafeFromArray([${C.toReadonlyArray(chunk).map(item.show).join(", ")}])`
-  )
-
 /**
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
   [G.GuardId]: guard,
   [A.ArbitraryId]: arbitrary,
-  [Sh.ShowId]: show,
   [D.DecoderId]: decoder,
   [JD.JsonDecoderId]: jsonDecoder
 })

@@ -11,7 +11,6 @@ import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
 import type * as S from "@fp-ts/schema/Schema"
-import type * as Sh from "@fp-ts/schema/Show"
 
 /**
  * @since 1.0.0
@@ -27,7 +26,6 @@ export const Provider: P.Provider = P.make(id, {
   [I.DecoderId]: () => Decoder,
   [I.JsonDecoderId]: () => Decoder,
   [I.EncoderId]: () => Encoder,
-  [I.ShowId]: () => Show,
   [I.JsonEncoderId]: () => Encoder
 })
 
@@ -46,5 +44,3 @@ const Decoder: D.Decoder<unknown, string> = I.makeDecoder(
 const Encoder: E.Encoder<string, string> = I.makeEncoder(Schema, identity)
 
 const Arbitrary: A.Arbitrary<string> = I.makeArbitrary(Schema, (fc) => fc.string())
-
-const Show: Sh.Show<string> = I.makeShow(Schema, (n) => JSON.stringify(n))

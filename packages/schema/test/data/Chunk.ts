@@ -6,7 +6,6 @@ import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
-import * as Sh from "@fp-ts/schema/Show"
 import * as fc from "fast-check"
 
 describe("Chunk", () => {
@@ -63,13 +62,6 @@ describe("Chunk", () => {
     expect(jsonDecoder.decode([1, "a"])).toEqual(
       D.fail(DE.notType("number", "a"))
     )
-  })
-
-  it("show", () => {
-    const schema = C.schema(S.number)
-    const show = Sh.showFor(schema)
-    expect(show.show(DC.empty)).toEqual("chunk.unsafeFromArray([])")
-    expect(show.show(DC.unsafeFromArray([1, 2, 3]))).toEqual("chunk.unsafeFromArray([1, 2, 3])")
   })
 
   it("arbitrary", () => {
