@@ -9,14 +9,14 @@ import * as O from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { AST } from "@fp-ts/schema/AST"
 import * as ast from "@fp-ts/schema/AST"
-import * as boolean_ from "@fp-ts/schema/data/_boolean"
-import * as number_ from "@fp-ts/schema/data/_number"
-import * as string_ from "@fp-ts/schema/data/_string"
-import * as unknown_ from "@fp-ts/schema/data/_unknown"
+import * as Boolean from "@fp-ts/schema/data/Boolean"
 import * as max_ from "@fp-ts/schema/data/max"
 import * as maxLength_ from "@fp-ts/schema/data/maxLength"
 import * as min_ from "@fp-ts/schema/data/min"
 import * as minLength_ from "@fp-ts/schema/data/minLength"
+import * as Number from "@fp-ts/schema/data/Number"
+import * as String from "@fp-ts/schema/data/String"
+import * as Unknown from "@fp-ts/schema/data/Unknown"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -78,12 +78,12 @@ export const refine: <A, B extends A>(
 /**
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = unknown_.Schema
+export const unknown: Schema<unknown> = Unknown.Schema
 
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = string_.Schema
+export const string: Schema<string> = String.Schema
 
 /**
  * @since 1.0.0
@@ -102,7 +102,7 @@ export const maxLength: (
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = number_.Schema
+export const number: Schema<number> = Number.Schema
 
 /**
  * @since 1.0.0
@@ -121,7 +121,7 @@ export const max: (
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = boolean_.Schema
+export const boolean: Schema<boolean> = Boolean.Schema
 
 /**
  * @since 1.0.0
