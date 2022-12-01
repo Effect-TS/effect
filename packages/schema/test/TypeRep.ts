@@ -95,7 +95,7 @@ export const provideTypeRepFor = (
                 }: ${fields[i].typeRep}`
               }).join(", ") +
               (pipe(
-                ast.indexSignature,
+                ast.stringIndexSignature,
                 O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
                 O.getOrElse(() => "")
               ))
@@ -146,8 +146,8 @@ describe("typeRepFor", () => {
     )
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "{ readonly [_: string]: string }"
     )

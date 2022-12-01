@@ -97,19 +97,19 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           const decoder = D.fromStruct(fields)
           return pipe(
             UnknownObject.Decoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
-              if (O.isSome(oIndexSignature)) {
-                const indexSignature = D.fromIndexSignature(oIndexSignature.value)
+              if (O.isSome(oStringIndexSignature)) {
+                const stringIndexSignature = D.fromStringIndexSignature(oStringIndexSignature.value)
                 return pipe(
                   t,
                   D.flatMap((out) =>
                     pipe(
-                      indexSignature.decode(u),
+                      stringIndexSignature.decode(u),
                       T.map((rest) => ({ ...out, ...rest }))
                     )
                   )

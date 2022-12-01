@@ -88,18 +88,18 @@ export const provideJsonDecoderFor = (provider: Provider) => {
             fields[field.key] = go(field.value)
           }
           const decoder = D.fromStruct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
-          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           return pipe(
             JO.Decoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
-              if (O.isSome(oIndexSignature)) {
-                const indexSignature = D.fromIndexSignature(oIndexSignature.value)
+              if (O.isSome(oStringIndexSignature)) {
+                const stringIndexSignature = D.fromStringIndexSignature(oStringIndexSignature.value)
                 return pipe(
                   t,
                   D.flatMap((out) =>
                     pipe(
-                      indexSignature.decode(u),
+                      stringIndexSignature.decode(u),
                       T.map((rest) => ({ ...out, ...rest }))
                     )
                   )

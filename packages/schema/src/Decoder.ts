@@ -144,10 +144,10 @@ export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>
 /**
  * @since 1.0.0
  */
-export const fromIndexSignature = <S, A>(
+export const fromStringIndexSignature = <S, A>(
   value: Decoder<S, A>
 ): Decoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
-  make(S.indexSignature(value), (ri) => {
+  make(S.stringIndexSignature(value), (ri) => {
     const out: any = {}
     for (const key of Object.keys(ri)) {
       const t = value.decode(ri[key])

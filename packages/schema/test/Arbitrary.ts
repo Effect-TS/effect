@@ -113,8 +113,8 @@ describe("Arbitrary", () => {
     fc.assert(fc.property(arbitrary, (a) => guard.is(a)))
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const arbitrary = srbitraryFor(schema).arbitrary(fc)
     const guard = guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

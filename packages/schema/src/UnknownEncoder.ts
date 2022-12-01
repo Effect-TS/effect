@@ -76,14 +76,18 @@ export const provideUnknownEncoderFor = (provider: Provider) =>
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const indexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)), O.getOrNull)
+          const stringIndexSignature = pipe(
+            ast.stringIndexSignature,
+            O.map((is) => go(is.value)),
+            O.getOrNull
+          )
           return E.make(S.make(ast), (a) => {
             const out = {}
             for (const key of Object.keys(a)) {
               if (key in fields) {
                 out[key] = fields[key].encode(a[key])
-              } else if (indexSignature !== null) {
-                out[key] = indexSignature.encode(a[key])
+              } else if (stringIndexSignature !== null) {
+                out[key] = stringIndexSignature.encode(a[key])
               }
             }
             return out

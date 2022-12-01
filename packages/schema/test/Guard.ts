@@ -119,8 +119,8 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
@@ -250,7 +250,7 @@ describe("Guard", () => {
   })
 
   it("UnknownIndexSignature", () => {
-    const guard = guardFor(S.indexSignature(S.unknown))
+    const guard = guardFor(S.stringIndexSignature(S.unknown))
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
   })
@@ -418,8 +418,8 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
@@ -510,5 +510,20 @@ describe("Guard", () => {
       expect(guard.is(["a", 1, true, "a", true])).toEqual(true)
       expect(guard.is(["a", 1, true, "a", true, 1])).toEqual(false)
     })
+  })
+
+  it("withStringIndexSignature", () => {
+    const schema = pipe(
+      S.struct({ a: S.string }),
+      S.withStringIndexSignature(S.string)
+    )
+    const guard = guardFor(schema)
+    expect(guard.is({ a: "a" })).toEqual(true)
+    expect(guard.is({ a: "a", b: "b" })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ b: "b" })).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ a: "a", b: 2 })).toEqual(false)
   })
 })

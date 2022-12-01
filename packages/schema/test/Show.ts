@@ -86,7 +86,7 @@ export const provideShowFor = (provider: Provider) =>
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           return make(
             S.make(ast),
             (struct: { [_: PropertyKey]: unknown }) => {
@@ -97,11 +97,11 @@ export const provideShowFor = (provider: Provider) =>
                   out += `${JSON.stringify(key)}:${fields[key].show(struct[key])},`
                 }
               }
-              if (O.isSome(oIndexSignature)) {
-                const indexSignature = oIndexSignature.value
+              if (O.isSome(oStringIndexSignature)) {
+                const stringIndexSignature = oStringIndexSignature.value
                 for (const key of keys) {
                   if (!(key in fields)) {
-                    out += `${JSON.stringify(key)}:${indexSignature.show(struct[key])},`
+                    out += `${JSON.stringify(key)}:${stringIndexSignature.show(struct[key])},`
                   }
                 }
               }
@@ -239,8 +239,8 @@ describe("Show", () => {
     )
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     expect(showFor(schema).show({ a: "a", b: "b" })).toEqual(
       "{\"a\":\"a\",\"b\":\"b\"}"
     )

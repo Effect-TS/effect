@@ -90,7 +90,6 @@ export const field = (
  * @since 1.0.0
  */
 export interface IndexSignature {
-  readonly key: "string" | "number" | "symbol"
   readonly value: AST
   readonly readonly: boolean
 }
@@ -99,11 +98,9 @@ export interface IndexSignature {
  * @since 1.0.0
  */
 export const indexSignature = (
-  key: "string" | "number" | "symbol",
   value: AST,
   readonly: boolean
 ): IndexSignature => ({
-  key,
   value,
   readonly
 })
@@ -114,7 +111,7 @@ export const indexSignature = (
 export interface Struct {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
-  readonly indexSignature: Option<IndexSignature>
+  readonly stringIndexSignature: Option<IndexSignature>
 }
 
 /**
@@ -122,11 +119,11 @@ export interface Struct {
  */
 export const struct = (
   fields: ReadonlyArray<Field>,
-  indexSignature: Option<IndexSignature>
+  stringIndexSignature: Option<IndexSignature>
 ): Struct => ({
   _tag: "Struct",
   fields,
-  indexSignature
+  stringIndexSignature
 })
 
 /**

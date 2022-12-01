@@ -181,7 +181,7 @@ export const withRest = <R>(rest: Schema<R>) =>
         )
       ))
     }
-    throw new Error("cannot `rest` non-Tuple schemas")
+    throw new Error("cannot `withRest` non-Tuple schemas")
   }
 
 /**
@@ -208,8 +208,25 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const indexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
-  make(ast.struct([], O.some(ast.indexSignature("string", value.ast, true))))
+export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
+  make(ast.struct([], O.some(ast.indexSignature(value.ast, true))))
+
+/**
+ * @since 1.0.0
+ */
+export const withStringIndexSignature = <V>(value: Schema<V>) =>
+  <A>(
+    self: Schema<A>
+  ): Schema<A & { readonly [_: string]: V }> => {
+    if (ast.isStruct(self.ast)) {
+      const a = self.ast
+      if (O.isSome(a.stringIndexSignature)) {
+        throw new Error("cannot double apply `withStringIndexSignature`")
+      }
+      return make(ast.struct(a.fields, O.some(ast.indexSignature(value.ast, true))))
+    }
+    throw new Error("cannot `withStringIndexSignature` non-Struct schemas")
+  }
 
 /**
  * @since 1.0.0
@@ -278,7 +295,7 @@ export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
     return make(
       ast.struct(
         schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
-        schema.ast.indexSignature
+        schema.ast.stringIndexSignature
       )
     )
   }
@@ -310,7 +327,7 @@ export const required = <A>(schema: Schema<A>): Schema<{ [P in keyof A]-?: A[P] 
     return make(
       ast.struct(
         schema.ast.fields.map((f) => ast.field(f.key, f.value, false, f.readonly)),
-        schema.ast.indexSignature
+        schema.ast.stringIndexSignature
       )
     )
   }

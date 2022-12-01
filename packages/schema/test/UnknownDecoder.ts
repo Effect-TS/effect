@@ -121,8 +121,8 @@ describe("UnknownDecoder", () => {
     expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.fail(DE.notType("string", 1)))
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const decoder = UD.unknownDecoderFor(schema)
     expect(decoder.decode({ a: "a", b: "b" })).toEqual(D.succeed({ a: "a", b: "b" }))
 

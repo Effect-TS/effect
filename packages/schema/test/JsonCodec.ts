@@ -96,8 +96,8 @@ describe("JsonCodec", () => {
     expect(codec.decode({ a: "a" })).toEqual(D.fail(DE.notType("number", undefined)))
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const codec = jsonCodecFor(schema)
     expect(codec.decode({})).toEqual(D.succeed({}))
     expect(codec.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))

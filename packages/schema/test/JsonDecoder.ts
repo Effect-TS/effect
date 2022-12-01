@@ -76,8 +76,8 @@ describe("JsonDecoder", () => {
     expect(decoder.decode({ a: "a" })).toEqual(D.fail(DE.notType("number", undefined)))
   })
 
-  it("indexSignature", () => {
-    const schema = S.indexSignature(S.string)
+  it("stringIndexSignature", () => {
+    const schema = S.stringIndexSignature(S.string)
     const decoder = decoderFor(schema)
     expect(decoder.decode({})).toEqual(D.succeed({}))
     expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
@@ -164,5 +164,20 @@ describe("JsonDecoder", () => {
     expect(decoder.decode(["a", 1, true, false])).toEqual(D.succeed(["a", 1, true, false]))
     expect(decoder.decode(["a", 1, true, "a"])).toEqual(D.fail(DE.notType("boolean", "a")))
     expect(decoder.decode(["a", 1, true, "a", true])).toEqual(D.fail(DE.notType("boolean", "a")))
+  })
+
+  it("withStringIndexSignature", () => {
+    const schema = pipe(
+      S.struct({ a: S.string }),
+      S.withStringIndexSignature(S.string)
+    )
+    const decoder = decoderFor(schema)
+    expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
+    expect(decoder.decode({ a: "a", b: "b" })).toEqual(D.succeed({ a: "a", b: "b" }))
+
+    expect(decoder.decode({})).toEqual(D.fail(DE.notType("string", undefined)))
+    expect(decoder.decode({ b: "b" })).toEqual(D.fail(DE.notType("string", undefined)))
+    expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
+    expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.fail(DE.notType("string", 1)))
   })
 })

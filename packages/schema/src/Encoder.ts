@@ -41,10 +41,10 @@ export const fromTuple = <S, Components extends ReadonlyArray<Encoder<S, unknown
 /**
  * @since 1.0.0
  */
-export const toIndexSignature = <S, A>(
+export const fromStringIndexSignature = <S, A>(
   value: Encoder<S, A>
 ): Encoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
-  make(S.indexSignature(value), (a) => {
+  make(S.stringIndexSignature(value), (a) => {
     const out: any = {}
     for (const key in a) {
       out[key] = value.encode(a[key])

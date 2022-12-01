@@ -105,7 +105,7 @@ export const provideGuardFor = (provider: Provider) =>
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
+          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           return make(
             S.make(ast),
             (a): a is any => {
@@ -117,12 +117,12 @@ export const provideGuardFor = (provider: Provider) =>
                   return false
                 }
               }
-              if (O.isSome(oIndexSignature)) {
-                const indexSignature = oIndexSignature.value
+              if (O.isSome(oStringIndexSignature)) {
+                const stringIndexSignature = oStringIndexSignature.value
                 // skip when `{ readonly [_: string]: unknown }`
-                if (indexSignature.ast !== S.unknown.ast) {
+                if (stringIndexSignature.ast !== S.unknown.ast) {
                   for (const key of Object.keys(a)) {
-                    if (!(key in fields) && !indexSignature.is(a[key])) {
+                    if (!(key in fields) && !stringIndexSignature.is(a[key])) {
                       return false
                     }
                   }
