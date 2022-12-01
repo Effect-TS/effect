@@ -16,7 +16,7 @@ describe("JsonDecoder", () => {
       expect(decoder.decode([])).toEqual(D.succeed(new Set()))
       expect(decoder.decode([1, 2, 3])).toEqual(D.succeed(new Set([1, 2, 3])))
 
-      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("ReadonlyArray<unknown>", null)))
+      expect(decoder.decode(null)).toEqual(D.fail(DE.notType("JsonArray", null)))
       expect(decoder.decode([1, "a", 3])).toEqual(D.fail(DE.notType("number", "a")))
     })
 
@@ -55,7 +55,7 @@ describe("JsonDecoder", () => {
       expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
 
       expect(decoder.decode(["a"])).toEqual(D.fail(DE.notType("number", undefined)))
-      expect(decoder.decode({})).toEqual(D.fail(DE.notType("ReadonlyArray<unknown>", {})))
+      expect(decoder.decode({})).toEqual(D.fail(DE.notType("JsonArray", {})))
     })
 
     it("union", () => {
@@ -84,7 +84,7 @@ describe("JsonDecoder", () => {
       expect(decoder.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
       expect(decoder.decode([])).toEqual(
-        D.fail(DE.notType("{ readonly [_: string]: unknown }", []))
+        D.fail(DE.notType("JsonObject", []))
       )
       expect(decoder.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
     })
@@ -153,7 +153,7 @@ describe("JsonDecoder", () => {
         D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
       )
       expect(decoder.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
-        D.fail(DE.notType("{ readonly [_: string]: unknown }", 1))
+        D.fail(DE.notType("JsonObject", 1))
       )
     })
   })

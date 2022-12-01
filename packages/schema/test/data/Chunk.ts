@@ -57,7 +57,7 @@ describe("Chunk", () => {
       D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(jsonDecoder.decode(null)).toEqual(
-      D.fail(DE.notType("ReadonlyArray<unknown>", null))
+      D.fail(DE.notType("JsonArray", null))
     )
     expect(jsonDecoder.decode([1, "a"])).toEqual(
       D.fail(DE.notType("number", "a"))

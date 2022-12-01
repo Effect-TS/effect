@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import type { Json } from "@fp-ts/data/Json"
+import type { Json, JsonArray } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
@@ -14,7 +14,7 @@ import type * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/schema/data/Json")
+export const id = Symbol.for("@fp-ts/schema/data/JsonArray")
 
 /**
  * @since 1.0.0
@@ -29,13 +29,13 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.declareSchema(id, O.none, Provider)
+export const Schema: S.Schema<JsonArray> = I.declareSchema(id, O.none, Provider)
 
-const Guard: G.Guard<Json> = I.makeGuard(Schema, I.isJson)
+const Guard: G.Guard<JsonArray> = I.makeGuard(Schema, I.isJsonArray)
 
-const Decoder: D.Decoder<unknown, Json> = I.fromGuard(Guard, (u) => DE.notType("Json", u))
+const Decoder: D.Decoder<unknown, JsonArray> = I.fromGuard(Guard, (u) => DE.notType("JsonArray", u))
 
-const Arbitrary: A.Arbitrary<Json> = I.makeArbitrary(
+const Arbitrary: A.Arbitrary<JsonArray> = I.makeArbitrary(
   Schema,
-  (fc) => fc.jsonValue().map((json) => json as Json)
+  (fc) => fc.array(fc.jsonValue().map((json) => json as Json))
 )

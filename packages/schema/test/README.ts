@@ -34,7 +34,7 @@ describe("README", () => {
       T.right({ name: "name", age: 18 })
     )
     expect(jsonCodec.decode(null)).toEqual(
-      T.left([DE.notType("{ readonly [_: string]: unknown }", null)])
+      T.left([DE.notType("JsonObject", null)])
     )
   })
 

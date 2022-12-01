@@ -7,6 +7,8 @@ import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
 import * as J from "@fp-ts/schema/data/Json"
+import * as JA from "@fp-ts/schema/data/JsonArray"
+import * as JO from "@fp-ts/schema/data/JsonObject"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -56,7 +58,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            decoderFor(S.array(J.Schema)),
+            decoderFor(JA.Schema),
             D.compose(D.make(
               S.make(ast),
               (us) => {
@@ -88,7 +90,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           const decoder = D.fromStruct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
-            decoderFor(S.indexSignature(J.Schema)),
+            decoderFor(JO.Schema),
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oIndexSignature)) {

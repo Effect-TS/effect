@@ -69,7 +69,7 @@ describe("JsonCodec", () => {
     expect(codec.decode(["a", "1"])).toEqual(D.succeed(["a", 1]))
 
     expect(codec.decode(["a"])).toEqual(D.fail(DE.notType("string", undefined)))
-    expect(codec.decode({})).toEqual(D.fail(DE.notType("ReadonlyArray<unknown>", {})))
+    expect(codec.decode({})).toEqual(D.fail(DE.notType("JsonArray", {})))
 
     expect(codec.encode(["b", 2])).toEqual(["b", "2"])
   })
@@ -103,7 +103,7 @@ describe("JsonCodec", () => {
     expect(codec.decode({ a: "a" })).toEqual(D.succeed({ a: "a" }))
 
     expect(codec.decode([])).toEqual(
-      D.fail(DE.notType("{ readonly [_: string]: unknown }", []))
+      D.fail(DE.notType("JsonObject", []))
     )
     expect(codec.decode({ a: 1 })).toEqual(D.fail(DE.notType("string", 1)))
   })
@@ -172,7 +172,7 @@ describe("JsonCodec", () => {
       D.succeed({ a: "a1", as: [{ a: "a2", as: [] }] })
     )
     expect(codec.decode({ a: "a1", as: [{ a: "a2", as: [1] }] })).toEqual(
-      D.fail(DE.notType("{ readonly [_: string]: unknown }", 1))
+      D.fail(DE.notType("JsonObject", 1))
     )
   })
 })

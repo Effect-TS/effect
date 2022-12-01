@@ -4,7 +4,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as J from "@fp-ts/schema/data/Json"
+import * as JA from "@fp-ts/schema/data/JsonArray"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -30,7 +30,7 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Set<A>> =>
   pipe(D.UnknownArray, D.compose(fromArray(item)))
 
 const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Set<A>> =>
-  pipe(JD.jsonDecoderFor(S.array(J.Schema)), D.compose(fromArray(item)))
+  pipe(JD.jsonDecoderFor(JA.Schema), D.compose(fromArray(item)))
 
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))

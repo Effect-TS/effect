@@ -3,6 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
+import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
@@ -17,6 +18,17 @@ import type { Guard } from "@fp-ts/schema/Guard"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
+
+export const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+
+export const isJsonObject = (u: unknown): u is JsonObject =>
+  typeof u === "object" && u !== null && !Array.isArray(u) &&
+  Object.keys(u).every((key) => isJson(u[key]))
+
+export const isJson = (u: unknown): u is Json =>
+  u === null || typeof u === "string" || typeof u === "number" || typeof u === "boolean" ||
+  isJsonArray(u) ||
+  isJsonObject(u)
 
 export const GuardId: unique symbol = Symbol.for(
   "@fp-ts/schema/Guard"
