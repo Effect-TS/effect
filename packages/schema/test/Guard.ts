@@ -1,6 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as bigint from "@fp-ts/schema/data/bigint"
+import * as bigint from "@fp-ts/schema/data/_bigint"
 import * as json from "@fp-ts/schema/data/Json"
 import * as set from "@fp-ts/schema/data/Set"
 import * as G from "@fp-ts/schema/Guard"
