@@ -33,7 +33,11 @@ export const Schema: S.Schema<Json> = I.declareSchema(id, O.none, Provider)
 
 const Guard: G.Guard<Json> = I.makeGuard(Schema, I.isJson)
 
-const Decoder: D.Decoder<unknown, Json> = I.fromGuard(Guard, (u) => DE.notType("Json", u))
+const Decoder: D.Decoder<unknown, Json> = I.fromRefinement(
+  Schema,
+  I.isJson,
+  (u) => DE.notType("Json", u)
+)
 
 const Arbitrary: A.Arbitrary<Json> = I.makeArbitrary(
   Schema,

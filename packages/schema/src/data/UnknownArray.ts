@@ -35,19 +35,19 @@ export type UnknownArray = ReadonlyArray<unknown>
  */
 export const Schema: S.Schema<UnknownArray> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<UnknownArray> = I.makeGuard(
-  Schema,
-  (u): u is UnknownArray => Array.isArray(u)
-)
+const isUnknownArray = (u: unknown): u is UnknownArray => Array.isArray(u)
 
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, UnknownArray> = I.fromGuard(
-  Guard,
+export const Guard: G.Guard<UnknownArray> = I.makeGuard(Schema, isUnknownArray)
+
+/**
+ * @since 1.0.0
+ */
+export const Decoder: D.Decoder<unknown, UnknownArray> = I.fromRefinement(
+  Schema,
+  isUnknownArray,
   (u) => DE.notType("ReadonlyArray<unknown>", u)
 )
 

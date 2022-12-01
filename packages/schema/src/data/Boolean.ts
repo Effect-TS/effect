@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { isBoolean } from "@fp-ts/data/Boolean"
 import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DE from "@fp-ts/schema/DecodeError"
@@ -30,9 +31,9 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<boolean> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard(Schema, (u): u is boolean => typeof u === "boolean")
+const Guard = I.makeGuard(Schema, isBoolean)
 
-const Decoder = I.fromGuard(Guard, (u) => DE.notType("boolean", u))
+const Decoder = I.fromRefinement(Schema, isBoolean, (u) => DE.notType("boolean", u))
 
 const Encoder = I.makeEncoder(Schema, identity)
 

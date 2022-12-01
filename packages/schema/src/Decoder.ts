@@ -10,7 +10,6 @@ import type { AST } from "@fp-ts/schema/AST"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
-import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -35,14 +34,6 @@ export interface Decoder<in S, in out A> extends Schema<A> {
  */
 export const make: <S, A>(schema: Schema<A>, decode: Decoder<S, A>["decode"]) => Decoder<S, A> =
   I.makeDecoder
-
-/**
- * @since 1.0.0
- */
-export const fromGuard: <A>(
-  guard: G.Guard<A>,
-  onFalse: (u: unknown) => DE.DecodeError
-) => Decoder<unknown, A> = I.fromGuard
 
 /**
  * @since 1.0.0

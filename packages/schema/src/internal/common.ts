@@ -115,10 +115,11 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
   <A>(ab: Decoder<A, B>): Decoder<A, C> =>
     makeDecoder(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
-export const fromGuard = <A>(
-  guard: Guard<A>,
+export const fromRefinement = <A>(
+  schema: Schema<A>,
+  refinement: (u: unknown) => u is A,
   onFalse: (u: unknown) => DE.DecodeError
-): Decoder<unknown, A> => makeDecoder(guard, (u) => guard.is(u) ? succeed(u) : fail(onFalse(u)))
+): Decoder<unknown, A> => makeDecoder(schema, (u) => refinement(u) ? succeed(u) : fail(onFalse(u)))
 
 export const makeGuard = <A>(
   schema: Schema<A>,

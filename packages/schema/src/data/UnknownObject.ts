@@ -35,20 +35,20 @@ export type UnknownObject = { readonly [_: string]: unknown }
  */
 export const Schema: S.Schema<UnknownObject> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard: G.Guard<UnknownObject> = I.makeGuard(
-  Schema,
-  (u): u is { readonly [_: string]: unknown } =>
-    typeof u === "object" && u != null && !Array.isArray(u)
-)
+const isUnknownObject = (u: unknown): u is { readonly [_: string]: unknown } =>
+  typeof u === "object" && u != null && !Array.isArray(u)
 
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, UnknownObject> = I.fromGuard(
-  Guard,
+export const Guard: G.Guard<UnknownObject> = I.makeGuard(Schema, isUnknownObject)
+
+/**
+ * @since 1.0.0
+ */
+export const Decoder: D.Decoder<unknown, UnknownObject> = I.fromRefinement(
+  Schema,
+  isUnknownObject,
   (u) => DE.notType("{ readonly [_: string]: unknown }", u)
 )
 

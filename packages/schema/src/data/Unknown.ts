@@ -33,10 +33,13 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<unknown> = I.declareSchema(id, O.none, Provider)
 
-const Guard: G.Guard<unknown> = I.makeGuard(Schema, (_u): _u is unknown => true)
+const isUnknown = (_u: unknown): _u is unknown => true
 
-const Decoder: D.Decoder<unknown, any> = I.fromGuard(
-  Guard,
+const Guard: G.Guard<unknown> = I.makeGuard(Schema, isUnknown)
+
+const Decoder: D.Decoder<unknown, any> = I.fromRefinement(
+  Schema,
+  isUnknown,
   (u) => DE.notType("unknown", u)
 )
 
