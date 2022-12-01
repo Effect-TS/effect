@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import { identity, pipe } from "@fp-ts/data/Function"
+import type { Json } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { AST } from "@fp-ts/schema/AST"
-import type * as J from "@fp-ts/schema/data/Json"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
@@ -22,7 +22,7 @@ export const JsonEncoderId = I.JsonEncoderId
 /**
  * @since 1.0.0
  */
-export interface JsonEncoder<A> extends Encoder<J.Json, A> {}
+export interface JsonEncoder<A> extends Encoder<Json, A> {}
 
 /**
  * @since 1.0.0
@@ -30,8 +30,8 @@ export interface JsonEncoder<A> extends Encoder<J.Json, A> {}
 export const provideJsonEncoderFor = (
   provider: Provider
 ) =>
-  <A>(schema: Schema<A>): Encoder<J.Json, A> => {
-    const go = (ast: AST): Encoder<J.Json, any> => {
+  <A>(schema: Schema<A>): Encoder<Json, A> => {
+    const go = (ast: AST): Encoder<Json, any> => {
       switch (ast._tag) {
         case "Declaration": {
           const handler = pipe(
@@ -54,7 +54,7 @@ export const provideJsonEncoderFor = (
           const components = ast.components.map(go)
           if (O.isSome(ast.restElement)) {
             const restElement = go(ast.restElement.value)
-            return E.make<Array<J.Json>, ReadonlyArray<any>>(
+            return E.make<Array<Json>, ReadonlyArray<any>>(
               S.make(ast),
               (a) =>
                 a.map((ai, i) =>
@@ -62,7 +62,7 @@ export const provideJsonEncoderFor = (
                 )
             )
           }
-          return E.make<Array<J.Json>, ReadonlyArray<any>>(
+          return E.make<Array<Json>, ReadonlyArray<any>>(
             S.make(ast),
             (a) => a.map((ai, i) => components[i].encode(ai))
           )
@@ -96,6 +96,6 @@ export const provideJsonEncoderFor = (
 /**
  * @since 1.0.0
  */
-export const jsonEncoderFor: <A>(schema: Schema<A>) => Encoder<J.Json, A> = provideJsonEncoderFor(
+export const jsonEncoderFor: <A>(schema: Schema<A>) => Encoder<Json, A> = provideJsonEncoderFor(
   empty
 )

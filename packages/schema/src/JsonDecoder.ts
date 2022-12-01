@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
+import type { Json } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
@@ -22,7 +23,7 @@ export const JsonDecoderId = I.JsonDecoderId
 /**
  * @since 1.0.0
  */
-export interface JsonDecoder<A> extends Decoder<J.Json, A> {}
+export interface JsonDecoder<A> extends Decoder<Json, A> {}
 
 /**
  * @since 1.0.0
@@ -50,7 +51,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
         case "Of":
           return decoderFor(S.make(ast))
         case "Tuple": {
-          const decoder = D.fromTuple<J.Json, ReadonlyArray<JsonDecoder<unknown>>>(
+          const decoder = D.fromTuple<Json, ReadonlyArray<JsonDecoder<unknown>>>(
             ...ast.components.map(go)
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
@@ -84,7 +85,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const decoder = D.fromStruct<J.Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
+          const decoder = D.fromStruct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           return pipe(
             decoderFor(S.indexSignature(J.Schema)),
