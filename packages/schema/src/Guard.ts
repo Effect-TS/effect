@@ -5,6 +5,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type { AST } from "@fp-ts/schema/AST"
+import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
+import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -30,23 +32,6 @@ export const make: <A>(
   schema: Schema<A>,
   is: Guard<A>["is"]
 ) => Guard<A> = I.makeGuard
-
-/**
- * @since 1.0.0
- */
-export const UnknownArray: Guard<ReadonlyArray<unknown>> = make(
-  S.array(S.unknown),
-  (u): u is ReadonlyArray<unknown> => Array.isArray(u)
-)
-
-/**
- * @since 1.0.0
- */
-export const UnknownIndexSignature: Guard<{ readonly [_: string]: unknown }> = make(
-  S.indexSignature(S.unknown),
-  (u): u is { readonly [_: string]: unknown } =>
-    typeof u === "object" && u != null && !Array.isArray(u)
-)
 
 /**
  * @since 1.0.0
@@ -92,7 +77,7 @@ export const provideGuardFor = (provider: Provider) =>
           return make(
             S.make(ast),
             (a): a is any => {
-              if (UnknownArray.is(a)) {
+              if (UnknownArray.Guard.is(a)) {
                 if (components.every((guard, i) => guard.is(a[i]))) {
                   if (O.isSome(oRestElement)) {
                     const restElement = oRestElement.value
@@ -124,7 +109,7 @@ export const provideGuardFor = (provider: Provider) =>
           return make(
             S.make(ast),
             (a): a is any => {
-              if (!UnknownIndexSignature.is(a)) {
+              if (!UnknownObject.Guard.is(a)) {
                 return false
               }
               for (const key of Object.keys(fields)) {

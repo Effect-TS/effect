@@ -7,8 +7,10 @@ import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
+import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
+import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
-import * as G from "@fp-ts/schema/Guard"
+import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -69,22 +71,6 @@ export const flatMap: <A, E2, B>(
  */
 export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Decoder<A, C> =
   I.compose
-
-/**
- * @since 1.0.0
- */
-export const UnknownArray: Decoder<unknown, ReadonlyArray<unknown>> = fromGuard(
-  G.UnknownArray,
-  (u) => DE.notType("ReadonlyArray<unknown>", u)
-)
-
-/**
- * @since 1.0.0
- */
-export const UnknownIndexSignature: Decoder<unknown, { readonly [_: string]: unknown }> = fromGuard(
-  G.UnknownIndexSignature,
-  (u) => DE.notType("{ readonly [_: string]: unknown }", u)
-)
 
 /**
  * @since 1.0.0
@@ -226,7 +212,7 @@ export const provideDecoderFor = (provider: Provider) =>
           const decoder = fromTuple(...ast.components.map(go))
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            UnknownArray,
+            UnknownArray.Decoder,
             compose(make(
               S.make(ast),
               (us) => {
@@ -270,7 +256,7 @@ export const provideDecoderFor = (provider: Provider) =>
           const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
           const decoder = fromStruct(fields)
           return pipe(
-            UnknownIndexSignature,
+            UnknownObject.Decoder,
             compose(make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oIndexSignature)) {
