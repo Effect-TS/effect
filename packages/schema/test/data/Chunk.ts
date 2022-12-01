@@ -6,6 +6,7 @@ import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
+import * as UD from "@fp-ts/schema/UnknownDecoder"
 import * as fc from "fast-check"
 
 describe("Chunk", () => {
@@ -28,7 +29,7 @@ describe("Chunk", () => {
 
   it("decoder", () => {
     const schema = C.schema(S.number)
-    const decoder = D.decoderFor(schema)
+    const decoder = UD.unknownDecoderFor(schema)
     expect(decoder.decode([])).toEqual(D.succeed(DC.empty))
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.succeed(DC.unsafeFromArray([1, 2, 3]))

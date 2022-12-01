@@ -2,17 +2,10 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
-import type { AST } from "@fp-ts/schema/AST"
-import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
-import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -90,6 +83,14 @@ export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown
 /**
  * @since 1.0.0
  */
+export const of = <A>(
+  value: A
+): Decoder<unknown, A> =>
+  I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
+
+/**
+ * @since 1.0.0
+ */
 export const fromArray = <S, A>(
   item: Decoder<S, A>
 ): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
@@ -161,6 +162,24 @@ export const fromIndexSignature = <S, A>(
 /**
  * @since 1.0.0
  */
+export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
+  ...members: Members
+): Decoder<I, S.Infer<Members[number]>> =>
+  make(S.union(...members), (u) => {
+    const lefts: Array<DE.DecodeError> = []
+    for (const member of members) {
+      const t = member.decode(u)
+      if (T.isRightOrBoth(t)) {
+        return t
+      }
+      lefts.push(...t.left)
+    }
+    return T.left(lefts)
+  })
+
+/**
+ * @since 1.0.0
+ */
 export const lazy = <S, A>(
   f: () => Decoder<S, A>
 ): Decoder<S, A> => {
@@ -171,110 +190,3 @@ export const lazy = <S, A>(
     (a) => get().decode(a)
   )
 }
-
-/**
- * @since 1.0.0
- */
-export const provideDecoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Decoder<any, A> => {
-    const go = (ast: AST): Decoder<any, any> => {
-      switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            Semigroup.combine(provider),
-            findHandler(I.DecoderId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Decoder interpreter, data type ${String(ast.id.description)}`
-          )
-        }
-        case "Of":
-          return make(
-            S.make(ast),
-            (u) => u === ast.value ? succeed(u) : fail(DE.notEqual(ast.value, u))
-          )
-        case "Tuple": {
-          const decoder = fromTuple(...ast.components.map(go))
-          const oRestElement = pipe(ast.restElement, O.map(go))
-          return pipe(
-            UnknownArray.Decoder,
-            compose(make(
-              S.make(ast),
-              (us) => {
-                const t = decoder.decode(us)
-                if (O.isSome(oRestElement)) {
-                  const restElement = fromArray(oRestElement.value)
-                  return pipe(
-                    t,
-                    flatMap((as) =>
-                      pipe(
-                        restElement.decode(us.slice(ast.components.length)),
-                        T.map((rest) => [...as, ...rest])
-                      )
-                    )
-                  )
-                }
-                return t
-              }
-            ))
-          )
-        }
-        case "Union": {
-          const members = ast.members.map(go)
-          return make(S.make(ast), (u) => {
-            const lefts: Array<DE.DecodeError> = []
-            for (const member of members) {
-              const t = member.decode(u)
-              if (T.isRightOrBoth(t)) {
-                return t
-              }
-              lefts.push(...t.left)
-            }
-            return T.left(lefts)
-          })
-        }
-        case "Struct": {
-          const fields: Record<PropertyKey, Decoder<unknown, any>> = {}
-          for (const field of ast.fields) {
-            fields[field.key] = go(field.value)
-          }
-          const oIndexSignature = pipe(ast.indexSignature, O.map((is) => go(is.value)))
-          const decoder = fromStruct(fields)
-          return pipe(
-            UnknownObject.Decoder,
-            compose(make(S.make(ast), (u) => {
-              const t = decoder.decode(u)
-              if (O.isSome(oIndexSignature)) {
-                const indexSignature = fromIndexSignature(oIndexSignature.value)
-                return pipe(
-                  t,
-                  flatMap((out) =>
-                    pipe(
-                      indexSignature.decode(u),
-                      T.map((rest) => ({ ...out, ...rest }))
-                    )
-                  )
-                )
-              }
-              return t
-            }))
-          )
-        }
-        case "Lazy":
-          return lazy(() => go(ast.f()))
-      }
-    }
-
-    return go(schema.ast)
-  }
-
-/**
- * @since 1.0.0
- */
-export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(empty)

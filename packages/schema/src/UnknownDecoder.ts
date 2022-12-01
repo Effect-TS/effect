@@ -7,7 +7,7 @@ import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
-import * as DE from "@fp-ts/schema/DecodeError"
+import type * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -51,10 +51,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return D.make(
-            S.make(ast),
-            (u) => u === ast.value ? D.succeed(u) : D.fail(DE.notEqual(ast.value, u))
-          )
+          return D.of(ast.value)
         case "Tuple": {
           const decoder = D.fromTuple(...ast.components.map(go))
           const oRestElement = pipe(ast.restElement, O.map(go))

@@ -3,8 +3,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as ast from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
+import * as JD from "@fp-ts/schema/JsonDecoder"
 import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
@@ -28,7 +28,7 @@ describe("Schema", () => {
       expect(guard.is(1)).toEqual(true)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is(1.2)).toEqual(false)
-      const decoder = D.decoderFor(schema)
+      const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode(1)).toEqual(E.right(1))
       expect(decoder.decode(1.2)).toEqual(E.left([DE.custom({}, 1.2)]))
       const arbitrary = A.arbitraryFor(schema)
@@ -53,7 +53,7 @@ describe("Schema", () => {
       expect(guard.is({})).toEqual(false)
       expect(guard.is({ a: 1 })).toEqual(false)
       expect(guard.is({ a: 1, b: 2 })).toEqual(false)
-      const decoder = D.decoderFor(schema)
+      const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode({ a: 1, b: 1 })).toEqual(E.right({ a: 1, b: 1 }))
       expect(decoder.decode({ a: 1, b: 2 })).toEqual(E.left([DE.custom({}, { a: 1, b: 2 })]))
       const arbitrary = A.arbitraryFor(schema)

@@ -34,7 +34,10 @@ export const Schema: S.Schema<Json> = I.declareSchema(id, O.none, Provider)
 
 const Guard: G.Guard<Json> = I.makeGuard(Schema, I.isJson)
 
-const Decoder: D.Decoder<unknown, Json> = I.fromRefinement(
+/**
+ * @since 1.0.0
+ */
+export const Decoder: D.Decoder<unknown, Json> = I.fromRefinement(
   Schema,
   I.isJson,
   (u) => DE.notType("Json", u)
