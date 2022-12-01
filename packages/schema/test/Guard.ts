@@ -488,4 +488,27 @@ describe("Guard", () => {
 
     expect(guard.is(2)).toEqual(false)
   })
+
+  describe("withRest", () => {
+    it("baseline", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.withRest(S.boolean))
+      const guard = guardFor(schema)
+      expect(guard.is(["a", 1])).toEqual(true)
+      expect(guard.is(["a", 1, true])).toEqual(true)
+      expect(guard.is(["a", 1, true, false])).toEqual(true)
+      expect(guard.is(["a", 1, true, "a"])).toEqual(false)
+      expect(guard.is(["a", 1, true, "a", true])).toEqual(false)
+    })
+
+    it("multiple withRest calls must result in a union", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.withRest(S.boolean), S.withRest(S.string))
+      const guard = guardFor(schema)
+      expect(guard.is(["a", 1])).toEqual(true)
+      expect(guard.is(["a", 1, true])).toEqual(true)
+      expect(guard.is(["a", 1, true, false])).toEqual(true)
+      expect(guard.is(["a", 1, true, "a"])).toEqual(true)
+      expect(guard.is(["a", 1, true, "a", true])).toEqual(true)
+      expect(guard.is(["a", 1, true, "a", true, 1])).toEqual(false)
+    })
+  })
 })

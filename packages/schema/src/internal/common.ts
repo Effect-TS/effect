@@ -19,11 +19,13 @@ import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
+export const isUnknownObject = (u: unknown): u is { readonly [_: string]: unknown } =>
+  typeof u === "object" && u != null && !Array.isArray(u)
+
 export const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
 
 export const isJsonObject = (u: unknown): u is JsonObject =>
-  typeof u === "object" && u !== null && !Array.isArray(u) &&
-  Object.keys(u).every((key) => isJson(u[key]))
+  isUnknownObject(u) && Object.keys(u).every((key) => isJson(u[key]))
 
 export const isJson = (u: unknown): u is Json =>
   u === null || typeof u === "string" || typeof u === "number" || typeof u === "boolean" ||

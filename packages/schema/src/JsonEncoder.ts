@@ -77,7 +77,7 @@ export const provideJsonEncoderFor = (
         }
         case "Struct": {
           return E.make(S.make(ast), (a) => {
-            const out = {}
+            const out: any = {}
             for (let i = 0; i < ast.fields.length; i++) {
               const key = ast.fields[i].key
               out[key] = a[key]

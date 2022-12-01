@@ -161,6 +161,11 @@ export const tuple = (
 /**
  * @since 1.0.0
  */
+export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
+
+/**
+ * @since 1.0.0
+ */
 export interface Union {
   readonly _tag: "Union"
   readonly members: ReadonlyArray<AST>

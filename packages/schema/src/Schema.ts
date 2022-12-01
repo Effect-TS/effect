@@ -107,16 +107,12 @@ export const number: Schema<number> = Number.Schema
 /**
  * @since 1.0.0
  */
-export const min: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = min_.schema
+export const min: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = min_.schema
 
 /**
  * @since 1.0.0
  */
-export const max: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = max_.schema
+export const max: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = max_.schema
 
 /**
  * @since 1.0.0
@@ -126,9 +122,7 @@ export const boolean: Schema<boolean> = Boolean.Schema
 /**
  * @since 1.0.0
  */
-export const of = <A>(
-  value: A
-): Schema<A> => make(ast.of(value))
+export const of = <A>(value: A): Schema<A> => make(ast.of(value))
 
 /**
  * @since 1.0.0
@@ -138,9 +132,8 @@ export type Literal = string | number | boolean | null | undefined | symbol | bi
 /**
  * @since 1.0.0
  */
-export const literal = <A extends ReadonlyArray<Literal>>(
-  ...a: A
-): Schema<A[number]> => union(...a.map(of))
+export const literal = <A extends ReadonlyArray<Literal>>(...a: A): Schema<A[number]> =>
+  union(...a.map(of))
 
 /**
  * @since 1.0.0
@@ -152,9 +145,7 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const nativeEnum = <A extends { [_: string]: string | number }>(
-  nativeEnum: A
-): Schema<A> =>
+export const nativeEnum = <A extends { [_: string]: string | number }>(nativeEnum: A): Schema<A> =>
   make(ast.union(
     Object.keys(nativeEnum).filter(
       (key) => typeof nativeEnum[nativeEnum[key]] !== "number"
@@ -164,12 +155,34 @@ export const nativeEnum = <A extends { [_: string]: string | number }>(
 /**
  * @since 1.0.0
  */
-export const tuple = <
-  Components extends ReadonlyArray<Schema<any>>
->(
+export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ): Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
   make(ast.tuple(components.map((c) => c.ast), O.none, true))
+
+/**
+ * @since 1.0.0
+ */
+export const withRest = <R>(rest: Schema<R>) =>
+  <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
+    if (ast.isTuple(self.ast)) {
+      const a = self.ast
+      return make(pipe(
+        a.restElement,
+        O.match(
+          () => ast.tuple(a.components, O.some(rest.ast), true),
+          (value) =>
+            // if `self` already contains a rest element merge them into a union
+            ast.tuple(
+              a.components,
+              O.some(ast.union([value, rest.ast])),
+              true
+            )
+        )
+      ))
+    }
+    throw new Error("cannot `rest` non-Tuple schemas")
+  }
 
 /**
  * @since 1.0.0
@@ -195,17 +208,14 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const indexSignature = <A>(
-  value: Schema<A>
-): Schema<{ readonly [_: string]: A }> =>
+export const indexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
   make(ast.struct([], O.some(ast.indexSignature("string", value.ast, true))))
 
 /**
  * @since 1.0.0
  */
-export const array = <A>(
-  item: Schema<A>
-): Schema<ReadonlyArray<A>> => make(ast.tuple([], O.some(item.ast), true))
+export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
+  make(ast.tuple([], O.some(item.ast), true))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
@@ -225,18 +235,14 @@ export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
 /**
  * @since 1.0.0
  */
-export const lazy = <A>(
-  f: () => Schema<A>
-): Schema<A> => {
+export const lazy = <A>(f: () => Schema<A>): Schema<A> => {
   return make(ast.lazy(() => f().ast))
 }
 
 /**
  * @since 1.0.0
  */
-export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) =>
+export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (schema: Schema<A>): Schema<{ [P in Keys[number]]: A[P] }> => {
     return make(ast.struct(
       ast.getFields(schema.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
@@ -247,18 +253,14 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(
 /**
  * @since 1.0.0
  */
-export const keyof = <A>(
-  schema: Schema<A>
-): Schema<keyof A> => {
+export const keyof = <A>(schema: Schema<A>): Schema<keyof A> => {
   return union(...ast.getFields(schema.ast).map((field) => of(field.key as keyof A)))
 }
 
 /**
  * @since 1.0.0
  */
-export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
-  ...keys: Keys
-) =>
+export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (schema: Schema<A>): Schema<{ [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
     return make(ast.struct(
       ast.getFields(schema.ast).filter((f) =>
@@ -271,9 +273,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(
 /**
  * @since 1.0.0
  */
-export const partial = <A>(
-  schema: Schema<A>
-): Schema<Partial<A>> => {
+export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
   if (ast.isStruct(schema.ast)) {
     return make(
       ast.struct(
@@ -288,30 +288,24 @@ export const partial = <A>(
 /**
  * @since 1.0.0
  */
-export const optional = <A>(
-  schema: Schema<A>
-): Schema<A | undefined> => union(of(undefined), schema)
+export const optional = <A>(schema: Schema<A>): Schema<A | undefined> =>
+  union(of(undefined), schema)
 
 /**
  * @since 1.0.0
  */
-export const nullable = <A>(
-  schema: Schema<A>
-): Schema<A | null> => union(of(null), schema)
+export const nullable = <A>(schema: Schema<A>): Schema<A | null> => union(of(null), schema)
 
 /**
  * @since 1.0.0
  */
-export const nullish = <A>(
-  schema: Schema<A>
-): Schema<A | null | undefined> => union(of(null), of(undefined), schema)
+export const nullish = <A>(schema: Schema<A>): Schema<A | null | undefined> =>
+  union(of(null), of(undefined), schema)
 
 /**
  * @since 1.0.0
  */
-export const required = <A>(
-  schema: Schema<A>
-): Schema<{ [P in keyof A]-?: A[P] }> => {
+export const required = <A>(schema: Schema<A>): Schema<{ [P in keyof A]-?: A[P] }> => {
   if (ast.isStruct(schema.ast)) {
     return make(
       ast.struct(
@@ -326,9 +320,7 @@ export const required = <A>(
 /**
  * @since 1.0.0
  */
-export const option = <A>(
-  value: Schema<A>
-): Schema<Option<A>> =>
+export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
   union(
     struct({ _tag: of("None" as const) }),
     struct({ _tag: of("Some" as const), value })
@@ -337,10 +329,7 @@ export const option = <A>(
 /**
  * @since 1.0.0
  */
-export const either = <E, A>(
-  left: Schema<E>,
-  right: Schema<A>
-): Schema<Either<E, A>> =>
+export const either = <E, A>(left: Schema<E>, right: Schema<A>): Schema<Either<E, A>> =>
   union(
     struct({ _tag: of("Left" as const), left }),
     struct({ _tag: of("Right" as const), right })

@@ -150,4 +150,14 @@ describe("UnknownDecoder", () => {
       D.fail(DE.notType("{ readonly [_: string]: unknown }", 1))
     )
   })
+
+  it("withRest", () => {
+    const schema = pipe(S.tuple(S.string, S.number), S.withRest(S.boolean))
+    const decoder = UD.unknownDecoderFor(schema)
+    expect(decoder.decode(["a", 1])).toEqual(D.succeed(["a", 1]))
+    expect(decoder.decode(["a", 1, true])).toEqual(D.succeed(["a", 1, true]))
+    expect(decoder.decode(["a", 1, true, false])).toEqual(D.succeed(["a", 1, true, false]))
+    expect(decoder.decode(["a", 1, true, "a"])).toEqual(D.fail(DE.notType("boolean", "a")))
+    expect(decoder.decode(["a", 1, true, "a", true])).toEqual(D.fail(DE.notType("boolean", "a")))
+  })
 })
