@@ -34,37 +34,33 @@ export const GuardId: unique symbol = Symbol.for(
   "@fp-ts/schema/Guard"
 )
 
-export type GuardId = typeof GuardId
-
 export const ArbitraryId: unique symbol = Symbol.for(
   "@fp-ts/schema/Arbitrary"
 )
-
-export type ArbitraryId = typeof ArbitraryId
 
 export const JsonDecoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/JsonDecoder"
 )
 
-export type JsonDecoderId = typeof JsonDecoderId
+export const UnknownDecoderId: unique symbol = Symbol.for(
+  "@fp-ts/schema/UnknownDecoder"
+)
 
 export const JsonEncoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/JsonEncoder"
 )
 
-export type JsonEncoderId = typeof JsonEncoderId
+export const UnknownEncoderId: unique symbol = Symbol.for(
+  "@fp-ts/schema/UnknownEncoder"
+)
 
 export const DecoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/Decoder"
 )
 
-export type DecoderId = typeof DecoderId
-
 export const EncoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/Encoder"
 )
-
-export type EncoderId = typeof EncoderId
 
 export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
 

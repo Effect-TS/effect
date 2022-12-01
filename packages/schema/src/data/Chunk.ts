@@ -9,7 +9,7 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import * as JsonArray from "@fp-ts/schema/data/JsonArray"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as D from "@fp-ts/schema/Decoder"
-import * as G from "@fp-ts/schema/Guard"
+import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Provider"
@@ -42,10 +42,11 @@ const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
-  [G.GuardId]: guard,
-  [A.ArbitraryId]: arbitrary,
-  [D.DecoderId]: decoder,
-  [JD.JsonDecoderId]: jsonDecoder
+  [I.GuardId]: guard,
+  [I.ArbitraryId]: arbitrary,
+  [I.DecoderId]: decoder,
+  [I.UnknownDecoderId]: decoder,
+  [I.JsonDecoderId]: jsonDecoder
 })
 
 /**

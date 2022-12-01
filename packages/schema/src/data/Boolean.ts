@@ -21,8 +21,10 @@ export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
   [I.DecoderId]: () => Decoder,
-  [I.EncoderId]: () => Encoder,
+  [I.UnknownDecoderId]: () => Decoder,
   [I.JsonDecoderId]: () => Decoder,
+  [I.EncoderId]: () => Encoder,
+  [I.UnknownEncoderId]: () => Encoder,
   [I.JsonEncoderId]: () => Encoder
 })
 

@@ -176,8 +176,8 @@ export const lazy = <S, A>(
  * @since 1.0.0
  */
 export const provideDecoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Decoder<unknown, A> => {
-    const go = (ast: AST): Decoder<unknown, any> => {
+  <A>(schema: Schema<A>): Decoder<any, A> => {
+    const go = (ast: AST): Decoder<any, any> => {
       switch (ast._tag) {
         case "Declaration": {
           const handler = pipe(

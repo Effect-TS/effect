@@ -12,6 +12,7 @@ import * as I from "@fp-ts/schema/internal/common"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
+import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 /**
  * @since 1.0.0
@@ -27,8 +28,8 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 const fromArray = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Set<A>> =>
   pipe(D.fromArray(item), D.compose(D.make(schema(item), (as) => D.succeed(new Set(as)))))
 
-const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Set<A>> =>
-  pipe(D.decoderFor(UnknownArray.Schema), D.compose(fromArray(item)))
+const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder<Set<A>> =>
+  pipe(UD.unknownDecoderFor(UnknownArray.Schema), D.compose(fromArray(item)))
 
 const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Set<A>> =>
   pipe(JD.jsonDecoderFor(JsonArray.Schema), D.compose(fromArray(item)))
@@ -42,7 +43,7 @@ const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
 export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.DecoderId]: decoder,
+  [I.UnknownDecoderId]: unknownDecoder,
   [I.JsonDecoderId]: jsonDecoder
 })
 
