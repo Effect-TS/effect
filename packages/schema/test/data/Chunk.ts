@@ -27,7 +27,7 @@ describe("Chunk", () => {
     expect(guard.is(DC.unsafeFromArray(["a", "b", 1]))).toEqual(false)
   })
 
-  it("decoder", () => {
+  it("unknownDecoder", () => {
     const schema = C.schema(S.number)
     const decoder = UD.unknownDecoderFor(schema)
     expect(decoder.decode([])).toEqual(D.succeed(DC.empty))
@@ -58,7 +58,7 @@ describe("Chunk", () => {
       D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(jsonDecoder.decode(null)).toEqual(
-      D.fail(DE.notType("JsonArray", null))
+      D.fail(DE.notType("ReadonlyArray<unknown>", null))
     )
     expect(jsonDecoder.decode([1, "a"])).toEqual(
       D.fail(DE.notType("number", "a"))

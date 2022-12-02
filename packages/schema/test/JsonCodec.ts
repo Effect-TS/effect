@@ -18,7 +18,6 @@ const NumberFromString: S.Schema<number> = S.declare(
   id,
   O.none,
   P.make(id, {
-    [D.DecoderId]: () => NumberFromStringJsonDecoder,
     [G.GuardId]: () => G.guardFor(S.number),
     [JD.JsonDecoderId]: () => NumberFromStringJsonDecoder,
     [JE.JsonEncoderId]: () => NumberFromStringJsonEncoder

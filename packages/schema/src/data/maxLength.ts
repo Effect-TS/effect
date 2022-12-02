@@ -22,7 +22,7 @@ const guard = (maxLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(maxLength)(self), (u): u is A => self.is(u) && u.length <= maxLength)
 
-const decoder = (maxLength: number) =>
+const unknownDdecoder = (maxLength: number) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(maxLength)(self),
@@ -33,7 +33,7 @@ const decoder = (maxLength: number) =>
         )
     )
 
-const encoder = (maxLength: number) =>
+const jsonEncoder = (maxLength: number) =>
   <A extends { length: number }>(self: JsonEncoder<A>): JsonEncoder<A> =>
     I.makeEncoder(schema(maxLength)(self), self.encode)
 
@@ -47,15 +47,13 @@ const arbitrary = (maxLength: number) =>
 /**
  * @since 1.0.0
  */
-export const Provider: P.Provider = P.make(id, {
+export const Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.DecoderId]: decoder,
-  [I.UnknownDecoderId]: decoder,
-  [I.JsonDecoderId]: decoder,
-  [I.UnknownEncoderId]: encoder,
-  [I.JsonEncoderId]: encoder,
-  [I.EncoderId]: encoder
+  [I.UnknownDecoderId]: unknownDdecoder,
+  [I.JsonDecoderId]: unknownDdecoder,
+  [I.UnknownEncoderId]: jsonEncoder,
+  [I.JsonEncoderId]: jsonEncoder
 })
 
 /**

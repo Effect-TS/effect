@@ -9,11 +9,6 @@ import * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const EncoderId = I.EncoderId
-
-/**
- * @since 1.0.0
- */
 export interface Encoder<out S, in out A> extends Schema<A> {
   readonly encode: (value: A) => S
 }

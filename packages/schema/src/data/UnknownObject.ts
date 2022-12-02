@@ -1,11 +1,9 @@
 /**
  * @since 1.0.0
  */
+import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import type * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
-import type * as D from "@fp-ts/schema/Decoder"
-import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
 import type * as S from "@fp-ts/schema/Schema"
@@ -21,15 +19,17 @@ export const id = Symbol.for("@fp-ts/schema/data/UnknownIndexSignature")
 export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.DecoderId]: () => Decoder,
-  [I.UnknownDecoderId]: () => Decoder,
-  [I.JsonDecoderId]: () => Decoder
+  [I.UnknownDecoderId]: () => UnknownDecoder,
+  [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => UnknownEncoder
 })
 
 /**
  * @since 1.0.0
  */
-export type UnknownObject = { readonly [_: string]: unknown }
+export interface UnknownObject {
+  readonly [_: string]: unknown
+}
 
 /**
  * @since 1.0.0
@@ -39,18 +39,20 @@ export const Schema: S.Schema<UnknownObject> = I.declareSchema(id, O.none, Provi
 /**
  * @since 1.0.0
  */
-export const Guard: G.Guard<UnknownObject> = I.makeGuard(Schema, I.isUnknownObject)
+export const Guard = I.makeGuard<UnknownObject>(Schema, I.isUnknownObject)
 
 /**
  * @since 1.0.0
  */
-export const Decoder: D.Decoder<unknown, UnknownObject> = I.fromRefinement(
+export const UnknownDecoder = I.fromRefinement<UnknownObject>(
   Schema,
   I.isUnknownObject,
   (u) => DE.notType("{ readonly [_: string]: unknown }", u)
 )
 
-const Arbitrary: A.Arbitrary<UnknownObject> = I.makeArbitrary(
+const UnknownEncoder = I.makeEncoder<UnknownObject, UnknownObject>(Schema, identity)
+
+const Arbitrary = I.makeArbitrary<UnknownObject>(
   Schema,
   (fc) => fc.dictionary(fc.string(), fc.anything())
 )

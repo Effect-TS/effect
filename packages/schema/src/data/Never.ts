@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import { absurd } from "@fp-ts/data/Function"
+import type { Json } from "@fp-ts/data/Json"
 import * as A from "@fp-ts/schema/Arbitrary"
-import type * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
@@ -23,8 +23,8 @@ export const Provider: P.Provider = P.make(id, {
   [I.ArbitraryId]: () => Arbitrary,
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
-  [I.JsonEncoderId]: () => Encoder,
-  [I.UnknownEncoderId]: () => Encoder
+  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.UnknownEncoderId]: () => JsonEncoder
 })
 
 /**
@@ -32,10 +32,10 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<never> = S.union()
 
-const Guard: G.Guard<never> = G.guardFor(Schema)
+const Guard = G.guardFor(Schema)
 
-const UnknownDecoder: UD.UnknownDecoder<never> = UD.unknownDecoderFor(Schema)
+const UnknownDecoder = UD.unknownDecoderFor(Schema)
 
-const Encoder: E.Encoder<unknown, never> = I.makeEncoder(Schema, absurd)
+const JsonEncoder = I.makeEncoder<Json, never>(Schema, absurd)
 
-const Arbitrary: A.Arbitrary<never> = A.arbitraryFor(Schema)
+const Arbitrary = A.arbitraryFor(Schema)

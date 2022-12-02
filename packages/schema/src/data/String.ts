@@ -3,6 +3,7 @@
  */
 import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as String from "@fp-ts/data/String"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
@@ -19,12 +20,10 @@ export const id = Symbol.for("@fp-ts/schema/data/string")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.DecoderId]: () => Decoder,
-  [I.EncoderId]: () => Encoder,
-  [I.UnknownDecoderId]: () => Decoder,
-  [I.UnknownEncoderId]: () => Encoder,
-  [I.JsonDecoderId]: () => Decoder,
-  [I.JsonEncoderId]: () => Encoder
+  [I.UnknownDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => JsonEncoder,
+  [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.JsonEncoderId]: () => JsonEncoder
 })
 
 /**
@@ -32,13 +31,13 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<string> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard(Schema, (u): u is string => typeof u === "string")
+const Guard = I.makeGuard<string>(Schema, String.isString)
 
-const Decoder = I.makeDecoder(
+const UnknownDecoder = I.makeDecoder<unknown, string>(
   Schema,
   (u) => Guard.is(u) ? I.succeed(u) : I.fail(DE.notType("string", u))
 )
 
-const Encoder = I.makeEncoder(Schema, identity)
+const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary(Schema, (fc) => fc.string())
+const Arbitrary = I.makeArbitrary<string>(Schema, (fc) => fc.string())

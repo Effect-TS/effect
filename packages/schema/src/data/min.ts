@@ -22,14 +22,14 @@ const guard = (min: number) =>
   <A extends number>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(min)(self), (u): u is A => self.is(u) && u >= min)
 
-const decoder = (min: number) =>
+const unknownDecoder = (min: number) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(min)(self),
       (i) => pipe(self.decode(i), I.flatMap((a) => a >= min ? I.succeed(a) : I.fail(DE.min(min))))
     )
 
-const encoder = (min: number) =>
+const jsonEncoder = (min: number) =>
   <A extends number>(self: JsonEncoder<A>): JsonEncoder<A> =>
     I.makeEncoder(schema(min)(self), self.encode)
 
@@ -40,15 +40,13 @@ const arbitrary = (min: number) =>
 /**
  * @since 1.0.0
  */
-export const Provider: P.Provider = P.make(id, {
+export const Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.DecoderId]: decoder,
-  [I.UnknownDecoderId]: decoder,
-  [I.JsonDecoderId]: decoder,
-  [I.UnknownEncoderId]: encoder,
-  [I.JsonEncoderId]: encoder,
-  [I.EncoderId]: encoder
+  [I.UnknownDecoderId]: unknownDecoder,
+  [I.JsonDecoderId]: unknownDecoder,
+  [I.UnknownEncoderId]: jsonEncoder,
+  [I.JsonEncoderId]: jsonEncoder
 })
 
 /**

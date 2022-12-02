@@ -22,14 +22,14 @@ const guard = (max: number) =>
   <A extends number>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(max)(self), (u): u is A => self.is(u) && u <= max)
 
-const decoder = (max: number) =>
+const unknownDecoder = (max: number) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(max)(self),
       (i) => pipe(self.decode(i), I.flatMap((a) => a <= max ? I.succeed(a) : I.fail(DE.max(max))))
     )
 
-const encoder = (max: number) =>
+const jsonEncoder = (max: number) =>
   <A extends number>(self: JsonEncoder<A>): JsonEncoder<A> =>
     I.makeEncoder(schema(max)(self), self.encode)
 
@@ -40,15 +40,13 @@ const arbitrary = (max: number) =>
 /**
  * @since 1.0.0
  */
-export const Provider: P.Provider = P.make(id, {
+export const Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.DecoderId]: decoder,
-  [I.UnknownDecoderId]: decoder,
-  [I.JsonDecoderId]: decoder,
-  [I.UnknownEncoderId]: encoder,
-  [I.JsonEncoderId]: encoder,
-  [I.EncoderId]: encoder
+  [I.UnknownDecoderId]: unknownDecoder,
+  [I.JsonDecoderId]: unknownDecoder,
+  [I.UnknownEncoderId]: jsonEncoder,
+  [I.JsonEncoderId]: jsonEncoder
 })
 
 /**

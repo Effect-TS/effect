@@ -20,12 +20,10 @@ export const id = Symbol.for("@fp-ts/schema/data/boolean")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.DecoderId]: () => Decoder,
-  [I.UnknownDecoderId]: () => Decoder,
-  [I.JsonDecoderId]: () => Decoder,
-  [I.EncoderId]: () => Encoder,
-  [I.UnknownEncoderId]: () => Encoder,
-  [I.JsonEncoderId]: () => Encoder
+  [I.UnknownDecoderId]: () => UnknownDecoder,
+  [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => JsonEncoder,
+  [I.JsonEncoderId]: () => JsonEncoder
 })
 
 /**
@@ -33,10 +31,10 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<boolean> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard(Schema, isBoolean)
+const Guard = I.makeGuard<boolean>(Schema, isBoolean)
 
-const Decoder = I.fromRefinement(Schema, isBoolean, (u) => DE.notType("boolean", u))
+const UnknownDecoder = I.fromRefinement<boolean>(Schema, isBoolean, (u) => DE.notType("boolean", u))
 
-const Encoder = I.makeEncoder(Schema, identity)
+const JsonEncoder = I.makeEncoder<boolean, boolean>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary(Schema, (fc) => fc.boolean())
+const Arbitrary = I.makeArbitrary<boolean>(Schema, (fc) => fc.boolean())

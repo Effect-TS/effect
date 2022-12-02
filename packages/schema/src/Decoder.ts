@@ -12,11 +12,6 @@ import * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const DecoderId = I.DecoderId
-
-/**
- * @since 1.0.0
- */
 export interface Decoder<in S, in out A> extends Schema<A> {
   readonly I: (_: S) => void
   readonly decode: (i: S) => T.These<ReadonlyArray<DE.DecodeError>, A>

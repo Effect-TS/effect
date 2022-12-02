@@ -11,6 +11,7 @@ import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { AST } from "@fp-ts/schema/AST"
 import * as ast from "@fp-ts/schema/AST"
+import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -19,7 +20,7 @@ import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-export const isUnknownObject = (u: unknown): u is { readonly [_: string]: unknown } =>
+export const isUnknownObject = (u: unknown): u is UnknownObject =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
 export const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
@@ -54,14 +55,6 @@ export const JsonEncoderId: unique symbol = Symbol.for(
 
 export const UnknownEncoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/UnknownEncoder"
-)
-
-export const DecoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Decoder"
-)
-
-export const EncoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Encoder"
 )
 
 export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
@@ -144,11 +137,15 @@ export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>)
             flatMap((a) => refinement(a) ? succeed(a) : fail(DE.custom({}, a)))
           )
       )
+    const encoder = <I>(self: Encoder<I, A>): Encoder<I, B> =>
+      makeEncoder(Schema, (b) => self.encode(b))
     const Provider: P.Provider = P.make(id, {
       [ArbitraryId]: arbitrary,
       [GuardId]: guard,
-      [DecoderId]: decoder,
-      [JsonDecoderId]: decoder
+      [JsonDecoderId]: decoder,
+      [UnknownDecoderId]: decoder,
+      [JsonEncoderId]: encoder,
+      [UnknownEncoderId]: encoder
     })
     const Schema = declareSchema(id, O.none, Provider, schema)
     return Schema

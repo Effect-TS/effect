@@ -31,7 +31,6 @@ export interface JsonDecoder<A> extends Decoder<Json, A> {}
  * @since 1.0.0
  */
 export const provideJsonDecoderFor = (provider: Provider) => {
-  // const decoderFor: <A>(schema: Schema<A>) => JsonDecoder<A> = D.provideDecoderFor(provider)
   return <A>(schema: Schema<A>): JsonDecoder<A> => {
     const go = (ast: AST): JsonDecoder<any> => {
       switch (ast._tag) {
@@ -58,7 +57,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            JA.Decoder,
+            JA.UnknownDecoder,
             D.compose(D.make(
               S.make(ast),
               (us) => {
@@ -81,7 +80,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           )
         }
         case "Union":
-          return pipe(J.Decoder, D.compose(D.union(...ast.members.map(go))))
+          return pipe(J.UnknownDecoder, D.compose(D.union(...ast.members.map(go))))
         case "Struct": {
           const fields: Record<PropertyKey, JsonDecoder<any>> = {}
           for (const field of ast.fields) {
@@ -90,7 +89,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           const decoder = D.fromStruct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           return pipe(
-            JO.Decoder,
+            JO.UnknownDecoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oStringIndexSignature)) {

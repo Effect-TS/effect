@@ -56,7 +56,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
           const decoder = D.fromTuple(...ast.components.map(go))
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
-            UnknownArray.Decoder,
+            UnknownArray.UnknownDecoder,
             D.compose(D.make(
               S.make(ast),
               (us) => {
@@ -100,7 +100,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
           const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           const decoder = D.fromStruct(fields)
           return pipe(
-            UnknownObject.Decoder,
+            UnknownObject.UnknownDecoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oStringIndexSignature)) {

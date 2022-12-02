@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import { identity } from "@fp-ts/data/Function"
+import * as Number from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -19,12 +20,10 @@ export const id = Symbol.for("@fp-ts/schema/data/number")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.DecoderId]: () => Decoder,
-  [I.EncoderId]: () => Encoder,
-  [I.UnknownDecoderId]: () => Decoder,
-  [I.UnknownEncoderId]: () => Encoder,
-  [I.JsonDecoderId]: () => Decoder,
-  [I.JsonEncoderId]: () => Encoder
+  [I.UnknownDecoderId]: () => UnknownDecoder,
+  [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => JsonEncoder,
+  [I.JsonEncoderId]: () => JsonEncoder
 })
 
 /**
@@ -32,13 +31,13 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<number> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard(Schema, (u): u is number => typeof u === "number")
+const Guard = I.makeGuard<number>(Schema, Number.isNumber)
 
-const Decoder = I.makeDecoder(
+const UnknownDecoder = I.makeDecoder<unknown, number>(
   Schema,
   (u) => Guard.is(u) ? isNaN(u) ? I.warn(DE.nan, u) : I.succeed(u) : I.fail(DE.notType("number", u))
 )
 
-const Encoder = I.makeEncoder(Schema, identity)
+const JsonEncoder = I.makeEncoder<number, number>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary(Schema, (fc) => fc.float())
+const Arbitrary = I.makeArbitrary<number>(Schema, (fc) => fc.float())
