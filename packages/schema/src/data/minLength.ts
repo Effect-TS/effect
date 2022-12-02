@@ -30,7 +30,7 @@ const unknownDecoder = (minLength: number) =>
         pipe(
           self.decode(i),
           I.flatMap((a) =>
-            a.length >= minLength ? I.success(a) : I.failure(DE.minLength(minLength))
+            a.length >= minLength ? I.success(a) : I.failure(DE.minLength(minLength, a))
           )
         )
     )

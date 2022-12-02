@@ -34,14 +34,15 @@ describe("Chunk", () => {
       D.success(DC.unsafeFromArray([1, 2, 3]))
     )
     // should handle warnings
-    expect(decoder.decode([1, NaN, 3])).toEqual(
-      D.warning(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
+    Util.expectWarning(
+      decoder,
+      [1, NaN, 3],
+      "/1 did not satisfy isNot(NaN)",
+      DC.unsafeFromArray([1, NaN, 3])
     )
-    expect(decoder.decode(null)).toEqual(
-      D.failure(DE.notType("ReadonlyArray<unknown>", null))
-    )
+    Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
     expect(decoder.decode([1, "a"])).toEqual(
-      D.failure(DE.notType("number", "a"))
+      D.failure(DE.index(1, DC.singleton(DE.notType("number", "a"))))
     )
   })
 
@@ -54,13 +55,13 @@ describe("Chunk", () => {
     )
     // should handle warnings
     expect(jsonDecoder.decode([1, NaN, 3])).toEqual(
-      D.warning(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
+      D.warning(DE.index(1, DC.singleton(DE.nan)), DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(jsonDecoder.decode(null)).toEqual(
       D.failure(DE.notType("ReadonlyArray<unknown>", null))
     )
     expect(jsonDecoder.decode([1, "a"])).toEqual(
-      D.failure(DE.notType("number", "a"))
+      D.failure(DE.index(1, DC.singleton(DE.notType("number", "a"))))
     )
   })
 

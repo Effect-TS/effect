@@ -90,7 +90,7 @@ export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown
       for (let i = 0; i < components.length; i++) {
         const t = components[i].decode(is[i])
         if (isFailure(t)) {
-          return failures(t.left)
+          return failure(DE.index(i, t.left))
         }
         out[i] = t.right // TODO: handle warnings
       }
@@ -116,16 +116,16 @@ export const fromArray = <S, A>(
     let es: C.Chunk<DE.DecodeError> = C.empty
     const as: Array<A> = []
     let isBoth = true
-    for (let index = 0; index < is.length; index++) {
-      const t = item.decode(is[index])
+    for (let i = 0; i < is.length; i++) {
+      const t = item.decode(is[i])
       if (isFailure(t)) {
         isBoth = false
-        es = C.concat(t.left)(es)
+        es = C.append(DE.index(i, t.left))(es)
         break // bail out on a fatal errors
       } else if (isSuccess(t)) {
         as.push(t.right)
       } else {
-        es = C.concat(t.left)(es)
+        es = C.append(DE.index(i, t.left))(es)
         as.push(t.right)
       }
     }

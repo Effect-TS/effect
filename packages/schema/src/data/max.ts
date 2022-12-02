@@ -27,7 +27,7 @@ const unknownDecoder = (max: number) =>
     I.makeDecoder(
       schema(max)(self),
       (i) =>
-        pipe(self.decode(i), I.flatMap((a) => a <= max ? I.success(a) : I.failure(DE.max(max))))
+        pipe(self.decode(i), I.flatMap((a) => a <= max ? I.success(a) : I.failure(DE.max(max, a))))
     )
 
 const jsonEncoder = (max: number) =>

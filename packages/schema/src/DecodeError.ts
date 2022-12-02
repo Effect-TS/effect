@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 
+import type { NonEmptyChunk } from "@fp-ts/data/Chunk"
+
 /**
  * @since 1.0.0
  */
@@ -15,6 +17,7 @@ export type DecodeError =
   | MaxLength
   | Min
   | Max
+  | Index
 
 /**
  * @since 1.0.0
@@ -99,14 +102,16 @@ export const noFinite: NoFinite = { _tag: "NoFinite" }
 export interface MinLength {
   readonly _tag: "MinLength"
   readonly minLength: number
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number): MinLength => ({
+export const minLength = (minLength: number, actual: unknown): MinLength => ({
   _tag: "MinLength",
-  minLength
+  minLength,
+  actual
 })
 
 /**
@@ -115,14 +120,16 @@ export const minLength = (minLength: number): MinLength => ({
 export interface MaxLength {
   readonly _tag: "MaxLength"
   readonly maxLength: number
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const maxLength = (maxLength: number): MaxLength => ({
+export const maxLength = (maxLength: number, actual: unknown): MaxLength => ({
   _tag: "MaxLength",
-  maxLength
+  maxLength,
+  actual
 })
 
 /**
@@ -131,14 +138,16 @@ export const maxLength = (maxLength: number): MaxLength => ({
 export interface Min {
   readonly _tag: "Min"
   readonly min: number
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const min = (min: number): Min => ({
+export const min = (min: number, actual: unknown): Min => ({
   _tag: "Min",
-  min
+  min,
+  actual
 })
 
 /**
@@ -147,12 +156,35 @@ export const min = (min: number): Min => ({
 export interface Max {
   readonly _tag: "Max"
   readonly max: number
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const max = (max: number): Max => ({
+export const max = (max: number, actual: unknown): Max => ({
   _tag: "Max",
-  max
+  max,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Index {
+  readonly _tag: "Index"
+  readonly index: number
+  readonly errors: NonEmptyChunk<DecodeError>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const index = (
+  index: number,
+  errors: NonEmptyChunk<DecodeError>
+): Index => ({
+  _tag: "Index",
+  index,
+  errors
 })
