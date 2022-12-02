@@ -10,6 +10,7 @@ export type DecodeError =
   | NotType
   | NotEqual
   | NaN
+  | NoFinite
   | MinLength
   | MaxLength
   | Min
@@ -79,6 +80,18 @@ export interface NaN {
  * @since 1.0.0
  */
 export const nan: NaN = { _tag: "NaN" }
+
+/**
+ * @since 1.0.0
+ */
+export interface NoFinite {
+  readonly _tag: "NoFinite"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const noFinite: NoFinite = { _tag: "NoFinite" }
 
 /**
  * @since 1.0.0

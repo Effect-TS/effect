@@ -33,11 +33,18 @@ export const Schema: S.Schema<number> = I.declareSchema(id, O.none, Provider)
 
 const Guard = I.makeGuard<number>(Schema, Number.isNumber)
 
-const UnknownDecoder = I.makeDecoder<unknown, number>(
+/**
+ * @since 1.0.0
+ */
+export const UnknownDecoder = I.makeDecoder<unknown, number>(
   Schema,
   (u) =>
     Guard.is(u) ?
-      isNaN(u) ? I.warning(DE.nan, u) : I.success(u) :
+      isNaN(u) ?
+        I.warning(DE.nan, u) :
+        isFinite(u) ?
+        I.success(u) :
+        I.warning(DE.noFinite, u) :
       I.failure(DE.notType("number", u))
 )
 
