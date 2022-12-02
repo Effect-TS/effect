@@ -20,7 +20,10 @@ import type { UnknownDecoder } from "@fp-ts/schema/UnknownDecoder"
  */
 export const id = Symbol.for("@fp-ts/schema/data/Chunk")
 
-const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   I.makeGuard(
     schema(item),
     (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
@@ -29,14 +32,23 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
 const array = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Chunk<A>> =>
   pipe(D.array(item), D.compose(D.make(schema(item), (as) => D.success(C.unsafeFromArray(as)))))
 
-const unknownDecoder = <A>(
+/**
+ * @since 1.0.0
+ */
+export const unknownDecoder = <A>(
   item: UnknownDecoder<A>
 ): UnknownDecoder<Chunk<A>> => pipe(UnknownArray.UnknownDecoder, D.compose(array(item)))
 
-const jsonEncoder = <A>(self: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const jsonEncoder = <A>(self: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
   I.makeEncoder(schema(self), (chunk) => C.toReadonlyArray(chunk).map(self.encode))
 
-const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))
 
 /**

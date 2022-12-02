@@ -18,11 +18,17 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const id = Symbol.for("@fp-ts/schema/data/max")
 
-const guard = (max: number) =>
+/**
+ * @since 1.0.0
+ */
+export const guard = (max: number) =>
   <A extends number>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(max)(self), (u): u is A => self.is(u) && u <= max)
 
-const unknownDecoder = (max: number) =>
+/**
+ * @since 1.0.0
+ */
+export const unknownDecoder = (max: number) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(max)(self),
@@ -30,11 +36,17 @@ const unknownDecoder = (max: number) =>
         pipe(self.decode(i), I.flatMap((a) => a <= max ? I.success(a) : I.failure(DE.max(max, a))))
     )
 
-const jsonEncoder = (max: number) =>
+/**
+ * @since 1.0.0
+ */
+export const jsonEncoder = (max: number) =>
   <A extends number>(self: JsonEncoder<A>): JsonEncoder<A> =>
     I.makeEncoder(schema(max)(self), self.encode)
 
-const arbitrary = (max: number) =>
+/**
+ * @since 1.0.0
+ */
+export const arbitrary = (max: number) =>
   <A extends number>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(schema(max)(self), (fc) => self.arbitrary(fc).filter((a) => a <= max))
 

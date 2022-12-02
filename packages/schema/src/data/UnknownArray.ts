@@ -50,6 +50,12 @@ export const UnknownDecoder = I.fromRefinement<UnknownArray>(
   (u) => DE.notType("ReadonlyArray<unknown>", u)
 )
 
-const UnknownEncoder = I.makeEncoder<UnknownArray, UnknownArray>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const UnknownEncoder = I.makeEncoder<UnknownArray, UnknownArray>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary<UnknownArray>(Schema, (fc) => fc.array(fc.anything()))
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<UnknownArray>(Schema, (fc) => fc.array(fc.anything()))

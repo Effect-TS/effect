@@ -18,11 +18,17 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const id = Symbol.for("@fp-ts/schema/data/minLength")
 
-const guard = (minLength: number) =>
+/**
+ * @since 1.0.0
+ */
+export const guard = (minLength: number) =>
   <A extends { length: number }>(self: Guard<A>): Guard<A> =>
     I.makeGuard(schema(minLength)(self), (u): u is A => self.is(u) && u.length >= minLength)
 
-const unknownDecoder = (minLength: number) =>
+/**
+ * @since 1.0.0
+ */
+export const unknownDecoder = (minLength: number) =>
   <I, A extends { length: number }>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(minLength)(self),
@@ -35,11 +41,17 @@ const unknownDecoder = (minLength: number) =>
         )
     )
 
-const jsonEncoder = (minLength: number) =>
+/**
+ * @since 1.0.0
+ */
+export const jsonEncoder = (minLength: number) =>
   <A extends { length: number }>(self: JsonEncoder<A>): JsonEncoder<A> =>
     I.makeEncoder(schema(minLength)(self), self.encode)
 
-const arbitrary = (minLength: number) =>
+/**
+ * @since 1.0.0
+ */
+export const arbitrary = (minLength: number) =>
   <A extends { length: number }>(self: Arbitrary<A>): Arbitrary<A> =>
     I.makeArbitrary(
       schema(minLength)(self),

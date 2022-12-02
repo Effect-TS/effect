@@ -1,36 +1,12 @@
 import * as C from "@fp-ts/data/Chunk"
-import * as O from "@fp-ts/data/Option"
+import * as NumberFromString from "@fp-ts/schema/data/NumberFromString"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
-import * as G from "@fp-ts/schema/Guard"
 import * as JC from "@fp-ts/schema/JsonCodec"
-import * as JD from "@fp-ts/schema/JsonDecoder"
-import * as JE from "@fp-ts/schema/JsonEncoder"
-import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const jsonCodecFor = JC.provideJsonCodecFor(P.empty)
-
-const id = Symbol.for("@fp-ts/schema/test/NumberFromString")
-const NumberFromString: S.Schema<number> = S.declare(
-  id,
-  O.none,
-  P.make(id, {
-    [G.GuardId]: () => G.guardFor(S.number),
-    [JD.JsonDecoderId]: () => NumberFromStringJsonDecoder,
-    [JE.JsonEncoderId]: () => NumberFromStringJsonEncoder
-  })
-)
-const NumberFromStringJsonDecoder = D.make(NumberFromString, (json) => {
-  if (typeof json === "string") {
-    const n = parseFloat(json)
-    return isNaN(n) ? D.failure(DE.notType("NumberFromString", n)) : D.success(n)
-  }
-  return D.failure(DE.notType("string", json))
-})
-const NumberFromStringJsonEncoder = E.make(NumberFromString, (n) => String(n))
+const jsonCodecFor = JC.jsonCodecFor
 
 describe("JsonCodec", () => {
   it("of", () => {
@@ -41,7 +17,7 @@ describe("JsonCodec", () => {
   })
 
   it("tuple", () => {
-    const schema = S.tuple(S.string, NumberFromString)
+    const schema = S.tuple(S.string, NumberFromString.Schema)
     const codec = jsonCodecFor(schema)
     expect(codec.decode(["a", "1"])).toEqual(D.success(["a", 1]))
 
@@ -54,7 +30,7 @@ describe("JsonCodec", () => {
   })
 
   it("union", () => {
-    const schema = S.union(NumberFromString, S.string)
+    const schema = S.union(NumberFromString.Schema, S.string)
     const codec = jsonCodecFor(schema)
     expect(codec.decode("a")).toEqual(D.success("a"))
     expect(codec.decode("1")).toEqual(D.success(1))

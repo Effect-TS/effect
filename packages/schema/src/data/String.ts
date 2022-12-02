@@ -49,4 +49,7 @@ export const UnknownDecoder = I.makeDecoder<unknown, string>(
  */
 export const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary<string>(Schema, (fc) => fc.string())
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<string>(Schema, (fc) => fc.string())

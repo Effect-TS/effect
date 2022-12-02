@@ -50,9 +50,15 @@ export const UnknownDecoder = I.fromRefinement<UnknownObject>(
   (u) => DE.notType("{ readonly [_: string]: unknown }", u)
 )
 
-const UnknownEncoder = I.makeEncoder<UnknownObject, UnknownObject>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const UnknownEncoder = I.makeEncoder<UnknownObject, UnknownObject>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary<UnknownObject>(
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<UnknownObject>(
   Schema,
   (fc) => fc.dictionary(fc.string(), fc.anything())
 )

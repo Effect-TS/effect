@@ -17,7 +17,10 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
  */
 export const id = Symbol.for("@fp-ts/schema/data/Set")
 
-const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   G.make(
     schema(item),
     (u): u is Set<A> => u instanceof Set && Array.from(u.values()).every(item.is)
@@ -26,10 +29,16 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
 const array = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Set<A>> =>
   pipe(D.array(item), D.compose(D.make(schema(item), (as) => D.success(new Set(as)))))
 
-const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder<Set<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder<Set<A>> =>
   pipe(UD.unknownDecoderFor(UnknownArray.Schema), D.compose(array(item)))
 
-const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
+/**
+ * @since 1.0.0
+ */
+export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
 /**

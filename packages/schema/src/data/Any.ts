@@ -31,14 +31,26 @@ export const Schema: S.Schema<any> = I.declareSchema(id, O.none, Provider)
 
 const isAny = (_u: unknown): _u is any => true
 
-const Guard = I.makeGuard(Schema, isAny)
+/**
+ * @since 1.0.0
+ */
+export const Guard = I.makeGuard(Schema, isAny)
 
-const UnknownDecoder = I.fromRefinement<any>(
+/**
+ * @since 1.0.0
+ */
+export const UnknownDecoder = I.fromRefinement<any>(
   Schema,
   isAny,
   (u) => DE.notType("any", u)
 )
 
-const UnknownEncoder = I.makeEncoder<unknown, any>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const UnknownEncoder = I.makeEncoder<unknown, any>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary<any>(Schema, (fc) => fc.anything())
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<any>(Schema, (fc) => fc.anything())

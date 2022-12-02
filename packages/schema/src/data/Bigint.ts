@@ -64,4 +64,7 @@ export const UnknownDecoder = I.makeDecoder<unknown, bigint>(
  */
 export const JsonEncoder = I.makeEncoder<string, bigint>(Schema, (n) => n.toString())
 
-const Arbitrary = I.makeArbitrary<bigint>(Schema, (fc) => fc.bigInt())
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<bigint>(Schema, (fc) => fc.bigInt())

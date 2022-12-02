@@ -50,4 +50,7 @@ export const UnknownDecoder = I.fromRefinement<boolean>(
  */
 export const JsonEncoder = I.makeEncoder<boolean, boolean>(Schema, identity)
 
-const Arbitrary = I.makeArbitrary<boolean>(Schema, (fc) => fc.boolean())
+/**
+ * @since 1.0.0
+ */
+export const Arbitrary = I.makeArbitrary<boolean>(Schema, (fc) => fc.boolean())
