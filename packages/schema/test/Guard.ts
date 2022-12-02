@@ -1,5 +1,4 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import * as bigint from "@fp-ts/schema/data/Bigint"
 import * as json from "@fp-ts/schema/data/Json"
 import * as set from "@fp-ts/schema/data/Set"
@@ -298,74 +297,6 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
   })
 
-  it.skip("partial", () => {
-    const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
-    const schema = S.partial(base)
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({})).toEqual(true)
-    expect(guard.is({ a: "a" })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1 })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(false)
-  })
-
-  it("optional", () => {
-    const schema = S.struct({ a: S.optional(S.string) })
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({})).toEqual(true)
-    expect(guard.is({ a: undefined })).toEqual(true)
-    expect(guard.is({ a: "a" })).toEqual(true)
-    expect(guard.is({ a: 1 })).toEqual(false)
-  })
-
-  it("nullable", () => {
-    const schema = S.struct({ a: S.nullable(S.string) })
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({})).toEqual(false)
-    expect(guard.is({ a: undefined })).toEqual(false)
-    expect(guard.is({ a: null })).toEqual(true)
-    expect(guard.is({ a: "a" })).toEqual(true)
-    expect(guard.is({ a: 1 })).toEqual(false)
-  })
-
-  it("nullish", () => {
-    const schema = S.struct({ a: S.nullish(S.string) })
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({})).toEqual(true)
-    expect(guard.is({ a: undefined })).toEqual(true)
-    expect(guard.is({ a: null })).toEqual(true)
-    expect(guard.is({ a: "a" })).toEqual(true)
-    expect(guard.is({ a: 1 })).toEqual(false)
-  })
-
-  it.skip("required", () => {
-    const base = S.struct({
-      a: S.optional(S.string),
-      b: S.optional(S.number),
-      c: S.optional(S.boolean)
-    })
-    const baseGuard = guardFor(base)
-    expect(baseGuard.is(null)).toEqual(false)
-    expect(baseGuard.is({})).toEqual(true)
-    expect(baseGuard.is({ a: "a" })).toEqual(true)
-    expect(baseGuard.is({ a: "a", b: 1 })).toEqual(true)
-    expect(baseGuard.is({ a: "a", b: 1, c: true })).toEqual(true)
-    expect(baseGuard.is({ a: "a", b: 1, c: "a" })).toEqual(false)
-
-    const schema = S.required(base)
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({})).toEqual(false)
-    expect(guard.is({ a: "a" })).toEqual(false)
-    expect(guard.is({ a: "a", b: 1 })).toEqual(false)
-    expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(false)
-  })
-
   it("string", () => {
     const schema = S.string
     const guard = guardFor(schema)
@@ -443,14 +374,6 @@ describe("Guard", () => {
     expect(guard.is(["a", 1])).toEqual(true)
 
     expect(guard.is([])).toEqual(false)
-  })
-
-  it("option (as structure)", () => {
-    const schema = S.option(S.number)
-    const guard = guardFor(schema)
-    expect(guard.is(O.none)).toEqual(true)
-    expect(guard.is(O.some(1))).toEqual(true)
-    expect(guard.is(O.some("a"))).toEqual(false)
   })
 
   it("minLength", () => {

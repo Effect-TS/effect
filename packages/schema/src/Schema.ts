@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import type { Either } from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
@@ -287,70 +286,70 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     ))
   }
 
-/**
- * @since 1.0.0
- */
-export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
-  if (ast.isStruct(schema.ast)) {
-    return make(
-      ast.struct(
-        schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
-        schema.ast.stringIndexSignature
-      )
-    )
-  }
-  throw new Error("cannot `partial` non-Struct schemas")
-}
+// /**
+//  * @since 1.0.0
+//  */
+// export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
+//   if (ast.isStruct(schema.ast)) {
+//     return make(
+//       ast.struct(
+//         schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
+//         schema.ast.stringIndexSignature
+//       )
+//     )
+//   }
+//   throw new Error("cannot `partial` non-Struct schemas")
+// }
 
-/**
- * @since 1.0.0
- */
-export const optional = <A>(schema: Schema<A>): Schema<A | undefined> =>
-  union(of(undefined), schema)
+// /**
+//  * @since 1.0.0
+//  */
+// export const optional = <A>(schema: Schema<A>): Schema<A | undefined> =>
+//   union(of(undefined), schema)
 
-/**
- * @since 1.0.0
- */
-export const nullable = <A>(schema: Schema<A>): Schema<A | null> => union(of(null), schema)
+// /**
+//  * @since 1.0.0
+//  */
+// export const nullable = <A>(schema: Schema<A>): Schema<A | null> => union(of(null), schema)
 
-/**
- * @since 1.0.0
- */
-export const nullish = <A>(schema: Schema<A>): Schema<A | null | undefined> =>
-  union(of(null), of(undefined), schema)
+// /**
+//  * @since 1.0.0
+//  */
+// export const nullish = <A>(schema: Schema<A>): Schema<A | null | undefined> =>
+//   union(of(null), of(undefined), schema)
 
-/**
- * @since 1.0.0
- */
-export const required = <A>(schema: Schema<A>): Schema<{ [P in keyof A]-?: A[P] }> => {
-  if (ast.isStruct(schema.ast)) {
-    return make(
-      ast.struct(
-        schema.ast.fields.map((f) => ast.field(f.key, f.value, false, f.readonly)),
-        schema.ast.stringIndexSignature
-      )
-    )
-  }
-  throw new Error("cannot `required` non-Struct schemas")
-}
+// /**
+//  * @since 1.0.0
+//  */
+// export const required = <A>(schema: Schema<A>): Schema<{ [P in keyof A]-?: A[P] }> => {
+//   if (ast.isStruct(schema.ast)) {
+//     return make(
+//       ast.struct(
+//         schema.ast.fields.map((f) => ast.field(f.key, f.value, false, f.readonly)),
+//         schema.ast.stringIndexSignature
+//       )
+//     )
+//   }
+//   throw new Error("cannot `required` non-Struct schemas")
+// }
 
-/**
- * @since 1.0.0
- */
-export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
-  union(
-    struct({ _tag: of("None" as const) }),
-    struct({ _tag: of("Some" as const), value })
-  )
+// /**
+//  * @since 1.0.0
+//  */
+// export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
+//   union(
+//     struct({ _tag: of("None" as const) }),
+//     struct({ _tag: of("Some" as const), value })
+//   )
 
-/**
- * @since 1.0.0
- */
-export const either = <E, A>(left: Schema<E>, right: Schema<A>): Schema<Either<E, A>> =>
-  union(
-    struct({ _tag: of("Left" as const), left }),
-    struct({ _tag: of("Right" as const), right })
-  )
+// /**
+//  * @since 1.0.0
+//  */
+// export const either = <E, A>(left: Schema<E>, right: Schema<A>): Schema<Either<E, A>> =>
+//   union(
+//     struct({ _tag: of("Left" as const), left }),
+//     struct({ _tag: of("Right" as const), right })
+//   )
 
 /*
 type OptionalKeys<A> = {

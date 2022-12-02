@@ -167,21 +167,6 @@ describe("typeRepFor", () => {
     )
   })
 
-  it("option (as structure)", () => {
-    const schema = S.option(S.string)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
-      "{ readonly _tag: \"None\" } | { readonly _tag: \"Some\", readonly value: string }"
-    )
-  })
-
-  it("either (as structure)", () => {
-    const schema = S.either(S.string, S.number)
-    const typeRep = pipe(schema, typeRepFor)
-    expect(typeRep.typeRep).toEqual(
-      "{ readonly _tag: \"Left\", readonly left: string } | { readonly _tag: \"Right\", readonly right: number }"
-    )
-  })
-
   it.skip("minLength", () => {
     const schema = pipe(S.string, S.minLength(2))
     expect(pipe(schema, typeRepFor).typeRep).toEqual(

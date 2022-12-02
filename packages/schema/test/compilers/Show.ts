@@ -1,4 +1,3 @@
-import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type { AST } from "@fp-ts/schema/AST"
@@ -250,28 +249,6 @@ describe("Show", () => {
     const schema = S.array(S.string)
     expect(showFor(schema).show(["a", "b"])).toEqual(
       "[\"a\",\"b\"]"
-    )
-  })
-
-  it("option (as structure)", () => {
-    const schema = S.option(S.number)
-    const show = showFor(schema)
-    expect(show.show(O.none)).toEqual(
-      "{\"_tag\":\"None\"}"
-    )
-    expect(show.show(O.some(1))).toEqual(
-      "{\"_tag\":\"Some\",\"value\":1}"
-    )
-  })
-
-  it("either (as structure)", () => {
-    const schema = S.either(S.string, S.number)
-    const show = showFor(schema)
-    expect(show.show(E.right(1))).toEqual(
-      "{\"_tag\":\"Right\",\"right\":1}"
-    )
-    expect(show.show(E.left("e"))).toEqual(
-      "{\"_tag\":\"Left\",\"left\":\"e\"}"
     )
   })
 })
