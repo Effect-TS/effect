@@ -24,7 +24,7 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
   )
 
 const array = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Set<A>> =>
-  pipe(D.fromArray(item), D.compose(D.make(schema(item), (as) => D.success(new Set(as)))))
+  pipe(D.array(item), D.compose(D.make(schema(item), (as) => D.success(new Set(as)))))
 
 const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder<Set<A>> =>
   pipe(UD.unknownDecoderFor(UnknownArray.Schema), D.compose(array(item)))

@@ -77,7 +77,7 @@ export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Dec
 /**
  * @since 1.0.0
  */
-export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown>>>(
+export const tuple = <S, Components extends ReadonlyArray<Decoder<S, unknown>>>(
   ...components: Components
 ): Decoder<
   ReadonlyArray<S>,
@@ -86,13 +86,24 @@ export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown
   make(
     S.tuple(...components),
     (is) => {
+      let es: C.Chunk<DE.DecodeError> = C.empty
       const out: any = []
+      let isBoth = true
       for (let i = 0; i < components.length; i++) {
         const t = components[i].decode(is[i])
         if (isFailure(t)) {
-          return failure(DE.index(i, t.left))
+          isBoth = false
+          es = C.append(DE.index(i, t.left))(es)
+          break // bail out on a fatal errors
+        } else if (isSuccess(t)) {
+          out[i] = t.right
+        } else {
+          es = C.append(DE.index(i, t.left))(es)
+          out[i] = t.right
         }
-        out[i] = t.right // TODO: handle warnings
+      }
+      if (C.isNonEmpty(es)) {
+        return isBoth ? warnings(es, out) : failures(es)
       }
       return success(out)
     }
@@ -109,12 +120,12 @@ export const of = <A>(
 /**
  * @since 1.0.0
  */
-export const fromArray = <S, A>(
+export const array = <S, A>(
   item: Decoder<S, A>
 ): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
   make(S.array(item), (is) => {
     let es: C.Chunk<DE.DecodeError> = C.empty
-    const as: Array<A> = []
+    const out: Array<A> = []
     let isBoth = true
     for (let i = 0; i < is.length; i++) {
       const t = item.decode(is[i])
@@ -123,22 +134,22 @@ export const fromArray = <S, A>(
         es = C.append(DE.index(i, t.left))(es)
         break // bail out on a fatal errors
       } else if (isSuccess(t)) {
-        as.push(t.right)
+        out.push(t.right)
       } else {
         es = C.append(DE.index(i, t.left))(es)
-        as.push(t.right)
+        out.push(t.right)
       }
     }
     if (C.isNonEmpty(es)) {
-      return isBoth ? warnings(es, as) : failures(es)
+      return isBoth ? warnings(es, out) : failures(es)
     }
-    return success(as)
+    return success(out)
   })
 
 /**
  * @since 1.0.0
  */
-export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>>>(
+export const struct = <S, Fields extends Record<PropertyKey, Decoder<S, any>>>(
   fields: Fields
 ): Decoder<
   { readonly [_: string]: S },
@@ -173,7 +184,7 @@ export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>
 /**
  * @since 1.0.0
  */
-export const fromStringIndexSignature = <S, A>(
+export const stringIndexSignature = <S, A>(
   value: Decoder<S, A>
 ): Decoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
   make(S.stringIndexSignature(value), (ri) => {

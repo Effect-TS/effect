@@ -22,7 +22,7 @@ export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) =>
 /**
  * @since 1.0.0
  */
-export const fromTuple = <S, Components extends ReadonlyArray<Encoder<S, unknown>>>(
+export const tuple = <S, Components extends ReadonlyArray<Encoder<S, unknown>>>(
   ...components: Components
 ): Encoder<
   ReadonlyArray<S>,
@@ -36,7 +36,7 @@ export const fromTuple = <S, Components extends ReadonlyArray<Encoder<S, unknown
 /**
  * @since 1.0.0
  */
-export const fromStringIndexSignature = <S, A>(
+export const stringIndexSignature = <S, A>(
   value: Encoder<S, A>
 ): Encoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
   make(S.stringIndexSignature(value), (a) => {

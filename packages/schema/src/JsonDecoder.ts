@@ -51,7 +51,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
-          const decoder = D.fromTuple<Json, ReadonlyArray<JsonDecoder<unknown>>>(
+          const decoder = D.tuple<Json, ReadonlyArray<JsonDecoder<unknown>>>(
             ...ast.components.map(go)
           )
           const oRestElement = pipe(ast.restElement, O.map(go))
@@ -62,7 +62,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
               (us) => {
                 const t = decoder.decode(us)
                 if (O.isSome(oRestElement)) {
-                  const restElement = D.fromArray(oRestElement.value)
+                  const restElement = D.array(oRestElement.value)
                   return pipe(
                     t,
                     D.flatMap((as) =>
@@ -85,14 +85,14 @@ export const provideJsonDecoderFor = (provider: Provider) => {
           for (const field of ast.fields) {
             fields[field.key] = go(field.value)
           }
-          const decoder = D.fromStruct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
+          const decoder = D.struct<Json, Record<PropertyKey, JsonDecoder<any>>>(fields)
           const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           return pipe(
             JO.UnknownDecoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oStringIndexSignature)) {
-                const stringIndexSignature = D.fromStringIndexSignature(oStringIndexSignature.value)
+                const stringIndexSignature = D.stringIndexSignature(oStringIndexSignature.value)
                 return pipe(
                   t,
                   D.flatMap((out) =>

@@ -54,7 +54,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
         case "Of":
           return D.of(ast.value)
         case "Tuple": {
-          const decoder = D.fromTuple(...ast.components.map(go))
+          const decoder = D.tuple(...ast.components.map(go))
           const oRestElement = pipe(ast.restElement, O.map(go))
           return pipe(
             UnknownArray.UnknownDecoder,
@@ -63,7 +63,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
               (us) => {
                 const t = decoder.decode(us)
                 if (O.isSome(oRestElement)) {
-                  const restElement = D.fromArray(oRestElement.value)
+                  const restElement = D.array(oRestElement.value)
                   return pipe(
                     t,
                     D.flatMap((as) =>
@@ -99,13 +99,13 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
             fields[field.key] = go(field.value)
           }
           const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
-          const decoder = D.fromStruct(fields)
+          const decoder = D.struct(fields)
           return pipe(
             UnknownObject.UnknownDecoder,
             D.compose(D.make(S.make(ast), (u) => {
               const t = decoder.decode(u)
               if (O.isSome(oStringIndexSignature)) {
-                const stringIndexSignature = D.fromStringIndexSignature(oStringIndexSignature.value)
+                const stringIndexSignature = D.stringIndexSignature(oStringIndexSignature.value)
                 return pipe(
                   t,
                   D.flatMap((out) =>

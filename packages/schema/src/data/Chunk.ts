@@ -27,7 +27,7 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   )
 
 const array = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Chunk<A>> =>
-  pipe(D.fromArray(item), D.compose(D.make(schema(item), (as) => D.success(C.unsafeFromArray(as)))))
+  pipe(D.array(item), D.compose(D.make(schema(item), (as) => D.success(C.unsafeFromArray(as)))))
 
 const unknownDecoder = <A>(
   item: UnknownDecoder<A>
