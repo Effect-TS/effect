@@ -53,11 +53,9 @@ describe("JsonDecoder", () => {
     const decoder = JD.jsonDecoderFor(schema)
     expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: 1 }))
 
-    expect(decoder.decode(null)).toEqual(
-      D.failure(DE.notType("JsonObject", null))
-    )
-    expect(decoder.decode({ a: "a", b: "a" })).toEqual(D.failure(DE.notType("number", "a")))
-    expect(decoder.decode({ a: 1, b: "a" })).toEqual(D.failure(DE.notType("string", 1)))
+    Util.expectFailure(decoder, null, "null did not satisfy is(JsonObject)")
+    Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
+    Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
   })
 
   it("stringIndexSignature", () => {
@@ -66,10 +64,8 @@ describe("JsonDecoder", () => {
     expect(decoder.decode({})).toEqual(D.success({}))
     expect(decoder.decode({ a: "a" })).toEqual(D.success({ a: "a" }))
 
-    expect(decoder.decode([])).toEqual(
-      D.failure(DE.notType("JsonObject", []))
-    )
-    expect(decoder.decode({ a: 1 })).toEqual(D.failure(DE.notType("string", 1)))
+    Util.expectFailure(decoder, [], "[] did not satisfy is(JsonObject)")
+    Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
   })
 
   describe("array", () => {
@@ -154,7 +150,7 @@ describe("JsonDecoder", () => {
     Util.expectFailure(
       decoder,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/0 /0 1 did not satisfy is(JsonObject)"
+      "/as /0 /as /0 1 did not satisfy is(JsonObject)"
     )
   })
 
@@ -182,9 +178,9 @@ describe("JsonDecoder", () => {
     expect(decoder.decode({ a: "a" })).toEqual(D.success({ a: "a" }))
     expect(decoder.decode({ a: "a", b: "b" })).toEqual(D.success({ a: "a", b: "b" }))
 
-    expect(decoder.decode({})).toEqual(D.failure(DE.notType("string", undefined)))
-    expect(decoder.decode({ b: "b" })).toEqual(D.failure(DE.notType("string", undefined)))
-    expect(decoder.decode({ a: 1 })).toEqual(D.failure(DE.notType("string", 1)))
-    expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.failure(DE.notType("string", 1)))
+    Util.expectFailure(decoder, {}, "/a undefined did not satisfy is(string)")
+    Util.expectFailure(decoder, { b: "b" }, "/a undefined did not satisfy is(string)")
+    Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
+    Util.expectFailure(decoder, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
   })
 })

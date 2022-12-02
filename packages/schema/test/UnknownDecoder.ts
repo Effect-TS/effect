@@ -2,6 +2,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
+import * as Util from "@fp-ts/schema/test/util"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("UnknownDecoder", () => {
@@ -28,8 +29,7 @@ describe("UnknownDecoder", () => {
     const decoder = UD.unknownDecoderFor(Person)
 
     expect(decoder.decode({ name: "name", age: 18 })).toEqual(D.success({ name: "name", age: 18 }))
-    expect(decoder.decode({ name: null, age: 18 })).toEqual(
-      D.failure(DE.custom({ myCustomErrorConfig: "not a string" }, null))
-    )
+
+    Util.expectFailure(decoder, { name: null, age: 18 }, "/name null did not satisfy custom error")
   })
 })

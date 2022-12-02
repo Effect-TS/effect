@@ -18,6 +18,7 @@ export type DecodeError =
   | Min
   | Max
   | Index
+  | Key
 
 /**
  * @since 1.0.0
@@ -186,5 +187,26 @@ export const index = (
 ): Index => ({
   _tag: "Index",
   index,
+  errors
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Key {
+  readonly _tag: "Key"
+  readonly key: string
+  readonly errors: NonEmptyChunk<DecodeError>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const key = (
+  key: string,
+  errors: NonEmptyChunk<DecodeError>
+): Key => ({
+  _tag: "Key",
+  key,
   errors
 })

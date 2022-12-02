@@ -146,16 +146,27 @@ export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>
 > => {
   const keys = Object.keys(fields)
   return make(S.struct(fields), (input: { readonly [_: string]: S }) => {
-    const a: any = {}
+    const out: any = {}
+    let isBoth = true
+    let es: C.Chunk<DE.DecodeError> = C.empty
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
       const t = fields[key].decode(input[key])
       if (isFailure(t)) {
-        return t
+        isBoth = false
+        es = C.append(DE.key(key, t.left))(es)
+        break // bail out on a fatal errors
+      } else if (isSuccess(t)) {
+        out[key] = t.right
+      } else {
+        es = C.append(DE.key(key, t.left))(es)
+        out[key] = t.right
       }
-      a[key] = t.right // TODO handle both
     }
-    return success(a)
+    if (C.isNonEmpty(es)) {
+      return isBoth ? warnings(es, out) : failures(es)
+    }
+    return success(out)
   })
 }
 
@@ -167,12 +178,23 @@ export const fromStringIndexSignature = <S, A>(
 ): Decoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
   make(S.stringIndexSignature(value), (ri) => {
     const out: any = {}
+    let es: C.Chunk<DE.DecodeError> = C.empty
+    let isBoth = true
     for (const key of Object.keys(ri)) {
       const t = value.decode(ri[key])
       if (isFailure(t)) {
-        return t
+        isBoth = false
+        es = C.append(DE.key(key, t.left))(es)
+        break // bail out on a fatal errors
+      } else if (isSuccess(t)) {
+        out[key] = t.right
+      } else {
+        es = C.append(DE.key(key, t.left))(es)
+        out[key] = t.right
       }
-      out[key] = t.right
+    }
+    if (C.isNonEmpty(es)) {
+      return isBoth ? warnings(es, out) : failures(es)
     }
     return success(out)
   })

@@ -56,5 +56,7 @@ export const format = (e: DE.DecodeError): string => {
       return `${JSON.stringify(e.actual)} did not satisfy isEqual(${e.expected})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
+    case "Key":
+      return `/${e.key} ${pipe(e.errors, C.map(format), C.join(", "))}`
   }
 }
