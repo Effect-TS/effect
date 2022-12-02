@@ -14,24 +14,22 @@ describe("Bigint", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
-  describe("UnknownDecoder", () => {
+  it("UnknownDecoder", () => {
     const decoder = Bigint.UnknownDecoder
 
-    it("baseline", () => {
-      expect(decoder.decode(0n)).toEqual(D.success(0n))
-      expect(decoder.decode(1n)).toEqual(D.success(1n))
-      expect(decoder.decode("1")).toEqual(D.success(1n))
-      Util.expectFailure(
-        decoder,
-        null,
-        "null did not satisfy is(string | number | bigint | boolean)"
-      )
-      Util.expectFailure(
-        decoder,
-        1.2,
-        "1.2 did not satisfy \"The number 1.2 cannot be converted to a BigInt because it is not an integer\""
-      )
-    })
+    expect(decoder.decode(0n)).toEqual(D.success(0n))
+    expect(decoder.decode(1n)).toEqual(D.success(1n))
+    expect(decoder.decode("1")).toEqual(D.success(1n))
+    Util.expectFailure(
+      decoder,
+      null,
+      "null did not satisfy is(string | number | bigint | boolean)"
+    )
+    Util.expectFailure(
+      decoder,
+      1.2,
+      "1.2 did not satisfy \"The number 1.2 cannot be converted to a BigInt because it is not an integer\""
+    )
   })
 
   it("JsonEncoder", () => {
