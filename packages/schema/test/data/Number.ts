@@ -8,12 +8,32 @@ describe("Number", () => {
     Util.property(Number.Schema)
   })
 
-  it("should warn for NaN", () => {
-    expect(Number.UnknownDecoder.decode(NaN)).toEqual(D.warning(DE.nan, NaN))
+  it("Guard", () => {
+    const guard = Number.Guard
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(false)
   })
 
-  it("should warn for no finite values", () => {
-    expect(Number.UnknownDecoder.decode(Infinity)).toEqual(D.warning(DE.noFinite, Infinity))
-    expect(Number.UnknownDecoder.decode(-Infinity)).toEqual(D.warning(DE.noFinite, -Infinity))
+  describe("UnknownDecoder", () => {
+    const decoder = Number.UnknownDecoder
+
+    it("baseline", () => {
+      expect(decoder.decode(1)).toEqual(D.success(1))
+      expect(decoder.decode("a")).toEqual(D.failure(DE.notType("number", "a")))
+    })
+
+    it("should warn for NaN", () => {
+      expect(decoder.decode(NaN)).toEqual(D.warning(DE.nan, NaN))
+    })
+
+    it("should warn for no finite values", () => {
+      expect(decoder.decode(Infinity)).toEqual(D.warning(DE.noFinite, Infinity))
+      expect(decoder.decode(-Infinity)).toEqual(D.warning(DE.noFinite, -Infinity))
+    })
+  })
+
+  it("JsonEncoder", () => {
+    const encoder = Number.JsonEncoder
+    expect(encoder.encode(1)).toEqual(1)
   })
 })

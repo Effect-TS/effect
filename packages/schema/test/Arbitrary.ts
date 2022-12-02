@@ -61,27 +61,6 @@ describe("Arbitrary", () => {
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it("string", () => {
-    const schema = S.string
-    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
-    const guard = G.guardFor(schema)
-    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
-  })
-
-  it("number", () => {
-    const schema = S.number
-    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
-    const guard = G.guardFor(schema)
-    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
-  })
-
-  it("boolean", () => {
-    const schema = S.boolean
-    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
-    const guard = G.guardFor(schema)
-    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
-  })
-
   it("of", () => {
     const schema = S.of(1)
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)

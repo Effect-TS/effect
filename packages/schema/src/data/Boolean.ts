@@ -31,10 +31,23 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<boolean> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard<boolean>(Schema, isBoolean)
+/**
+ * @since 1.0.0
+ */
+export const Guard = I.makeGuard<boolean>(Schema, isBoolean)
 
-const UnknownDecoder = I.fromRefinement<boolean>(Schema, isBoolean, (u) => DE.notType("boolean", u))
+/**
+ * @since 1.0.0
+ */
+export const UnknownDecoder = I.fromRefinement<boolean>(
+  Schema,
+  isBoolean,
+  (u) => DE.notType("boolean", u)
+)
 
-const JsonEncoder = I.makeEncoder<boolean, boolean>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const JsonEncoder = I.makeEncoder<boolean, boolean>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<boolean>(Schema, (fc) => fc.boolean())

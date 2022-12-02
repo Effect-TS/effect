@@ -33,37 +33,12 @@ describe("UnknownDecoder", () => {
     )
   })
 
-  it("string", () => {
-    const schema = S.string
-    const decoder = UD.unknownDecoderFor(schema)
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-
-    expect(decoder.decode(1)).toEqual(D.failure(DE.notType("string", 1)))
-  })
-
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     const decoder = UD.unknownDecoderFor(schema)
     expect(decoder.decode("a")).toEqual(D.success("a"))
 
     expect(decoder.decode("")).toEqual(D.failure(DE.minLength(1)))
-  })
-
-  it("number", () => {
-    const schema = S.number
-    const decoder = UD.unknownDecoderFor(schema)
-    expect(decoder.decode(1)).toEqual(D.success(1))
-
-    expect(decoder.decode("a")).toEqual(D.failure(DE.notType("number", "a")))
-  })
-
-  it("boolean", () => {
-    const schema = S.boolean
-    const decoder = UD.unknownDecoderFor(schema)
-    expect(decoder.decode(true)).toEqual(D.success(true))
-    expect(decoder.decode(false)).toEqual(D.success(false))
-
-    expect(decoder.decode("a")).toEqual(D.failure(DE.notType("boolean", "a")))
   })
 
   it("of", () => {

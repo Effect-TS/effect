@@ -21,8 +21,8 @@ export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
   [I.UnknownDecoderId]: () => UnknownDecoder,
-  [I.UnknownEncoderId]: () => JsonEncoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => JsonEncoder,
   [I.JsonEncoderId]: () => JsonEncoder
 })
 
@@ -31,13 +31,22 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<string> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard<string>(Schema, String.isString)
+/**
+ * @since 1.0.0
+ */
+export const Guard = I.makeGuard<string>(Schema, String.isString)
 
-const UnknownDecoder = I.makeDecoder<unknown, string>(
+/**
+ * @since 1.0.0
+ */
+export const UnknownDecoder = I.makeDecoder<unknown, string>(
   Schema,
   (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType("string", u))
 )
 
-const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<string>(Schema, (fc) => fc.string())

@@ -33,28 +33,6 @@ const NumberFromStringJsonDecoder = D.make(NumberFromString, (json) => {
 const NumberFromStringJsonEncoder = E.make(NumberFromString, (n) => String(n))
 
 describe("JsonCodec", () => {
-  it("string", () => {
-    const schema = S.string
-    const codec = jsonCodecFor(schema)
-    expect(codec.decode("a")).toEqual(D.success("a"))
-    expect(codec.decode(1)).toEqual(D.failure(DE.notType("string", 1)))
-  })
-
-  it("number", () => {
-    const schema = S.number
-    const codec = jsonCodecFor(schema)
-    expect(codec.decode(1)).toEqual(D.success(1))
-    expect(codec.decode("a")).toEqual(D.failure(DE.notType("number", "a")))
-  })
-
-  it("boolean", () => {
-    const schema = S.boolean
-    const codec = jsonCodecFor(schema)
-    expect(codec.decode(true)).toEqual(D.success(true))
-    expect(codec.decode(false)).toEqual(D.success(false))
-    expect(codec.decode(1)).toEqual(D.failure(DE.notType("boolean", 1)))
-  })
-
   it("of", () => {
     const schema = S.of(1)
     const codec = jsonCodecFor(schema)

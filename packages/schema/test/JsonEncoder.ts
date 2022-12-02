@@ -6,18 +6,6 @@ const encoderFor = JE.provideJsonEncoderFor(set.Provider)
 
 describe("JsonEncoder", () => {
   describe("provideJsonEncoderFor", () => {
-    it("string", () => {
-      const schema = S.string
-      const encoder = encoderFor(schema)
-      expect(encoder.encode("a")).toEqual("a")
-    })
-
-    it("number", () => {
-      const schema = S.number
-      const encoder = encoderFor(schema)
-      expect(encoder.encode(1)).toEqual(1)
-    })
-
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       const encoder = encoderFor(schema)

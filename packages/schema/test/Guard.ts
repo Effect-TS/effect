@@ -10,13 +10,6 @@ const support = Monoid.combineAll([json.Provider, set.Provider, bigint.Provider]
 const guardFor = G.provideGuardFor(support)
 
 describe("Guard", () => {
-  it("bigint", () => {
-    const schema = bigint.Schema
-    const guard = G.guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is(BigInt("1"))).toEqual(true)
-  })
-
   it("literal", () => {
     const schema = S.literal(1, "a")
     const guard = G.guardFor(schema)
@@ -254,13 +247,6 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
   })
 
-  it("bigint", () => {
-    const schema = bigint.Schema
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is(BigInt("1"))).toEqual(true)
-  })
-
   it("Set", () => {
     const schema = set.schema(S.number)
     const guard = guardFor(schema)
@@ -295,28 +281,6 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1 })).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
     expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
-  })
-
-  it("string", () => {
-    const schema = S.string
-    const guard = guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is(1)).toEqual(false)
-  })
-
-  it("number", () => {
-    const schema = S.number
-    const guard = guardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is("a")).toEqual(false)
-  })
-
-  it("boolean", () => {
-    const schema = S.boolean
-    const guard = guardFor(schema)
-    expect(guard.is(true)).toEqual(true)
-    expect(guard.is(false)).toEqual(true)
-    expect(guard.is(1)).toEqual(false)
   })
 
   it("of", () => {

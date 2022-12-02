@@ -17,28 +17,6 @@ describe("JsonDecoder", () => {
     expect(jsonDecoder.decode([1, "a", 3])).toEqual(D.failure(DE.notType("number", "a")))
   })
 
-  it("string", () => {
-    const schema = S.string
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    expect(decoder.decode(1)).toEqual(D.failure(DE.notType("string", 1)))
-  })
-
-  it("number", () => {
-    const schema = S.number
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode(1)).toEqual(D.success(1))
-    expect(decoder.decode("a")).toEqual(D.failure(DE.notType("number", "a")))
-  })
-
-  it("boolean", () => {
-    const schema = S.boolean
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode(true)).toEqual(D.success(true))
-    expect(decoder.decode(false)).toEqual(D.success(false))
-    expect(decoder.decode(1)).toEqual(D.failure(DE.notType("boolean", 1)))
-  })
-
   it("of", () => {
     const schema = S.of(1)
     const decoder = JD.jsonDecoderFor(schema)

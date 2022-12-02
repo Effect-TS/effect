@@ -31,7 +31,10 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<number> = I.declareSchema(id, O.none, Provider)
 
-const Guard = I.makeGuard<number>(Schema, Number.isNumber)
+/**
+ * @since 1.0.0
+ */
+export const Guard = I.makeGuard<number>(Schema, Number.isNumber)
 
 /**
  * @since 1.0.0
@@ -48,6 +51,9 @@ export const UnknownDecoder = I.makeDecoder<unknown, number>(
       I.failure(DE.notType("number", u))
 )
 
-const JsonEncoder = I.makeEncoder<number, number>(Schema, identity)
+/**
+ * @since 1.0.0
+ */
+export const JsonEncoder = I.makeEncoder<number, number>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<number>(Schema, (fc) => fc.float())
