@@ -35,7 +35,10 @@ const Guard = I.makeGuard<number>(Schema, Number.isNumber)
 
 const UnknownDecoder = I.makeDecoder<unknown, number>(
   Schema,
-  (u) => Guard.is(u) ? isNaN(u) ? I.warn(DE.nan, u) : I.succeed(u) : I.fail(DE.notType("number", u))
+  (u) =>
+    Guard.is(u) ?
+      isNaN(u) ? I.warning(DE.nan, u) : I.success(u) :
+      I.failure(DE.notType("number", u))
 )
 
 const JsonEncoder = I.makeEncoder<number, number>(Schema, identity)

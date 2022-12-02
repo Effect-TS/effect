@@ -21,6 +21,30 @@ import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
+export const success: <A>(a: A) => T.These<never, A> = T.right
+
+export const failure = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> =>
+  T.left(C.singleton(e))
+
+export const failures = (es: C.NonEmptyChunk<DE.DecodeError>): T.Validated<DE.DecodeError, never> =>
+  T.left(es)
+
+export const warning = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
+  T.both(C.singleton(e), a)
+
+export const warnings = <A>(
+  es: C.NonEmptyChunk<DE.DecodeError>,
+  a: A
+): T.Validated<DE.DecodeError, A> => T.both(es, a)
+
+export const isFailure = T.isLeft
+
+export const isSuccess = T.isRight
+
+export const map = T.map
+
+export const flatMap = T.flatMap
+
 export const isUnknownObject = (u: unknown): u is UnknownObject =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
@@ -77,16 +101,6 @@ export const makeDecoder = <I, A>(
   decode: Decoder<I, A>["decode"]
 ): Decoder<I, A> => ({ ast: schema.ast, decode }) as any
 
-export const succeed: <A>(a: A) => T.These<never, A> = T.right
-
-export const fail = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> =>
-  T.left(C.singleton(e))
-
-export const warn = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
-  T.both(C.singleton(e), a)
-
-export const flatMap = T.flatMap
-
 export const compose = <B, C>(bc: Decoder<B, C>) =>
   <A>(ab: Decoder<A, B>): Decoder<A, C> =>
     makeDecoder(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
@@ -95,7 +109,8 @@ export const fromRefinement = <A>(
   schema: Schema<A>,
   refinement: (u: unknown) => u is A,
   onFalse: (u: unknown) => DE.DecodeError
-): Decoder<unknown, A> => makeDecoder(schema, (u) => refinement(u) ? succeed(u) : fail(onFalse(u)))
+): Decoder<unknown, A> =>
+  makeDecoder(schema, (u) => refinement(u) ? success(u) : failure(onFalse(u)))
 
 export const makeGuard = <A>(
   schema: Schema<A>,
@@ -119,7 +134,7 @@ export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>)
         (i) =>
           pipe(
             self.decode(i),
-            flatMap((a) => refinement(a) ? succeed(a) : fail(DE.custom({}, a)))
+            flatMap((a) => refinement(a) ? success(a) : failure(DE.custom({}, a)))
           )
       )
     const encoder = <I>(self: Encoder<I, A>): Encoder<I, B> =>

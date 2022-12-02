@@ -26,12 +26,12 @@ export const empty: Provider = new Map()
 /**
  * @since 1.0.0
  */
-export const make = (typeId: symbol, interpreters: Record<symbol, Function>): Provider => {
+export const make = (typeId: symbol, providers: Record<symbol, Function>): Provider => {
   const handlers: Array<[symbol, Map<symbol, Function>]> = []
-  for (const interpreterId of Object.getOwnPropertySymbols(interpreters)) {
+  for (const interpreterId of Object.getOwnPropertySymbols(providers)) {
     handlers.push([
       interpreterId,
-      new Map<symbol, Function>([[typeId, interpreters[interpreterId]]])
+      new Map<symbol, Function>([[typeId, providers[interpreterId]]])
     ])
   }
   return new Map(handlers)

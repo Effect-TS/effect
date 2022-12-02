@@ -5,7 +5,6 @@
 import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
@@ -70,7 +69,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
                     D.flatMap((as) =>
                       pipe(
                         restElement.decode(us.slice(ast.components.length)),
-                        T.map((rest) => [...as, ...rest])
+                        D.map((rest) => [...as, ...rest])
                       )
                     )
                   )
@@ -86,12 +85,12 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
             let es: C.Chunk<DE.DecodeError> = C.empty
             for (const member of members) {
               const t = member.decode(u)
-              if (T.isRightOrBoth(t)) {
+              if (!D.isFailure(t)) {
                 return t
               }
               es = C.concat(t.left)(es)
             }
-            return C.isNonEmpty(es) ? T.left(es) : I.fail(DE.notType("never", u))
+            return C.isNonEmpty(es) ? D.failures(es) : D.failure(DE.notType("never", u))
           })
         }
         case "Struct": {
@@ -112,7 +111,7 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
                   D.flatMap((out) =>
                     pipe(
                       stringIndexSignature.decode(u),
-                      T.map((rest) => ({ ...out, ...rest }))
+                      D.map((rest) => ({ ...out, ...rest }))
                     )
                   )
                 )

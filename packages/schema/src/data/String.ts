@@ -35,7 +35,7 @@ const Guard = I.makeGuard<string>(Schema, String.isString)
 
 const UnknownDecoder = I.makeDecoder<unknown, string>(
   Schema,
-  (u) => Guard.is(u) ? I.succeed(u) : I.fail(DE.notType("string", u))
+  (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType("string", u))
 )
 
 const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)

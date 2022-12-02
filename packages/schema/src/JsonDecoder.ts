@@ -4,7 +4,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
-import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
 import * as J from "@fp-ts/schema/data/Json"
 import * as JA from "@fp-ts/schema/data/JsonArray"
@@ -69,7 +68,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
                     D.flatMap((as) =>
                       pipe(
                         restElement.decode(us.slice(ast.components.length)),
-                        T.map((rest) => [...as, ...rest])
+                        D.map((rest) => [...as, ...rest])
                       )
                     )
                   )
@@ -99,7 +98,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
                   D.flatMap((out) =>
                     pipe(
                       stringIndexSignature.decode(u),
-                      T.map((rest) => ({ ...out, ...rest }))
+                      D.map((rest) => ({ ...out, ...rest }))
                     )
                   )
                 )

@@ -29,38 +29,38 @@ describe("Chunk", () => {
   it("unknownDecoder", () => {
     const schema = C.schema(S.number)
     const decoder = UD.unknownDecoderFor(schema)
-    expect(decoder.decode([])).toEqual(D.succeed(DC.empty))
+    expect(decoder.decode([])).toEqual(D.success(DC.empty))
     expect(decoder.decode([1, 2, 3])).toEqual(
-      D.succeed(DC.unsafeFromArray([1, 2, 3]))
+      D.success(DC.unsafeFromArray([1, 2, 3]))
     )
     // should handle warnings
     expect(decoder.decode([1, NaN, 3])).toEqual(
-      D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
+      D.warning(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(decoder.decode(null)).toEqual(
-      D.fail(DE.notType("ReadonlyArray<unknown>", null))
+      D.failure(DE.notType("ReadonlyArray<unknown>", null))
     )
     expect(decoder.decode([1, "a"])).toEqual(
-      D.fail(DE.notType("number", "a"))
+      D.failure(DE.notType("number", "a"))
     )
   })
 
   it("jsonDecoder", () => {
     const schema = C.schema(S.number)
     const jsonDecoder = JD.jsonDecoderFor(schema)
-    expect(jsonDecoder.decode([])).toEqual(D.succeed(DC.empty))
+    expect(jsonDecoder.decode([])).toEqual(D.success(DC.empty))
     expect(jsonDecoder.decode([1, 2, 3])).toEqual(
-      D.succeed(DC.unsafeFromArray([1, 2, 3]))
+      D.success(DC.unsafeFromArray([1, 2, 3]))
     )
     // should handle warnings
     expect(jsonDecoder.decode([1, NaN, 3])).toEqual(
-      D.warn(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
+      D.warning(DE.nan, DC.unsafeFromArray([1, NaN, 3]))
     )
     expect(jsonDecoder.decode(null)).toEqual(
-      D.fail(DE.notType("ReadonlyArray<unknown>", null))
+      D.failure(DE.notType("ReadonlyArray<unknown>", null))
     )
     expect(jsonDecoder.decode([1, "a"])).toEqual(
-      D.fail(DE.notType("number", "a"))
+      D.failure(DE.notType("number", "a"))
     )
   })
 

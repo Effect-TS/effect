@@ -3,7 +3,7 @@
  */
 
 import * as C from "@fp-ts/data/Chunk"
-import * as T from "@fp-ts/data/These"
+import type { Validated } from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -14,7 +14,7 @@ import * as S from "@fp-ts/schema/Schema"
  */
 export interface Decoder<in S, in out A> extends Schema<A> {
   readonly I: (_: S) => void
-  readonly decode: (i: S) => T.Validated<DE.DecodeError, A>
+  readonly decode: (i: S) => Validated<DE.DecodeError, A>
 }
 
 /**
@@ -26,17 +26,42 @@ export const make: <S, A>(schema: Schema<A>, decode: Decoder<S, A>["decode"]) =>
 /**
  * @since 1.0.0
  */
-export const succeed: <A>(a: A) => T.These<never, A> = I.succeed
+export const success = I.success
 
 /**
  * @since 1.0.0
  */
-export const fail = I.fail
+export const failure = I.failure
 
 /**
  * @since 1.0.0
  */
-export const warn = I.warn
+export const failures = I.failures
+
+/**
+ * @since 1.0.0
+ */
+export const warning = I.warning
+
+/**
+ * @since 1.0.0
+ */
+export const warnings = I.warnings
+
+/**
+ * @since 1.0.0
+ */
+export const isFailure = I.isFailure
+
+/**
+ * @since 1.0.0
+ */
+export const isSuccess = I.isSuccess
+
+/**
+ * @since 1.0.0
+ */
+export const map = I.map
 
 /**
  * @since 1.0.0
@@ -64,12 +89,12 @@ export const fromTuple = <S, Components extends ReadonlyArray<Decoder<S, unknown
       const out: any = []
       for (let i = 0; i < components.length; i++) {
         const t = components[i].decode(is[i])
-        if (T.isLeft(t)) {
-          return T.left(t.left)
+        if (isFailure(t)) {
+          return failures(t.left)
         }
         out[i] = t.right // TODO: handle warnings
       }
-      return succeed(out)
+      return success(out)
     }
   )
 
@@ -93,11 +118,11 @@ export const fromArray = <S, A>(
     let isBoth = true
     for (let index = 0; index < is.length; index++) {
       const t = item.decode(is[index])
-      if (T.isLeft(t)) {
+      if (isFailure(t)) {
         isBoth = false
         es = C.concat(t.left)(es)
         break // bail out on a fatal errors
-      } else if (T.isRight(t)) {
+      } else if (isSuccess(t)) {
         as.push(t.right)
       } else {
         es = C.concat(t.left)(es)
@@ -105,9 +130,9 @@ export const fromArray = <S, A>(
       }
     }
     if (C.isNonEmpty(es)) {
-      return isBoth ? T.both(es, as) : T.left(es)
+      return isBoth ? warnings(es, as) : failures(es)
     }
-    return T.right(as)
+    return success(as)
   })
 
 /**
@@ -125,12 +150,12 @@ export const fromStruct = <S, Fields extends Record<PropertyKey, Decoder<S, any>
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i]
       const t = fields[key].decode(input[key])
-      if (T.isLeft(t)) {
+      if (isFailure(t)) {
         return t
       }
       a[key] = t.right // TODO handle both
     }
-    return succeed(a)
+    return success(a)
   })
 }
 
@@ -144,12 +169,12 @@ export const fromStringIndexSignature = <S, A>(
     const out: any = {}
     for (const key of Object.keys(ri)) {
       const t = value.decode(ri[key])
-      if (T.isLeft(t)) {
+      if (isFailure(t)) {
         return t
       }
       out[key] = t.right
     }
-    return succeed(out)
+    return success(out)
   })
 
 /**
@@ -162,12 +187,12 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
     let es: C.Chunk<DE.DecodeError> = C.empty
     for (const member of members) {
       const t = member.decode(u)
-      if (T.isRightOrBoth(t)) {
+      if (!isFailure(t)) {
         return t
       }
       es = C.concat(t.left)(es)
     }
-    return C.isNonEmpty(es) ? T.left(es) : fail(DE.notType("never", u))
+    return C.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
 /**

@@ -26,7 +26,8 @@ const unknownDecoder = (min: number) =>
   <I, A extends number>(self: Decoder<I, A>): Decoder<I, A> =>
     I.makeDecoder(
       schema(min)(self),
-      (i) => pipe(self.decode(i), I.flatMap((a) => a >= min ? I.succeed(a) : I.fail(DE.min(min))))
+      (i) =>
+        pipe(self.decode(i), I.flatMap((a) => a >= min ? I.success(a) : I.failure(DE.min(min))))
     )
 
 const jsonEncoder = (min: number) =>

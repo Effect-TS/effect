@@ -29,7 +29,9 @@ const unknownDdecoder = (maxLength: number) =>
       (i) =>
         pipe(
           self.decode(i),
-          I.flatMap((a) => a.length <= maxLength ? I.succeed(a) : I.fail(DE.maxLength(maxLength)))
+          I.flatMap((a) =>
+            a.length <= maxLength ? I.success(a) : I.failure(DE.maxLength(maxLength))
+          )
         )
     )
 
