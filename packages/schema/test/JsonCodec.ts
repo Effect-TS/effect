@@ -9,6 +9,7 @@ import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
+import * as Util from "@fp-ts/schema/test/util"
 
 const jsonCodecFor = JC.provideJsonCodecFor(P.empty)
 
@@ -58,8 +59,10 @@ describe("JsonCodec", () => {
     expect(codec.decode("a")).toEqual(D.success("a"))
     expect(codec.decode("1")).toEqual(D.success(1))
 
-    expect(codec.decode(null)).toEqual(
-      D.failures(C.make(DE.notType("string", null), DE.notType("string", null)))
+    Util.expectFailure(
+      codec,
+      null,
+      "member 0 null did not satisfy is(string), member 1 null did not satisfy is(string)"
     )
 
     expect(codec.encode("b")).toEqual("b")

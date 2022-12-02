@@ -19,6 +19,7 @@ export type DecodeError =
   | Max
   | Index
   | Key
+  | Member
 
 /**
  * @since 1.0.0
@@ -208,5 +209,26 @@ export const key = (
 ): Key => ({
   _tag: "Key",
   key,
+  errors
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Member {
+  readonly _tag: "Member"
+  readonly index: number
+  readonly errors: NonEmptyChunk<DecodeError>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const member = (
+  index: number,
+  errors: NonEmptyChunk<DecodeError>
+): Member => ({
+  _tag: "Member",
+  index,
   errors
 })

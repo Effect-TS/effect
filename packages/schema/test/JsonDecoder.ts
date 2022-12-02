@@ -43,8 +43,10 @@ describe("JsonDecoder", () => {
     expect(decoder.decode("a")).toEqual(D.success("a"))
     expect(decoder.decode(1)).toEqual(D.success(1))
 
-    expect(decoder.decode(null)).toEqual(
-      D.failures(C.make(DE.notType("string", null), DE.notType("number", null)))
+    Util.expectFailure(
+      decoder,
+      null,
+      "member 0 null did not satisfy is(string), member 1 null did not satisfy is(number)"
     )
   })
 

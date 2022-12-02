@@ -207,12 +207,12 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
 ): Decoder<I, S.Infer<Members[number]>> =>
   make(S.union(...members), (u) => {
     let es: C.Chunk<DE.DecodeError> = C.empty
-    for (const member of members) {
-      const t = member.decode(u)
+    for (let i = 0; i < members.length; i++) {
+      const t = members[i].decode(u)
       if (!isFailure(t)) {
         return t
       }
-      es = C.concat(t.left)(es)
+      es = C.append(DE.member(i, t.left))(es)
     }
     return C.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })

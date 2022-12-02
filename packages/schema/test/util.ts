@@ -58,5 +58,7 @@ export const format = (e: DE.DecodeError): string => {
       return `/${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
     case "Key":
       return `/${e.key} ${pipe(e.errors, C.map(format), C.join(", "))}`
+    case "Member":
+      return `member ${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
   }
 }
