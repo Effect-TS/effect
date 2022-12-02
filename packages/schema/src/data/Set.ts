@@ -4,12 +4,10 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as JsonArray from "@fp-ts/schema/data/JsonArray"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
@@ -25,14 +23,11 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Set<A>> =>
     (u): u is Set<A> => u instanceof Set && Array.from(u.values()).every(item.is)
   )
 
-const fromArray = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Set<A>> =>
+const array = <I, A>(item: D.Decoder<I, A>): D.Decoder<ReadonlyArray<I>, Set<A>> =>
   pipe(D.fromArray(item), D.compose(D.make(schema(item), (as) => D.succeed(new Set(as)))))
 
 const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder<Set<A>> =>
-  pipe(UD.unknownDecoderFor(UnknownArray.Schema), D.compose(fromArray(item)))
-
-const jsonDecoder = <A>(item: JD.JsonDecoder<A>): JD.JsonDecoder<Set<A>> =>
-  pipe(JD.jsonDecoderFor(JsonArray.Schema), D.compose(fromArray(item)))
+  pipe(UD.unknownDecoderFor(UnknownArray.Schema), D.compose(array(item)))
 
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Set<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
@@ -44,7 +39,7 @@ export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.UnknownDecoderId]: unknownDecoder,
-  [I.JsonDecoderId]: jsonDecoder
+  [I.JsonDecoderId]: unknownDecoder
 })
 
 /**

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { identity } from "@fp-ts/data/Function"
 import type { Json, JsonArray } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import * as DE from "@fp-ts/schema/DecodeError"
@@ -20,7 +21,9 @@ export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
   [I.UnknownDecoderId]: () => UnknownDecoder,
-  [I.JsonDecoderId]: () => UnknownDecoder
+  [I.JsonDecoderId]: () => UnknownDecoder,
+  [I.UnknownEncoderId]: () => JsonEncoder,
+  [I.JsonEncoderId]: () => JsonEncoder
 })
 
 /**
@@ -38,6 +41,8 @@ export const UnknownDecoder = I.fromRefinement<JsonArray>(
   I.isJsonArray,
   (u) => DE.notType("JsonArray", u)
 )
+
+const JsonEncoder = I.makeEncoder<JsonArray, JsonArray>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<JsonArray>(
   Schema,

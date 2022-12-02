@@ -10,6 +10,7 @@ import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as D from "@fp-ts/schema/Decoder"
 import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
+import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import type { UnknownDecoder } from "@fp-ts/schema/UnknownDecoder"
@@ -32,6 +33,9 @@ const unknownDecoder = <A>(
   item: UnknownDecoder<A>
 ): UnknownDecoder<Chunk<A>> => pipe(UnknownArray.UnknownDecoder, D.compose(array(item)))
 
+const jsonEncoder = <A>(self: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
+  I.makeEncoder(schema(self), (chunk) => C.toReadonlyArray(chunk).map(self.encode))
+
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))
 
@@ -42,7 +46,9 @@ export const Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.UnknownDecoderId]: unknownDecoder,
-  [I.JsonDecoderId]: unknownDecoder
+  [I.JsonDecoderId]: unknownDecoder,
+  [I.UnknownEncoderId]: jsonEncoder,
+  [I.JsonEncoderId]: jsonEncoder
 })
 
 /**

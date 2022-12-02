@@ -1,13 +1,12 @@
 import * as DC from "@fp-ts/data/Chunk"
-import * as A from "@fp-ts/schema/Arbitrary"
 import * as C from "@fp-ts/schema/data/Chunk"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
+import * as Util from "@fp-ts/schema/test/util"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
-import * as fc from "fast-check"
 
 describe("Chunk", () => {
   it("id", () => {
@@ -65,10 +64,7 @@ describe("Chunk", () => {
     )
   })
 
-  it("arbitrary", () => {
-    const schema = C.schema(S.number)
-    const arbitrary = A.arbitraryFor(schema)
-    const guard = G.guardFor(arbitrary)
-    expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
+  it("property tests", () => {
+    Util.property(C.schema(S.number))
   })
 })
