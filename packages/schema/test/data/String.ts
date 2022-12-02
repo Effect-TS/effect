@@ -1,5 +1,4 @@
 import * as String from "@fp-ts/schema/data/String"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -19,7 +18,7 @@ describe("String", () => {
 
     it("baseline", () => {
       expect(decoder.decode("a")).toEqual(D.success("a"))
-      expect(decoder.decode(1)).toEqual(D.failure(DE.notType("string", 1)))
+      Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
     })
   })
 

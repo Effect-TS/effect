@@ -52,7 +52,8 @@ export const UnknownDecoder = I.makeDecoder<unknown, bigint>(
       try {
         return I.success(BigInt(u))
       } catch (e) {
-        return I.failure(DE.notType(String(e), u))
+        const expected = e instanceof Error ? e.message : String(e)
+        return I.failure(DE.custom(expected, u))
       }
     }
     return I.failure(DE.notType("string | number | bigint | boolean", u))

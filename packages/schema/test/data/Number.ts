@@ -19,7 +19,7 @@ describe("Number", () => {
 
     it("baseline", () => {
       expect(decoder.decode(1)).toEqual(D.success(1))
-      expect(decoder.decode("a")).toEqual(D.failure(DE.notType("number", "a")))
+      Util.expectFailure(decoder, "a", "\"a\" did not satisfy is(number)")
     })
 
     it("should warn for NaN", () => {

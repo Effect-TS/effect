@@ -1,6 +1,4 @@
-import * as C from "@fp-ts/data/Chunk"
 import * as NumberFromString from "@fp-ts/schema/data/NumberFromString"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as JC from "@fp-ts/schema/JsonCodec"
 import * as S from "@fp-ts/schema/Schema"
@@ -13,7 +11,7 @@ describe("JsonCodec", () => {
     const schema = S.of(1)
     const codec = jsonCodecFor(schema)
     expect(codec.decode(1)).toEqual(D.success(1))
-    expect(codec.decode("a")).toEqual(D.failure(DE.notEqual(1, "a")))
+    Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
   it("tuple", () => {
@@ -21,10 +19,8 @@ describe("JsonCodec", () => {
     const codec = jsonCodecFor(schema)
     expect(codec.decode(["a", "1"])).toEqual(D.success(["a", 1]))
 
-    expect(codec.decode({})).toEqual(D.failure(DE.notType("JsonArray", {})))
-    expect(codec.decode(["a"])).toEqual(
-      D.failure(DE.index(1, C.singleton(DE.notType("string", undefined))))
-    )
+    Util.expectFailure(codec, {}, "{} did not satisfy is(JsonArray)")
+    Util.expectFailure(codec, ["a"], "/1 undefined did not satisfy is(string)")
 
     expect(codec.encode(["b", 2])).toEqual(["b", "2"])
   })

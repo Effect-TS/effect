@@ -19,7 +19,7 @@ describe("UnknownDecoder", () => {
       (u) =>
         typeof u === "string" ?
           D.success(u) :
-          D.failure(DE.custom({ myCustomErrorConfig: "not a string" }, u))
+          D.failure(DE.custom({ message: "not a string" }, u))
     )
 
     const Person = S.struct({
@@ -30,6 +30,10 @@ describe("UnknownDecoder", () => {
 
     expect(decoder.decode({ name: "name", age: 18 })).toEqual(D.success({ name: "name", age: 18 }))
 
-    Util.expectFailure(decoder, { name: null, age: 18 }, "/name null did not satisfy custom error")
+    Util.expectFailure(
+      decoder,
+      { name: null, age: 18 },
+      "/name null did not satisfy {\"message\":\"not a string\"}"
+    )
   })
 })

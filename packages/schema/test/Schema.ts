@@ -1,12 +1,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as ast from "@fp-ts/schema/AST"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
+import * as Util from "@fp-ts/schema/test/util"
 import * as fc from "fast-check"
 
 const guardFor = G.provideGuardFor(empty)
@@ -30,7 +30,7 @@ describe("Schema", () => {
       expect(guard.is(1.2)).toEqual(false)
       const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode(1)).toEqual(D.success(1))
-      expect(decoder.decode(1.2)).toEqual(D.failure(DE.custom({}, 1.2)))
+      Util.expectFailure(decoder, 1.2, "1.2 did not satisfy is(@fp-ts/schema/test/Int)")
       const arbitrary = A.arbitraryFor(schema)
       expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
     })
@@ -55,7 +55,11 @@ describe("Schema", () => {
       expect(guard.is({ a: 1, b: 2 })).toEqual(false)
       const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode({ a: 1, b: 1 })).toEqual(D.success({ a: 1, b: 1 }))
-      expect(decoder.decode({ a: 1, b: 2 })).toEqual(D.failure(DE.custom({}, { a: 1, b: 2 })))
+      Util.expectFailure(
+        decoder,
+        { a: 1, b: 2 },
+        "{\"a\":1,\"b\":2} did not satisfy is(@fp-ts/schema/test/BrandedStruct)"
+      )
       const arbitrary = A.arbitraryFor(schema)
       expect(fc.sample(arbitrary.arbitrary(fc), 10).every(guard.is)).toEqual(true)
     })

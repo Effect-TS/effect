@@ -1,7 +1,5 @@
-import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as set from "@fp-ts/schema/data/Set"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
@@ -14,8 +12,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode([])).toEqual(D.success(new Set()))
     expect(decoder.decode([1, 2, 3])).toEqual(D.success(new Set([1, 2, 3])))
 
-    expect(decoder.decode(null)).toEqual(D.failure(DE.notType("ReadonlyArray<unknown>", null)))
-
+    Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
     Util.expectFailure(decoder, [1, "a", 3], "/1 \"a\" did not satisfy is(number)")
   })
 
@@ -23,7 +20,8 @@ describe("JsonDecoder", () => {
     const schema = S.of(1)
     const decoder = JD.jsonDecoderFor(schema)
     expect(decoder.decode(1)).toEqual(D.success(1))
-    expect(decoder.decode("a")).toEqual(D.failure(DE.notEqual(1, "a")))
+
+    Util.expectFailure(decoder, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
   it("tuple", () => {
@@ -31,10 +29,8 @@ describe("JsonDecoder", () => {
     const decoder = JD.jsonDecoderFor(schema)
     expect(decoder.decode(["a", 1])).toEqual(D.success(["a", 1]))
 
-    expect(decoder.decode({})).toEqual(D.failure(DE.notType("JsonArray", {})))
-    expect(decoder.decode(["a"])).toEqual(
-      D.failure(DE.index(1, C.singleton(DE.notType("number", undefined))))
-    )
+    Util.expectFailure(decoder, {}, "{} did not satisfy is(JsonArray)")
+    Util.expectFailure(decoder, ["a"], "/1 undefined did not satisfy is(number)")
   })
 
   it("union", () => {
@@ -77,8 +73,7 @@ describe("JsonDecoder", () => {
       expect(decoder.decode([])).toEqual(D.success([]))
       expect(decoder.decode(["a"])).toEqual(D.success(["a"]))
 
-      expect(decoder.decode(null)).toEqual(D.failure(DE.notType("JsonArray", null)))
-
+      Util.expectFailure(decoder, null, "null did not satisfy is(JsonArray)")
       Util.expectFailure(decoder, [1], "/0 1 did not satisfy is(string)")
     })
 
@@ -101,7 +96,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode("a")).toEqual(D.success("a"))
     expect(decoder.decode("aa")).toEqual(D.success("aa"))
 
-    expect(decoder.decode("")).toEqual(D.failure(DE.minLength(1, "")))
+    Util.expectFailure(decoder, "", "\"\" did not satisfy minLength(1)")
   })
 
   it("maxLength", () => {
@@ -111,7 +106,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode("a")).toEqual(D.success("a"))
     expect(decoder.decode("aa")).toEqual(D.success("aa"))
 
-    expect(decoder.decode("aaa")).toEqual(D.failure(DE.maxLength(2, "aaa")))
+    Util.expectFailure(decoder, "aaa", "\"aaa\" did not satisfy maxLength(2)")
   })
 
   it("min", () => {
@@ -120,7 +115,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode(1)).toEqual(D.success(1))
     expect(decoder.decode(2)).toEqual(D.success(2))
 
-    expect(decoder.decode(0)).toEqual(D.failure(DE.min(1, 0)))
+    Util.expectFailure(decoder, 0, "0 did not satisfy min(1)")
   })
 
   it("max", () => {
@@ -129,7 +124,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode(0)).toEqual(D.success(0))
     expect(decoder.decode(1)).toEqual(D.success(1))
 
-    expect(decoder.decode(2)).toEqual(D.failure(DE.max(1, 2)))
+    Util.expectFailure(decoder, 2, "2 did not satisfy max(1)")
   })
 
   it("lazy", () => {

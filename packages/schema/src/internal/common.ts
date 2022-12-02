@@ -134,7 +134,9 @@ export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>)
         (i) =>
           pipe(
             self.decode(i),
-            flatMap((a) => refinement(a) ? success(a) : failure(DE.custom({}, a)))
+            flatMap((a) =>
+              refinement(a) ? success(a) : failure(DE.notType(String(id.description), a))
+            )
           )
       )
     const encoder = <I>(self: Encoder<I, A>): Encoder<I, B> =>

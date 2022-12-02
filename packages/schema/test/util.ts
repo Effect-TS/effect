@@ -37,7 +37,7 @@ const formatAll = (errors: NonEmptyChunk<DE.DecodeError>): string => {
 export const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Custom":
-      return `${JSON.stringify(e.actual)} did not satisfy custom error`
+      return `${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.config)}`
     case "Max":
       return `${JSON.stringify(e.actual)} did not satisfy max(${e.max})`
     case "Min":

@@ -1,5 +1,4 @@
 import * as Boolean from "@fp-ts/schema/data/Boolean"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -15,14 +14,12 @@ describe("Boolean", () => {
     expect(guard.is(1)).toEqual(false)
   })
 
-  describe("UnknownDecoder", () => {
+  it("UnknownDecoder", () => {
     const decoder = Boolean.UnknownDecoder
+    expect(decoder.decode(true)).toEqual(D.success(true))
+    expect(decoder.decode(false)).toEqual(D.success(false))
 
-    it("baseline", () => {
-      expect(decoder.decode(true)).toEqual(D.success(true))
-      expect(decoder.decode(false)).toEqual(D.success(false))
-      expect(decoder.decode(1)).toEqual(D.failure(DE.notType("boolean", 1)))
-    })
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(boolean)")
   })
 
   it("JsonEncoder", () => {

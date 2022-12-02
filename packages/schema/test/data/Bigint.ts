@@ -1,5 +1,4 @@
 import * as Bigint from "@fp-ts/schema/data/Bigint"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -22,16 +21,15 @@ describe("Bigint", () => {
       expect(decoder.decode(0n)).toEqual(D.success(0n))
       expect(decoder.decode(1n)).toEqual(D.success(1n))
       expect(decoder.decode("1")).toEqual(D.success(1n))
-      expect(decoder.decode(null)).toEqual(
-        D.failure(DE.notType("string | number | bigint | boolean", null))
+      Util.expectFailure(
+        decoder,
+        null,
+        "null did not satisfy is(string | number | bigint | boolean)"
       )
-      expect(decoder.decode(1.2)).toEqual(
-        D.failure(
-          DE.notType(
-            "RangeError: The number 1.2 cannot be converted to a BigInt because it is not an integer",
-            1.2
-          )
-        )
+      Util.expectFailure(
+        decoder,
+        1.2,
+        "1.2 did not satisfy \"The number 1.2 cannot be converted to a BigInt because it is not an integer\""
       )
     })
   })
