@@ -1,3 +1,4 @@
+import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
 import * as set from "@fp-ts/schema/data/Set"
@@ -62,7 +63,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode(1)).toEqual(D.succeed(1))
 
     expect(decoder.decode(null)).toEqual(
-      T.left([DE.notType("string", null), DE.notType("number", null)])
+      T.left(C.unsafeFromArray([DE.notType("string", null), DE.notType("number", null)]))
     )
   })
 

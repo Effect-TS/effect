@@ -1,4 +1,5 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
+import * as C from "@fp-ts/data/Chunk"
 import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as G from "@fp-ts/schema/Guard"
@@ -35,7 +36,7 @@ describe("examples", () => {
         T.right({ name: "name", age: 18 })
       )
       expect(jsonCodec.decode(null)).toEqual(
-        T.left([DE.notType("JsonObject", null)])
+        T.left(C.singleton(DE.notType("JsonObject", null)))
       )
     })
 

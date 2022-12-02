@@ -1,3 +1,4 @@
+import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
@@ -80,7 +81,7 @@ describe("JsonCodec", () => {
     expect(codec.decode("1")).toEqual(D.succeed(1))
 
     expect(codec.decode(null)).toEqual(
-      T.left([DE.notType("string", null), DE.notType("string", null)])
+      T.left(C.unsafeFromArray([DE.notType("string", null), DE.notType("string", null)]))
     )
 
     expect(codec.encode("b")).toEqual("b")

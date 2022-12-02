@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
+import * as C from "@fp-ts/data/Chunk"
 import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -14,7 +14,7 @@ import * as S from "@fp-ts/schema/Schema"
  */
 export interface Decoder<in S, in out A> extends Schema<A> {
   readonly I: (_: S) => void
-  readonly decode: (i: S) => T.These<ReadonlyArray<DE.DecodeError>, A>
+  readonly decode: (i: S) => T.Validated<DE.DecodeError, A>
 }
 
 /**
@@ -31,19 +31,17 @@ export const succeed: <A>(a: A) => T.These<never, A> = I.succeed
 /**
  * @since 1.0.0
  */
-export const fail: <E>(e: E) => T.These<ReadonlyArray<E>, never> = I.fail
+export const fail = I.fail
 
 /**
  * @since 1.0.0
  */
-export const warn: <E, A>(e: E, a: A) => T.These<ReadonlyArray<E>, A> = I.warn
+export const warn = I.warn
 
 /**
  * @since 1.0.0
  */
-export const flatMap: <A, E2, B>(
-  f: (a: A) => T.These<ReadonlyArray<E2>, B>
-) => <E1>(self: T.These<ReadonlyArray<E1>, A>) => T.These<ReadonlyArray<E1 | E2>, B> = I.flatMap
+export const flatMap = I.flatMap
 
 /**
  * @since 1.0.0
@@ -90,23 +88,23 @@ export const fromArray = <S, A>(
   item: Decoder<S, A>
 ): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
   make(S.array(item), (is) => {
-    const es: Array<DE.DecodeError> = []
+    let es: C.Chunk<DE.DecodeError> = C.empty
     const as: Array<A> = []
     let isBoth = true
     for (let index = 0; index < is.length; index++) {
       const t = item.decode(is[index])
       if (T.isLeft(t)) {
         isBoth = false
-        es.push(...t.left)
+        es = C.concat(t.left)(es)
         break // bail out on a fatal errors
       } else if (T.isRight(t)) {
         as.push(t.right)
       } else {
-        es.push(...t.left)
+        es = C.concat(t.left)(es)
         as.push(t.right)
       }
     }
-    if (isNonEmpty(es)) {
+    if (C.isNonEmpty(es)) {
       return isBoth ? T.both(es, as) : T.left(es)
     }
     return T.right(as)
@@ -161,15 +159,15 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ...members: Members
 ): Decoder<I, S.Infer<Members[number]>> =>
   make(S.union(...members), (u) => {
-    const lefts: Array<DE.DecodeError> = []
+    let es: C.Chunk<DE.DecodeError> = C.empty
     for (const member of members) {
       const t = member.decode(u)
       if (T.isRightOrBoth(t)) {
         return t
       }
-      lefts.push(...t.left)
+      es = C.concat(t.left)(es)
     }
-    return T.left(lefts)
+    return C.isNonEmpty(es) ? T.left(es) : fail(DE.notType("never", u))
   })
 
 /**

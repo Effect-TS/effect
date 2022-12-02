@@ -1,5 +1,4 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
@@ -31,14 +30,6 @@ describe("UnknownDecoder", () => {
     expect(decoder.decode({ name: "name", age: 18 })).toEqual(D.succeed({ name: "name", age: 18 }))
     expect(decoder.decode({ name: null, age: 18 })).toEqual(
       D.fail(DE.custom({ myCustomErrorConfig: "not a string" }, null))
-    )
-  })
-
-  it("flatMap", () => {
-    expect(pipe(T.both(["e1"], 1), D.flatMap(() => T.right(2)))).toEqual(T.both(["e1"], 2))
-    expect(pipe(T.both(["e1"], 1), D.flatMap(() => T.left(["e2"])))).toEqual(T.left(["e1", "e2"]))
-    expect(pipe(T.both(["e1"], 1), D.flatMap(() => T.both(["e2"], 2)))).toEqual(
-      T.both(["e1", "e2"], 2)
     )
   })
 
@@ -105,7 +96,7 @@ describe("UnknownDecoder", () => {
     it("using both", () => {
       const schema = S.array(S.number)
       const decoder = UD.unknownDecoderFor(schema)
-      expect(decoder.decode([1, NaN, 3])).toEqual(T.both([DE.nan], [1, NaN, 3]))
+      expect(decoder.decode([1, NaN, 3])).toEqual(D.warn(DE.nan, [1, NaN, 3]))
     })
   })
 

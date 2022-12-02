@@ -1,13 +1,15 @@
 /**
  * @since 1.0.0
  */
+
+import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import type { AST } from "@fp-ts/schema/AST"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
-import type * as DE from "@fp-ts/schema/DecodeError"
+import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -81,15 +83,15 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
         case "Union": {
           const members = ast.members.map(go)
           return D.make(S.make(ast), (u) => {
-            const lefts: Array<DE.DecodeError> = []
+            let es: C.Chunk<DE.DecodeError> = C.empty
             for (const member of members) {
               const t = member.decode(u)
               if (T.isRightOrBoth(t)) {
                 return t
               }
-              lefts.push(...t.left)
+              es = C.concat(t.left)(es)
             }
-            return T.left(lefts)
+            return C.isNonEmpty(es) ? T.left(es) : I.fail(DE.notType("never", u))
           })
         }
         case "Struct": {

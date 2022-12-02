@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
@@ -78,29 +79,13 @@ export const makeDecoder = <I, A>(
 
 export const succeed: <A>(a: A) => T.These<never, A> = T.right
 
-export const fail = <E>(e: E): T.These<ReadonlyArray<E>, never> => T.left([e])
+export const fail = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> =>
+  T.left(C.singleton(e))
 
-export const warn = <E, A>(e: E, a: A): T.These<ReadonlyArray<E>, A> => T.both([e], a)
+export const warn = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
+  T.both(C.singleton(e), a)
 
-export const flatMap = <A, E2, B>(
-  f: (a: A) => T.These<ReadonlyArray<E2>, B>
-) =>
-  <E1>(self: T.These<ReadonlyArray<E1>, A>): T.These<ReadonlyArray<E1 | E2>, B> => {
-    if (T.isLeft(self)) {
-      return self
-    }
-    if (T.isRight(self)) {
-      return f(self.right)
-    }
-    const that = f(self.right)
-    if (T.isLeft(that)) {
-      return T.left([...self.left, ...that.left])
-    }
-    if (T.isRight(that)) {
-      return T.both(self.left, that.right)
-    }
-    return T.both([...self.left, ...that.left], that.right)
-  }
+export const flatMap = T.flatMap
 
 export const compose = <B, C>(bc: Decoder<B, C>) =>
   <A>(ab: Decoder<A, B>): Decoder<A, C> =>
