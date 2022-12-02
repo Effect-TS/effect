@@ -117,11 +117,10 @@ export const of = <A>(
 ): Decoder<unknown, A> =>
   I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
 
-/**
- * @since 1.0.0
- */
-export const array = <S, A>(
-  item: Decoder<S, A>
+/** @internal */
+export const _array = <S, A>(
+  item: Decoder<S, A>,
+  start = 0
 ): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
   make(S.array(item), (is) => {
     let es: C.Chunk<DE.DecodeError> = C.empty
@@ -131,12 +130,12 @@ export const array = <S, A>(
       const t = item.decode(is[i])
       if (isFailure(t)) {
         isBoth = false
-        es = C.append(DE.index(i, t.left))(es)
+        es = C.append(DE.index(start + i, t.left))(es)
         break // bail out on a fatal errors
       } else if (isSuccess(t)) {
         out.push(t.right)
       } else {
-        es = C.append(DE.index(i, t.left))(es)
+        es = C.append(DE.index(start + i, t.left))(es)
         out.push(t.right)
       }
     }
@@ -145,6 +144,13 @@ export const array = <S, A>(
     }
     return success(out)
   })
+
+/**
+ * @since 1.0.0
+ */
+export const array = <S, A>(
+  item: Decoder<S, A>
+): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> => _array(item)
 
 /**
  * @since 1.0.0

@@ -163,12 +163,7 @@ describe("JsonDecoder", () => {
     expect(decoder.decode(["a", 1, true])).toEqual(D.success(["a", 1, true]))
     expect(decoder.decode(["a", 1, true, false])).toEqual(D.success(["a", 1, true, false]))
 
-    expect(decoder.decode(["a", 1, true, "a"])).toEqual(
-      D.failure(DE.index(1, C.singleton(DE.notType("boolean", "a"))))
-    )
-    expect(decoder.decode(["a", 1, true, "a", true])).toEqual(
-      D.failure(DE.index(1, C.singleton(DE.notType("boolean", "a"))))
-    )
+    Util.expectFailure(decoder, ["a", 1, true, "a", true], "/3 \"a\" did not satisfy is(boolean)")
   })
 
   it("withStringIndexSignature", () => {

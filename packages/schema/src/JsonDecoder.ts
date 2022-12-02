@@ -62,7 +62,7 @@ export const provideJsonDecoderFor = (provider: Provider) => {
               (us) => {
                 const t = decoder.decode(us)
                 if (O.isSome(oRestElement)) {
-                  const restElement = D.array(oRestElement.value)
+                  const restElement = D._array(oRestElement.value, ast.components.length)
                   return pipe(
                     t,
                     D.flatMap((as) =>
