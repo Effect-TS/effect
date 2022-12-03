@@ -22,7 +22,7 @@ describe("Number", () => {
     })
 
     it("should warn for NaN", () => {
-      Util.expectWarning(decoder, NaN, "did not satisfy isNaN", NaN)
+      Util.expectWarning(decoder, NaN, "did not satisfy not(isNaN)", NaN)
     })
 
     it("should warn for no finite values", () => {

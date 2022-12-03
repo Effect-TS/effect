@@ -46,24 +46,45 @@ describe("JsonDecoder", () => {
     )
   })
 
-  it("struct", () => {
-    const schema = S.struct({ a: S.string, b: S.number })
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: 1 }))
+  describe("struct", () => {
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = JD.jsonDecoderFor(schema)
+      expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: 1 }))
 
-    Util.expectFailure(decoder, null, "null did not satisfy is(JsonObject)")
-    Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
-    Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
+      Util.expectFailure(decoder, null, "null did not satisfy is(JsonObject)")
+      Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
+      Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
+
+      Util.expectWarning(decoder, { a: "a", b: NaN }, "/b did not satisfy not(isNaN)", {
+        a: "a",
+        b: NaN
+      })
+    })
+
+    it("additional fields should raise a warning", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = JD.jsonDecoderFor(schema)
+      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c is unexpected", { a: "a", b: 1 })
+    })
+
+    it("should not fail on optional fields", () => {
+      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+      const decoder = JD.jsonDecoderFor(schema)
+      expect(decoder.decode({})).toEqual(D.success({}))
+    })
   })
 
   it("stringIndexSignature", () => {
-    const schema = S.stringIndexSignature(S.string)
+    const schema = S.stringIndexSignature(S.number)
     const decoder = JD.jsonDecoderFor(schema)
     expect(decoder.decode({})).toEqual(D.success({}))
-    expect(decoder.decode({ a: "a" })).toEqual(D.success({ a: "a" }))
+    expect(decoder.decode({ a: 1 })).toEqual(D.success({ a: 1 }))
 
     Util.expectFailure(decoder, [], "[] did not satisfy is(JsonObject)")
-    Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
+    Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
+
+    Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
   })
 
   describe("array", () => {
@@ -84,7 +105,7 @@ describe("JsonDecoder", () => {
       Util.expectWarning(
         decoder,
         [1, NaN, 3],
-        "/1 did not satisfy isNaN",
+        "/1 did not satisfy not(isNaN)",
         [1, NaN, 3]
       )
     })

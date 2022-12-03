@@ -19,6 +19,7 @@ export type DecodeError =
   | Max
   | Index
   | Key
+  | UnexpectedKey
   | Member
 
 /**
@@ -196,7 +197,7 @@ export const index = (
  */
 export interface Key {
   readonly _tag: "Key"
-  readonly key: string
+  readonly key: PropertyKey
   readonly errors: NonEmptyChunk<DecodeError>
 }
 
@@ -204,12 +205,30 @@ export interface Key {
  * @since 1.0.0
  */
 export const key = (
-  key: string,
+  key: PropertyKey,
   errors: NonEmptyChunk<DecodeError>
 ): Key => ({
   _tag: "Key",
   key,
   errors
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface UnexpectedKey {
+  readonly _tag: "UnexpectedKey"
+  readonly key: PropertyKey
+}
+
+/**
+ * @since 1.0.0
+ */
+export const unexpectedKey = (
+  key: PropertyKey
+): UnexpectedKey => ({
+  _tag: "UnexpectedKey",
+  key
 })
 
 /**

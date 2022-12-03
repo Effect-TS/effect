@@ -277,20 +277,20 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     ))
   }
 
-// /**
-//  * @since 1.0.0
-//  */
-// export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
-//   if (ast.isStruct(schema.ast)) {
-//     return make(
-//       ast.struct(
-//         schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
-//         schema.ast.stringIndexSignature
-//       )
-//     )
-//   }
-//   throw new Error("cannot `partial` non-Struct schemas")
-// }
+/**
+ * @since 1.0.0
+ */
+export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
+  if (ast.isStruct(schema.ast)) {
+    return make(
+      ast.struct(
+        schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
+        schema.ast.stringIndexSignature
+      )
+    )
+  }
+  throw new Error("cannot `partial` non-Struct schemas")
+}
 
 // /**
 //  * @since 1.0.0

@@ -118,3 +118,6 @@ export const makeEncoder = <O, A>(
   schema: Schema<A>,
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
+
+export const append: <B>(b: B) => <A>(self: C.Chunk<A>) => C.NonEmptyChunk<A | B> = C
+  .append as any

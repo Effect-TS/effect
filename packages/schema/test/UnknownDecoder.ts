@@ -36,4 +36,32 @@ describe("UnknownDecoder", () => {
       "/name null \"not a string\""
     )
   })
+
+  describe("struct", () => {
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = UD.unknownDecoderFor(schema)
+      expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: 1 }))
+
+      Util.expectFailure(
+        decoder,
+        null,
+        "null did not satisfy is({ readonly [_: string]: unknown })"
+      )
+      Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
+      Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
+    })
+
+    it("additional fields should raise a warning", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = UD.unknownDecoderFor(schema)
+      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c is unexpected", { a: "a", b: 1 })
+    })
+
+    it("should not fail on optional fields", () => {
+      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+      const decoder = UD.unknownDecoderFor(schema)
+      expect(decoder.decode({ b: undefined })).toEqual(D.success({ b: undefined }))
+    })
+  })
 })

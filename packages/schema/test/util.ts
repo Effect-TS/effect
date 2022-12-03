@@ -51,7 +51,7 @@ export const format = (e: DE.DecodeError): string => {
     case "MinLength":
       return `${JSON.stringify(e.actual)} did not satisfy minLength(${e.minLength})`
     case "NaN":
-      return `did not satisfy isNaN`
+      return `did not satisfy not(isNaN)`
     case "NotFinite":
       return `did not satisfy isFinite`
     case "NotType":
@@ -61,7 +61,9 @@ export const format = (e: DE.DecodeError): string => {
     case "Index":
       return `/${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
     case "Key":
-      return `/${e.key} ${pipe(e.errors, C.map(format), C.join(", "))}`
+      return `/${String(e.key)} ${pipe(e.errors, C.map(format), C.join(", "))}`
+    case "UnexpectedKey":
+      return `/${String(e.key)} is unexpected`
     case "Member":
       return `member ${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
   }

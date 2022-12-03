@@ -93,33 +93,16 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
             return C.isNonEmpty(es) ? D.failures(es) : D.failure(DE.notType("never", u))
           })
         }
-        case "Struct": {
-          const fields: Record<PropertyKey, Decoder<unknown, any>> = {}
-          for (const field of ast.fields) {
-            fields[field.key] = go(field.value)
-          }
-          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
-          const decoder = D.struct(fields)
+        case "Struct":
           return pipe(
             UnknownObject.UnknownDecoder,
-            D.compose(D.make(S.make(ast), (u) => {
-              const t = decoder.decode(u)
-              if (O.isSome(oStringIndexSignature)) {
-                const stringIndexSignature = D.stringIndexSignature(oStringIndexSignature.value)
-                return pipe(
-                  t,
-                  D.flatMap((out) =>
-                    pipe(
-                      stringIndexSignature.decode(u),
-                      D.map((rest) => ({ ...out, ...rest }))
-                    )
-                  )
-                )
-              }
-              return t
-            }))
+            D.compose(
+              D._struct(
+                ast.fields.map((f) => [f, go(f.value)]),
+                pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
+              )
+            )
           )
-        }
         case "Lazy":
           return D.lazy(() => go(ast.f()))
       }

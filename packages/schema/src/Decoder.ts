@@ -3,7 +3,11 @@
  */
 
 import * as C from "@fp-ts/data/Chunk"
+import { pipe } from "@fp-ts/data/Function"
+import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
 import type { Validated } from "@fp-ts/data/These"
+import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -152,69 +156,85 @@ export const array = <S, A>(
   item: Decoder<S, A>
 ): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> => _array(item)
 
-/**
- * @since 1.0.0
- */
-export const struct = <S, Fields extends Record<PropertyKey, Decoder<S, any>>>(
-  fields: Fields
-): Decoder<
-  { readonly [_: string]: S },
-  { readonly [K in keyof Fields]: S.Infer<Fields[K]> }
-> => {
-  const keys = Object.keys(fields)
-  return make(S.struct(fields), (input: { readonly [_: string]: S }) => {
-    const out: any = {}
-    let isBoth = true
-    let es: C.Chunk<DE.DecodeError> = C.empty
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i]
-      const t = fields[key].decode(input[key])
-      if (isFailure(t)) {
-        isBoth = false
-        es = C.append(DE.key(key, t.left))(es)
-        break // bail out on a fatal errors
-      } else if (isSuccess(t)) {
-        out[key] = t.right
-      } else {
-        es = C.append(DE.key(key, t.left))(es)
-        out[key] = t.right
+/** @internal */
+export const _struct = (
+  fields: ReadonlyArray<[AST.Field, Decoder<any, any>]>,
+  oStringIndexSignature: Option<[AST.IndexSignature, Decoder<any, any>]>
+): Decoder<any, any> =>
+  make(
+    S.make(
+      AST.struct(fields.map(([f]) => f), pipe(oStringIndexSignature, O.map(([is]) => is)))
+    ),
+    (us: { readonly [_: string | symbol]: unknown }) => {
+      const out: any = {}
+      const fieldKeys = {}
+      let es: C.Chunk<DE.DecodeError> = C.empty
+      // ---------------------------------------------
+      // handle fields
+      // ---------------------------------------------
+      for (let i = 0; i < fields.length; i++) {
+        const key = fields[i][0].key
+        fieldKeys[key] = null
+        // ---------------------------------------------
+        // handle optional fields
+        // ---------------------------------------------
+        const optional = fields[i][0].optional
+        if (optional) {
+          if (!Object.prototype.hasOwnProperty.call(us, key)) {
+            continue
+          }
+          if (us[key] === undefined) {
+            out[key] = undefined
+            continue
+          }
+        }
+        // ---------------------------------------------
+        // handle required fields
+        // ---------------------------------------------
+        const decoder = fields[i][1]
+        const t = decoder.decode(us[key])
+        if (isFailure(t)) {
+          return failures(I.append(DE.key(key, t.left))(es)) // bail out on a fatal errors
+        } else if (isSuccess(t)) {
+          out[key] = t.right
+        } else {
+          es = C.append(DE.key(key, t.left))(es)
+          out[key] = t.right
+        }
       }
-    }
-    if (C.isNonEmpty(es)) {
-      return isBoth ? warnings(es, out) : failures(es)
-    }
-    return success(out)
-  })
-}
+      // ---------------------------------------------
+      // handle index signature
+      // ---------------------------------------------
+      if (O.isSome(oStringIndexSignature)) {
+        const decoder = oStringIndexSignature.value[1]
+        for (const key of Object.keys(us)) {
+          const t = decoder.decode(us[key])
+          if (isFailure(t)) {
+            return failures(I.append(DE.key(key, t.left))(es)) // bail out on a fatal errors
+          } else if (isSuccess(t)) {
+            out[key] = t.right
+          } else {
+            es = C.append(DE.key(key, t.left))(es)
+            out[key] = t.right
+          }
+        }
+      } else {
+        // ---------------------------------------------
+        // handle additional keys
+        // ---------------------------------------------
+        for (const key of Object.keys(us)) {
+          if (!(key in fieldKeys)) {
+            es = C.append(DE.unexpectedKey(key))(es)
+          }
+        }
+      }
 
-/**
- * @since 1.0.0
- */
-export const stringIndexSignature = <S, A>(
-  value: Decoder<S, A>
-): Decoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
-  make(S.stringIndexSignature(value), (ri) => {
-    const out: any = {}
-    let es: C.Chunk<DE.DecodeError> = C.empty
-    let isBoth = true
-    for (const key of Object.keys(ri)) {
-      const t = value.decode(ri[key])
-      if (isFailure(t)) {
-        isBoth = false
-        es = C.append(DE.key(key, t.left))(es)
-        break // bail out on a fatal errors
-      } else if (isSuccess(t)) {
-        out[key] = t.right
-      } else {
-        es = C.append(DE.key(key, t.left))(es)
-        out[key] = t.right
-      }
+      // ---------------------------------------------
+      // compute output
+      // ---------------------------------------------
+      return C.isNonEmpty(es) ? warnings(es, out) : success(out)
     }
-    if (C.isNonEmpty(es)) {
-      return isBoth ? warnings(es, out) : failures(es)
-    }
-    return success(out)
-  })
+  )
 
 /**
  * @since 1.0.0
