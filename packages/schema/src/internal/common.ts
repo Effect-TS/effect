@@ -6,19 +6,16 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import * as O from "@fp-ts/data/Option"
-import type { Refinement } from "@fp-ts/data/Predicate"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { AST } from "@fp-ts/schema/AST"
 import * as ast from "@fp-ts/schema/AST"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
-import * as DE from "@fp-ts/schema/DecodeError"
+import type * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 export const success: <A>(a: A) => T.These<never, A> = T.right
@@ -121,34 +118,3 @@ export const makeEncoder = <O, A>(
   schema: Schema<A>,
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
-
-export const refine = <A, B extends A>(id: symbol, refinement: Refinement<A, B>) =>
-  (schema: Schema<A>): Schema<B> => {
-    const arbitrary = (self: Arbitrary<A>): Arbitrary<B> =>
-      makeArbitrary(Schema, (fc) => self.arbitrary(fc).filter(refinement))
-    const guard = (self: Guard<A>): Guard<B> =>
-      makeGuard(Schema, (u): u is A => self.is(u) && refinement(u))
-    const decoder = <I>(self: Decoder<I, A>): Decoder<I, B> =>
-      makeDecoder(
-        Schema,
-        (i) =>
-          pipe(
-            self.decode(i),
-            flatMap((a) =>
-              refinement(a) ? success(a) : failure(DE.notType(String(id.description), a))
-            )
-          )
-      )
-    const encoder = <I>(self: Encoder<I, A>): Encoder<I, B> =>
-      makeEncoder(Schema, (b) => self.encode(b))
-    const Provider: P.Provider = P.make(id, {
-      [ArbitraryId]: arbitrary,
-      [GuardId]: guard,
-      [JsonDecoderId]: decoder,
-      [UnknownDecoderId]: decoder,
-      [JsonEncoderId]: encoder,
-      [UnknownEncoderId]: encoder
-    })
-    const Schema = declareSchema(id, O.none, Provider, schema)
-    return Schema
-  }
