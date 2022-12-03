@@ -19,7 +19,7 @@ describe("UnknownDecoder", () => {
       (u) =>
         typeof u === "string" ?
           D.success(u) :
-          D.failure(DE.custom({ message: "not a string" }, u))
+          D.failure(DE.custom("not a string", u))
     )
 
     const Person = S.struct({
@@ -33,7 +33,7 @@ describe("UnknownDecoder", () => {
     Util.expectFailure(
       decoder,
       { name: null, age: 18 },
-      "/name null did not satisfy {\"message\":\"not a string\"}"
+      "/name null \"not a string\""
     )
   })
 })

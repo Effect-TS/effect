@@ -14,8 +14,8 @@ export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
   const guard = G.guardFor(schema)
   const jsonCodec = JC.jsonCodecFor(schema)
-  fc.assert(fc.property(arbitrary.arbitrary(fc), (json) => {
-    return guard.is(json) && !D.isFailure(jsonCodec.decode(jsonCodec.encode(json)))
+  fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
+    return guard.is(a) && !D.isFailure(jsonCodec.decode(jsonCodec.encode(a)))
   }))
 }
 
@@ -41,7 +41,7 @@ const formatAll = (errors: NonEmptyChunk<DE.DecodeError>): string => {
 export const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Custom":
-      return `${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.config)}`
+      return `${JSON.stringify(e.actual)} ${JSON.stringify(e.config)}`
     case "Max":
       return `${JSON.stringify(e.actual)} did not satisfy max(${e.max})`
     case "Min":
