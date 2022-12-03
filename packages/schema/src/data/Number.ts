@@ -47,7 +47,7 @@ export const UnknownDecoder = I.makeDecoder<unknown, number>(
         I.warning(DE.nan, u) :
         isFinite(u) ?
         I.success(u) :
-        I.warning(DE.noFinite, u) :
+        I.warning(DE.notFinite, u) :
       I.failure(DE.notType("number", u))
 )
 

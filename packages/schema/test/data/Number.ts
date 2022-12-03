@@ -1,5 +1,4 @@
 import * as Number from "@fp-ts/schema/data/Number"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -23,12 +22,12 @@ describe("Number", () => {
     })
 
     it("should warn for NaN", () => {
-      expect(decoder.decode(NaN)).toEqual(D.warning(DE.nan, NaN))
+      Util.expectWarning(decoder, NaN, "did not satisfy isNaN", NaN)
     })
 
     it("should warn for no finite values", () => {
-      expect(decoder.decode(Infinity)).toEqual(D.warning(DE.noFinite, Infinity))
-      expect(decoder.decode(-Infinity)).toEqual(D.warning(DE.noFinite, -Infinity))
+      Util.expectWarning(decoder, Infinity, "did not satisfy isFinite", Infinity)
+      Util.expectWarning(decoder, -Infinity, "did not satisfy isFinite", -Infinity)
     })
   })
 

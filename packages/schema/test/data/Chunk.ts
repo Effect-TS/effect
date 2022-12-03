@@ -37,7 +37,7 @@ describe("Chunk", () => {
     Util.expectWarning(
       decoder,
       [1, NaN, 3],
-      "/1 did not satisfy isNot(NaN)",
+      "/1 did not satisfy isNaN",
       DC.unsafeFromArray([1, NaN, 3])
     )
     Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")

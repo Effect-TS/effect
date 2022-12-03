@@ -20,11 +20,15 @@ export const property = <A>(schema: Schema<A>) => {
 }
 
 export const expectFailure = <I, A>(decoder: D.Decoder<I, A>, i: I, message: string) => {
-  expect(pipe(decoder.decode(i), T.mapLeft(formatAll))).toEqual(T.left(message))
+  const t = pipe(decoder.decode(i), T.mapLeft(formatAll))
+  expect(T.isLeft(t)).toEqual(true)
+  expect(t).toEqual(T.left(message))
 }
 
 export const expectWarning = <I, A>(decoder: D.Decoder<I, A>, i: I, message: string, a: A) => {
-  expect(pipe(decoder.decode(i), T.mapLeft(formatAll))).toEqual(T.both(message, a))
+  const t = pipe(decoder.decode(i), T.mapLeft(formatAll))
+  expect(T.isBoth(t)).toEqual(true)
+  expect(t).toEqual(T.both(message, a))
 }
 
 const formatAll = (errors: NonEmptyChunk<DE.DecodeError>): string => {
@@ -47,9 +51,9 @@ export const format = (e: DE.DecodeError): string => {
     case "MinLength":
       return `${JSON.stringify(e.actual)} did not satisfy minLength(${e.minLength})`
     case "NaN":
-      return `did not satisfy isNot(NaN)`
-    case "NoFinite":
-      return `did not satisfy isNot(Finite)`
+      return `did not satisfy isNaN`
+    case "NotFinite":
+      return `did not satisfy isFinite`
     case "NotType":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "NotEqual":
