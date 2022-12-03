@@ -1,4 +1,4 @@
-import * as parseFloat from "@fp-ts/schema/data/parseFloat"
+import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as D from "@fp-ts/schema/Decoder"
 import * as JC from "@fp-ts/schema/JsonCodec"
 import * as S from "@fp-ts/schema/Schema"
