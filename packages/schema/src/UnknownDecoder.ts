@@ -53,32 +53,15 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
         }
         case "Of":
           return D.of(ast.value)
-        case "Tuple": {
-          const decoder = D.tuple(...ast.components.map(go))
-          const oRestElement = pipe(ast.restElement, O.map(go))
+        case "Tuple":
           return pipe(
             UnknownArray.UnknownDecoder,
-            D.compose(D.make(
-              S.make(ast),
-              (us) => {
-                const t = decoder.decode(us)
-                if (O.isSome(oRestElement)) {
-                  const restElement = D.array(oRestElement.value)
-                  return pipe(
-                    t,
-                    D.flatMap((as) =>
-                      pipe(
-                        restElement.decode(us.slice(ast.components.length)),
-                        D.map((rest) => [...as, ...rest])
-                      )
-                    )
-                  )
-                }
-                return t
-              }
+            D.compose(D._tuple(
+              ast.components.map((c) => [c, go(c)]),
+              pipe(ast.restElement, O.map((re) => [re, go(re)])),
+              ast.readonly
             ))
           )
-        }
         case "Union": {
           const members = ast.members.map(go)
           return D.make(S.make(ast), (u) => {

@@ -24,13 +24,23 @@ describe("JsonDecoder", () => {
     Util.expectFailure(decoder, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
-  it("tuple", () => {
-    const schema = S.tuple(S.string, S.number)
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode(["a", 1])).toEqual(D.success(["a", 1]))
+  describe("tuple", () => {
+    it("baseline", () => {
+      const schema = S.tuple(S.string, S.number)
+      const decoder = JD.jsonDecoderFor(schema)
+      expect(decoder.decode(["a", 1])).toEqual(D.success(["a", 1]))
 
-    Util.expectFailure(decoder, {}, "{} did not satisfy is(JsonArray)")
-    Util.expectFailure(decoder, ["a"], "/1 undefined did not satisfy is(number)")
+      Util.expectFailure(decoder, {}, "{} did not satisfy is(JsonArray)")
+      Util.expectFailure(decoder, ["a"], "/1 undefined did not satisfy is(number)")
+
+      Util.expectWarning(decoder, ["a", NaN], "/1 did not satisfy not(isNaN)", ["a", NaN])
+    })
+
+    it("additional indexes should raise a warning", () => {
+      const schema = S.tuple(S.string, S.number)
+      const decoder = JD.jsonDecoderFor(schema)
+      Util.expectWarning(decoder, ["a", 1, true], "/2 index is unexpected", ["a", 1])
+    })
   })
 
   it("union", () => {
@@ -65,7 +75,10 @@ describe("JsonDecoder", () => {
     it("additional fields should raise a warning", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const decoder = JD.jsonDecoderFor(schema)
-      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c is unexpected", { a: "a", b: 1 })
+      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c key is unexpected", {
+        a: "a",
+        b: 1
+      })
     })
 
     it("should not fail on optional fields", () => {

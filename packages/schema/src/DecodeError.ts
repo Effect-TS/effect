@@ -20,6 +20,7 @@ export type DecodeError =
   | Index
   | Key
   | UnexpectedKey
+  | UnexpectedIndex
   | Member
 
 /**
@@ -229,6 +230,24 @@ export const unexpectedKey = (
 ): UnexpectedKey => ({
   _tag: "UnexpectedKey",
   key
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface UnexpectedIndex {
+  readonly _tag: "UnexpectedIndex"
+  readonly index: number
+}
+
+/**
+ * @since 1.0.0
+ */
+export const unexpectedIndex = (
+  index: number
+): UnexpectedIndex => ({
+  _tag: "UnexpectedIndex",
+  index
 })
 
 /**

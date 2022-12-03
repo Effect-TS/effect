@@ -81,24 +81,40 @@ export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Dec
 /**
  * @since 1.0.0
  */
-export const tuple = <S, Components extends ReadonlyArray<Decoder<S, unknown>>>(
-  ...components: Components
-): Decoder<
-  ReadonlyArray<S>,
-  { readonly [K in keyof Components]: S.Infer<Components[K]> }
-> =>
+export const of = <A>(
+  value: A
+): Decoder<unknown, A> =>
+  I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
+
+/**
+ * @since 1.0.0
+ */
+export const array = <S, A>(
+  item: Decoder<S, A>
+): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> => _tuple([], O.some([item.ast, item]), true)
+
+/** @internal */
+export const _tuple = (
+  components: ReadonlyArray<[AST.AST, Decoder<any, any>]>,
+  oRestElement: Option<[AST.AST, Decoder<any, any>]>,
+  readonly: boolean
+): Decoder<any, any> =>
   make(
-    S.tuple(...components),
-    (is) => {
+    S.make(
+      AST.tuple(components.map(([c]) => c), pipe(oRestElement, O.map(([re]) => re)), readonly)
+    ),
+    (us: ReadonlyArray<unknown>) => {
+      const out: Array<any> = []
       let es: C.Chunk<DE.DecodeError> = C.empty
-      const out: any = []
-      let isBoth = true
-      for (let i = 0; i < components.length; i++) {
-        const t = components[i].decode(is[i])
+      let i = 0
+      // ---------------------------------------------
+      // handle components
+      // ---------------------------------------------
+      for (; i < components.length; i++) {
+        const decoder = components[i][1]
+        const t = decoder.decode(us[i])
         if (isFailure(t)) {
-          isBoth = false
-          es = C.append(DE.index(i, t.left))(es)
-          break // bail out on a fatal errors
+          return failures(I.append(DE.index(i, t.left))(es)) // bail out on a fatal errors
         } else if (isSuccess(t)) {
           out[i] = t.right
         } else {
@@ -106,55 +122,37 @@ export const tuple = <S, Components extends ReadonlyArray<Decoder<S, unknown>>>(
           out[i] = t.right
         }
       }
-      if (C.isNonEmpty(es)) {
-        return isBoth ? warnings(es, out) : failures(es)
+      // ---------------------------------------------
+      // handle rest element
+      // ---------------------------------------------
+      if (O.isSome(oRestElement)) {
+        const decoder = oRestElement.value[1]
+        for (; i < us.length; i++) {
+          const t = decoder.decode(us[i])
+          if (isFailure(t)) {
+            return failures(I.append(DE.index(i, t.left))(es)) // bail out on a fatal errors
+          } else if (isSuccess(t)) {
+            out[i] = t.right
+          } else {
+            es = C.append(DE.index(i, t.left))(es)
+            out[i] = t.right
+          }
+        }
+      } else {
+        // ---------------------------------------------
+        // handle additional indexes
+        // ---------------------------------------------
+        for (; i < us.length; i++) {
+          es = C.append(DE.unexpectedIndex(i))(es)
+        }
       }
-      return success(out)
+
+      // ---------------------------------------------
+      // compute output
+      // ---------------------------------------------
+      return C.isNonEmpty(es) ? warnings(es, out) : success(out)
     }
   )
-
-/**
- * @since 1.0.0
- */
-export const of = <A>(
-  value: A
-): Decoder<unknown, A> =>
-  I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
-
-/** @internal */
-export const _array = <S, A>(
-  item: Decoder<S, A>,
-  start = 0
-): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> =>
-  make(S.array(item), (is) => {
-    let es: C.Chunk<DE.DecodeError> = C.empty
-    const out: Array<A> = []
-    let isBoth = true
-    for (let i = 0; i < is.length; i++) {
-      const t = item.decode(is[i])
-      if (isFailure(t)) {
-        isBoth = false
-        es = C.append(DE.index(start + i, t.left))(es)
-        break // bail out on a fatal errors
-      } else if (isSuccess(t)) {
-        out.push(t.right)
-      } else {
-        es = C.append(DE.index(start + i, t.left))(es)
-        out.push(t.right)
-      }
-    }
-    if (C.isNonEmpty(es)) {
-      return isBoth ? warnings(es, out) : failures(es)
-    }
-    return success(out)
-  })
-
-/**
- * @since 1.0.0
- */
-export const array = <S, A>(
-  item: Decoder<S, A>
-): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> => _array(item)
 
 /** @internal */
 export const _struct = (

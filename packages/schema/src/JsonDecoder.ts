@@ -14,7 +14,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -50,34 +49,15 @@ export const provideJsonDecoderFor = (provider: Provider) => {
         }
         case "Of":
           return D.of(ast.value)
-        case "Tuple": {
-          const decoder = D.tuple<Json, ReadonlyArray<JsonDecoder<unknown>>>(
-            ...ast.components.map(go)
-          )
-          const oRestElement = pipe(ast.restElement, O.map(go))
+        case "Tuple":
           return pipe(
             JA.UnknownDecoder,
-            D.compose(D.make(
-              S.make(ast),
-              (us) => {
-                const t = decoder.decode(us)
-                if (O.isSome(oRestElement)) {
-                  const restElement = D._array(oRestElement.value, ast.components.length)
-                  return pipe(
-                    t,
-                    D.flatMap((as) =>
-                      pipe(
-                        restElement.decode(us.slice(ast.components.length)),
-                        D.map((rest) => [...as, ...rest])
-                      )
-                    )
-                  )
-                }
-                return t
-              }
+            D.compose(D._tuple(
+              ast.components.map((c) => [c, go(c)]),
+              pipe(ast.restElement, O.map((re) => [re, go(re)])),
+              ast.readonly
             ))
           )
-        }
         case "Union":
           return pipe(J.UnknownDecoder, D.compose(D.union(...ast.members.map(go))))
         case "Struct":

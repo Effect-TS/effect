@@ -55,7 +55,10 @@ describe("UnknownDecoder", () => {
     it("additional fields should raise a warning", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const decoder = UD.unknownDecoderFor(schema)
-      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c is unexpected", { a: "a", b: 1 })
+      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c key is unexpected", {
+        a: "a",
+        b: 1
+      })
     })
 
     it("should not fail on optional fields", () => {
