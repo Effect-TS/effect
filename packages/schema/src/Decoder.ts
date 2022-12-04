@@ -142,7 +142,7 @@ export const _struct = (
     S.make(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: any = {}
-      const processedKeys = {}
+      const processedKeys: any = {}
       const es: Array<DE.DecodeError> = []
       // ---------------------------------------------
       // handle fields

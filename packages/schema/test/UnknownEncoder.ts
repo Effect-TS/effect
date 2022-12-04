@@ -38,6 +38,17 @@ describe("UnknownEncoder", () => {
       expect(encoder.encode({ a: 1, b: 1 })).toEqual({ a: 1, b: "1" })
     })
 
+    it("symbol index signature", () => {
+      const b = Symbol.for("@fp-ts/schema/test/b")
+      const schema = pipe(
+        S.struct({ a: S.number }),
+        S.withSymbolIndexSignature(NumberFromString)
+      )
+      const encoder = UE.unknownEncoderFor(schema)
+      expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
+      expect(encoder.encode({ a: 1, [b]: 1 })).toEqual({ a: 1, [b]: "1" })
+    })
+
     it("should handle symbols as keys", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
       const schema = S.struct({ [a]: S.string })

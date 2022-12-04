@@ -61,7 +61,8 @@ export const provideJsonEncoderFor = (
           return E._struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
         case "Union":
           return E._union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))

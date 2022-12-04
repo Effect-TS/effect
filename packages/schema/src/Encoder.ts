@@ -69,13 +69,14 @@ export const _tuple = (
 export const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Encoder<any, any>>,
-  oStringIndexSignature: Option<Encoder<any, any>>
+  oStringIndexSignature: Option<Encoder<any, any>>,
+  oSymbolIndexSignature: Option<Encoder<any, any>>
 ): Encoder<any, any> =>
   make(
     S.make(ast),
-    (us: { readonly [_: string | symbol]: unknown }) => {
-      const out: any = {}
-      const fieldKeys = {}
+    (input: { readonly [_: string | symbol]: unknown }) => {
+      const output: any = {}
+      const fieldKeys: any = {}
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
@@ -87,11 +88,11 @@ export const _struct = (
         // ---------------------------------------------
         const optional = ast.fields[i].optional
         if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(us, key)) {
+          if (!Object.prototype.hasOwnProperty.call(input, key)) {
             continue
           }
-          if (us[key] === undefined) {
-            out[key] = undefined
+          if (input[key] === undefined) {
+            output[key] = undefined
             continue
           }
         }
@@ -99,21 +100,29 @@ export const _struct = (
         // handle required fields
         // ---------------------------------------------
         const encoder = fields[i]
-        out[key] = encoder.encode(us[key])
+        output[key] = encoder.encode(input[key])
       }
       // ---------------------------------------------
-      // handle index signature
+      // handle index signatures
       // ---------------------------------------------
       if (O.isSome(oStringIndexSignature)) {
         const encoder = oStringIndexSignature.value
-        for (const key of Object.keys(us)) {
+        for (const key of Object.keys(input)) {
           if (!(key in fieldKeys)) {
-            out[key] = encoder.encode(us[key])
+            output[key] = encoder.encode(input[key])
+          }
+        }
+      }
+      if (O.isSome(oSymbolIndexSignature)) {
+        const encoder = oSymbolIndexSignature.value
+        for (const key of Object.getOwnPropertySymbols(input)) {
+          if (!(key in fieldKeys)) {
+            output[key] = encoder.encode(input[key])
           }
         }
       }
 
-      return out
+      return output
     }
   )
 
