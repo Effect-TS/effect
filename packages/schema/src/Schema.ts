@@ -186,7 +186,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 ): Schema<{ readonly [K in keyof Fields]: Infer<Fields[K]> }> =>
   make(
     ast.struct(
-      Object.keys(fields).map((key) => ast.field(key, fields[key].ast, false, true)),
+      I.getPropertyKeys(fields).map((key) => ast.field(key, fields[key].ast, false, true)),
       O.none
     )
   )

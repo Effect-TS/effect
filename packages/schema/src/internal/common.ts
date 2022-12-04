@@ -156,3 +156,6 @@ export const isValueJsonEncodable = (u: unknown): u is Json => {
     return false
   }
 }
+
+export const getPropertyKeys = (o: object): ReadonlyArray<PropertyKey> =>
+  (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))

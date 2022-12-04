@@ -72,6 +72,30 @@ describe("UnknownDecoder", () => {
       Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
     })
 
+    it("should handle symbols as keys", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const schema = S.struct({ [a]: S.number })
+      const decoder = UD.unknownDecoderFor(schema)
+      expect(decoder.decode({ [a]: 1 })).toEqual(D.success({ [a]: 1 }))
+
+      Util.expectFailure(
+        decoder,
+        {},
+        "/Symbol(@fp-ts/schema/test/a) undefined did not satisfy is(number)"
+      )
+      Util.expectFailure(
+        decoder,
+        { [a]: "a" },
+        "/Symbol(@fp-ts/schema/test/a) \"a\" did not satisfy is(number)"
+      )
+      Util.expectWarning(
+        decoder,
+        { [a]: NaN },
+        "/Symbol(@fp-ts/schema/test/a) did not satisfy not(isNaN)",
+        { [a]: NaN }
+      )
+    })
+
     it("additional fields should raise a warning", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const decoder = UD.unknownDecoderFor(schema)

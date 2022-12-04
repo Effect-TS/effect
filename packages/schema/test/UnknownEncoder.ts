@@ -38,6 +38,13 @@ describe("UnknownEncoder", () => {
       expect(encoder.encode({ a: 1, b: 1 })).toEqual({ a: 1, b: "1" })
     })
 
+    it("should handle symbols as keys", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const schema = S.struct({ [a]: S.string })
+      const encoder = UE.unknownEncoderFor(schema)
+      expect(encoder.encode({ [a]: "a" })).toEqual({ [a]: "a" })
+    })
+
     it("should not output optional fields", () => {
       const schema = S.partial(S.struct({ a: S.number }))
       const encoder = UE.unknownEncoderFor(schema)
