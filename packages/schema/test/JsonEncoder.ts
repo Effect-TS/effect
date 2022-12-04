@@ -49,4 +49,11 @@ describe("JsonEncoder", () => {
       }
     })
   })
+
+  it("union", () => {
+    const schema = S.union(S.string, NumberFromString)
+    const encoder = JE.jsonEncoderFor(schema)
+    expect(encoder.encode("a")).toEqual("a")
+    expect(encoder.encode(1)).toEqual("1")
+  })
 })

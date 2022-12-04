@@ -43,19 +43,6 @@ describe("JsonDecoder", () => {
     })
   })
 
-  it("union", () => {
-    const schema = S.union(S.string, S.number)
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    expect(decoder.decode(1)).toEqual(D.success(1))
-
-    Util.expectFailure(
-      decoder,
-      null,
-      "member 0 null did not satisfy is(string), member 1 null did not satisfy is(number)"
-    )
-  })
-
   describe("struct", () => {
     it("baseline", () => {
       const schema = S.struct({ a: S.string, b: S.number })
@@ -85,6 +72,27 @@ describe("JsonDecoder", () => {
       const schema = S.partial(S.struct({ a: S.string, b: S.number }))
       const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode({})).toEqual(D.success({}))
+    })
+  })
+
+  describe("union", () => {
+    it("baseline", () => {
+      const schema = S.union(S.string, S.number)
+      const decoder = JD.jsonDecoderFor(schema)
+      expect(decoder.decode("a")).toEqual(D.success("a"))
+      expect(decoder.decode(1)).toEqual(D.success(1))
+
+      Util.expectFailure(
+        decoder,
+        null,
+        "member 0 null did not satisfy is(string), member 1 null did not satisfy is(number)"
+      )
+    })
+
+    it("empty union", () => {
+      const schema = S.union()
+      const decoder = JD.jsonDecoderFor(schema)
+      Util.expectFailure(decoder, 1, "1 did not satisfy is(never)")
     })
   })
 

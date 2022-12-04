@@ -56,19 +56,13 @@ export const provideUnknownEncoderFor = (provider: Provider) =>
             pipe(ast.restElement, O.map((re) => [re, go(re)])),
             ast.readonly
           )
-        case "Union": {
-          const members = ast.members.map(go)
-          const guards = ast.members.map((member) => G.guardFor(S.make(member)))
-          return E.make(S.make(ast), (a) => {
-            const index = guards.findIndex((guard) => guard.is(a))
-            return members[index].encode(a)
-          })
-        }
         case "Struct":
           return E._struct(
             ast.fields.map((f) => [f, go(f.value)]),
             pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
           )
+        case "Union":
+          return E._union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
         case "Lazy":
           return E.lazy(() => go(ast.f()))
       }

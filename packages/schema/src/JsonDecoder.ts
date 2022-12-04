@@ -58,8 +58,6 @@ export const provideJsonDecoderFor = (provider: Provider) => {
               ast.readonly
             ))
           )
-        case "Union":
-          return pipe(J.UnknownDecoder, D.compose(D.union(...ast.members.map(go))))
         case "Struct":
           return pipe(
             JO.UnknownDecoder,
@@ -70,6 +68,8 @@ export const provideJsonDecoderFor = (provider: Provider) => {
               )
             )
           )
+        case "Union":
+          return pipe(J.UnknownDecoder, D.compose(D.union(...ast.members.map(go))))
         case "Lazy":
           return D.lazy(() => go(ast.f()))
       }

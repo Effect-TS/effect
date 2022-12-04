@@ -6,6 +6,7 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
+import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
@@ -25,8 +26,8 @@ export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) =>
 
 /** @internal */
 export const _tuple = (
-  components: ReadonlyArray<[AST.AST, Encoder<any, any>]>,
-  oRestElement: Option<[AST.AST, Encoder<any, any>]>,
+  components: ReadonlyArray<readonly [AST.AST, Encoder<any, any>]>,
+  oRestElement: Option<readonly [AST.AST, Encoder<any, any>]>,
   readonly: boolean
 ): Encoder<any, any> =>
   make(
@@ -59,8 +60,8 @@ export const _tuple = (
 
 /** @internal */
 export const _struct = (
-  fields: ReadonlyArray<[AST.Field, Encoder<any, any>]>,
-  oStringIndexSignature: Option<[AST.IndexSignature, Encoder<any, any>]>
+  fields: ReadonlyArray<readonly [AST.Field, Encoder<any, any>]>,
+  oStringIndexSignature: Option<readonly [AST.IndexSignature, Encoder<any, any>]>
 ): Encoder<any, any> =>
   make(
     S.make(
@@ -109,6 +110,16 @@ export const _struct = (
       return out
     }
   )
+
+/** @internal */
+export const _union = (
+  ast: AST.Union,
+  encoders: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
+): Encoder<any, any> =>
+  make(S.make(ast), (a) => {
+    const index = encoders.findIndex(([guard]) => guard.is(a))
+    return encoders[index][1].encode(a)
+  })
 
 /**
  * @since 1.0.0

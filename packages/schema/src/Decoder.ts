@@ -95,8 +95,8 @@ export const array = <S, A>(
 
 /** @internal */
 export const _tuple = (
-  components: ReadonlyArray<[AST.AST, Decoder<any, any>]>,
-  oRestElement: Option<[AST.AST, Decoder<any, any>]>,
+  components: ReadonlyArray<readonly [AST.AST, Decoder<any, any>]>,
+  oRestElement: Option<readonly [AST.AST, Decoder<any, any>]>,
   readonly: boolean
 ): Decoder<any, any> =>
   make(
@@ -156,8 +156,8 @@ export const _tuple = (
 
 /** @internal */
 export const _struct = (
-  fields: ReadonlyArray<[AST.Field, Decoder<any, any>]>,
-  oStringIndexSignature: Option<[AST.IndexSignature, Decoder<any, any>]>
+  fields: ReadonlyArray<readonly [AST.Field, Decoder<any, any>]>,
+  oStringIndexSignature: Option<readonly [AST.IndexSignature, Decoder<any, any>]>
 ): Decoder<any, any> =>
   make(
     S.make(
