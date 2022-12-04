@@ -38,11 +38,11 @@ export const warnings = <A>(
   a: A
 ): T.These<NonEmptyReadonlyArray<DE.DecodeError>, A> => T.both(es, a)
 
-export const isFailure = T.isLeft
-
 export const isSuccess = T.isRight
 
-export const map = T.map
+export const isFailure = T.isLeft
+
+export const isWarning = T.isBoth
 
 export const flatMap = <A, E2, B>(
   f: (a: A) => T.These<NonEmptyReadonlyArray<E2>, B>
@@ -141,8 +141,10 @@ export const makeEncoder = <O, A>(
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
 
-export const append: <B>(b: B) => <A>(self: ReadonlyArray<A>) => NonEmptyReadonlyArray<A | B> =
-  RA.append
+export const append = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
+  self.push(a)
+  return self as any
+}
 
 export const isNonEmpty = RA.isNonEmpty
 

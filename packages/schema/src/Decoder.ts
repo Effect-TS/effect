@@ -4,7 +4,6 @@
 
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
@@ -55,12 +54,17 @@ export const warnings = I.warnings
 /**
  * @since 1.0.0
  */
+export const isSuccess = I.isSuccess
+
+/**
+ * @since 1.0.0
+ */
 export const isFailure = I.isFailure
 
 /**
  * @since 1.0.0
  */
-export const isSuccess = I.isSuccess
+export const isWarning = I.isWarning
 
 // ---------------------------------------------
 // internal
@@ -82,7 +86,7 @@ export const _tuple = (
     S.make(ast),
     (us: ReadonlyArray<unknown>) => {
       const out: Array<any> = []
-      let es: ReadonlyArray<DE.DecodeError> = RA.empty
+      const es: Array<DE.DecodeError> = []
       let i = 0
       // ---------------------------------------------
       // handle components
@@ -91,13 +95,11 @@ export const _tuple = (
         const decoder = components[i]
         const t = decoder.decode(us[i])
         if (isFailure(t)) {
-          return failures(I.append(DE.index(i, t.left))(es)) // bail out on a fatal errors
-        } else if (isSuccess(t)) {
-          out[i] = t.right
-        } else {
-          es = I.append(DE.index(i, t.left))(es)
-          out[i] = t.right
+          return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+        } else if (isWarning(t)) {
+          es.push(DE.index(i, t.left))
         }
+        out[i] = t.right
       }
       // ---------------------------------------------
       // handle rest element
@@ -107,20 +109,18 @@ export const _tuple = (
         for (; i < us.length; i++) {
           const t = decoder.decode(us[i])
           if (isFailure(t)) {
-            return failures(I.append(DE.index(i, t.left))(es)) // bail out on a fatal errors
-          } else if (isSuccess(t)) {
-            out[i] = t.right
-          } else {
-            es = I.append(DE.index(i, t.left))(es)
-            out[i] = t.right
+            return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+          } else if (isWarning(t)) {
+            es.push(DE.index(i, t.left))
           }
+          out[i] = t.right
         }
       } else {
         // ---------------------------------------------
         // handle additional indexes
         // ---------------------------------------------
         for (; i < us.length; i++) {
-          es = I.append(DE.unexpectedIndex(i))(es)
+          es.push(DE.unexpectedIndex(i))
         }
       }
 
@@ -139,26 +139,27 @@ export const _struct = (
 ): Decoder<any, any> =>
   make(
     S.make(ast),
-    (us: { readonly [_: string | symbol]: unknown }) => {
-      const out: any = {}
-      const fieldKeys = {}
-      let es: ReadonlyArray<DE.DecodeError> = RA.empty
+    (input: { readonly [_: string | symbol]: unknown }) => {
+      const output: any = {}
+      const processedKeys = {}
+      const es: Array<DE.DecodeError> = []
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
-        const key = ast.fields[i].key
-        fieldKeys[key] = null
+        const field = ast.fields[i]
+        const key = field.key
+        processedKeys[key] = null
         // ---------------------------------------------
         // handle optional fields
         // ---------------------------------------------
-        const optional = ast.fields[i].optional
+        const optional = field.optional
         if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(us, key)) {
+          if (!Object.prototype.hasOwnProperty.call(input, key)) {
             continue
           }
-          if (us[key] === undefined) {
-            out[key] = undefined
+          if (input[key] === undefined) {
+            output[key] = undefined
             continue
           }
         }
@@ -166,39 +167,38 @@ export const _struct = (
         // handle required fields
         // ---------------------------------------------
         const decoder = fields[i]
-        const t = decoder.decode(us[key])
+        const t = decoder.decode(input[key])
         if (isFailure(t)) {
-          return failures(I.append(DE.key(key, t.left))(es)) // bail out on a fatal errors
-        } else if (isSuccess(t)) {
-          out[key] = t.right
-        } else {
-          es = I.append(DE.key(key, t.left))(es)
-          out[key] = t.right
+          return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+        } else if (isWarning(t)) {
+          es.push(DE.key(key, t.left))
         }
+        output[key] = t.right
       }
-      // ---------------------------------------------
-      // handle index signature
-      // ---------------------------------------------
-      if (O.isSome(oStringIndexSignature)) {
-        const decoder = oStringIndexSignature.value
-        for (const key of Object.keys(us)) {
-          const t = decoder.decode(us[key])
-          if (isFailure(t)) {
-            return failures(I.append(DE.key(key, t.left))(es)) // bail out on a fatal errors
-          } else if (isSuccess(t)) {
-            out[key] = t.right
-          } else {
-            es = I.append(DE.key(key, t.left))(es)
-            out[key] = t.right
+      const keys = Object.keys(input)
+      if (keys.length > fields.length) {
+        // ---------------------------------------------
+        // handle index signature
+        // ---------------------------------------------
+        if (O.isSome(oStringIndexSignature)) {
+          const decoder = oStringIndexSignature.value
+          for (const key of keys) {
+            const t = decoder.decode(input[key])
+            if (isFailure(t)) {
+              return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+            } else if (isWarning(t)) {
+              es.push(DE.key(key, t.left))
+            }
+            output[key] = t.right
           }
-        }
-      } else {
-        // ---------------------------------------------
-        // handle additional keys
-        // ---------------------------------------------
-        for (const key of Object.keys(us)) {
-          if (!(key in fieldKeys)) {
-            es = I.append(DE.unexpectedKey(key))(es)
+        } else {
+          // ---------------------------------------------
+          // handle additional keys
+          // ---------------------------------------------
+          for (const key of keys) {
+            if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
+              es.push(DE.unexpectedKey(key))
+            }
           }
         }
       }
@@ -206,7 +206,7 @@ export const _struct = (
       // ---------------------------------------------
       // compute output
       // ---------------------------------------------
-      return I.isNonEmpty(es) ? warnings(es, out) : success(out)
+      return I.isNonEmpty(es) ? warnings(es, output) : success(output)
     }
   )
 
@@ -216,13 +216,13 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   members: Members
 ): Decoder<I, S.Infer<Members[number]>> =>
   make(S.make(ast), (u) => {
-    let es: ReadonlyArray<DE.DecodeError> = RA.empty
+    const es: Array<DE.DecodeError> = []
     for (let i = 0; i < members.length; i++) {
       const t = members[i].decode(u)
       if (!isFailure(t)) {
         return t
       }
-      es = I.append(DE.member(i, t.left))(es)
+      es.push(DE.member(i, t.left))
     }
     return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
