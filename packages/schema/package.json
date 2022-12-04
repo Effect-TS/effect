@@ -82,6 +82,7 @@
     "@vitest/coverage-c8": "^0.24.3",
     "ajv": "^8.11.0",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "benchmark": "^2.1.4",
     "concurrently": "^7.2.2",
     "cpx": "^1.5.0",
     "docs-ts": "^0.6.10",
