@@ -2,10 +2,11 @@
  * @since 1.0.0
  */
 
-import * as C from "@fp-ts/data/Chunk"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import type { Validated } from "@fp-ts/data/These"
+import * as RA from "@fp-ts/data/ReadonlyArray"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -17,7 +18,7 @@ import * as S from "@fp-ts/schema/Schema"
  */
 export interface Decoder<in S, in out A> extends Schema<A> {
   readonly I: (_: S) => void
-  readonly decode: (i: S) => Validated<DE.DecodeError, A>
+  readonly decode: (i: S) => These<NonEmptyReadonlyArray<DE.DecodeError>, A>
 }
 
 /**
@@ -81,7 +82,7 @@ export const _tuple = (
     S.make(ast),
     (us: ReadonlyArray<unknown>) => {
       const out: Array<any> = []
-      let es: C.Chunk<DE.DecodeError> = C.empty
+      let es: ReadonlyArray<DE.DecodeError> = RA.empty
       let i = 0
       // ---------------------------------------------
       // handle components
@@ -94,7 +95,7 @@ export const _tuple = (
         } else if (isSuccess(t)) {
           out[i] = t.right
         } else {
-          es = C.append(DE.index(i, t.left))(es)
+          es = I.append(DE.index(i, t.left))(es)
           out[i] = t.right
         }
       }
@@ -110,7 +111,7 @@ export const _tuple = (
           } else if (isSuccess(t)) {
             out[i] = t.right
           } else {
-            es = C.append(DE.index(i, t.left))(es)
+            es = I.append(DE.index(i, t.left))(es)
             out[i] = t.right
           }
         }
@@ -119,14 +120,14 @@ export const _tuple = (
         // handle additional indexes
         // ---------------------------------------------
         for (; i < us.length; i++) {
-          es = C.append(DE.unexpectedIndex(i))(es)
+          es = I.append(DE.unexpectedIndex(i))(es)
         }
       }
 
       // ---------------------------------------------
       // compute output
       // ---------------------------------------------
-      return C.isNonEmpty(es) ? warnings(es, out) : success(out)
+      return I.isNonEmpty(es) ? warnings(es, out) : success(out)
     }
   )
 
@@ -141,7 +142,7 @@ export const _struct = (
     (us: { readonly [_: string | symbol]: unknown }) => {
       const out: any = {}
       const fieldKeys = {}
-      let es: C.Chunk<DE.DecodeError> = C.empty
+      let es: ReadonlyArray<DE.DecodeError> = RA.empty
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
@@ -171,7 +172,7 @@ export const _struct = (
         } else if (isSuccess(t)) {
           out[key] = t.right
         } else {
-          es = C.append(DE.key(key, t.left))(es)
+          es = I.append(DE.key(key, t.left))(es)
           out[key] = t.right
         }
       }
@@ -187,7 +188,7 @@ export const _struct = (
           } else if (isSuccess(t)) {
             out[key] = t.right
           } else {
-            es = C.append(DE.key(key, t.left))(es)
+            es = I.append(DE.key(key, t.left))(es)
             out[key] = t.right
           }
         }
@@ -197,7 +198,7 @@ export const _struct = (
         // ---------------------------------------------
         for (const key of Object.keys(us)) {
           if (!(key in fieldKeys)) {
-            es = C.append(DE.unexpectedKey(key))(es)
+            es = I.append(DE.unexpectedKey(key))(es)
           }
         }
       }
@@ -205,7 +206,7 @@ export const _struct = (
       // ---------------------------------------------
       // compute output
       // ---------------------------------------------
-      return C.isNonEmpty(es) ? warnings(es, out) : success(out)
+      return I.isNonEmpty(es) ? warnings(es, out) : success(out)
     }
   )
 
@@ -215,15 +216,15 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   members: Members
 ): Decoder<I, S.Infer<Members[number]>> =>
   make(S.make(ast), (u) => {
-    let es: C.Chunk<DE.DecodeError> = C.empty
+    let es: ReadonlyArray<DE.DecodeError> = RA.empty
     for (let i = 0; i < members.length; i++) {
       const t = members[i].decode(u)
       if (!isFailure(t)) {
         return t
       }
-      es = C.append(DE.member(i, t.left))(es)
+      es = I.append(DE.member(i, t.left))(es)
     }
-    return C.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
+    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
 /** @internal */

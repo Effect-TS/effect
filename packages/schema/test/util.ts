@@ -1,6 +1,6 @@
-import type { NonEmptyChunk } from "@fp-ts/data/Chunk"
-import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
+import * as RA from "@fp-ts/data/ReadonlyArray"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type * as DE from "@fp-ts/schema/DecodeError"
@@ -31,8 +31,8 @@ export const expectWarning = <I, A>(decoder: D.Decoder<I, A>, i: I, message: str
   expect(t).toEqual(T.both(message, a))
 }
 
-const formatAll = (errors: NonEmptyChunk<DE.DecodeError>): string => {
-  return pipe(errors, C.map(format), C.join(", "))
+const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
+  return pipe(errors, RA.map(format), RA.join(", "))
 }
 
 /**
@@ -59,14 +59,14 @@ export const format = (e: DE.DecodeError): string => {
     case "NotEqual":
       return `${JSON.stringify(e.actual)} did not satisfy isEqual(${e.expected})`
     case "Index":
-      return `/${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
+      return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Key":
-      return `/${String(e.key)} ${pipe(e.errors, C.map(format), C.join(", "))}`
+      return `/${String(e.key)} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "UnexpectedKey":
       return `/${String(e.key)} key is unexpected`
     case "UnexpectedIndex":
       return `/${String(e.index)} index is unexpected`
     case "Member":
-      return `member ${e.index} ${pipe(e.errors, C.map(format), C.join(", "))}`
+      return `member ${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
   }
 }

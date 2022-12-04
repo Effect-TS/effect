@@ -53,7 +53,7 @@ describe("Chunk", () => {
     )
     // should handle warnings
     expect(decoder.decode([1, NaN, 3])).toEqual(
-      D.warning(DE.index(1, DC.singleton(DE.nan)), DC.unsafeFromArray([1, NaN, 3]))
+      D.warning(DE.index(1, [DE.nan]), DC.unsafeFromArray([1, NaN, 3]))
     )
     Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")

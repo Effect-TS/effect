@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import type { NonEmptyChunk } from "@fp-ts/data/Chunk"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 
 /**
  * @since 1.0.0
@@ -178,7 +178,7 @@ export const max = (max: number, actual: unknown): Max => ({
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly errors: NonEmptyChunk<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<DecodeError>
 }
 
 /**
@@ -186,7 +186,7 @@ export interface Index {
  */
 export const index = (
   index: number,
-  errors: NonEmptyChunk<DecodeError>
+  errors: NonEmptyReadonlyArray<DecodeError>
 ): Index => ({
   _tag: "Index",
   index,
@@ -199,7 +199,7 @@ export const index = (
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly errors: NonEmptyChunk<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<DecodeError>
 }
 
 /**
@@ -207,7 +207,7 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  errors: NonEmptyChunk<DecodeError>
+  errors: NonEmptyReadonlyArray<DecodeError>
 ): Key => ({
   _tag: "Key",
   key,
@@ -256,7 +256,7 @@ export const unexpectedIndex = (
 export interface Member {
   readonly _tag: "Member"
   readonly index: number
-  readonly errors: NonEmptyChunk<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<DecodeError>
 }
 
 /**
@@ -264,7 +264,7 @@ export interface Member {
  */
 export const member = (
   index: number,
-  errors: NonEmptyChunk<DecodeError>
+  errors: NonEmptyReadonlyArray<DecodeError>
 ): Member => ({
   _tag: "Member",
   index,

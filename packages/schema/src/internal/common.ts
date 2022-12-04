@@ -2,10 +2,11 @@
  * @since 1.0.0
  */
 
-import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { AST } from "@fp-ts/schema/AST"
@@ -20,19 +21,22 @@ import type { Schema } from "@fp-ts/schema/Schema"
 
 export const success: <A>(a: A) => T.These<never, A> = T.right
 
-export const failure = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> =>
-  T.left(C.singleton(e))
+export const failure = (e: DE.DecodeError): T.These<NonEmptyReadonlyArray<DE.DecodeError>, never> =>
+  T.left([e])
 
-export const failures = (es: C.NonEmptyChunk<DE.DecodeError>): T.Validated<DE.DecodeError, never> =>
-  T.left(es)
+export const failures = (
+  es: NonEmptyReadonlyArray<DE.DecodeError>
+): T.These<NonEmptyReadonlyArray<DE.DecodeError>, never> => T.left(es)
 
-export const warning = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
-  T.both(C.singleton(e), a)
+export const warning = <A>(
+  e: DE.DecodeError,
+  a: A
+): T.These<NonEmptyReadonlyArray<DE.DecodeError>, A> => T.both([e], a)
 
 export const warnings = <A>(
-  es: C.NonEmptyChunk<DE.DecodeError>,
+  es: NonEmptyReadonlyArray<DE.DecodeError>,
   a: A
-): T.Validated<DE.DecodeError, A> => T.both(es, a)
+): T.These<NonEmptyReadonlyArray<DE.DecodeError>, A> => T.both(es, a)
 
 export const isFailure = T.isLeft
 
@@ -40,7 +44,25 @@ export const isSuccess = T.isRight
 
 export const map = T.map
 
-export const flatMap = T.flatMap
+export const flatMap = <A, E2, B>(
+  f: (a: A) => T.These<NonEmptyReadonlyArray<E2>, B>
+) =>
+  <E1>(self: T.These<NonEmptyReadonlyArray<E1>, A>): T.These<NonEmptyReadonlyArray<E1 | E2>, B> => {
+    if (T.isLeft(self)) {
+      return self
+    }
+    if (T.isRight(self)) {
+      return f(self.right)
+    }
+    const that = f(self.right)
+    if (T.isLeft(that)) {
+      return T.left(RA.prependAllNonEmpty(that.left)(self.left))
+    }
+    if (T.isRight(that)) {
+      return T.both(self.left, that.right)
+    }
+    return T.both(RA.prependAllNonEmpty(that.left)(self.left), that.right)
+  }
 
 export const isUnknownObject = (u: unknown): u is UnknownObject =>
   typeof u === "object" && u != null && !Array.isArray(u)
@@ -119,8 +141,10 @@ export const makeEncoder = <O, A>(
   encode: Encoder<O, A>["encode"]
 ): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
 
-export const append: <B>(b: B) => <A>(self: C.Chunk<A>) => C.NonEmptyChunk<A | B> = C
-  .append as any
+export const append: <B>(b: B) => <A>(self: ReadonlyArray<A>) => NonEmptyReadonlyArray<A | B> =
+  RA.append
+
+export const isNonEmpty = RA.isNonEmpty
 
 export const isValueJsonEncodable = (u: unknown): u is Json => {
   try {
