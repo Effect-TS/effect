@@ -44,7 +44,7 @@ describe("JsonDecoder", () => {
   })
 
   describe("struct", () => {
-    it("baseline", () => {
+    it("should handle strings as keys", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: 1 }))
@@ -73,6 +73,18 @@ describe("JsonDecoder", () => {
       const decoder = JD.jsonDecoderFor(schema)
       expect(decoder.decode({})).toEqual(D.success({}))
     })
+
+    it("stringIndexSignature", () => {
+      const schema = S.stringIndexSignature(S.number)
+      const decoder = JD.jsonDecoderFor(schema)
+      expect(decoder.decode({})).toEqual(D.success({}))
+      expect(decoder.decode({ a: 1 })).toEqual(D.success({ a: 1 }))
+
+      Util.expectFailure(decoder, [], "[] did not satisfy is(JsonObject)")
+      Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
+
+      Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
+    })
   })
 
   describe("union", () => {
@@ -94,18 +106,6 @@ describe("JsonDecoder", () => {
       const decoder = JD.jsonDecoderFor(schema)
       Util.expectFailure(decoder, 1, "1 did not satisfy is(never)")
     })
-  })
-
-  it("stringIndexSignature", () => {
-    const schema = S.stringIndexSignature(S.number)
-    const decoder = JD.jsonDecoderFor(schema)
-    expect(decoder.decode({})).toEqual(D.success({}))
-    expect(decoder.decode({ a: 1 })).toEqual(D.success({ a: 1 }))
-
-    Util.expectFailure(decoder, [], "[] did not satisfy is(JsonObject)")
-    Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
-
-    Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
   })
 
   describe("array", () => {

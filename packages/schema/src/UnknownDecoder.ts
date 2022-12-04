@@ -64,7 +64,8 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
               D._struct(
                 ast,
                 ast.fields.map((f) => go(f.value)),
-                pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
+                pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+                pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
               )
             )
           )

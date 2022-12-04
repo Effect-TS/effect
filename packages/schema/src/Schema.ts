@@ -187,6 +187,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   make(
     ast.struct(
       I.getPropertyKeys(fields).map((key) => ast.field(key, fields[key].ast, false, true)),
+      O.none,
       O.none
     )
   )
@@ -195,7 +196,13 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
  * @since 1.0.0
  */
 export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
-  make(ast.struct([], O.some(ast.indexSignature(value.ast, true))))
+  make(ast.struct([], O.some(ast.indexSignature(value.ast, true)), O.none))
+
+/**
+ * @since 1.0.0
+ */
+export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
+  make(ast.struct([], O.none, O.some(ast.indexSignature(value.ast, true))))
 
 /**
  * @since 1.0.0
@@ -209,9 +216,30 @@ export const withStringIndexSignature = <V>(value: Schema<V>) =>
       if (O.isSome(a.stringIndexSignature)) {
         throw new Error("cannot double apply `withStringIndexSignature`")
       }
-      return make(ast.struct(a.fields, O.some(ast.indexSignature(value.ast, true))))
+      return make(
+        ast.struct(a.fields, O.some(ast.indexSignature(value.ast, true)), a.symbolIndexSignature)
+      )
     }
     throw new Error("cannot `withStringIndexSignature` non-Struct schemas")
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const withSymbolIndexSignature = <V>(value: Schema<V>) =>
+  <A>(
+    self: Schema<A>
+  ): Schema<A & { readonly [_: string]: V }> => {
+    if (ast.isStruct(self.ast)) {
+      const a = self.ast
+      if (O.isSome(a.symbolIndexSignature)) {
+        throw new Error("cannot double apply `withSymbolIndexSignature`")
+      }
+      return make(
+        ast.struct(a.fields, a.stringIndexSignature, O.some(ast.indexSignature(value.ast, true)))
+      )
+    }
+    throw new Error("cannot `withSymbolIndexSignature` non-Struct schemas")
   }
 
 /**
@@ -249,6 +277,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (schema: Schema<A>): Schema<{ [P in Keys[number]]: A[P] }> => {
     return make(ast.struct(
       ast.getFields(schema.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+      O.none,
       O.none
     ))
   }
@@ -269,6 +298,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
       ast.getFields(schema.ast).filter((f) =>
         !(keys as ReadonlyArray<PropertyKey>).includes(f.key)
       ),
+      O.none,
       O.none
     ))
   }
@@ -281,7 +311,8 @@ export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
     return make(
       ast.struct(
         schema.ast.fields.map((f) => ast.field(f.key, f.value, true, f.readonly)),
-        schema.ast.stringIndexSignature
+        schema.ast.stringIndexSignature,
+        schema.ast.symbolIndexSignature
       )
     )
   }

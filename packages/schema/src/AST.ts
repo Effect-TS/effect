@@ -112,6 +112,7 @@ export interface Struct {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
   readonly stringIndexSignature: Option<IndexSignature>
+  readonly symbolIndexSignature: Option<IndexSignature>
 }
 
 /**
@@ -119,11 +120,13 @@ export interface Struct {
  */
 export const struct = (
   fields: ReadonlyArray<Field>,
-  stringIndexSignature: Option<IndexSignature>
+  stringIndexSignature: Option<IndexSignature>,
+  symbolIndexSignature: Option<IndexSignature>
 ): Struct => ({
   _tag: "Struct",
   fields,
-  stringIndexSignature
+  stringIndexSignature,
+  symbolIndexSignature
 })
 
 /**
@@ -211,7 +214,9 @@ export const getFields = (
         const head = memberFields[0]
         const tail = memberFields.slice(1)
         for (const candidate of head) {
-          if (tail.every((fields) => fields.some((field) => field.key === candidate.key))) {
+          if (
+            tail.every((fields) => fields.some((field) => field.key === candidate.key))
+          ) {
             const members = pipe(
               tail,
               flatMap((fields) =>

@@ -135,7 +135,8 @@ export const _tuple = (
 export const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Decoder<any, any>>,
-  oStringIndexSignature: Option<Decoder<any, any>>
+  oStringIndexSignature: Option<Decoder<any, any>>,
+  oSymbolIndexSignature: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
     S.make(ast),
@@ -175,14 +176,13 @@ export const _struct = (
         }
         output[key] = t.right
       }
-      const keys = Object.keys(input)
-      if (keys.length > fields.length) {
-        // ---------------------------------------------
-        // handle index signature
-        // ---------------------------------------------
+      // ---------------------------------------------
+      // handle index signatures
+      // ---------------------------------------------
+      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
         if (O.isSome(oStringIndexSignature)) {
           const decoder = oStringIndexSignature.value
-          for (const key of keys) {
+          for (const key of Object.keys(input)) {
             const t = decoder.decode(input[key])
             if (isFailure(t)) {
               return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
@@ -191,14 +191,26 @@ export const _struct = (
             }
             output[key] = t.right
           }
-        } else {
-          // ---------------------------------------------
-          // handle additional keys
-          // ---------------------------------------------
-          for (const key of keys) {
-            if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
-              es.push(DE.unexpectedKey(key))
+        }
+        if (O.isSome(oSymbolIndexSignature)) {
+          const decoder = oSymbolIndexSignature.value
+          for (const key of Object.getOwnPropertySymbols(input)) {
+            const t = decoder.decode(input[key])
+            if (isFailure(t)) {
+              return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+            } else if (isWarning(t)) {
+              es.push(DE.key(key, t.left))
             }
+            output[key] = t.right
+          }
+        }
+      } else {
+        // ---------------------------------------------
+        // handle additional keys
+        // ---------------------------------------------
+        for (const key of I.getPropertyKeys(input)) {
+          if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
+            es.push(DE.unexpectedKey(key))
           }
         }
       }
