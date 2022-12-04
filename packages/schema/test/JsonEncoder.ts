@@ -20,4 +20,33 @@ describe("JsonEncoder", () => {
       expect(encoder.encode(["a", 1, 2])).toEqual(["a", 1, "2"])
     })
   })
+
+  describe("struct", () => {
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: NumberFromString })
+      const encoder = JE.jsonEncoderFor(schema)
+      expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: "1" })
+    })
+
+    it("string index signature", () => {
+      const schema = pipe(
+        S.struct({ a: S.number }),
+        S.withStringIndexSignature(NumberFromString)
+      )
+      const encoder = JE.jsonEncoderFor(schema)
+      expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
+      expect(encoder.encode({ a: 1, b: 1 })).toEqual({ a: 1, b: "1" })
+    })
+
+    it("should not output optional fields", () => {
+      const schema = S.partial(S.struct({ a: S.number }))
+      const encoder = JE.jsonEncoderFor(schema)
+      expect(encoder.encode({})).toEqual({})
+      const output = encoder.encode({ a: undefined })
+      expect(output).toEqual({ a: undefined })
+      if (output !== null) {
+        expect(Object.keys(output)).toEqual(["a"])
+      }
+    })
+  })
 })

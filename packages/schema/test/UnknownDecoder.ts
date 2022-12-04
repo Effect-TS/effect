@@ -1,4 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
@@ -64,7 +65,10 @@ describe("UnknownDecoder", () => {
     it("should not fail on optional fields", () => {
       const schema = S.partial(S.struct({ a: S.string, b: S.number }))
       const decoder = UD.unknownDecoderFor(schema)
-      expect(decoder.decode({ b: undefined })).toEqual(D.success({ b: undefined }))
+      expect(decoder.decode({})).toEqual(D.success({}))
+      const output = decoder.decode({ a: undefined })
+      expect(output).toEqual(D.success({ a: undefined }))
+      expect(pipe(output, T.map(Object.keys))).toEqual(T.right(["a"]))
     })
   })
 })

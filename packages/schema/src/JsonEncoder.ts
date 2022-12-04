@@ -50,13 +50,12 @@ export const provideJsonEncoderFor = (
         }
         case "Of":
           return E.make(S.make(ast), identity)
-        case "Tuple": {
+        case "Tuple":
           return E._tuple(
             ast.components.map((c) => [c, go(c)]),
             pipe(ast.restElement, O.map((re) => [re, go(re)])),
             ast.readonly
           )
-        }
         case "Union": {
           const members = ast.members.map(go)
           const guards = ast.members.map((member) => G.guardFor(S.make(member)))
@@ -65,16 +64,11 @@ export const provideJsonEncoderFor = (
             return members[index].encode(a)
           })
         }
-        case "Struct": {
-          return E.make(S.make(ast), (a) => {
-            const out: any = {}
-            for (let i = 0; i < ast.fields.length; i++) {
-              const key = ast.fields[i].key
-              out[key] = a[key]
-            }
-            return out
-          })
-        }
+        case "Struct":
+          return E._struct(
+            ast.fields.map((f) => [f, go(f.value)]),
+            pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
+          )
         case "Lazy":
           return E.lazy(() => go(ast.f()))
       }

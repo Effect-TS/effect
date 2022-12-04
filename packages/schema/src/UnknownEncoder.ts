@@ -50,19 +50,12 @@ export const provideUnknownEncoderFor = (provider: Provider) =>
         }
         case "Of":
           return E.make(S.of(ast.value), identity)
-        case "Tuple": {
-          const components = ast.components.map(go)
-          const restElement = pipe(ast.restElement, O.map(go), O.getOrNull)
-          return E.make(S.make(ast), (a) => {
-            const out = components.map((c, i) => c.encode(a[i]))
-            if (restElement !== null) {
-              for (let i = components.length; i < a.length; i++) {
-                out.push(restElement.encode(a[i]))
-              }
-            }
-            return out
-          })
-        }
+        case "Tuple":
+          return E._tuple(
+            ast.components.map((c) => [c, go(c)]),
+            pipe(ast.restElement, O.map((re) => [re, go(re)])),
+            ast.readonly
+          )
         case "Union": {
           const members = ast.members.map(go)
           const guards = ast.members.map((member) => G.guardFor(S.make(member)))
@@ -71,28 +64,11 @@ export const provideUnknownEncoderFor = (provider: Provider) =>
             return members[index].encode(a)
           })
         }
-        case "Struct": {
-          const fields: Record<PropertyKey, Encoder<unknown, any>> = {}
-          for (const field of ast.fields) {
-            fields[field.key] = go(field.value)
-          }
-          const stringIndexSignature = pipe(
-            ast.stringIndexSignature,
-            O.map((is) => go(is.value)),
-            O.getOrNull
+        case "Struct":
+          return E._struct(
+            ast.fields.map((f) => [f, go(f.value)]),
+            pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
           )
-          return E.make(S.make(ast), (a) => {
-            const out = {}
-            for (const key of Object.keys(a)) {
-              if (key in fields) {
-                out[key] = fields[key].encode(a[key])
-              } else if (stringIndexSignature !== null) {
-                out[key] = stringIndexSignature.encode(a[key])
-              }
-            }
-            return out
-          })
-        }
         case "Lazy":
           return E.lazy(() => go(ast.f()))
       }

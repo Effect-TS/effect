@@ -57,6 +57,59 @@ export const _tuple = (
     }
   )
 
+/** @internal */
+export const _struct = (
+  fields: ReadonlyArray<[AST.Field, Encoder<any, any>]>,
+  oStringIndexSignature: Option<[AST.IndexSignature, Encoder<any, any>]>
+): Encoder<any, any> =>
+  make(
+    S.make(
+      AST.struct(fields.map(([f]) => f), pipe(oStringIndexSignature, O.map(([is]) => is)))
+    ),
+    (us: { readonly [_: string | symbol]: unknown }) => {
+      const out: any = {}
+      const fieldKeys = {}
+      // ---------------------------------------------
+      // handle fields
+      // ---------------------------------------------
+      for (let i = 0; i < fields.length; i++) {
+        const key = fields[i][0].key
+        fieldKeys[key] = null
+        // ---------------------------------------------
+        // handle optional fields
+        // ---------------------------------------------
+        const optional = fields[i][0].optional
+        if (optional) {
+          if (!Object.prototype.hasOwnProperty.call(us, key)) {
+            continue
+          }
+          if (us[key] === undefined) {
+            out[key] = undefined
+            continue
+          }
+        }
+        // ---------------------------------------------
+        // handle required fields
+        // ---------------------------------------------
+        const encoder = fields[i][1]
+        out[key] = encoder.encode(us[key])
+      }
+      // ---------------------------------------------
+      // handle index signature
+      // ---------------------------------------------
+      if (O.isSome(oStringIndexSignature)) {
+        const encoder = oStringIndexSignature.value[1]
+        for (const key of Object.keys(us)) {
+          if (!(key in fieldKeys)) {
+            out[key] = encoder.encode(us[key])
+          }
+        }
+      }
+
+      return out
+    }
+  )
+
 /**
  * @since 1.0.0
  */
