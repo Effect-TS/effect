@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { identity, pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { AST } from "@fp-ts/schema/AST"
@@ -48,23 +48,25 @@ export const provideJsonEncoderFor = (
             `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return E.make(S.make(ast), identity)
+        case "Of": {
+          if (I.isValueJsonEncodable(ast.value)) {
+            return E._of(ast.value)
+          } else {
+            throw new Error(`cannot encode a non-Json encodable value`)
+          }
+        }
         case "Tuple":
-          return E._tuple(
-            ast.components.map((c) => [c, go(c)]),
-            pipe(ast.restElement, O.map((re) => [re, go(re)])),
-            ast.readonly
-          )
+          return E._tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
         case "Struct":
           return E._struct(
-            ast.fields.map((f) => [f, go(f.value)]),
-            pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
           )
         case "Union":
           return E._union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
         case "Lazy":
-          return E.lazy(() => go(ast.f()))
+          return E._lazy(() => go(ast.f()))
       }
     }
 

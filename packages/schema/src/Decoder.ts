@@ -3,11 +3,10 @@
  */
 
 import * as C from "@fp-ts/data/Chunk"
-import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { Validated } from "@fp-ts/data/These"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -62,47 +61,24 @@ export const isFailure = I.isFailure
  */
 export const isSuccess = I.isSuccess
 
-/**
- * @since 1.0.0
- */
-export const map = I.map
+// ---------------------------------------------
+// internal
+// ---------------------------------------------
 
-/**
- * @since 1.0.0
- */
-export const flatMap = I.flatMap
-
-/**
- * @since 1.0.0
- */
-export const compose: <B, C>(bc: Decoder<B, C>) => <A>(ab: Decoder<A, B>) => Decoder<A, C> =
-  I.compose
-
-/**
- * @since 1.0.0
- */
-export const of = <A>(
+/** @internal */
+export const _of = <A>(
   value: A
 ): Decoder<unknown, A> =>
   I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
 
-/**
- * @since 1.0.0
- */
-export const array = <S, A>(
-  item: Decoder<S, A>
-): Decoder<ReadonlyArray<S>, ReadonlyArray<A>> => _tuple([], O.some([item.ast, item]), true)
-
 /** @internal */
 export const _tuple = (
-  components: ReadonlyArray<readonly [AST.AST, Decoder<any, any>]>,
-  oRestElement: Option<readonly [AST.AST, Decoder<any, any>]>,
-  readonly: boolean
+  ast: AST.Tuple,
+  components: ReadonlyArray<Decoder<any, any>>,
+  oRestElement: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
-    S.make(
-      AST.tuple(components.map(([c]) => c), pipe(oRestElement, O.map(([re]) => re)), readonly)
-    ),
+    S.make(ast),
     (us: ReadonlyArray<unknown>) => {
       const out: Array<any> = []
       let es: C.Chunk<DE.DecodeError> = C.empty
@@ -111,7 +87,7 @@ export const _tuple = (
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
-        const decoder = components[i][1]
+        const decoder = components[i]
         const t = decoder.decode(us[i])
         if (isFailure(t)) {
           return failures(I.append(DE.index(i, t.left))(es)) // bail out on a fatal errors
@@ -126,7 +102,7 @@ export const _tuple = (
       // handle rest element
       // ---------------------------------------------
       if (O.isSome(oRestElement)) {
-        const decoder = oRestElement.value[1]
+        const decoder = oRestElement.value
         for (; i < us.length; i++) {
           const t = decoder.decode(us[i])
           if (isFailure(t)) {
@@ -156,13 +132,12 @@ export const _tuple = (
 
 /** @internal */
 export const _struct = (
-  fields: ReadonlyArray<readonly [AST.Field, Decoder<any, any>]>,
-  oStringIndexSignature: Option<readonly [AST.IndexSignature, Decoder<any, any>]>
+  ast: AST.Struct,
+  fields: ReadonlyArray<Decoder<any, any>>,
+  oStringIndexSignature: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
-    S.make(
-      AST.struct(fields.map(([f]) => f), pipe(oStringIndexSignature, O.map(([is]) => is)))
-    ),
+    S.make(ast),
     (us: { readonly [_: string | symbol]: unknown }) => {
       const out: any = {}
       const fieldKeys = {}
@@ -171,12 +146,12 @@ export const _struct = (
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
-        const key = fields[i][0].key
+        const key = ast.fields[i].key
         fieldKeys[key] = null
         // ---------------------------------------------
         // handle optional fields
         // ---------------------------------------------
-        const optional = fields[i][0].optional
+        const optional = ast.fields[i].optional
         if (optional) {
           if (!Object.prototype.hasOwnProperty.call(us, key)) {
             continue
@@ -189,7 +164,7 @@ export const _struct = (
         // ---------------------------------------------
         // handle required fields
         // ---------------------------------------------
-        const decoder = fields[i][1]
+        const decoder = fields[i]
         const t = decoder.decode(us[key])
         if (isFailure(t)) {
           return failures(I.append(DE.key(key, t.left))(es)) // bail out on a fatal errors
@@ -204,7 +179,7 @@ export const _struct = (
       // handle index signature
       // ---------------------------------------------
       if (O.isSome(oStringIndexSignature)) {
-        const decoder = oStringIndexSignature.value[1]
+        const decoder = oStringIndexSignature.value
         for (const key of Object.keys(us)) {
           const t = decoder.decode(us[key])
           if (isFailure(t)) {
@@ -234,13 +209,12 @@ export const _struct = (
     }
   )
 
-/**
- * @since 1.0.0
- */
-export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
-  ...members: Members
+/** @internal */
+export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
+  ast: AST.Union,
+  members: Members
 ): Decoder<I, S.Infer<Members[number]>> =>
-  make(S.union(...members), (u) => {
+  make(S.make(ast), (u) => {
     let es: C.Chunk<DE.DecodeError> = C.empty
     for (let i = 0; i < members.length; i++) {
       const t = members[i].decode(u)
@@ -252,13 +226,11 @@ export const union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
     return C.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
-/**
- * @since 1.0.0
- */
-export const lazy = <S, A>(
-  f: () => Decoder<S, A>
-): Decoder<S, A> => {
-  const get = S.memoize<void, Decoder<S, A>>(f)
+/** @internal */
+export const _lazy = <I, A>(
+  f: () => Decoder<I, A>
+): Decoder<I, A> => {
+  const get = S.memoize<void, Decoder<I, A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,

@@ -117,13 +117,9 @@ export const of = <A>(value: A): Schema<A> => make(ast.of(value))
 /**
  * @since 1.0.0
  */
-export type Literal = string | number | boolean | null | undefined | symbol | bigint
-
-/**
- * @since 1.0.0
- */
-export const literal = <A extends ReadonlyArray<Literal>>(...a: A): Schema<A[number]> =>
-  union(...a.map(of))
+export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
+  ...a: A
+): Schema<A[number]> => union(...a.map(of))
 
 /**
  * @since 1.0.0

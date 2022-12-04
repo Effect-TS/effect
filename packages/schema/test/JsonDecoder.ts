@@ -1,5 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as set from "@fp-ts/schema/data/Set"
+import * as set from "@fp-ts/schema/data/ReadonlySet"
 import * as D from "@fp-ts/schema/Decoder"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"

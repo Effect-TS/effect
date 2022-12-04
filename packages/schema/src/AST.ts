@@ -195,11 +195,6 @@ export const lazy = (f: () => AST): Lazy => ({
 /**
  * @since 1.0.0
  */
-export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
-
-/**
- * @since 1.0.0
- */
 export const getFields = (
   ast: AST
 ): ReadonlyArray<Field> => {

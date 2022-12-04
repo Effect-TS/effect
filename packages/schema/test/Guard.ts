@@ -1,12 +1,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as bigint from "@fp-ts/schema/data/Bigint"
 import * as json from "@fp-ts/schema/data/Json"
-import * as set from "@fp-ts/schema/data/Set"
+import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
 import { Monoid } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
-const support = Monoid.combineAll([json.Provider, set.Provider, bigint.Provider])
+const support = Monoid.combineAll([json.Provider, readonlySet.Provider, bigint.Provider])
 const guardFor = G.provideGuardFor(support)
 
 describe("Guard", () => {
@@ -132,12 +132,12 @@ describe("Guard", () => {
   it("recursive", () => {
     interface Category {
       readonly name: string
-      readonly categories: Set<Category>
+      readonly categories: ReadonlySet<Category>
     }
     const schema: S.Schema<Category> = S.lazy<Category>(() =>
       S.struct({
         name: S.string,
-        categories: set.schema(schema)
+        categories: readonlySet.schema(schema)
       })
     )
     const guard = G.guardFor(schema)
@@ -157,22 +157,22 @@ describe("Guard", () => {
   it("mutually recursive", () => {
     interface A {
       readonly a: string
-      readonly bs: Set<B>
+      readonly bs: ReadonlySet<B>
     }
     interface B {
       readonly b: number
-      readonly as: Set<A>
+      readonly as: ReadonlySet<A>
     }
     const schemaA: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
-        bs: set.schema(schemaB)
+        bs: readonlySet.schema(schemaB)
       })
     )
     const schemaB: S.Schema<B> = S.lazy<B>(() =>
       S.struct({
         b: S.number,
-        as: set.schema(schemaA)
+        as: readonlySet.schema(schemaA)
       })
     )
     const A = G.guardFor(schemaA)
@@ -190,12 +190,12 @@ describe("Guard", () => {
   it("pick recursive", () => {
     interface A {
       readonly a: string
-      readonly as: Set<A>
+      readonly as: ReadonlySet<A>
     }
     const A: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
-        as: set.schema(A)
+        as: readonlySet.schema(A)
       })
     )
     const schemaB = pipe(A, S.pick("as"))
@@ -208,12 +208,12 @@ describe("Guard", () => {
   it("omit recursive", () => {
     interface A {
       readonly a: string
-      readonly as: Set<A>
+      readonly as: ReadonlySet<A>
     }
     const A: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
-        as: set.schema(A)
+        as: readonlySet.schema(A)
       })
     )
     const schemaB = pipe(A, S.omit("a"))
@@ -248,14 +248,14 @@ describe("Guard", () => {
   })
 
   it("Set", () => {
-    const schema = set.schema(S.number)
+    const schema = readonlySet.schema(S.number)
     const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
   })
 
   it("Set & bigint", () => {
-    const schema = set.schema(bigint.Schema)
+    const schema = readonlySet.schema(bigint.Schema)
     const guard = guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is(new Set())).toEqual(true)

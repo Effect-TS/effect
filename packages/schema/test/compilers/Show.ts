@@ -4,7 +4,7 @@ import type { AST } from "@fp-ts/schema/AST"
 import * as BigInt from "@fp-ts/schema/data/Bigint"
 import * as Boolean from "@fp-ts/schema/data/Boolean"
 import * as Number from "@fp-ts/schema/data/Number"
-import * as set from "@fp-ts/schema/data/Set"
+import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as String from "@fp-ts/schema/data/String"
 import * as G from "@fp-ts/schema/Guard"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -119,7 +119,7 @@ export const provideShowFor = (provider: Provider) =>
   }
 
 const provider: P.Provider = P.Monoid.combineAll([
-  set.Provider,
+  readonlySet.Provider,
   P.make(BigInt.id, {
     [ShowId]: () => make(BigInt.Schema, (bigint) => bigint.toString())
   }),
@@ -132,10 +132,10 @@ const provider: P.Provider = P.Monoid.combineAll([
   P.make(Boolean.id, {
     [ShowId]: () => make(Boolean.Schema, (b) => JSON.stringify(b))
   }),
-  P.make(set.id, {
-    [ShowId]: <A>(item: Show<A>): Show<Set<A>> =>
+  P.make(readonlySet.id, {
+    [ShowId]: <A>(item: Show<A>): Show<ReadonlySet<A>> =>
       make(
-        set.schema(item),
+        readonlySet.schema(item),
         (set) => `Set([${Array.from(set.values()).map(item.show).join(", ")}])`
       )
   })
@@ -156,7 +156,7 @@ describe("Show", () => {
   })
 
   it("declaration", () => {
-    const schema = set.schema(S.string)
+    const schema = readonlySet.schema(S.string)
     expect(showFor(schema).show(new Set("a"))).toEqual(
       "Set([\"a\"])"
     )
@@ -165,12 +165,12 @@ describe("Show", () => {
   it("recursive", () => {
     interface A {
       readonly a: string
-      readonly as: Set<A>
+      readonly as: ReadonlySet<A>
     }
     const A: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
-        as: set.schema(A)
+        as: readonlySet.schema(A)
       })
     )
     expect(showFor(A).show({ a: "a", as: new Set() })).toEqual(

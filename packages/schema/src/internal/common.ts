@@ -121,3 +121,12 @@ export const makeEncoder = <O, A>(
 
 export const append: <B>(b: B) => <A>(self: C.Chunk<A>) => C.NonEmptyChunk<A | B> = C
   .append as any
+
+export const isValueJsonEncodable = (u: unknown): u is Json => {
+  try {
+    JSON.stringify(u)
+    return true
+  } catch (e) {
+    return false
+  }
+}

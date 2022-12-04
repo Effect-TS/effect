@@ -6,6 +6,27 @@ import * as S from "@fp-ts/schema/Schema"
 const NumberFromString = pipe(S.string, parseFloat.schema)
 
 describe("JsonEncoder", () => {
+  describe("of", () => {
+    it("baseline", () => {
+      const schema = S.literal(1)
+      const encoder = JE.jsonEncoderFor(schema)
+      expect(encoder.encode(1)).toEqual(1)
+    })
+
+    it("should not throw if `of` contains a non-Json encodable value", () => {
+      const schema = S.literal(undefined)
+      const encoder = JE.jsonEncoderFor(schema)
+      expect(encoder.encode(undefined)).toEqual(undefined)
+    })
+
+    it("should throw if `of` contains a non-Json encodable value", () => {
+      const schema = S.literal(1n as any)
+      expect(() => JE.jsonEncoderFor(schema)).toThrow(
+        "cannot encode a non-Json encodable value"
+      )
+    })
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)
@@ -55,5 +76,15 @@ describe("JsonEncoder", () => {
     const encoder = JE.jsonEncoderFor(schema)
     expect(encoder.encode("a")).toEqual("a")
     expect(encoder.encode(1)).toEqual("1")
+  })
+
+  it("lazy", () => {
+    type A = readonly [number, A | null]
+    const schema: S.Schema<A> = S.lazy<A>(() =>
+      S.tuple(NumberFromString, S.union(schema, S.of(null)))
+    )
+    const encoder = JE.jsonEncoderFor(schema)
+    expect(encoder.encode([1, null])).toEqual(["1", null])
+    expect(encoder.encode([1, [2, null]])).toEqual(["1", ["2", null]])
   })
 })

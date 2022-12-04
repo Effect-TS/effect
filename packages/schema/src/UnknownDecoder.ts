@@ -49,30 +49,29 @@ export const provideUnknownDecoderFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return D.of(ast.value)
+          return D._of(ast.value)
         case "Tuple":
           return pipe(
             UnknownArray.UnknownDecoder,
-            D.compose(D._tuple(
-              ast.components.map((c) => [c, go(c)]),
-              pipe(ast.restElement, O.map((re) => [re, go(re)])),
-              ast.readonly
-            ))
+            I.compose(
+              D._tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+            )
           )
         case "Struct":
           return pipe(
             UnknownObject.UnknownDecoder,
-            D.compose(
+            I.compose(
               D._struct(
-                ast.fields.map((f) => [f, go(f.value)]),
-                pipe(ast.stringIndexSignature, O.map((is) => [is, go(is.value)]))
+                ast,
+                ast.fields.map((f) => go(f.value)),
+                pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
               )
             )
           )
         case "Union":
-          return D.union(...ast.members.map(go))
+          return D._union(ast, ast.members.map(go))
         case "Lazy":
-          return D.lazy(() => go(ast.f()))
+          return D._lazy(() => go(ast.f()))
       }
     }
 

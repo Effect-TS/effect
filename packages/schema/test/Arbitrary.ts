@@ -1,6 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as set from "@fp-ts/schema/data/Set"
+import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
@@ -38,7 +38,7 @@ describe("Arbitrary", () => {
   })
 
   it("declaration", () => {
-    const schema = set.schema(S.string)
+    const schema = readonlySet.schema(S.string)
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
@@ -47,15 +47,15 @@ describe("Arbitrary", () => {
   it.skip("lazy", () => {
     interface L {
       readonly a: string
-      readonly as: Set<L>
+      readonly as: ReadonlySet<L>
     }
     const L: S.Schema<L> = S.lazy<L>(() =>
       S.struct({
         a: S.string,
-        as: set.schema(L)
+        as: readonlySet.schema(L)
       })
     )
-    const schema = set.schema(L)
+    const schema = readonlySet.schema(L)
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
