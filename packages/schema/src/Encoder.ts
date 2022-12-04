@@ -2,6 +2,10 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/data/Function"
+import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
@@ -19,33 +23,39 @@ export interface Encoder<out S, in out A> extends Schema<A> {
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
 
-/**
- * @since 1.0.0
- */
-export const tuple = <S, Components extends ReadonlyArray<Encoder<S, unknown>>>(
-  ...components: Components
-): Encoder<
-  ReadonlyArray<S>,
-  { readonly [K in keyof Components]: S.Infer<Components[K]> }
-> =>
+/** @internal */
+export const _tuple = (
+  components: ReadonlyArray<[AST.AST, Encoder<any, any>]>,
+  oRestElement: Option<[AST.AST, Encoder<any, any>]>,
+  readonly: boolean
+): Encoder<any, any> =>
   make(
-    S.tuple<Components>(...components),
-    (a) => a.map((ai, i) => components[i].encode(ai))
-  )
+    S.make(
+      AST.tuple(components.map(([c]) => c), pipe(oRestElement, O.map(([re]) => re)), readonly)
+    ),
+    (us: ReadonlyArray<unknown>) => {
+      const out: Array<any> = []
+      let i = 0
+      // ---------------------------------------------
+      // handle components
+      // ---------------------------------------------
+      for (; i < components.length; i++) {
+        const encoder = components[i][1]
+        out[i] = encoder.encode(us[i])
+      }
+      // ---------------------------------------------
+      // handle rest element
+      // ---------------------------------------------
+      if (O.isSome(oRestElement)) {
+        const encoder = oRestElement.value[1]
+        for (; i < us.length; i++) {
+          out[i] = encoder.encode(us[i])
+        }
+      }
 
-/**
- * @since 1.0.0
- */
-export const stringIndexSignature = <S, A>(
-  value: Encoder<S, A>
-): Encoder<{ readonly [_: string]: S }, { readonly [_: string]: A }> =>
-  make(S.stringIndexSignature(value), (a) => {
-    const out: any = {}
-    for (const key in a) {
-      out[key] = value.encode(a[key])
+      return out
     }
-    return out
-  })
+  )
 
 /**
  * @since 1.0.0

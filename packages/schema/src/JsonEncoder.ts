@@ -51,20 +51,10 @@ export const provideJsonEncoderFor = (
         case "Of":
           return E.make(S.make(ast), identity)
         case "Tuple": {
-          const components = ast.components.map(go)
-          if (O.isSome(ast.restElement)) {
-            const restElement = go(ast.restElement.value)
-            return E.make<Array<Json>, ReadonlyArray<any>>(
-              S.make(ast),
-              (a) =>
-                a.map((ai, i) =>
-                  i < components.length ? components[i].encode(ai) : restElement.encode(ai)
-                )
-            )
-          }
-          return E.make<Array<Json>, ReadonlyArray<any>>(
-            S.make(ast),
-            (a) => a.map((ai, i) => components[i].encode(ai))
+          return E._tuple(
+            ast.components.map((c) => [c, go(c)]),
+            pipe(ast.restElement, O.map((re) => [re, go(re)])),
+            ast.readonly
           )
         }
         case "Union": {
