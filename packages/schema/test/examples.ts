@@ -1,8 +1,10 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
+import { pipe } from "@fp-ts/data/Function"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JC from "@fp-ts/schema/JsonCodec"
+import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
@@ -74,12 +76,29 @@ describe("examples", () => {
     //   console.log(fc.sample(arb, 2))
     // })
 
-    // it("Native enums", () => {
-    //   enum E {
-    //     a,
-    //     b
-    //   }
-    //   const e = S.nativeEnum(E)
-    // })
+    it("Custom decode errors", () => {
+      const mystring = pipe(
+        S.string,
+        S.clone(Symbol.for("mystring"), {
+          [JD.JsonDecoderId]: () => myJsonDecoder
+        })
+      )
+
+      const myJsonDecoder = D.make(mystring, (u) =>
+        typeof u === "string"
+          ? D.success(u)
+          : D.failure(DE.custom({ myCustomErrorConfig: "not a string" }, u)))
+
+      const Person = S.struct({
+        name: mystring,
+        age: S.number
+      })
+
+      const codec = JC.jsonCodecFor(Person)
+
+      expect(codec.decode({ name: null, age: 18 })).toEqual(
+        D.failure(DE.key("name", [DE.custom({ myCustomErrorConfig: "not a string" }, null)]))
+      )
+    })
   })
 })
