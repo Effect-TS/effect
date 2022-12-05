@@ -64,4 +64,19 @@ describe("JsonCodec", () => {
     expect(codec.encode(O.none)).toEqual(null)
     expect(codec.encode(O.some(1))).toEqual(1)
   })
+
+  it("parseOrThrow", () => {
+    const Person = JC.struct({
+      firstName: JC.string,
+      lastName: JC.string
+    }, {
+      age: JC.number
+    })
+
+    const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
+    const string = Person.stringify(person)
+
+    expect(string).toEqual(`{"firstName":"Michael","lastName":"Arnaldi"}`)
+    expect(Person.parseOrThrow(string)).toEqual(person)
+  })
 })
