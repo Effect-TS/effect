@@ -118,7 +118,7 @@ export const of = <A>(value: A): Schema<A> => make(AST.of(value))
  */
 export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
   ...a: A
-): Schema<A[number]> => union(...a.map(of))
+): Schema<A[number]> => a.length === 1 ? of(a[0]) : union(...a.map(of))
 
 /**
  * @since 1.0.0

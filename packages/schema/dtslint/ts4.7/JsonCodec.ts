@@ -62,3 +62,6 @@ pipe(
   JC.struct({ a: JC.string, b: JC.string }),
   JC.extend(JC.stringIndexSignature(JC.string))
 );
+
+// $ExpectType JsonCodec<Option<number>>
+JC.option(JC.number)

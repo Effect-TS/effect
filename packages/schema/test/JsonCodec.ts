@@ -1,3 +1,4 @@
+import * as O from "@fp-ts/data/Option"
 import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as D from "@fp-ts/schema/Decoder"
 import * as JC from "@fp-ts/schema/JsonCodec"
@@ -41,5 +42,26 @@ describe("JsonCodec", () => {
 
     expect(codec.encode("b")).toEqual("b")
     expect(codec.encode(2)).toEqual("2")
+  })
+
+  it("Option", () => {
+    const codec = JC.option(JC.number)
+    expect(codec.decode(null)).toEqual(D.success(O.none))
+    expect(codec.decode(1)).toEqual(D.success(O.some(1)))
+
+    Util.expectFailure(
+      codec,
+      {},
+      "member 0 {} did not satisfy isEqual(null), member 1 {} did not satisfy is(number)"
+    )
+    Util.expectWarning(
+      codec,
+      NaN,
+      "did not satisfy not(isNaN)",
+      O.some(NaN)
+    )
+
+    expect(codec.encode(O.none)).toEqual(null)
+    expect(codec.encode(O.some(1))).toEqual(1)
   })
 })

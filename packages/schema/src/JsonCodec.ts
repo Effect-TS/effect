@@ -3,8 +3,10 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
+import type { Option } from "@fp-ts/data/Option"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
+import * as Option_ from "@fp-ts/schema/data/Option"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
 import type { JsonDecoder } from "@fp-ts/schema/JsonDecoder"
@@ -175,3 +177,9 @@ export const symbolIndexSignature = <A>(value: Schema<A>): JsonCodec<{ readonly 
 export const extend = <B>(
   that: Schema<B>
 ) => <A>(self: Schema<A>): JsonCodec<A & B> => jsonCodecFor(S.extend(that)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const option = <A>(value: Schema<A>): JsonCodec<Option<A>> =>
+  jsonCodecFor(Option_.schema(value))
