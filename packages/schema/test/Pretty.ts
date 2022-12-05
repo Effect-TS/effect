@@ -1,11 +1,20 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as P from "@fp-ts/schema/Pretty"
+import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
 describe("Pretty", () => {
   it("PrettyId", () => {
     expect(P.PrettyId).exist
+  })
+
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => P.prettyFor(schema)).toThrowError(
+      new Error("Missing support for Pretty compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   it("declaration", () => {

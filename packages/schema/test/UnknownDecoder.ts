@@ -1,8 +1,10 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
+import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
@@ -10,6 +12,13 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
 describe("UnknownDecoder", () => {
   it("UnknownDecoderId", () => {
     expect(UD.UnknownDecoderId).exist
+  })
+
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => UD.unknownDecoderFor(schema)).toThrowError(
+      new Error("Missing support for UnknownDecoder compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   it("should allow custom errors", () => {

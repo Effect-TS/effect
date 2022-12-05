@@ -1,9 +1,10 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as bigint from "@fp-ts/schema/data/Bigint"
 import * as json from "@fp-ts/schema/data/Json"
 import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
-import { Monoid } from "@fp-ts/schema/Provider"
+import { empty, Monoid } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
 const support = Monoid.combineAll([json.Provider, readonlySet.Provider, bigint.Provider])
@@ -12,6 +13,13 @@ const guardFor = G.provideGuardFor(support)
 describe("Guard", () => {
   it("GuardId", () => {
     expect(G.GuardId).exist
+  })
+
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => G.guardFor(schema)).toThrowError(
+      new Error("Missing support for Guard compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   it("literal", () => {

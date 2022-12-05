@@ -1,6 +1,8 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as JE from "@fp-ts/schema/JsonEncoder"
+import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
 const NumberFromString = pipe(S.string, parseFloat.schema)
@@ -8,6 +10,13 @@ const NumberFromString = pipe(S.string, parseFloat.schema)
 describe("JsonEncoder", () => {
   it("JsonEncoderId", () => {
     expect(JE.JsonEncoderId).exist
+  })
+
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => JE.jsonEncoderFor(schema)).toThrowError(
+      new Error("Missing support for JsonEncoder compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   describe("of", () => {

@@ -1,5 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
+import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as UE from "@fp-ts/schema/UnknownEncoder"
 
@@ -8,6 +10,13 @@ const NumberFromString = pipe(S.string, parseFloat.schema)
 describe("UnknownEncoder", () => {
   it("UnknownEncoderId", () => {
     expect(UE.UnknownEncoderId).exist
+  })
+
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => UE.unknownEncoderFor(schema)).toThrowError(
+      new Error("Missing support for UnknownEncoder compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   describe("tuple", () => {
