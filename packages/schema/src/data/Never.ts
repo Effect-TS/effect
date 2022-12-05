@@ -24,7 +24,8 @@ export const Provider: P.Provider = P.make(id, {
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
   [I.JsonEncoderId]: () => JsonEncoder,
-  [I.UnknownEncoderId]: () => JsonEncoder
+  [I.UnknownEncoderId]: () => JsonEncoder,
+  [I.PrettyId]: () => Pretty
 })
 
 /**
@@ -32,22 +33,12 @@ export const Provider: P.Provider = P.make(id, {
  */
 export const Schema: S.Schema<never> = S.union()
 
-/**
- * @since 1.0.0
- */
-export const Guard = G.guardFor(Schema)
+const Guard = G.guardFor(Schema)
 
-/**
- * @since 1.0.0
- */
-export const UnknownDecoder = UD.unknownDecoderFor(Schema)
+const UnknownDecoder = UD.unknownDecoderFor(Schema)
 
-/**
- * @since 1.0.0
- */
-export const JsonEncoder = I.makeEncoder<Json, never>(Schema, absurd)
+const JsonEncoder = I.makeEncoder<Json, never>(Schema, absurd)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary = A.arbitraryFor(Schema)
+const Arbitrary = A.arbitraryFor(Schema)
+
+const Pretty = I.makePretty<never>(Schema, absurd)

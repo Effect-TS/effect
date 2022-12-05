@@ -7,6 +7,8 @@ import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
+import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
@@ -34,6 +36,9 @@ export const unknownDecoder = <A>(item: UD.UnknownDecoder<A>): UD.UnknownDecoder
     (i) => pipe(UD.unknownDecoderFor(S.array(item)).decode(i), T.map((as) => new Set(as)))
   )
 
+const jsonEncoder = <A>(item: JsonEncoder<A>): JsonEncoder<ReadonlySet<A>> =>
+  I.makeEncoder(schema(item), (set) => Array.from(set).map(item.encode))
+
 /**
  * @since 1.0.0
  */
@@ -43,11 +48,23 @@ export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<ReadonlySet<A>> 
 /**
  * @since 1.0.0
  */
+export const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
+  I.makePretty(
+    schema(item),
+    (set) => `new Set([${Array.from(set.values()).map((a) => item.pretty(a)).join(",")}])`
+  )
+
+/**
+ * @since 1.0.0
+ */
 export const Provider: P.Provider = P.make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.UnknownDecoderId]: unknownDecoder,
-  [I.JsonDecoderId]: unknownDecoder
+  [I.JsonDecoderId]: unknownDecoder,
+  [I.UnknownEncoderId]: jsonEncoder,
+  [I.JsonEncoderId]: jsonEncoder,
+  [I.PrettyId]: pretty
 })
 
 /**

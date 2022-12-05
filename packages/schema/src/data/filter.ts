@@ -8,6 +8,7 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -18,27 +19,30 @@ export const filter = <B>(
   id: symbol,
   decode: Decoder<B, B>["decode"]
 ) => {
-  const predicate = (b: B): boolean => !I.isFailure(decode(b))
+  const _predicate = (b: B): boolean => !I.isFailure(decode(b))
 
-  const guard = (self: Guard<B>): Guard<B> =>
-    I.makeGuard(schema(self), (u): u is B => self.is(u) && predicate(u))
+  const _guard = (self: Guard<B>): Guard<B> =>
+    I.makeGuard(schema(self), (u): u is B => self.is(u) && _predicate(u))
 
-  const unknownDecoder = <I>(self: Decoder<I, B>): Decoder<I, B> =>
+  const _unknownDecoder = <I>(self: Decoder<I, B>): Decoder<I, B> =>
     I.makeDecoder(schema(self), (i) => pipe(self.decode(i), I.flatMap(decode)))
 
-  const jsonEncoder = (self: JsonEncoder<B>): JsonEncoder<B> =>
+  const _jsonEncoder = (self: JsonEncoder<B>): JsonEncoder<B> =>
     I.makeEncoder(schema(self), self.encode)
 
-  const arbitrary = (self: Arbitrary<B>): Arbitrary<B> =>
-    I.makeArbitrary(schema(self), (fc) => self.arbitrary(fc).filter(predicate))
+  const _arbitrary = (self: Arbitrary<B>): Arbitrary<B> =>
+    I.makeArbitrary(schema(self), (fc) => self.arbitrary(fc).filter(_predicate))
+
+  const _pretty = (self: Pretty<B>): Pretty<B> => I.makePretty(schema(self), (b) => self.pretty(b))
 
   const Provider = P.make(id, {
-    [I.GuardId]: guard,
-    [I.ArbitraryId]: arbitrary,
-    [I.UnknownDecoderId]: unknownDecoder,
-    [I.JsonDecoderId]: unknownDecoder,
-    [I.UnknownEncoderId]: jsonEncoder,
-    [I.JsonEncoderId]: jsonEncoder
+    [I.GuardId]: _guard,
+    [I.ArbitraryId]: _arbitrary,
+    [I.UnknownDecoderId]: _unknownDecoder,
+    [I.JsonDecoderId]: _unknownDecoder,
+    [I.UnknownEncoderId]: _jsonEncoder,
+    [I.JsonEncoderId]: _jsonEncoder,
+    [I.PrettyId]: _pretty
   })
 
   const schema = <A extends B>(self: Schema<A>): Schema<A> =>

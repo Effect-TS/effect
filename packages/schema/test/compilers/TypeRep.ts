@@ -58,7 +58,7 @@ export const provideTypeRepFor = (
             return make(S.boolean.ast, "boolean")
           }
           throw new Error(
-            `Missing support for TypeRep interpreter, data type ${String(ast.id.description)}`
+            `Missing support for TypeRep compiler, data type ${String(ast.id.description)}`
           )
         }
         case "Of":

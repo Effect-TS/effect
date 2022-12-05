@@ -9,6 +9,7 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -20,25 +21,29 @@ export const parse = <A, B>(
   decode: Decoder<A, B>["decode"],
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,
-  arbitrary: Arbitrary<B>["arbitrary"]
+  arbitrary: Arbitrary<B>["arbitrary"],
+  pretty: Pretty<B>["pretty"]
 ) => {
-  const guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
+  const _guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
-  const unknownDecoder = <I>(self: Decoder<I, A>): Decoder<I, B> =>
+  const _unknownDecoder = <I>(self: Decoder<I, A>): Decoder<I, B> =>
     I.makeDecoder(schema(self), (i) => pipe(self.decode(i), I.flatMap(decode)))
 
-  const jsonEncoder = (self: JsonEncoder<A>): JsonEncoder<B> =>
+  const _jsonEncoder = (self: JsonEncoder<A>): JsonEncoder<B> =>
     I.makeEncoder(schema(self), (b) => self.encode(encode(b)))
 
-  const arb = (self: Arbitrary<A>): Arbitrary<B> => I.makeArbitrary(schema(self), arbitrary)
+  const _arbitrary = (self: Arbitrary<A>): Arbitrary<B> => I.makeArbitrary(schema(self), arbitrary)
+
+  const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
   const Provider = P.make(id, {
-    [I.GuardId]: guard,
-    [I.ArbitraryId]: arb,
-    [I.UnknownDecoderId]: unknownDecoder,
-    [I.JsonDecoderId]: unknownDecoder,
-    [I.UnknownEncoderId]: jsonEncoder,
-    [I.JsonEncoderId]: jsonEncoder
+    [I.GuardId]: _guard,
+    [I.ArbitraryId]: _arbitrary,
+    [I.UnknownDecoderId]: _unknownDecoder,
+    [I.JsonDecoderId]: _unknownDecoder,
+    [I.UnknownEncoderId]: _jsonEncoder,
+    [I.JsonEncoderId]: _jsonEncoder,
+    [I.PrettyId]: _pretty
   })
 
   const schema = (self: Schema<A>): Schema<B> => I.declareSchema(id, O.none, Provider, self)

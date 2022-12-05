@@ -10,7 +10,8 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
-import * as P from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Pretty"
+import { make } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import type { UnknownDecoder } from "@fp-ts/schema/UnknownDecoder"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
@@ -20,19 +21,13 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
  */
 export const id = Symbol.for("@fp-ts/schema/data/Chunk")
 
-/**
- * @since 1.0.0
- */
-export const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
+const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   I.makeGuard(
     schema(item),
     (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
   )
 
-/**
- * @since 1.0.0
- */
-export const unknownDecoder = <A>(
+const unknownDecoder = <A>(
   item: UnknownDecoder<A>
 ): UnknownDecoder<Chunk<A>> =>
   I.makeDecoder(
@@ -40,28 +35,29 @@ export const unknownDecoder = <A>(
     (i) => pipe(UD.unknownDecoderFor(S.array(item)).decode(i), T.map(C.unsafeFromArray))
   )
 
-/**
- * @since 1.0.0
- */
-export const jsonEncoder = <A>(item: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
+const jsonEncoder = <A>(item: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
   I.makeEncoder(schema(item), (chunk) => C.toReadonlyArray(chunk).map(item.encode))
 
-/**
- * @since 1.0.0
- */
-export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
+const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.unsafeFromArray))
+
+const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
+  P.make(
+    schema(item),
+    (c) => `chunk.unsafeFromArray([${C.toReadonlyArray(c).map(item.pretty).join(",")}])`
+  )
 
 /**
  * @since 1.0.0
  */
-export const Provider = P.make(id, {
+export const Provider = make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.UnknownDecoderId]: unknownDecoder,
   [I.JsonDecoderId]: unknownDecoder,
   [I.UnknownEncoderId]: jsonEncoder,
-  [I.JsonEncoderId]: jsonEncoder
+  [I.JsonEncoderId]: jsonEncoder,
+  [I.PrettyId]: pretty
 })
 
 /**

@@ -24,5 +24,6 @@ export const schema = parse(
   },
   String,
   NumberData.Guard.is,
-  (fc) => NumberData.Arbitrary.arbitrary(fc).filter((n) => !isNaN(n) && isFinite(n))
+  (fc) => NumberData.Arbitrary.arbitrary(fc).filter((n) => !isNaN(n) && isFinite(n)),
+  String
 )

@@ -24,7 +24,8 @@ export const Provider = P.make(id, {
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
   [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder
+  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.PrettyId]: () => Pretty
 })
 
 /**
@@ -34,15 +35,9 @@ export const Schema: S.Schema<bigint> = I.declareSchema(id, O.none, Provider)
 
 const isBigint = (u: unknown): u is bigint => typeof u === "bigint"
 
-/**
- * @since 1.0.0
- */
-export const Guard = I.makeGuard<bigint>(Schema, isBigint)
+const Guard = I.makeGuard<bigint>(Schema, isBigint)
 
-/**
- * @since 1.0.0
- */
-export const UnknownDecoder = I.makeDecoder<unknown, bigint>(
+const UnknownDecoder = I.makeDecoder<unknown, bigint>(
   Schema,
   (u) => {
     if (isBigint(u)) {
@@ -60,12 +55,8 @@ export const UnknownDecoder = I.makeDecoder<unknown, bigint>(
   }
 )
 
-/**
- * @since 1.0.0
- */
-export const JsonEncoder = I.makeEncoder<string, bigint>(Schema, (n) => n.toString())
+const JsonEncoder = I.makeEncoder<string, bigint>(Schema, (n) => n.toString())
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary = I.makeArbitrary<bigint>(Schema, (fc) => fc.bigInt())
+const Arbitrary = I.makeArbitrary<bigint>(Schema, (fc) => fc.bigInt())
+
+const Pretty = I.makePretty<bigint>(Schema, (n) => n.toString())

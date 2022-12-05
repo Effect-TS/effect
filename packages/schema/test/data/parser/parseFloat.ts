@@ -19,15 +19,12 @@ describe("parseFloat", () => {
     expect(guard.is("a")).toEqual(false)
   })
 
-  describe("UnknownDecoder", () => {
+  it("UnknownDecoder", () => {
     const decoder = UD.unknownDecoderFor(schema)
-
-    it("baseline", () => {
-      expect(decoder.decode("1")).toEqual(D.success(1))
-      expect(decoder.decode("1a")).toEqual(D.success(1))
-      Util.expectFailure(decoder, "a", "\"a\" \"cannot be converted to a number by parseFloat\"")
-      Util.expectFailure(decoder, "a1", "\"a1\" \"cannot be converted to a number by parseFloat\"")
-    })
+    expect(decoder.decode("1")).toEqual(D.success(1))
+    expect(decoder.decode("1a")).toEqual(D.success(1))
+    Util.expectFailure(decoder, "a", "\"a\" \"cannot be converted to a number by parseFloat\"")
+    Util.expectFailure(decoder, "a1", "\"a1\" \"cannot be converted to a number by parseFloat\"")
   })
 
   it("JsonEncoder", () => {

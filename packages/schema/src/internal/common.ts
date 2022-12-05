@@ -16,6 +16,7 @@ import type * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Provider } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -101,6 +102,10 @@ export const UnknownEncoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/UnknownEncoder"
 )
 
+export const PrettyId: unique symbol = Symbol.for(
+  "@fp-ts/schema/Pretty"
+)
+
 export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
 
 export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
@@ -114,6 +119,11 @@ export const makeArbitrary = <A>(
   schema: Schema<A>,
   arbitrary: Arbitrary<A>["arbitrary"]
 ): Arbitrary<A> => ({ ast: schema.ast, arbitrary }) as any
+
+export const makePretty = <A>(
+  schema: Schema<A>,
+  pretty: Pretty<A>["pretty"]
+): Pretty<A> => ({ ast: schema.ast, pretty }) as any
 
 export const makeDecoder = <I, A>(
   schema: Schema<A>,

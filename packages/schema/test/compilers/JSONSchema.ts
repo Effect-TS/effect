@@ -60,7 +60,7 @@ const provideJsonSchemaFor = (
             return { type: "boolean" }
           }
           throw new Error(
-            `Missing support for JSONSchema interpreter, data type ${String(ast.id.description)}`
+            `Missing support for JSONSchema compiler, data type ${String(ast.id.description)}`
           )
         }
       }

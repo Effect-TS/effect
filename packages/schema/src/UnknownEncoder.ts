@@ -43,9 +43,7 @@ export const provideUnknownEncoderFor = (provider: Provider) =>
               handler.value(...ast.nodes.map(go))
           }
           throw new Error(
-            `Missing support for UnknownEncoder interpreter, data type ${
-              String(ast.id.description)
-            }`
+            `Missing support for UnknownEncoder compiler, data type ${String(ast.id.description)}`
           )
         }
         case "Of":

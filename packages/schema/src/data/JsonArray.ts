@@ -23,7 +23,8 @@ export const Provider = P.make(id, {
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
   [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder
+  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.PrettyId]: () => Pretty
 })
 
 /**
@@ -31,29 +32,20 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<JsonArray> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard = I.makeGuard<JsonArray>(Schema, I.isJsonArray)
+const Guard = I.makeGuard<JsonArray>(Schema, I.isJsonArray)
 
-/**
- * @since 1.0.0
- */
+/** @internal */
 export const UnknownDecoder = I.fromRefinement<JsonArray>(
   Schema,
   I.isJsonArray,
   (u) => DE.notType("JsonArray", u)
 )
 
-/**
- * @since 1.0.0
- */
-export const JsonEncoder = I.makeEncoder<JsonArray, JsonArray>(Schema, identity)
+const JsonEncoder = I.makeEncoder<JsonArray, JsonArray>(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary = I.makeArbitrary<JsonArray>(
+const Arbitrary = I.makeArbitrary<JsonArray>(
   Schema,
   (fc) => fc.array(fc.jsonValue().map((json) => json as Json))
 )
+
+const Pretty = I.makePretty<JsonArray>(Schema, (json) => JSON.stringify(json))

@@ -45,7 +45,7 @@ export const provideJsonEncoderFor = (
               handler.value(...ast.nodes.map(go))
           }
           throw new Error(
-            `Missing support for JsonEncoder interpreter, data type ${String(ast.id.description)}`
+            `Missing support for JsonEncoder compiler, data type ${String(ast.id.description)}`
           )
         }
         case "Of": {

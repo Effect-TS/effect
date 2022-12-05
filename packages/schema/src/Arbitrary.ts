@@ -63,7 +63,7 @@ export const provideArbitraryFor = (provider: Provider) =>
               handler.value(...ast.nodes.map(go))
           }
           throw new Error(
-            `Missing support for Arbitrary interpreter, data type ${String(ast.id.description)}`
+            `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
           )
         }
         case "Of":

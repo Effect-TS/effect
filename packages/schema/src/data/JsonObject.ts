@@ -23,7 +23,8 @@ export const Provider = P.make(id, {
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
   [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder
+  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.PrettyId]: () => Pretty
 })
 
 /**
@@ -31,29 +32,20 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<JsonObject> = I.declareSchema(id, O.none, Provider)
 
-/**
- * @since 1.0.0
- */
-export const Guard = I.makeGuard<JsonObject>(Schema, I.isJsonObject)
+const Guard = I.makeGuard<JsonObject>(Schema, I.isJsonObject)
 
-/**
- * @since 1.0.0
- */
+/** @internal */
 export const UnknownDecoder = I.fromRefinement<JsonObject>(
   Schema,
   I.isJsonObject,
   (u) => DE.notType("JsonObject", u)
 )
 
-/**
- * @since 1.0.0
- */
-export const JsonEncoder = I.makeEncoder<JsonObject, JsonObject>(Schema, identity)
+const JsonEncoder = I.makeEncoder<JsonObject, JsonObject>(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary = I.makeArbitrary<JsonObject>(
+const Arbitrary = I.makeArbitrary<JsonObject>(
   Schema,
   (fc) => fc.dictionary(fc.string(), fc.jsonValue().map((json) => json as Json))
 )
+
+const Pretty = I.makePretty<JsonObject>(Schema, (json) => JSON.stringify(json))

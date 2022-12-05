@@ -28,10 +28,7 @@ export interface Guard<in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
-export const make: <A>(
-  schema: Schema<A>,
-  is: Guard<A>["is"]
-) => Guard<A> = I.makeGuard
+export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
 /**
  * @since 1.0.0
@@ -66,7 +63,7 @@ export const provideGuardFor = (provider: Provider) =>
               handler.value(...ast.nodes.map(go))
           }
           throw new Error(
-            `Missing support for Guard interpreter, data type ${String(ast.id.description)}`
+            `Missing support for Guard compiler, data type ${String(ast.id.description)}`
           )
         }
         case "Of":

@@ -21,7 +21,8 @@ export const Provider = P.make(id, {
   [I.ArbitraryId]: () => Arbitrary,
   [I.UnknownDecoderId]: () => UnknownDecoder,
   [I.JsonDecoderId]: () => UnknownDecoder,
-  [I.UnknownEncoderId]: () => UnknownEncoder
+  [I.UnknownEncoderId]: () => UnknownEncoder,
+  [I.PrettyId]: () => Pretty
 })
 
 /**
@@ -31,26 +32,16 @@ export const Schema: S.Schema<unknown> = I.declareSchema(id, O.none, Provider)
 
 const isUnknown = (_u: unknown): _u is unknown => true
 
-/**
- * @since 1.0.0
- */
-export const Guard = I.makeGuard(Schema, isUnknown)
+const Guard = I.makeGuard(Schema, isUnknown)
 
-/**
- * @since 1.0.0
- */
-export const UnknownDecoder = I.fromRefinement<unknown>(
+const UnknownDecoder = I.fromRefinement<unknown>(
   Schema,
   isUnknown,
   (u) => DE.notType("unknown", u)
 )
 
-/**
- * @since 1.0.0
- */
-export const UnknownEncoder = I.makeEncoder<unknown, unknown>(Schema, identity)
+const UnknownEncoder = I.makeEncoder<unknown, unknown>(Schema, identity)
 
-/**
- * @since 1.0.0
- */
-export const Arbitrary = I.makeArbitrary<unknown>(Schema, (fc) => fc.anything())
+const Arbitrary = I.makeArbitrary<unknown>(Schema, (fc) => fc.anything())
+
+const Pretty = I.makePretty<any>(Schema, (a) => JSON.stringify(a))
