@@ -60,9 +60,9 @@ describe("Chunk", () => {
   it("pretty", () => {
     const schema = Chunk.schema(S.string)
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(C.empty)).toEqual("chunk.unsafeFromArray([])")
+    expect(pretty.pretty(C.empty)).toEqual("Chunk()")
     expect(pretty.pretty(C.unsafeFromArray(["a", "b"]))).toEqual(
-      "chunk.unsafeFromArray([\"a\",\"b\"])"
+      "Chunk(\"a\", \"b\")"
     )
   })
 })

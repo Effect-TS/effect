@@ -3,7 +3,6 @@
  */
 import { identity } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
 import type * as S from "@fp-ts/schema/Schema"
@@ -30,15 +29,9 @@ export const Provider = P.make(id, {
  */
 export const Schema: S.Schema<unknown> = I.declareSchema(id, O.none, Provider)
 
-const isUnknown = (_u: unknown): _u is unknown => true
+const Guard = I.makeGuard(Schema, (_u): _u is unknown => true)
 
-const Guard = I.makeGuard(Schema, isUnknown)
-
-const UnknownDecoder = I.fromRefinement<unknown>(
-  Schema,
-  isUnknown,
-  (u) => DE.notType("unknown", u)
-)
+const UnknownDecoder = I.makeDecoder<unknown, unknown>(Schema, I.success)
 
 const UnknownEncoder = I.makeEncoder<unknown, unknown>(Schema, identity)
 

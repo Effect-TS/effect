@@ -1,16 +1,16 @@
-import * as Json from "@fp-ts/schema/data/Json"
+import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Json", () => {
-  const schema = Json.Schema
+describe("UnknownArray", () => {
+  const schema = UnknownArray.Schema
 
   it("id", () => {
-    expect(Json.id).exist
+    expect(UnknownArray.id).exist
   })
 
   it("Provider", () => {
-    expect(Json.Provider).exist
+    expect(UnknownArray.Provider).exist
   })
 
   it("property tests", () => {
@@ -19,6 +19,6 @@ describe("Json", () => {
 
   it("Pretty", () => {
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty({ a: [1, true] })).toEqual("{\"a\":[1,true]}")
+    expect(pretty.pretty([1, true])).toEqual("[1,true]")
   })
 })

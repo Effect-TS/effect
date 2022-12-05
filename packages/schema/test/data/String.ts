@@ -8,6 +8,14 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
 describe("String", () => {
   const schema = String.Schema
 
+  it("id", () => {
+    expect(String.id).exist
+  })
+
+  it("Provider", () => {
+    expect(String.Provider).exist
+  })
+
   it("property tests", () => {
     Util.property(schema)
   })

@@ -51,7 +51,7 @@ export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<ReadonlySet<A>> 
 export const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
   I.makePretty(
     schema(item),
-    (set) => `new Set([${Array.from(set.values()).map((a) => item.pretty(a)).join(",")}])`
+    (set) => `new Set([${Array.from(set.values()).map((a) => item.pretty(a)).join(", ")}])`
   )
 
 /**

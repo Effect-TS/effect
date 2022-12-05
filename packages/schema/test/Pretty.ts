@@ -17,7 +17,7 @@ describe("Pretty", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: "a", b: 1 })).toEqual(
-        "{\"a\":\"a\",\"b\":1}"
+        "{ \"a\": \"a\", \"b\": 1 }"
       )
     })
 
@@ -33,7 +33,7 @@ describe("Pretty", () => {
       const schema = S.stringIndexSignature(S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: "a", b: "b" })).toEqual(
-        "{\"a\":\"a\",\"b\":\"b\"}"
+        "{ \"a\": \"a\", \"b\": \"b\" }"
       )
     })
 
@@ -42,7 +42,7 @@ describe("Pretty", () => {
       const schema = S.symbolIndexSignature(S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ [a]: "a" })).toEqual(
-        "{Symbol(@fp-ts/schema/test/a):\"a\"}"
+        "{ Symbol(@fp-ts/schema/test/a): \"a\" }"
       )
     })
 
@@ -50,7 +50,7 @@ describe("Pretty", () => {
       const schema = S.partial(S.struct({ a: S.number }))
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
-      expect(pretty.pretty({ a: undefined })).toEqual("{\"a\":undefined}")
+      expect(pretty.pretty({ a: undefined })).toEqual("{ \"a\": undefined }")
     })
   })
 
@@ -145,7 +145,7 @@ describe("Pretty", () => {
     )
     const pretty = P.prettyFor(A)
     expect(pretty.pretty({ a: "a", as: new Set() })).toEqual(
-      "{\"a\":\"a\",\"as\":new Set([])}"
+      "{ \"a\": \"a\", \"as\": new Set([]) }"
     )
   })
 })

@@ -61,7 +61,7 @@ describe("ReadonlySet", () => {
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(new Set())).toEqual("new Set([])")
     expect(pretty.pretty(new Set(["a", "b"]))).toEqual(
-      "new Set([\"a\",\"b\"])"
+      "new Set([\"a\", \"b\"])"
     )
   })
 })

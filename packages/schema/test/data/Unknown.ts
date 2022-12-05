@@ -1,19 +1,19 @@
-import * as Any from "@fp-ts/schema/data/Any"
+import * as Unknown from "@fp-ts/schema/data/Unknown"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Any", () => {
-  const schema = Any.Schema
+describe("Unknown", () => {
+  const schema = Unknown.Schema
 
   it("id", () => {
-    expect(Any.id).exist
+    expect(Unknown.id).exist
   })
 
   it("Provider", () => {
-    expect(Any.Provider).exist
+    expect(Unknown.Provider).exist
   })
 
   it("property tests", () => {

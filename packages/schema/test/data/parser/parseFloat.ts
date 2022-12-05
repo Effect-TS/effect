@@ -9,6 +9,10 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
 describe("parseFloat", () => {
   const schema = parseFloat.schema(S.string)
 
+  it("id", () => {
+    expect(parseFloat.id).exist
+  })
+
   it("property tests", () => {
     Util.property(schema)
   })

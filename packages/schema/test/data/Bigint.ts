@@ -2,11 +2,20 @@ import * as Bigint from "@fp-ts/schema/data/Bigint"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as JE from "@fp-ts/schema/JsonEncoder"
+import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Bigint", () => {
   const schema = Bigint.Schema
+
+  it("id", () => {
+    expect(Bigint.id).exist
+  })
+
+  it("Provider", () => {
+    expect(Bigint.Provider).exist
+  })
 
   it("property tests", () => {
     Util.property(schema)
@@ -40,5 +49,10 @@ describe("Bigint", () => {
   it("JsonEncoder", () => {
     const encoder = JE.jsonEncoderFor(schema)
     expect(encoder.encode(1n)).toEqual("1")
+  })
+
+  it("Pretty", () => {
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty(1n)).toEqual("1")
   })
 })

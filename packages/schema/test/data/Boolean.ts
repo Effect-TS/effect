@@ -8,6 +8,14 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
 describe("Boolean", () => {
   const schema = Boolean.Schema
 
+  it("id", () => {
+    expect(Boolean.id).exist
+  })
+
+  it("Provider", () => {
+    expect(Boolean.Provider).exist
+  })
+
   it("property tests", () => {
     Util.property(Boolean.Schema)
   })

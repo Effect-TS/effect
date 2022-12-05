@@ -1,6 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type { Option } from "@fp-ts/data/Option"
+import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -72,7 +73,7 @@ const _struct = (
             continue
           }
           if (input[key] === undefined) {
-            output.push(`${_prettyKey(key)}:undefined`)
+            output.push(`${_prettyKey(key)}: undefined`)
             continue
           }
         }
@@ -80,7 +81,7 @@ const _struct = (
         // handle required fields
         // ---------------------------------------------
         const pretty = fields[i]
-        output.push(`${_prettyKey(key)}:${pretty.pretty(input[key])}`)
+        output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
       }
       // ---------------------------------------------
       // handle index signatures
@@ -89,18 +90,18 @@ const _struct = (
         if (O.isSome(oStringIndexSignature)) {
           const pretty = oStringIndexSignature.value
           for (const key of Object.keys(input)) {
-            output.push(`${_prettyKey(key)}:${pretty.pretty(input[key])}`)
+            output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
           }
         }
         if (O.isSome(oSymbolIndexSignature)) {
           const pretty = oSymbolIndexSignature.value
           for (const key of Object.getOwnPropertySymbols(input)) {
-            output.push(`${_prettyKey(key)}:${pretty.pretty(input[key])}`)
+            output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
           }
         }
       }
 
-      return "{" + output.join(",") + "}"
+      return isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
     }
   )
 

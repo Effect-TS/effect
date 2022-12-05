@@ -44,7 +44,7 @@ const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
 const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
   P.make(
     schema(item),
-    (c) => `chunk.unsafeFromArray([${C.toReadonlyArray(c).map(item.pretty).join(",")}])`
+    (c) => `Chunk(${C.toReadonlyArray(c).map(item.pretty).join(", ")})`
   )
 
 /**

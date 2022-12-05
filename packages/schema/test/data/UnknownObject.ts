@@ -1,16 +1,16 @@
-import * as Json from "@fp-ts/schema/data/Json"
+import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Json", () => {
-  const schema = Json.Schema
+describe("UnknownObject", () => {
+  const schema = UnknownObject.Schema
 
   it("id", () => {
-    expect(Json.id).exist
+    expect(UnknownObject.id).exist
   })
 
   it("Provider", () => {
-    expect(Json.Provider).exist
+    expect(UnknownObject.Provider).exist
   })
 
   it("property tests", () => {
