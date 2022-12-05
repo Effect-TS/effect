@@ -27,6 +27,13 @@ export interface JsonCodec<in out A>
   extends Schema<A>, JsonDecoder<A>, JsonEncoder<A>, Guard<A>, Arbitrary<A>, Pretty<A>
 {}
 
+export {
+  /**
+   * @since 1.0.0
+   */
+  Infer
+} from "@fp-ts/schema/Schema"
+
 /**
  * @since 1.0.0
  */

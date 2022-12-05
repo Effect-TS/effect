@@ -12,12 +12,12 @@ describe("examples", () => {
   describe("README", () => {
     it("Summary", () => {
       const Person = JC.struct({
-        name: S.string,
-        age: S.number
+        name: JC.string,
+        age: JC.number
       })
 
       // extract the inferred type
-      type Person = S.Infer<typeof Person>
+      type Person = JC.Infer<typeof Person>
       /*
       type Person = {
         readonly name: string;
