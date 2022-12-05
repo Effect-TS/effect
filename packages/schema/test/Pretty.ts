@@ -4,6 +4,10 @@ import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 
 describe("Pretty", () => {
+  it("PrettyId", () => {
+    expect(P.PrettyId).exist
+  })
+
   it("declaration", () => {
     const schema = readonlySet.schema(S.string)
     const pretty = P.prettyFor(schema)

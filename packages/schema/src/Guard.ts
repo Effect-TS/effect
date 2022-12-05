@@ -71,18 +71,26 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
+      const keys = Object.keys(input)
+      const symbols = Object.getOwnPropertySymbols(input)
       if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
         if (O.isSome(oStringIndexSignature)) {
+          if (symbols.length > 0) {
+            return false
+          }
           const guard = oStringIndexSignature.value
-          for (const key of Object.keys(input)) {
+          for (const key of keys) {
             if (!guard.is(input[key])) {
               return false
             }
           }
         }
         if (O.isSome(oSymbolIndexSignature)) {
+          if (keys.length > 0) {
+            return false
+          }
           const guard = oSymbolIndexSignature.value
-          for (const key of Object.getOwnPropertySymbols(input)) {
+          for (const key of symbols) {
             if (!guard.is(input[key])) {
               return false
             }

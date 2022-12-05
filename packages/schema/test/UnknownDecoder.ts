@@ -8,6 +8,10 @@ import * as Util from "@fp-ts/schema/test/util"
 import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("UnknownDecoder", () => {
+  it("UnknownDecoderId", () => {
+    expect(UD.UnknownDecoderId).exist
+  })
+
   it("should allow custom errors", () => {
     const mystring = pipe(
       S.string,

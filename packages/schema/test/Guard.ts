@@ -10,6 +10,10 @@ const support = Monoid.combineAll([json.Provider, readonlySet.Provider, bigint.P
 const guardFor = G.provideGuardFor(support)
 
 describe("Guard", () => {
+  it("GuardId", () => {
+    expect(G.GuardId).exist
+  })
+
   it("literal", () => {
     const schema = S.literal(1, "a")
     const guard = G.guardFor(schema)
@@ -116,17 +120,37 @@ describe("Guard", () => {
       const schema = S.partial(S.struct({ a: S.string, b: S.number }))
       const guard = G.guardFor(schema)
       expect(guard.is({})).toEqual(true)
+      expect(guard.is({ a: undefined })).toEqual(true)
     })
   })
 
   it("stringIndexSignature", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
     const schema = S.stringIndexSignature(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(null)).toEqual(false)
     expect(guard.is({})).toEqual(true)
     expect(guard.is({ a: "a" })).toEqual(true)
     expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ [a]: 1 })).toEqual(false)
+    expect(guard.is({ a: "a", b: "b" })).toEqual(true)
     expect(guard.is({ a: "a", b: 1 })).toEqual(false)
+    expect(guard.is({ [a]: "a", b: "b" })).toEqual(false)
+  })
+
+  it("symbolIndexSignature", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const b = Symbol.for("@fp-ts/schema/test/b")
+    const schema = S.symbolIndexSignature(S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ [a]: "a" })).toEqual(true)
+    expect(guard.is({ [a]: 1 })).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ [a]: "a", [b]: "b" })).toEqual(true)
+    expect(guard.is({ [a]: "a", [b]: 1 })).toEqual(false)
+    expect(guard.is({ a: "a", [b]: "b" })).toEqual(false)
   })
 
   it("array", () => {

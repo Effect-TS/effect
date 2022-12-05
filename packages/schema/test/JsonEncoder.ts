@@ -6,6 +6,10 @@ import * as S from "@fp-ts/schema/Schema"
 const NumberFromString = pipe(S.string, parseFloat.schema)
 
 describe("JsonEncoder", () => {
+  it("JsonEncoderId", () => {
+    expect(JE.JsonEncoderId).exist
+  })
+
   describe("of", () => {
     it("baseline", () => {
       const schema = S.literal(1)

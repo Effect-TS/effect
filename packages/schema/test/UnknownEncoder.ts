@@ -6,6 +6,10 @@ import * as UE from "@fp-ts/schema/UnknownEncoder"
 const NumberFromString = pipe(S.string, parseFloat.schema)
 
 describe("UnknownEncoder", () => {
+  it("UnknownEncoderId", () => {
+    expect(UE.UnknownEncoderId).exist
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)

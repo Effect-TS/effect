@@ -6,6 +6,10 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe("JsonDecoder", () => {
+  it("JsonDecoderId", () => {
+    expect(JD.JsonDecoderId).exist
+  })
+
   it("declaration", () => {
     const schema = set.schema(S.number)
     const decoder = JD.jsonDecoderFor(schema)
