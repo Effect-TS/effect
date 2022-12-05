@@ -25,6 +25,13 @@ export interface UnknownCodec<in out A>
   extends Schema<A>, UnknownDecoder<A>, UnknownEncoder<A>, Guard<A>, Arbitrary<A>, Pretty<A>
 {}
 
+export {
+  /**
+   * @since 1.0.0
+   */
+  Infer
+} from "@fp-ts/schema/Schema"
+
 /**
  * @since 1.0.0
  */
