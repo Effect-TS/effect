@@ -104,11 +104,19 @@ describe("Guard", () => {
     expect(guard.is("a")).toEqual(true)
   })
 
-  it("struct", () => {
-    const schema = S.struct({ a: S.string, b: S.number })
-    const guard = G.guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+  describe("struct", () => {
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const guard = G.guardFor(schema)
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+    })
+
+    it("should not fail on optional fields", () => {
+      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+      const guard = G.guardFor(schema)
+      expect(guard.is({})).toEqual(true)
+    })
   })
 
   it("stringIndexSignature", () => {

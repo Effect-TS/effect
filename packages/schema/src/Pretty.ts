@@ -1,6 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import type { Option } from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
@@ -49,8 +48,8 @@ const _prettyKey = (key: PropertyKey): string => {
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Pretty<any>>,
-  oStringIndexSignature: Option<Pretty<any>>,
-  oSymbolIndexSignature: Option<Pretty<any>>
+  oStringIndexSignature: O.Option<Pretty<any>>,
+  oSymbolIndexSignature: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
     S.make(ast),
@@ -108,11 +107,11 @@ const _struct = (
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Pretty<any>>,
-  oRestElement: Option<Pretty<any>>
+  oRestElement: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
     S.make(ast),
-    (onput: ReadonlyArray<unknown>) => {
+    (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
       // ---------------------------------------------
@@ -120,15 +119,15 @@ const _tuple = (
       // ---------------------------------------------
       for (; i < components.length; i++) {
         const pretty = components[i]
-        output[i] = pretty.pretty(onput[i])
+        output[i] = pretty.pretty(input[i])
       }
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
       if (O.isSome(oRestElement)) {
         const pretty = oRestElement.value
-        for (; i < onput.length; i++) {
-          output[i] = pretty.pretty(onput[i])
+        for (; i < input.length; i++) {
+          output[i] = pretty.pretty(input[i])
         }
       }
 
@@ -138,11 +137,11 @@ const _tuple = (
 
 const _union = (
   ast: AST.Union,
-  pretties: ReadonlyArray<readonly [Guard<any>, Pretty<any>]>
+  members: ReadonlyArray<readonly [Guard<any>, Pretty<any>]>
 ): Pretty<any> =>
   make(S.make(ast), (a) => {
-    const index = pretties.findIndex(([guard]) => guard.is(a))
-    return pretties[index][1].pretty(a)
+    const index = members.findIndex(([guard]) => guard.is(a))
+    return members[index][1].pretty(a)
   })
 
 /**

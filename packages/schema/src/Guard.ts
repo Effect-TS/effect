@@ -4,7 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import type { AST } from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as I from "@fp-ts/schema/internal/common"
@@ -30,6 +30,106 @@ export interface Guard<in out A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
+const _struct = (
+  ast: AST.Struct,
+  fields: ReadonlyArray<Guard<any>>,
+  oStringIndexSignature: O.Option<Guard<any>>,
+  oSymbolIndexSignature: O.Option<Guard<any>>
+): Guard<any> =>
+  make(
+    S.make(ast),
+    (input: unknown): input is any => {
+      if (!UnknownObject.Guard.is(input)) {
+        return false
+      }
+      // ---------------------------------------------
+      // handle fields
+      // ---------------------------------------------
+      for (let i = 0; i < fields.length; i++) {
+        const field = ast.fields[i]
+        const key = field.key
+        // ---------------------------------------------
+        // handle optional fields
+        // ---------------------------------------------
+        const optional = field.optional
+        if (optional) {
+          if (!Object.prototype.hasOwnProperty.call(input, key)) {
+            continue
+          }
+          if (input[key] === undefined) {
+            continue
+          }
+        }
+        // ---------------------------------------------
+        // handle required fields
+        // ---------------------------------------------
+        const guard = fields[i]
+        if (!guard.is(input[key])) {
+          return false
+        }
+      }
+      // ---------------------------------------------
+      // handle index signatures
+      // ---------------------------------------------
+      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
+        if (O.isSome(oStringIndexSignature)) {
+          const guard = oStringIndexSignature.value
+          for (const key of Object.keys(input)) {
+            if (!guard.is(input[key])) {
+              return false
+            }
+          }
+        }
+        if (O.isSome(oSymbolIndexSignature)) {
+          const guard = oSymbolIndexSignature.value
+          for (const key of Object.getOwnPropertySymbols(input)) {
+            if (!guard.is(input[key])) {
+              return false
+            }
+          }
+        }
+      }
+
+      return true
+    }
+  )
+
+const _tuple = (
+  ast: AST.Tuple,
+  components: ReadonlyArray<Guard<any>>,
+  oRestElement: O.Option<Guard<any>>
+): Guard<any> =>
+  make(
+    S.make(ast),
+    (input: unknown): input is any => {
+      if (!UnknownArray.Guard.is(input)) {
+        return false
+      }
+      let i = 0
+      // ---------------------------------------------
+      // handle components
+      // ---------------------------------------------
+      for (; i < components.length; i++) {
+        if (!components[i].is(input[i])) {
+          return false
+        }
+      }
+      // ---------------------------------------------
+      // handle rest element
+      // ---------------------------------------------
+      if (O.isSome(oRestElement)) {
+        const guard = oRestElement.value
+        for (; i < input.length; i++) {
+          if (!guard.is(input[i])) {
+            return false
+          }
+        }
+      }
+
+      return true
+    }
+  )
+
 /**
  * @since 1.0.0
  */
@@ -49,7 +149,7 @@ export const lazy = <A>(
  */
 export const provideGuardFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Guard<A> => {
-    const go = (ast: AST): Guard<any> => {
+    const go = (ast: AST.AST): Guard<any> => {
       switch (ast._tag) {
         case "Declaration": {
           const handler = pipe(
@@ -68,28 +168,8 @@ export const provideGuardFor = (provider: Provider) =>
         }
         case "Of":
           return make(S.make(ast), (u): u is any => u === ast.value)
-        case "Tuple": {
-          const components = ast.components.map(go)
-          const oRestElement = pipe(ast.restElement, O.map(go))
-          return make(
-            S.make(ast),
-            (a): a is any => {
-              if (UnknownArray.Guard.is(a)) {
-                if (components.every((guard, i) => guard.is(a[i]))) {
-                  if (O.isSome(oRestElement)) {
-                    const restElement = oRestElement.value
-                    // skip when `ReadonlyArray<unknown>`
-                    if (restElement.ast !== S.unknown.ast) {
-                      return a.slice(components.length).every(restElement.is)
-                    }
-                  }
-                  return true
-                }
-              }
-              return false
-            }
-          )
-        }
+        case "Tuple":
+          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
         case "Union": {
           const members = ast.members.map(go)
           return make(
@@ -97,38 +177,13 @@ export const provideGuardFor = (provider: Provider) =>
             (a): a is any => members.some((guard) => guard.is(a))
           )
         }
-        case "Struct": {
-          const fields: any = {}
-          for (const field of ast.fields) {
-            fields[field.key] = go(field.value)
-          }
-          const oStringIndexSignature = pipe(ast.stringIndexSignature, O.map((is) => go(is.value)))
-          return make(
-            S.make(ast),
-            (a): a is any => {
-              if (!UnknownObject.Guard.is(a)) {
-                return false
-              }
-              for (const key of Object.keys(fields)) {
-                if (!fields[key].is(a[key])) {
-                  return false
-                }
-              }
-              if (O.isSome(oStringIndexSignature)) {
-                const stringIndexSignature = oStringIndexSignature.value
-                // skip when `{ readonly [_: string]: unknown }`
-                if (stringIndexSignature.ast !== S.unknown.ast) {
-                  for (const key of Object.keys(a)) {
-                    if (!(key in fields) && !stringIndexSignature.is(a[key])) {
-                      return false
-                    }
-                  }
-                }
-              }
-              return true
-            }
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
-        }
         case "Lazy":
           return lazy(() => go(ast.f()))
       }

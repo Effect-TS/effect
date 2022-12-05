@@ -11,7 +11,7 @@ import type * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/schema/data/UnknownIndexSignature")
+export const id = Symbol.for("@fp-ts/schema/data/UnknownObject")
 
 /**
  * @since 1.0.0
@@ -29,7 +29,7 @@ export const Provider: P.Provider = P.make(id, {
  * @since 1.0.0
  */
 export interface UnknownObject {
-  readonly [_: string]: unknown
+  readonly [_: string | symbol]: unknown
 }
 
 /**

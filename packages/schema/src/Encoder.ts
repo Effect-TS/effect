@@ -129,11 +129,11 @@ export const _struct = (
 /** @internal */
 export const _union = (
   ast: AST.Union,
-  encoders: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
+  members: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
 ): Encoder<any, any> =>
   make(S.make(ast), (a) => {
-    const index = encoders.findIndex(([guard]) => guard.is(a))
-    return encoders[index][1].encode(a)
+    const index = members.findIndex(([guard]) => guard.is(a))
+    return members[index][1].encode(a)
   })
 
 /** @internal */
