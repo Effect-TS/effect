@@ -116,17 +116,6 @@ const _tuple = (
     }
   )
 
-const _lazy = <A>(
-  f: () => Arbitrary<A>
-): Arbitrary<A> => {
-  const get = S.memoize<void, Arbitrary<A>>(f)
-  const schema = S.lazy(f)
-  return make(
-    schema,
-    (fc) => get().arbitrary(fc)
-  )
-}
-
 /**
  * @since 1.0.0
  */
@@ -168,7 +157,7 @@ export const provideArbitraryFor = (provider: Provider) =>
             pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
         case "Lazy":
-          return _lazy(() => go(ast.f()))
+          throw new Error("Lazy arbitraries are not supported")
       }
     }
 

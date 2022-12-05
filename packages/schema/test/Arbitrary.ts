@@ -53,21 +53,12 @@ describe("Arbitrary", () => {
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it.skip("lazy", () => {
-    interface L {
-      readonly a: string
-      readonly as: ReadonlySet<L>
-    }
-    const L: S.Schema<L> = S.lazy<L>(() =>
-      S.struct({
-        a: S.string,
-        as: readonlySet.schema(L)
-      })
+  it("lazy", () => {
+    type A = readonly [number, A | null]
+    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.of(null))))
+    expect(() => A.arbitraryFor(schema).arbitrary(fc)).toThrowError(
+      new Error("Lazy arbitraries are not supported")
     )
-    const schema = readonlySet.schema(L)
-    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
-    const guard = G.guardFor(schema)
-    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
   it("of", () => {
