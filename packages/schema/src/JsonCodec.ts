@@ -72,7 +72,33 @@ export const string: JsonCodec<string> = jsonCodecFor(S.string)
 /**
  * @since 1.0.0
  */
+export const minLength = (minLength: number) =>
+  <A extends { length: number }>(self: Schema<A>): JsonCodec<A> =>
+    jsonCodecFor(S.minLength(minLength)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength = (maxLength: number) =>
+  <A extends { length: number }>(self: Schema<A>): JsonCodec<A> =>
+    jsonCodecFor(S.maxLength(maxLength)(self))
+
+/**
+ * @since 1.0.0
+ */
 export const number: JsonCodec<number> = jsonCodecFor(S.number)
+
+/**
+ * @since 1.0.0
+ */
+export const min = (min: number) =>
+  <A extends number>(self: Schema<A>): JsonCodec<A> => jsonCodecFor(S.min(min)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const max = (max: number) =>
+  <A extends number>(self: Schema<A>): JsonCodec<A> => jsonCodecFor(S.max(max)(self))
 
 /**
  * @since 1.0.0

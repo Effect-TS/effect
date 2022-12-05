@@ -4,8 +4,20 @@ import * as JC from "@fp-ts/schema/JsonCodec";
 // $ExpectType JsonCodec<string>
 JC.string;
 
+// $ExpectType JsonCodec<string>
+pipe(JC.string, JC.minLength(1));
+
+// $ExpectType JsonCodec<string>
+pipe(JC.string, JC.maxLength(10));
+
 // $ExpectType JsonCodec<number>
 JC.number;
+
+// $ExpectType JsonCodec<number>
+pipe(JC.number, JC.min(0));
+
+// $ExpectType JsonCodec<number>
+pipe(JC.number, JC.max(10));
 
 // $ExpectType JsonCodec<boolean>
 JC.boolean;
