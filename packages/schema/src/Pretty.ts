@@ -130,7 +130,7 @@ const _union = (
 const _lazy = <A>(
   f: () => Pretty<A>
 ): Pretty<A> => {
-  const get = S.memoize<void, Pretty<A>>(f)
+  const get = I.memoize<void, Pretty<A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,

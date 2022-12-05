@@ -243,7 +243,7 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
 export const _lazy = <I, A>(
   f: () => Decoder<I, A>
 ): Decoder<I, A> => {
-  const get = S.memoize<void, Decoder<I, A>>(f)
+  const get = I.memoize<void, Decoder<I, A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,

@@ -141,7 +141,7 @@ const _tuple = (
 const _lazy = <A>(
   f: () => Guard<A>
 ): Guard<A> => {
-  const get = S.memoize<void, Guard<A>>(f)
+  const get = I.memoize<void, Guard<A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,

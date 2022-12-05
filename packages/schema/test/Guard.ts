@@ -287,22 +287,6 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
   })
 
-  it("Set", () => {
-    const schema = readonlySet.schema(S.number)
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is(new Set([1, 2, 3]))).toEqual(true)
-  })
-
-  it("Set & bigint", () => {
-    const schema = readonlySet.schema(bigint.Schema)
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is(new Set())).toEqual(true)
-    expect(guard.is(new Set([BigInt("1"), BigInt("2")]))).toEqual(true)
-    expect(guard.is(new Set([BigInt("1"), 1]))).toEqual(false)
-  })
-
   it("pick", () => {
     const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
     const schema = pipe(base, S.pick("a", "b"))
@@ -439,10 +423,10 @@ describe("Guard", () => {
     })
   })
 
-  it("withStringIndexSignature", () => {
+  it("extend stringIndexSignature", () => {
     const schema = pipe(
       S.struct({ a: S.string }),
-      S.withStringIndexSignature(S.string)
+      S.extend(S.stringIndexSignature(S.string))
     )
     const guard = guardFor(schema)
     expect(guard.is({ a: "a" })).toEqual(true)
@@ -452,5 +436,17 @@ describe("Guard", () => {
     expect(guard.is({ b: "b" })).toEqual(false)
     expect(guard.is({ a: 1 })).toEqual(false)
     expect(guard.is({ a: "a", b: 2 })).toEqual(false)
+  })
+
+  it("extend", () => {
+    const schema = pipe(
+      S.struct({ a: S.string }),
+      S.extend(S.struct({ b: S.number }))
+    )
+    const guard = guardFor(schema)
+    expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ a: "a" })).toEqual(false)
   })
 })

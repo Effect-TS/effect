@@ -62,10 +62,10 @@ describe("JsonEncoder", () => {
       expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: "1" })
     })
 
-    it("string index signature", () => {
+    it("extend stringIndexSignature", () => {
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.withStringIndexSignature(NumberFromString)
+        S.extend(S.stringIndexSignature(NumberFromString))
       )
       const encoder = JE.jsonEncoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })

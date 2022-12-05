@@ -4,6 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
 import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import type { Provider } from "@fp-ts/schema/Provider"
 
@@ -194,6 +195,30 @@ export const lazy = (f: () => AST): Lazy => ({
   _tag: "Lazy",
   f
 })
+
+/**
+ * @since 1.0.0
+ */
+export const getStringIndexSignature = (
+  ast: AST
+): Option<IndexSignature> => {
+  if (isStruct(ast)) {
+    return ast.stringIndexSignature
+  }
+  return O.none
+}
+
+/**
+ * @since 1.0.0
+ */
+export const getSymbolIndexSignature = (
+  ast: AST
+): Option<IndexSignature> => {
+  if (isStruct(ast)) {
+    return ast.symbolIndexSignature
+  }
+  return O.none
+}
 
 /**
  * @since 1.0.0

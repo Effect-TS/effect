@@ -41,21 +41,21 @@ describe("UnknownEncoder", () => {
       expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: "1" })
     })
 
-    it("string index signature", () => {
+    it("extend stringIndexSignature", () => {
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.withStringIndexSignature(NumberFromString)
+        S.extend(S.stringIndexSignature(NumberFromString))
       )
       const encoder = UE.unknownEncoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
       expect(encoder.encode({ a: 1, b: 1 })).toEqual({ a: 1, b: "1" })
     })
 
-    it("symbol index signature", () => {
+    it("extend symbolIndexSignature", () => {
       const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.withSymbolIndexSignature(NumberFromString)
+        S.extend(S.symbolIndexSignature(NumberFromString))
       )
       const encoder = UE.unknownEncoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })

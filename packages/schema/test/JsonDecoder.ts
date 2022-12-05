@@ -216,10 +216,10 @@ describe("JsonDecoder", () => {
     Util.expectFailure(decoder, ["a", 1, true, "a", true], "/3 \"a\" did not satisfy is(boolean)")
   })
 
-  it("withStringIndexSignature", () => {
+  it("extend stringIndexSignature", () => {
     const schema = pipe(
       S.struct({ a: S.string }),
-      S.withStringIndexSignature(S.string)
+      S.extend(S.stringIndexSignature(S.string))
     )
     const decoder = JD.jsonDecoderFor(schema)
     expect(decoder.decode({ a: "a" })).toEqual(D.success({ a: "a" }))

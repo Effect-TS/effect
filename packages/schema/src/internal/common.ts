@@ -169,3 +169,17 @@ export const isValueJsonEncodable = (u: unknown): u is Json => {
 
 export const getPropertyKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
+
+export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
+  const cache = new Map()
+  return (a) => {
+    if (!cache.has(a)) {
+      const b = f(a)
+      cache.set(a, b)
+      return b
+    } else if (trace) {
+      console.log("cache hit, key: ", a, ", value: ", cache.get(a))
+    }
+    return cache.get(a)
+  }
+}

@@ -140,7 +140,7 @@ export const _union = (
 export const _lazy = <S, A>(
   f: () => Encoder<S, A>
 ): Encoder<S, A> => {
-  const get = S.memoize<void, Encoder<S, A>>(f)
+  const get = I.memoize<void, Encoder<S, A>>(f)
   const schema = S.lazy(f)
   return make(
     schema,
