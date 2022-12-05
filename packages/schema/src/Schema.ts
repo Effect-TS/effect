@@ -140,9 +140,8 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const keyof = <A>(schema: Schema<A>): Schema<keyof A> => {
-  return union(...AST.getFields(schema.ast).map((field) => of(field.key as keyof A)))
-}
+export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
+  union(...AST.getFields(schema.ast).map((field) => of(field.key as keyof A)))
 
 /**
  * @since 1.0.0
@@ -185,10 +184,9 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
 /**
  * @since 1.0.0
  */
-export const nonEmptyArray = <H, T>(
-  head: Schema<H>,
-  tail: Schema<T>
-): Schema<readonly [H, ...Array<T>]> => make(AST.tuple([head.ast], O.some(tail.ast), true))
+export const nonEmptyArray = <A>(
+  item: Schema<A>
+): Schema<readonly [A, ...Array<A>]> => make(AST.tuple([item.ast], O.some(item.ast), true))
 
 /**
  * @since 1.0.0
@@ -203,6 +201,58 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
       O.none
     )
   )
+
+/**
+ * @since 1.0.0
+ */
+export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
+  (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> => {
+    return make(AST.struct(
+      AST.getFields(self.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+      O.none,
+      O.none
+    ))
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
+  (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
+    return make(AST.struct(
+      AST.getFields(self.ast).filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
+      O.none,
+      O.none
+    ))
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => {
+  if (AST.isStruct(self.ast)) {
+    return make(
+      AST.struct(
+        self.ast.fields.map((f) => AST.field(f.key, f.value, true, f.readonly)),
+        self.ast.stringIndexSignature,
+        self.ast.symbolIndexSignature
+      )
+    )
+  }
+  throw new Error("cannot `partial` non-Struct schemas")
+}
+
+/**
+ * @since 1.0.0
+ */
+export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
+  make(AST.struct([], O.some(AST.indexSignature(value.ast, true)), O.none))
+
+/**
+ * @since 1.0.0
+ */
+export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
+  make(AST.struct([], O.none, O.some(AST.indexSignature(value.ast, true))))
 
 /**
  * @since 1.0.0
@@ -228,60 +278,6 @@ export const extend = <B>(
     }
     throw new Error("cannot `extend` non-Struct schemas")
   }
-
-/**
- * @since 1.0.0
- */
-export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (schema: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> => {
-    return make(AST.struct(
-      AST.getFields(schema.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-      O.none,
-      O.none
-    ))
-  }
-
-/**
- * @since 1.0.0
- */
-export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (schema: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
-    return make(AST.struct(
-      AST.getFields(schema.ast).filter((f) =>
-        !(keys as ReadonlyArray<PropertyKey>).includes(f.key)
-      ),
-      O.none,
-      O.none
-    ))
-  }
-
-/**
- * @since 1.0.0
- */
-export const partial = <A>(schema: Schema<A>): Schema<Partial<A>> => {
-  if (AST.isStruct(schema.ast)) {
-    return make(
-      AST.struct(
-        schema.ast.fields.map((f) => AST.field(f.key, f.value, true, f.readonly)),
-        schema.ast.stringIndexSignature,
-        schema.ast.symbolIndexSignature
-      )
-    )
-  }
-  throw new Error("cannot `partial` non-Struct schemas")
-}
-
-/**
- * @since 1.0.0
- */
-export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
-  make(AST.struct([], O.some(AST.indexSignature(value.ast, true)), O.none))
-
-/**
- * @since 1.0.0
- */
-export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
-  make(AST.struct([], O.none, O.some(AST.indexSignature(value.ast, true))))
 
 /**
  * @since 1.0.0

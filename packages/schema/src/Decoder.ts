@@ -15,9 +15,9 @@ import * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export interface Decoder<in S, in out A> extends Schema<A> {
-  readonly I: (_: S) => void
-  readonly decode: (i: S) => These<NonEmptyReadonlyArray<DE.DecodeError>, A>
+export interface Decoder<in I, in out A> extends Schema<A> {
+  readonly I: (_: I) => void
+  readonly decode: (i: I) => These<NonEmptyReadonlyArray<DE.DecodeError>, A>
 }
 
 /**

@@ -132,13 +132,6 @@ describe("typeRepFor", () => {
     )
   })
 
-  it("nonEmptyArray", () => {
-    const schema = S.nonEmptyArray(S.string, S.number)
-    expect(pipe(schema, typeRepFor).typeRep).toEqual(
-      "readonly [string, ...number[]]"
-    )
-  })
-
   it("of", () => {
     const schema = S.of("a")
     expect(pipe(schema, typeRepFor).typeRep).toEqual(

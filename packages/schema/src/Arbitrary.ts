@@ -39,7 +39,7 @@ const _struct = (
   make(
     S.make(ast),
     (fc) => {
-      const arbs = {}
+      const arbs: any = {}
       const requiredKeys = []
       // ---------------------------------------------
       // handle fields
@@ -76,7 +76,7 @@ const _struct = (
           const arb = oSymbolIndexSignature.value.arbitrary(fc)
           output = output.chain((o) =>
             fc.dictionary(fc.string(), arb, { maxKeys: 10 }).map((d) => {
-              const symbols = {}
+              const symbols: any = {}
               for (const s in d) {
                 symbols[Symbol(s)] = d[s]
               }

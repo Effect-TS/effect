@@ -2,7 +2,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as G from "@fp-ts/schema/Guard"
 import * as JC from "@fp-ts/schema/JsonCodec"
 import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
@@ -11,70 +10,44 @@ import * as S from "@fp-ts/schema/Schema"
 
 describe("examples", () => {
   describe("README", () => {
-    // it("Creating a schema", () => {
-    //   const Person = S.struct({
-    //     name: S.string,
-    //     age: S.number
-    //   })
-    //   type Person = S.Infer<typeof Person>
-    // })
-
-    it("Deriving a `JsonCodec` from a schema", () => {
-      const schema = S.struct({
+    it("Summary", () => {
+      const Person = JC.struct({
         name: S.string,
         age: S.number
       })
 
-      const jsonCodec = JC.jsonCodecFor(schema)
+      // extract the inferred type
+      type Person = S.Infer<typeof Person>
       /*
-    const jsonCodec: JC.JsonCodec<{
-      readonly name: string;
-      readonly age: number;
-    }>
-    */
+      type Person = {
+        readonly name: string;
+        readonly age: number;
+      }
+      */
 
-      expect(jsonCodec.decode({ name: "name", age: 18 })).toEqual(
+      // decode from JSON
+      expect(Person.decode({ name: "name", age: 18 })).toEqual(
         D.success({ name: "name", age: 18 })
       )
-      expect(jsonCodec.decode(null)).toEqual(
+      expect(Person.decode(null)).toEqual(
         D.failure(DE.notType("JsonObject", null))
       )
+
+      // encode to JSON
+      expect(Person.encode({ name: "name", age: 18 })).toEqual({ name: "name", age: 18 })
+
+      // guard
+      expect(Person.is({ name: "name", age: 18 })).toEqual(true)
+      expect(Person.is(null)).toEqual(false)
+
+      // pretty print
+      expect(Person.pretty({ name: "name", age: 18 })).toEqual(
+        "{ \"name\": \"name\", \"age\": 18 }"
+      )
+
+      // arbitrary
+      // console.log(fc.sample(Person.arbitrary(fc), 2))
     })
-
-    it("Deriving a `Guard` from a schema", () => {
-      const schema = S.struct({
-        name: S.string,
-        age: S.number
-      })
-
-      const guard = G.guardFor(schema)
-      /*
-    const decoder: G.Guard<{
-      readonly name: string;
-      readonly age: number;
-    }>
-    */
-
-      expect(guard.is({ name: "name", age: 18 })).toEqual(true)
-      expect(guard.is(null)).toEqual(false)
-    })
-
-    // it("Deriving an `Arbitrary` from a schema", () => {
-    //   const schema = S.struct({
-    //     name: S.string,
-    //     age: S.number
-    //   })
-
-    //   const arb = A.arbitraryFor(schema).arbitrary(fc)
-    //   /*
-    //   const arb: fc.Arbitrary<{
-    //     readonly name: string;
-    //     readonly age: number;
-    //   }>
-    //   */
-
-    //   console.log(fc.sample(arb, 2))
-    // })
 
     it("Custom decode errors", () => {
       const mystring = pipe(
