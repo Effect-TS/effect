@@ -82,15 +82,31 @@ describe("Arbitrary", () => {
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it("struct", () => {
-    const schema = S.struct({ a: S.string, b: S.number })
-    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
-    const guard = G.guardFor(schema)
-    fc.assert(fc.property(arbitrary, (a) => guard.is(a)))
+  describe("struct", () => {
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      fc.assert(fc.property(arbitrary, (a) => guard.is(a)))
+    })
+
+    it("optional keys", () => {
+      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      fc.assert(fc.property(arbitrary, (a) => guard.is(a)))
+    })
   })
 
   it("stringIndexSignature", () => {
     const schema = S.stringIndexSignature(S.string)
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+  })
+
+  it("symbolIndexSignature", () => {
+    const schema = S.symbolIndexSignature(S.string)
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

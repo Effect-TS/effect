@@ -27,20 +27,6 @@ export interface Pretty<in out A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
 
-/**
- * @since 1.0.0
- */
-export const lazy = <A>(
-  f: () => Pretty<A>
-): Pretty<A> => {
-  const get = S.memoize<void, Pretty<A>>(f)
-  const schema = S.lazy(f)
-  return make(
-    schema,
-    (a) => get().pretty(a)
-  )
-}
-
 const _prettyKey = (key: PropertyKey): string => {
   return typeof key === "symbol" ? String(key) : JSON.stringify(key)
 }
@@ -55,14 +41,12 @@ const _struct = (
     S.make(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: Array<string> = []
-      const processedKeys: any = {}
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        processedKeys[key] = null
         // ---------------------------------------------
         // handle optional fields
         // ---------------------------------------------
@@ -79,8 +63,7 @@ const _struct = (
         // ---------------------------------------------
         // handle required fields
         // ---------------------------------------------
-        const pretty = fields[i]
-        output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
+        output.push(`${_prettyKey(key)}: ${fields[i].pretty(input[key])}`)
       }
       // ---------------------------------------------
       // handle index signatures
@@ -144,6 +127,17 @@ const _union = (
     return members[index][1].pretty(a)
   })
 
+const _lazy = <A>(
+  f: () => Pretty<A>
+): Pretty<A> => {
+  const get = S.memoize<void, Pretty<A>>(f)
+  const schema = S.lazy(f)
+  return make(
+    schema,
+    (a) => get().pretty(a)
+  )
+}
+
 /**
  * @since 1.0.0
  */
@@ -186,7 +180,7 @@ export const providePrettyFor = (provider: Provider) =>
           return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
         }
         case "Lazy":
-          return lazy(() => go(ast.f()))
+          return _lazy(() => go(ast.f()))
       }
     }
 

@@ -130,10 +130,7 @@ const _tuple = (
     }
   )
 
-/**
- * @since 1.0.0
- */
-export const lazy = <A>(
+const _lazy = <A>(
   f: () => Guard<A>
 ): Guard<A> => {
   const get = S.memoize<void, Guard<A>>(f)
@@ -185,7 +182,7 @@ export const provideGuardFor = (provider: Provider) =>
             pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
         case "Lazy":
-          return lazy(() => go(ast.f()))
+          return _lazy(() => go(ast.f()))
       }
     }
 
