@@ -3,17 +3,21 @@
  */
 
 import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Left, Right } from "@fp-ts/data/Either"
 import { identity, pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import { parse as parseJSON, stringify as stringifyJSON } from "@fp-ts/data/Json"
 import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
-import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import { provideDecoderFor } from "@fp-ts/schema/Decoder"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import { provideEncoderFor } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -90,42 +94,52 @@ export const make = <A>(
 /**
  * @since 1.0.0
  */
-export const success = I.success
+export const success: <A>(a: A) => These<never, A> = I.success
 
 /**
  * @since 1.0.0
  */
-export const failure = I.failure
+export const failure: (
+  e: DecodeError
+) => These<NonEmptyReadonlyArray<DecodeError>, never> = I.failure
 
 /**
  * @since 1.0.0
  */
-export const failures = I.failures
+export const failures: (
+  es: NonEmptyReadonlyArray<DecodeError>
+) => These<NonEmptyReadonlyArray<DecodeError>, never> = I.failures
 
 /**
  * @since 1.0.0
  */
-export const warning = I.warning
+export const warning: <A>(
+  e: DecodeError,
+  a: A
+) => These<NonEmptyReadonlyArray<DecodeError>, A> = I.warning
 
 /**
  * @since 1.0.0
  */
-export const warnings = I.warnings
+export const warnings: <A>(
+  es: NonEmptyReadonlyArray<DecodeError>,
+  a: A
+) => These<NonEmptyReadonlyArray<DecodeError>, A> = I.warnings
 
 /**
  * @since 1.0.0
  */
-export const isSuccess = I.isSuccess
+export const isSuccess: <E, A>(self: These<E, A>) => self is Right<A> = I.isSuccess
 
 /**
  * @since 1.0.0
  */
-export const isFailure = I.isFailure
+export const isFailure: <E, A>(self: These<E, A>) => self is Left<E> = I.isFailure
 
 /**
  * @since 1.0.0
  */
-export const isWarning = I.isWarning
+export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWarning
 
 /**
  * @since 1.0.0
