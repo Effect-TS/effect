@@ -228,25 +228,6 @@ describe("Codec", () => {
     })
   })
 
-  it("minLength", () => {
-    const schema = pipe(S.string, S.minLength(1))
-    const decoder = codecFor(schema)
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    expect(decoder.decode("aa")).toEqual(D.success("aa"))
-
-    Util.expectFailure(decoder, "", "\"\" did not satisfy minLength(1)")
-  })
-
-  it("maxLength", () => {
-    const schema = pipe(S.string, S.maxLength(2))
-    const decoder = codecFor(schema)
-    expect(decoder.decode("")).toEqual(D.success(""))
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    expect(decoder.decode("aa")).toEqual(D.success("aa"))
-
-    Util.expectFailure(decoder, "aaa", "\"aaa\" did not satisfy maxLength(2)")
-  })
-
   it("lazy", () => {
     interface A {
       readonly a: string

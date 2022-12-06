@@ -52,9 +52,9 @@ export const format = (e: DE.DecodeError): string => {
     case "GreaterThanOrEqualTo":
       return `${JSON.stringify(e.actual)} did not satisfy GreaterThanOrEqualTo(${e.min})`
     case "MaxLength":
-      return `${JSON.stringify(e.actual)} did not satisfy maxLength(${e.maxLength})`
+      return `${JSON.stringify(e.actual)} did not satisfy MaxLength(${e.maxLength})`
     case "MinLength":
-      return `${JSON.stringify(e.actual)} did not satisfy minLength(${e.minLength})`
+      return `${JSON.stringify(e.actual)} did not satisfy MinLength(${e.minLength})`
     case "NaN":
       return `did not satisfy not(isNaN)`
     case "NotFinite":
