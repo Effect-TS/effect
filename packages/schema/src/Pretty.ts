@@ -30,6 +30,64 @@ export interface Pretty<in out A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
 
+/**
+ * @since 1.0.0
+ */
+export const providePrettyFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Pretty<A> => {
+    const go = (ast: AST.AST): Pretty<any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(PrettyId, ast.id)
+          )
+          if (O.isSome(handler)) {
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Pretty compiler, data type ${ast.id.description?.toString()}`
+          )
+        }
+        case "Of":
+          return make(S.make(ast), (input) => {
+            if (input === undefined) {
+              return "undefined"
+            }
+            return JSON.stringify(input)
+          })
+        case "Tuple":
+          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+          )
+        case "Union": {
+          return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
+        }
+        case "Lazy":
+          return _lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(empty)
+
+// ---------------------------------------------
+// internal
+// ---------------------------------------------
+
 const _prettyKey = (key: PropertyKey): string => {
   return typeof key === "symbol" ? String(key) : JSON.stringify(key)
 }
@@ -140,57 +198,3 @@ const _lazy = <A>(
     (a) => get().pretty(a)
   )
 }
-
-/**
- * @since 1.0.0
- */
-export const providePrettyFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Pretty<A> => {
-    const go = (ast: AST.AST): Pretty<any> => {
-      switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            Semigroup.combine(provider),
-            findHandler(PrettyId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Pretty compiler, data type ${ast.id.description?.toString()}`
-          )
-        }
-        case "Of":
-          return make(S.make(ast), (input) => {
-            if (input === undefined) {
-              return "undefined"
-            }
-            return JSON.stringify(input)
-          })
-        case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
-            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
-          )
-        case "Union": {
-          return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
-        }
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
-    }
-
-    return go(schema.ast)
-  }
-
-/**
- * @since 1.0.0
- */
-export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(empty)

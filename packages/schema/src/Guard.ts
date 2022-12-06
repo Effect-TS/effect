@@ -30,6 +30,63 @@ export interface Guard<in out A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
+/**
+ * @since 1.0.0
+ */
+export const provideGuardFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Guard<A> => {
+    const go = (ast: AST.AST): Guard<any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.GuardId, ast.id)
+          )
+          if (O.isSome(handler)) {
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Guard compiler, data type ${String(ast.id.description)}`
+          )
+        }
+        case "Of":
+          return make(S.make(ast), (u): u is any => u === ast.value)
+        case "Tuple":
+          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+        case "Union": {
+          const members = ast.members.map(go)
+          return make(
+            S.make(ast),
+            (a): a is any => members.some((guard) => guard.is(a))
+          )
+        }
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+          )
+        case "Lazy":
+          return _lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
+
+// ---------------------------------------------
+// internal
+// ---------------------------------------------
+
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Guard<any>>,
@@ -148,56 +205,3 @@ const _lazy = <A>(
     (a): a is A => get().is(a)
   )
 }
-
-/**
- * @since 1.0.0
- */
-export const provideGuardFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Guard<A> => {
-    const go = (ast: AST.AST): Guard<any> => {
-      switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            Semigroup.combine(provider),
-            findHandler(I.GuardId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Guard compiler, data type ${String(ast.id.description)}`
-          )
-        }
-        case "Of":
-          return make(S.make(ast), (u): u is any => u === ast.value)
-        case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
-        case "Union": {
-          const members = ast.members.map(go)
-          return make(
-            S.make(ast),
-            (a): a is any => members.some((guard) => guard.is(a))
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
-            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
-          )
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
-    }
-
-    return go(schema.ast)
-  }
-
-/**
- * @since 1.0.0
- */
-export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
