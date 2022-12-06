@@ -383,6 +383,11 @@ export const bigint: Codec<bigint> = codecFor(S.bigint)
 /**
  * @since 1.0.0
  */
+export const symbol: Codec<symbol> = codecFor(S.symbol)
+
+/**
+ * @since 1.0.0
+ */
 export const unknown: Codec<unknown> = codecFor(S.unknown)
 
 /**

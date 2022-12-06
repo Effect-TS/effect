@@ -11,11 +11,14 @@ C.string;
 // $ExpectType Codec<number>
 C.number;
 
+// $ExpectType Codec<boolean>
+C.boolean;
+
 // $ExpectType Codec<bigint>
 C.bigint;
 
-// $ExpectType Codec<boolean>
-C.boolean;
+// $ExpectType Codec<symbol>
+C.symbol;
 
 // $ExpectType Codec<unknown>
 C.unknown;
