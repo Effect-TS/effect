@@ -3,17 +3,32 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
+import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
-import * as Boolean from "@fp-ts/schema/data/Boolean"
-import * as max_ from "@fp-ts/schema/data/filter/max"
-import * as maxLength_ from "@fp-ts/schema/data/filter/maxLength"
-import * as min_ from "@fp-ts/schema/data/filter/min"
-import * as minLength_ from "@fp-ts/schema/data/filter/minLength"
-import * as Number from "@fp-ts/schema/data/Number"
-import * as String from "@fp-ts/schema/data/String"
-import * as Unknown from "@fp-ts/schema/data/Unknown"
+import * as DataAny from "@fp-ts/schema/data/Any"
+import * as DataBigint from "@fp-ts/schema/data/Bigint"
+import * as DataBoolean from "@fp-ts/schema/data/Boolean"
+import * as DataFilter from "@fp-ts/schema/data/filter"
+import * as DataMax from "@fp-ts/schema/data/filter/max"
+import * as DataMaxLength from "@fp-ts/schema/data/filter/maxLength"
+import * as DataMin from "@fp-ts/schema/data/filter/min"
+import * as DataMinLength from "@fp-ts/schema/data/filter/minLength"
+import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
+import * as DataJson from "@fp-ts/schema/data/Json"
+import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
+import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
+import * as DataNever from "@fp-ts/schema/data/Never"
+import * as DataNumber from "@fp-ts/schema/data/Number"
+import * as DataRefine from "@fp-ts/schema/data/refine"
+import * as DataString from "@fp-ts/schema/data/String"
+import * as DataUnknown from "@fp-ts/schema/data/Unknown"
+import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
+import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
+import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
+import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -30,6 +45,10 @@ export interface Schema<in out A> {
  * @since 1.0.0
  */
 export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
+
+// ---------------------------------------------
+// constructors
+// ---------------------------------------------
 
 /**
  * @since 1.0.0
@@ -67,50 +86,6 @@ export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
 /**
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = Unknown.Schema
-
-/**
- * @since 1.0.0
- */
-export const string: Schema<string> = String.Schema
-
-/**
- * @since 1.0.0
- */
-export const minLength: (
-  minLength: number
-) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = minLength_.schema
-
-/**
- * @since 1.0.0
- */
-export const maxLength: (
-  maxLength: number
-) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = maxLength_.schema
-
-/**
- * @since 1.0.0
- */
-export const number: Schema<number> = Number.Schema
-
-/**
- * @since 1.0.0
- */
-export const min: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = min_.schema
-
-/**
- * @since 1.0.0
- */
-export const max: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = max_.schema
-
-/**
- * @since 1.0.0
- */
-export const boolean: Schema<boolean> = Boolean.Schema
-
-/**
- * @since 1.0.0
- */
 export const of = <A>(value: A): Schema<A> => make(AST.of(value))
 
 /**
@@ -129,6 +104,38 @@ export const nativeEnum = <A extends { [_: string]: string | number }>(nativeEnu
       (key) => typeof nativeEnum[nativeEnum[key]] !== "number"
     ).map((key) => AST.of(nativeEnum[key]))
   ))
+
+// ---------------------------------------------
+// filters
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const minLength: (
+  minLength: number
+) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = DataMinLength.schema
+
+/**
+ * @since 1.0.0
+ */
+export const maxLength: (
+  maxLength: number
+) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = DataMaxLength.schema
+
+/**
+ * @since 1.0.0
+ */
+export const min: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = DataMin.schema
+
+/**
+ * @since 1.0.0
+ */
+export const max: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = DataMax.schema
+
+// ---------------------------------------------
+// combinators
+// ---------------------------------------------
 
 /**
  * @since 1.0.0
@@ -191,16 +198,53 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
-  fields: Fields
-): Schema<{ readonly [K in keyof Fields]: Infer<Fields[K]> }> =>
-  make(
+export type Spread<A> = {
+  [K in keyof A]: A[K]
+} extends infer B ? B : never
+
+/**
+ * @since 1.0.0
+ */
+export const struct: {
+  <Required extends Record<PropertyKey, Schema<any>>>(
+    required: Required
+  ): Schema<{ readonly [K in keyof Required]: Infer<Required[K]> }>
+  <
+    Required extends Record<PropertyKey, Schema<any>>,
+    Optional extends Record<PropertyKey, Schema<any>>
+  >(
+    required: Required,
+    optional: Optional
+  ): Schema<
+    Spread<
+      & { readonly [K in keyof Required]: Infer<Required[K]> }
+      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+    >
+  >
+} = <
+  Required extends Record<PropertyKey, Schema<any>>,
+  Optional extends Record<PropertyKey, Schema<any>>
+>(
+  required: Required,
+  optional?: Optional
+): Schema<
+  Spread<
+    & { readonly [K in keyof Required]: Infer<Required[K]> }
+    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+  >
+> => {
+  const _optional: any = optional || {}
+  return make(
     AST.struct(
-      I.getPropertyKeys(fields).map((key) => AST.field(key, fields[key].ast, false, true)),
+      I.getPropertyKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
+        .concat(
+          I.getPropertyKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
+        ),
       O.none,
       O.none
     )
   )
+}
 
 /**
  * @since 1.0.0
@@ -282,6 +326,92 @@ export const extend = <B>(
 /**
  * @since 1.0.0
  */
-export const lazy = <A>(f: () => Schema<A>): Schema<A> => {
-  return make(AST.lazy(() => f().ast))
-}
+export const lazy = <A>(f: () => Schema<A>): Schema<A> => make(AST.lazy(() => f().ast))
+
+/**
+ * @since 1.0.0
+ */
+export const filter: <A>(
+  id: symbol,
+  decode: Decoder<A, A>["decode"]
+) => (schema: Schema<A>) => Schema<A> = DataFilter.filter
+
+/**
+ * @since 1.0.0
+ */
+export const filterWith: <Config, A>(
+  id: symbol,
+  decode: (config: Config) => Decoder<A, A>["decode"]
+) => (config: Config) => (schema: Schema<A>) => Schema<A> = DataFilterWith.filterWith
+
+/**
+ * @since 1.0.0
+ */
+export const refine: <A, B extends A>(
+  id: symbol,
+  decode: Decoder<A, B>["decode"]
+) => (schema: Schema<A>) => Schema<B> = DataRefine.refine
+
+// ---------------------------------------------
+// data
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const string: Schema<string> = DataString.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const number: Schema<number> = DataNumber.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const boolean: Schema<boolean> = DataBoolean.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const bigint: Schema<bigint> = DataBigint.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Schema<unknown> = DataUnknown.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const unknownArray: Schema<UnknownArray> = DataUnknownArray.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const unknownObject: Schema<UnknownObject> = DataUnknownObject.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const any: Schema<any> = DataAny.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const never: Schema<never> = DataNever.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const json: Schema<Json> = DataJson.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const jsonArray: Schema<JsonArray> = DataJsonArray.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const jsonObject: Schema<JsonObject> = DataJsonObject.Schema

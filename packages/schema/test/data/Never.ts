@@ -6,14 +6,6 @@ import * as UD from "@fp-ts/schema/UnknownDecoder"
 describe("Never", () => {
   const schema = Never.Schema
 
-  it("id", () => {
-    expect(Never.id).exist
-  })
-
-  it("Provider", () => {
-    expect(Never.Provider).exist
-  })
-
   it("Guard", () => {
     const guard = G.guardFor(schema)
     expect(guard.is(1)).toEqual(false)

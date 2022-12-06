@@ -4,6 +4,9 @@ import * as S from "@fp-ts/schema/Schema"
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.struct({ a: S.string,  b: S.number })
 
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
+S.struct({ a: S.string,  b: S.number }, { c: S.boolean })
+
 //
 // extend
 //

@@ -1,8 +1,31 @@
 import { pipe } from "@fp-ts/data/Function";
 import * as JC from "@fp-ts/schema/JsonCodec";
 
+//
+// Primitives
+//
+
 // $ExpectType JsonCodec<string>
 JC.string;
+
+// $ExpectType JsonCodec<number>
+JC.number;
+
+// $ExpectType JsonCodec<bigint>
+JC.bigint;
+
+// $ExpectType JsonCodec<boolean>
+JC.boolean;
+
+// $ExpectType JsonCodec<unknown>
+JC.unknown;
+
+// $ExpectType JsonCodec<any>
+JC.any;
+
+//
+// Validations
+//
 
 // $ExpectType JsonCodec<string>
 pipe(JC.string, JC.minLength(1));
@@ -11,16 +34,14 @@ pipe(JC.string, JC.minLength(1));
 pipe(JC.string, JC.maxLength(10));
 
 // $ExpectType JsonCodec<number>
-JC.number;
-
-// $ExpectType JsonCodec<number>
 pipe(JC.number, JC.min(0));
 
 // $ExpectType JsonCodec<number>
 pipe(JC.number, JC.max(10));
 
-// $ExpectType JsonCodec<boolean>
-JC.boolean;
+//
+// Constructors
+//
 
 // $ExpectType JsonCodec<"a">
 JC.literal("a");
@@ -74,6 +95,9 @@ pipe(
   JC.struct({ a: JC.string, b: JC.string }),
   JC.extend(JC.stringIndexSignature(JC.string))
 );
+
+// $ExpectType JsonCodec<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
+JC.struct({ a: JC.string, b: JC.number }, { c: JC.boolean })
 
 // $ExpectType JsonCodec<Option<number>>
 JC.option(JC.number)

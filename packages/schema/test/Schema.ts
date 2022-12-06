@@ -2,13 +2,28 @@ import { pipe } from "@fp-ts/data/Function"
 import * as ast from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import { empty } from "@fp-ts/schema/Provider"
-import * as S from "@fp-ts/schema/Schema"
+import * as _ from "@fp-ts/schema/Schema"
 
 const guardFor = G.provideGuardFor(empty)
 
 describe("Schema", () => {
-  it("make", () => {
-    expect(S.make).exist
+  it("exist", () => {
+    expect(_.make).exist
+    expect(_.filter).exist
+    expect(_.filterWith).exist
+    expect(_.refine).exist
+    expect(_.string).exist
+    expect(_.number).exist
+    expect(_.boolean).exist
+    expect(_.bigint).exist
+    expect(_.unknown).exist
+    expect(_.unknownArray).exist
+    expect(_.unknownObject).exist
+    expect(_.any).exist
+    expect(_.never).exist
+    expect(_.json).exist
+    expect(_.jsonArray).exist
+    expect(_.jsonObject).exist
   })
 
   it("nativeEnum", () => {
@@ -16,7 +31,7 @@ describe("Schema", () => {
       Apple,
       Banana
     }
-    const schema = S.nativeEnum(Fruits)
+    const schema = _.nativeEnum(Fruits)
     const guard = guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)
@@ -30,12 +45,12 @@ describe("Schema", () => {
       from: From,
       to: To
     ) =>
-      (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
+      (schema: _.Schema<A>): _.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
         if (ast.isStruct(schema.ast)) {
           const fields = schema.ast.fields.slice()
           const i = fields.findIndex((field) => field.key === from)
           fields[i] = ast.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
-          return S.make(
+          return _.make(
             ast.struct(fields, schema.ast.stringIndexSignature, schema.ast.symbolIndexSignature)
           )
         }
@@ -43,9 +58,9 @@ describe("Schema", () => {
       }
 
     const schema = pipe(
-      S.struct({
-        a: S.string,
-        b: S.number
+      _.struct({
+        a: _.string,
+        b: _.number
       }),
       rename("a", "aa")
     )
@@ -56,11 +71,11 @@ describe("Schema", () => {
 
   describe("keyof", () => {
     it("struct", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.number
+      const schema = _.struct({
+        a: _.string,
+        b: _.number
       })
-      const keyOf = S.keyof(schema)
+      const keyOf = _.keyof(schema)
       const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(true)
@@ -68,17 +83,17 @@ describe("Schema", () => {
     })
 
     it("union", () => {
-      const schema = S.union(
-        S.struct({
-          a: S.string,
-          b: S.number
+      const schema = _.union(
+        _.struct({
+          a: _.string,
+          b: _.number
         }),
-        S.struct({
-          a: S.boolean,
-          c: S.number
+        _.struct({
+          a: _.boolean,
+          c: _.number
         })
       )
-      const keyOf = S.keyof(schema)
+      const keyOf = _.keyof(schema)
       const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(false)

@@ -1,15 +1,34 @@
 import * as O from "@fp-ts/data/Option"
 import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as D from "@fp-ts/schema/Decoder"
-import * as JC from "@fp-ts/schema/JsonCodec"
+import * as _ from "@fp-ts/schema/JsonCodec"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const jsonCodecFor = JC.jsonCodecFor
+const jsonCodecFor = _.jsonCodecFor
 
 const NumberFromStringSchema = parseFloat.schema(S.string)
 
 describe("JsonCodec", () => {
+  it("exist", () => {
+    expect(_.make).exist
+    expect(_.filter).exist
+    expect(_.filterWith).exist
+    expect(_.refine).exist
+    expect(_.string).exist
+    expect(_.number).exist
+    expect(_.boolean).exist
+    expect(_.bigint).exist
+    expect(_.unknown).exist
+    expect(_.unknownArray).exist
+    expect(_.unknownObject).exist
+    expect(_.any).exist
+    expect(_.never).exist
+    expect(_.json).exist
+    expect(_.jsonArray).exist
+    expect(_.jsonObject).exist
+  })
+
   it("of", () => {
     const schema = S.of(1)
     const codec = jsonCodecFor(schema)
@@ -45,7 +64,7 @@ describe("JsonCodec", () => {
   })
 
   it("Option", () => {
-    const codec = JC.option(JC.number)
+    const codec = _.option(_.number)
     expect(codec.decode(null)).toEqual(D.success(O.none))
     expect(codec.decode(1)).toEqual(D.success(O.some(1)))
 
@@ -66,11 +85,11 @@ describe("JsonCodec", () => {
   })
 
   it("parseOrThrow", () => {
-    const Person = JC.struct({
-      firstName: JC.string,
-      lastName: JC.string
+    const Person = _.struct({
+      firstName: _.string,
+      lastName: _.string
     }, {
-      age: JC.number
+      age: _.number
     })
 
     const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
