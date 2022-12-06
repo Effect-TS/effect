@@ -1,5 +1,13 @@
 # @fp-ts/schema
 
+## 0.0.3
+
+### Patch Changes
+
+- [#18](https://github.com/fp-ts/schema/pull/18) [`45f720f`](https://github.com/fp-ts/schema/commit/45f720f1f84732850da64513d56d2d97970df6d0) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest @fp-ts/data
+
+- [#15](https://github.com/fp-ts/schema/pull/15) [`3900a51`](https://github.com/fp-ts/schema/commit/3900a51ed0f008a36809a9378ab4555b20db958a) Thanks [@gcanti](https://github.com/gcanti)! - fix no exported members
+
 ## 0.0.2
 
 ### Patch Changes
