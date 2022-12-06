@@ -207,6 +207,11 @@ export const greaterThan = (max: number) =>
 export const greaterThanOrEqualTo = (max: number) =>
   <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
 
+/**
+ * @since 1.0.0
+ */
+export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.int(self))
+
 // ---------------------------------------------
 // combinators
 // ---------------------------------------------

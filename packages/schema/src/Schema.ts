@@ -15,6 +15,7 @@ import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
 import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
+import * as DataInt from "@fp-ts/schema/data/filter/Int"
 import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
 import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
@@ -154,6 +155,11 @@ export const greaterThan: (
 export const greaterThanOrEqualTo: (
   min: number
 ) => <A extends number>(self: Schema<A>) => Schema<A> = DataGreaterThanOrEqualTo.schema
+
+/**
+ * @since 1.0.0
+ */
+export const int: <A extends number>(self: Schema<A>) => Schema<A> = DataInt.schema
 
 // ---------------------------------------------
 // combinators

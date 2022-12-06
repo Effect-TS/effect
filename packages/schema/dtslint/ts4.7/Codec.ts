@@ -1,59 +1,62 @@
 import { pipe } from "@fp-ts/data/Function";
-import * as JC from "@fp-ts/schema/Codec";
+import * as C from "@fp-ts/schema/Codec";
 
 //
 // Primitives
 //
 
 // $ExpectType Codec<string>
-JC.string;
+C.string;
 
 // $ExpectType Codec<number>
-JC.number;
+C.number;
 
 // $ExpectType Codec<bigint>
-JC.bigint;
+C.bigint;
 
 // $ExpectType Codec<boolean>
-JC.boolean;
+C.boolean;
 
 // $ExpectType Codec<unknown>
-JC.unknown;
+C.unknown;
 
 // $ExpectType Codec<any>
-JC.any;
+C.any;
 
 //
 // Validations
 //
 
 // $ExpectType Codec<string>
-pipe(JC.string, JC.minLength(1));
+pipe(C.string, C.minLength(1));
 
 // $ExpectType Codec<string>
-pipe(JC.string, JC.maxLength(10));
+pipe(C.string, C.maxLength(10));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.lessThan(0));
+pipe(C.number, C.lessThan(0));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.lessThanOrEqualTo(0));
+pipe(C.number, C.lessThanOrEqualTo(0));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.greaterThan(10));
+pipe(C.number, C.greaterThan(10));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.greaterThanOrEqualTo(10));
+pipe(C.number, C.greaterThanOrEqualTo(10));
+
+// $ExpectType Codec<number>
+pipe(C.number, C.int);
 
 //
 // Constructors
 //
 
 // $ExpectType Codec<"a">
-JC.literal("a");
+C.literal("a");
 
 // $ExpectType Codec<"a" | "b" | "c">
-JC.literal("a", "b", "c");
+C.literal("a", "b", "c");
 
 enum Fruits {
   Apple,
@@ -61,49 +64,55 @@ enum Fruits {
 }
 
 // $ExpectType Codec<typeof Fruits>
-JC.nativeEnum(Fruits);
+C.nativeEnum(Fruits);
 
 // $ExpectType Codec<string | number>
-JC.union(JC.string, JC.number);
+C.union(C.string, C.number);
 
 // $ExpectType Codec<readonly [string, number]>
-JC.tuple(JC.string, JC.number);
+C.tuple(C.string, C.number);
 
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(JC.tuple(JC.string, JC.number), JC.withRest(JC.boolean))
+pipe(C.tuple(C.string, C.number), C.withRest(C.boolean))
 
 // $ExpectType Codec<readonly number[]>
-JC.array(JC.number);
+C.array(C.number);
 
 // $ExpectType Codec<readonly [number, ...number[]]>
-JC.nonEmptyArray(JC.number);
+C.nonEmptyArray(C.number);
 
 // $ExpectType Codec<{ readonly a: string; readonly b: number; }>
-JC.struct({ a: JC.string,  b: JC.number });
+C.struct({ a: C.string,  b: C.number });
 
 // $ExpectType Codec<{ readonly a: string; }>
-pipe(JC.struct({ a: JC.string,  b: JC.number }), JC.pick('a'));
+pipe(C.struct({ a: C.string,  b: C.number }), C.pick('a'));
 
 // $ExpectType Codec<{ readonly b: number; }>
-pipe(JC.struct({ a: JC.string,  b: JC.number }), JC.omit('a'));
+pipe(C.struct({ a: C.string,  b: C.number }), C.omit('a'));
 
 // $ExpectType Codec<Partial<{ readonly a: string; readonly b: number; }>>
-JC.partial(JC.struct({ a: JC.string,  b: JC.number }));
+C.partial(C.struct({ a: C.string,  b: C.number }));
 
 // $ExpectType Codec<{ readonly [_: string]: string; }>
-JC.stringIndexSignature(JC.string)
+C.stringIndexSignature(C.string)
 
 // $ExpectType Codec<{ readonly [_: symbol]: string; }>
-JC.symbolIndexSignature(JC.string)
+C.symbolIndexSignature(C.string)
 
 // $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly [_: string]: string; }>
 pipe(
-  JC.struct({ a: JC.string, b: JC.string }),
-  JC.extend(JC.stringIndexSignature(JC.string))
+  C.struct({ a: C.string, b: C.string }),
+  C.extend(C.stringIndexSignature(C.string))
 );
 
 // $ExpectType Codec<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
-JC.struct({ a: JC.string, b: JC.number }, { c: JC.boolean })
+C.struct({ a: C.string, b: C.number }, { c: C.boolean })
 
 // $ExpectType Codec<Option<number>>
-JC.option(JC.number)
+C.option(C.number)
+
+// $ExpectType Codec<ReadonlySet<number>>
+C.readonlySet(C.number)
+
+// $ExpectType Codec<Chunk<number>>
+C.chunk(C.number)
