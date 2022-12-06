@@ -6,6 +6,7 @@ import type { Chunk } from "@fp-ts/data/Chunk"
 import { identity, pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import { parse as parseJSON, stringify as stringifyJSON } from "@fp-ts/data/Json"
+import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
@@ -440,3 +441,8 @@ export const chunk = <A>(item: Schema<A>): Codec<Chunk<A>> => codecFor(S.chunk(i
  */
 export const readonlySet = <A>(item: Schema<A>): Codec<ReadonlySet<A>> =>
   codecFor(S.readonlySet(item))
+
+/**
+ * @since 1.0.0
+ */
+export const list = <A>(item: Schema<A>): Codec<List<A>> => codecFor(S.list(item))

@@ -5,6 +5,7 @@
 import type { Chunk } from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
+import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
@@ -24,6 +25,7 @@ import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
+import * as DataList from "@fp-ts/schema/data/List"
 import * as DataNever from "@fp-ts/schema/data/Never"
 import * as DataNumber from "@fp-ts/schema/data/Number"
 import * as DataOption from "@fp-ts/schema/data/Option"
@@ -438,3 +440,8 @@ export const chunk: <A>(item: Schema<A>) => Schema<Chunk<A>> = DataChunk.schema
  * @since 1.0.0
  */
 export const readonlySet: <A>(item: Schema<A>) => Schema<ReadonlySet<A>> = DataReadonlySet.schema
+
+/**
+ * @since 1.0.0
+ */
+export const list: <A>(item: Schema<A>) => Schema<List<A>> = DataList.schema

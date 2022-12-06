@@ -119,3 +119,6 @@ C.readonlySet(C.number)
 
 // $ExpectType Codec<Chunk<number>>
 C.chunk(C.number)
+
+// $ExpectType Codec<List<number>>
+C.list(C.number)

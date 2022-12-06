@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type { Chunk } from "@fp-ts/data/Chunk"
-import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
+import type { List } from "@fp-ts/data/List"
+import * as L from "@fp-ts/data/List"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
@@ -21,30 +21,30 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const id = Symbol.for("@fp-ts/schema/data/Chunk")
 
-const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
+const guard = <A>(item: G.Guard<A>): G.Guard<List<A>> =>
   I.makeGuard(
     schema(item),
-    (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
+    (u): u is List<A> => L.isList(u) && pipe(u, L.every(item.is))
   )
 
 const decoder = <A>(
   item: Decoder<unknown, A>
-): Decoder<unknown, Chunk<A>> =>
+): Decoder<unknown, List<A>> =>
   I.makeDecoder(
     schema(item),
-    (u) => pipe(D.decoderFor(I.array(item)).decode(u), T.map(C.fromIterable))
+    (u) => pipe(D.decoderFor(I.array(item)).decode(u), T.map(L.fromIterable))
   )
 
-const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, Chunk<A>> =>
-  I.makeEncoder(schema(item), (chunk) => C.toReadonlyArray(chunk).map(item.encode))
+const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, List<A>> =>
+  I.makeEncoder(schema(item), (list) => L.toReadonlyArray(list).map(item.encode))
 
-const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
-  A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(C.fromIterable))
+const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<List<A>> =>
+  A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map(L.fromIterable))
 
-const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
+const pretty = <A>(item: P.Pretty<A>): P.Pretty<List<A>> =>
   P.make(
     schema(item),
-    (c) => `Chunk(${C.toReadonlyArray(c).map(item.pretty).join(", ")})`
+    (c) => `List(${L.toReadonlyArray(c).map(item.pretty).join(", ")})`
   )
 
 /**
@@ -61,5 +61,5 @@ export const Provider = make(id, {
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
+export const schema = <A>(item: Schema<A>): Schema<List<A>> =>
   I.declareSchema(id, O.none, Provider, item)
