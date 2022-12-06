@@ -10,12 +10,12 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/schema/data/filter/min")
+export const id = Symbol.for("@fp-ts/schema/data/filter/LessThanOrEqualTo")
 
 /**
  * @since 1.0.0
  */
-export const schema: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = filterWith(
+export const schema: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> = filterWith(
   id,
-  (min: number) => (n: number) => n >= min ? I.success(n) : I.failure(DE.min(min, n))
+  (max: number) => (n: number) => n <= max ? I.success(n) : I.failure(DE.lessThanOrEqualTo(max, n))
 )

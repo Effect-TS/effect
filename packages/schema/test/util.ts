@@ -43,10 +43,14 @@ export const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Custom":
       return `${JSON.stringify(e.actual)} ${JSON.stringify(e.config)}`
-    case "Max":
-      return `${JSON.stringify(e.actual)} did not satisfy max(${e.max})`
-    case "Min":
-      return `${JSON.stringify(e.actual)} did not satisfy min(${e.min})`
+    case "LessThan":
+      return `${JSON.stringify(e.actual)} did not satisfy LessThan(${e.max})`
+    case "LessThanOrEqualTo":
+      return `${JSON.stringify(e.actual)} did not satisfy LessThanOrEqualTo(${e.max})`
+    case "GreaterThan":
+      return `${JSON.stringify(e.actual)} did not satisfy GreaterThan(${e.min})`
+    case "GreaterThanOrEqualTo":
+      return `${JSON.stringify(e.actual)} did not satisfy GreaterThanOrEqualTo(${e.min})`
     case "MaxLength":
       return `${JSON.stringify(e.actual)} did not satisfy maxLength(${e.maxLength})`
     case "MinLength":

@@ -102,22 +102,4 @@ describe("jsonSchemaFor", () => {
 
     expect(validate("aa")).toEqual(false)
   })
-
-  it.skip("min", () => {
-    const schema = pipe(S.number, S.min(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
-    expect(validate(1)).toEqual(true)
-    expect(validate(2)).toEqual(true)
-
-    expect(validate(0)).toEqual(false)
-  })
-
-  it.skip("max", () => {
-    const schema = pipe(S.number, S.max(1))
-    const validate = new Ajv().compile(jsonSchemaFor(schema))
-    expect(validate(0)).toEqual(true)
-    expect(validate(1)).toEqual(true)
-
-    expect(validate(2)).toEqual(false)
-  })
 })

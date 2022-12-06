@@ -186,14 +186,26 @@ export const maxLength = (maxLength: number) =>
 /**
  * @since 1.0.0
  */
-export const min = (min: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.min(min)(self))
+export const lessThan = (min: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
 
 /**
  * @since 1.0.0
  */
-export const max = (max: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.max(max)(self))
+export const lessThanOrEqualTo = (min: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThanOrEqualTo(min)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThan = (max: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThan(max)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo = (max: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
 
 // ---------------------------------------------
 // combinators

@@ -13,9 +13,11 @@ import * as DataBigint from "@fp-ts/schema/data/Bigint"
 import * as DataBoolean from "@fp-ts/schema/data/Boolean"
 import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
-import * as DataMax from "@fp-ts/schema/data/filter/max"
+import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
+import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
+import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
+import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/maxLength"
-import * as DataMin from "@fp-ts/schema/data/filter/min"
 import * as DataMinLength from "@fp-ts/schema/data/filter/minLength"
 import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
@@ -130,12 +132,28 @@ export const maxLength: (
 /**
  * @since 1.0.0
  */
-export const min: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = DataMin.schema
+export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
+  DataLessThan.schema
 
 /**
  * @since 1.0.0
  */
-export const max: (min: number) => <A extends number>(self: Schema<A>) => Schema<A> = DataMax.schema
+export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
+  DataLessThanOrEqualTo.schema
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThan: (
+  min: number
+) => <A extends number>(self: Schema<A>) => Schema<A> = DataGreaterThan.schema
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo: (
+  min: number
+) => <A extends number>(self: Schema<A>) => Schema<A> = DataGreaterThanOrEqualTo.schema
 
 // ---------------------------------------------
 // combinators

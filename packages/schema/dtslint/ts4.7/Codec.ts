@@ -34,10 +34,16 @@ pipe(JC.string, JC.minLength(1));
 pipe(JC.string, JC.maxLength(10));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.min(0));
+pipe(JC.number, JC.lessThan(0));
 
 // $ExpectType Codec<number>
-pipe(JC.number, JC.max(10));
+pipe(JC.number, JC.lessThanOrEqualTo(0));
+
+// $ExpectType Codec<number>
+pipe(JC.number, JC.greaterThan(10));
+
+// $ExpectType Codec<number>
+pipe(JC.number, JC.greaterThanOrEqualTo(10));
 
 //
 // Constructors

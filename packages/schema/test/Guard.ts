@@ -382,24 +382,6 @@ describe("Guard", () => {
     expect(guard.is("aa")).toEqual(false)
   })
 
-  it("min", () => {
-    const schema = pipe(S.number, S.min(1))
-    const guard = guardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(2)).toEqual(true)
-
-    expect(guard.is(0)).toEqual(false)
-  })
-
-  it("max", () => {
-    const schema = pipe(S.number, S.max(1))
-    const guard = guardFor(schema)
-    expect(guard.is(0)).toEqual(true)
-    expect(guard.is(1)).toEqual(true)
-
-    expect(guard.is(2)).toEqual(false)
-  })
-
   describe("withRest", () => {
     it("baseline", () => {
       const schema = pipe(S.tuple(S.string, S.number), S.withRest(S.boolean))

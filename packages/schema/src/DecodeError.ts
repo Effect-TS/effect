@@ -15,8 +15,10 @@ export type DecodeError =
   | NotFinite
   | MinLength
   | MaxLength
-  | Min
-  | Max
+  | LessThan
+  | GreaterThan
+  | LessThanOrEqualTo
+  | GreaterThanOrEqualTo
   | Index
   | Key
   | UnexpectedKey
@@ -139,26 +141,8 @@ export const maxLength = (maxLength: number, actual: unknown): MaxLength => ({
 /**
  * @since 1.0.0
  */
-export interface Min {
-  readonly _tag: "Min"
-  readonly min: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const min = (min: number, actual: unknown): Min => ({
-  _tag: "Min",
-  min,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface Max {
-  readonly _tag: "Max"
+export interface LessThan {
+  readonly _tag: "LessThan"
   readonly max: number
   readonly actual: unknown
 }
@@ -166,9 +150,63 @@ export interface Max {
 /**
  * @since 1.0.0
  */
-export const max = (max: number, actual: unknown): Max => ({
-  _tag: "Max",
+export const lessThan = (max: number, actual: unknown): LessThan => ({
+  _tag: "LessThan",
   max,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface LessThanOrEqualTo {
+  readonly _tag: "LessThanOrEqualTo"
+  readonly max: number
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const lessThanOrEqualTo = (max: number, actual: unknown): LessThanOrEqualTo => ({
+  _tag: "LessThanOrEqualTo",
+  max,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface GreaterThanOrEqualTo {
+  readonly _tag: "GreaterThanOrEqualTo"
+  readonly min: number
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo = (min: number, actual: unknown): GreaterThanOrEqualTo => ({
+  _tag: "GreaterThanOrEqualTo",
+  min,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface GreaterThan {
+  readonly _tag: "GreaterThan"
+  readonly min: number
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const greaterThan = (min: number, actual: unknown): GreaterThan => ({
+  _tag: "GreaterThan",
+  min,
   actual
 })
 

@@ -133,15 +133,29 @@ describe("Arbitrary", () => {
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it("min", () => {
-    const schema = pipe(S.number, S.min(1))
+  it("lessThanOrEqualTo", () => {
+    const schema = pipe(S.number, S.lessThanOrEqualTo(1))
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it("max", () => {
-    const schema = pipe(S.number, S.max(1))
+  it("greaterThanOrEqualTo", () => {
+    const schema = pipe(S.number, S.greaterThanOrEqualTo(1))
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+  })
+
+  it("lessThan", () => {
+    const schema = pipe(S.number, S.lessThan(1))
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+  })
+
+  it("greaterThan", () => {
+    const schema = pipe(S.number, S.greaterThan(1))
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
