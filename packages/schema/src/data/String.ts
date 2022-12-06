@@ -20,10 +20,8 @@ export const id = Symbol.for("@fp-ts/schema/data/string")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.UnknownDecoderId]: () => UnknownDecoder,
-  [I.JsonDecoderId]: () => UnknownDecoder,
-  [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.DecoderId]: () => Decoder,
+  [I.EncoderId]: () => Encoder,
   [I.PrettyId]: () => Pretty
 })
 
@@ -34,12 +32,12 @@ export const Schema: S.Schema<string> = I.declareSchema(id, O.none, Provider)
 
 const Guard = I.makeGuard<string>(Schema, String.isString)
 
-const UnknownDecoder = I.makeDecoder<unknown, string>(
+const Decoder = I.makeDecoder<unknown, string>(
   Schema,
   (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType("string", u))
 )
 
-const JsonEncoder = I.makeEncoder<string, string>(Schema, identity)
+const Encoder = I.makeEncoder<unknown, string>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<string>(Schema, (fc) => fc.string())
 

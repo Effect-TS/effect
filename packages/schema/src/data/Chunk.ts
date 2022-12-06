@@ -7,14 +7,14 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
+import type { Decoder } from "@fp-ts/schema/Decoder"
+import * as D from "@fp-ts/schema/Decoder"
+import type { Encoder } from "@fp-ts/schema/Encoder"
 import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Pretty"
 import { make } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
-import type { UnknownDecoder } from "@fp-ts/schema/UnknownDecoder"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 /**
  * @since 1.0.0
@@ -27,15 +27,15 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
     (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
   )
 
-const unknownDecoder = <A>(
-  item: UnknownDecoder<A>
-): UnknownDecoder<Chunk<A>> =>
+const decoder = <A>(
+  item: Decoder<unknown, A>
+): Decoder<unknown, Chunk<A>> =>
   I.makeDecoder(
     schema(item),
-    (i) => pipe(UD.unknownDecoderFor(S.array(item)).decode(i), T.map(C.unsafeFromArray))
+    (u) => pipe(D.decoderFor(S.array(item)).decode(u), T.map(C.unsafeFromArray))
   )
 
-const jsonEncoder = <A>(item: JsonEncoder<A>): JsonEncoder<Chunk<A>> =>
+const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, Chunk<A>> =>
   I.makeEncoder(schema(item), (chunk) => C.toReadonlyArray(chunk).map(item.encode))
 
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
@@ -53,10 +53,8 @@ const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
 export const Provider = make(id, {
   [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
-  [I.UnknownDecoderId]: unknownDecoder,
-  [I.JsonDecoderId]: unknownDecoder,
-  [I.UnknownEncoderId]: jsonEncoder,
-  [I.JsonEncoderId]: jsonEncoder,
+  [I.DecoderId]: decoder,
+  [I.EncoderId]: encoder,
   [I.PrettyId]: pretty
 })
 

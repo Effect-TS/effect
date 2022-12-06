@@ -21,10 +21,8 @@ export const id = Symbol.for("@fp-ts/schema/data/bigint")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.UnknownDecoderId]: () => UnknownDecoder,
-  [I.JsonDecoderId]: () => UnknownDecoder,
-  [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.DecoderId]: () => Decoder,
+  [I.EncoderId]: () => Encoder,
   [I.PrettyId]: () => Pretty
 })
 
@@ -37,7 +35,7 @@ const isBigint = (u: unknown): u is bigint => typeof u === "bigint"
 
 const Guard = I.makeGuard<bigint>(Schema, isBigint)
 
-const UnknownDecoder = I.makeDecoder<unknown, bigint>(
+const Decoder = I.makeDecoder<unknown, bigint>(
   Schema,
   (u) => {
     if (isBigint(u)) {
@@ -55,7 +53,7 @@ const UnknownDecoder = I.makeDecoder<unknown, bigint>(
   }
 )
 
-const JsonEncoder = I.makeEncoder<string, bigint>(Schema, (n) => n.toString())
+const Encoder = I.makeEncoder<unknown, bigint>(Schema, (n) => n.toString())
 
 const Arbitrary = I.makeArbitrary<bigint>(Schema, (fc) => fc.bigInt())
 

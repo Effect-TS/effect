@@ -3,7 +3,6 @@ import { filter } from "@fp-ts/schema/data/filter"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -28,7 +27,7 @@ describe("filter", () => {
     expect(guard.is({})).toEqual(false)
     expect(guard.is({ a: 1 })).toEqual(false)
     expect(guard.is({ a: 1, b: 2 })).toEqual(false)
-    const decoder = JD.jsonDecoderFor(schema)
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode({ a: 1, b: 1 })).toEqual(D.success({ a: 1, b: 1 }))
     Util.expectFailure(
       decoder,

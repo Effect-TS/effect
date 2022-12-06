@@ -1,10 +1,9 @@
 import * as Bigint from "@fp-ts/schema/data/Bigint"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Bigint", () => {
   const schema = Bigint.Schema
@@ -28,8 +27,8 @@ describe("Bigint", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
-  it("UnknownDecoder", () => {
-    const decoder = UD.unknownDecoderFor(schema)
+  it("Decoder", () => {
+    const decoder = D.decoderFor(schema)
 
     expect(decoder.decode(0n)).toEqual(D.success(0n))
     expect(decoder.decode(1n)).toEqual(D.success(1n))
@@ -46,8 +45,8 @@ describe("Bigint", () => {
     )
   })
 
-  it("JsonEncoder", () => {
-    const encoder = JE.jsonEncoderFor(schema)
+  it("Encoder", () => {
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(1n)).toEqual("1")
   })
 

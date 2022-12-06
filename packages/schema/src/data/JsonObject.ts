@@ -20,10 +20,8 @@ export const id = Symbol.for("@fp-ts/schema/data/JsonObject")
 export const Provider = P.make(id, {
   [I.GuardId]: () => Guard,
   [I.ArbitraryId]: () => Arbitrary,
-  [I.UnknownDecoderId]: () => UnknownDecoder,
-  [I.JsonDecoderId]: () => UnknownDecoder,
-  [I.UnknownEncoderId]: () => JsonEncoder,
-  [I.JsonEncoderId]: () => JsonEncoder,
+  [I.DecoderId]: () => Decoder,
+  [I.EncoderId]: () => Encoder,
   [I.PrettyId]: () => Pretty
 })
 
@@ -35,13 +33,13 @@ export const Schema: S.Schema<JsonObject> = I.declareSchema(id, O.none, Provider
 const Guard = I.makeGuard<JsonObject>(Schema, I.isJsonObject)
 
 /** @internal */
-export const UnknownDecoder = I.fromRefinement<JsonObject>(
+export const Decoder = I.fromRefinement<JsonObject>(
   Schema,
   I.isJsonObject,
   (u) => DE.notType("JsonObject", u)
 )
 
-const JsonEncoder = I.makeEncoder<JsonObject, JsonObject>(Schema, identity)
+const Encoder = I.makeEncoder<unknown, JsonObject>(Schema, identity)
 
 const Arbitrary = I.makeArbitrary<JsonObject>(
   Schema,

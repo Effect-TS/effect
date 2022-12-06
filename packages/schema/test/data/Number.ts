@@ -1,9 +1,8 @@
 import * as Number from "@fp-ts/schema/data/Number"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Number", () => {
   const schema = Number.Schema
@@ -26,8 +25,8 @@ describe("Number", () => {
     expect(guard.is("a")).toEqual(false)
   })
 
-  describe("UnknownDecoder", () => {
-    const decoder = UD.unknownDecoderFor(schema)
+  describe("Decoder", () => {
+    const decoder = D.decoderFor(schema)
 
     it("baseline", () => {
       expect(decoder.decode(1)).toEqual(D.success(1))
@@ -44,8 +43,8 @@ describe("Number", () => {
     })
   })
 
-  it("JsonEncoder", () => {
-    const encoder = JE.jsonEncoderFor(schema)
+  it("Encoder", () => {
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(1)).toEqual(1)
   })
 })

@@ -86,20 +86,12 @@ export const ArbitraryId: unique symbol = Symbol.for(
   "@fp-ts/schema/Arbitrary"
 )
 
-export const JsonDecoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/JsonDecoder"
+export const DecoderId: unique symbol = Symbol.for(
+  "@fp-ts/schema/Decoder"
 )
 
-export const UnknownDecoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/UnknownDecoder"
-)
-
-export const JsonEncoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/JsonEncoder"
-)
-
-export const UnknownEncoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/UnknownEncoder"
+export const EncoderId: unique symbol = Symbol.for(
+  "@fp-ts/schema/Encoder"
 )
 
 export const PrettyId: unique symbol = Symbol.for(
@@ -157,15 +149,6 @@ export const append = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
 }
 
 export const isNonEmpty = RA.isNonEmpty
-
-export const isValueJsonEncodable = (u: unknown): u is Json => {
-  try {
-    JSON.stringify(u)
-    return true
-  } catch (e) {
-    return false
-  }
-}
 
 export const getPropertyKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))

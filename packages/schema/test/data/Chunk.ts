@@ -1,12 +1,11 @@
 import * as C from "@fp-ts/data/Chunk"
 import * as Chunk from "@fp-ts/schema/data/Chunk"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Chunk", () => {
   it("id", () => {
@@ -30,9 +29,9 @@ describe("Chunk", () => {
     expect(guard.is(C.unsafeFromArray(["a", "b", 1]))).toEqual(false)
   })
 
-  it("unknownDecoder", () => {
+  it("Decoder", () => {
     const schema = Chunk.schema(S.number)
-    const decoder = UD.unknownDecoderFor(schema)
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty))
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.success(C.unsafeFromArray([1, 2, 3]))
@@ -48,9 +47,9 @@ describe("Chunk", () => {
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
   })
 
-  it("jsonEncoder", () => {
+  it("Encoder", () => {
     const schema = Chunk.schema(S.number)
-    const encoder = JE.jsonEncoderFor(schema)
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(C.empty)).toEqual([])
     expect(encoder.encode(C.unsafeFromArray([1, 2, 3]))).toEqual(
       [1, 2, 3]

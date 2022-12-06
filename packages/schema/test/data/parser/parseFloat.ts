@@ -1,10 +1,9 @@
 import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("parseFloat", () => {
   const schema = parseFloat.schema(S.string)
@@ -23,16 +22,16 @@ describe("parseFloat", () => {
     expect(guard.is("a")).toEqual(false)
   })
 
-  it("UnknownDecoder", () => {
-    const decoder = UD.unknownDecoderFor(schema)
+  it("Decoder", () => {
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode("1")).toEqual(D.success(1))
     expect(decoder.decode("1a")).toEqual(D.success(1))
     Util.expectFailure(decoder, "a", "\"a\" \"cannot be converted to a number by parseFloat\"")
     Util.expectFailure(decoder, "a1", "\"a1\" \"cannot be converted to a number by parseFloat\"")
   })
 
-  it("JsonEncoder", () => {
-    const encoder = JE.jsonEncoderFor(schema)
+  it("Encoder", () => {
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(1)).toEqual("1")
   })
 })

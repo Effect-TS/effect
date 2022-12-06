@@ -1,7 +1,7 @@
 import * as Never from "@fp-ts/schema/data/Never"
+import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Never", () => {
   const schema = Never.Schema
@@ -11,8 +11,8 @@ describe("Never", () => {
     expect(guard.is(1)).toEqual(false)
   })
 
-  it("UnknownDecoder", () => {
-    const decoder = UD.unknownDecoderFor(schema)
+  it("Decoder", () => {
+    const decoder = D.decoderFor(schema)
     Util.expectFailure(decoder, 1, "1 did not satisfy is(never)")
   })
 })

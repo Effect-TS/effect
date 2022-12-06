@@ -2,9 +2,8 @@ import { pipe } from "@fp-ts/data/Function"
 import { refine } from "@fp-ts/schema/data/refine"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JD from "@fp-ts/schema/JsonDecoder"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -30,14 +29,14 @@ describe("refine", () => {
     expect(guard.is(1.2)).toEqual(false)
   })
 
-  it("JsonDecoder", () => {
-    const decoder = JD.jsonDecoderFor(schema)
+  it("Decoder", () => {
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode(1)).toEqual(D.success(1))
     Util.expectFailure(decoder, 1.2, "1.2 \"not an int\"")
   })
 
-  it("JsonEncoder", () => {
-    const encoder = JE.jsonEncoderFor(schema)
+  it("Encoder", () => {
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(1 as any)).toEqual(1)
   })
 })

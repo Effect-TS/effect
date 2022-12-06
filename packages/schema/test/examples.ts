@@ -1,9 +1,8 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
 import { pipe } from "@fp-ts/data/Function"
+import * as C from "@fp-ts/schema/Codec"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as JC from "@fp-ts/schema/JsonCodec"
-import * as JD from "@fp-ts/schema/JsonDecoder"
 import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
@@ -11,13 +10,13 @@ import * as S from "@fp-ts/schema/Schema"
 describe("examples", () => {
   describe("README", () => {
     it("Summary", () => {
-      const Person = JC.struct({
-        name: JC.string,
-        age: JC.number
+      const Person = C.struct({
+        name: C.string,
+        age: C.number
       })
 
       // extract the inferred type
-      type Person = JC.Infer<typeof Person>
+      type Person = C.Infer<typeof Person>
       /*
       type Person = {
         readonly name: string;
@@ -27,10 +26,10 @@ describe("examples", () => {
 
       // decode from JSON
       expect(Person.decode({ name: "name", age: 18 })).toEqual(
-        D.success({ name: "name", age: 18 })
+        C.success({ name: "name", age: 18 })
       )
       expect(Person.decode(null)).toEqual(
-        D.failure(DE.notType("JsonObject", null))
+        C.failure(DE.notType("{ readonly [_: string]: unknown }", null))
       )
 
       // encode to JSON
@@ -53,7 +52,7 @@ describe("examples", () => {
       const mystring = pipe(
         S.string,
         S.clone(Symbol.for("mystring"), {
-          [JD.JsonDecoderId]: () => myJsonDecoder
+          [D.DecoderId]: () => myJsonDecoder
         })
       )
 
@@ -67,7 +66,7 @@ describe("examples", () => {
         age: S.number
       })
 
-      const codec = JC.jsonCodecFor(Person)
+      const codec = C.codecFor(Person)
 
       expect(codec.decode({ name: null, age: 18 })).toEqual(
         D.failure(DE.key("name", [DE.custom({ myCustomErrorConfig: "not a string" }, null)]))

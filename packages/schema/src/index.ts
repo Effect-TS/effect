@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import * as jsonCodec from "@fp-ts/schema/JsonCodec"
+import * as codec from "@fp-ts/schema/Codec"
 import * as schema from "@fp-ts/schema/Schema"
 
 export {
   /**
    * @since 1.0.0
    */
-  jsonCodec,
+  codec,
   /**
    * @since 1.0.0
    */

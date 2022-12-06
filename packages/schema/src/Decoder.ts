@@ -2,13 +2,18 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
+import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
+import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
+import type { Provider } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -19,6 +24,11 @@ export interface Decoder<in I, in out A> extends Schema<A> {
   readonly I: (_: I) => void
   readonly decode: (i: I) => These<NonEmptyReadonlyArray<DE.DecodeError>, A>
 }
+
+/**
+ * @since 1.0.0
+ */
+export const DecoderId = I.DecoderId
 
 /**
  * @since 1.0.0
@@ -65,6 +75,66 @@ export const isFailure = I.isFailure
  * @since 1.0.0
  */
 export const isWarning = I.isWarning
+
+/**
+ * @since 1.0.0
+ */
+export const provideDecoderFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Decoder<unknown, A> => {
+    const go = (ast: AST.AST): Decoder<unknown, any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const handler = pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.DecoderId, ast.id)
+          )
+          if (O.isSome(handler)) {
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Decoder compiler, data type ${String(ast.id.description)}`
+          )
+        }
+        case "Of":
+          return _of(ast.value)
+        case "Tuple":
+          return pipe(
+            UnknownArray.Decoder,
+            I.compose(
+              _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+            )
+          )
+        case "Struct":
+          return pipe(
+            UnknownObject.Decoder,
+            I.compose(
+              _struct(
+                ast,
+                ast.fields.map((f) => go(f.value)),
+                pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+                pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+              )
+            )
+          )
+        case "Union":
+          return _union(ast, ast.members.map(go))
+        case "Lazy":
+          return _lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(
+  P.empty
+)
 
 // ---------------------------------------------
 // internal

@@ -8,7 +8,6 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { JsonEncoder } from "@fp-ts/schema/JsonEncoder"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -26,10 +25,10 @@ export const parse = <A, B>(
 ) => {
   const _guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
-  const _unknownDecoder = <I>(self: Decoder<I, A>): Decoder<I, B> =>
+  const _decoder = (self: Decoder<unknown, A>): Decoder<unknown, B> =>
     I.makeDecoder(schema(self), (i) => pipe(self.decode(i), I.flatMap(decode)))
 
-  const _jsonEncoder = (self: JsonEncoder<A>): JsonEncoder<B> =>
+  const _encoder = (self: Encoder<unknown, A>): Encoder<unknown, B> =>
     I.makeEncoder(schema(self), (b) => self.encode(encode(b)))
 
   const _arbitrary = (self: Arbitrary<A>): Arbitrary<B> => I.makeArbitrary(schema(self), arbitrary)
@@ -39,10 +38,8 @@ export const parse = <A, B>(
   const Provider = P.make(id, {
     [I.GuardId]: _guard,
     [I.ArbitraryId]: _arbitrary,
-    [I.UnknownDecoderId]: _unknownDecoder,
-    [I.JsonDecoderId]: _unknownDecoder,
-    [I.UnknownEncoderId]: _jsonEncoder,
-    [I.JsonEncoderId]: _jsonEncoder,
+    [I.DecoderId]: _decoder,
+    [I.EncoderId]: _encoder,
     [I.PrettyId]: _pretty
   })
 

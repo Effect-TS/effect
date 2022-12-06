@@ -2,12 +2,15 @@
  * @since 1.0.0
  */
 
-import { identity } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
+import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
+import type { Provider } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -21,8 +24,63 @@ export interface Encoder<out S, in out A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
+export const EncoderId = I.EncoderId
+
+/**
+ * @since 1.0.0
+ */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
+
+/**
+ * @since 1.0.0
+ */
+export const provideEncoderFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Encoder<unknown, A> => {
+    const go = (ast: AST.AST): Encoder<unknown, any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const handler = pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.EncoderId, ast.id)
+          )
+          if (O.isSome(handler)) {
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Encoder compiler, data type ${String(ast.id.description)}`
+          )
+        }
+        case "Of":
+          return _of(ast.value)
+        case "Tuple":
+          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+          )
+        case "Union":
+          return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
+        case "Lazy":
+          return _lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provideEncoderFor(
+  P.empty
+)
 
 // ---------------------------------------------
 // internal

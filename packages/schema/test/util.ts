@@ -5,19 +5,18 @@ import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
+import * as UE from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
-import * as UE from "@fp-ts/schema/UnknownEncoder"
 import * as fc from "fast-check"
 
 export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
   const guard = G.guardFor(schema)
-  const unknownDecoder = UD.unknownDecoderFor(schema)
-  const unknownEncoder = UE.unknownEncoderFor(schema)
+  const decoder = D.decoderFor(schema)
+  const encoder = UE.encoderFor(schema)
   fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
-    return guard.is(a) && !D.isFailure(unknownDecoder.decode(unknownEncoder.encode(a)))
+    return guard.is(a) && !D.isFailure(decoder.decode(encoder.encode(a)))
   }))
 }
 

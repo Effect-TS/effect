@@ -1,9 +1,8 @@
 import * as String from "@fp-ts/schema/data/String"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("String", () => {
   const schema = String.Schema
@@ -26,14 +25,14 @@ describe("String", () => {
     expect(guard.is(1)).toEqual(false)
   })
 
-  it("UnknownDecoder", () => {
-    const decoder = UD.unknownDecoderFor(schema)
+  it("Decoder", () => {
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode("a")).toEqual(D.success("a"))
     Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
   })
 
-  it("JsonEncoder", () => {
-    const encoder = JE.jsonEncoderFor(schema)
+  it("Encoder", () => {
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode("a")).toEqual("a")
   })
 })

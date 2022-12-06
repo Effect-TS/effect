@@ -1,12 +1,11 @@
 import * as O from "@fp-ts/data/Option"
 import * as Option from "@fp-ts/schema/data/Option"
 import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
-import * as JE from "@fp-ts/schema/JsonEncoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
-import * as UD from "@fp-ts/schema/UnknownDecoder"
 
 describe("Option", () => {
   it("id", () => {
@@ -30,9 +29,9 @@ describe("Option", () => {
     expect(guard.is(O.some(1))).toEqual(false)
   })
 
-  it("unknownDecoder", () => {
+  it("Decoder", () => {
     const schema = Option.schema(S.number)
-    const decoder = UD.unknownDecoderFor(schema)
+    const decoder = D.decoderFor(schema)
     expect(decoder.decode(null)).toEqual(D.success(O.none))
     expect(decoder.decode(1)).toEqual(
       D.success(O.some(1))
@@ -51,9 +50,9 @@ describe("Option", () => {
     )
   })
 
-  it("jsonEncoder", () => {
+  it("Encoder", () => {
     const schema = Option.schema(S.number)
-    const encoder = JE.jsonEncoderFor(schema)
+    const encoder = E.encoderFor(schema)
     expect(encoder.encode(O.none)).toEqual(null)
     expect(encoder.encode(O.some(1))).toEqual(1)
   })
