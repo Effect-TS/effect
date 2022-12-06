@@ -4,15 +4,15 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
-import * as A from "@fp-ts/schema/Arbitrary"
+import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
-import * as G from "@fp-ts/schema/Guard"
+import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Provider"
-import * as S from "@fp-ts/schema/Schema"
+import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -22,8 +22,8 @@ export const id = Symbol.for("@fp-ts/schema/data/ReadonlySet")
 /**
  * @since 1.0.0
  */
-export const guard = <A>(item: G.Guard<A>): G.Guard<ReadonlySet<A>> =>
-  G.make(
+export const guard = <A>(item: Guard<A>): Guard<ReadonlySet<A>> =>
+  I.makeGuard(
     schema(item),
     (u): u is Set<A> => u instanceof Set && Array.from(u.values()).every(item.is)
   )
@@ -34,7 +34,7 @@ export const guard = <A>(item: G.Guard<A>): G.Guard<ReadonlySet<A>> =>
 export const decoder = <A>(item: Decoder<unknown, A>): Decoder<unknown, ReadonlySet<A>> =>
   I.makeDecoder(
     schema(item),
-    (i) => pipe(D.decoderFor(S.array(item)).decode(i), T.map((as) => new Set(as)))
+    (i) => pipe(D.decoderFor(I.array(item)).decode(i), T.map((as) => new Set(as)))
   )
 
 const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, ReadonlySet<A>> =>
@@ -43,8 +43,8 @@ const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, ReadonlySet<A>>
 /**
  * @since 1.0.0
  */
-export const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<ReadonlySet<A>> =>
-  A.make(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
+export const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
+  I.makeArbitrary(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
 /**
  * @since 1.0.0
@@ -69,5 +69,5 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: S.Schema<A>): S.Schema<ReadonlySet<A>> =>
-  S.declare(id, O.none, Provider, item)
+export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
+  I.declareSchema(id, O.none, Provider, item)

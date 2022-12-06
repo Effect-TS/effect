@@ -12,7 +12,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -66,7 +65,7 @@ export const provideEncoderFor = (provider: Provider) =>
             pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
         case "Union":
-          return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
+          return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }
@@ -89,7 +88,7 @@ export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provide
 /** @internal */
 export const _of = <A>(
   value: A
-): Encoder<A, A> => make(S.of(value), identity)
+): Encoder<A, A> => make(I.of(value), identity)
 
 /** @internal */
 export const _tuple = (
@@ -98,7 +97,7 @@ export const _tuple = (
   oRestElement: Option<Encoder<any, any>>
 ): Encoder<any, any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (us: ReadonlyArray<unknown>) => {
       const out: Array<any> = []
       let i = 0
@@ -131,7 +130,7 @@ export const _struct = (
   oSymbolIndexSignature: Option<Encoder<any, any>>
 ): Encoder<any, any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: any = {}
       const fieldKeys: any = {}
@@ -189,7 +188,7 @@ export const _union = (
   ast: AST.Union,
   members: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
 ): Encoder<any, any> =>
-  make(S.make(ast), (a) => {
+  make(I.makeSchema(ast), (a) => {
     const index = members.findIndex(([guard]) => guard.is(a))
     return members[index][1].encode(a)
   })
@@ -199,7 +198,7 @@ export const _lazy = <S, A>(
   f: () => Encoder<S, A>
 ): Encoder<S, A> => {
   const get = I.memoize<void, Encoder<S, A>>(f)
-  const schema = S.lazy(f)
+  const schema = I.lazy(f)
   return make(
     schema,
     (a) => get().encode(a)

@@ -9,9 +9,6 @@ import { parse as parseJSON, stringify as stringifyJSON } from "@fp-ts/data/Json
 import type { Option } from "@fp-ts/data/Option"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as DataChunk from "@fp-ts/schema/data/Chunk"
-import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -39,12 +36,10 @@ export interface Codec<in out A>
   readonly of: (value: A) => A
 }
 
-export {
-  /**
-   * @since 1.0.0
-   */
-  Infer
-} from "@fp-ts/schema/Schema"
+/**
+ * @since 1.0.0
+ */
+export type Infer<C extends Codec<any>> = I.Infer<C>
 
 // ---------------------------------------------
 // constructors
@@ -411,15 +406,15 @@ export const jsonObject: Codec<JsonObject> = codecFor(S.jsonObject)
 /**
  * @since 1.0.0
  */
-export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(DataOption.schema(value))
+export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(S.option(value))
 
 /**
  * @since 1.0.0
  */
-export const chunk = <A>(value: Schema<A>): Codec<Chunk<A>> => codecFor(DataChunk.schema(value))
+export const chunk = <A>(item: Schema<A>): Codec<Chunk<A>> => codecFor(S.chunk(item))
 
 /**
  * @since 1.0.0
  */
-export const readonlySet: <A>(schema: Schema<A>) => Codec<ReadonlySet<A>> = (schema) =>
-  codecFor(DataReadonlySet.schema(schema))
+export const readonlySet = <A>(item: Schema<A>): Codec<ReadonlySet<A>> =>
+  codecFor(S.readonlySet(item))

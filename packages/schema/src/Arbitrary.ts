@@ -9,7 +9,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
@@ -20,7 +19,7 @@ export const ArbitraryId = I.ArbitraryId
 /**
  * @since 1.0.0
  */
-export interface Arbitrary<in out A> extends S.Schema<A> {
+export interface Arbitrary<in out A> extends Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
 
@@ -53,13 +52,13 @@ export const provideArbitraryFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return make(S.make(ast), (fc) => fc.constant(ast.value))
+          return make(I.makeSchema(ast), (fc) => fc.constant(ast.value))
         case "Tuple":
           return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
         case "Union": {
           const members = ast.members.map(go)
           return make(
-            S.make(ast),
+            I.makeSchema(ast),
             (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
           )
         }
@@ -96,7 +95,7 @@ const _struct = (
   oSymbolIndexSignature: O.Option<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (fc) => {
       const arbs: any = {}
       const requiredKeys = []
@@ -155,7 +154,7 @@ const _tuple = (
   oRestElement: O.Option<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (fc) => {
       // ---------------------------------------------
       // handle components
@@ -179,7 +178,7 @@ const _lazy = <A>(
   f: () => Arbitrary<A>
 ): Arbitrary<A> => {
   const get = I.memoize<void, Arbitrary<A>>(f)
-  const schema = S.lazy(f)
+  const schema = I.lazy(f)
   return make(
     schema,
     (fc) => fc.constant(null).chain(() => get().arbitrary(fc))

@@ -5,12 +5,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import type { AST } from "@fp-ts/schema/AST"
-import * as ast from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -189,7 +189,7 @@ export const makePretty = <A>(
 // ---------------------------------------------
 
 /** @internal */
-export const makeSchema = <A>(ast: AST): Schema<A> => ({ ast }) as any
+export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
 export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
@@ -197,7 +197,77 @@ export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
   config: Option<unknown>,
   provider: Provider,
   ...schemas: Schemas
-): Schema<any> => makeSchema(ast.declare(id, config, provider, schemas.map((s) => s.ast)))
+): Schema<any> => makeSchema(AST.declare(id, config, provider, schemas.map((s) => s.ast)))
+
+/** @internal */
+export const of = <A>(value: A): Schema<A> => makeSchema(AST.of(value))
+
+/** @internal */
+export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
+  ...a: A
+): Schema<A[number]> => a.length === 1 ? of(a[0]) : union(...a.map(of))
+
+/** @internal */
+export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
+
+/** @internal */
+export const union = <Members extends ReadonlyArray<Schema<any>>>(
+  ...members: Members
+): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
+
+/** @internal */
+export type Spread<A> = {
+  [K in keyof A]: A[K]
+} extends infer B ? B : never
+
+/** @internal */
+export const struct: {
+  <Required extends Record<PropertyKey, Schema<any>>>(
+    required: Required
+  ): Schema<{ readonly [K in keyof Required]: Infer<Required[K]> }>
+  <
+    Required extends Record<PropertyKey, Schema<any>>,
+    Optional extends Record<PropertyKey, Schema<any>>
+  >(
+    required: Required,
+    optional: Optional
+  ): Schema<
+    Spread<
+      & { readonly [K in keyof Required]: Infer<Required[K]> }
+      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+    >
+  >
+} = <
+  Required extends Record<PropertyKey, Schema<any>>,
+  Optional extends Record<PropertyKey, Schema<any>>
+>(
+  required: Required,
+  optional?: Optional
+): Schema<
+  Spread<
+    & { readonly [K in keyof Required]: Infer<Required[K]> }
+    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+  >
+> => {
+  const _optional: any = optional || {}
+  return makeSchema(
+    AST.struct(
+      getPropertyKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
+        .concat(
+          getPropertyKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
+        ),
+      O.none,
+      O.none
+    )
+  )
+}
+
+/** @internal */
+export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))
+
+/** @internal */
+export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
+  makeSchema(AST.tuple([], O.some(item.ast), true))
 
 // ---------------------------------------------
 // general helpers

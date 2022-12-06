@@ -14,7 +14,7 @@ import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import { make } from "@fp-ts/schema/Provider"
-import * as S from "@fp-ts/schema/Schema"
+import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -32,7 +32,7 @@ const decoder = <A>(
 ): Decoder<unknown, Chunk<A>> =>
   I.makeDecoder(
     schema(item),
-    (u) => pipe(D.decoderFor(S.array(item)).decode(u), T.map(C.unsafeFromArray))
+    (u) => pipe(D.decoderFor(I.array(item)).decode(u), T.map(C.unsafeFromArray))
   )
 
 const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, Chunk<A>> =>
@@ -61,5 +61,5 @@ export const Provider = make(id, {
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: S.Schema<A>): S.Schema<Chunk<A>> =>
-  S.declare(id, O.none, Provider, item)
+export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
+  I.declareSchema(id, O.none, Provider, item)

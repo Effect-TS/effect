@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { Chunk } from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
@@ -10,6 +11,7 @@ import * as AST from "@fp-ts/schema/AST"
 import * as DataAny from "@fp-ts/schema/data/Any"
 import * as DataBigint from "@fp-ts/schema/data/Bigint"
 import * as DataBoolean from "@fp-ts/schema/data/Boolean"
+import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataMax from "@fp-ts/schema/data/filter/max"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/maxLength"
@@ -21,6 +23,8 @@ import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
 import * as DataNever from "@fp-ts/schema/data/Never"
 import * as DataNumber from "@fp-ts/schema/data/Number"
+import * as DataOption from "@fp-ts/schema/data/Option"
+import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import * as DataString from "@fp-ts/schema/data/String"
 import * as DataUnknown from "@fp-ts/schema/data/Unknown"
@@ -44,7 +48,7 @@ export interface Schema<in out A> {
 /**
  * @since 1.0.0
  */
-export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
+export type Infer<S extends Schema<any>> = I.Infer<S>
 
 // ---------------------------------------------
 // constructors
@@ -86,14 +90,14 @@ export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
 /**
  * @since 1.0.0
  */
-export const of = <A>(value: A): Schema<A> => make(AST.of(value))
+export const of: <A>(value: A) => Schema<A> = I.of
 
 /**
  * @since 1.0.0
  */
-export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
+export const literal: <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
   ...a: A
-): Schema<A[number]> => a.length === 1 ? of(a[0]) : union(...a.map(of))
+) => Schema<A[number]> = I.literal
 
 /**
  * @since 1.0.0
@@ -140,9 +144,9 @@ export const max: (min: number) => <A extends number>(self: Schema<A>) => Schema
 /**
  * @since 1.0.0
  */
-export const union = <Members extends ReadonlyArray<Schema<any>>>(
+export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Infer<Members[number]>> => make(AST.union(members.map((m) => m.ast)))
+) => Schema<Infer<Members[number]>> = I.union
 
 /**
  * @since 1.0.0
@@ -185,8 +189,7 @@ export const withRest = <R>(rest: Schema<R>) =>
 /**
  * @since 1.0.0
  */
-export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
-  make(AST.tuple([], O.some(item.ast), true))
+export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
 
 /**
  * @since 1.0.0
@@ -198,9 +201,7 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export type Spread<A> = {
-  [K in keyof A]: A[K]
-} extends infer B ? B : never
+export type Spread<A> = I.Spread<A>
 
 /**
  * @since 1.0.0
@@ -221,30 +222,7 @@ export const struct: {
       & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
     >
   >
-} = <
-  Required extends Record<PropertyKey, Schema<any>>,
-  Optional extends Record<PropertyKey, Schema<any>>
->(
-  required: Required,
-  optional?: Optional
-): Schema<
-  Spread<
-    & { readonly [K in keyof Required]: Infer<Required[K]> }
-    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
-  >
-> => {
-  const _optional: any = optional || {}
-  return make(
-    AST.struct(
-      I.getPropertyKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
-        .concat(
-          I.getPropertyKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
-        ),
-      O.none,
-      O.none
-    )
-  )
-}
+} = I.struct
 
 /**
  * @since 1.0.0
@@ -326,7 +304,7 @@ export const extend = <B>(
 /**
  * @since 1.0.0
  */
-export const lazy = <A>(f: () => Schema<A>): Schema<A> => make(AST.lazy(() => f().ast))
+export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 
 /**
  * @since 1.0.0
@@ -415,3 +393,18 @@ export const jsonArray: Schema<JsonArray> = DataJsonArray.Schema
  * @since 1.0.0
  */
 export const jsonObject: Schema<JsonObject> = DataJsonObject.Schema
+
+/**
+ * @since 1.0.0
+ */
+export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
+
+/**
+ * @since 1.0.0
+ */
+export const chunk: <A>(item: Schema<A>) => Schema<Chunk<A>> = DataChunk.schema
+
+/**
+ * @since 1.0.0
+ */
+export const readonlySet: <A>(item: Schema<A>) => Schema<ReadonlySet<A>> = DataReadonlySet.schema

@@ -11,7 +11,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -53,7 +52,7 @@ export const providePrettyFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return make(S.make(ast), (input) => {
+          return make(I.makeSchema(ast), (input) => {
             if (input === undefined) {
               return "undefined"
             }
@@ -69,7 +68,7 @@ export const providePrettyFor = (provider: Provider) =>
             pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
           )
         case "Union": {
-          return _union(ast, ast.members.map((m) => [G.guardFor(S.make(m)), go(m)]))
+          return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
         }
         case "Lazy":
           return _lazy(() => go(ast.f()))
@@ -99,7 +98,7 @@ const _struct = (
   oSymbolIndexSignature: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: Array<string> = []
       // ---------------------------------------------
@@ -154,7 +153,7 @@ const _tuple = (
   oRestElement: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
@@ -183,7 +182,7 @@ const _union = (
   ast: AST.Union,
   members: ReadonlyArray<readonly [Guard<any>, Pretty<any>]>
 ): Pretty<any> =>
-  make(S.make(ast), (a) => {
+  make(I.makeSchema(ast), (a) => {
     const index = members.findIndex(([guard]) => guard.is(a))
     return members[index][1].pretty(a)
   })
@@ -192,7 +191,7 @@ const _lazy = <A>(
   f: () => Pretty<A>
 ): Pretty<A> => {
   const get = I.memoize<void, Pretty<A>>(f)
-  const schema = S.lazy(f)
+  const schema = I.lazy(f)
   return make(
     schema,
     (a) => get().pretty(a)

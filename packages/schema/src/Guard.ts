@@ -11,7 +11,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -53,13 +52,13 @@ export const provideGuardFor = (provider: Provider) =>
           )
         }
         case "Of":
-          return make(S.make(ast), (u): u is any => u === ast.value)
+          return make(I.makeSchema(ast), (u): u is any => u === ast.value)
         case "Tuple":
           return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
         case "Union": {
           const members = ast.members.map(go)
           return make(
-            S.make(ast),
+            I.makeSchema(ast),
             (a): a is any => members.some((guard) => guard.is(a))
           )
         }
@@ -94,7 +93,7 @@ const _struct = (
   oSymbolIndexSignature: O.Option<Guard<any>>
 ): Guard<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: unknown): input is any => {
       if (!UnknownObject.Guard.is(input)) {
         return false
@@ -165,7 +164,7 @@ const _tuple = (
   oRestElement: O.Option<Guard<any>>
 ): Guard<any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: unknown): input is any => {
       if (!UnknownArray.Guard.is(input)) {
         return false
@@ -199,7 +198,7 @@ const _lazy = <A>(
   f: () => Guard<A>
 ): Guard<A> => {
   const get = I.memoize<void, Guard<A>>(f)
-  const schema = S.lazy(f)
+  const schema = I.lazy(f)
   return make(
     schema,
     (a): a is A => get().is(a)

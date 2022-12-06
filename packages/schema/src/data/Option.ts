@@ -13,7 +13,7 @@ import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import { make } from "@fp-ts/schema/Provider"
-import * as S from "@fp-ts/schema/Schema"
+import type * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -29,7 +29,7 @@ const guard = <A>(value: G.Guard<A>): G.Guard<Option<A>> =>
 const decoder = <A>(
   value: Decoder<unknown, A>
 ): Decoder<unknown, Option<A>> => {
-  const decoder = D.decoderFor(S.union(S.literal(null), value))
+  const decoder = D.decoderFor(I.union(I.literal(null), value))
   return I.makeDecoder(
     schema(value),
     (i) => pipe(decoder.decode(i), T.map(O.fromNullable))
@@ -40,12 +40,12 @@ const encoder = <A>(value: Encoder<unknown, A>): Encoder<unknown, Option<A>> =>
   I.makeEncoder(schema(value), (oa) => pipe(oa, O.map(value.encode), O.getOrNull))
 
 const arbitrary = <A>(value: A.Arbitrary<A>): A.Arbitrary<Option<A>> =>
-  A.arbitraryFor(S.union(
-    S.struct({
-      _tag: S.literal("None")
+  A.arbitraryFor(I.union(
+    I.struct({
+      _tag: I.literal("None")
     }),
-    S.struct({
-      _tag: S.literal("Some"),
+    I.struct({
+      _tag: I.literal("Some"),
       value
     })
   ))
@@ -74,4 +74,4 @@ export const Provider = make(id, {
  * @since 1.0.0
  */
 export const schema = <A>(value: S.Schema<A>): S.Schema<Option<A>> =>
-  S.declare(id, O.none, Provider, value)
+  I.declareSchema(id, O.none, Provider, value)

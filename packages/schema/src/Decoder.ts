@@ -15,7 +15,6 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -144,7 +143,7 @@ export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provide
 export const _of = <A>(
   value: A
 ): Decoder<unknown, A> =>
-  I.fromRefinement(S.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
+  I.fromRefinement(I.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
 
 /** @internal */
 export const _tuple = (
@@ -153,7 +152,7 @@ export const _tuple = (
   oRestElement: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (us: ReadonlyArray<unknown>) => {
       const out: Array<any> = []
       const es: Array<DE.DecodeError> = []
@@ -209,7 +208,7 @@ export const _struct = (
   oSymbolIndexSignature: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
-    S.make(ast),
+    I.makeSchema(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: any = {}
       const processedKeys: any = {}
@@ -296,8 +295,8 @@ export const _struct = (
 export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ast: AST.Union,
   members: Members
-): Decoder<I, S.Infer<Members[number]>> =>
-  make(S.make(ast), (u) => {
+): Decoder<I, I.Infer<Members[number]>> =>
+  make(I.makeSchema(ast), (u) => {
     const es: Array<DE.DecodeError> = []
     for (let i = 0; i < members.length; i++) {
       const t = members[i].decode(u)
@@ -314,7 +313,7 @@ export const _lazy = <I, A>(
   f: () => Decoder<I, A>
 ): Decoder<I, A> => {
   const get = I.memoize<void, Decoder<I, A>>(f)
-  const schema = S.lazy(f)
+  const schema = I.lazy(f)
   return make(
     schema,
     (a) => get().decode(a)
