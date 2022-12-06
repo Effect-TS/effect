@@ -94,7 +94,6 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-simple-import-sort": "^8.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.4.0",
-    "fast-check": "^3.3.0",
     "glob": "^8.0.3",
     "madge": "^5.0.1",
     "picocolors": "^1.0.0",
@@ -115,6 +114,7 @@
   },
   "dependencies": {
     "@fp-ts/core": "^0.0.9",
-    "@fp-ts/data": "^0.0.20"
+    "@fp-ts/data": "^0.0.20",
+    "fast-check": "^3.3.0"
   }
 }
