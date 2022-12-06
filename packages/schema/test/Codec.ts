@@ -265,7 +265,7 @@ describe("Codec", () => {
     Util.expectFailure(decoder, 2, "2 did not satisfy max(1)")
   })
 
-  it.skip("lazy", () => {
+  it("lazy", () => {
     interface A {
       readonly a: string
       readonly as: ReadonlyArray<A>

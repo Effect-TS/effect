@@ -30,6 +30,65 @@ export interface Arbitrary<in out A> extends S.Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
+/**
+ * @since 1.0.0
+ */
+export const provideArbitraryFor = (provider: Provider) =>
+  <A>(schema: Schema<A>): Arbitrary<A> => {
+    const go = (ast: AST.AST): Arbitrary<any> => {
+      switch (ast._tag) {
+        case "Declaration": {
+          const handler = pipe(
+            ast.provider,
+            Semigroup.combine(provider),
+            findHandler(I.ArbitraryId, ast.id)
+          )
+          if (O.isSome(handler)) {
+            return O.isSome(ast.config) ?
+              handler.value(ast.config.value)(...ast.nodes.map(go)) :
+              handler.value(...ast.nodes.map(go))
+          }
+          throw new Error(
+            `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
+          )
+        }
+        case "Of":
+          return make(S.make(ast), (fc) => fc.constant(ast.value))
+        case "Tuple":
+          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+        case "Union": {
+          const members = ast.members.map(go)
+          return make(
+            S.make(ast),
+            (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+          )
+        }
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
+            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+          )
+        case "Lazy":
+          return _lazy(() => go(ast.f()))
+      }
+    }
+
+    return go(schema.ast)
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(
+  empty
+)
+
+// ---------------------------------------------
+// internal
+// ---------------------------------------------
+
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Arbitrary<any>>,
@@ -116,57 +175,13 @@ const _tuple = (
     }
   )
 
-/**
- * @since 1.0.0
- */
-export const provideArbitraryFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Arbitrary<A> => {
-    const go = (ast: AST.AST): Arbitrary<any> => {
-      switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            Semigroup.combine(provider),
-            findHandler(I.ArbitraryId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
-          )
-        }
-        case "Of":
-          return make(S.make(ast), (fc) => fc.constant(ast.value))
-        case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
-        case "Union": {
-          const members = ast.members.map(go)
-          return make(
-            S.make(ast),
-            (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
-            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
-          )
-        case "Lazy":
-          throw new Error("Lazy arbitraries are not supported")
-      }
-    }
-
-    return go(schema.ast)
-  }
-
-/**
- * @since 1.0.0
- */
-export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(
-  empty
-)
+const _lazy = <A>(
+  f: () => Arbitrary<A>
+): Arbitrary<A> => {
+  const get = I.memoize<void, Arbitrary<A>>(f)
+  const schema = S.lazy(f)
+  return make(
+    schema,
+    (fc) => fc.constant(null).chain(() => get().arbitrary(fc))
+  )
+}

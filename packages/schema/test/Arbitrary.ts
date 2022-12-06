@@ -56,9 +56,9 @@ describe("Arbitrary", () => {
   it("lazy", () => {
     type A = readonly [number, A | null]
     const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.of(null))))
-    expect(() => A.arbitraryFor(schema).arbitrary(fc)).toThrowError(
-      new Error("Lazy arbitraries are not supported")
-    )
+    const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+    const guard = G.guardFor(schema)
+    expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
   it("of", () => {
