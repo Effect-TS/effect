@@ -54,7 +54,7 @@ export interface Schema<in out A> {
 /**
  * @since 1.0.0
  */
-export type Infer<S extends Schema<any>> = I.Infer<S>
+export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 // ---------------------------------------------
 // constructors
@@ -228,7 +228,9 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export type Spread<A> = I.Spread<A>
+export type Spread<A> = {
+  [K in keyof A]: A[K]
+} extends infer B ? B : never
 
 /**
  * @since 1.0.0

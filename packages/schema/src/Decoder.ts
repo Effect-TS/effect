@@ -14,7 +14,7 @@ import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
-import type { Schema } from "@fp-ts/schema/Schema"
+import type { Infer, Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -295,7 +295,7 @@ export const _struct = (
 export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ast: AST.Union,
   members: Members
-): Decoder<I, I.Infer<Members[number]>> =>
+): Decoder<I, Infer<Members[number]>> =>
   make(I.makeSchema(ast), (u) => {
     const es: Array<DE.DecodeError> = []
     for (let i = 0; i < members.length; i++) {

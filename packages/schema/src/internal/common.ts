@@ -207,16 +207,14 @@ export const literal = <A extends ReadonlyArray<string | number | boolean | null
   ...a: A
 ): Schema<A[number]> => a.length === 1 ? of(a[0]) : union(...a.map(of))
 
-/** @internal */
-export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
+type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
-/** @internal */
-export type Spread<A> = {
+type Spread<A> = {
   [K in keyof A]: A[K]
 } extends infer B ? B : never
 

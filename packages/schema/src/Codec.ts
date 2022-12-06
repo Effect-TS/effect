@@ -40,7 +40,7 @@ export interface Codec<in out A>
 /**
  * @since 1.0.0
  */
-export type Infer<C extends Codec<any>> = I.Infer<C>
+export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 // ---------------------------------------------
 // constructors
@@ -222,7 +222,7 @@ export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.i
  */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Codec<S.Infer<Members[number]>> => codecFor(S.union(...members))
+): Codec<Infer<Members[number]>> => codecFor(S.union(...members))
 
 /**
  * @since 1.0.0
@@ -234,7 +234,7 @@ export const keyof = <A>(schema: Schema<A>): Codec<keyof A> => codecFor(S.keyof(
  */
 export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
-): Codec<{ readonly [K in keyof Components]: S.Infer<Components[K]> }> =>
+): Codec<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
   codecFor(S.tuple<Components>(...components))
 
 /**
@@ -262,7 +262,7 @@ export const nonEmptyArray = <A>(
 export const struct: {
   <Required extends Record<PropertyKey, Schema<any>>>(
     required: Required
-  ): Codec<{ readonly [K in keyof Required]: S.Infer<Required[K]> }>
+  ): Codec<{ readonly [K in keyof Required]: Infer<Required[K]> }>
   <
     Required extends Record<PropertyKey, Schema<any>>,
     Optional extends Record<PropertyKey, Schema<any>>
@@ -271,8 +271,8 @@ export const struct: {
     optional: Optional
   ): Codec<
     S.Spread<
-      & { readonly [K in keyof Required]: S.Infer<Required[K]> }
-      & { readonly [K in keyof Optional]?: S.Infer<Optional[K]> }
+      & { readonly [K in keyof Required]: Infer<Required[K]> }
+      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
     >
   >
 } = <
@@ -283,8 +283,8 @@ export const struct: {
   optional?: Optional
 ): Codec<
   S.Spread<
-    & { readonly [K in keyof Required]: S.Infer<Required[K]> }
-    & { readonly [K in keyof Optional]?: S.Infer<Optional[K]> }
+    & { readonly [K in keyof Required]: Infer<Required[K]> }
+    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
   >
 > => codecFor(S.struct(required, optional || {}))
 
