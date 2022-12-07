@@ -57,12 +57,12 @@
     }
   },
   "dependencies": {
-    "@effect/io": "^0.0.30",
-    "@effect/printer": "^0.1.10",
-    "@fp-ts/core": "^0.0.9",
-    "@fp-ts/data": "^0.0.21",
-    "@fp-ts/optic": "^0.0.4",
-    "@fp-ts/schema": "^0.0.3"
+    "@effect/io": "~0.0.32",
+    "@effect/printer": "~0.1.11",
+    "@fp-ts/core": "~0.0.9",
+    "@fp-ts/data": "~0.0.22",
+    "@fp-ts/optic": "~0.0.5",
+    "@fp-ts/schema": "~0.0.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.18.6",
