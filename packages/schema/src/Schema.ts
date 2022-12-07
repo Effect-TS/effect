@@ -46,7 +46,7 @@ import * as P from "@fp-ts/schema/Provider"
 /**
  * @since 1.0.0
  */
-export interface Schema<in out A> {
+export interface Schema<A> {
   readonly A: (_: A) => A
   readonly ast: AST.AST
 }

@@ -20,7 +20,7 @@ export const PrettyId = I.PrettyId
 /**
  * @since 1.0.0
  */
-export interface Pretty<in out A> extends Schema<A> {
+export interface Pretty<A> extends Schema<A> {
   readonly pretty: (a: A) => string
 }
 

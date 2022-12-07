@@ -20,7 +20,7 @@ export const GuardId = I.GuardId
 /**
  * @since 1.0.0
  */
-export interface Guard<in out A> extends Schema<A> {
+export interface Guard<A> extends Schema<A> {
   readonly is: (input: unknown) => input is A
 }
 

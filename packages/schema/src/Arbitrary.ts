@@ -19,7 +19,7 @@ export const ArbitraryId = I.ArbitraryId
 /**
  * @since 1.0.0
  */
-export interface Arbitrary<in out A> extends Schema<A> {
+export interface Arbitrary<A> extends Schema<A> {
   readonly arbitrary: (fc: typeof FastCheck) => FastCheck.Arbitrary<A>
 }
 

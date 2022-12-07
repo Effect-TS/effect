@@ -34,7 +34,7 @@ import * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export interface Codec<in out A>
+export interface Codec<A>
   extends Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A>, Arbitrary<A>, Pretty<A>
 {
   readonly parseOrThrow: (

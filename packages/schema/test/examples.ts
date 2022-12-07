@@ -1,5 +1,7 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
 import { pipe } from "@fp-ts/data/Function"
+// import * as O from "@fp-ts/data/Option"
+// import * as AST from "@fp-ts/schema/AST"
 import * as C from "@fp-ts/schema/Codec"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
@@ -64,6 +66,28 @@ describe("examples", () => {
 
       // arbitrary
       // console.log(fc.sample(Person.arbitrary(fc), 2))
+    })
+
+    it("custom schema combinator", () => {
+      // const pair = <A>(schema: S.Schema<A>): S.Schema<readonly [A, A]> => {
+      //   const item = AST.component(
+      //     schema.ast, // <= the type of the component
+      //     false // <= specifies if the component is optional
+      //   )
+      //   const tuple = AST.tuple(
+      //     [item, item], // <= components definitions
+      //     O.none, // <= rest element
+      //     true // <= specifies if the tuple is readonly
+      //   )
+      //   return S.make(tuple) // <= wrap the AST value in a Schema
+      // }
+      const pair = <A>(schema: S.Schema<A>): S.Schema<readonly [A, A]> => S.tuple(schema, schema)
+
+      // const myNumberPair: C.Codec<readonly [number, number]>
+      const myNumberPair = C.codecFor(pair(S.number))
+
+      expect(myNumberPair.is([1, 2])).toEqual(true)
+      expect(myNumberPair.is([1, "a"])).toEqual(false)
     })
 
     it("Custom decode errors", () => {

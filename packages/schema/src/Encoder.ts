@@ -16,7 +16,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export interface Encoder<out S, in out A> extends Schema<A> {
+export interface Encoder<S, A> extends Schema<A> {
   readonly encode: (value: A) => S
 }
 
