@@ -50,11 +50,9 @@ import * as Applicative from "@fp-ts/core/typeclass/Applicative"
 import * as Bicovariant from "@fp-ts/core/typeclass/Bicovariant"
 import * as Bounded from "@fp-ts/core/typeclass/Bounded"
 import * as Chainable from "@fp-ts/core/typeclass/Chainable"
-import * as Compactable from "@fp-ts/core/typeclass/Compactable"
 import * as Contravariant from "@fp-ts/core/typeclass/Contravariant"
 import * as Coproduct from "@fp-ts/core/typeclass/Coproduct"
 import * as Covariant from "@fp-ts/core/typeclass/Covariant"
-import * as Filterable from "@fp-ts/core/typeclass/Filterable"
 import * as FlatMap from "@fp-ts/core/typeclass/FlatMap"
 import * as Foldable from "@fp-ts/core/typeclass/Foldable"
 import * as Invariant from "@fp-ts/core/typeclass/Invariant"
@@ -71,7 +69,6 @@ import * as SemiCoproduct from "@fp-ts/core/typeclass/SemiCoproduct"
 import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import * as SemiProduct from "@fp-ts/core/typeclass/SemiProduct"
 import * as Traversable from "@fp-ts/core/typeclass/Traversable"
-import * as TraversableFilterable from "@fp-ts/core/typeclass/TraversableFilterable"
 import * as Boolean from "@fp-ts/data/Boolean"
 import * as Chunk from "@fp-ts/data/Chunk"
 import * as Context from "@fp-ts/data/Context"
@@ -102,9 +99,14 @@ import * as RedBlackTree from "@fp-ts/data/RedBlackTree"
 import * as SortedMap from "@fp-ts/data/SortedMap"
 import * as SortedSet from "@fp-ts/data/SortedSet"
 import * as String from "@fp-ts/data/String"
+import * as Compactable from "@fp-ts/data/typeclass/Compactable"
 import * as CovariantWithIndex from "@fp-ts/data/typeclass/CovariantWithIndex"
+import * as Filterable from "@fp-ts/data/typeclass/Filterable"
 import * as FilterableWithIndex from "@fp-ts/data/typeclass/FilterableWithIndex"
+import * as Gen from "@fp-ts/data/typeclass/Gen"
 import * as Seq from "@fp-ts/data/typeclass/Seq"
+import * as TraversableFilterable from "@fp-ts/data/typeclass/TraversableFilterable"
+import * as Codec from "effect/Codec"
 import * as Differ from "effect/Differ"
 import * as Fiber from "effect/Fiber"
 import * as FiberRefs from "effect/FiberRefs"
@@ -214,6 +216,15 @@ export {
    * ```
    */
   Clock,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/schema/modules/Codec.ts.html
+   * - Module: "@fp-ts/schema/Codec"
+   * ```
+   */
+  Codec,
   /**
    * @since 2.0.0
    *
@@ -430,6 +441,15 @@ export {
    * ```
    */
   Function,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/typeclass/Gen.ts.html
+   * - Module: "@fp-ts/data/typeclass/Gen"
+   * ```
+   */
+  Gen,
   /**
    * @since 2.0.0
    *
