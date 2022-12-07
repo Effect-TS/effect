@@ -1,6 +1,6 @@
 ---
-title: Optic.ts
-nav_order: 9
+title: data/Optic.ts
+nav_order: 4
 parent: Modules
 ---
 

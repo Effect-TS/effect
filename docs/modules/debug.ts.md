@@ -1,10 +1,10 @@
 ---
-title: Debug.ts
-nav_order: 2
+title: debug.ts
+nav_order: 5
 parent: Modules
 ---
 
-## Debug overview
+## debug overview
 
 Added in v2.0.0
 
