@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.0.4
+
+### Patch Changes
+
+- [#20](https://github.com/fp-ts/schema/pull/20) [`07e7530`](https://github.com/fp-ts/schema/commit/07e7530559f63915f1a4f54e05d0bafd070a348a) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Improve dependencies semver ranges
+
 ## 0.0.3
 
 ### Patch Changes
