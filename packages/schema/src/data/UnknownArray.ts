@@ -43,7 +43,7 @@ export const Guard = I.makeGuard<UnknownArray>(Schema, isUnknownArray)
 export const Decoder = I.fromRefinement<UnknownArray>(
   Schema,
   isUnknownArray,
-  (u) => DE.notType("ReadonlyArray<unknown>", u)
+  (u) => DE.notType(id, u)
 )
 
 const Encoder = I.makeEncoder<UnknownArray, UnknownArray>(Schema, identity)

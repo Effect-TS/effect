@@ -44,12 +44,11 @@ const Decoder = I.makeDecoder<unknown, bigint>(
     if (StringData.isString(u) || Number.isNumber(u) || Boolean.isBoolean(u)) {
       try {
         return I.success(BigInt(u))
-      } catch (e) {
-        const expected = e instanceof Error ? e.message : String(e)
-        return I.failure(DE.custom(expected, u))
+      } catch (_e) {
+        return I.failure(DE.notType(id, u))
       }
     }
-    return I.failure(DE.notType("string | number | bigint | boolean", u))
+    return I.failure(DE.notType(id, u))
   }
 )
 

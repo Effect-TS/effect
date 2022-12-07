@@ -20,6 +20,6 @@ describe("Int", () => {
     const decoder = D.decoderFor(_.schema(S.number))
     expect(decoder.decode(0)).toEqual(D.success(0))
     expect(decoder.decode(1)).toEqual(D.success(1))
-    Util.expectFailure(decoder, 0.5, "0.5 did not satisfy is(int)")
+    Util.expectFailure(decoder, 0.5, "0.5 did not satisfy is(Int)")
   })
 })

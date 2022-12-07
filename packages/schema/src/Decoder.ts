@@ -8,8 +8,9 @@ import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
-import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
-import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
+import * as DataNever from "@fp-ts/schema/data/Never"
+import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
+import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -101,14 +102,14 @@ export const provideDecoderFor = (provider: Provider) =>
           return _of(ast.value)
         case "Tuple":
           return pipe(
-            UnknownArray.Decoder,
+            DataUnknownArray.Decoder,
             I.compose(
               _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
             )
           )
         case "Struct":
           return pipe(
-            UnknownObject.Decoder,
+            DataUnknownObject.Decoder,
             I.compose(
               _struct(
                 ast,
@@ -305,7 +306,7 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
       }
       es.push(DE.member(i, t.left))
     }
-    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
+    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType(DataNever.id, u))
   })
 
 /** @internal */

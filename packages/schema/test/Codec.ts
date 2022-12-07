@@ -38,17 +38,6 @@ describe("Codec", () => {
     Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
-  it("tuple", () => {
-    const schema = S.tuple(S.string, NumberFromStringSchema)
-    const codec = codecFor(schema)
-    expect(codec.decode(["a", "1"])).toEqual(D.success(["a", 1]))
-
-    Util.expectFailure(codec, {}, "{} did not satisfy is(ReadonlyArray<unknown>)")
-    Util.expectFailure(codec, ["a"], "/1 undefined did not satisfy is(string)")
-
-    expect(codec.encode(["b", 2])).toEqual(["b", "2"])
-  })
-
   it("union", () => {
     const schema = S.union(NumberFromStringSchema, S.string)
     const codec = codecFor(schema)
@@ -122,7 +111,7 @@ describe("Codec", () => {
       const decoder = codecFor(schema)
       expect(decoder.decode(["a", 1])).toEqual(D.success(["a", 1]))
 
-      Util.expectFailure(decoder, {}, "{} did not satisfy is(ReadonlyArray<unknown>)")
+      Util.expectFailure(decoder, {}, "{} did not satisfy is(UnknownArray)")
       Util.expectFailure(decoder, ["a"], "/1 undefined did not satisfy is(number)")
 
       Util.expectWarning(decoder, ["a", NaN], "/1 did not satisfy not(isNaN)", ["a", NaN])
@@ -144,7 +133,7 @@ describe("Codec", () => {
       Util.expectFailure(
         decoder,
         null,
-        "null did not satisfy is({ readonly [_: string]: unknown })"
+        "null did not satisfy is(UnknownObject)"
       )
       Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
       Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
@@ -176,7 +165,7 @@ describe("Codec", () => {
       expect(decoder.decode({})).toEqual(D.success({}))
       expect(decoder.decode({ a: 1 })).toEqual(D.success({ a: 1 }))
 
-      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [_: string]: unknown })")
+      Util.expectFailure(decoder, [], "[] did not satisfy is(UnknownObject)")
       Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
 
       Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
@@ -211,7 +200,7 @@ describe("Codec", () => {
       expect(decoder.decode([])).toEqual(D.success([]))
       expect(decoder.decode(["a"])).toEqual(D.success(["a"]))
 
-      Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
+      Util.expectFailure(decoder, null, "null did not satisfy is(UnknownArray)")
       Util.expectFailure(decoder, [1], "/0 1 did not satisfy is(string)")
     })
 
@@ -248,7 +237,7 @@ describe("Codec", () => {
     Util.expectFailure(
       decoder,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 did not satisfy is({ readonly [_: string]: unknown })"
+      "/as /0 /as /0 1 did not satisfy is(UnknownObject)"
     )
   })
 

@@ -42,7 +42,7 @@ describe("ReadonlySet", () => {
       "/1 did not satisfy not(isNaN)",
       new Set([1, NaN, 3])
     )
-    Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
+    Util.expectFailure(decoder, null, "null did not satisfy is(UnknownArray)")
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
   })
 

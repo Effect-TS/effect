@@ -32,11 +32,7 @@ export const Schema: S.Schema<boolean> = I.declareSchema(id, O.none, Provider)
 
 const Guard = I.makeGuard<boolean>(Schema, isBoolean)
 
-const Decoder = I.fromRefinement<boolean>(
-  Schema,
-  isBoolean,
-  (u) => DE.notType("boolean", u)
-)
+const Decoder = I.fromRefinement<boolean>(Schema, isBoolean, (u) => DE.notType(id, u))
 
 const Encoder = I.makeEncoder<unknown, boolean>(Schema, identity)
 

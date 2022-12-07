@@ -36,12 +36,12 @@ describe("Bigint", () => {
     Util.expectFailure(
       decoder,
       null,
-      "null did not satisfy is(string | number | bigint | boolean)"
+      "null did not satisfy is(bigint)"
     )
     Util.expectFailure(
       decoder,
       1.2,
-      "1.2 \"The number 1.2 cannot be converted to a BigInt because it is not an integer\""
+      "1.2 did not satisfy is(bigint)"
     )
   })
 
