@@ -80,7 +80,7 @@
     "@types/rimraf": "^3.0.2",
     "@typescript-eslint/eslint-plugin": "^5.45.1",
     "@typescript-eslint/parser": "^5.45.1",
-    "@vitest/coverage-c8": "^0.25.4",
+    "@vitest/coverage-c8": "^0.25.5",
     "ajv": "^8.11.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "benchmark": "^2.1.4",
@@ -105,7 +105,7 @@
     "typescript": "^4.9.3",
     "ultra-runner": "^3.10.5",
     "vite": "^3.2.5",
-    "vitest": "0.25.4"
+    "vitest": "0.25.5"
   },
   "pnpm": {
     "patchedDependencies": {
@@ -114,8 +114,8 @@
     }
   },
   "dependencies": {
-    "@fp-ts/core": "^0.0.9",
-    "@fp-ts/data": "^0.0.21",
+    "@fp-ts/core": "~0.0.9",
+    "@fp-ts/data": "~0.0.22",
     "fast-check": "^3.3.0"
   }
 }
