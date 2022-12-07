@@ -1,6 +1,6 @@
 ---
 title: Debug.ts
-nav_order: 1
+nav_order: 2
 parent: Modules
 ---
 
@@ -20,7 +20,8 @@ Added in v2.0.0
 - [utils](#utils)
   - [Debug](#debug)
   - [getCallTrace](#getcalltrace)
-  - [nodeSourceMapExtractor](#nodesourcemapextractor)
+  - [getCallTraceFromNewError](#getcalltracefromnewerror)
+  - [isTraceEnabled](#istraceenabled)
   - [runtimeDebug](#runtimedebug)
   - [withCallTrace](#withcalltrace)
 
@@ -48,12 +49,22 @@ export declare const getCallTrace: () => string | undefined
 
 Added in v2.0.0
 
-## nodeSourceMapExtractor
+## getCallTraceFromNewError
 
 **Signature**
 
 ```ts
-export declare const nodeSourceMapExtractor: (at: number) => string | undefined
+export declare const getCallTraceFromNewError: (at: number) => string | undefined
+```
+
+Added in v2.0.0
+
+## isTraceEnabled
+
+**Signature**
+
+```ts
+export declare const isTraceEnabled: () => boolean
 ```
 
 Added in v2.0.0

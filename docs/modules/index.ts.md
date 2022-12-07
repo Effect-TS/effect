@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 5
+nav_order: 6
 parent: Modules
 ---
 
@@ -47,6 +47,7 @@ individual dependencies.
   - [Chainable](#chainable)
   - [Chunk](#chunk)
   - [Clock](#clock)
+  - [Codec](#codec)
   - [Compactable](#compactable)
   - [Context](#context)
   - [Contravariant](#contravariant)
@@ -70,6 +71,7 @@ individual dependencies.
   - [FlatMap](#flatmap)
   - [Foldable](#foldable)
   - [Function](#function)
+  - [Gen](#gen)
   - [HKT](#hkt)
   - [HashMap](#hashmap)
   - [HashSet](#hashset)
@@ -282,6 +284,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
 - Module: "@effect/io/Clock"
+```
+
+## Codec
+
+**Signature**
+
+```ts
+export declare const Codec: typeof Codec
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/schema/modules/Codec.ts.html
+- Module: "@fp-ts/schema/Codec"
 ```
 
 ## Compactable
@@ -627,6 +644,21 @@ Added in v2.0.0
 ```md
 - Docs: https://fp-ts.github.io/data/modules/Function.ts.html
 - Module: "@fp-ts/data/Function"
+```
+
+## Gen
+
+**Signature**
+
+```ts
+export declare const Gen: typeof Gen
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/typeclass/Gen.ts.html
+- Module: "@fp-ts/data/typeclass/Gen"
 ```
 
 ## HKT
