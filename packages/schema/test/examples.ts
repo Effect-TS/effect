@@ -24,7 +24,7 @@ describe("examples", () => {
       }
       */
 
-      // decode from JSON
+      // decode from `unknown`
       expect(Person.decode({ name: "name", age: 18 })).toEqual(
         C.success({ name: "name", age: 18 })
       )
@@ -32,8 +32,18 @@ describe("examples", () => {
         C.failure(DE.notType(Symbol.for("@fp-ts/schema/data/UnknownObject"), null))
       )
 
-      // encode to JSON
+      // parse from JSON string
+      expect(() => Person.parseOrThrow("{}")).toThrow(
+        new Error(
+          "Cannot parse object, errors: {\"_tag\":\"Key\",\"key\":\"name\",\"errors\":[{\"_tag\":\"NotType\"}]}"
+        )
+      )
+
+      // encode to `unknown`
       expect(Person.encode({ name: "name", age: 18 })).toEqual({ name: "name", age: 18 })
+
+      // encode to JSON string
+      expect(Person.stringify({ name: "name", age: 18 })).toEqual("{\"name\":\"name\",\"age\":18}")
 
       // guard
       expect(Person.is({ name: "name", age: 18 })).toEqual(true)

@@ -192,7 +192,7 @@ export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const withRest = <R>(rest: Schema<R>) =>
+export const restElement = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
       const a = self.ast
@@ -210,7 +210,7 @@ export const withRest = <R>(rest: Schema<R>) =>
         )
       ))
     }
-    throw new Error("cannot `withRest` non-Tuple schemas")
+    throw new Error("cannot call `restElement` on non-`Tuple` schemas")
   }
 
 /**
@@ -223,7 +223,7 @@ export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
  */
 export const nonEmptyArray = <A>(
   item: Schema<A>
-): Schema<readonly [A, ...Array<A>]> => make(AST.tuple([item.ast], O.some(item.ast), true))
+): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), restElement(item))
 
 /**
  * @since 1.0.0
