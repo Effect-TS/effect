@@ -1,5 +1,14 @@
 # @effect/printer-ansi
 
+## 0.1.11
+
+### Patch Changes
+
+- [#373](https://github.com/Effect-TS/printer/pull/373) [`d54cd24`](https://github.com/Effect-TS/printer/commit/d54cd241f24c1995c788dfab4aca809df9b58dc5) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Improve semver ranges
+
+- Updated dependencies [[`d54cd24`](https://github.com/Effect-TS/printer/commit/d54cd241f24c1995c788dfab4aca809df9b58dc5)]:
+  - @effect/printer@0.1.11
+
 ## 0.1.10
 
 ### Patch Changes
