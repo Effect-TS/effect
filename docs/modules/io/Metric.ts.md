@@ -1,6 +1,6 @@
 ---
-title: Metric.ts
-nav_order: 8
+title: io/Metric.ts
+nav_order: 10
 parent: Modules
 ---
 

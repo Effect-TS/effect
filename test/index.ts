@@ -1,8 +1,11 @@
-import * as _ from "effect"
+import { Effect } from "effect/io"
 
 describe("effect", () => {
-  it("includes re-export", () => {
-    expect(_.Effect)
-    expect(_.pipe)
-  })
+  it("basic usage", () =>
+    Effect.unsafeRunPromise(Effect.gen(function*($) {
+      const a = yield* $(Effect.succeed(2))
+      const b = yield* $(Effect.succeed(3))
+      const c = yield* $(Effect.sync(() => a + b))
+      expect(c).toBe(5)
+    })))
 })

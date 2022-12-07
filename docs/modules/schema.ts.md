@@ -1,16 +1,15 @@
 ---
-title: Codec.ts
-nav_order: 1
+title: schema.ts
+nav_order: 13
 parent: Modules
 ---
 
-## Codec overview
+## schema overview
 
 Added in v2.0.0
 
 ```md
-- Docs: https://fp-ts.github.io/schema/modules/Codec.ts.html
-- Module: "@fp-ts/schema/Codec"
+- Docs: https://fp-ts.github.io/schema
 ```
 
 ---
@@ -20,6 +19,7 @@ Added in v2.0.0
 - [utils](#utils)
   - [AST](#ast)
   - [Arbitrary](#arbitrary)
+  - [Codec](#codec)
   - [DecodeError](#decodeerror)
   - [Decoder](#decoder)
   - [Encoder](#encoder)
@@ -48,6 +48,16 @@ Added in v2.0.0
 
 ```ts
 export declare const Arbitrary: typeof Arbitrary
+```
+
+Added in v2.0.0
+
+## Codec
+
+**Signature**
+
+```ts
+export declare const Codec: typeof Codec
 ```
 
 Added in v2.0.0

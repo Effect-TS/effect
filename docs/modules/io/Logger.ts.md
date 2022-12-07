@@ -1,6 +1,6 @@
 ---
-title: Logger.ts
-nav_order: 7
+title: io/Logger.ts
+nav_order: 9
 parent: Modules
 ---
 
