@@ -278,25 +278,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
 /**
  * @since 1.0.0
  */
-export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => {
-  if (AST.isStruct(self.ast)) {
-    return make(
-      AST.struct(
-        self.ast.fields.map((f) => AST.field(f.key, f.value, true, f.readonly)),
-        self.ast.indexSignatures
-      )
-    )
-  } else if (AST.isTuple(self.ast)) {
-    return make(
-      AST.tuple(
-        self.ast.components,
-        pipe(self.ast.restElement, O.map(AST.orUndefined)),
-        self.ast.readonly
-      )
-    )
-  }
-  throw new Error("`partial` is not supported on this schema")
-}
+export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast))
 
 /**
  * @since 1.0.0

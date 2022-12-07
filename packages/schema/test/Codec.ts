@@ -268,14 +268,23 @@ describe("Codec", () => {
 
   describe("partial", () => {
     it("struct", () => {
-      const codec = pipe(_.struct({ a: S.number }), _.partial)
+      const codec = pipe(_.struct({ a: _.number }), _.partial)
       expect(codec.is({ a: 1 })).toEqual(true)
       expect(codec.is({ a: undefined })).toEqual(true)
       expect(codec.is({})).toEqual(true)
     })
 
     it("array", () => {
-      const codec = pipe(_.array(S.number), _.partial)
+      const codec = pipe(_.array(_.number), _.partial)
+      expect(codec.is([])).toEqual(true)
+      expect(codec.is([1])).toEqual(true)
+      expect(codec.is([undefined])).toEqual(true)
+      expect(codec.is(["a"])).toEqual(false)
+    })
+
+    it("union", () => {
+      const codec = pipe(_.union(_.string, _.array(_.number)), _.partial)
+      expect(codec.is("a")).toEqual(true)
       expect(codec.is([])).toEqual(true)
       expect(codec.is([1])).toEqual(true)
       expect(codec.is([undefined])).toEqual(true)

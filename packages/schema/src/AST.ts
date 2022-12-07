@@ -200,6 +200,11 @@ export const union = (members: ReadonlyArray<AST>): Union => {
 /**
  * @since 1.0.0
  */
+export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
+
+/**
+ * @since 1.0.0
+ */
 export const orUndefined = (ast: AST): AST => union([of(undefined), ast])
 
 /**
@@ -262,4 +267,25 @@ export const getFields = (
     default:
       return []
   }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const partial = (ast: AST): AST => {
+  if (isStruct(ast)) {
+    return struct(
+      ast.fields.map((f) => field(f.key, f.value, true, f.readonly)),
+      ast.indexSignatures
+    )
+  } else if (isTuple(ast)) {
+    return tuple(
+      ast.components,
+      pipe(ast.restElement, O.map(orUndefined)),
+      ast.readonly
+    )
+  } else if (isUnion(ast)) {
+    return union(ast.members.map(partial))
+  }
+  return ast
 }
