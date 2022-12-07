@@ -90,7 +90,7 @@ export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
         ...schema.ast.nodes.map(make)
       )
     }
-    throw new Error("cannot `clone` non-Declaration schemas")
+    throw new Error("`clone` is not supported on this schema")
   }
 
 /**
@@ -210,7 +210,7 @@ export const restElement = <R>(rest: Schema<R>) =>
         )
       ))
     }
-    throw new Error("cannot call `restElement` on non-`Tuple` schemas")
+    throw new Error("`restElement` is not supported on this schema")
   }
 
 /**
@@ -286,8 +286,16 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => {
         self.ast.indexSignatures
       )
     )
+  } else if (AST.isTuple(self.ast)) {
+    return make(
+      AST.tuple(
+        self.ast.components,
+        pipe(self.ast.restElement, O.map(AST.orUndefined)),
+        self.ast.readonly
+      )
+    )
   }
-  throw new Error("cannot `partial` non-Struct schemas")
+  throw new Error("`partial` is not supported on this schema")
 }
 
 /**
@@ -316,7 +324,7 @@ export const extend = <B>(
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
       return make(AST.StructSemigroup.combine(that.ast)(self.ast))
     }
-    throw new Error("cannot `extend` non-Struct schemas")
+    throw new Error("`extend` is not supported on this schema")
   }
 
 /**

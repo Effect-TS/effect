@@ -200,6 +200,11 @@ export const union = (members: ReadonlyArray<AST>): Union => {
 /**
  * @since 1.0.0
  */
+export const orUndefined = (ast: AST): AST => union([of(undefined), ast])
+
+/**
+ * @since 1.0.0
+ */
 export interface Lazy {
   readonly _tag: "Lazy"
   readonly f: () => AST
