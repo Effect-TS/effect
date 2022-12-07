@@ -24,8 +24,10 @@ describe("examples", () => {
       }
       */
 
+      const unknown: unknown = { name: "name", age: 18 }
+
       // decode from `unknown`
-      expect(Person.decode({ name: "name", age: 18 })).toEqual(
+      expect(Person.decode(unknown)).toEqual(
         C.success({ name: "name", age: 18 })
       )
       expect(Person.decode(null)).toEqual(
@@ -33,9 +35,15 @@ describe("examples", () => {
       )
 
       // parse from JSON string
+      expect(() => Person.parseOrThrow("malformed")).toThrow(
+        new Error("Cannot parse JSON from: malformed")
+      )
       expect(() => Person.parseOrThrow("{}")).toThrow(
+        new Error("Cannot decode JSON")
+      )
+      expect(() => Person.parseOrThrow("{}", (errors) => JSON.stringify(errors))).toThrow(
         new Error(
-          "Cannot parse object, errors: {\"_tag\":\"Key\",\"key\":\"name\",\"errors\":[{\"_tag\":\"NotType\"}]}"
+          "Cannot decode JSON, errors: [{\"_tag\":\"Key\",\"key\":\"name\",\"errors\":[{\"_tag\":\"NotType\"}]}]"
         )
       )
 

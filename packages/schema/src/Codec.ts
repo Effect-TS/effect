@@ -4,9 +4,10 @@
 
 import type { Chunk } from "@fp-ts/data/Chunk"
 import type { Left, Right } from "@fp-ts/data/Either"
+import * as E from "@fp-ts/data/Either"
 import { identity, pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
-import { parse as parseJSON, stringify as stringifyJSON } from "@fp-ts/data/Json"
+import { parse, stringify } from "@fp-ts/data/Json"
 import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
@@ -36,7 +37,10 @@ import * as S from "@fp-ts/schema/Schema"
 export interface Codec<in out A>
   extends Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A>, Arbitrary<A>, Pretty<A>
 {
-  readonly parseOrThrow: (text: string) => A
+  readonly parseOrThrow: (
+    text: string,
+    format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
+  ) => A
   readonly stringify: (value: A) => string
   readonly of: (value: A) => A
 }
@@ -68,25 +72,28 @@ export const make = <A>(
     is,
     arbitrary,
     pretty,
-    parseOrThrow: (text: string) => {
-      const json = parseJSON(text)
-      if (json._tag === "Left") {
+    parseOrThrow: (
+      text: string,
+      format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
+    ) => {
+      const json = parse(text)
+      if (E.isLeft(json)) {
         throw new Error(`Cannot parse JSON from: ${text}`)
       }
       const result = decode(json.right)
-      if (result._tag === "Right") {
+      if (!I.isFailure(result)) {
         return result.right
       }
-      throw new Error(
-        `Cannot parse object, errors: ${result.left.map((_) => JSON.stringify(_)).join(", ")}`
-      )
+      const message = `Cannot decode JSON` +
+        (format ? `, errors: ${format(result.left)}` : ``)
+      throw new Error(message)
     },
     stringify: (value: A) => {
-      const str = stringifyJSON(encode(value))
-      if (str._tag === "Left") {
-        throw new Error(`Cannot encode JSON, error: ${String(str.left)}`)
+      const json = stringify(encode(value))
+      if (E.isLeft(json)) {
+        throw new Error(`Cannot encode JSON, error: ${String(json.left)}`)
       }
-      return str.right
+      return json.right
     },
     of: identity
   }) as any
