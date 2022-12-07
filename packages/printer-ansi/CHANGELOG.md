@@ -1,5 +1,14 @@
 # @effect/printer-ansi
 
+## 0.1.10
+
+### Patch Changes
+
+- [#371](https://github.com/Effect-TS/printer/pull/371) [`a1e0b95`](https://github.com/Effect-TS/printer/commit/a1e0b95110b59307f7de03b829833ae0b24f9b9c) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update @fp-ts/data
+
+- Updated dependencies [[`a1e0b95`](https://github.com/Effect-TS/printer/commit/a1e0b95110b59307f7de03b829833ae0b24f9b9c)]:
+  - @effect/printer@0.1.10
+
 ## 0.1.9
 
 ### Patch Changes
