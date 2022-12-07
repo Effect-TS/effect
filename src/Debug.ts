@@ -6,7 +6,14 @@
  * - Module: "@effect/io/Debug"
  * ```
  */
-import { Debug, getCallTrace, nodeSourceMapExtractor, runtimeDebug, withCallTrace } from "@effect/io/Debug"
+import {
+  Debug,
+  getCallTrace,
+  getCallTraceFromNewError,
+  isTraceEnabled,
+  runtimeDebug,
+  withCallTrace
+} from "@effect/io/Debug"
 
 export {
   /**
@@ -20,7 +27,11 @@ export {
   /**
    * @since 2.0.0
    */
-  nodeSourceMapExtractor,
+  getCallTraceFromNewError,
+  /**
+   * @since 2.0.0
+   */
+  isTraceEnabled,
   /**
    * @since 2.0.0
    */
