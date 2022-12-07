@@ -64,8 +64,8 @@ export const providePrettyFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.stringIndexSignature, O.map((is) => go(is.value))),
-            pipe(ast.symbolIndexSignature, O.map((is) => go(is.value)))
+            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
+            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
           )
         case "Union": {
           return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))

@@ -260,8 +260,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> => {
     return make(AST.struct(
       AST.getFields(self.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-      O.none,
-      O.none
+      AST.indexSignatures(O.none, O.none, O.none)
     ))
   }
 
@@ -272,8 +271,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
     return make(AST.struct(
       AST.getFields(self.ast).filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-      O.none,
-      O.none
+      AST.indexSignatures(O.none, O.none, O.none)
     ))
   }
 
@@ -285,8 +283,7 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => {
     return make(
       AST.struct(
         self.ast.fields.map((f) => AST.field(f.key, f.value, true, f.readonly)),
-        self.ast.stringIndexSignature,
-        self.ast.symbolIndexSignature
+        self.ast.indexSignatures
       )
     )
   }
@@ -297,13 +294,17 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => {
  * @since 1.0.0
  */
 export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
-  make(AST.struct([], O.some(AST.indexSignature(value.ast, true)), O.none))
+  make(
+    AST.struct([], AST.indexSignatures(O.some(AST.indexSignature(value.ast, true)), O.none, O.none))
+  )
 
 /**
  * @since 1.0.0
  */
 export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
-  make(AST.struct([], O.none, O.some(AST.indexSignature(value.ast, true))))
+  make(
+    AST.struct([], AST.indexSignatures(O.none, O.none, O.some(AST.indexSignature(value.ast, true))))
+  )
 
 /**
  * @since 1.0.0
@@ -313,19 +314,7 @@ export const extend = <B>(
 ) =>
   <A>(self: Schema<A>): Schema<A & B> => {
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
-      const a = AST.getStringIndexSignature(self.ast)
-      const b = AST.getSymbolIndexSignature(self.ast)
-      const c = AST.getStringIndexSignature(that.ast)
-      const d = AST.getSymbolIndexSignature(that.ast)
-      if ((O.isSome(a) && O.isSome(b)) || O.isSome(c) && O.isSome(d)) {
-        throw new Error("cannot `extend` double index signatures")
-      }
-      const struct = AST.struct(
-        AST.getFields(self.ast).concat(AST.getFields(that.ast)),
-        pipe(a, O.orElse(c)),
-        pipe(b, O.orElse(d))
-      )
-      return make(struct)
+      return make(AST.StructSemigroup.combine(that.ast)(self.ast))
     }
     throw new Error("cannot `extend` non-Struct schemas")
   }

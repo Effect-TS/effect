@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 
+import * as Monoid from "@fp-ts/core/typeclass/Monoid"
+import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
@@ -38,13 +40,7 @@ export const declare = (
   config: Option<unknown>,
   provider: Provider,
   nodes: ReadonlyArray<AST>
-): Declaration => ({
-  _tag: "Declaration",
-  id,
-  config,
-  provider,
-  nodes
-})
+): Declaration => ({ _tag: "Declaration", id, config, provider, nodes })
 
 /**
  * @since 1.0.0
@@ -62,10 +58,7 @@ export interface Of {
 /**
  * @since 1.0.0
  */
-export const of = (value: unknown): Of => ({
-  _tag: "Of",
-  value
-})
+export const of = (value: unknown): Of => ({ _tag: "Of", value })
 
 /**
  * @since 1.0.0
@@ -101,10 +94,25 @@ export interface IndexSignature {
 export const indexSignature = (
   value: AST,
   readonly: boolean
-): IndexSignature => ({
-  value,
-  readonly
-})
+): IndexSignature => ({ value, readonly })
+
+/**
+ * @since 1.0.0
+ */
+export interface IndexSignatures {
+  "string": Option<IndexSignature>
+  "number": Option<IndexSignature>
+  "symbol": Option<IndexSignature>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const indexSignatures = (
+  string: Option<IndexSignature>,
+  number: Option<IndexSignature>,
+  symbol: Option<IndexSignature>
+): IndexSignatures => ({ string, number, symbol })
 
 /**
  * @since 1.0.0
@@ -112,8 +120,7 @@ export const indexSignature = (
 export interface Struct {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
-  readonly stringIndexSignature: Option<IndexSignature>
-  readonly symbolIndexSignature: Option<IndexSignature>
+  readonly indexSignatures: IndexSignatures
 }
 
 /**
@@ -121,19 +128,34 @@ export interface Struct {
  */
 export const struct = (
   fields: ReadonlyArray<Field>,
-  stringIndexSignature: Option<IndexSignature>,
-  symbolIndexSignature: Option<IndexSignature>
-): Struct => ({
-  _tag: "Struct",
-  fields,
-  stringIndexSignature,
-  symbolIndexSignature
-})
+  indexSignatures: IndexSignatures
+): Struct => ({ _tag: "Struct", fields, indexSignatures })
 
 /**
  * @since 1.0.0
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
+
+/**
+ * @since 1.0.0
+ */
+export const IndexSignaturesMonoid: Monoid.Monoid<IndexSignatures> = Monoid.struct({
+  string: O.getMonoid(Semigroup.last()),
+  number: O.getMonoid(Semigroup.last()),
+  symbol: O.getMonoid(Semigroup.last())
+})
+
+/**
+ * @since 1.0.0
+ */
+export const StructSemigroup: Semigroup.Semigroup<Struct> = Semigroup.fromCombine(
+  (that) =>
+    (self) =>
+      struct(
+        self.fields.concat(that.fields), // TODO: handle duplicated keys
+        IndexSignaturesMonoid.combine(that.indexSignatures)(self.indexSignatures)
+      )
+)
 
 /**
  * @since 1.0.0
@@ -152,12 +174,7 @@ export const tuple = (
   components: ReadonlyArray<AST>,
   restElement: Option<AST>,
   readonly: boolean
-): Tuple => ({
-  _tag: "Tuple",
-  components,
-  restElement,
-  readonly
-})
+): Tuple => ({ _tag: "Tuple", components, restElement, readonly })
 
 /**
  * @since 1.0.0
@@ -175,10 +192,10 @@ export interface Union {
 /**
  * @since 1.0.0
  */
-export const union = (members: ReadonlyArray<AST>): Union => ({
-  _tag: "Union",
-  members
-})
+export const union = (members: ReadonlyArray<AST>): Union => {
+  // TODO: handle union flattening
+  return { _tag: "Union", members }
+}
 
 /**
  * @since 1.0.0
@@ -191,35 +208,9 @@ export interface Lazy {
 /**
  * @since 1.0.0
  */
-export const lazy = (f: () => AST): Lazy => ({
-  _tag: "Lazy",
-  f
-})
+export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 
-/**
- * @since 1.0.0
- */
-export const getStringIndexSignature = (
-  ast: AST
-): Option<IndexSignature> => {
-  if (isStruct(ast)) {
-    return ast.stringIndexSignature
-  }
-  return O.none
-}
-
-/**
- * @since 1.0.0
- */
-export const getSymbolIndexSignature = (
-  ast: AST
-): Option<IndexSignature> => {
-  if (isStruct(ast)) {
-    return ast.symbolIndexSignature
-  }
-  return O.none
-}
-
+// TODO: handle index signatures in unions
 /**
  * @since 1.0.0
  */
@@ -232,7 +223,6 @@ export const getFields = (
     case "Struct":
       return ast.fields
     case "Union": {
-      // TODO: handle indexSignatures
       const memberFields = ast.members.map(getFields)
       if (isNonEmpty(memberFields)) {
         const candidates = []

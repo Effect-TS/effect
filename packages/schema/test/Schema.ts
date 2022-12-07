@@ -51,7 +51,7 @@ describe("Schema", () => {
           const i = fields.findIndex((field) => field.key === from)
           fields[i] = ast.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
           return _.make(
-            ast.struct(fields, schema.ast.stringIndexSignature, schema.ast.symbolIndexSignature)
+            ast.struct(fields, schema.ast.indexSignatures)
           )
         }
         throw new Error("cannot rename")

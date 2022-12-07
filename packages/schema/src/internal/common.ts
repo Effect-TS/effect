@@ -254,8 +254,7 @@ export const struct: {
         .concat(
           getPropertyKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
         ),
-      O.none,
-      O.none
+      AST.indexSignatures(O.none, O.none, O.none)
     )
   )
 }
