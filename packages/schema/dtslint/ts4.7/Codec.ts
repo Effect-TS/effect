@@ -76,7 +76,7 @@ C.union(C.string, C.number);
 C.tuple(C.string, C.number);
 
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(C.tuple(C.string, C.number), C.withRest(C.boolean))
+pipe(C.tuple(C.string, C.number), C.restElement(C.boolean))
 
 // $ExpectType Codec<readonly number[]>
 C.array(C.number);

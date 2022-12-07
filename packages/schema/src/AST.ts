@@ -160,9 +160,25 @@ export const StructSemigroup: Semigroup.Semigroup<Struct> = Semigroup.fromCombin
 /**
  * @since 1.0.0
  */
+export interface Component {
+  readonly value: AST
+  readonly optional: boolean
+}
+
+/**
+ * @since 1.0.0
+ */
+export const component = (value: AST, optional: boolean): Component => ({
+  value,
+  optional
+})
+
+/**
+ * @since 1.0.0
+ */
 export interface Tuple {
   readonly _tag: "Tuple"
-  readonly components: ReadonlyArray<AST>
+  readonly components: ReadonlyArray<Component>
   readonly restElement: Option<AST>
   readonly readonly: boolean
 }
@@ -171,7 +187,7 @@ export interface Tuple {
  * @since 1.0.0
  */
 export const tuple = (
-  components: ReadonlyArray<AST>,
+  components: ReadonlyArray<Component>,
   restElement: Option<AST>,
   readonly: boolean
 ): Tuple => ({ _tag: "Tuple", components, restElement, readonly })
@@ -201,11 +217,6 @@ export const union = (members: ReadonlyArray<AST>): Union => {
  * @since 1.0.0
  */
 export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
-
-/**
- * @since 1.0.0
- */
-export const orUndefined = (ast: AST): AST => union([of(undefined), ast])
 
 /**
  * @since 1.0.0
@@ -269,6 +280,8 @@ export const getFields = (
   }
 }
 
+const orUndefined = (ast: AST): AST => union([of(undefined), ast])
+
 /**
  * @since 1.0.0
  */
@@ -280,7 +293,7 @@ export const partial = (ast: AST): AST => {
     )
   } else if (isTuple(ast)) {
     return tuple(
-      ast.components,
+      ast.components.map((c) => component(c.value, true)),
       pipe(ast.restElement, O.map(orUndefined)),
       ast.readonly
     )

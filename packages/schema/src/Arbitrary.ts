@@ -54,7 +54,11 @@ export const provideArbitraryFor = (provider: Provider) =>
         case "Of":
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.value))
         case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+          return _tuple(
+            ast,
+            ast.components.map((c) => go(c.value)),
+            pipe(ast.restElement, O.map(go))
+          )
         case "Union": {
           const members = ast.members.map(go)
           return make(
@@ -159,7 +163,14 @@ const _tuple = (
       // ---------------------------------------------
       // handle components
       // ---------------------------------------------
-      let output = fc.tuple(...components.map((c) => c.arbitrary(fc)))
+      let output = fc.tuple(...components.map((c, i) => {
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        return ast.components[i].optional ?
+          fc.oneof(fc.constant(undefined), c.arbitrary(fc)) :
+          c.arbitrary(fc)
+      }))
 
       // ---------------------------------------------
       // handle rest element

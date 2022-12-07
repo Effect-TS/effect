@@ -54,7 +54,11 @@ export const provideGuardFor = (provider: Provider) =>
         case "Of":
           return make(I.makeSchema(ast), (u): u is any => u === ast.value)
         case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+          return _tuple(
+            ast,
+            ast.components.map((c) => go(c.value)),
+            pipe(ast.restElement, O.map(go))
+          )
         case "Union": {
           const members = ast.members.map(go)
           return make(
@@ -174,6 +178,12 @@ const _tuple = (
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        if (ast.components[i].optional && input[i] === undefined) {
+          continue
+        }
         if (!components[i].is(input[i])) {
           return false
         }

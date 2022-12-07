@@ -187,7 +187,7 @@ export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
 export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ): Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
-  make(AST.tuple(components.map((c) => c.ast), O.none, true))
+  make(AST.tuple(components.map((c) => AST.component(c.ast, false)), O.none, true))
 
 /**
  * @since 1.0.0

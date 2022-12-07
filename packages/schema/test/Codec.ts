@@ -265,30 +265,4 @@ describe("Codec", () => {
     Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
     Util.expectFailure(decoder, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
   })
-
-  describe("partial", () => {
-    it("struct", () => {
-      const codec = pipe(_.struct({ a: _.number }), _.partial)
-      expect(codec.is({ a: 1 })).toEqual(true)
-      expect(codec.is({ a: undefined })).toEqual(true)
-      expect(codec.is({})).toEqual(true)
-    })
-
-    it("array", () => {
-      const codec = pipe(_.array(_.number), _.partial)
-      expect(codec.is([])).toEqual(true)
-      expect(codec.is([1])).toEqual(true)
-      expect(codec.is([undefined])).toEqual(true)
-      expect(codec.is(["a"])).toEqual(false)
-    })
-
-    it("union", () => {
-      const codec = pipe(_.union(_.string, _.array(_.number)), _.partial)
-      expect(codec.is("a")).toEqual(true)
-      expect(codec.is([])).toEqual(true)
-      expect(codec.is([1])).toEqual(true)
-      expect(codec.is([undefined])).toEqual(true)
-      expect(codec.is(["a"])).toEqual(false)
-    })
-  })
 })

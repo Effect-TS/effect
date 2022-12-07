@@ -59,7 +59,11 @@ export const providePrettyFor = (provider: Provider) =>
             return JSON.stringify(input)
           })
         case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+          return _tuple(
+            ast,
+            ast.components.map((c) => go(c.value)),
+            pipe(ast.restElement, O.map(go))
+          )
         case "Struct":
           return _struct(
             ast,
@@ -161,8 +165,17 @@ const _tuple = (
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
-        const pretty = components[i]
-        output[i] = pretty.pretty(input[i])
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        if (ast.components[i].optional && input[i] === undefined) {
+          if (i < input.length) {
+            output[i] = "undefined"
+          }
+        } else {
+          const pretty = components[i]
+          output[i] = pretty.pretty(input[i])
+        }
       }
       // ---------------------------------------------
       // handle rest element
@@ -174,7 +187,7 @@ const _tuple = (
         }
       }
 
-      return "[" + output.join(",") + "]"
+      return "[" + output.join(", ") + "]"
     }
   )
 

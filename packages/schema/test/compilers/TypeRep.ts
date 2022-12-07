@@ -64,7 +64,7 @@ export const provideTypeRepFor = (
         case "Of":
           return make(ast, JSON.stringify(ast.value))
         case "Tuple": {
-          const components = ast.components.map(go)
+          const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(
             ast.restElement,
             O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),

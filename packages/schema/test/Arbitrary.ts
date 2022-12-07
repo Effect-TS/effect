@@ -160,4 +160,34 @@ describe("Arbitrary", () => {
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
+
+  describe("partial", () => {
+    it("struct", () => {
+      const schema = pipe(S.struct({ a: S.number }), S.partial)
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("tuple", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.partial)
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("array", () => {
+      const schema = pipe(S.array(S.number), S.partial)
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+
+    it("union", () => {
+      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
+      const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
+      const guard = G.guardFor(schema)
+      expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
+    })
+  })
 })

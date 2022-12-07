@@ -435,4 +435,41 @@ describe("Guard", () => {
     expect(guard.is({})).toEqual(false)
     expect(guard.is({ a: "a" })).toEqual(false)
   })
+
+  describe("partial", () => {
+    it("struct", () => {
+      const schema = pipe(S.struct({ a: S.number }), S.partial)
+      const guard = guardFor(schema)
+      expect(guard.is({ a: 1 })).toEqual(true)
+      expect(guard.is({ a: undefined })).toEqual(true)
+      expect(guard.is({})).toEqual(true)
+    })
+
+    it("tuple", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.partial)
+      const guard = guardFor(schema)
+      expect(guard.is([])).toEqual(true)
+      expect(guard.is(["a"])).toEqual(true)
+      expect(guard.is(["a", 1])).toEqual(true)
+    })
+
+    it("array", () => {
+      const schema = pipe(S.array(S.number), S.partial)
+      const guard = guardFor(schema)
+      expect(guard.is([])).toEqual(true)
+      expect(guard.is([1])).toEqual(true)
+      expect(guard.is([undefined])).toEqual(true)
+      expect(guard.is(["a"])).toEqual(false)
+    })
+
+    it("union", () => {
+      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
+      const guard = guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+      expect(guard.is([])).toEqual(true)
+      expect(guard.is([1])).toEqual(true)
+      expect(guard.is([undefined])).toEqual(true)
+      expect(guard.is(["a"])).toEqual(false)
+    })
+  })
 })

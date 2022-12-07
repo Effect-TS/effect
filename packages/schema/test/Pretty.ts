@@ -114,22 +114,22 @@ describe("Pretty", () => {
       const schema = S.tuple(S.string, S.number)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty(["a", 1])).toEqual(
-        "[\"a\",1]"
+        "[\"a\", 1]"
       )
     })
 
     it("rest element", () => {
       const schema = pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
       const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(["a", 1])).toEqual("[\"a\",1]")
-      expect(pretty.pretty(["a", 1, true])).toEqual("[\"a\",1,true]")
+      expect(pretty.pretty(["a", 1])).toEqual("[\"a\", 1]")
+      expect(pretty.pretty(["a", 1, true])).toEqual("[\"a\", 1, true]")
     })
 
     it("array", () => {
       const schema = S.array(S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty(["a", "b"])).toEqual(
-        "[\"a\",\"b\"]"
+        "[\"a\", \"b\"]"
       )
     })
   })
@@ -160,5 +160,42 @@ describe("Pretty", () => {
     expect(pretty.pretty({ a: "a", as: new Set() })).toEqual(
       "{ \"a\": \"a\", \"as\": new Set([]) }"
     )
+  })
+
+  describe("partial", () => {
+    it("struct", () => {
+      const schema = pipe(S.struct({ a: S.number }), S.partial)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty({})).toEqual("{}")
+      expect(pretty.pretty({ a: undefined })).toEqual("{ \"a\": undefined }")
+      expect(pretty.pretty({ a: 1 })).toEqual("{ \"a\": 1 }")
+    })
+
+    it("tuple", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.partial)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual("[]")
+      expect(pretty.pretty([undefined])).toEqual("[undefined]")
+      expect(pretty.pretty(["a"])).toEqual("[\"a\"]")
+      expect(pretty.pretty(["a", undefined])).toEqual("[\"a\", undefined]")
+    })
+
+    it("array", () => {
+      const schema = pipe(S.array(S.number), S.partial)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual("[]")
+      expect(pretty.pretty([1])).toEqual("[1]")
+      expect(pretty.pretty([1])).toEqual("[1]")
+      expect(pretty.pretty([undefined])).toEqual("[undefined]")
+    })
+
+    it("union", () => {
+      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty("a")).toEqual("\"a\"")
+      expect(pretty.pretty([])).toEqual("[]")
+      expect(pretty.pretty([1])).toEqual("[1]")
+      expect(pretty.pretty([undefined])).toEqual("[undefined]")
+    })
   })
 })

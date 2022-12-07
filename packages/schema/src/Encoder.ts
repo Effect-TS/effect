@@ -56,7 +56,11 @@ export const provideEncoderFor = (provider: Provider) =>
         case "Of":
           return _of(ast.value)
         case "Tuple":
-          return _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+          return _tuple(
+            ast,
+            ast.components.map((c) => go(c.value)),
+            pipe(ast.restElement, O.map(go))
+          )
         case "Struct":
           return _struct(
             ast,
@@ -98,27 +102,36 @@ export const _tuple = (
 ): Encoder<any, any> =>
   make(
     I.makeSchema(ast),
-    (us: ReadonlyArray<unknown>) => {
-      const out: Array<any> = []
+    (input: ReadonlyArray<unknown>) => {
+      const output: Array<any> = []
       let i = 0
       // ---------------------------------------------
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
-        const encoder = components[i]
-        out[i] = encoder.encode(us[i])
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        if (ast.components[i].optional && input[i] === undefined) {
+          if (i < input.length) {
+            output[i] = undefined
+          }
+        } else {
+          const encoder = components[i]
+          output[i] = encoder.encode(input[i])
+        }
       }
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
       if (O.isSome(oRestElement)) {
         const encoder = oRestElement.value
-        for (; i < us.length; i++) {
-          out[i] = encoder.encode(us[i])
+        for (; i < input.length; i++) {
+          output[i] = encoder.encode(input[i])
         }
       }
 
-      return out
+      return output
     }
   )
 

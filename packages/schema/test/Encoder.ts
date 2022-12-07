@@ -83,4 +83,39 @@ describe("Encoder", () => {
     expect(encoder.encode("a")).toEqual("a")
     expect(encoder.encode(1)).toEqual("1")
   })
+
+  describe("partial", () => {
+    it("struct", () => {
+      const schema = pipe(S.struct({ a: S.number }), S.partial)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
+      expect(encoder.encode({ a: undefined })).toEqual({ a: undefined })
+      expect(encoder.encode({})).toEqual({})
+    })
+
+    it("tuple", () => {
+      const schema = pipe(S.tuple(S.string, S.number), S.partial)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode([])).toEqual([])
+      expect(encoder.encode(["a"])).toEqual(["a"])
+      expect(encoder.encode(["a", 1])).toEqual(["a", 1])
+    })
+
+    it("array", () => {
+      const schema = pipe(S.array(S.number), S.partial)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode([])).toEqual([])
+      expect(encoder.encode([1])).toEqual([1])
+      expect(encoder.encode([undefined])).toEqual([undefined])
+    })
+
+    it("union", () => {
+      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode("a")).toEqual("a")
+      expect(encoder.encode([])).toEqual([])
+      expect(encoder.encode([1])).toEqual([1])
+      expect(encoder.encode([undefined])).toEqual([undefined])
+    })
+  })
 })

@@ -35,14 +35,14 @@ pipe(S.struct({ a: S.string,  b: S.number }), S.pick('a'))
 pipe(S.struct({ a: S.string,  b: S.number }), S.omit('a'))
 
 //
-// withRest
+// restElement
 //
 
 // $ExpectType Schema<readonly [string, number]>
 pipe(S.tuple(S.string, S.number))
 
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(S.tuple(S.string, S.number), S.withRest(S.boolean))
+pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
 
 // $ExpectType Schema<readonly [string, number, ...(number | boolean)[]]>
-pipe(S.tuple(S.string, S.number), S.withRest(S.boolean), S.withRest(S.number))
+pipe(S.tuple(S.string, S.number), S.restElement(S.boolean), S.restElement(S.number))

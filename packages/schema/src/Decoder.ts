@@ -104,7 +104,11 @@ export const provideDecoderFor = (provider: Provider) =>
           return pipe(
             DataUnknownArray.Decoder,
             I.compose(
-              _tuple(ast, ast.components.map(go), pipe(ast.restElement, O.map(go)))
+              _tuple(
+                ast,
+                ast.components.map((c) => go(c.value)),
+                pipe(ast.restElement, O.map(go))
+              )
             )
           )
         case "Struct":
@@ -154,42 +158,48 @@ export const _tuple = (
 ): Decoder<any, any> =>
   make(
     I.makeSchema(ast),
-    (us: ReadonlyArray<unknown>) => {
-      const out: Array<any> = []
+    (input: ReadonlyArray<unknown>) => {
+      const output: Array<any> = []
       const es: Array<DE.DecodeError> = []
       let i = 0
       // ---------------------------------------------
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        if (ast.components[i].optional && input[i] === undefined) {
+          continue
+        }
         const decoder = components[i]
-        const t = decoder.decode(us[i])
+        const t = decoder.decode(input[i])
         if (isFailure(t)) {
           return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
         } else if (isWarning(t)) {
           es.push(DE.index(i, t.left))
         }
-        out[i] = t.right
+        output[i] = t.right
       }
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
       if (O.isSome(oRestElement)) {
         const decoder = oRestElement.value
-        for (; i < us.length; i++) {
-          const t = decoder.decode(us[i])
+        for (; i < input.length; i++) {
+          const t = decoder.decode(input[i])
           if (isFailure(t)) {
             return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
           } else if (isWarning(t)) {
             es.push(DE.index(i, t.left))
           }
-          out[i] = t.right
+          output[i] = t.right
         }
       } else {
         // ---------------------------------------------
         // handle additional indexes
         // ---------------------------------------------
-        for (; i < us.length; i++) {
+        for (; i < input.length; i++) {
           es.push(DE.unexpectedIndex(i))
         }
       }
@@ -197,7 +207,7 @@ export const _tuple = (
       // ---------------------------------------------
       // compute output
       // ---------------------------------------------
-      return I.isNonEmpty(es) ? warnings(es, out) : success(out)
+      return I.isNonEmpty(es) ? warnings(es, output) : success(output)
     }
   )
 
