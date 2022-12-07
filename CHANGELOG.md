@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.12
+
+### Patch Changes
+
+- [#1358](https://github.com/Effect-TS/effect/pull/1358) [`54152d7af`](https://github.com/Effect-TS/effect/commit/54152d7af3cf188b4e550d2e1879c0fe18ea2de7) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Restructure package
+
 ## 2.0.0-next.11
 
 ### Patch Changes
