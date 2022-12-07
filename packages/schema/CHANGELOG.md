@@ -1,5 +1,23 @@
 # @fp-ts/schema
 
+## 0.0.5
+
+### Patch Changes
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`b75083c`](https://github.com/fp-ts/schema/commit/b75083c03a22a397317953b461bfb197696de9a8) Thanks [@gcanti](https://github.com/gcanti)! - parseOrThrow: add support for custom formatters
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`3b053d6`](https://github.com/fp-ts/schema/commit/3b053d60e4c6330484d7225b05d3996ed9777b3f) Thanks [@gcanti](https://github.com/gcanti)! - DecodeError: refactor NotType error
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`fb85dfd`](https://github.com/fp-ts/schema/commit/fb85dfd9be5a68fabeec6b0532c841fd759be7f6) Thanks [@gcanti](https://github.com/gcanti)! - partial: add support for unions
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`5575c59`](https://github.com/fp-ts/schema/commit/5575c591e2e5780765ee454ba3de6b53254b6aa8) Thanks [@gcanti](https://github.com/gcanti)! - AST: refactor index signatures model
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`bf04615`](https://github.com/fp-ts/schema/commit/bf04615ffee56b51874f364a662e4395cba15a00) Thanks [@gcanti](https://github.com/gcanti)! - partial: add support for arrays
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`0ead379`](https://github.com/fp-ts/schema/commit/0ead3790e83c12ce36e07b648be8464aa2322b1e) Thanks [@gcanti](https://github.com/gcanti)! - Schema: rename withRest to restElement
+
+- [#22](https://github.com/fp-ts/schema/pull/22) [`974eef6`](https://github.com/fp-ts/schema/commit/974eef6f108845a5d002605f512bc59a45986370) Thanks [@gcanti](https://github.com/gcanti)! - add support for optional tuple components
+
 ## 0.0.4
 
 ### Patch Changes
