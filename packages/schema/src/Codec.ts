@@ -13,8 +13,6 @@ import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type { Literal } from "@fp-ts/schema/AST"
-import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
-import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import { provideDecoderFor } from "@fp-ts/schema/Decoder"
@@ -410,16 +408,6 @@ export const symbol: Codec<symbol> = codecFor(S.symbol)
  * @since 1.0.0
  */
 export const unknown: Codec<unknown> = codecFor(S.unknown)
-
-/**
- * @since 1.0.0
- */
-export const unknownArray: Codec<UnknownArray> = codecFor(S.unknownArray)
-
-/**
- * @since 1.0.0
- */
-export const unknownObject: Codec<UnknownObject> = codecFor(S.unknownObject)
 
 /**
  * @since 1.0.0

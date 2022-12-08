@@ -11,8 +11,6 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
-import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
-import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -154,27 +152,17 @@ export const provideDecoderFor = (provider: Provider) =>
         case "SymbolKeyword":
           return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
         case "Tuple":
-          return pipe(
-            DataUnknownArray.Decoder,
-            I.compose(
-              _tuple(
-                ast,
-                ast.components.map((c) => go(c.value)),
-                pipe(ast.rest, O.map(go))
-              )
-            )
+          return _tuple(
+            ast,
+            ast.components.map((c) => go(c.value)),
+            pipe(ast.rest, O.map(go))
           )
         case "Struct":
-          return pipe(
-            DataUnknownObject.Decoder,
-            I.compose(
-              _struct(
-                ast,
-                ast.fields.map((f) => go(f.value)),
-                pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-                pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
-              )
-            )
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
+            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
           )
         case "Union":
           return _union(ast, ast.members.map(go))
@@ -200,7 +188,10 @@ const _tuple = (
 ): Decoder<any, any> =>
   make(
     I.makeSchema(ast),
-    (input: ReadonlyArray<unknown>) => {
+    (input: unknown) => {
+      if (!Array.isArray(input)) {
+        return failure(DE.notType("ReadonlyArray<unknown>", input))
+      }
       const output: Array<any> = []
       const es: Array<DE.DecodeError> = []
       let i = 0
@@ -261,7 +252,10 @@ const _struct = (
 ): Decoder<any, any> =>
   make(
     I.makeSchema(ast),
-    (input: { readonly [_: string | symbol]: unknown }) => {
+    (input: unknown) => {
+      if (!I.isUnknownObject(input)) {
+        return failure(DE.notType("{ readonly [_: string]: unknown }", input))
+      }
       const output: any = {}
       const processedKeys: any = {}
       const es: Array<DE.DecodeError> = []

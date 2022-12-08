@@ -18,10 +18,6 @@ import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataRefine from "@fp-ts/schema/data/refine"
-import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
-import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
-import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
-import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -345,16 +341,6 @@ export const bigint: Schema<bigint> = I.bigint
  * @since 1.0.0
  */
 export const symbol: Schema<symbol> = I.symbol
-
-/**
- * @since 1.0.0
- */
-export const unknownArray: Schema<UnknownArray> = DataUnknownArray.Schema
-
-/**
- * @since 1.0.0
- */
-export const unknownObject: Schema<UnknownObject> = DataUnknownObject.Schema
 
 /**
  * @since 1.0.0

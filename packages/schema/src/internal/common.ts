@@ -11,7 +11,6 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -97,7 +96,7 @@ export const isNonEmpty = RA.isNonEmpty
 // ---------------------------------------------
 
 /** @internal */
-export const isUnknownObject = (u: unknown): u is UnknownObject =>
+export const isUnknownObject = (u: unknown): u is { readonly [_: PropertyKey]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
 /** @internal */

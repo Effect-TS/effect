@@ -19,8 +19,6 @@ describe("Codec", () => {
     expect(_.boolean).exist
     expect(_.bigint).exist
     expect(_.unknown).exist
-    expect(_.unknownArray).exist
-    expect(_.unknownObject).exist
     expect(_.any).exist
     expect(_.never).exist
     expect(_.json).exist

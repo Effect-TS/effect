@@ -8,7 +8,6 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import { isString } from "@fp-ts/data/String"
 import type * as AST from "@fp-ts/schema/AST"
-import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -157,7 +156,7 @@ const _struct = (
   make(
     I.makeSchema(ast),
     (input: unknown): input is any => {
-      if (!UnknownObject.Guard.is(input)) {
+      if (!I.isUnknownObject(input)) {
         return false
       }
       // ---------------------------------------------
