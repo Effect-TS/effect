@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { isBoolean } from "@fp-ts/data/Boolean"
 import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
@@ -107,21 +108,21 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         case "UndefinedKeyword":
           return I.fromRefinement(
-            I.undefinedKeyword,
+            I._undefined,
             I.isUndefined,
             (u) => DE.notType("undefined", u)
           )
         case "NeverKeyword":
           return make(
-            I.neverKeyword,
+            I.never,
             (u) => I.failure(DE.notType("never", u))
           ) as any
         case "UnknownKeyword":
-          return make(I.unknownKeyword, I.success)
+          return make(I.unknown, I.success)
         case "AnyKeyword":
-          return make(I.anyKeyword, I.success)
+          return make(I.any, I.success)
         case "StringKeyword":
-          return I.fromRefinement(I.stringKeyword, isString, (u) => DE.notType("string", u))
+          return I.fromRefinement(I.string, isString, (u) => DE.notType("string", u))
         case "NumberKeyword":
           return I.makeDecoder(I.makeSchema(ast), (u) =>
             isNumber(u) ?
@@ -131,6 +132,8 @@ export const provideDecoderFor = (provider: Provider) =>
                 I.success(u) :
                 I.warning(DE.notFinite, u) :
               I.failure(DE.notType("number", u)))
+        case "BooleanKeyword":
+          return I.fromRefinement(I.boolean, isBoolean, (u) => DE.notType("boolean", u))
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,

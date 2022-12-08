@@ -213,28 +213,31 @@ export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
 export const isUndefined = (u: unknown): u is undefined => u === undefined
 
 /** @internal */
-export const undefinedKeyword: Schema<undefined> = makeSchema(AST.undefinedKeyword)
+export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
 
 /** @internal */
 export const isNever = (_u: unknown): _u is never => false
 
 /** @internal */
-export const neverKeyword: Schema<never> = makeSchema(AST.neverKeyword)
+export const never: Schema<never> = makeSchema(AST.neverKeyword)
 
 /** @internal */
 export const isUnknown = (_u: unknown): _u is unknown => true
 
 /** @internal */
-export const unknownKeyword: Schema<unknown> = makeSchema(AST.unknownKeyword)
+export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword)
 
 /** @internal */
-export const anyKeyword: Schema<any> = makeSchema(AST.anyKeyword)
+export const any: Schema<any> = makeSchema(AST.anyKeyword)
 
 /** @internal */
-export const stringKeyword: Schema<string> = makeSchema(AST.stringKeyword)
+export const string: Schema<string> = makeSchema(AST.stringKeyword)
 
 /** @internal */
-export const numberKeyword: Schema<number> = makeSchema(AST.numberKeyword)
+export const number: Schema<number> = makeSchema(AST.numberKeyword)
+
+/** @internal */
+export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword)
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 

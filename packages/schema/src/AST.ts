@@ -22,6 +22,7 @@ export type AST =
   | AnyKeyword
   | StringKeyword
   | NumberKeyword
+  | BooleanKeyword
   | Struct
   | Tuple
   | Union
@@ -156,6 +157,20 @@ export interface NumberKeyword {
  */
 export const numberKeyword: NumberKeyword = {
   _tag: "NumberKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface BooleanKeyword {
+  readonly _tag: "BooleanKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const booleanKeyword: BooleanKeyword = {
+  _tag: "BooleanKeyword"
 }
 
 /**

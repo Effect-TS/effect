@@ -2,7 +2,6 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type * as AST from "@fp-ts/schema/AST"
-import * as DataBoolean from "@fp-ts/schema/data/Boolean"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as G from "@fp-ts/schema/Guard"
@@ -85,9 +84,6 @@ const provideJsonSchemaFor = (
               handler.value(ast.config.value)(...ast.nodes.map(go)) :
               handler.value(...ast.nodes.map(go))
           }
-          if (ast.id === DataBoolean.id) {
-            return { type: "boolean" }
-          }
           if (ast.id === DataMinLength.id) {
             const minLength: number = (ast.config as any).value
             const schema: StringJSONSchema = go(ast.nodes[0]) as any
@@ -112,6 +108,8 @@ const provideJsonSchemaFor = (
           return { type: "string" }
         case "NumberKeyword":
           return { type: "number" }
+        case "BooleanKeyword":
+          return { type: "boolean" }
         case "Tuple":
           return _tuple(
             ast,

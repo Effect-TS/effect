@@ -29,6 +29,12 @@ describe("Encoder", () => {
     expect(encoder.encode(1)).toEqual(1)
   })
 
+  it("boolean", () => {
+    const encoder = _.encoderFor(S.boolean)
+    expect(encoder.encode(true)).toEqual(true)
+    expect(encoder.encode(false)).toEqual(false)
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)

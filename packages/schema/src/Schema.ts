@@ -10,7 +10,6 @@ import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataBigint from "@fp-ts/schema/data/Bigint"
-import * as DataBoolean from "@fp-ts/schema/data/Boolean"
 import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
@@ -313,7 +312,7 @@ export const refine: <A, B extends A>(
 // data
 // ---------------------------------------------
 
-const _undefined = I.undefinedKeyword
+const _undefined = I._undefined
 
 export {
   /**
@@ -325,32 +324,32 @@ export {
 /**
  * @since 1.0.0
  */
-export const never: Schema<never> = I.neverKeyword
+export const never: Schema<never> = I.never
 
 /**
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = I.unknownKeyword
+export const unknown: Schema<unknown> = I.unknown
 
 /**
  * @since 1.0.0
  */
-export const any: Schema<any> = I.anyKeyword
+export const any: Schema<any> = I.any
 
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = I.stringKeyword
+export const string: Schema<string> = I.string
 
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = I.numberKeyword
+export const number: Schema<number> = I.number
 
 /**
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = DataBoolean.Schema
+export const boolean: Schema<boolean> = I.boolean
 
 /**
  * @since 1.0.0

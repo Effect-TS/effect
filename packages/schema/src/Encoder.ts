@@ -56,17 +56,19 @@ export const provideEncoderFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), identity)
         case "UndefinedKeyword":
-          return make(I.undefinedKeyword, identity)
+          return make(I._undefined, identity)
         case "NeverKeyword":
-          return make(I.neverKeyword, absurd) as any
+          return make(I.never, absurd) as any
         case "UnknownKeyword":
-          return make(I.unknownKeyword, identity)
+          return make(I.unknown, identity)
         case "AnyKeyword":
-          return make(I.anyKeyword, identity)
+          return make(I.any, identity)
         case "StringKeyword":
-          return make(I.stringKeyword, identity)
+          return make(I.string, identity)
         case "NumberKeyword":
-          return make(I.numberKeyword, identity)
+          return make(I.number, identity)
+        case "BooleanKeyword":
+          return make(I.boolean, identity)
         case "Tuple":
           return _tuple(
             ast,

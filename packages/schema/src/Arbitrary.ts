@@ -54,19 +54,21 @@ export const provideArbitraryFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
         case "UndefinedKeyword":
-          return make(I.undefinedKeyword, (fc) => fc.constant(undefined))
+          return make(I._undefined, (fc) => fc.constant(undefined))
         case "NeverKeyword":
-          return make(I.neverKeyword, () => {
+          return make(I.never, () => {
             throw new Error("cannot build an Arbitrary for `never`")
           }) as any
         case "UnknownKeyword":
-          return make(I.unknownKeyword, (fc) => fc.anything())
+          return make(I.unknown, (fc) => fc.anything())
         case "AnyKeyword":
-          return make(I.anyKeyword, (fc) => fc.anything())
+          return make(I.any, (fc) => fc.anything())
         case "StringKeyword":
-          return make(I.stringKeyword, (fc) => fc.string())
+          return make(I.string, (fc) => fc.string())
         case "NumberKeyword":
-          return make(I.numberKeyword, (fc) => fc.float())
+          return make(I.number, (fc) => fc.float())
+        case "BooleanKeyword":
+          return make(I.boolean, (fc) => fc.boolean())
         case "Tuple":
           return _tuple(
             ast,

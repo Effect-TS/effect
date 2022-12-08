@@ -54,23 +54,25 @@ export const providePrettyFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), _literalType)
         case "UndefinedKeyword":
-          return make(I.undefinedKeyword, () => "undefined")
+          return make(I._undefined, () => "undefined")
         case "NeverKeyword":
-          return make(I.neverKeyword, () => {
+          return make(I.never, () => {
             throw new Error("cannot pretty print a `never` value")
           }) as any
         case "UnknownKeyword":
-          return make(I.unknownKeyword, () => {
+          return make(I.unknown, () => {
             throw new Error("cannot pretty print an `unknown` value")
           })
         case "AnyKeyword":
-          return make(I.anyKeyword, () => {
+          return make(I.any, () => {
             throw new Error("cannot pretty print an `any` value")
           })
         case "StringKeyword":
-          return make(I.stringKeyword, (s) => JSON.stringify(s))
+          return make(I.string, (s) => JSON.stringify(s))
         case "NumberKeyword":
-          return make(I.numberKeyword, (s) => JSON.stringify(s))
+          return make(I.number, (s) => JSON.stringify(s))
+        case "BooleanKeyword":
+          return make(I.boolean, (s) => JSON.stringify(s))
         case "Tuple":
           return _tuple(
             ast,

@@ -18,7 +18,7 @@ describe("Decoder", () => {
     expect(_.isWarning).exist
   })
 
-  describe("Decoder", () => {
+  describe("number", () => {
     const decoder = _.decoderFor(S.number)
 
     it("baseline", () => {
@@ -34,6 +34,14 @@ describe("Decoder", () => {
       Util.expectWarning(decoder, Infinity, "did not satisfy isFinite", Infinity)
       Util.expectWarning(decoder, -Infinity, "did not satisfy isFinite", -Infinity)
     })
+  })
+
+  it("boolean", () => {
+    const decoder = _.decoderFor(S.boolean)
+    expect(decoder.decode(true)).toEqual(_.success(true))
+    expect(decoder.decode(false)).toEqual(_.success(false))
+
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(boolean)")
   })
 
   it("should throw on missing support", () => {

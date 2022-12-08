@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { isBoolean } from "@fp-ts/data/Boolean"
 import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
@@ -55,17 +56,19 @@ export const provideGuardFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
         case "UndefinedKeyword":
-          return make(I.undefinedKeyword, I.isUndefined)
+          return make(I._undefined, I.isUndefined)
         case "NeverKeyword":
-          return make(I.neverKeyword, I.isNever) as any
+          return make(I.never, I.isNever) as any
         case "UnknownKeyword":
-          return make(I.unknownKeyword, I.isUnknown)
+          return make(I.unknown, I.isUnknown)
         case "AnyKeyword":
-          return make(I.anyKeyword, I.isUnknown)
+          return make(I.any, I.isUnknown)
         case "StringKeyword":
-          return make(I.stringKeyword, isString)
+          return make(I.string, isString)
         case "NumberKeyword":
-          return make(I.numberKeyword, isNumber)
+          return make(I.number, isNumber)
+        case "BooleanKeyword":
+          return make(I.boolean, isBoolean)
         case "Tuple":
           return _tuple(
             ast,
