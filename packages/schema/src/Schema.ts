@@ -26,7 +26,6 @@ import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
 import * as DataList from "@fp-ts/schema/data/List"
-import * as DataNever from "@fp-ts/schema/data/Never"
 import * as DataNumber from "@fp-ts/schema/data/Number"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
@@ -100,7 +99,7 @@ export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
 ) => Schema<Literals[number]> = I.literal
 
-const _undefined = I._undefined
+const _undefined = I.undefinedKeyword
 
 export {
   /**
@@ -108,6 +107,11 @@ export {
    */
   _undefined as undefined
 }
+
+/**
+ * @since 1.0.0
+ */
+export const never: Schema<never> = I.neverKeyword
 
 /**
  * @since 1.0.0
@@ -390,11 +394,6 @@ export const unknownObject: Schema<UnknownObject> = DataUnknownObject.Schema
  * @since 1.0.0
  */
 export const any: Schema<any> = DataAny.Schema
-
-/**
- * @since 1.0.0
- */
-export const never: Schema<never> = DataNever.Schema
 
 /**
  * @since 1.0.0

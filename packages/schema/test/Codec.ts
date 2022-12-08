@@ -1,15 +1,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/Codec"
-import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
 import * as D from "@fp-ts/schema/Decoder"
 import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 const codecFor = _.codecFor
-
-const NumberFromStringSchema = parseFloat.schema(S.string)
 
 describe("Codec", () => {
   it("exoprts", () => {
@@ -36,22 +33,6 @@ describe("Codec", () => {
     const codec = codecFor(schema)
     expect(codec.decode(1)).toEqual(D.success(1))
     Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
-  })
-
-  it("union", () => {
-    const schema = S.union(NumberFromStringSchema, S.string)
-    const codec = codecFor(schema)
-    expect(codec.decode("a")).toEqual(D.success("a"))
-    expect(codec.decode("1")).toEqual(D.success(1))
-
-    Util.expectFailure(
-      codec,
-      null,
-      "member 0 null did not satisfy is(string), member 1 null did not satisfy is(string)"
-    )
-
-    expect(codec.encode("b")).toEqual("b")
-    expect(codec.encode(2)).toEqual("2")
   })
 
   it("Option", () => {

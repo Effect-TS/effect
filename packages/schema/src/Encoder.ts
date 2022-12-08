@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { identity, pipe } from "@fp-ts/data/Function"
+import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type * as AST from "@fp-ts/schema/AST"
@@ -57,6 +57,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return _literal(ast.literal)
         case "UndefinedKeyword":
           return _undefined
+        case "NeverKeyword":
+          return _never as any
         case "Tuple":
           return _tuple(
             ast,
@@ -91,7 +93,9 @@ const _literal = <Literal extends AST.Literal>(
   value: Literal
 ): Encoder<Literal, Literal> => make(I.literal(value), identity)
 
-const _undefined: Encoder<undefined, undefined> = make(I._undefined, identity)
+const _undefined: Encoder<undefined, undefined> = make(I.undefinedKeyword, identity)
+
+const _never: Encoder<unknown, never> = make(I.neverKeyword, absurd)
 
 const _tuple = (
   ast: AST.Tuple,

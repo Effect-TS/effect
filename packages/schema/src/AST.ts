@@ -17,6 +17,7 @@ export type AST =
   | Declaration
   | LiteralType
   | UndefinedKeyword
+  | NeverKeyword
   | Struct
   | Tuple
   | Union
@@ -81,6 +82,20 @@ export interface UndefinedKeyword {
  */
 export const undefinedKeyword: UndefinedKeyword = {
   _tag: "UndefinedKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface NeverKeyword {
+  readonly _tag: "NeverKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const neverKeyword: NeverKeyword = {
+  _tag: "NeverKeyword"
 }
 
 /**
@@ -231,7 +246,10 @@ export interface Union {
 /**
  * @since 1.0.0
  */
-export const union = (members: ReadonlyArray<AST>): Union => {
+export const union = (members: ReadonlyArray<AST>): Union | NeverKeyword => {
+  if (members.length === 0) {
+    return neverKeyword
+  }
   // TODO: handle union flattening
   return { _tag: "Union", members }
 }

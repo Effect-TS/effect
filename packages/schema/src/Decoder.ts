@@ -101,6 +101,8 @@ export const provideDecoderFor = (provider: Provider) =>
           return _literal(ast.literal)
         case "UndefinedKeyword":
           return _undefined
+        case "NeverKeyword":
+          return _never as any
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,
@@ -147,9 +149,15 @@ const _literal = <Literal extends AST.Literal>(
   I.fromRefinement(I.literal(value), (u): u is Literal => u === value, (u) => DE.notEqual(value, u))
 
 const _undefined: Decoder<unknown, undefined> = I.fromRefinement(
-  I._undefined,
-  (u): u is undefined => u === undefined,
-  (u) => DE.notEqual("undefined", u)
+  I.undefinedKeyword,
+  I.isUndefined,
+  (u) => DE.notType("undefined", u)
+)
+
+const _never: Decoder<unknown, never> = I.fromRefinement(
+  I.neverKeyword,
+  I.isNever,
+  (u) => DE.notType("never", u)
 )
 
 const _tuple = (

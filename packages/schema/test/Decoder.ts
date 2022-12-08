@@ -52,7 +52,7 @@ describe("Decoder", () => {
       Util.expectFailure(
         decoder,
         ["a"],
-        "/0 member 0 \"a\" did not satisfy isEqual(undefined), member 1 \"a\" did not satisfy is(number)"
+        "/0 member 0 \"a\" did not satisfy is(undefined), member 1 \"a\" did not satisfy is(number)"
       )
     })
 
@@ -67,7 +67,7 @@ describe("Decoder", () => {
       Util.expectFailure(
         decoder,
         ["a"],
-        "member 0 [\"a\"] did not satisfy is(string), member 1 /0 member 0 \"a\" did not satisfy isEqual(undefined), member 1 \"a\" did not satisfy is(number)"
+        "member 0 [\"a\"] did not satisfy is(string), member 1 /0 member 0 \"a\" did not satisfy is(undefined), member 1 \"a\" did not satisfy is(number)"
       )
     })
   })

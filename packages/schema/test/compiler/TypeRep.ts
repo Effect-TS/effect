@@ -68,6 +68,8 @@ export const provideTypeRepFor = (
           )
         case "UndefinedKeyword":
           return make(ast, "undefined")
+        case "NeverKeyword":
+          return make(ast, "never")
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(
