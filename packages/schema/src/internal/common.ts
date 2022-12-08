@@ -109,7 +109,8 @@ export const isJsonObject = (u: unknown): u is JsonObject =>
 
 /** @internal */
 export const isJson = (u: unknown): u is Json =>
-  u === null || typeof u === "string" || typeof u === "number" || typeof u === "boolean" ||
+  u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
+  typeof u === "boolean" ||
   isJsonArray(u) ||
   isJsonObject(u)
 
