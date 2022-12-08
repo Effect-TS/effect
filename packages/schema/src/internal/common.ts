@@ -221,6 +221,12 @@ export const isNever = (_u: unknown): _u is never => false
 /** @internal */
 export const neverKeyword: Schema<never> = makeSchema(AST.neverKeyword)
 
+/** @internal */
+export const isUnknown = (_u: unknown): _u is unknown => true
+
+/** @internal */
+export const unknownKeyword: Schema<unknown> = makeSchema(AST.unknownKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

@@ -18,6 +18,7 @@ export type AST =
   | LiteralType
   | UndefinedKeyword
   | NeverKeyword
+  | UnknownKeyword
   | Struct
   | Tuple
   | Union
@@ -96,6 +97,20 @@ export interface NeverKeyword {
  */
 export const neverKeyword: NeverKeyword = {
   _tag: "NeverKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface UnknownKeyword {
+  readonly _tag: "UnknownKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const unknownKeyword: UnknownKeyword = {
+  _tag: "UnknownKeyword"
 }
 
 /**

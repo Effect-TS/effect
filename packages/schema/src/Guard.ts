@@ -5,7 +5,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type * as AST from "@fp-ts/schema/AST"
-import * as UnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -57,6 +56,8 @@ export const provideGuardFor = (provider: Provider) =>
           return _undefined
         case "NeverKeyword":
           return _never as any
+        case "UnknownKeyword":
+          return _unknown
         case "Tuple":
           return _tuple(
             ast,
@@ -92,10 +93,15 @@ export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empt
 
 const _undefined: Guard<undefined> = make(
   I.undefinedKeyword,
-  (u): u is undefined => u === undefined
+  I.isUndefined
 )
 
 const _never: Guard<never> = make(I.neverKeyword, I.isNever)
+
+const _unknown: Guard<unknown> = make(
+  I.unknownKeyword,
+  I.isUnknown
+)
 
 const _tuple = (
   ast: AST.Tuple,
@@ -105,7 +111,7 @@ const _tuple = (
   make(
     I.makeSchema(ast),
     (input: unknown): input is any => {
-      if (!UnknownArray.Guard.is(input)) {
+      if (!Array.isArray(input)) {
         return false
       }
       let i = 0

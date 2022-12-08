@@ -59,6 +59,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return _undefined
         case "NeverKeyword":
           return _never as any
+        case "UnknownKeyword":
+          return _unknown
         case "Tuple":
           return _tuple(
             ast,
@@ -96,6 +98,8 @@ const _literal = <Literal extends AST.Literal>(
 const _undefined: Encoder<undefined, undefined> = make(I.undefinedKeyword, identity)
 
 const _never: Encoder<unknown, never> = make(I.neverKeyword, absurd)
+
+const _unknown: Encoder<unknown, unknown> = make(I.unknownKeyword, identity)
 
 const _tuple = (
   ast: AST.Tuple,

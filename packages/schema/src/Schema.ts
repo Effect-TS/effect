@@ -32,7 +32,6 @@ import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import * as DataString from "@fp-ts/schema/data/String"
 import * as DataSymbol from "@fp-ts/schema/data/Symbol"
-import * as DataUnknown from "@fp-ts/schema/data/Unknown"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
@@ -112,6 +111,11 @@ export {
  * @since 1.0.0
  */
 export const never: Schema<never> = I.neverKeyword
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Schema<unknown> = I.unknownKeyword
 
 /**
  * @since 1.0.0
@@ -374,11 +378,6 @@ export const bigint: Schema<bigint> = DataBigint.Schema
  * @since 1.0.0
  */
 export const symbol: Schema<symbol> = DataSymbol.Schema
-
-/**
- * @since 1.0.0
- */
-export const unknown: Schema<unknown> = DataUnknown.Schema
 
 /**
  * @since 1.0.0

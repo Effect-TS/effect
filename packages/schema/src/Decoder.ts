@@ -103,6 +103,8 @@ export const provideDecoderFor = (provider: Provider) =>
           return _undefined
         case "NeverKeyword":
           return _never as any
+        case "UnknownKeyword":
+          return _unknown
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,
@@ -154,11 +156,12 @@ const _undefined: Decoder<unknown, undefined> = I.fromRefinement(
   (u) => DE.notType("undefined", u)
 )
 
-const _never: Decoder<unknown, never> = I.fromRefinement(
+const _never: Decoder<unknown, never> = make(
   I.neverKeyword,
-  I.isNever,
-  (u) => DE.notType("never", u)
+  (u) => I.failure(DE.notType("never", u))
 )
+
+const _unknown: Decoder<unknown, unknown> = make(I.unknownKeyword, I.success)
 
 const _tuple = (
   ast: AST.Tuple,

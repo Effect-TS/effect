@@ -57,6 +57,8 @@ export const providePrettyFor = (provider: Provider) =>
           return _undefined
         case "NeverKeyword":
           return _never as any
+        case "UnknownKeyword":
+          return _unknown
         case "Tuple":
           return _tuple(
             ast,
@@ -92,6 +94,10 @@ const _undefined: Pretty<undefined> = make(I.undefinedKeyword, () => "undefined"
 
 const _never: Pretty<never> = make(I.neverKeyword, () => {
   throw new Error("cannot pretty print a `never` value")
+})
+
+const _unknown: Pretty<unknown> = make(I.unknownKeyword, () => {
+  throw new Error("cannot pretty print an `unknown` value")
 })
 
 const _propertyKey = (key: PropertyKey): string =>

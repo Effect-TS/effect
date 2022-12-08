@@ -57,6 +57,8 @@ export const provideArbitraryFor = (provider: Provider) =>
           return _undefined
         case "NeverKeyword":
           return _never as any
+        case "UnknownKeyword":
+          return _unknown
         case "Tuple":
           return _tuple(
             ast,
@@ -97,6 +99,8 @@ const _undefined = make(I.undefinedKeyword, (fc) => fc.constant(undefined))
 const _never = make(I.neverKeyword, () => {
   throw new Error("cannot build an Arbitrary for `never`")
 })
+
+const _unknown = make(I.unknownKeyword, (fc) => fc.anything())
 
 const _tuple = (
   ast: AST.Tuple,
