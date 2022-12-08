@@ -5,7 +5,7 @@
 import type { Left, Right } from "@fp-ts/data/Either"
 import * as E from "@fp-ts/data/Either"
 import { identity, pipe } from "@fp-ts/data/Function"
-import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
+import type { Json } from "@fp-ts/data/Json"
 import { parse, stringify } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
@@ -435,16 +435,6 @@ export const never: Codec<never> = codecFor(S.never)
  * @since 1.0.0
  */
 export const json: Codec<Json> = codecFor(S.json)
-
-/**
- * @since 1.0.0
- */
-export const jsonArray: Codec<JsonArray> = codecFor(S.jsonArray)
-
-/**
- * @since 1.0.0
- */
-export const jsonObject: Codec<JsonObject> = codecFor(S.jsonObject)
 
 /**
  * @since 1.0.0

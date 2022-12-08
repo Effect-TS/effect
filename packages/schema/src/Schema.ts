@@ -3,7 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
-import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
+import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
@@ -17,8 +17,6 @@ import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
-import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
-import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
@@ -362,16 +360,6 @@ export const unknownObject: Schema<UnknownObject> = DataUnknownObject.Schema
  * @since 1.0.0
  */
 export const json: Schema<Json> = DataJson.Schema
-
-/**
- * @since 1.0.0
- */
-export const jsonArray: Schema<JsonArray> = DataJsonArray.Schema
-
-/**
- * @since 1.0.0
- */
-export const jsonObject: Schema<JsonObject> = DataJsonObject.Schema
 
 /**
  * @since 1.0.0

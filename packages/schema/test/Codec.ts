@@ -24,8 +24,6 @@ describe("Codec", () => {
     expect(_.any).exist
     expect(_.never).exist
     expect(_.json).exist
-    expect(_.jsonArray).exist
-    expect(_.jsonObject).exist
   })
 
   it("literal", () => {
