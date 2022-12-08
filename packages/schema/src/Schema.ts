@@ -9,7 +9,6 @@ import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataAny from "@fp-ts/schema/data/Any"
 import * as DataBigint from "@fp-ts/schema/data/Bigint"
 import * as DataBoolean from "@fp-ts/schema/data/Boolean"
 import * as DataChunk from "@fp-ts/schema/data/Chunk"
@@ -116,6 +115,11 @@ export const never: Schema<never> = I.neverKeyword
  * @since 1.0.0
  */
 export const unknown: Schema<unknown> = I.unknownKeyword
+
+/**
+ * @since 1.0.0
+ */
+export const any: Schema<any> = I.anyKeyword
 
 /**
  * @since 1.0.0
@@ -388,11 +392,6 @@ export const unknownArray: Schema<UnknownArray> = DataUnknownArray.Schema
  * @since 1.0.0
  */
 export const unknownObject: Schema<UnknownObject> = DataUnknownObject.Schema
-
-/**
- * @since 1.0.0
- */
-export const any: Schema<any> = DataAny.Schema
 
 /**
  * @since 1.0.0

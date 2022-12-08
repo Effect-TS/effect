@@ -59,6 +59,8 @@ export const providePrettyFor = (provider: Provider) =>
           return _never as any
         case "UnknownKeyword":
           return _unknown
+        case "AnyKeyword":
+          return _any
         case "Tuple":
           return _tuple(
             ast,
@@ -90,14 +92,18 @@ export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(e
 const _literalType = (literal: AST.Literal): string =>
   typeof literal === "bigint" ? literal.toString() : JSON.stringify(literal)
 
-const _undefined: Pretty<undefined> = make(I.undefinedKeyword, () => "undefined")
+const _undefined = make(I.undefinedKeyword, () => "undefined")
 
-const _never: Pretty<never> = make(I.neverKeyword, () => {
+const _never = make(I.neverKeyword, () => {
   throw new Error("cannot pretty print a `never` value")
 })
 
-const _unknown: Pretty<unknown> = make(I.unknownKeyword, () => {
+const _unknown = make(I.unknownKeyword, () => {
   throw new Error("cannot pretty print an `unknown` value")
+})
+
+const _any = make(I.anyKeyword, () => {
+  throw new Error("cannot pretty print an `any` value")
 })
 
 const _propertyKey = (key: PropertyKey): string =>

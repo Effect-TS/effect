@@ -227,6 +227,9 @@ export const isUnknown = (_u: unknown): _u is unknown => true
 /** @internal */
 export const unknownKeyword: Schema<unknown> = makeSchema(AST.unknownKeyword)
 
+/** @internal */
+export const anyKeyword: Schema<any> = makeSchema(AST.anyKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

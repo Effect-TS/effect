@@ -58,6 +58,8 @@ export const provideGuardFor = (provider: Provider) =>
           return _never as any
         case "UnknownKeyword":
           return _unknown
+        case "AnyKeyword":
+          return _any
         case "Tuple":
           return _tuple(
             ast,
@@ -96,12 +98,11 @@ const _undefined: Guard<undefined> = make(
   I.isUndefined
 )
 
-const _never: Guard<never> = make(I.neverKeyword, I.isNever)
+const _never = make(I.neverKeyword, I.isNever)
 
-const _unknown: Guard<unknown> = make(
-  I.unknownKeyword,
-  I.isUnknown
-)
+const _unknown = make(I.unknownKeyword, I.isUnknown)
+
+const _any = make(I.anyKeyword, I.isUnknown)
 
 const _tuple = (
   ast: AST.Tuple,

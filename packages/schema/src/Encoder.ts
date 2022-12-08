@@ -61,6 +61,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return _never as any
         case "UnknownKeyword":
           return _unknown
+        case "AnyKeyword":
+          return _any
         case "Tuple":
           return _tuple(
             ast,
@@ -95,11 +97,13 @@ const _literal = <Literal extends AST.Literal>(
   value: Literal
 ): Encoder<Literal, Literal> => make(I.literal(value), identity)
 
-const _undefined: Encoder<undefined, undefined> = make(I.undefinedKeyword, identity)
+const _undefined = make(I.undefinedKeyword, identity)
 
-const _never: Encoder<unknown, never> = make(I.neverKeyword, absurd)
+const _never = make(I.neverKeyword, absurd)
 
-const _unknown: Encoder<unknown, unknown> = make(I.unknownKeyword, identity)
+const _unknown = make(I.unknownKeyword, identity)
+
+const _any = make(I.anyKeyword, identity)
 
 const _tuple = (
   ast: AST.Tuple,

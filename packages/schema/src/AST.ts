@@ -19,6 +19,7 @@ export type AST =
   | UndefinedKeyword
   | NeverKeyword
   | UnknownKeyword
+  | AnyKeyword
   | Struct
   | Tuple
   | Union
@@ -111,6 +112,20 @@ export interface UnknownKeyword {
  */
 export const unknownKeyword: UnknownKeyword = {
   _tag: "UnknownKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface AnyKeyword {
+  readonly _tag: "AnyKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const anyKeyword: AnyKeyword = {
+  _tag: "AnyKeyword"
 }
 
 /**
