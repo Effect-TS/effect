@@ -25,7 +25,6 @@ import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
 import * as DataList from "@fp-ts/schema/data/List"
-import * as DataNumber from "@fp-ts/schema/data/Number"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as DataRefine from "@fp-ts/schema/data/refine"
@@ -346,7 +345,7 @@ export const string: Schema<string> = I.stringKeyword
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = DataNumber.Schema
+export const number: Schema<number> = I.numberKeyword
 
 /**
  * @since 1.0.0

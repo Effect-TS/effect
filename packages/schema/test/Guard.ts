@@ -28,6 +28,12 @@ describe("Guard", () => {
     expect(guard.is(1)).toEqual(false)
   })
 
+  it("number", () => {
+    const guard = G.guardFor(S.number)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(false)
+  })
+
   it("literal", () => {
     const schema = S.literal(1, "a")
     const guard = G.guardFor(schema)

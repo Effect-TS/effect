@@ -18,6 +18,24 @@ describe("Decoder", () => {
     expect(_.isWarning).exist
   })
 
+  describe("Decoder", () => {
+    const decoder = _.decoderFor(S.number)
+
+    it("baseline", () => {
+      expect(decoder.decode(1)).toEqual(_.success(1))
+      Util.expectFailure(decoder, "a", "\"a\" did not satisfy is(number)")
+    })
+
+    it("should warn for NaN", () => {
+      Util.expectWarning(decoder, NaN, "did not satisfy not(isNaN)", NaN)
+    })
+
+    it("should warn for no finite values", () => {
+      Util.expectWarning(decoder, Infinity, "did not satisfy isFinite", Infinity)
+      Util.expectWarning(decoder, -Infinity, "did not satisfy isFinite", -Infinity)
+    })
+  })
+
   it("should throw on missing support", () => {
     const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
     expect(() => _.decoderFor(schema)).toThrowError(

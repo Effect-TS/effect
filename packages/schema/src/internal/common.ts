@@ -233,6 +233,9 @@ export const anyKeyword: Schema<any> = makeSchema(AST.anyKeyword)
 /** @internal */
 export const stringKeyword: Schema<string> = makeSchema(AST.stringKeyword)
 
+/** @internal */
+export const numberKeyword: Schema<number> = makeSchema(AST.numberKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

@@ -54,15 +54,19 @@ export const provideArbitraryFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
         case "UndefinedKeyword":
-          return _undefined
+          return make(I.undefinedKeyword, (fc) => fc.constant(undefined))
         case "NeverKeyword":
-          return _never as any
+          return make(I.neverKeyword, () => {
+            throw new Error("cannot build an Arbitrary for `never`")
+          }) as any
         case "UnknownKeyword":
-          return _unknown
+          return make(I.unknownKeyword, (fc) => fc.anything())
         case "AnyKeyword":
-          return _any
+          return make(I.anyKeyword, (fc) => fc.anything())
         case "StringKeyword":
-          return _string
+          return make(I.stringKeyword, (fc) => fc.string())
+        case "NumberKeyword":
+          return make(I.numberKeyword, (fc) => fc.float())
         case "Tuple":
           return _tuple(
             ast,
@@ -97,18 +101,6 @@ export const provideArbitraryFor = (provider: Provider) =>
 export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(
   empty
 )
-
-const _undefined = make(I.undefinedKeyword, (fc) => fc.constant(undefined))
-
-const _never = make(I.neverKeyword, () => {
-  throw new Error("cannot build an Arbitrary for `never`")
-})
-
-const _unknown = make(I.unknownKeyword, (fc) => fc.anything())
-
-const _any = make(I.anyKeyword, (fc) => fc.anything())
-
-const _string = make(I.stringKeyword, (fc) => fc.string())
 
 const _tuple = (
   ast: AST.Tuple,

@@ -3,6 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
+import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import { isString } from "@fp-ts/data/String"
 import type * as AST from "@fp-ts/schema/AST"
@@ -54,15 +55,17 @@ export const provideGuardFor = (provider: Provider) =>
         case "LiteralType":
           return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
         case "UndefinedKeyword":
-          return _undefined
+          return make(I.undefinedKeyword, I.isUndefined)
         case "NeverKeyword":
-          return _never as any
+          return make(I.neverKeyword, I.isNever) as any
         case "UnknownKeyword":
-          return _unknown
+          return make(I.unknownKeyword, I.isUnknown)
         case "AnyKeyword":
-          return _any
+          return make(I.anyKeyword, I.isUnknown)
         case "StringKeyword":
-          return _string
+          return make(I.stringKeyword, isString)
+        case "NumberKeyword":
+          return make(I.numberKeyword, isNumber)
         case "Tuple":
           return _tuple(
             ast,
@@ -95,19 +98,6 @@ export const provideGuardFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
-
-const _undefined: Guard<undefined> = make(
-  I.undefinedKeyword,
-  I.isUndefined
-)
-
-const _never = make(I.neverKeyword, I.isNever)
-
-const _unknown = make(I.unknownKeyword, I.isUnknown)
-
-const _any = make(I.anyKeyword, I.isUnknown)
-
-const _string = make(I.stringKeyword, isString)
 
 const _tuple = (
   ast: AST.Tuple,

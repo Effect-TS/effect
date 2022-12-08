@@ -3,6 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
+import { isNumber } from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
@@ -99,17 +100,37 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         }
         case "LiteralType":
-          return _literal(ast.literal)
+          return I.fromRefinement(
+            I.makeSchema(ast),
+            (u): u is AST.Literal => u === ast.literal,
+            (u) => DE.notEqual(ast.literal, u)
+          )
         case "UndefinedKeyword":
-          return _undefined
+          return I.fromRefinement(
+            I.undefinedKeyword,
+            I.isUndefined,
+            (u) => DE.notType("undefined", u)
+          )
         case "NeverKeyword":
-          return _never as any
+          return make(
+            I.neverKeyword,
+            (u) => I.failure(DE.notType("never", u))
+          ) as any
         case "UnknownKeyword":
-          return _unknown
+          return make(I.unknownKeyword, I.success)
         case "AnyKeyword":
-          return _any
+          return make(I.anyKeyword, I.success)
         case "StringKeyword":
-          return _string
+          return I.fromRefinement(I.stringKeyword, isString, (u) => DE.notType("string", u))
+        case "NumberKeyword":
+          return I.makeDecoder(I.makeSchema(ast), (u) =>
+            isNumber(u) ?
+              isNaN(u) ?
+                I.warning(DE.nan, u) :
+                isFinite(u) ?
+                I.success(u) :
+                I.warning(DE.notFinite, u) :
+              I.failure(DE.notType("number", u)))
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,
@@ -149,28 +170,6 @@ export const provideDecoderFor = (provider: Provider) =>
 export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(
   P.empty
 )
-
-const _literal = <Literal extends AST.Literal>(
-  value: Literal
-): Decoder<unknown, Literal> =>
-  I.fromRefinement(I.literal(value), (u): u is Literal => u === value, (u) => DE.notEqual(value, u))
-
-const _undefined = I.fromRefinement(
-  I.undefinedKeyword,
-  I.isUndefined,
-  (u) => DE.notType("undefined", u)
-)
-
-const _never = make(
-  I.neverKeyword,
-  (u) => I.failure(DE.notType("never", u))
-)
-
-const _unknown = make(I.unknownKeyword, I.success)
-
-const _any = make(I.anyKeyword, I.success)
-
-const _string = I.fromRefinement(I.stringKeyword, isString, (u) => DE.notType("string", u))
 
 const _tuple = (
   ast: AST.Tuple,

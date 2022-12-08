@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as NumberData from "@fp-ts/schema/data/Number"
+import { isNumber } from "@fp-ts/data/Number"
 import { parse } from "@fp-ts/schema/data/parse"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -23,7 +23,7 @@ export const schema = parse(
       I.success(n)
   },
   String,
-  NumberData.Guard.is,
-  (fc) => NumberData.Arbitrary.arbitrary(fc).filter((n) => !isNaN(n) && isFinite(n)),
+  isNumber,
+  (fc) => fc.float().filter((n) => !isNaN(n) && isFinite(n)),
   String
 )

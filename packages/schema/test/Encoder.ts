@@ -24,6 +24,11 @@ describe("Encoder", () => {
     expect(encoder.encode("a")).toEqual("a")
   })
 
+  it("number", () => {
+    const encoder = _.encoderFor(S.number)
+    expect(encoder.encode(1)).toEqual(1)
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)

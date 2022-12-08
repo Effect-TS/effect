@@ -54,17 +54,19 @@ export const provideEncoderFor = (provider: Provider) =>
           )
         }
         case "LiteralType":
-          return _literal(ast.literal)
+          return make(I.makeSchema(ast), identity)
         case "UndefinedKeyword":
-          return _undefined
+          return make(I.undefinedKeyword, identity)
         case "NeverKeyword":
-          return _never as any
+          return make(I.neverKeyword, absurd) as any
         case "UnknownKeyword":
-          return _unknown
+          return make(I.unknownKeyword, identity)
         case "AnyKeyword":
-          return _any
+          return make(I.anyKeyword, identity)
         case "StringKeyword":
-          return _string
+          return make(I.stringKeyword, identity)
+        case "NumberKeyword":
+          return make(I.numberKeyword, identity)
         case "Tuple":
           return _tuple(
             ast,
@@ -94,20 +96,6 @@ export const provideEncoderFor = (provider: Provider) =>
 export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provideEncoderFor(
   P.empty
 )
-
-const _literal = <Literal extends AST.Literal>(
-  value: Literal
-): Encoder<Literal, Literal> => make(I.literal(value), identity)
-
-const _undefined = make(I.undefinedKeyword, identity)
-
-const _never = make(I.neverKeyword, absurd)
-
-const _unknown = make(I.unknownKeyword, identity)
-
-const _any = make(I.anyKeyword, identity)
-
-const _string = make(I.stringKeyword, identity)
 
 const _tuple = (
   ast: AST.Tuple,
