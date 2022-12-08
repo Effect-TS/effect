@@ -3,7 +3,6 @@ import * as O from "@fp-ts/data/Option"
 import type { AST } from "@fp-ts/schema/AST"
 import * as boolean_ from "@fp-ts/schema/data/Boolean"
 import * as number_ from "@fp-ts/schema/data/Number"
-import * as string_ from "@fp-ts/schema/data/String"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -48,9 +47,6 @@ export const provideTypeRepFor = (
               handler.value(ast.config.value)(...ast.nodes.map(go)) :
               handler.value(...ast.nodes.map(go))
           }
-          if (ast.id === string_.id) {
-            return make(S.string.ast, "string")
-          }
           if (ast.id === number_.id) {
             return make(S.number.ast, "number")
           }
@@ -74,6 +70,8 @@ export const provideTypeRepFor = (
           return make(ast, "unknown")
         case "AnyKeyword":
           return make(ast, "any")
+        case "StringKeyword":
+          return make(S.string.ast, "string")
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(

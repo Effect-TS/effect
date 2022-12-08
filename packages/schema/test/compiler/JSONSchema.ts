@@ -6,7 +6,6 @@ import * as DataBoolean from "@fp-ts/schema/data/Boolean"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataNumber from "@fp-ts/schema/data/Number"
-import * as DataString from "@fp-ts/schema/data/String"
 import * as G from "@fp-ts/schema/Guard"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -87,9 +86,6 @@ const provideJsonSchemaFor = (
               handler.value(ast.config.value)(...ast.nodes.map(go)) :
               handler.value(...ast.nodes.map(go))
           }
-          if (ast.id === DataString.id) {
-            return { type: "string" }
-          }
           if (ast.id === DataNumber.id) {
             return { type: "number" }
           }
@@ -116,6 +112,8 @@ const provideJsonSchemaFor = (
           return _of(ast.literal)
         case "UndefinedKeyword":
           throw new Error("cannot build JSON Schema fro `undefined`")
+        case "StringKeyword":
+          return { type: "string" }
         case "Tuple":
           return _tuple(
             ast,

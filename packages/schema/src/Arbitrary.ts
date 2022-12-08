@@ -61,6 +61,8 @@ export const provideArbitraryFor = (provider: Provider) =>
           return _unknown
         case "AnyKeyword":
           return _any
+        case "StringKeyword":
+          return _string
         case "Tuple":
           return _tuple(
             ast,
@@ -105,6 +107,8 @@ const _never = make(I.neverKeyword, () => {
 const _unknown = make(I.unknownKeyword, (fc) => fc.anything())
 
 const _any = make(I.anyKeyword, (fc) => fc.anything())
+
+const _string = make(I.stringKeyword, (fc) => fc.string())
 
 const _tuple = (
   ast: AST.Tuple,

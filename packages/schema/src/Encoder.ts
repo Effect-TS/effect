@@ -63,6 +63,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return _unknown
         case "AnyKeyword":
           return _any
+        case "StringKeyword":
+          return _string
         case "Tuple":
           return _tuple(
             ast,
@@ -104,6 +106,8 @@ const _never = make(I.neverKeyword, absurd)
 const _unknown = make(I.unknownKeyword, identity)
 
 const _any = make(I.anyKeyword, identity)
+
+const _string = make(I.stringKeyword, identity)
 
 const _tuple = (
   ast: AST.Tuple,

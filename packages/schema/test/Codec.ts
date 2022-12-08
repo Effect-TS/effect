@@ -35,6 +35,12 @@ describe("Codec", () => {
     Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
+  it("string", () => {
+    const decoder = D.decoderFor(S.string)
+    expect(decoder.decode("a")).toEqual(D.success("a"))
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
+  })
+
   it("Option", () => {
     const codec = _.option(_.number)
     expect(codec.decode(null)).toEqual(D.success(O.none))

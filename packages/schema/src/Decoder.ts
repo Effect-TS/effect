@@ -6,6 +6,7 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import { isString } from "@fp-ts/data/String"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
@@ -107,6 +108,8 @@ export const provideDecoderFor = (provider: Provider) =>
           return _unknown
         case "AnyKeyword":
           return _any
+        case "StringKeyword":
+          return _string
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,
@@ -166,6 +169,8 @@ const _never = make(
 const _unknown = make(I.unknownKeyword, I.success)
 
 const _any = make(I.anyKeyword, I.success)
+
+const _string = I.fromRefinement(I.stringKeyword, isString, (u) => DE.notType("string", u))
 
 const _tuple = (
   ast: AST.Tuple,

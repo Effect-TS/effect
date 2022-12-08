@@ -1,10 +1,8 @@
 // import * as A from "@fp-ts/schema/Arbitrary"
-import { pipe } from "@fp-ts/data/Function"
 // import * as O from "@fp-ts/data/Option"
 // import * as AST from "@fp-ts/schema/AST"
 import * as C from "@fp-ts/schema/Codec"
 import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
@@ -88,31 +86,6 @@ describe("examples", () => {
 
       expect(myNumberPair.is([1, 2])).toEqual(true)
       expect(myNumberPair.is([1, "a"])).toEqual(false)
-    })
-
-    it("Custom decode errors", () => {
-      const mystring = pipe(
-        S.string,
-        S.clone(Symbol.for("mystring"), {
-          [D.DecoderId]: () => myJsonDecoder
-        })
-      )
-
-      const myJsonDecoder = D.make(mystring, (u) =>
-        typeof u === "string"
-          ? D.success(u)
-          : D.failure(DE.custom({ myCustomErrorConfig: "not a string" }, u)))
-
-      const Person = S.struct({
-        name: mystring,
-        age: S.number
-      })
-
-      const codec = C.codecFor(Person)
-
-      expect(codec.decode({ name: null, age: 18 })).toEqual(
-        D.failure(DE.key("name", [DE.custom({ myCustomErrorConfig: "not a string" }, null)]))
-      )
     })
   })
 })

@@ -4,6 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import { isString } from "@fp-ts/data/String"
 import type * as AST from "@fp-ts/schema/AST"
 import * as UnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as I from "@fp-ts/schema/internal/common"
@@ -60,6 +61,8 @@ export const provideGuardFor = (provider: Provider) =>
           return _unknown
         case "AnyKeyword":
           return _any
+        case "StringKeyword":
+          return _string
         case "Tuple":
           return _tuple(
             ast,
@@ -103,6 +106,8 @@ const _never = make(I.neverKeyword, I.isNever)
 const _unknown = make(I.unknownKeyword, I.isUnknown)
 
 const _any = make(I.anyKeyword, I.isUnknown)
+
+const _string = make(I.stringKeyword, isString)
 
 const _tuple = (
   ast: AST.Tuple,

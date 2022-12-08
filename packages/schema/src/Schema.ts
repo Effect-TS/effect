@@ -29,7 +29,6 @@ import * as DataNumber from "@fp-ts/schema/data/Number"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as DataRefine from "@fp-ts/schema/data/refine"
-import * as DataString from "@fp-ts/schema/data/String"
 import * as DataSymbol from "@fp-ts/schema/data/Symbol"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
@@ -38,7 +37,6 @@ import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 
 /**
  * @since 1.0.0
@@ -75,51 +73,9 @@ export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
-  <A>(schema: Schema<A>): Schema<A> => {
-    if (AST.isDeclaration(schema.ast)) {
-      return I.declareSchema(
-        id,
-        schema.ast.config,
-        P.Semigroup.combine(P.make(id, interpreters))(
-          pipe(schema.ast.provider, P.replace(schema.ast.id, id))
-        ),
-        ...schema.ast.nodes.map(make)
-      )
-    }
-    throw new Error("`clone` is not supported on this schema")
-  }
-
-/**
- * @since 1.0.0
- */
 export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
 ) => Schema<Literals[number]> = I.literal
-
-const _undefined = I.undefinedKeyword
-
-export {
-  /**
-   * @since 1.0.0
-   */
-  _undefined as undefined
-}
-
-/**
- * @since 1.0.0
- */
-export const never: Schema<never> = I.neverKeyword
-
-/**
- * @since 1.0.0
- */
-export const unknown: Schema<unknown> = I.unknownKeyword
-
-/**
- * @since 1.0.0
- */
-export const any: Schema<any> = I.anyKeyword
 
 /**
  * @since 1.0.0
@@ -358,10 +314,34 @@ export const refine: <A, B extends A>(
 // data
 // ---------------------------------------------
 
+const _undefined = I.undefinedKeyword
+
+export {
+  /**
+   * @since 1.0.0
+   */
+  _undefined as undefined
+}
+
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = DataString.Schema
+export const never: Schema<never> = I.neverKeyword
+
+/**
+ * @since 1.0.0
+ */
+export const unknown: Schema<unknown> = I.unknownKeyword
+
+/**
+ * @since 1.0.0
+ */
+export const any: Schema<any> = I.anyKeyword
+
+/**
+ * @since 1.0.0
+ */
+export const string: Schema<string> = I.stringKeyword
 
 /**
  * @since 1.0.0

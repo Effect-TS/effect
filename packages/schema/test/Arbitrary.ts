@@ -17,21 +17,6 @@ describe("Arbitrary", () => {
 
   const sampleSize = 100
 
-  it("clone", () => {
-    const NameId = Symbol.for("@fp-ts/schema/test/Arbitrary/NameId")
-    const Name = pipe(
-      S.string,
-      S.clone(NameId, {
-        [A.ArbitraryId]: () => A.make(Name, (fc) => fc.constant("Name"))
-      })
-    )
-    const arbitrary = A.arbitraryFor(Name)
-    expect(fc.sample(arbitrary.arbitrary(fc), 2)).toEqual(["Name", "Name"])
-    const guard = G.guardFor(arbitrary)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is("a")).toEqual(true)
-  })
-
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     const arbitrary = A.arbitraryFor(schema)

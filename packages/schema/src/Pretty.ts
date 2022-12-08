@@ -61,6 +61,8 @@ export const providePrettyFor = (provider: Provider) =>
           return _unknown
         case "AnyKeyword":
           return _any
+        case "StringKeyword":
+          return _string
         case "Tuple":
           return _tuple(
             ast,
@@ -105,6 +107,8 @@ const _unknown = make(I.unknownKeyword, () => {
 const _any = make(I.anyKeyword, () => {
   throw new Error("cannot pretty print an `any` value")
 })
+
+const _string = make(I.stringKeyword, (s) => JSON.stringify(s))
 
 const _propertyKey = (key: PropertyKey): string =>
   typeof key === "symbol" ? String(key) : JSON.stringify(key)
