@@ -35,6 +35,11 @@ describe("Encoder", () => {
     expect(encoder.encode(false)).toEqual(false)
   })
 
+  it("bigint", () => {
+    const encoder = _.encoderFor(S.bigint)
+    expect(encoder.encode(1n)).toEqual("1")
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)

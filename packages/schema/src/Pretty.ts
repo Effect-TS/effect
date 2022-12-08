@@ -70,9 +70,11 @@ export const providePrettyFor = (provider: Provider) =>
         case "StringKeyword":
           return make(I.string, (s) => JSON.stringify(s))
         case "NumberKeyword":
-          return make(I.number, (s) => JSON.stringify(s))
+          return make(I.number, (n) => JSON.stringify(n))
         case "BooleanKeyword":
-          return make(I.boolean, (s) => JSON.stringify(s))
+          return make(I.boolean, (b) => JSON.stringify(b))
+        case "BigIntKeyword":
+          return make(I.boolean, (bi) => `${bi.toString()}n`)
         case "Tuple":
           return _tuple(
             ast,

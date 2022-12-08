@@ -1,14 +1,11 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as bigint from "@fp-ts/schema/data/Bigint"
-import * as json from "@fp-ts/schema/data/Json"
 import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
-import { empty, Monoid } from "@fp-ts/schema/Provider"
+import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
-const support = Monoid.combineAll([json.Provider, readonlySet.Provider, bigint.Provider])
-const guardFor = G.provideGuardFor(support)
+const guardFor = G.guardFor
 
 describe("Guard", () => {
   it("GuardId", () => {
@@ -39,6 +36,13 @@ describe("Guard", () => {
     expect(guard.is(true)).toEqual(true)
     expect(guard.is(false)).toEqual(true)
     expect(guard.is(1)).toEqual(false)
+  })
+
+  it("bigint", () => {
+    const guard = G.guardFor(S.bigint)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(0n)).toEqual(true)
+    expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
   it("literal", () => {
@@ -283,7 +287,7 @@ describe("Guard", () => {
   })
 
   it("pick", () => {
-    const baseSchema = S.struct({ a: S.string, b: bigint.Schema, c: S.boolean })
+    const baseSchema = S.struct({ a: S.string, b: S.bigint, c: S.boolean })
     const baseGuard = G.guardFor(baseSchema)
     expect(baseGuard.is(null)).toEqual(false)
     const schema = pipe(baseSchema, S.pick("a", "b"))

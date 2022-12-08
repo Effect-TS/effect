@@ -134,6 +134,23 @@ export const provideDecoderFor = (provider: Provider) =>
               I.failure(DE.notType("number", u)))
         case "BooleanKeyword":
           return I.fromRefinement(I.boolean, isBoolean, (u) => DE.notType("boolean", u))
+        case "BigIntKeyword":
+          return I.makeDecoder<unknown, bigint>(
+            I.bigint,
+            (u) => {
+              if (I.isBigInt(u)) {
+                return I.success(u)
+              }
+              if (isString(u) || isNumber(u) || isBoolean(u)) {
+                try {
+                  return I.success(BigInt(u))
+                } catch (_e) {
+                  return I.failure(DE.notType("bigint", u))
+                }
+              }
+              return I.failure(DE.notType("string | number | boolean", u))
+            }
+          )
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,

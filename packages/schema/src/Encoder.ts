@@ -69,6 +69,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return make(I.number, identity)
         case "BooleanKeyword":
           return make(I.boolean, identity)
+        case "BigIntKeyword":
+          return make(I.bigint, (n) => n.toString())
         case "Tuple":
           return _tuple(
             ast,

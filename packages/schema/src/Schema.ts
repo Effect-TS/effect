@@ -9,7 +9,6 @@ import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataBigint from "@fp-ts/schema/data/Bigint"
 import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
@@ -354,7 +353,7 @@ export const boolean: Schema<boolean> = I.boolean
 /**
  * @since 1.0.0
  */
-export const bigint: Schema<bigint> = DataBigint.Schema
+export const bigint: Schema<bigint> = I.bigint
 
 /**
  * @since 1.0.0

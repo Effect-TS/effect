@@ -91,6 +91,11 @@ describe("Pretty", () => {
     )
   })
 
+  it("bigint", () => {
+    const pretty = P.prettyFor(S.bigint)
+    expect(pretty.pretty(1n)).toEqual("1n")
+  })
+
   it("literal", () => {
     const schema = S.literal(null)
     const pretty = P.prettyFor(schema)

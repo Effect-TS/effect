@@ -44,6 +44,24 @@ describe("Decoder", () => {
     Util.expectFailure(decoder, 1, "1 did not satisfy is(boolean)")
   })
 
+  it("bigint", () => {
+    const decoder = _.decoderFor(S.bigint)
+
+    expect(decoder.decode(0n)).toEqual(_.success(0n))
+    expect(decoder.decode(1n)).toEqual(_.success(1n))
+    expect(decoder.decode("1")).toEqual(_.success(1n))
+    Util.expectFailure(
+      decoder,
+      null,
+      "null did not satisfy is(string | number | boolean)"
+    )
+    Util.expectFailure(
+      decoder,
+      1.2,
+      "1.2 did not satisfy is(bigint)"
+    )
+  })
+
   it("should throw on missing support", () => {
     const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
     expect(() => _.decoderFor(schema)).toThrowError(

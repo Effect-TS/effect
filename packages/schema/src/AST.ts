@@ -23,6 +23,7 @@ export type AST =
   | StringKeyword
   | NumberKeyword
   | BooleanKeyword
+  | BigIntKeyword
   | Struct
   | Tuple
   | Union
@@ -171,6 +172,20 @@ export interface BooleanKeyword {
  */
 export const booleanKeyword: BooleanKeyword = {
   _tag: "BooleanKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface BigIntKeyword {
+  readonly _tag: "BigIntKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const bigIntKeyword: BigIntKeyword = {
+  _tag: "BigIntKeyword"
 }
 
 /**

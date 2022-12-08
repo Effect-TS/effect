@@ -68,6 +68,8 @@ export const provideTypeRepFor = (
           return make(ast, "number")
         case "BooleanKeyword":
           return make(ast, "boolean")
+        case "BigIntKeyword":
+          return make(ast, "bigint")
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(
