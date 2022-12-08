@@ -15,7 +15,7 @@ import type { Provider } from "@fp-ts/schema/Provider"
  */
 export type AST =
   | Declaration
-  | Of
+  | LiteralType
   | Struct
   | Tuple
   | Union
@@ -50,15 +50,23 @@ export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Dec
 /**
  * @since 1.0.0
  */
-export interface Of {
-  readonly _tag: "Of"
-  readonly value: unknown
+export type Literal = string | number | boolean | null | bigint | undefined // TODO: remove undefined
+
+/**
+ * @since 1.0.0
+ */
+export interface LiteralType {
+  readonly _tag: "LiteralType"
+  readonly literal: Literal
 }
 
 /**
  * @since 1.0.0
  */
-export const of = (value: unknown): Of => ({ _tag: "Of", value })
+export const literalType = (literal: Literal): LiteralType => ({
+  _tag: "LiteralType",
+  literal
+})
 
 /**
  * @since 1.0.0
@@ -280,7 +288,7 @@ export const getFields = (
   }
 }
 
-const orUndefined = (ast: AST): AST => union([of(undefined), ast])
+const orUndefined = (ast: AST): AST => union([literalType(undefined), ast])
 
 /**
  * @since 1.0.0

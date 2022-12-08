@@ -53,8 +53,8 @@ export const provideEncoderFor = (provider: Provider) =>
             `Missing support for Encoder compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return _of(ast.value)
+        case "LiteralType":
+          return _literal(ast.literal)
         case "Tuple":
           return _tuple(
             ast,
@@ -85,17 +85,11 @@ export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provide
   P.empty
 )
 
-// ---------------------------------------------
-// internal
-// ---------------------------------------------
+const _literal = <Literal extends AST.Literal>(
+  value: Literal
+): Encoder<Literal, Literal> => make(I.literal(value), identity)
 
-/** @internal */
-export const _of = <A>(
-  value: A
-): Encoder<A, A> => make(I.of(value), identity)
-
-/** @internal */
-export const _tuple = (
+const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Encoder<any, any>>,
   oRestElement: Option<Encoder<any, any>>
@@ -135,8 +129,7 @@ export const _tuple = (
     }
   )
 
-/** @internal */
-export const _struct = (
+const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Encoder<any, any>>,
   oStringIndexSignature: Option<Encoder<any, any>>,
@@ -196,8 +189,7 @@ export const _struct = (
     }
   )
 
-/** @internal */
-export const _union = (
+const _union = (
   ast: AST.Union,
   members: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
 ): Encoder<any, any> =>
@@ -206,8 +198,7 @@ export const _union = (
     return members[index][1].encode(a)
   })
 
-/** @internal */
-export const _lazy = <S, A>(
+const _lazy = <S, A>(
   f: () => Encoder<S, A>
 ): Encoder<S, A> => {
   const get = I.memoize<void, Encoder<S, A>>(f)

@@ -51,13 +51,8 @@ export const providePrettyFor = (provider: Provider) =>
             `Missing support for Pretty compiler, data type ${ast.id.description?.toString()}`
           )
         }
-        case "Of":
-          return make(I.makeSchema(ast), (input) => {
-            if (input === undefined) {
-              return "undefined"
-            }
-            return JSON.stringify(input)
-          })
+        case "LiteralType":
+          return make(I.makeSchema(ast), _literalType)
         case "Tuple":
           return _tuple(
             ast,
@@ -86,13 +81,18 @@ export const providePrettyFor = (provider: Provider) =>
  */
 export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(empty)
 
-// ---------------------------------------------
-// internal
-// ---------------------------------------------
-
-const _prettyKey = (key: PropertyKey): string => {
-  return typeof key === "symbol" ? String(key) : JSON.stringify(key)
+const _literalType = (literal: AST.Literal): string => {
+  if (literal === undefined) { // TODO: remove undefined from literals
+    return "undefined"
+  }
+  if (typeof literal === "bigint") {
+    return literal.toString()
+  }
+  return JSON.stringify(literal)
 }
+
+const _propertyKey = (key: PropertyKey): string =>
+  typeof key === "symbol" ? String(key) : JSON.stringify(key)
 
 const _struct = (
   ast: AST.Struct,
@@ -119,14 +119,14 @@ const _struct = (
             continue
           }
           if (input[key] === undefined) {
-            output.push(`${_prettyKey(key)}: undefined`)
+            output.push(`${_propertyKey(key)}: undefined`)
             continue
           }
         }
         // ---------------------------------------------
         // handle required fields
         // ---------------------------------------------
-        output.push(`${_prettyKey(key)}: ${fields[i].pretty(input[key])}`)
+        output.push(`${_propertyKey(key)}: ${fields[i].pretty(input[key])}`)
       }
       // ---------------------------------------------
       // handle index signatures
@@ -135,13 +135,13 @@ const _struct = (
         if (O.isSome(oStringIndexSignature)) {
           const pretty = oStringIndexSignature.value
           for (const key of Object.keys(input)) {
-            output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
+            output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
           }
         }
         if (O.isSome(oSymbolIndexSignature)) {
           const pretty = oSymbolIndexSignature.value
           for (const key of Object.getOwnPropertySymbols(input)) {
-            output.push(`${_prettyKey(key)}: ${pretty.pretty(input[key])}`)
+            output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
           }
         }
       }

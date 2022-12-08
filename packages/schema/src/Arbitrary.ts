@@ -51,13 +51,20 @@ export const provideArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return make(I.makeSchema(ast), (fc) => fc.constant(ast.value))
+        case "LiteralType":
+          return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
         case "Tuple":
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
             pipe(ast.restElement, O.map(go))
+          )
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
+            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
           )
         case "Union": {
           const members = ast.members.map(go)
@@ -66,13 +73,6 @@ export const provideArbitraryFor = (provider: Provider) =>
             (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
           )
         }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
-          )
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }
@@ -88,9 +88,38 @@ export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbit
   empty
 )
 
-// ---------------------------------------------
-// internal
-// ---------------------------------------------
+const _tuple = (
+  ast: AST.Tuple,
+  components: ReadonlyArray<Arbitrary<any>>,
+  oRestElement: O.Option<Arbitrary<any>>
+): Arbitrary<any> =>
+  make(
+    I.makeSchema(ast),
+    (fc) => {
+      // ---------------------------------------------
+      // handle components
+      // ---------------------------------------------
+      let output = fc.tuple(...components.map((c, i) => {
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        return ast.components[i].optional ?
+          fc.oneof(fc.constant(undefined), c.arbitrary(fc)) :
+          c.arbitrary(fc)
+      }))
+
+      // ---------------------------------------------
+      // handle rest element
+      // ---------------------------------------------
+      if (O.isSome(oRestElement)) {
+        output = output.chain((as) =>
+          fc.array(oRestElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
+        )
+      }
+
+      return output
+    }
+  )
 
 const _struct = (
   ast: AST.Struct,
@@ -146,39 +175,6 @@ const _struct = (
             })
           )
         }
-      }
-
-      return output
-    }
-  )
-
-const _tuple = (
-  ast: AST.Tuple,
-  components: ReadonlyArray<Arbitrary<any>>,
-  oRestElement: O.Option<Arbitrary<any>>
-): Arbitrary<any> =>
-  make(
-    I.makeSchema(ast),
-    (fc) => {
-      // ---------------------------------------------
-      // handle components
-      // ---------------------------------------------
-      let output = fc.tuple(...components.map((c, i) => {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        return ast.components[i].optional ?
-          fc.oneof(fc.constant(undefined), c.arbitrary(fc)) :
-          c.arbitrary(fc)
-      }))
-
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
-        output = output.chain((as) =>
-          fc.array(oRestElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
-        )
       }
 
       return output

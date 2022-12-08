@@ -91,22 +91,12 @@ describe("Pretty", () => {
     )
   })
 
-  describe("of", () => {
-    it("null", () => {
-      const schema = S.of(null)
-      const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(null)).toEqual(
-        "null"
-      )
-    })
-
-    it("undefined", () => {
-      const schema = S.of(undefined)
-      const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(undefined)).toEqual(
-        "undefined"
-      )
-    })
+  it("literal", () => {
+    const schema = S.literal(null)
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty(null)).toEqual(
+      "null"
+    )
   })
 
   describe("tuple", () => {

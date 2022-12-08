@@ -55,14 +55,14 @@ describe("Arbitrary", () => {
 
   it("lazy", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.of(null))))
+    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.literal(null))))
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)
   })
 
-  it("of", () => {
-    const schema = S.of(1)
+  it("literal", () => {
+    const schema = S.literal(1)
     const arbitrary = A.arbitraryFor(schema).arbitrary(fc)
     const guard = G.guardFor(schema)
     expect(fc.sample(arbitrary, sampleSize).every(guard.is)).toEqual(true)

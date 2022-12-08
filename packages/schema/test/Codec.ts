@@ -31,8 +31,8 @@ describe("Codec", () => {
     expect(_.jsonObject).exist
   })
 
-  it("of", () => {
-    const schema = S.of(1)
+  it("literal", () => {
+    const schema = S.literal(1)
     const codec = codecFor(schema)
     expect(codec.decode(1)).toEqual(D.success(1))
     Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
@@ -95,14 +95,6 @@ describe("Codec", () => {
     expect(() => codecFor(schema)).toThrowError(
       new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
     )
-  })
-
-  it("of", () => {
-    const schema = S.of(1)
-    const decoder = codecFor(schema)
-    expect(decoder.decode(1)).toEqual(D.success(1))
-
-    Util.expectFailure(decoder, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
   describe("tuple", () => {

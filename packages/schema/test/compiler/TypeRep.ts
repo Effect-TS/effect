@@ -61,8 +61,8 @@ export const provideTypeRepFor = (
             `Missing support for TypeRep compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return make(ast, JSON.stringify(ast.value))
+        case "LiteralType":
+          return make(ast, JSON.stringify(ast.literal))
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(
@@ -132,8 +132,8 @@ describe("typeRepFor", () => {
     )
   })
 
-  it("of", () => {
-    const schema = S.of("a")
+  it("literal", () => {
+    const schema = S.literal("a")
     expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "\"a\""
     )

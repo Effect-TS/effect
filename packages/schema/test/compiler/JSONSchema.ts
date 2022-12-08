@@ -112,8 +112,8 @@ const provideJsonSchemaFor = (
             `Missing support for JSONSchema compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return _of(ast.value)
+        case "LiteralType":
+          return _of(ast.literal)
         case "Tuple":
           return _tuple(
             ast,

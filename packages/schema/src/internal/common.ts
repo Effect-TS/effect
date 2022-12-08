@@ -200,13 +200,14 @@ export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
   ...schemas: Schemas
 ): Schema<any> => makeSchema(AST.declare(id, config, provider, schemas.map((s) => s.ast)))
 
-/** @internal */
-export const of = <A>(value: A): Schema<A> => makeSchema(AST.of(value))
+const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
+  makeSchema(AST.literalType(value))
 
 /** @internal */
-export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
-  ...a: A
-): Schema<A[number]> => a.length === 1 ? of(a[0]) : union(...a.map(of))
+export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
+  ...literals: Literals
+): Schema<Literals[number]> =>
+  literals.length === 1 ? makeLiteral(literals[0]) : union(...literals.map(makeLiteral))
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 

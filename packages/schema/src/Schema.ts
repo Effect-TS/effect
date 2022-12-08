@@ -96,14 +96,9 @@ export const clone = (id: symbol, interpreters: Record<symbol, Function>) =>
 /**
  * @since 1.0.0
  */
-export const of: <A>(value: A) => Schema<A> = I.of
-
-/**
- * @since 1.0.0
- */
-export const literal: <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
-  ...a: A
-) => Schema<A[number]> = I.literal
+export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
+  ...literals: Literals
+) => Schema<Literals[number]> = I.literal
 
 /**
  * @since 1.0.0
@@ -112,7 +107,7 @@ export const nativeEnum = <A extends { [_: string]: string | number }>(nativeEnu
   make(AST.union(
     Object.keys(nativeEnum).filter(
       (key) => typeof nativeEnum[nativeEnum[key]] !== "number"
-    ).map((key) => AST.of(nativeEnum[key]))
+    ).map((key) => AST.literalType(nativeEnum[key]))
   ))
 
 // ---------------------------------------------
@@ -175,11 +170,16 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ) => Schema<Infer<Members[number]>> = I.union
 
+const b = Symbol()
+type A = { a: string; [b]: number }
+type K = keyof A
+export const k: K = b
+
 /**
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  union(...AST.getFields(schema.ast).map((field) => of(field.key as keyof A)))
+  union(...AST.getFields(schema.ast).map((field) => literal(field.key as any))) // TODO: key may contain a symbol, using literal here is wrong
 
 /**
  * @since 1.0.0

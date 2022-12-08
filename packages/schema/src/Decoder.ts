@@ -97,8 +97,8 @@ export const provideDecoderFor = (provider: Provider) =>
             `Missing support for Decoder compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return _of(ast.value)
+        case "LiteralType":
+          return _literal(ast.literal)
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,
@@ -139,18 +139,12 @@ export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provide
   P.empty
 )
 
-// ---------------------------------------------
-// internal
-// ---------------------------------------------
+const _literal = <Literal extends AST.Literal>(
+  value: Literal
+): Decoder<unknown, Literal> =>
+  I.fromRefinement(I.literal(value), (u): u is Literal => u === value, (u) => DE.notEqual(value, u))
 
-/** @internal */
-export const _of = <A>(
-  value: A
-): Decoder<unknown, A> =>
-  I.fromRefinement(I.of(value), (u): u is A => u === value, (u) => DE.notEqual(value, u))
-
-/** @internal */
-export const _tuple = (
+const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Decoder<any, any>>,
   oRestElement: Option<Decoder<any, any>>
@@ -210,8 +204,7 @@ export const _tuple = (
     }
   )
 
-/** @internal */
-export const _struct = (
+const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Decoder<any, any>>,
   oStringIndexSignature: Option<Decoder<any, any>>,
@@ -301,8 +294,7 @@ export const _struct = (
     }
   )
 
-/** @internal */
-export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
+const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
   ast: AST.Union,
   members: Members
 ): Decoder<I, Infer<Members[number]>> =>
@@ -318,8 +310,7 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
     return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
-/** @internal */
-export const _lazy = <I, A>(
+const _lazy = <I, A>(
   f: () => Decoder<I, A>
 ): Decoder<I, A> => {
   const get = I.memoize<void, Decoder<I, A>>(f)

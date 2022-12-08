@@ -51,13 +51,20 @@ export const provideGuardFor = (provider: Provider) =>
             `Missing support for Guard compiler, data type ${String(ast.id.description)}`
           )
         }
-        case "Of":
-          return make(I.makeSchema(ast), (u): u is any => u === ast.value)
+        case "LiteralType":
+          return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
         case "Tuple":
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
             pipe(ast.restElement, O.map(go))
+          )
+        case "Struct":
+          return _struct(
+            ast,
+            ast.fields.map((f) => go(f.value)),
+            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
+            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
           )
         case "Union": {
           const members = ast.members.map(go)
@@ -66,13 +73,6 @@ export const provideGuardFor = (provider: Provider) =>
             (a): a is any => members.some((guard) => guard.is(a))
           )
         }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
-          )
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }
@@ -86,9 +86,47 @@ export const provideGuardFor = (provider: Provider) =>
  */
 export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
 
-// ---------------------------------------------
-// internal
-// ---------------------------------------------
+const _tuple = (
+  ast: AST.Tuple,
+  components: ReadonlyArray<Guard<any>>,
+  oRestElement: O.Option<Guard<any>>
+): Guard<any> =>
+  make(
+    I.makeSchema(ast),
+    (input: unknown): input is any => {
+      if (!UnknownArray.Guard.is(input)) {
+        return false
+      }
+      let i = 0
+      // ---------------------------------------------
+      // handle components
+      // ---------------------------------------------
+      for (; i < components.length; i++) {
+        // ---------------------------------------------
+        // handle optional components
+        // ---------------------------------------------
+        if (ast.components[i].optional && input[i] === undefined) {
+          continue
+        }
+        if (!components[i].is(input[i])) {
+          return false
+        }
+      }
+      // ---------------------------------------------
+      // handle rest element
+      // ---------------------------------------------
+      if (O.isSome(oRestElement)) {
+        const guard = oRestElement.value
+        for (; i < input.length; i++) {
+          if (!guard.is(input[i])) {
+            return false
+          }
+        }
+      }
+
+      return true
+    }
+  )
 
 const _struct = (
   ast: AST.Struct,
@@ -154,48 +192,6 @@ const _struct = (
             if (!guard.is(input[key])) {
               return false
             }
-          }
-        }
-      }
-
-      return true
-    }
-  )
-
-const _tuple = (
-  ast: AST.Tuple,
-  components: ReadonlyArray<Guard<any>>,
-  oRestElement: O.Option<Guard<any>>
-): Guard<any> =>
-  make(
-    I.makeSchema(ast),
-    (input: unknown): input is any => {
-      if (!UnknownArray.Guard.is(input)) {
-        return false
-      }
-      let i = 0
-      // ---------------------------------------------
-      // handle components
-      // ---------------------------------------------
-      for (; i < components.length; i++) {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        if (ast.components[i].optional && input[i] === undefined) {
-          continue
-        }
-        if (!components[i].is(input[i])) {
-          return false
-        }
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
-        const guard = oRestElement.value
-        for (; i < input.length; i++) {
-          if (!guard.is(input[i])) {
-            return false
           }
         }
       }

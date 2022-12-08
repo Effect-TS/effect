@@ -307,13 +307,6 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
   })
 
-  it("of", () => {
-    const schema = S.of(1)
-    const guard = guardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(2)).toEqual(false)
-  })
-
   it("tuple", () => {
     const schema = S.tuple(S.string, S.number)
     const guard = guardFor(schema)
