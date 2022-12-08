@@ -2,14 +2,11 @@
  * @since 1.0.0
  */
 
-import type { Chunk } from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
-import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
 import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
@@ -22,13 +19,11 @@ import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
-import * as DataList from "@fp-ts/schema/data/List"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import * as DataSymbol from "@fp-ts/schema/data/Symbol"
-import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
+import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -313,12 +308,7 @@ export const refine: <A, B extends A>(
 
 const _undefined = I._undefined
 
-export {
-  /**
-   * @since 1.0.0
-   */
-  _undefined as undefined
-}
+export { _undefined as undefined }
 
 /**
  * @since 1.0.0
@@ -389,18 +379,3 @@ export const jsonObject: Schema<JsonObject> = DataJsonObject.Schema
  * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
-
-/**
- * @since 1.0.0
- */
-export const chunk: <A>(item: Schema<A>) => Schema<Chunk<A>> = DataChunk.schema
-
-/**
- * @since 1.0.0
- */
-export const readonlySet: <A>(item: Schema<A>) => Schema<ReadonlySet<A>> = DataReadonlySet.schema
-
-/**
- * @since 1.0.0
- */
-export const list: <A>(item: Schema<A>) => Schema<List<A>> = DataList.schema

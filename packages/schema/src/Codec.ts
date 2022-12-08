@@ -2,13 +2,11 @@
  * @since 1.0.0
  */
 
-import type { Chunk } from "@fp-ts/data/Chunk"
 import type { Left, Right } from "@fp-ts/data/Either"
 import * as E from "@fp-ts/data/Either"
 import { identity, pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import { parse, stringify } from "@fp-ts/data/Json"
-import type { List } from "@fp-ts/data/List"
 import type { Option } from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
@@ -18,8 +16,8 @@ import type { Literal } from "@fp-ts/schema/AST"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
-import { provideDecoderFor } from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
+import { provideDecoderFor } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import { provideEncoderFor } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -452,19 +450,3 @@ export const jsonObject: Codec<JsonObject> = codecFor(S.jsonObject)
  * @since 1.0.0
  */
 export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(S.option(value))
-
-/**
- * @since 1.0.0
- */
-export const chunk = <A>(item: Schema<A>): Codec<Chunk<A>> => codecFor(S.chunk(item))
-
-/**
- * @since 1.0.0
- */
-export const readonlySet = <A>(item: Schema<A>): Codec<ReadonlySet<A>> =>
-  codecFor(S.readonlySet(item))
-
-/**
- * @since 1.0.0
- */
-export const list = <A>(item: Schema<A>): Codec<List<A>> => codecFor(S.list(item))
