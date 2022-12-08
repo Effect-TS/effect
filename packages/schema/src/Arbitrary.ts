@@ -75,7 +75,7 @@ export const provideArbitraryFor = (provider: Provider) =>
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
-            pipe(ast.restElement, O.map(go))
+            pipe(ast.rest, O.map(go))
           )
         case "Struct":
           return _struct(
@@ -109,7 +109,7 @@ export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbit
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Arbitrary<any>>,
-  oRestElement: O.Option<Arbitrary<any>>
+  oRest: O.Option<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
     I.makeSchema(ast),
@@ -129,9 +129,9 @@ const _tuple = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
+      if (O.isSome(oRest)) {
         output = output.chain((as) =>
-          fc.array(oRestElement.value.arbitrary(fc)).map((rest) => [...as, ...rest])
+          fc.array(oRest.value.arbitrary(fc)).map((rest) => [...as, ...rest])
         )
       }
 

@@ -48,7 +48,7 @@ describe("Encoder", () => {
     })
 
     it("rest element", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.restElement(NumberFromString))
+      const schema = pipe(S.tuple(S.string, S.number), S.rest(NumberFromString))
       const encoder = _.encoderFor(schema)
       expect(encoder.encode(["a", 1])).toEqual(["a", 1])
       expect(encoder.encode(["a", 1, 2])).toEqual(["a", 1, "2"])

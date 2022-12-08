@@ -161,12 +161,12 @@ export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const restElement = <R>(rest: Schema<R>) =>
+export const rest = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
       const a = self.ast
       return make(pipe(
-        a.restElement,
+        a.rest,
         O.match(
           () => AST.tuple(a.components, O.some(rest.ast), true),
           (value) =>
@@ -179,7 +179,7 @@ export const restElement = <R>(rest: Schema<R>) =>
         )
       ))
     }
-    throw new Error("`restElement` is not supported on this schema")
+    throw new Error("`rest` is not supported on this schema")
   }
 
 /**
@@ -192,7 +192,7 @@ export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
  */
 export const nonEmptyArray = <A>(
   item: Schema<A>
-): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), restElement(item))
+): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
 
 /**
  * @since 1.0.0

@@ -242,8 +242,8 @@ describe("Codec", () => {
     )
   })
 
-  it("restElement", () => {
-    const schema = pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
+  it("rest", () => {
+    const schema = pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
     const decoder = codecFor(schema)
     expect(decoder.decode(["a", 1])).toEqual(D.success(["a", 1]))
     expect(decoder.decode(["a", 1, true])).toEqual(D.success(["a", 1, true]))

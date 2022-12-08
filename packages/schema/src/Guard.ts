@@ -75,7 +75,7 @@ export const provideGuardFor = (provider: Provider) =>
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
-            pipe(ast.restElement, O.map(go))
+            pipe(ast.rest, O.map(go))
           )
         case "Struct":
           return _struct(
@@ -107,7 +107,7 @@ export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empt
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Guard<any>>,
-  oRestElement: O.Option<Guard<any>>
+  oRest: O.Option<Guard<any>>
 ): Guard<any> =>
   make(
     I.makeSchema(ast),
@@ -133,8 +133,8 @@ const _tuple = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
-        const guard = oRestElement.value
+      if (O.isSome(oRest)) {
+        const guard = oRest.value
         for (; i < input.length; i++) {
           if (!guard.is(input[i])) {
             return false

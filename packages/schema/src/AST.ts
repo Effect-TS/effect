@@ -307,7 +307,7 @@ export const component = (value: AST, optional: boolean): Component => ({
 export interface Tuple {
   readonly _tag: "Tuple"
   readonly components: ReadonlyArray<Component>
-  readonly restElement: Option<AST>
+  readonly rest: Option<AST>
   readonly readonly: boolean
 }
 
@@ -316,9 +316,9 @@ export interface Tuple {
  */
 export const tuple = (
   components: ReadonlyArray<Component>,
-  restElement: Option<AST>,
+  rest: Option<AST>,
   readonly: boolean
-): Tuple => ({ _tag: "Tuple", components, restElement, readonly })
+): Tuple => ({ _tag: "Tuple", components, rest, readonly })
 
 /**
  * @since 1.0.0
@@ -425,7 +425,7 @@ export const partial = (ast: AST): AST => {
   } else if (isTuple(ast)) {
     return tuple(
       ast.components.map((c) => component(c.value, true)),
-      pipe(ast.restElement, O.map(orUndefined)),
+      pipe(ast.rest, O.map(orUndefined)),
       ast.readonly
     )
   } else if (isUnion(ast)) {

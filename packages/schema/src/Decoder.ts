@@ -158,7 +158,7 @@ export const provideDecoderFor = (provider: Provider) =>
               _tuple(
                 ast,
                 ast.components.map((c) => go(c.value)),
-                pipe(ast.restElement, O.map(go))
+                pipe(ast.rest, O.map(go))
               )
             )
           )
@@ -194,7 +194,7 @@ export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provide
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Decoder<any, any>>,
-  oRestElement: Option<Decoder<any, any>>
+  oRest: Option<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
     I.makeSchema(ast),
@@ -224,8 +224,8 @@ const _tuple = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
-        const decoder = oRestElement.value
+      if (O.isSome(oRest)) {
+        const decoder = oRest.value
         for (; i < input.length; i++) {
           const t = decoder.decode(input[i])
           if (isFailure(t)) {

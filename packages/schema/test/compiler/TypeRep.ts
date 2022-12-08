@@ -72,8 +72,8 @@ export const provideTypeRepFor = (
           return make(ast, "bigint")
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
-          const restElement = pipe(
-            ast.restElement,
+          const rest = pipe(
+            ast.rest,
             O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
             O.getOrElse(() => "")
           )
@@ -81,7 +81,7 @@ export const provideTypeRepFor = (
             ast,
             `${ast.readonly ? "readonly " : ""}[${
               components.map((c) => c.typeRep).join(", ")
-            }${restElement}]`
+            }${rest}]`
           )
         }
         case "Union": {

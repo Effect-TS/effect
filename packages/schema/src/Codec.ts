@@ -262,9 +262,9 @@ export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
 /**
  * @since 1.0.0
  */
-export const restElement = <R>(rest: Schema<R>) =>
+export const rest = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> =>
-    codecFor(S.restElement(rest)(self))
+    codecFor(S.rest(rest)(self))
 
 /**
  * @since 1.0.0

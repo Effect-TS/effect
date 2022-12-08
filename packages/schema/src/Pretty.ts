@@ -79,7 +79,7 @@ export const providePrettyFor = (provider: Provider) =>
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
-            pipe(ast.restElement, O.map(go))
+            pipe(ast.rest, O.map(go))
           )
         case "Struct":
           return _struct(
@@ -168,7 +168,7 @@ const _struct = (
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Pretty<any>>,
-  oRestElement: O.Option<Pretty<any>>
+  oRest: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
     I.makeSchema(ast),
@@ -194,8 +194,8 @@ const _tuple = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRestElement)) {
-        const pretty = oRestElement.value
+      if (O.isSome(oRest)) {
+        const pretty = oRest.value
         for (; i < input.length; i++) {
           output[i] = pretty.pretty(input[i])
         }

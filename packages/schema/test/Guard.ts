@@ -398,9 +398,9 @@ describe("Guard", () => {
     expect(guard.is("aa")).toEqual(false)
   })
 
-  describe("restElement", () => {
+  describe("rest", () => {
     it("baseline", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
+      const schema = pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
       const guard = guardFor(schema)
       expect(guard.is(["a", 1])).toEqual(true)
       expect(guard.is(["a", 1, true])).toEqual(true)
@@ -409,11 +409,11 @@ describe("Guard", () => {
       expect(guard.is(["a", 1, true, "a", true])).toEqual(false)
     })
 
-    it("multiple `restElement` calls must result in a union", () => {
+    it("multiple `rest` calls must result in a union", () => {
       const schema = pipe(
         S.tuple(S.string, S.number),
-        S.restElement(S.boolean),
-        S.restElement(S.string)
+        S.rest(S.boolean),
+        S.rest(S.string)
       )
       const guard = guardFor(schema)
       expect(guard.is(["a", 1])).toEqual(true)

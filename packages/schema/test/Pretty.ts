@@ -114,7 +114,7 @@ describe("Pretty", () => {
     })
 
     it("rest element", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
+      const schema = pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty(["a", 1])).toEqual("[\"a\", 1]")
       expect(pretty.pretty(["a", 1, true])).toEqual("[\"a\", 1, true]")

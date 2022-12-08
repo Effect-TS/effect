@@ -114,7 +114,7 @@ const provideJsonSchemaFor = (
           return _tuple(
             ast,
             ast.components.map((c) => go(c.value)),
-            pipe(ast.restElement, O.map(go))
+            pipe(ast.rest, O.map(go))
           )
         case "Struct":
           return _struct(
@@ -149,7 +149,7 @@ export const _of = (
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<JSONSchema>,
-  oRestElement: O.Option<JSONSchema>
+  oRest: O.Option<JSONSchema>
 ): JSONSchema => {
   const output: ArrayJSONSchema = { type: "array" }
   let i = 0
@@ -180,11 +180,11 @@ const _tuple = (
   // ---------------------------------------------
   // handle rest element
   // ---------------------------------------------
-  if (O.isSome(oRestElement)) {
+  if (O.isSome(oRest)) {
     if (output.items) {
-      output.additionalItems = oRestElement.value
+      output.additionalItems = oRest.value
     } else {
-      output.items = oRestElement.value
+      output.items = oRest.value
     }
   }
 
