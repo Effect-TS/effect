@@ -19,7 +19,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/schema/data/Chunk")
+export const id = Symbol.for("@fp-ts/data/Chunk")
 
 const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   I.makeGuard(
