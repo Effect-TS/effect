@@ -48,14 +48,14 @@ export const custom = (config: unknown, actual: unknown): Custom => ({
  */
 export interface NotType {
   readonly _tag: "NotType"
-  readonly expected: symbol
+  readonly expected: string
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const notType = (expected: symbol, actual: unknown): NotType => ({
+export const notType = (expected: string, actual: unknown): NotType => ({
   _tag: "NotType",
   expected,
   actual

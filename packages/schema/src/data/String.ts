@@ -34,7 +34,7 @@ const Guard = I.makeGuard<string>(Schema, String.isString)
 
 const Decoder = I.makeDecoder<unknown, string>(
   Schema,
-  (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType(id, u))
+  (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType("string", u))
 )
 
 const Encoder = I.makeEncoder<unknown, string>(Schema, identity)

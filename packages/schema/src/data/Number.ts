@@ -42,7 +42,7 @@ const Decoder = I.makeDecoder<unknown, number>(
         isFinite(u) ?
         I.success(u) :
         I.warning(DE.notFinite, u) :
-      I.failure(DE.notType(id, u))
+      I.failure(DE.notType("number", u))
 )
 
 const Encoder = I.makeEncoder<unknown, number>(Schema, identity)

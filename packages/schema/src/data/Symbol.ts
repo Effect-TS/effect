@@ -33,7 +33,7 @@ const Guard = I.makeGuard<symbol>(Schema, (u: unknown): u is symbol => typeof u 
 
 const Decoder = I.makeDecoder<unknown, symbol>(
   Schema,
-  (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType(id, u))
+  (u) => Guard.is(u) ? I.success(u) : I.failure(DE.notType("symbol", u))
 )
 
 const Encoder = I.makeEncoder<unknown, symbol>(Schema, identity)

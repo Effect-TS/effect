@@ -17,5 +17,5 @@ export const id = Symbol.for("@fp-ts/schema/data/filter/Int")
  */
 export const schema: <A extends number>(self: Schema<A>) => Schema<A> = filter(
   id,
-  (n: number) => Number.isInteger(n) ? I.success(n) : I.failure(DE.notType(id, n))
+  (n: number) => Number.isInteger(n) ? I.success(n) : I.failure(DE.notType("Int", n))
 )

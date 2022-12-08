@@ -45,10 +45,10 @@ const Decoder = I.makeDecoder<unknown, bigint>(
       try {
         return I.success(BigInt(u))
       } catch (_e) {
-        return I.failure(DE.notType(id, u))
+        return I.failure(DE.notType("bigint", u))
       }
     }
-    return I.failure(DE.notType(id, u))
+    return I.failure(DE.notType("string | number | boolean", u))
   }
 )
 

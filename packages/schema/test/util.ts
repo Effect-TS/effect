@@ -59,11 +59,8 @@ export const format = (e: DE.DecodeError): string => {
       return `did not satisfy not(isNaN)`
     case "NotFinite":
       return `did not satisfy isFinite`
-    case "NotType": {
-      const expected = String(e.expected.description).split("/").at(-1) ?? "<unknown>"
-      return `${JSON.stringify(e.actual)} did not satisfy is(${expected})`
-    }
-
+    case "NotType":
+      return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "NotEqual":
       return `${JSON.stringify(e.actual)} did not satisfy isEqual(${e.expected})`
     case "Index":

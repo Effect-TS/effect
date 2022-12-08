@@ -36,7 +36,7 @@ const Guard = I.makeGuard<JsonObject>(Schema, I.isJsonObject)
 export const Decoder = I.fromRefinement<JsonObject>(
   Schema,
   I.isJsonObject,
-  (u) => DE.notType(id, u)
+  (u) => DE.notType("{ readonly [_: string]: Json }", u)
 )
 
 const Encoder = I.makeEncoder<unknown, JsonObject>(Schema, identity)

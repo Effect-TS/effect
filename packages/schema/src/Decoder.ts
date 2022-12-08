@@ -8,7 +8,6 @@ import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { These } from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
-import * as DataNever from "@fp-ts/schema/data/Never"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import * as DataUnknownObject from "@fp-ts/schema/data/UnknownObject"
 import * as DE from "@fp-ts/schema/DecodeError"
@@ -316,7 +315,7 @@ export const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
       }
       es.push(DE.member(i, t.left))
     }
-    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType(DataNever.id, u))
+    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
 /** @internal */
