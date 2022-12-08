@@ -55,6 +55,8 @@ export const provideEncoderFor = (provider: Provider) =>
         }
         case "LiteralType":
           return _literal(ast.literal)
+        case "UndefinedKeyword":
+          return _undefined
         case "Tuple":
           return _tuple(
             ast,
@@ -88,6 +90,8 @@ export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provide
 const _literal = <Literal extends AST.Literal>(
   value: Literal
 ): Encoder<Literal, Literal> => make(I.literal(value), identity)
+
+const _undefined: Encoder<undefined, undefined> = make(I._undefined, identity)
 
 const _tuple = (
   ast: AST.Tuple,

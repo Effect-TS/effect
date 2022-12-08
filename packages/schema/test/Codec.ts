@@ -12,7 +12,7 @@ const codecFor = _.codecFor
 const NumberFromStringSchema = parseFloat.schema(S.string)
 
 describe("Codec", () => {
-  it("exist", () => {
+  it("exoprts", () => {
     expect(_.make).exist
     expect(_.filter).exist
     expect(_.filterWith).exist
@@ -161,6 +161,28 @@ describe("Codec", () => {
       Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
 
       Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
+    })
+
+    it("symbolIndexSignature", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const schema = S.symbolIndexSignature(S.number)
+      const decoder = codecFor(schema)
+      expect(decoder.decode({})).toEqual(D.success({}))
+      expect(decoder.decode({ [a]: 1 })).toEqual(D.success({ [a]: 1 }))
+
+      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [_: string]: unknown })")
+      Util.expectFailure(
+        decoder,
+        { [a]: "a" },
+        "/Symbol(@fp-ts/schema/test/a) \"a\" did not satisfy is(number)"
+      )
+
+      Util.expectWarning(
+        decoder,
+        { [a]: NaN },
+        "/Symbol(@fp-ts/schema/test/a) did not satisfy not(isNaN)",
+        { [a]: NaN }
+      )
     })
   })
 

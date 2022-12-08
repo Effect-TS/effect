@@ -53,6 +53,8 @@ export const provideGuardFor = (provider: Provider) =>
         }
         case "LiteralType":
           return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
+        case "UndefinedKeyword":
+          return _undefined
         case "Tuple":
           return _tuple(
             ast,
@@ -85,6 +87,8 @@ export const provideGuardFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
+
+const _undefined: Guard<undefined> = make(I._undefined, (u): u is undefined => u === undefined)
 
 const _tuple = (
   ast: AST.Tuple,

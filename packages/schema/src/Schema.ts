@@ -100,6 +100,15 @@ export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
 ) => Schema<Literals[number]> = I.literal
 
+const _undefined = I._undefined
+
+export {
+  /**
+   * @since 1.0.0
+   */
+  _undefined as undefined
+}
+
 /**
  * @since 1.0.0
  */
@@ -169,11 +178,6 @@ export const int: <A extends number>(self: Schema<A>) => Schema<A> = DataInt.sch
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ) => Schema<Infer<Members[number]>> = I.union
-
-const b = Symbol()
-type A = { a: string; [b]: number }
-type K = keyof A
-export const k: K = b
 
 /**
  * @since 1.0.0

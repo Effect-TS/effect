@@ -14,6 +14,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as A from "@fp-ts/schema/Arbitrary"
+import type { Literal } from "@fp-ts/schema/AST"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
@@ -176,7 +177,7 @@ export const codecFor: <A>(schema: Schema<A>) => Codec<A> = provideCodecFor(empt
 /**
  * @since 1.0.0
  */
-export const literal = <A extends ReadonlyArray<string | number | boolean | null | undefined>>(
+export const literal = <A extends ReadonlyArray<Literal>>(
   ...a: A
 ): Codec<A[number]> => codecFor(S.literal(...a))
 

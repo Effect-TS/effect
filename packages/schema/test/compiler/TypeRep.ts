@@ -62,7 +62,12 @@ export const provideTypeRepFor = (
           )
         }
         case "LiteralType":
-          return make(ast, JSON.stringify(ast.literal))
+          return make(
+            ast,
+            typeof ast.literal === "bigint" ? ast.literal.toString() : JSON.stringify(ast.literal)
+          )
+        case "UndefinedKeyword":
+          return make(ast, "undefined")
         case "Tuple": {
           const components = ast.components.map((c) => go(c.value))
           const restElement = pipe(

@@ -53,6 +53,8 @@ export const providePrettyFor = (provider: Provider) =>
         }
         case "LiteralType":
           return make(I.makeSchema(ast), _literalType)
+        case "UndefinedKeyword":
+          return _undefined
         case "Tuple":
           return _tuple(
             ast,
@@ -81,15 +83,10 @@ export const providePrettyFor = (provider: Provider) =>
  */
 export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(empty)
 
-const _literalType = (literal: AST.Literal): string => {
-  if (literal === undefined) { // TODO: remove undefined from literals
-    return "undefined"
-  }
-  if (typeof literal === "bigint") {
-    return literal.toString()
-  }
-  return JSON.stringify(literal)
-}
+const _literalType = (literal: AST.Literal): string =>
+  typeof literal === "bigint" ? literal.toString() : JSON.stringify(literal)
+
+const _undefined: Pretty<undefined> = make(I._undefined, () => "undefined")
 
 const _propertyKey = (key: PropertyKey): string =>
   typeof key === "symbol" ? String(key) : JSON.stringify(key)

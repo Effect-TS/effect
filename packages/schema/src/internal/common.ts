@@ -209,6 +209,9 @@ export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
 ): Schema<Literals[number]> =>
   literals.length === 1 ? makeLiteral(literals[0]) : union(...literals.map(makeLiteral))
 
+/** @internal */
+export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

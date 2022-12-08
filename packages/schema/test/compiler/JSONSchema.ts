@@ -114,6 +114,8 @@ const provideJsonSchemaFor = (
         }
         case "LiteralType":
           return _of(ast.literal)
+        case "UndefinedKeyword":
+          throw new Error("cannot build JSON Schema fro `undefined`")
         case "Tuple":
           return _tuple(
             ast,
