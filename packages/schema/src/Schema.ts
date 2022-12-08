@@ -19,7 +19,6 @@ import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
-import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
@@ -377,4 +376,13 @@ export const jsonObject: Schema<JsonObject> = DataJsonObject.Schema
 /**
  * @since 1.0.0
  */
-export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
+export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
+  union(
+    struct({
+      _tag: literal("None")
+    }),
+    struct({
+      _tag: literal("Some"),
+      value
+    })
+  )

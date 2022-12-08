@@ -9,7 +9,7 @@ import * as Util from "@fp-ts/schema/test/util"
 const codecFor = _.codecFor
 
 describe("Codec", () => {
-  it("exoprts", () => {
+  it("exports", () => {
     expect(_.make).exist
     expect(_.filter).exist
     expect(_.filterWith).exist
@@ -41,25 +41,10 @@ describe("Codec", () => {
     Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
   })
 
-  it("Option", () => {
-    const codec = _.option(_.number)
-    expect(codec.decode(null)).toEqual(D.success(O.none))
-    expect(codec.decode(1)).toEqual(D.success(O.some(1)))
-
-    Util.expectFailure(
-      codec,
-      {},
-      "member 0 {} did not satisfy isEqual(null), member 1 {} did not satisfy is(number)"
-    )
-    Util.expectWarning(
-      codec,
-      NaN,
-      "did not satisfy not(isNaN)",
-      O.some(NaN)
-    )
-
-    expect(codec.encode(O.none)).toEqual(null)
-    expect(codec.encode(O.some(1))).toEqual(1)
+  describe("Option", () => {
+    it("property tests", () => {
+      Util.property(S.option(S.number))
+    })
   })
 
   it("parseOrThrow", () => {
