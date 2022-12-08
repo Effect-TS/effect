@@ -45,6 +45,13 @@ describe("Guard", () => {
     expect(guard.is(BigInt("1"))).toEqual(true)
   })
 
+  it("symbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const guard = G.guardFor(S.symbol)
+    expect(guard.is(a)).toEqual(true)
+    expect(guard.is("a")).toEqual(false)
+  })
+
   it("literal", () => {
     const schema = S.literal(1, "a")
     const guard = G.guardFor(schema)

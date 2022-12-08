@@ -245,6 +245,12 @@ export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
 /** @internal */
 export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword)
 
+/** @internal */
+export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
+
+/** @internal */
+export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

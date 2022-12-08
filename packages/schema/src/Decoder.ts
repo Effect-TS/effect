@@ -151,6 +151,8 @@ export const provideDecoderFor = (provider: Provider) =>
               return I.failure(DE.notType("string | number | boolean", u))
             }
           )
+        case "SymbolKeyword":
+          return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
         case "Tuple":
           return pipe(
             DataUnknownArray.Decoder,

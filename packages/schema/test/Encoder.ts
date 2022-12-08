@@ -40,6 +40,12 @@ describe("Encoder", () => {
     expect(encoder.encode(1n)).toEqual("1")
   })
 
+  it("Encoder", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const encoder = _.encoderFor(S.symbol)
+    expect(encoder.encode(a)).toEqual(a)
+  })
+
   describe("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)

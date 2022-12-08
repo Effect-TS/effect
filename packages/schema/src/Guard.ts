@@ -71,6 +71,8 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.boolean, isBoolean)
         case "BigIntKeyword":
           return make(I.bigint, I.isBigInt)
+        case "SymbolKeyword":
+          return make(I.symbol, I.isSymbol)
         case "Tuple":
           return _tuple(
             ast,

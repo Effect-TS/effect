@@ -75,6 +75,8 @@ export const providePrettyFor = (provider: Provider) =>
           return make(I.boolean, (b) => JSON.stringify(b))
         case "BigIntKeyword":
           return make(I.boolean, (bi) => `${bi.toString()}n`)
+        case "SymbolKeyword":
+          return make(I.symbol, (s) => String(s))
         case "Tuple":
           return _tuple(
             ast,

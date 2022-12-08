@@ -62,6 +62,13 @@ describe("Decoder", () => {
     )
   })
 
+  it("symbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const decoder = _.decoderFor(S.symbol)
+    expect(decoder.decode(a)).toEqual(_.success(a))
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(symbol)")
+  })
+
   it("should throw on missing support", () => {
     const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
     expect(() => _.decoderFor(schema)).toThrowError(

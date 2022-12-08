@@ -71,6 +71,8 @@ export const provideArbitraryFor = (provider: Provider) =>
           return make(I.boolean, (fc) => fc.boolean())
         case "BigIntKeyword":
           return make(I.bigint, (fc) => fc.bigInt())
+        case "SymbolKeyword":
+          return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
         case "Tuple":
           return _tuple(
             ast,

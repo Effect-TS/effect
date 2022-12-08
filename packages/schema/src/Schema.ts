@@ -21,7 +21,6 @@ import * as DataJsonArray from "@fp-ts/schema/data/JsonArray"
 import * as DataJsonObject from "@fp-ts/schema/data/JsonObject"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataRefine from "@fp-ts/schema/data/refine"
-import * as DataSymbol from "@fp-ts/schema/data/Symbol"
 import type { UnknownArray } from "@fp-ts/schema/data/UnknownArray"
 import * as DataUnknownArray from "@fp-ts/schema/data/UnknownArray"
 import type { UnknownObject } from "@fp-ts/schema/data/UnknownObject"
@@ -348,7 +347,7 @@ export const bigint: Schema<bigint> = I.bigint
 /**
  * @since 1.0.0
  */
-export const symbol: Schema<symbol> = DataSymbol.Schema
+export const symbol: Schema<symbol> = I.symbol
 
 /**
  * @since 1.0.0
