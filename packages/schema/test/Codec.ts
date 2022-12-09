@@ -24,23 +24,11 @@ describe("Codec", () => {
     expect(_.json).exist
   })
 
-  it("literal", () => {
-    const schema = S.literal(1)
-    const codec = codecFor(schema)
-    expect(codec.decode(1)).toEqual(D.success(1))
-    Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
-  })
-
-  it("string", () => {
-    const decoder = D.decoderFor(S.string)
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
-  })
-
-  describe("Option", () => {
-    it("property tests", () => {
-      Util.property(S.option(S.number))
-    })
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => codecFor(schema)).toThrowError(
+      new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
+    )
   })
 
   it("parseOrThrow", () => {
@@ -58,11 +46,17 @@ describe("Codec", () => {
     expect(Person.parseOrThrow(string)).toEqual(person)
   })
 
-  it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
-    expect(() => codecFor(schema)).toThrowError(
-      new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
-    )
+  it("string", () => {
+    const decoder = D.decoderFor(S.string)
+    expect(decoder.decode("a")).toEqual(D.success("a"))
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
+  })
+
+  it("literal", () => {
+    const schema = S.literal(1)
+    const codec = codecFor(schema)
+    expect(codec.decode(1)).toEqual(D.success(1))
+    Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
   })
 
   describe("tuple", () => {
@@ -81,6 +75,18 @@ describe("Codec", () => {
       const schema = S.tuple(S.string, S.number)
       const decoder = codecFor(schema)
       Util.expectWarning(decoder, ["a", 1, true], "/2 index is unexpected", ["a", 1])
+    })
+
+    it("ReadonlyArray<unknown>", () => {
+      const codec = codecFor(S.array(S.unknown))
+      expect(codec.decode([])).toEqual(D.success([]))
+      expect(codec.decode(["a", 1, true])).toEqual(D.success(["a", 1, true]))
+    })
+
+    it("ReadonlyArray<any>", () => {
+      const codec = codecFor(S.array(S.any))
+      expect(codec.decode([])).toEqual(D.success([]))
+      expect(codec.decode(["a", 1, true])).toEqual(D.success(["a", 1, true]))
     })
   })
 
@@ -164,7 +170,7 @@ describe("Codec", () => {
       Util.expectFailure(
         decoder,
         null,
-        "member 0 null did not satisfy is(string), member 1 null did not satisfy is(number)"
+        "member 0: null did not satisfy is(string), member 1: null did not satisfy is(number)"
       )
     })
 

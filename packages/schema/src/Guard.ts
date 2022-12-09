@@ -7,7 +7,7 @@ import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import { isString } from "@fp-ts/data/String"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -72,12 +72,48 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.bigint, I.isBigInt)
         case "SymbolKeyword":
           return make(I.symbol, I.isSymbol)
-        case "Tuple":
-          return _tuple(
-            ast,
-            ast.components.map((c) => go(c.value)),
-            pipe(ast.rest, O.map(go))
+        case "Tuple": {
+          const components = ast.components.map((c) => go(c.value))
+          const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
+          return make(
+            I.makeSchema(ast),
+            (input: unknown): input is any => {
+              if (!Array.isArray(input)) {
+                return false
+              }
+              let i = 0
+              // ---------------------------------------------
+              // handle components
+              // ---------------------------------------------
+              for (; i < components.length; i++) {
+                // ---------------------------------------------
+                // handle optional components
+                // ---------------------------------------------
+                if (ast.components[i].optional && input[i] === undefined) {
+                  continue
+                }
+                if (!components[i].is(input[i])) {
+                  return false
+                }
+              }
+              // ---------------------------------------------
+              // handle rest element
+              // ---------------------------------------------
+              if (O.isSome(rest)) {
+                const [ast, guard] = rest.value
+                if (ast !== AST.unknownKeyword && ast !== AST.anyKeyword) {
+                  for (; i < input.length; i++) {
+                    if (!guard.is(input[i])) {
+                      return false
+                    }
+                  }
+                }
+              }
+
+              return true
+            }
           )
+        }
         case "Struct":
           return _struct(
             ast,
@@ -104,48 +140,6 @@ export const provideGuardFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
-
-const _tuple = (
-  ast: AST.Tuple,
-  components: ReadonlyArray<Guard<any>>,
-  oRest: O.Option<Guard<any>>
-): Guard<any> =>
-  make(
-    I.makeSchema(ast),
-    (input: unknown): input is any => {
-      if (!Array.isArray(input)) {
-        return false
-      }
-      let i = 0
-      // ---------------------------------------------
-      // handle components
-      // ---------------------------------------------
-      for (; i < components.length; i++) {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        if (ast.components[i].optional && input[i] === undefined) {
-          continue
-        }
-        if (!components[i].is(input[i])) {
-          return false
-        }
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(oRest)) {
-        const guard = oRest.value
-        for (; i < input.length; i++) {
-          if (!guard.is(input[i])) {
-            return false
-          }
-        }
-      }
-
-      return true
-    }
-  )
 
 const _struct = (
   ast: AST.Struct,

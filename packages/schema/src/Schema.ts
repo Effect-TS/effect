@@ -298,9 +298,11 @@ export const refine: <A, B extends A>(
 // data
 // ---------------------------------------------
 
-const _undefined = I._undefined
-
-export { _undefined as undefined }
+/**
+ * @since 1.0.0
+ */
+// eslint-disable-next-line no-shadow-restricted-names
+export const undefined: Schema<undefined> = I._undefined
 
 /**
  * @since 1.0.0
@@ -352,11 +354,6 @@ export const json: Schema<Json> = DataJson.Schema
  */
 export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
   union(
-    struct({
-      _tag: literal("None")
-    }),
-    struct({
-      _tag: literal("Some"),
-      value
-    })
+    struct({ _tag: literal("None") }),
+    struct({ _tag: literal("Some"), value })
   )

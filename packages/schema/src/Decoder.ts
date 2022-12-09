@@ -10,7 +10,7 @@ import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { These } from "@fp-ts/data/These"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -151,12 +151,71 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         case "SymbolKeyword":
           return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
-        case "Tuple":
-          return _tuple(
-            ast,
-            ast.components.map((c) => go(c.value)),
-            pipe(ast.rest, O.map(go))
+        case "Tuple": {
+          const components = ast.components.map((c) => go(c.value))
+          const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
+          return make(
+            I.makeSchema(ast),
+            (input: unknown) => {
+              if (!Array.isArray(input)) {
+                return failure(DE.notType("ReadonlyArray<unknown>", input))
+              }
+              const output: Array<any> = []
+              const es: Array<DE.DecodeError> = []
+              let i = 0
+              // ---------------------------------------------
+              // handle components
+              // ---------------------------------------------
+              for (; i < components.length; i++) {
+                // ---------------------------------------------
+                // handle optional components
+                // ---------------------------------------------
+                if (ast.components[i].optional && input[i] === undefined) {
+                  continue
+                }
+                const decoder = components[i]
+                const t = decoder.decode(input[i])
+                if (isFailure(t)) {
+                  return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+                } else if (isWarning(t)) {
+                  es.push(DE.index(i, t.left))
+                }
+                output[i] = t.right
+              }
+              // ---------------------------------------------
+              // handle rest element
+              // ---------------------------------------------
+              if (O.isSome(rest)) {
+                const [ast, decoder] = rest.value
+                if (ast !== AST.unknownKeyword && ast !== AST.anyKeyword) {
+                  for (; i < input.length; i++) {
+                    const t = decoder.decode(input[i])
+                    if (isFailure(t)) {
+                      return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+                    } else if (isWarning(t)) {
+                      es.push(DE.index(i, t.left))
+                    }
+                    output[i] = t.right
+                  }
+                } else {
+                  output.push(...input.slice(i))
+                }
+              } else {
+                // ---------------------------------------------
+                // handle additional indexes
+                // ---------------------------------------------
+                for (; i < input.length; i++) {
+                  es.push(DE.unexpectedIndex(i))
+                }
+              }
+
+              // ---------------------------------------------
+              // compute output
+              // ---------------------------------------------
+              return I.isNonEmpty(es) ? warnings(es, output) : success(output)
+            }
           )
+        }
         case "Struct":
           return _struct(
             ast,
@@ -180,69 +239,6 @@ export const provideDecoderFor = (provider: Provider) =>
 export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(
   P.empty
 )
-
-const _tuple = (
-  ast: AST.Tuple,
-  components: ReadonlyArray<Decoder<any, any>>,
-  oRest: Option<Decoder<any, any>>
-): Decoder<any, any> =>
-  make(
-    I.makeSchema(ast),
-    (input: unknown) => {
-      if (!Array.isArray(input)) {
-        return failure(DE.notType("ReadonlyArray<unknown>", input))
-      }
-      const output: Array<any> = []
-      const es: Array<DE.DecodeError> = []
-      let i = 0
-      // ---------------------------------------------
-      // handle components
-      // ---------------------------------------------
-      for (; i < components.length; i++) {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        if (ast.components[i].optional && input[i] === undefined) {
-          continue
-        }
-        const decoder = components[i]
-        const t = decoder.decode(input[i])
-        if (isFailure(t)) {
-          return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
-        } else if (isWarning(t)) {
-          es.push(DE.index(i, t.left))
-        }
-        output[i] = t.right
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(oRest)) {
-        const decoder = oRest.value
-        for (; i < input.length; i++) {
-          const t = decoder.decode(input[i])
-          if (isFailure(t)) {
-            return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
-          } else if (isWarning(t)) {
-            es.push(DE.index(i, t.left))
-          }
-          output[i] = t.right
-        }
-      } else {
-        // ---------------------------------------------
-        // handle additional indexes
-        // ---------------------------------------------
-        for (; i < input.length; i++) {
-          es.push(DE.unexpectedIndex(i))
-        }
-      }
-
-      // ---------------------------------------------
-      // compute output
-      // ---------------------------------------------
-      return I.isNonEmpty(es) ? warnings(es, output) : success(output)
-    }
-  )
 
 const _struct = (
   ast: AST.Struct,

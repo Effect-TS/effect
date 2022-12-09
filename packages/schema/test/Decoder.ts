@@ -18,6 +18,20 @@ describe("Decoder", () => {
     expect(_.isWarning).exist
   })
 
+  it("should throw on missing support", () => {
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    expect(() => _.decoderFor(schema)).toThrowError(
+      new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
+    )
+  })
+
+  it("string", () => {
+    const decoder = _.decoderFor(S.string)
+    expect(decoder.decode("a")).toEqual(_.success("a"))
+
+    Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
+  })
+
   describe("number", () => {
     const decoder = _.decoderFor(S.number)
 
@@ -69,10 +83,16 @@ describe("Decoder", () => {
     Util.expectFailure(decoder, 1, "1 did not satisfy is(symbol)")
   })
 
-  it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
-    expect(() => _.decoderFor(schema)).toThrowError(
-      new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
+  it("literal", () => {
+    const schema = S.literal(1, "a")
+    const decoder = _.decoderFor(schema)
+    expect(decoder.decode(1)).toEqual(_.success(1))
+    expect(decoder.decode("a")).toEqual(_.success("a"))
+
+    Util.expectFailure(
+      decoder,
+      null,
+      "member 0: null did not satisfy isEqual(1), member 1: null did not satisfy isEqual(a)"
     )
   })
 
@@ -103,7 +123,7 @@ describe("Decoder", () => {
       Util.expectFailure(
         decoder,
         ["a"],
-        "/0 member 0 \"a\" did not satisfy is(undefined), member 1 \"a\" did not satisfy is(number)"
+        "/0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number)"
       )
     })
 
@@ -118,7 +138,7 @@ describe("Decoder", () => {
       Util.expectFailure(
         decoder,
         ["a"],
-        "member 0 [\"a\"] did not satisfy is(string), member 1 /0 member 0 \"a\" did not satisfy is(undefined), member 1 \"a\" did not satisfy is(number)"
+        "member 0: [\"a\"] did not satisfy is(string), member 1: /0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number)"
       )
     })
   })
