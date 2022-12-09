@@ -23,7 +23,7 @@ describe("Chunk", () => {
   it("guard", () => {
     const schema = Chunk.schema(S.string)
     const guard = G.guardFor(schema)
-    expect(guard.is(C.empty)).toEqual(true)
+    expect(guard.is(C.empty())).toEqual(true)
     expect(guard.is(C.unsafeFromArray(["a", "b", "c"]))).toEqual(true)
 
     expect(guard.is(C.unsafeFromArray(["a", "b", 1]))).toEqual(false)
@@ -32,7 +32,7 @@ describe("Chunk", () => {
   it("Decoder", () => {
     const schema = Chunk.schema(S.number)
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode([])).toEqual(D.success(C.empty))
+    expect(decoder.decode([])).toEqual(D.success(C.empty()))
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.success(C.unsafeFromArray([1, 2, 3]))
     )
@@ -50,7 +50,7 @@ describe("Chunk", () => {
   it("Encoder", () => {
     const schema = Chunk.schema(S.number)
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(C.empty)).toEqual([])
+    expect(encoder.encode(C.empty())).toEqual([])
     expect(encoder.encode(C.unsafeFromArray([1, 2, 3]))).toEqual(
       [1, 2, 3]
     )
@@ -59,7 +59,7 @@ describe("Chunk", () => {
   it("Pretty", () => {
     const schema = Chunk.schema(S.string)
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(C.empty)).toEqual("Chunk()")
+    expect(pretty.pretty(C.empty())).toEqual("Chunk()")
     expect(pretty.pretty(C.unsafeFromArray(["a", "b"]))).toEqual(
       "Chunk(\"a\", \"b\")"
     )

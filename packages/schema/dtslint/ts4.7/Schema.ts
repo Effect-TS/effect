@@ -42,7 +42,7 @@ pipe(S.struct({ a: S.string,  b: S.number }), S.omit('a'))
 pipe(S.tuple(S.string, S.number))
 
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(S.tuple(S.string, S.number), S.restElement(S.boolean))
+pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
 
 // $ExpectType Schema<readonly [string, number, ...(number | boolean)[]]>
-pipe(S.tuple(S.string, S.number), S.restElement(S.boolean), S.restElement(S.number))
+pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.rest(S.number))

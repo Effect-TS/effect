@@ -76,7 +76,7 @@ C.union(C.string, C.number);
 C.tuple(C.string, C.number);
 
 // $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(C.tuple(C.string, C.number), C.restElement(C.boolean))
+pipe(C.tuple(C.string, C.number), C.rest(C.boolean))
 
 // $ExpectType Codec<readonly number[]>
 C.array(C.number);
@@ -113,12 +113,3 @@ C.struct({ a: C.string, b: C.number }, { c: C.boolean })
 
 // $ExpectType Codec<Option<number>>
 C.option(C.number)
-
-// $ExpectType Codec<ReadonlySet<number>>
-C.readonlySet(C.number)
-
-// $ExpectType Codec<Chunk<number>>
-C.chunk(C.number)
-
-// $ExpectType Codec<List<number>>
-C.list(C.number)
