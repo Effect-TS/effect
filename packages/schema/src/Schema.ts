@@ -17,6 +17,7 @@ import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
+import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -352,8 +353,4 @@ export const json: Schema<Json> = DataJson.Schema
 /**
  * @since 1.0.0
  */
-export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
-  union(
-    struct({ _tag: literal("None") }),
-    struct({ _tag: literal("Some"), value })
-  )
+export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema

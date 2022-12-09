@@ -10,7 +10,7 @@ import { isString } from "@fp-ts/data/String"
 import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -40,8 +40,8 @@ export const provideGuardFor = (provider: Provider) =>
         case "Declaration": {
           const handler = pipe(
             ast.provider,
-            Semigroup.combine(provider),
-            findHandler(I.GuardId, ast.id)
+            P.Semigroup.combine(provider),
+            P.findHandler(I.GuardId, ast.id)
           )
           if (O.isSome(handler)) {
             return O.isSome(ast.config) ?
@@ -52,6 +52,16 @@ export const provideGuardFor = (provider: Provider) =>
             `Missing support for Guard compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.GuardId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
         case "UndefinedKeyword":
@@ -139,7 +149,7 @@ export const provideGuardFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(empty)
+export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(P.empty)
 
 const _struct = (
   ast: AST.Struct,

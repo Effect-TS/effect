@@ -98,6 +98,16 @@ export const provideDecoderFor = (provider: Provider) =>
             `Missing support for Decoder compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.DecoderId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return I.fromRefinement(
             I.makeSchema(ast),

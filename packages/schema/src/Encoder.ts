@@ -53,6 +53,16 @@ export const provideEncoderFor = (provider: Provider) =>
             `Missing support for Encoder compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.EncoderId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return make(I.makeSchema(ast), identity)
         case "UndefinedKeyword":

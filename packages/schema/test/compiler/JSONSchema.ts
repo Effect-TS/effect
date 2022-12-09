@@ -7,7 +7,7 @@ import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as G from "@fp-ts/schema/Guard"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 import Ajv from "ajv"
@@ -76,8 +76,8 @@ const provideJsonSchemaFor = (
         case "Declaration": {
           const handler = pipe(
             ast.provider,
-            Semigroup.combine(provider),
-            findHandler(JSONSchemaId, ast.id)
+            P.Semigroup.combine(provider),
+            P.findHandler(JSONSchemaId, ast.id)
           )
           if (O.isSome(handler)) {
             return O.isSome(ast.config) ?
@@ -100,6 +100,16 @@ const provideJsonSchemaFor = (
             `Missing support for JSONSchema compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(JSONSchemaId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return _of(ast.literal)
         case "UndefinedKeyword":
@@ -132,7 +142,7 @@ const provideJsonSchemaFor = (
     return go(schema.ast)
   }
 
-const jsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideJsonSchemaFor(empty)
+const jsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideJsonSchemaFor(P.empty)
 
 export const _of = (
   value: unknown

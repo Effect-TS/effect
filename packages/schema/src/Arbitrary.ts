@@ -7,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
 
@@ -39,8 +39,8 @@ export const provideArbitraryFor = (provider: Provider) =>
         case "Declaration": {
           const handler = pipe(
             ast.provider,
-            Semigroup.combine(provider),
-            findHandler(I.ArbitraryId, ast.id)
+            P.Semigroup.combine(provider),
+            P.findHandler(I.ArbitraryId, ast.id)
           )
           if (O.isSome(handler)) {
             return O.isSome(ast.config) ?
@@ -51,6 +51,16 @@ export const provideArbitraryFor = (provider: Provider) =>
             `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.ArbitraryId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
         case "UndefinedKeyword":
@@ -104,9 +114,7 @@ export const provideArbitraryFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(
-  empty
-)
+export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(P.empty)
 
 const _tuple = (
   ast: AST.Tuple,

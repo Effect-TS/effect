@@ -9,7 +9,7 @@ import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -39,8 +39,8 @@ export const providePrettyFor = (provider: Provider) =>
         case "Declaration": {
           const handler = pipe(
             ast.provider,
-            Semigroup.combine(provider),
-            findHandler(PrettyId, ast.id)
+            P.Semigroup.combine(provider),
+            P.findHandler(PrettyId, ast.id)
           )
           if (O.isSome(handler)) {
             return O.isSome(ast.config) ?
@@ -51,6 +51,16 @@ export const providePrettyFor = (provider: Provider) =>
             `Missing support for Pretty compiler, data type ${ast.id.description?.toString()}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(I.PrettyId, ast.id),
+            O.match(
+              () => go(ast.type),
+              (handler) => handler(...ast.typeParameters.map(go))
+            )
+          )
         case "LiteralType":
           return make(I.makeSchema(ast), _literalType)
         case "UndefinedKeyword":
@@ -103,7 +113,7 @@ export const providePrettyFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(empty)
+export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P.empty)
 
 const _literalType = (literal: AST.Literal): string =>
   typeof literal === "bigint" ? literal.toString() : JSON.stringify(literal)

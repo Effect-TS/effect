@@ -1,5 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { AST } from "@fp-ts/schema/AST"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
@@ -49,6 +50,14 @@ export const provideTypeRepFor = (
             `Missing support for TypeRep compiler, data type ${String(ast.id.description)}`
           )
         }
+        case "TypeAliasDeclaration":
+          return pipe(
+            ast.typeParameters.map(go),
+            RA.match(
+              () => make(ast, String(ast.id)),
+              (typeParameters) => make(ast, `${String(ast.id)}<${typeParameters.typeRep}>`)
+            )
+          )
         case "LiteralType":
           return make(
             ast,

@@ -15,6 +15,7 @@ import type { Provider } from "@fp-ts/schema/Provider"
  */
 export type AST =
   | Declaration
+  | TypeAliasDeclaration
   | LiteralType
   | UndefinedKeyword
   | NeverKeyword
@@ -50,6 +51,27 @@ export const declare = (
   provider: Provider,
   nodes: ReadonlyArray<AST>
 ): Declaration => ({ _tag: "Declaration", id, config, provider, nodes })
+
+/**
+ * @since 1.0.0
+ */
+export interface TypeAliasDeclaration {
+  readonly _tag: "TypeAliasDeclaration"
+  readonly id: symbol
+  readonly provider: Provider
+  readonly typeParameters: ReadonlyArray<AST>
+  readonly type: AST
+}
+
+/**
+ * @since 1.0.0
+ */
+export const typeAliasDeclaration = (
+  id: symbol,
+  provider: Provider,
+  typeParameters: ReadonlyArray<AST>,
+  type: AST
+): TypeAliasDeclaration => ({ _tag: "TypeAliasDeclaration", id, provider, typeParameters, type })
 
 /**
  * @since 1.0.0
