@@ -136,7 +136,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  union(...AST.getFields(schema.ast).map((field) => literal(field.key as any))) // TODO: key may contain a symbol, using literal here is wrong
+  make(AST.union(AST.keyof(schema.ast)))
 
 /**
  * @since 1.0.0

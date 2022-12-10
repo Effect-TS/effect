@@ -7,7 +7,8 @@ import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import { flatMap, isNonEmpty } from "@fp-ts/data/ReadonlyArray"
+import * as RA from "@fp-ts/data/ReadonlyArray"
+import { isString } from "@fp-ts/data/String"
 import type { Provider } from "@fp-ts/schema/Provider"
 
 /**
@@ -86,15 +87,15 @@ export type Literal = string | number | boolean | null | bigint
 /**
  * @since 1.0.0
  */
-export interface LiteralType {
+export interface LiteralType<L = Literal> {
   readonly _tag: "LiteralType"
-  readonly literal: Literal
+  readonly literal: L
 }
 
 /**
  * @since 1.0.0
  */
-export const literalType = (literal: Literal): LiteralType => ({
+export const literalType = <L extends Literal>(literal: L): LiteralType<L> => ({
   _tag: "LiteralType",
   literal
 })
@@ -228,8 +229,8 @@ export const symbolKeyword: SymbolKeyword = {
 /**
  * @since 1.0.0
  */
-export interface Field {
-  readonly key: PropertyKey
+export interface Field<K = PropertyKey> {
+  readonly key: K
   readonly value: AST
   readonly optional: boolean
   readonly readonly: boolean
@@ -238,12 +239,12 @@ export interface Field {
 /**
  * @since 1.0.0
  */
-export const field = (
-  key: PropertyKey,
+export const field = <K extends PropertyKey>(
+  key: K,
   value: AST,
   optional: boolean,
   readonly: boolean
-): Field => ({ key, value, optional, readonly })
+): Field<K> => ({ key, value, optional, readonly })
 
 /**
  * @since 1.0.0
@@ -399,6 +400,75 @@ export interface Lazy {
  */
 export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 
+const isOwn = (field: Field): field is Field<string | number> => typeof field.key !== "symbol"
+
+/**
+ * @since 1.0.0
+ */
+export type KeyOf =
+  | NeverKeyword
+  | StringKeyword
+  | NumberKeyword
+  | SymbolKeyword
+  | LiteralType<string | number>
+
+/**
+ * @since 1.0.0
+ */
+export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
+  switch (ast._tag) {
+    case "Declaration":
+      return [] // TODO: add keyof field to Declaration
+    case "NeverKeyword":
+    case "AnyKeyword":
+      return [stringKeyword, numberKeyword, symbolKeyword]
+    case "UnknownKeyword":
+    case "NumberKeyword":
+    case "BooleanKeyword":
+    case "BigIntKeyword":
+    case "SymbolKeyword":
+    case "UndefinedKeyword":
+      return []
+    case "StringKeyword":
+      return [numberKeyword]
+    case "LiteralType":
+      return isString(ast.literal) ? [numberKeyword] : []
+    case "TypeAliasDeclaration":
+      return keyof(ast.type)
+    case "Tuple": {
+      const members: Array<KeyOf> = ast.components.map((_, i) => literalType(String(i)))
+      if (O.isSome(ast.rest)) {
+        members.push(numberKeyword)
+      }
+      return members
+    }
+    case "Struct": {
+      const members: Array<KeyOf> = []
+      if (O.isSome(ast.indexSignatures.string)) {
+        members.push(stringKeyword, numberKeyword)
+      } else {
+        if (O.isSome(ast.indexSignatures.number)) {
+          members.push(numberKeyword)
+        }
+        if (O.isSome(ast.indexSignatures.symbol)) {
+          members.push(symbolKeyword)
+        }
+        members.push(...ast.fields.filter(isOwn).map((field) => literalType(String(field.key))))
+      }
+      return members
+    }
+    case "Union": {
+      let members: ReadonlyArray<KeyOf> = keyof(ast.members[0])
+      for (let i = 1; i < ast.members.length; i++) {
+        members = RA.intersection(keyof(ast.members[i]))(members)
+      }
+      return members
+    }
+    case "Lazy":
+      return keyof(ast.f())
+  }
+}
+
 // TODO: handle index signatures in unions
 /**
  * @since 1.0.0
@@ -413,7 +483,7 @@ export const getFields = (
       return ast.fields
     case "Union": {
       const memberFields = ast.members.map(getFields)
-      if (isNonEmpty(memberFields)) {
+      if (RA.isNonEmpty(memberFields)) {
         const candidates = []
         const head = memberFields[0]
         const tail = memberFields.slice(1)
@@ -423,7 +493,7 @@ export const getFields = (
           ) {
             const members = pipe(
               tail,
-              flatMap((fields) =>
+              RA.flatMap((fields) =>
                 fields.filter((field) => field.key === candidate.key).map((field) => field.value)
               )
             )
