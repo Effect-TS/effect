@@ -108,11 +108,21 @@ describe("Encoder", () => {
     })
   })
 
-  it("union", () => {
-    const schema = S.union(S.string, NumberFromString)
-    const encoder = _.encoderFor(schema)
-    expect(encoder.encode("a")).toEqual("a")
-    expect(encoder.encode(1)).toEqual("1")
+  describe("union", () => {
+    it("union", () => {
+      const schema = S.union(S.string, NumberFromString)
+      const encoder = _.encoderFor(schema)
+      expect(encoder.encode("a")).toEqual("a")
+      expect(encoder.encode(1)).toEqual("1")
+    })
+
+    it("should give precedence to schemas containing more infos", () => {
+      const a = S.struct({ a: S.string })
+      const ab = S.struct({ a: S.string, b: S.number })
+      const schema = S.union(a, ab)
+      const encoder = _.encoderFor(schema)
+      expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: 1 })
+    })
   })
 
   describe("partial", () => {

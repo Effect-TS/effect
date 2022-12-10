@@ -5,6 +5,18 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
 describe("AST", () => {
+  describe("union", () => {
+    it("should give precedence to schemas containing more infos", () => {
+      const a = S.struct({ a: S.string })
+      const ab = S.struct({ a: S.string, b: S.number })
+      const schema = S.union(a, ab)
+      expect(schema.ast).toEqual({
+        _tag: "Union",
+        members: [ab.ast, a.ast]
+      })
+    })
+  })
+
   describe("keyof", () => {
     it("anyKeyword", () => {
       // type Test = keyof any // string | number | symbol

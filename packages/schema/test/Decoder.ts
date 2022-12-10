@@ -127,19 +127,29 @@ describe("Decoder", () => {
       )
     })
 
-    it("union", () => {
-      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
-      const decoder = _.decoderFor(schema)
-      expect(decoder.decode("a")).toEqual(_.success("a"))
-      expect(decoder.decode([])).toEqual(_.success([]))
-      expect(decoder.decode([1])).toEqual(_.success([1]))
-      expect(decoder.decode([undefined])).toEqual(_.success([undefined]))
+    describe("union", () => {
+      it("baseline", () => {
+        const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
+        const decoder = _.decoderFor(schema)
+        expect(decoder.decode("a")).toEqual(_.success("a"))
+        expect(decoder.decode([])).toEqual(_.success([]))
+        expect(decoder.decode([1])).toEqual(_.success([1]))
+        expect(decoder.decode([undefined])).toEqual(_.success([undefined]))
 
-      Util.expectFailure(
-        decoder,
-        ["a"],
-        "member 0: [\"a\"] did not satisfy is(string), member 1: /0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number)"
-      )
+        Util.expectFailure(
+          decoder,
+          ["a"],
+          "member 0: /0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number), member 1: [\"a\"] did not satisfy is(string)"
+        )
+      })
+
+      it("should give precedence to schemas containing more infos", () => {
+        const a = S.struct({ a: S.string })
+        const ab = S.struct({ a: S.string, b: S.number })
+        const schema = S.union(a, ab)
+        const decoder = _.decoderFor(schema)
+        expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.success({ a: "a", b: 1 }))
+      })
     })
   })
 })

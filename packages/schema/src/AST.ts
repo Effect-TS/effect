@@ -3,8 +3,10 @@
  */
 
 import * as Monoid from "@fp-ts/core/typeclass/Monoid"
+import * as Order from "@fp-ts/core/typeclass/Order"
 import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
+import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
@@ -371,6 +373,41 @@ export interface Union {
   readonly members: ReadonlyArray<AST>
 }
 
+const weight = (ast: AST): number => {
+  switch (ast._tag) {
+    case "Declaration":
+      return 0 // TODO: read keyof.length
+    case "TypeAliasDeclaration":
+      return weight(ast.type)
+    case "Tuple": {
+      let n = ast.components.reduce((n, c) => n + (c.optional ? 2 : 200), 0)
+      if (O.isSome(ast.rest)) {
+        n += 1
+      }
+      return n
+    }
+    case "Struct": {
+      let n = ast.fields.reduce((n, c) => n + (c.optional ? 4 : 400), 0)
+      if (O.isSome(ast.indexSignatures.string)) {
+        n += 1
+      }
+      if (O.isSome(ast.indexSignatures.number)) {
+        n += 1
+      }
+      if (O.isSome(ast.indexSignatures.symbol)) {
+        n += 1
+      }
+      return n
+    }
+    default:
+      return 0
+  }
+}
+
+const sort = RA.sort(Order.reverse(pipe(Number.Order, Order.contramap(weight))))
+
+const flatten = (ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast]
+
 /**
  * @since 1.0.0
  */
@@ -378,8 +415,10 @@ export const union = (members: ReadonlyArray<AST>): Union | NeverKeyword => {
   if (members.length === 0) {
     return neverKeyword
   }
-  // TODO: handle union flattening
-  return { _tag: "Union", members }
+  return {
+    _tag: "Union",
+    members: sort(pipe(members, RA.flatMap(flatten)))
+  }
 }
 
 /**
