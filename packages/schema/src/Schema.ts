@@ -136,7 +136,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  make(AST.union(AST.keyof(schema.ast)))
+  make(AST.union(AST.keyof(schema.ast).map((k) => AST.isKey(k) ? AST.literalType(k.key) : k)))
 
 /**
  * @since 1.0.0
@@ -214,23 +214,15 @@ export const struct: {
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> => {
-    return make(AST.struct(
-      AST.getFields(self.ast).filter((f) => (keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-      AST.indexSignatures(O.none, O.none, O.none)
-    ))
-  }
+  (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> =>
+    make(AST.pick(self.ast, keys))
 
 /**
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> => {
-    return make(AST.struct(
-      AST.getFields(self.ast).filter((f) => !(keys as ReadonlyArray<PropertyKey>).includes(f.key)),
-      AST.indexSignatures(O.none, O.none, O.none)
-    ))
-  }
+  (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> =>
+    make(AST.omit(self.ast, keys))
 
 /**
  * @since 1.0.0

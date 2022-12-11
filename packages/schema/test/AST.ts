@@ -82,7 +82,7 @@ describe("AST", () => {
 
     it("TypeAliasDeclaration", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(_.keyof(DataOption.schema(S.number).ast)).toEqual([_.literalType("_tag")])
+      expect(_.keyof(DataOption.schema(S.number).ast)).toEqual([_.key("_tag")])
     })
 
     it("tuple", () => {
@@ -90,13 +90,13 @@ describe("AST", () => {
       expect(_.keyof(S.tuple().ast)).toEqual([])
       // type Test = keyof [string, number] // '0' | '1'
       expect(_.keyof(S.tuple(S.string, S.number).ast)).toEqual([
-        _.literalType("0"),
-        _.literalType("1")
+        _.key("0"),
+        _.key("1")
       ])
       // type Test = keyof [string, number, ...Array<boolean>] // '0' | '1' | number
       expect(_.keyof(pipe(S.tuple(S.string, S.number), S.rest(S.boolean)).ast)).toEqual([
-        _.literalType("0"),
-        _.literalType("1"),
+        _.key("0"),
+        _.key("1"),
         _.numberKeyword
       ])
     })
@@ -106,8 +106,8 @@ describe("AST", () => {
       expect(_.keyof(S.struct({}).ast)).toEqual([])
       // type Test = keyof { a: string, b: number } // 'a' | 'b'
       expect(_.keyof(S.struct({ a: S.string, b: S.number }).ast)).toEqual([
-        _.literalType("a"),
-        _.literalType("b")
+        _.key("a"),
+        _.key("b")
       ])
       // type Test = keyof ({ a: string; b: string; [_: string]: string }) // string | number
       expect(
@@ -119,7 +119,7 @@ describe("AST", () => {
 
       const a = Symbol.for("@fp-ts/schema/test/a")
       // type Test = keyof { [a]: string } // typeof A
-      expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.literalType(a)])
+      expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.key(a)])
     })
 
     it("lazy", () => {
@@ -134,18 +134,23 @@ describe("AST", () => {
           as: S.array(schema)
         })
       )
-      expect(_.keyof(schema.ast)).toEqual([_.literalType("a"), _.literalType("as")])
+      expect(_.keyof(schema.ast)).toEqual([_.key("a"), _.key("as")])
     })
 
     // TODO: more tests
   })
 
   describe("getFields", () => {
+    it("tuple", () => {
+      const schema = S.tuple(S.string, S.number)
+      expect(_.getFields(schema.ast)).toEqual([
+        _.field(0, S.string.ast, false, true),
+        _.field(1, S.number.ast, false, true)
+      ])
+    })
+
     it("struct", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.number
-      })
+      const schema = S.struct({ a: S.string, b: S.number })
       expect(_.getFields(schema.ast)).toEqual([
         _.field("a", S.string.ast, false, true),
         _.field("b", S.number.ast, false, true)
@@ -156,9 +161,9 @@ describe("AST", () => {
     type U = {
       readonly a: string
       readonly b: number
-      [_: string]: unknown
+      [_: string]: string | number
     } | {
-      readonly a: boolean
+      a?: boolean
       readonly c: Date
     }
 
@@ -167,20 +172,26 @@ describe("AST", () => {
     type K = keyof U
     */
 
-    it("union", () => {
-      const schema = S.union(
-        S.struct({
-          a: S.string,
-          b: S.number
-        }),
-        S.struct({
-          a: S.boolean,
-          c: S.number
-        })
-      )
-      expect(_.getFields(schema.ast)).toEqual([
-        _.field("a", _.union([S.string.ast, S.boolean.ast]), false, true)
-      ])
+    describe("union", () => {
+      it("required fields", () => {
+        const schema = S.union(
+          S.struct({ a: S.string, b: S.number }),
+          S.struct({ a: S.boolean, c: S.boolean })
+        )
+        expect(_.getFields(schema.ast)).toEqual([
+          _.field("a", _.union([S.string.ast, S.boolean.ast]), false, true)
+        ])
+      })
+
+      it("optional fields", () => {
+        const schema = S.union(
+          S.struct({ a: S.string, b: S.number }),
+          S.struct({ c: S.boolean }, { a: S.boolean })
+        )
+        expect(_.getFields(schema.ast)).toEqual([
+          _.field("a", _.union([S.string.ast, S.boolean.ast]), true, true)
+        ])
+      })
     })
 
     it("lazy", () => {

@@ -89,15 +89,15 @@ export type Literal = string | number | boolean | null | bigint | symbol
 /**
  * @since 1.0.0
  */
-export interface LiteralType<L = Literal> {
+export interface LiteralType {
   readonly _tag: "LiteralType"
-  readonly literal: L
+  readonly literal: Literal
 }
 
 /**
  * @since 1.0.0
  */
-export const literalType = <L extends Literal>(literal: L): LiteralType<L> => ({
+export const literalType = (literal: Literal): LiteralType => ({
   _tag: "LiteralType",
   literal
 })
@@ -442,12 +442,29 @@ export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 /**
  * @since 1.0.0
  */
+export interface Key {
+  readonly _tag: "Key"
+  readonly key: PropertyKey
+}
+
+/**
+ * @since 1.0.0
+ */
+export const key = (key: PropertyKey): Key => ({ _tag: "Key", key })
+
+/**
+ * @since 1.0.0
+ */
+export const isKey = (key: KeyOf): key is Key => key._tag === "Key"
+
+/**
+ * @since 1.0.0
+ */
 export type KeyOf =
-  | NeverKeyword
   | StringKeyword
   | NumberKeyword
   | SymbolKeyword
-  | LiteralType<PropertyKey>
+  | Key
 
 /**
  * @since 1.0.0
@@ -473,7 +490,7 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
     case "TypeAliasDeclaration":
       return keyof(ast.type)
     case "Tuple": {
-      const members: Array<KeyOf> = ast.components.map((_, i) => literalType(String(i)))
+      const members: Array<KeyOf> = ast.components.map((_, i) => key(String(i)))
       if (O.isSome(ast.rest)) {
         members.push(numberKeyword)
       }
@@ -490,7 +507,7 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
         if (O.isSome(ast.indexSignatures.symbol)) {
           members.push(symbolKeyword)
         }
-        members.push(...ast.fields.map((field) => literalType(field.key)))
+        members.push(...ast.fields.map((field) => key(field.key)))
       }
       return members
     }
@@ -506,50 +523,49 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
   }
 }
 
-// TODO: handle index signatures in unions
 /**
  * @since 1.0.0
  */
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(
+    getFields(ast).filter((field) => keys.includes(field.key)),
+    indexSignatures(O.none, O.none, O.none)
+  )
+}
+
+/**
+ * @since 1.0.0
+ */
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(
+    getFields(ast).filter((field) => !keys.includes(field.key)),
+    indexSignatures(O.none, O.none, O.none)
+  )
+}
+
+/** @internal */
 export const getFields = (
   ast: AST
 ): ReadonlyArray<Field> => {
   switch (ast._tag) {
-    case "Lazy":
-      return getFields(ast.f())
+    case "Tuple":
+      return ast.components.map((c, i) => field(i, c.value, c.optional, true))
     case "Struct":
       return ast.fields
     case "Union": {
-      const memberFields = ast.members.map(getFields)
-      if (RA.isNonEmpty(memberFields)) {
-        const candidates = []
-        const head = memberFields[0]
-        const tail = memberFields.slice(1)
-        for (const candidate of head) {
-          if (
-            tail.every((fields) => fields.some((field) => field.key === candidate.key))
-          ) {
-            const members = pipe(
-              tail,
-              RA.flatMap((fields) =>
-                fields.filter((field) => field.key === candidate.key).map((field) => field.value)
-              )
-            )
-            const optional = candidate.optional ||
-              tail.some((fields) => fields.some((field) => field.optional))
-            const readonly = candidate.readonly ||
-              tail.some((fields) => fields.some((field) => field.readonly))
-            candidates.push(field(
-              candidate.key,
-              union([candidate.value, ...members]),
-              optional,
-              readonly
-            ))
-          }
-        }
-        return candidates
-      }
-      return []
+      const fields = pipe(ast.members, RA.flatMap(getFields))
+      return keyof(ast).filter(isKey).map((key) => {
+        const members = fields.filter((field) => field.key === key.key)
+        return field(
+          key.key,
+          union(members.map((field) => field.value)),
+          members.some((field) => field.optional),
+          members.some((field) => field.readonly)
+        )
+      })
     }
+    case "Lazy":
+      return getFields(ast.f())
     default:
       return []
   }
