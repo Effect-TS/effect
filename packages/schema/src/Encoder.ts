@@ -213,13 +213,51 @@ const _struct = (
     }
   )
 
+const getWeight = (u: unknown): number => {
+  if (Array.isArray(u)) {
+    return u.length
+  } else if (typeof u === "object" && u !== null) {
+    return I.getPropertyKeys(u).length
+  }
+  return 0
+}
+
 const _union = (
   ast: AST.Union,
   members: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
 ): Encoder<any, any> =>
-  make(I.makeSchema(ast), (a) => {
-    const index = members.findIndex(([guard]) => guard.is(a))
-    return members[index][1].encode(a)
+  make(I.makeSchema(ast), (input) => {
+    // ---------------------------------------------
+    // compute encoder candidates
+    // ---------------------------------------------
+    const encoders = []
+    for (let i = 0; i < members.length; i++) {
+      if (members[i][0].is(input)) {
+        encoders.push(members[i][1])
+      } else if (encoders.length > 0) {
+        break
+      }
+    }
+
+    let output = encoders[0].encode(input)
+
+    // ---------------------------------------------
+    // compute best output
+    // ---------------------------------------------
+    let weight = null
+    for (let i = 1; i < encoders.length; i++) {
+      const o = encoders[i].encode(input)
+      const w = getWeight(o)
+      if (weight === null) {
+        weight = getWeight(output)
+      }
+      if (w > weight) {
+        output = o
+        weight = w
+      }
+    }
+
+    return output
   })
 
 const _lazy = <S, A>(

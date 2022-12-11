@@ -72,6 +72,6 @@ export const format = (e: DE.DecodeError): string => {
     case "UnexpectedIndex":
       return `/${String(e.index)} index is unexpected`
     case "Member":
-      return `member ${e.index}: ${pipe(e.errors, RA.map(format), RA.join(", "))}`
+      return `member: ${pipe(e.errors, RA.map(format), RA.join(", "))}`
   }
 }

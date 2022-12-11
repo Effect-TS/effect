@@ -9,13 +9,13 @@ import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import type { These } from "@fp-ts/data/These"
+import type { Both, These } from "@fp-ts/data/These"
 import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
-import type { Infer, Schema } from "@fp-ts/schema/Schema"
+import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
@@ -343,20 +343,33 @@ const _struct = (
     }
   )
 
-const _union = <I, Members extends ReadonlyArray<Decoder<I, any>>>(
+const _union = <I>(
   ast: AST.Union,
-  members: Members
-): Decoder<I, Infer<Members[number]>> =>
+  members: ReadonlyArray<Decoder<I, any>>
+): Decoder<I, any> =>
   make(I.makeSchema(ast), (u) => {
     const es: Array<DE.DecodeError> = []
+    let output: Both<NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
+
+    // ---------------------------------------------
+    // compute best output
+    // ---------------------------------------------
     for (let i = 0; i < members.length; i++) {
       const t = members[i].decode(u)
-      if (!isFailure(t)) {
+      if (isSuccess(t)) {
+        // if there are no warnings this is the best output
         return t
+      } else if (isWarning(t)) {
+        // choose the output with less warnings
+        if (!output || output.left.length > t.left.length) {
+          output = t
+        }
+      } else {
+        es.push(DE.member(t.left))
       }
-      es.push(DE.member(i, t.left))
     }
-    return I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
+
+    return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
   })
 
 const _lazy = <I, A>(

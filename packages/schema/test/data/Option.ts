@@ -28,7 +28,7 @@ describe("Option", () => {
     Util.expectFailure(
       decoder,
       {},
-      "member 0: {} did not satisfy isEqual(null), member 1: {} did not satisfy is(number)"
+      "member: {} did not satisfy isEqual(null), member: {} did not satisfy is(number)"
     )
   })
 

@@ -92,7 +92,7 @@ describe("Decoder", () => {
     Util.expectFailure(
       decoder,
       null,
-      "member 0: null did not satisfy isEqual(1), member 1: null did not satisfy isEqual(a)"
+      "member: null did not satisfy isEqual(1), member: null did not satisfy isEqual(a)"
     )
   })
 
@@ -123,7 +123,7 @@ describe("Decoder", () => {
       Util.expectFailure(
         decoder,
         ["a"],
-        "/0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number)"
+        "/0 member: \"a\" did not satisfy is(undefined), member: \"a\" did not satisfy is(number)"
       )
     })
 
@@ -139,16 +139,26 @@ describe("Decoder", () => {
         Util.expectFailure(
           decoder,
           ["a"],
-          "member 0: /0 member 0: \"a\" did not satisfy is(undefined), member 1: \"a\" did not satisfy is(number), member 1: [\"a\"] did not satisfy is(string)"
+          "member: /0 member: \"a\" did not satisfy is(undefined), member: \"a\" did not satisfy is(number), member: [\"a\"] did not satisfy is(string)"
         )
       })
 
-      it("should give precedence to schemas containing more infos", () => {
-        const a = S.struct({ a: S.string })
-        const ab = S.struct({ a: S.string, b: S.number })
-        const schema = S.union(a, ab)
-        const decoder = _.decoderFor(schema)
-        expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.success({ a: "a", b: 1 }))
+      describe("should give precedence to schemas containing more infos", () => {
+        it("more required fields", () => {
+          const a = S.struct({ a: S.string })
+          const ab = S.struct({ a: S.string, b: S.number })
+          const schema = S.union(a, ab)
+          const decoder = _.decoderFor(schema)
+          expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.success({ a: "a", b: 1 }))
+        })
+
+        it("overlapping required fields", () => {
+          const ab = S.struct({ a: S.string }, { b: S.number })
+          const ac = S.struct({ a: S.string }, { c: S.number })
+          const schema = S.union(ab, ac)
+          const decoder = _.decoderFor(schema)
+          expect(decoder.decode({ a: "a", c: 1 })).toEqual(_.success({ a: "a", c: 1 }))
+        })
       })
     })
   })

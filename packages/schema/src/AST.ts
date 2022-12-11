@@ -373,12 +373,32 @@ export interface Union {
   readonly members: ReadonlyArray<AST>
 }
 
-const weight = (ast: AST): number => {
+/**
+ * @since 1.0.0
+ */
+export const union = (members: ReadonlyArray<AST>): Union => {
+  return {
+    _tag: "Union",
+    members: sortByWeight(
+      pipe(
+        members,
+        RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+      )
+    )
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
+
+const getWeight = (ast: AST): number => {
   switch (ast._tag) {
     case "Declaration":
       return 0 // TODO: read keyof.length
     case "TypeAliasDeclaration":
-      return weight(ast.type)
+      return getWeight(ast.type)
     case "Tuple": {
       let n = ast.components.reduce((n, c) => n + (c.optional ? 2 : 200), 0)
       if (O.isSome(ast.rest)) {
@@ -404,27 +424,7 @@ const weight = (ast: AST): number => {
   }
 }
 
-const sort = RA.sort(Order.reverse(pipe(Number.Order, Order.contramap(weight))))
-
-const flatten = (ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast]
-
-/**
- * @since 1.0.0
- */
-export const union = (members: ReadonlyArray<AST>): Union | NeverKeyword => {
-  if (members.length === 0) {
-    return neverKeyword
-  }
-  return {
-    _tag: "Union",
-    members: sort(pipe(members, RA.flatMap(flatten)))
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
+const sortByWeight = RA.sort(Order.reverse(pipe(Number.Order, Order.contramap(getWeight))))
 
 /**
  * @since 1.0.0

@@ -116,12 +116,22 @@ describe("Encoder", () => {
       expect(encoder.encode(1)).toEqual("1")
     })
 
-    it("should give precedence to schemas containing more infos", () => {
-      const a = S.struct({ a: S.string })
-      const ab = S.struct({ a: S.string, b: S.number })
-      const schema = S.union(a, ab)
-      const encoder = _.encoderFor(schema)
-      expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: 1 })
+    describe("should give precedence to schemas containing more infos", () => {
+      it("more required fields", () => {
+        const a = S.struct({ a: S.string })
+        const ab = S.struct({ a: S.string, b: S.number })
+        const schema = S.union(a, ab)
+        const encoder = _.encoderFor(schema)
+        expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: 1 })
+      })
+
+      it("overlapping required fields", () => {
+        const ab = S.struct({ a: S.string }, { b: S.number })
+        const ac = S.struct({ a: S.string }, { c: S.number })
+        const schema = S.union(ab, ac)
+        const encoder = _.encoderFor(schema)
+        expect(encoder.encode({ a: "a", c: 1 })).toEqual({ a: "a", c: 1 })
+      })
     })
   })
 

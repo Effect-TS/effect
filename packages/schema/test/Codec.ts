@@ -170,7 +170,7 @@ describe("Codec", () => {
       Util.expectFailure(
         decoder,
         null,
-        "member 0: null did not satisfy is(string), member 1: null did not satisfy is(number)"
+        "member: null did not satisfy is(string), member: null did not satisfy is(number)"
       )
     })
 

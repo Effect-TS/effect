@@ -293,7 +293,6 @@ export const unexpectedIndex = (
  */
 export interface Member {
   readonly _tag: "Member"
-  readonly index: number
   readonly errors: NonEmptyReadonlyArray<DecodeError>
 }
 
@@ -301,10 +300,8 @@ export interface Member {
  * @since 1.0.0
  */
 export const member = (
-  index: number,
   errors: NonEmptyReadonlyArray<DecodeError>
 ): Member => ({
   _tag: "Member",
-  index,
   errors
 })
