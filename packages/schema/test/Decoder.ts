@@ -89,10 +89,14 @@ describe("Decoder", () => {
     expect(decoder.decode(1)).toEqual(_.success(1))
     expect(decoder.decode("a")).toEqual(_.success("a"))
 
-    Util.expectFailure(
+    Util.expectFailureTree(
       decoder,
       null,
-      "member: null did not satisfy isEqual(1), member: null did not satisfy isEqual(a)"
+      `2 error(s) found
+├─ union member
+│  └─ null did not satisfy isEqual(1)
+└─ union member
+   └─ null did not satisfy isEqual("a")`
     )
   })
 
@@ -120,10 +124,15 @@ describe("Decoder", () => {
       expect(decoder.decode([1])).toEqual(_.success([1]))
       expect(decoder.decode([undefined])).toEqual(_.success([undefined]))
 
-      Util.expectFailure(
+      Util.expectFailureTree(
         decoder,
         ["a"],
-        "/0 member: \"a\" did not satisfy is(undefined), member: \"a\" did not satisfy is(number)"
+        `1 error(s) found
+└─ index 0
+   ├─ union member
+   │  └─ "a" did not satisfy is(undefined)
+   └─ union member
+      └─ "a" did not satisfy is(number)`
       )
     })
 
@@ -136,10 +145,18 @@ describe("Decoder", () => {
         expect(decoder.decode([1])).toEqual(_.success([1]))
         expect(decoder.decode([undefined])).toEqual(_.success([undefined]))
 
-        Util.expectFailure(
+        Util.expectFailureTree(
           decoder,
           ["a"],
-          "member: /0 member: \"a\" did not satisfy is(undefined), member: \"a\" did not satisfy is(number), member: [\"a\"] did not satisfy is(string)"
+          `2 error(s) found
+├─ union member
+│  └─ index 0
+│     ├─ union member
+│     │  └─ "a" did not satisfy is(undefined)
+│     └─ union member
+│        └─ "a" did not satisfy is(number)
+└─ union member
+   └─ ["a"] did not satisfy is(string)`
         )
       })
 

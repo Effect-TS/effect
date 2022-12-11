@@ -25,10 +25,14 @@ describe("Option", () => {
     expect(decoder.decode(null)).toEqual(D.success(O.none))
     expect(decoder.decode(1)).toEqual(D.success(O.some(1)))
 
-    Util.expectFailure(
+    Util.expectFailureTree(
       decoder,
       {},
-      "member: {} did not satisfy isEqual(null), member: {} did not satisfy is(number)"
+      `2 error(s) found
+├─ union member
+│  └─ {} did not satisfy isEqual(null)
+└─ union member
+   └─ {} did not satisfy is(number)`
     )
   })
 

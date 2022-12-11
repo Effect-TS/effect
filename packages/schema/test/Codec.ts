@@ -49,14 +49,14 @@ describe("Codec", () => {
   it("string", () => {
     const decoder = D.decoderFor(S.string)
     expect(decoder.decode("a")).toEqual(D.success("a"))
-    Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
+    Util.expectFailure(decoder, 1, `1 did not satisfy is(string)`)
   })
 
   it("literal", () => {
     const schema = S.literal(1)
     const codec = codecFor(schema)
     expect(codec.decode(1)).toEqual(D.success(1))
-    Util.expectFailure(codec, "a", "\"a\" did not satisfy isEqual(1)")
+    Util.expectFailure(codec, "a", `"a" did not satisfy isEqual(1)`)
   })
 
   describe("tuple", () => {
@@ -167,10 +167,14 @@ describe("Codec", () => {
       expect(decoder.decode("a")).toEqual(D.success("a"))
       expect(decoder.decode(1)).toEqual(D.success(1))
 
-      Util.expectFailure(
+      Util.expectFailureTree(
         decoder,
         null,
-        "member: null did not satisfy is(string), member: null did not satisfy is(number)"
+        `2 error(s) found
+├─ union member
+│  └─ null did not satisfy is(string)
+└─ union member
+   └─ null did not satisfy is(number)`
       )
     })
 
