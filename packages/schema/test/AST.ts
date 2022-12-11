@@ -82,7 +82,7 @@ describe("AST", () => {
 
     it("TypeAliasDeclaration", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(_.keyof(DataOption.schema(S.number).ast)).toEqual([_.key("_tag")])
+      expect(_.keyof(DataOption.schema(S.number).ast)).toEqual([_.propertyKeyType("_tag")])
     })
 
     it("tuple", () => {
@@ -90,13 +90,13 @@ describe("AST", () => {
       expect(_.keyof(S.tuple().ast)).toEqual([])
       // type Test = keyof [string, number] // '0' | '1'
       expect(_.keyof(S.tuple(S.string, S.number).ast)).toEqual([
-        _.key("0"),
-        _.key("1")
+        _.propertyKeyType("0"),
+        _.propertyKeyType("1")
       ])
       // type Test = keyof [string, number, ...Array<boolean>] // '0' | '1' | number
       expect(_.keyof(pipe(S.tuple(S.string, S.number), S.rest(S.boolean)).ast)).toEqual([
-        _.key("0"),
-        _.key("1"),
+        _.propertyKeyType("0"),
+        _.propertyKeyType("1"),
         _.numberKeyword
       ])
     })
@@ -106,8 +106,8 @@ describe("AST", () => {
       expect(_.keyof(S.struct({}).ast)).toEqual([])
       // type Test = keyof { a: string, b: number } // 'a' | 'b'
       expect(_.keyof(S.struct({ a: S.string, b: S.number }).ast)).toEqual([
-        _.key("a"),
-        _.key("b")
+        _.propertyKeyType("a"),
+        _.propertyKeyType("b")
       ])
       // type Test = keyof ({ a: string; b: string; [_: string]: string }) // string | number
       expect(
@@ -119,7 +119,15 @@ describe("AST", () => {
 
       const a = Symbol.for("@fp-ts/schema/test/a")
       // type Test = keyof { [a]: string } // typeof A
-      expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.key(a)])
+      expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.propertyKeyType(a)])
+    })
+
+    it("union", () => {
+      const schema = S.union(
+        S.struct({ _tag: S.literal("A"), a: S.string }),
+        S.struct({ _tag: S.literal("B"), b: S.number })
+      )
+      expect(_.keyof(schema.ast)).toEqual([_.propertyKeyType("_tag")])
     })
 
     it("lazy", () => {
@@ -134,7 +142,7 @@ describe("AST", () => {
           as: S.array(schema)
         })
       )
-      expect(_.keyof(schema.ast)).toEqual([_.key("a"), _.key("as")])
+      expect(_.keyof(schema.ast)).toEqual([_.propertyKeyType("a"), _.propertyKeyType("as")])
     })
 
     // TODO: more tests

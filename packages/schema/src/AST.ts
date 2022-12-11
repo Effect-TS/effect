@@ -442,20 +442,24 @@ export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 /**
  * @since 1.0.0
  */
-export interface Key {
-  readonly _tag: "Key"
+export interface PropertyKeyType {
+  readonly _tag: "PropertyKeyType"
   readonly key: PropertyKey
 }
 
 /**
  * @since 1.0.0
  */
-export const key = (key: PropertyKey): Key => ({ _tag: "Key", key })
+export const propertyKeyType = (key: PropertyKey): PropertyKeyType => ({
+  _tag: "PropertyKeyType",
+  key
+})
 
 /**
  * @since 1.0.0
  */
-export const isKey = (key: KeyOf): key is Key => key._tag === "Key"
+export const isPropertyKeyType = (key: KeyOf): key is PropertyKeyType =>
+  key._tag === "PropertyKeyType"
 
 /**
  * @since 1.0.0
@@ -464,7 +468,7 @@ export type KeyOf =
   | StringKeyword
   | NumberKeyword
   | SymbolKeyword
-  | Key
+  | PropertyKeyType
 
 /**
  * @since 1.0.0
@@ -490,7 +494,7 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
     case "TypeAliasDeclaration":
       return keyof(ast.type)
     case "Tuple": {
-      const members: Array<KeyOf> = ast.components.map((_, i) => key(String(i)))
+      const members: Array<KeyOf> = ast.components.map((_, i) => propertyKeyType(String(i)))
       if (O.isSome(ast.rest)) {
         members.push(numberKeyword)
       }
@@ -507,7 +511,7 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
         if (O.isSome(ast.indexSignatures.symbol)) {
           members.push(symbolKeyword)
         }
-        members.push(...ast.fields.map((field) => key(field.key)))
+        members.push(...ast.fields.map((field) => propertyKeyType(field.key)))
       }
       return members
     }
@@ -554,7 +558,7 @@ export const getFields = (
       return ast.fields
     case "Union": {
       const fields = pipe(ast.members, RA.flatMap(getFields))
-      return keyof(ast).filter(isKey).map((key) => {
+      return keyof(ast).filter(isPropertyKeyType).map((key) => {
         const members = fields.filter((field) => field.key === key.key)
         return field(
           key.key,

@@ -136,7 +136,11 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  make(AST.union(AST.keyof(schema.ast).map((k) => AST.isKey(k) ? AST.literalType(k.key) : k)))
+  make(
+    AST.union(
+      AST.keyof(schema.ast).map((k) => AST.isPropertyKeyType(k) ? AST.literalType(k.key) : k)
+    )
+  )
 
 /**
  * @since 1.0.0
