@@ -84,7 +84,7 @@ export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Dec
 /**
  * @since 1.0.0
  */
-export type Literal = string | number | boolean | null | bigint
+export type Literal = string | number | boolean | null | bigint | symbol
 
 /**
  * @since 1.0.0
@@ -231,8 +231,8 @@ export const symbolKeyword: SymbolKeyword = {
 /**
  * @since 1.0.0
  */
-export interface Field<K = PropertyKey> {
-  readonly key: K
+export interface Field {
+  readonly key: PropertyKey
   readonly value: AST
   readonly optional: boolean
   readonly readonly: boolean
@@ -241,12 +241,12 @@ export interface Field<K = PropertyKey> {
 /**
  * @since 1.0.0
  */
-export const field = <K extends PropertyKey>(
-  key: K,
+export const field = (
+  key: PropertyKey,
   value: AST,
   optional: boolean,
   readonly: boolean
-): Field<K> => ({ key, value, optional, readonly })
+): Field => ({ key, value, optional, readonly })
 
 /**
  * @since 1.0.0
@@ -439,8 +439,6 @@ export interface Lazy {
  */
 export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 
-const isOwn = (field: Field): field is Field<string | number> => typeof field.key !== "symbol"
-
 /**
  * @since 1.0.0
  */
@@ -449,7 +447,7 @@ export type KeyOf =
   | StringKeyword
   | NumberKeyword
   | SymbolKeyword
-  | LiteralType<string | number>
+  | LiteralType<PropertyKey>
 
 /**
  * @since 1.0.0
@@ -492,7 +490,7 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
         if (O.isSome(ast.indexSignatures.symbol)) {
           members.push(symbolKeyword)
         }
-        members.push(...ast.fields.filter(isOwn).map((field) => literalType(String(field.key))))
+        members.push(...ast.fields.map((field) => literalType(field.key)))
       }
       return members
     }

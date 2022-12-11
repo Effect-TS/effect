@@ -116,6 +116,10 @@ describe("AST", () => {
             .ast
         )
       ).toEqual([_.stringKeyword, _.numberKeyword])
+
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      // type Test = keyof { [a]: string } // typeof A
+      expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.literalType(a)])
     })
 
     it("lazy", () => {
