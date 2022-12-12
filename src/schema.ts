@@ -8,7 +8,7 @@
 
 import * as Arbitrary from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as Codec from "@fp-ts/schema/Codec"
+
 import * as DecodeError from "@fp-ts/schema/DecodeError"
 import * as Decoder from "@fp-ts/schema/Decoder"
 import * as Encoder from "@fp-ts/schema/Encoder"
@@ -26,10 +26,6 @@ export {
    * @since 2.0.0
    */
   AST,
-  /**
-   * @since 2.0.0
-   */
-  Codec,
   /**
    * @since 2.0.0
    */

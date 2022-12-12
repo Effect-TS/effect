@@ -1,10 +1,10 @@
 ---
-title: io.ts
+title: index.ts
 nav_order: 6
 parent: Modules
 ---
 
-## io overview
+## index overview
 
 Added in v2.0.0
 
@@ -16,9 +16,13 @@ Added in v2.0.0
   - [Cached](#cached)
   - [Cause](#cause)
   - [Clock](#clock)
+  - [Context](#context)
   - [DefaultServices](#defaultservices)
   - [Deferred](#deferred)
+  - [Duration](#duration)
   - [Effect](#effect)
+  - [Either](#either)
+  - [Equal](#equal)
   - [ExecutionStrategy](#executionstrategy)
   - [Exit](#exit)
   - [Fiber](#fiber)
@@ -28,6 +32,9 @@ Added in v2.0.0
   - [Layer](#layer)
   - [Logger](#logger)
   - [Metric](#metric)
+  - [Number](#number)
+  - [Option](#option)
+  - [Predicate](#predicate)
   - [Queue](#queue)
   - [Random](#random)
   - [Ref](#ref)
@@ -37,6 +44,12 @@ Added in v2.0.0
   - [Scope](#scope)
   - [Supervisor](#supervisor)
   - [Tracer](#tracer)
+  - [absurd](#absurd)
+  - [flow](#flow)
+  - [hole](#hole)
+  - [identity](#identity)
+  - [pipe](#pipe)
+  - [unsafeCoerce](#unsafecoerce)
 
 ---
 
@@ -87,6 +100,21 @@ Added in v2.0.0
 - Module: "@effect/io/Clock"
 ```
 
+## Context
+
+**Signature**
+
+```ts
+export declare const Context: typeof Context
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Context.ts.html
+- Module: "@fp-ts/data/Context"
+```
+
 ## DefaultServices
 
 **Signature**
@@ -117,6 +145,21 @@ Added in v2.0.0
 - Module: "@effect/io/Deferred"
 ```
 
+## Duration
+
+**Signature**
+
+```ts
+export declare const Duration: typeof Duration
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Duration.ts.html
+- Module: "@fp-ts/data/Duration"
+```
+
 ## Effect
 
 **Signature**
@@ -130,6 +173,36 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
 - Module: "@effect/io/Effect"
+```
+
+## Either
+
+**Signature**
+
+```ts
+export declare const Either: typeof Either
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Either.ts.html
+- Module: "@fp-ts/data/Either"
+```
+
+## Equal
+
+**Signature**
+
+```ts
+export declare const Equal: typeof Equal
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Equal.ts.html
+- Module: "@fp-ts/data/Equal"
 ```
 
 ## ExecutionStrategy
@@ -267,6 +340,51 @@ Added in v2.0.0
 - Module: "@effect/io/Metric"
 ```
 
+## Number
+
+**Signature**
+
+```ts
+export declare const Number: typeof Number
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Number.ts.html
+- Module: "@fp-ts/data/Number"
+```
+
+## Option
+
+**Signature**
+
+```ts
+export declare const Option: typeof Option
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Option.ts.html
+- Module: "@fp-ts/data/Option"
+```
+
+## Predicate
+
+**Signature**
+
+```ts
+export declare const Predicate: typeof Predicate
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Predicate.ts.html
+- Module: "@fp-ts/data/Predicate"
+```
+
 ## Queue
 
 **Signature**
@@ -401,3 +519,88 @@ Added in v2.0.0
 - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
 - Module: "@effect/io/Tracer"
 ```
+
+## absurd
+
+**Signature**
+
+```ts
+export declare const absurd: <A>(_: never) => A
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#absurd
+- Module: "@fp-ts/data/Function"
+```
+
+## flow
+
+**Signature**
+
+```ts
+export declare const flow: typeof flow
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html
+- Module: "@fp-ts/data/Function"
+```
+
+## hole
+
+**Signature**
+
+```ts
+export declare const hole: <T>() => T
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#hole
+- Module: "@fp-ts/data/Function"
+```
+
+## identity
+
+**Signature**
+
+```ts
+export declare const identity: <A>(a: A) => A
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#identity
+- Module: "@fp-ts/data/Function"
+```
+
+## pipe
+
+**Signature**
+
+```ts
+export declare const pipe: typeof pipe
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://fp-ts.github.io/data/modules/Function.ts.html#pipe
+- Module: "@fp-ts/data/Function"
+```
+
+## unsafeCoerce
+
+**Signature**
+
+```ts
+export declare const unsafeCoerce: <A, B>(a: A) => B
+```
+
+Added in v2.0.0
