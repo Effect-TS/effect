@@ -1,5 +1,5 @@
 ---
-title: io/Metric.ts
+title: index/Metric.ts
 nav_order: 10
 parent: Modules
 ---

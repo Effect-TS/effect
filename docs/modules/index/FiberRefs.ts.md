@@ -1,5 +1,5 @@
 ---
-title: io/FiberRefs.ts
+title: index/FiberRefs.ts
 nav_order: 8
 parent: Modules
 ---

@@ -1,5 +1,5 @@
 ---
-title: io/Ref.ts
+title: index/Ref.ts
 nav_order: 11
 parent: Modules
 ---

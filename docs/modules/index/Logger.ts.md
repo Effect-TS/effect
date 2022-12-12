@@ -1,5 +1,5 @@
 ---
-title: io/Logger.ts
+title: index/Logger.ts
 nav_order: 9
 parent: Modules
 ---

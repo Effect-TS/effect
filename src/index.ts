@@ -20,14 +20,34 @@ import * as Runtime from "@effect/io/Runtime"
 import * as Scope from "@effect/io/Scope"
 import * as Supervisor from "@effect/io/Supervisor"
 import * as Tracer from "@effect/io/Tracer"
-import * as Fiber from "effect/io/Fiber"
-import * as FiberRefs from "effect/io/FiberRefs"
-import * as Logger from "effect/io/Logger"
-import * as Metric from "effect/io/Metric"
-import * as Ref from "effect/io/Ref"
-import * as Schedule from "effect/io/Schedule"
+import * as Context from "@fp-ts/data/Context"
+import * as Duration from "@fp-ts/data/Duration"
+import * as Either from "@fp-ts/data/Either"
+import * as Equal from "@fp-ts/data/Equal"
+import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "@fp-ts/data/Function"
+import * as Number from "@fp-ts/data/Number"
+import * as Option from "@fp-ts/data/Option"
+import * as Predicate from "@fp-ts/data/Predicate"
+import * as String from "@fp-ts/data/String"
+import * as Codec from "@fp-ts/schema/Codec"
+import * as Fiber from "effect/index/Fiber"
+import * as FiberRefs from "effect/index/FiberRefs"
+import * as Logger from "effect/index/Logger"
+import * as Metric from "effect/index/Metric"
+import * as Optic from "effect/index/Optic"
+import * as Ref from "effect/index/Ref"
+import * as Schedule from "effect/index/Schedule"
 
 export {
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Function.ts.html#absurd
+   * - Module: "@fp-ts/data/Function"
+   * ```
+   */
+  absurd,
   /**
    * @since 2.0.0
    *
@@ -57,6 +77,19 @@ export {
   Clock,
   /**
    * @since 2.0.0
+   */
+  Codec,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Context.ts.html
+   * - Module: "@fp-ts/data/Context"
+   * ```
+   */
+  Context,
+  /**
+   * @since 2.0.0
    *
    * ```md
    * - Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
@@ -77,11 +110,38 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Duration.ts.html
+   * - Module: "@fp-ts/data/Duration"
+   * ```
+   */
+  Duration,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
    * - Module: "@effect/io/Effect"
    * ```
    */
   Effect,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Either.ts.html
+   * - Module: "@fp-ts/data/Either"
+   * ```
+   */
+  Either,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Equal.ts.html
+   * - Module: "@fp-ts/data/Equal"
+   * ```
+   */
+  Equal,
   /**
    * @since 2.0.0
    *
@@ -131,11 +191,38 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Function.ts.html
+   * - Module: "@fp-ts/data/Function"
+   * ```
+   */
+  flow,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Function.ts.html#hole
+   * - Module: "@fp-ts/data/Function"
+   * ```
+   */
+  hole,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
    * - Module: "@effect/io/Hub"
    * ```
    */
   Hub,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Function.ts.html#identity
+   * - Module: "@fp-ts/data/Function"
+   * ```
+   */
+  identity,
   /**
    * @since 2.0.0
    *
@@ -163,6 +250,51 @@ export {
    * ```
    */
   Metric,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Number.ts.html
+   * - Module: "@fp-ts/data/Number"
+   * ```
+   */
+  Number,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/optic/modules/index.ts.html
+   * - Module: "@fp-ts/optic"
+   * ```
+   */
+  Optic,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Option.ts.html
+   * - Module: "@fp-ts/data/Option"
+   * ```
+   */
+  Option,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Function.ts.html#pipe
+   * - Module: "@fp-ts/data/Function"
+   * ```
+   */
+  pipe,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/Predicate.ts.html
+   * - Module: "@fp-ts/data/Predicate"
+   * ```
+   */
+  Predicate,
   /**
    * @since 2.0.0
    *
@@ -230,6 +362,15 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://fp-ts.github.io/data/modules/String.ts.html
+   * - Module: "@fp-ts/data/String"
+   * ```
+   */
+  String,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
    * - Module: "@effect/io/Supervisor"
    * ```
@@ -243,5 +384,9 @@ export {
    * - Module: "@effect/io/Tracer"
    * ```
    */
-  Tracer
+  Tracer,
+  /**
+   * @since 2.0.0
+   */
+  unsafeCoerce
 }

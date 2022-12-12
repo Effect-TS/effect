@@ -1,5 +1,5 @@
 ---
-title: io/Schedule.ts
+title: index/Schedule.ts
 nav_order: 12
 parent: Modules
 ---
