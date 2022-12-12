@@ -2,6 +2,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/AST"
 import * as DataOption from "@fp-ts/schema/data/Option"
+import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as S from "@fp-ts/schema/Schema"
 
 describe("AST", () => {
@@ -18,6 +19,20 @@ describe("AST", () => {
   })
 
   describe("keyof", () => {
+    it("Declaration", () => {
+      // type Test = keyof ReadonlySet<number> // entries | has | keys | foreach | size | values
+      expect(_.keyof(DataReadonlySet.schema(S.number).ast)).toEqual(
+        [
+          _.propertyKeyType("entries"),
+          _.propertyKeyType("has"),
+          _.propertyKeyType("keys"),
+          _.propertyKeyType("foreach"),
+          _.propertyKeyType("size"),
+          _.propertyKeyType("values")
+        ]
+      )
+    })
+
     it("anyKeyword", () => {
       // type Test = keyof any // string | number | symbol
       expect(_.keyof(S.any.ast)).toEqual(

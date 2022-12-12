@@ -43,7 +43,7 @@ export const parse = <A, B>(
     [I.PrettyId]: _pretty
   })
 
-  const schema = (self: Schema<A>): Schema<B> => I.declareSchema(id, O.none, Provider, self)
+  const schema = (self: Schema<A>): Schema<B> => I.declareSchema(id, [], O.none, Provider, self)
 
   return schema
 }

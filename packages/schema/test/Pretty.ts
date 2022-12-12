@@ -11,7 +11,7 @@ describe("Pretty", () => {
   })
 
   it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
     expect(() => P.prettyFor(schema)).toThrowError(
       new Error("Missing support for Pretty compiler, data type @fp-ts/schema/test/missing")
     )

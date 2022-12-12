@@ -194,10 +194,11 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 /** @internal */
 export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
   id: symbol,
+  keyof: ReadonlyArray<AST.KeyOf>,
   config: Option<unknown>,
   provider: Provider,
   ...schemas: Schemas
-): Schema<any> => makeSchema(AST.declare(id, config, provider, schemas.map((s) => s.ast)))
+): Schema<any> => makeSchema(AST.declare(id, keyof, config, provider, schemas.map((s) => s.ast)))
 
 const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literalType(value))

@@ -28,7 +28,7 @@ export const Provider: P.Provider = P.make(id, {
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.declareSchema(id, O.none, Provider)
+export const Schema: S.Schema<Json> = I.declareSchema(id, [], O.none, Provider)
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)
 

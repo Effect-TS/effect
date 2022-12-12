@@ -62,4 +62,4 @@ export const Provider = make(id, {
  * @since 1.0.0
  */
 export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
-  I.declareSchema(id, O.none, Provider, item)
+  I.declareSchema(id, [], O.none, Provider, item)

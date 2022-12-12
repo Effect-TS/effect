@@ -13,7 +13,7 @@ describe("Guard", () => {
   })
 
   it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
     expect(() => G.guardFor(schema)).toThrowError(
       new Error("Missing support for Guard compiler, data type @fp-ts/schema/test/missing")
     )

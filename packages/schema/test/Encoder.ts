@@ -13,7 +13,7 @@ describe("Encoder", () => {
   })
 
   it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
     expect(() => _.encoderFor(schema)).toThrowError(
       new Error("Missing support for Encoder compiler, data type @fp-ts/schema/test/missing")
     )

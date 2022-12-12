@@ -44,7 +44,7 @@ export const refine = <B, C extends B>(
   })
 
   const schema = <A extends B>(self: Schema<A>): Schema<A & C> =>
-    I.declareSchema(id, O.none, Provider, self)
+    I.declareSchema(id, [], O.none, Provider, self)
 
   return schema
 }

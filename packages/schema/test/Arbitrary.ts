@@ -9,7 +9,7 @@ import * as fc from "fast-check"
 
 describe("Arbitrary", () => {
   it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), O.none, empty)
+    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
     expect(() => A.arbitraryFor(schema)).toThrowError(
       new Error("Missing support for Arbitrary compiler, data type @fp-ts/schema/test/missing")
     )

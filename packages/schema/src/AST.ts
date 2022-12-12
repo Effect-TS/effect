@@ -40,6 +40,7 @@ export type AST =
 export interface Declaration {
   readonly _tag: "Declaration"
   readonly id: symbol
+  readonly keyof: ReadonlyArray<KeyOf>
   readonly config: Option<unknown>
   readonly provider: Provider
   readonly nodes: ReadonlyArray<AST>
@@ -50,10 +51,11 @@ export interface Declaration {
  */
 export const declare = (
   id: symbol,
+  keyof: ReadonlyArray<KeyOf>,
   config: Option<unknown>,
   provider: Provider,
   nodes: ReadonlyArray<AST>
-): Declaration => ({ _tag: "Declaration", id, config, provider, nodes })
+): Declaration => ({ _tag: "Declaration", id, keyof, config, provider, nodes })
 
 /**
  * @since 1.0.0
@@ -402,7 +404,7 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
 const getWeight = (ast: AST): number => {
   switch (ast._tag) {
     case "Declaration":
-      return 0 // TODO: read keyof.length
+      return ast.keyof.length
     case "TypeAliasDeclaration":
       return getWeight(ast.type)
     case "Tuple": {
@@ -482,7 +484,7 @@ export type KeyOf =
 export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
   switch (ast._tag) {
     case "Declaration":
-      return [] // TODO: add keyof field to Declaration
+      return ast.keyof
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
