@@ -1,4 +1,4 @@
-import { Effect } from "effect/io"
+import { Effect } from "effect"
 
 describe("effect", () => {
   it("basic usage", () =>
