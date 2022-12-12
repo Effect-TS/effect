@@ -370,21 +370,27 @@ export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
  */
 export interface Union {
   readonly _tag: "Union"
-  readonly members: ReadonlyArray<AST>
+  readonly members: readonly [AST, AST, ...Array<AST>]
 }
 
 /**
  * @since 1.0.0
  */
-export const union = (members: ReadonlyArray<AST>): Union => {
-  return {
-    _tag: "Union",
-    members: sortByWeight(
-      pipe(
-        members,
-        RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+export const union = (candidates: ReadonlyArray<AST>): AST => {
+  switch (candidates.length) {
+    case 0:
+      return neverKeyword
+    case 1:
+      return candidates[0]
+    default: {
+      const members = sortByWeight(
+        pipe(
+          candidates,
+          RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+        )
       )
-    )
+      return { _tag: "Union", members: members as any }
+    }
   }
 }
 
@@ -516,11 +522,11 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
       return members
     }
     case "Union": {
-      let members: ReadonlyArray<KeyOf> = keyof(ast.members[0])
+      let out: ReadonlyArray<KeyOf> = keyof(ast.members[0])
       for (let i = 1; i < ast.members.length; i++) {
-        members = RA.intersection(keyof(ast.members[i]))(members)
+        out = RA.intersection(keyof(ast.members[i]))(out)
       }
-      return members
+      return out
     }
     case "Lazy":
       return keyof(ast.f())

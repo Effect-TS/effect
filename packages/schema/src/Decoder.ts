@@ -343,6 +343,9 @@ const _struct = (
     }
   )
 
+const isUnexpected = (e: DE.DecodeError) =>
+  e._tag === "UnexpectedIndex" || e._tag === "UnexpectedKey"
+
 const _union = <I>(
   ast: AST.Union,
   members: ReadonlyArray<Decoder<I, any>>
@@ -360,8 +363,10 @@ const _union = <I>(
         // if there are no warnings this is the best output
         return t
       } else if (isWarning(t)) {
-        // choose the output with less warnings
-        if (!output || output.left.length > t.left.length) {
+        // choose the output with less warnings related to unexpected keys / indexes
+        if (
+          !output || output.left.filter(isUnexpected).length > t.left.filter(isUnexpected).length
+        ) {
           output = t
         }
       } else {

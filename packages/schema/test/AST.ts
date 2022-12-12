@@ -122,12 +122,19 @@ describe("AST", () => {
       expect(_.keyof(S.struct({ [a]: S.string }).ast)).toEqual([_.propertyKeyType(a)])
     })
 
-    it("union", () => {
-      const schema = S.union(
-        S.struct({ _tag: S.literal("A"), a: S.string }),
-        S.struct({ _tag: S.literal("B"), b: S.number })
-      )
-      expect(_.keyof(schema.ast)).toEqual([_.propertyKeyType("_tag")])
+    describe("union", () => {
+      it("empty union", () => {
+        const schema = S.union()
+        expect(_.keyof(schema.ast)).toEqual(_.keyof(_.neverKeyword))
+      })
+
+      it("discriminated unions", () => {
+        const schema = S.union(
+          S.struct({ _tag: S.literal("A"), a: S.string }),
+          S.struct({ _tag: S.literal("B"), b: S.number })
+        )
+        expect(_.keyof(schema.ast)).toEqual([_.propertyKeyType("_tag")])
+      })
     })
 
     it("lazy", () => {
@@ -144,8 +151,6 @@ describe("AST", () => {
       )
       expect(_.keyof(schema.ast)).toEqual([_.propertyKeyType("a"), _.propertyKeyType("as")])
     })
-
-    // TODO: more tests
   })
 
   describe("getFields", () => {

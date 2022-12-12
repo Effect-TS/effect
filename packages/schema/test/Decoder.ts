@@ -169,12 +169,23 @@ describe("Decoder", () => {
           expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.success({ a: "a", b: 1 }))
         })
 
-        it("overlapping required fields", () => {
+        it("optional fields", () => {
           const ab = S.struct({ a: S.string }, { b: S.number })
           const ac = S.struct({ a: S.string }, { c: S.number })
           const schema = S.union(ab, ac)
           const decoder = _.decoderFor(schema)
           expect(decoder.decode({ a: "a", c: 1 })).toEqual(_.success({ a: "a", c: 1 }))
+        })
+
+        it("less warnings heuristic", () => {
+          const ab = S.struct({ a: S.string }, { b: S.string })
+          const ac = S.struct({ a: S.string }, { c: S.number })
+          const schema = S.union(ab, ac)
+          const decoder = _.decoderFor(schema)
+          Util.expectWarning(decoder, { a: "a", c: NaN }, "/c did not satisfy not(isNaN)", {
+            a: "a",
+            c: NaN
+          })
         })
       })
     })
