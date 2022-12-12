@@ -47,7 +47,7 @@ export const findHandler = (
   (provider: Provider): Option<Function> =>
     pipe(
       O.fromNullable(provider.get(interpreterId)),
-      O.flatMapNullable((handlers) => handlers.get(typeId) as any)
+      O.flatMapNullable((handlers) => handlers.get(typeId))
     )
 
 /**

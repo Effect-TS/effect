@@ -186,7 +186,7 @@ export const provideDecoderFor = (provider: Provider) =>
                 const decoder = components[i]
                 const t = decoder.decode(input[i])
                 if (isFailure(t)) {
-                  return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+                  return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors
                 } else if (isWarning(t)) {
                   es.push(DE.index(i, t.left))
                 }
@@ -201,7 +201,7 @@ export const provideDecoderFor = (provider: Provider) =>
                   for (; i < input.length; i++) {
                     const t = decoder.decode(input[i])
                     if (isFailure(t)) {
-                      return failures(I.append(es, DE.index(i, t.left))) // bail out on a fatal errors
+                      return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors
                     } else if (isWarning(t)) {
                       es.push(DE.index(i, t.left))
                     }
@@ -291,7 +291,7 @@ const _struct = (
         const decoder = fields[i]
         const t = decoder.decode(input[key])
         if (isFailure(t)) {
-          return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+          return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
         } else if (isWarning(t)) {
           es.push(DE.key(key, t.left))
         }
@@ -306,7 +306,7 @@ const _struct = (
           for (const key of Object.keys(input)) {
             const t = decoder.decode(input[key])
             if (isFailure(t)) {
-              return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+              return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
             } else if (isWarning(t)) {
               es.push(DE.key(key, t.left))
             }
@@ -318,7 +318,7 @@ const _struct = (
           for (const key of Object.getOwnPropertySymbols(input)) {
             const t = decoder.decode(input[key])
             if (isFailure(t)) {
-              return failures(I.append(es, DE.key(key, t.left))) // bail out on a fatal errors
+              return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
             } else if (isWarning(t)) {
               es.push(DE.key(key, t.left))
             }

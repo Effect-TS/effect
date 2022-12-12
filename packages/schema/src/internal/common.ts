@@ -83,7 +83,7 @@ export const compose = <B, C>(bc: Decoder<B, C>) =>
     makeDecoder(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
 /** @internal */
-export const append = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
+export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
   self.push(a)
   return self as any
 }
