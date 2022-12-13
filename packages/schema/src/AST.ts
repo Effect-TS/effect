@@ -10,7 +10,6 @@ import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isString } from "@fp-ts/data/String"
 import type { Provider } from "@fp-ts/schema/Provider"
 
 /**
@@ -286,10 +285,7 @@ export const struct = (
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
 
-/**
- * @since 1.0.0
- */
-export const IndexSignaturesMonoid: Monoid.Monoid<IndexSignatures> = Monoid.struct({
+const IndexSignaturesMonoid: Monoid.Monoid<IndexSignatures> = Monoid.struct({
   string: O.getMonoid(Semigroup.last()),
   number: O.getMonoid(Semigroup.last()),
   symbol: O.getMonoid(Semigroup.last())
@@ -365,13 +361,13 @@ export const union = (candidates: ReadonlyArray<AST>): AST => {
     case 1:
       return candidates[0]
     default: {
-      const members = sortByWeight(
+      const members: ReadonlyArray<AST> = sortByWeight(
         pipe(
           candidates,
           RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
         )
       )
-      // @ts-expect-error
+      // @ts-expect-error (TypeScript doesn't know that `members` has >= 2 elements after sorting)
       return { _tag: "Union", members }
     }
   }
@@ -429,79 +425,16 @@ export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
 /**
  * @since 1.0.0
  */
-export interface PropertyKeyType {
-  readonly _tag: "PropertyKeyType"
-  readonly key: PropertyKey
-}
-
-/**
- * @since 1.0.0
- */
-export const propertyKeyType = (key: PropertyKey): PropertyKeyType => ({
-  _tag: "PropertyKeyType",
-  key
-})
-
-/**
- * @since 1.0.0
- */
-export const isPropertyKeyType = (key: KeyOf): key is PropertyKeyType =>
-  key._tag === "PropertyKeyType"
-
-/**
- * @since 1.0.0
- */
-export type KeyOf =
-  | StringKeyword
-  | NumberKeyword
-  | SymbolKeyword
-  | PropertyKeyType
-
-/**
- * @since 1.0.0
- */
-export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
+export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
   switch (ast._tag) {
-    case "NeverKeyword":
-    case "AnyKeyword":
-      return [stringKeyword, numberKeyword, symbolKeyword]
-    case "UnknownKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-    case "UndefinedKeyword":
-      return []
-    case "StringKeyword":
-      return [numberKeyword]
-    case "LiteralType":
-      return isString(ast.literal) ? [numberKeyword] : []
     case "TypeAliasDeclaration":
       return keyof(ast.type)
-    case "Tuple": {
-      const members: Array<KeyOf> = ast.components.map((_, i) => propertyKeyType(String(i)))
-      if (O.isSome(ast.rest)) {
-        members.push(numberKeyword)
-      }
-      return members
-    }
-    case "Struct": {
-      const members: Array<KeyOf> = []
-      if (O.isSome(ast.indexSignatures.string)) {
-        members.push(stringKeyword, numberKeyword)
-      } else {
-        if (O.isSome(ast.indexSignatures.number)) {
-          members.push(numberKeyword)
-        }
-        if (O.isSome(ast.indexSignatures.symbol)) {
-          members.push(symbolKeyword)
-        }
-        members.push(...ast.fields.map((field) => propertyKeyType(field.key)))
-      }
-      return members
-    }
+    case "Tuple":
+      return ast.components.map((_, i) => String(i))
+    case "Struct":
+      return ast.fields.map((field) => field.key)
     case "Union": {
-      let out: ReadonlyArray<KeyOf> = keyof(ast.members[0])
+      let out: ReadonlyArray<PropertyKey> = keyof(ast.members[0])
       for (let i = 1; i < ast.members.length; i++) {
         out = RA.intersection(keyof(ast.members[i]))(out)
       }
@@ -509,6 +442,8 @@ export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
     }
     case "Lazy":
       return keyof(ast.f())
+    default:
+      return []
   }
 }
 
@@ -537,16 +472,18 @@ export const getFields = (
   ast: AST
 ): ReadonlyArray<Field> => {
   switch (ast._tag) {
+    case "TypeAliasDeclaration":
+      return getFields(ast.type)
     case "Tuple":
       return ast.components.map((c, i) => field(i, c.value, c.optional, true))
     case "Struct":
       return ast.fields
     case "Union": {
       const fields = pipe(ast.members, RA.flatMap(getFields))
-      return keyof(ast).filter(isPropertyKeyType).map((key) => {
-        const members = fields.filter((field) => field.key === key.key)
+      return keyof(ast).map((key) => {
+        const members = fields.filter((field) => field.key === key)
         return field(
-          key.key,
+          key,
           union(members.map((field) => field.value)),
           members.some((field) => field.optional),
           members.some((field) => field.readonly)
