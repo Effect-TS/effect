@@ -24,9 +24,10 @@ describe("Chunk", () => {
     const schema = Chunk.schema(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(C.empty())).toEqual(true)
-    expect(guard.is(C.unsafeFromArray(["a", "b", "c"]))).toEqual(true)
+    expect(guard.is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
 
-    expect(guard.is(C.unsafeFromArray(["a", "b", 1]))).toEqual(false)
+    expect(guard.is(C.fromIterable(["a", "b", 1]))).toEqual(false)
+    expect(guard.is({ _id: Symbol.for("@fp-ts/schema/test/FakeChunk") })).toEqual(false)
   })
 
   it("Decoder", () => {
@@ -34,14 +35,14 @@ describe("Chunk", () => {
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty()))
     expect(decoder.decode([1, 2, 3])).toEqual(
-      D.success(C.unsafeFromArray([1, 2, 3]))
+      D.success(C.fromIterable([1, 2, 3]))
     )
     // should handle warnings
     Util.expectWarning(
       decoder,
       [1, NaN, 3],
       "/1 did not satisfy not(isNaN)",
-      C.unsafeFromArray([1, NaN, 3])
+      C.fromIterable([1, NaN, 3])
     )
     Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
@@ -51,7 +52,7 @@ describe("Chunk", () => {
     const schema = Chunk.schema(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(C.empty())).toEqual([])
-    expect(encoder.encode(C.unsafeFromArray([1, 2, 3]))).toEqual(
+    expect(encoder.encode(C.fromIterable([1, 2, 3]))).toEqual(
       [1, 2, 3]
     )
   })
@@ -60,7 +61,7 @@ describe("Chunk", () => {
     const schema = Chunk.schema(S.string)
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(C.empty())).toEqual("Chunk()")
-    expect(pretty.pretty(C.unsafeFromArray(["a", "b"]))).toEqual(
+    expect(pretty.pretty(C.fromIterable(["a", "b"]))).toEqual(
       "Chunk(\"a\", \"b\")"
     )
   })
