@@ -15,6 +15,19 @@ describe("AST", () => {
         members: [ab.ast, a.ast]
       })
     })
+
+    it("should remove duplicated ASTs", () => {
+      const a = S.literal("a")
+      const schema = S.union(a, a)
+      expect(schema.ast).toEqual(a.ast)
+    })
+
+    it("should remove duplicated ASTs from nested unions", () => {
+      const a = S.literal("a")
+      const b = S.literal("b")
+      const schema = S.union(a, b, S.union(a, b))
+      expect(schema.ast).toEqual(S.union(a, b).ast)
+    })
   })
 
   describe("keyof", () => {

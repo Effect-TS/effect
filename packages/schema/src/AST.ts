@@ -355,20 +355,18 @@ export interface Union {
  * @since 1.0.0
  */
 export const union = (candidates: ReadonlyArray<AST>): AST => {
-  switch (candidates.length) {
+  const uniq = RA.uniq(pipe(
+    candidates,
+    RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+  ))
+  switch (uniq.length) {
     case 0:
       return neverKeyword
     case 1:
-      return candidates[0]
+      return uniq[0]
     default: {
-      const members: ReadonlyArray<AST> = sortByWeight(
-        pipe(
-          candidates,
-          RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
-        )
-      )
       // @ts-expect-error (TypeScript doesn't know that `members` has >= 2 elements after sorting)
-      return { _tag: "Union", members }
+      return { _tag: "Union", members: sortByWeight(uniq) }
     }
   }
 }
