@@ -324,14 +324,33 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
   })
 
-  it("omit", () => {
-    const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
-    const schema = pipe(base, S.omit("c"))
-    const guard = guardFor(schema)
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is({ a: "a", b: 1 })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
-    expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
+  describe("omit", () => {
+    it("baseline", () => {
+      const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
+      const schema = pipe(base, S.omit("c"))
+      const guard = guardFor(schema)
+      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+      expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
+      expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
+
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({ a: "a" })).toEqual(false)
+      expect(guard.is({ b: 1 })).toEqual(false)
+    })
+
+    it("involving a symbol", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const base = S.struct({ [a]: S.string, b: S.number, c: S.boolean })
+      const schema = pipe(base, S.omit("c"))
+      const guard = guardFor(schema)
+      expect(guard.is({ [a]: "a", b: 1 })).toEqual(true)
+      expect(guard.is({ [a]: "a", b: 1, c: true })).toEqual(true)
+      expect(guard.is({ [a]: "a", b: 1, c: "a" })).toEqual(true)
+
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({ [a]: "a" })).toEqual(false)
+      expect(guard.is({ b: 1 })).toEqual(false)
+    })
   })
 
   it("union", () => {

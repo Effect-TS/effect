@@ -105,7 +105,10 @@ export const provideDecoderFor = (provider: Provider) =>
             P.findHandler(I.DecoderId, ast.id),
             O.match(
               () => go(ast.type),
-              (handler) => handler(...ast.typeParameters.map(go))
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
         case "LiteralType":
@@ -329,7 +332,7 @@ const _struct = (
         // ---------------------------------------------
         // handle additional keys
         // ---------------------------------------------
-        for (const key of I.getPropertyKeys(input)) {
+        for (const key of I.ownKeys(input)) {
           if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
             es.push(DE.unexpectedKey(key))
           }

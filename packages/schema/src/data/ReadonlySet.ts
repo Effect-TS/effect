@@ -5,7 +5,6 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -71,17 +70,10 @@ export const Provider: P.Provider = P.make(id, {
  * @since 1.0.0
  */
 export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
-  I.declareSchema(
+  I.typeAlias(
     id,
-    [
-      AST.propertyKeyType("entries"),
-      AST.propertyKeyType("has"),
-      AST.propertyKeyType("keys"),
-      AST.propertyKeyType("foreach"),
-      AST.propertyKeyType("size"),
-      AST.propertyKeyType("values")
-    ],
     O.none,
     Provider,
-    item
+    [item],
+    I.struct({})
   )

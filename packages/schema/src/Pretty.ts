@@ -58,7 +58,10 @@ export const providePrettyFor = (provider: Provider) =>
             P.findHandler(I.PrettyId, ast.id),
             O.match(
               () => go(ast.type),
-              (handler) => handler(...ast.typeParameters.map(go))
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
         case "LiteralType":

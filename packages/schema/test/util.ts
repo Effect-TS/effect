@@ -20,6 +20,12 @@ export const property = <A>(schema: Schema<A>) => {
   }))
 }
 
+export const expectSuccess = <I, A>(decoder: D.Decoder<I, A>, i: I) => {
+  const t = decoder.decode(i)
+  expect(T.isRight(t)).toEqual(true)
+  expect(t).toEqual(T.right(i))
+}
+
 export const expectFailure = <I, A>(decoder: D.Decoder<I, A>, i: I, message: string) => {
   const t = pipe(decoder.decode(i), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)

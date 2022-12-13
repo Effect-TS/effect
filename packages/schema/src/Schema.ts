@@ -48,13 +48,24 @@ export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
 /**
  * @since 1.0.0
  */
-export const declare: <Schemas extends ReadonlyArray<Schema<any>>>(
+export const declare: (
   id: symbol,
   keyof: ReadonlyArray<AST.KeyOf>,
   config: Option<unknown>,
   provider: Provider,
-  ...schemas: Schemas
+  ...schemas: ReadonlyArray<Schema<any>>
 ) => Schema<any> = I.declareSchema
+
+/**
+ * @since 1.0.0
+ */
+export const typeAlias: (
+  id: symbol,
+  config: Option<unknown>,
+  provider: Provider,
+  typeParameters: ReadonlyArray<Schema<any>>,
+  type: Schema<any>
+) => Schema<any> = I.typeAlias
 
 /**
  * @since 1.0.0
@@ -237,10 +248,8 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 /**
  * @since 1.0.0
  */
-export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
-  make(
-    AST.struct([], AST.indexSignatures(O.some(AST.indexSignature(value.ast, true)), O.none, O.none))
-  )
+export const stringIndexSignature: <A>(value: Schema<A>) => Schema<{ readonly [_: string]: A }> =
+  I.stringIndexSignature
 
 /**
  * @since 1.0.0

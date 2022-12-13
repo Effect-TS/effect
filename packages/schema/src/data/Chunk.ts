@@ -62,4 +62,10 @@ export const Provider = make(id, {
  * @since 1.0.0
  */
 export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
-  I.declareSchema(id, [], O.none, Provider, item)
+  I.typeAlias(
+    id,
+    O.none,
+    Provider,
+    [item],
+    I.struct({ _id: I.symbol })
+  )

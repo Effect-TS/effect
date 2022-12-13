@@ -60,7 +60,10 @@ export const provideEncoderFor = (provider: Provider) =>
             P.findHandler(I.EncoderId, ast.id),
             O.match(
               () => go(ast.type),
-              (handler) => handler(...ast.typeParameters.map(go))
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
         case "LiteralType":
@@ -217,7 +220,7 @@ const getWeight = (u: unknown): number => {
   if (Array.isArray(u)) {
     return u.length
   } else if (typeof u === "object" && u !== null) {
-    return I.getPropertyKeys(u).length
+    return I.ownKeys(u).length
   }
   return 0
 }

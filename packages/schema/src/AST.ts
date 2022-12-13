@@ -60,9 +60,15 @@ export const declare = (
 /**
  * @since 1.0.0
  */
+export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
+
+/**
+ * @since 1.0.0
+ */
 export interface TypeAliasDeclaration {
   readonly _tag: "TypeAliasDeclaration"
   readonly id: symbol
+  readonly config: Option<unknown>
   readonly provider: Provider
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
@@ -73,15 +79,18 @@ export interface TypeAliasDeclaration {
  */
 export const typeAliasDeclaration = (
   id: symbol,
+  config: Option<unknown>,
   provider: Provider,
   typeParameters: ReadonlyArray<AST>,
   type: AST
-): TypeAliasDeclaration => ({ _tag: "TypeAliasDeclaration", id, provider, typeParameters, type })
-
-/**
- * @since 1.0.0
- */
-export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
+): TypeAliasDeclaration => ({
+  _tag: "TypeAliasDeclaration",
+  id,
+  config,
+  provider,
+  typeParameters,
+  type
+})
 
 /**
  * @since 1.0.0
@@ -391,7 +400,8 @@ export const union = (candidates: ReadonlyArray<AST>): AST => {
           RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
         )
       )
-      return { _tag: "Union", members: members as any }
+      // @ts-expect-error
+      return { _tag: "Union", members }
     }
   }
 }

@@ -346,4 +346,41 @@ describe("Decoder", () => {
       "/as /0 /as /0 1 did not satisfy is({ readonly [_: string]: unknown })"
     )
   })
+
+  describe("omit", () => {
+    it("baseline", () => {
+      const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
+      const schema = pipe(base, S.omit("c"))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, { a: "a", b: 1 })
+
+      Util.expectFailure(
+        decoder,
+        null,
+        "null did not satisfy is({ readonly [_: string]: unknown })"
+      )
+      Util.expectFailure(decoder, { a: "a" }, "/b undefined did not satisfy is(number)")
+      Util.expectFailure(decoder, { b: 1 }, "/a undefined did not satisfy is(string)")
+    })
+
+    it("involving a symbol", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const base = S.struct({ [a]: S.string, b: S.number, c: S.boolean })
+      const schema = pipe(base, S.omit("c"))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, { [a]: "a", b: 1 })
+
+      Util.expectFailure(
+        decoder,
+        null,
+        "null did not satisfy is({ readonly [_: string]: unknown })"
+      )
+      Util.expectFailure(decoder, { [a]: "a" }, "/b undefined did not satisfy is(number)")
+      Util.expectFailure(
+        decoder,
+        { b: 1 },
+        "/Symbol(@fp-ts/schema/test/a) undefined did not satisfy is(string)"
+      )
+    })
+  })
 })

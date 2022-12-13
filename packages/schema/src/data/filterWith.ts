@@ -50,7 +50,7 @@ export const filterWith = <Config, B>(
 
   const schema = (config: Config) =>
     <A extends B>(self: Schema<A>): Schema<A> =>
-      I.declareSchema(id, [], O.some(config), Provider, self)
+      I.typeAlias(id, O.some(config), Provider, [self], self)
 
   return schema
 }

@@ -2,7 +2,6 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
-import * as AST from "@fp-ts/schema/AST"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -51,12 +50,13 @@ export const Provider = make(id, {
  * @since 1.0.0
  */
 export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
-  I.makeSchema(AST.typeAliasDeclaration(
+  I.typeAlias(
     id,
+    O.none,
     Provider,
-    [value.ast],
+    [value],
     I.union(
       I.struct({ _tag: I.literal("None") }),
       I.struct({ _tag: I.literal("Some"), value })
-    ).ast
-  ))
+    )
+  )

@@ -192,13 +192,25 @@ export const makePretty = <A>(
 export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
-export const declareSchema = <Schemas extends ReadonlyArray<Schema<any>>>(
+export const declareSchema = (
   id: symbol,
   keyof: ReadonlyArray<AST.KeyOf>,
   config: Option<unknown>,
   provider: Provider,
-  ...schemas: Schemas
+  ...schemas: ReadonlyArray<Schema<any>>
 ): Schema<any> => makeSchema(AST.declare(id, keyof, config, provider, schemas.map((s) => s.ast)))
+
+/** @internal */
+export const typeAlias = (
+  id: symbol,
+  config: Option<unknown>,
+  provider: Provider,
+  typeParameters: ReadonlyArray<Schema<any>>,
+  type: Schema<any>
+): Schema<any> =>
+  makeSchema(
+    AST.typeAliasDeclaration(id, config, provider, typeParameters.map((tp) => tp.ast), type.ast)
+  )
 
 const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literalType(value))
@@ -294,9 +306,9 @@ export const struct: {
   const _optional: any = optional || {}
   return makeSchema(
     AST.struct(
-      getPropertyKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
+      ownKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
         .concat(
-          getPropertyKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
+          ownKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
         ),
       AST.indexSignatures(O.none, O.none, O.none)
     )
@@ -310,12 +322,18 @@ export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(()
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
   makeSchema(AST.tuple([], O.some(item.ast), true))
 
+/** @internal */
+export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
+  makeSchema(
+    AST.struct([], AST.indexSignatures(O.some(AST.indexSignature(value.ast, true)), O.none, O.none))
+  )
+
 // ---------------------------------------------
 // general helpers
 // ---------------------------------------------
 
 /** @internal */
-export const getPropertyKeys = (o: object): ReadonlyArray<PropertyKey> =>
+export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
 /** @internal */

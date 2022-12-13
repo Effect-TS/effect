@@ -84,36 +84,40 @@ const provideJsonSchemaFor = (
               handler.value(ast.config.value)(...ast.nodes.map(go)) :
               handler.value(...ast.nodes.map(go))
           }
+          throw new Error(
+            `Missing support for JSONSchema compiler, data type ${String(ast.id.description)}`
+          )
+        }
+        case "TypeAliasDeclaration": {
           if (ast.id === DataMinLength.id) {
             const minLength: number = (ast.config as any).value
-            const schema: StringJSONSchema = go(ast.nodes[0]) as any
+            const schema: StringJSONSchema = go(ast.typeParameters[0]) as any
             schema.minLength = minLength
             return schema
           }
           if (ast.id === DataMaxLength.id) {
             const maxLength: number = (ast.config as any).value
-            const schema: StringJSONSchema = go(ast.nodes[0]) as any
+            const schema: StringJSONSchema = go(ast.typeParameters[0]) as any
             schema.maxLength = maxLength
             return schema
           }
-          throw new Error(
-            `Missing support for JSONSchema compiler, data type ${String(ast.id.description)}`
-          )
-        }
-        case "TypeAliasDeclaration":
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
             P.findHandler(JSONSchemaId, ast.id),
             O.match(
               () => go(ast.type),
-              (handler) => handler(...ast.typeParameters.map(go))
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
+        }
         case "LiteralType":
           return _of(ast.literal)
         case "UndefinedKeyword":
-          throw new Error("cannot build JSON Schema fro `undefined`")
+          throw new Error("cannot build JSON Schema for `undefined`")
         case "StringKeyword":
           return { type: "string" }
         case "NumberKeyword":

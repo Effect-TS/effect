@@ -2,6 +2,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { AST } from "@fp-ts/schema/AST"
+import * as DataJson from "@fp-ts/schema/data/Json"
 import type { Provider } from "@fp-ts/schema/Provider"
 import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -175,6 +176,13 @@ describe("typeRepFor", () => {
     const schema = S.tuple(S.string, S.number)
     expect(pipe(schema, typeRepFor).typeRep).toEqual(
       "readonly [string, number]"
+    )
+  })
+
+  it("typeAlias", () => {
+    const schema = S.array(DataJson.Schema)
+    expect(pipe(schema, typeRepFor).typeRep).toEqual(
+      "readonly [...Symbol(@fp-ts/schema/data/Json)[]]"
     )
   })
 

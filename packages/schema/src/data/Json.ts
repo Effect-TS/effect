@@ -25,10 +25,21 @@ export const Provider: P.Provider = P.make(id, {
   [I.PrettyId]: () => Pretty
 })
 
+const JsonSchema: S.Schema<Json> = I.lazy(() =>
+  I.union(
+    I.literal(null),
+    I.string,
+    I.number,
+    I.boolean,
+    I.array(JsonSchema),
+    I.stringIndexSignature(JsonSchema)
+  )
+)
+
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.declareSchema(id, [], O.none, Provider)
+export const Schema: S.Schema<Json> = I.typeAlias(id, O.none, Provider, [], JsonSchema)
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)
 

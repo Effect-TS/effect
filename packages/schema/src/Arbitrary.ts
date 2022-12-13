@@ -58,7 +58,10 @@ export const provideArbitraryFor = (provider: Provider) =>
             P.findHandler(I.ArbitraryId, ast.id),
             O.match(
               () => go(ast.type),
-              (handler) => handler(...ast.typeParameters.map(go))
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
         case "LiteralType":
