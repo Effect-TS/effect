@@ -1,20 +1,11 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
-import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
 describe("Arbitrary", () => {
-  it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
-    expect(() => A.arbitraryFor(schema)).toThrowError(
-      new Error("Missing support for Arbitrary compiler, data type @fp-ts/schema/test/missing")
-    )
-  })
-
   const sampleSize = 100
 
   it("minLength", () => {

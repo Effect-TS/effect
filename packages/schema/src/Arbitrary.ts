@@ -36,21 +36,6 @@ export const provideArbitraryFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Arbitrary<A> => {
     const go = (ast: AST.AST): Arbitrary<any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.findHandler(I.ArbitraryId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Arbitrary compiler, data type ${String(ast.id.description)}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
             ast.provider,
@@ -162,7 +147,7 @@ const _struct = (
     I.makeSchema(ast),
     (fc) => {
       const arbs: any = {}
-      const requiredKeys = []
+      const requiredKeys: Array<PropertyKey> = []
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------

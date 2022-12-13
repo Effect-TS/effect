@@ -36,21 +36,6 @@ export const providePrettyFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Pretty<A> => {
     const go = (ast: AST.AST): Pretty<any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.findHandler(PrettyId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Pretty compiler, data type ${ast.id.description?.toString()}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
             ast.provider,

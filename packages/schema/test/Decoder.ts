@@ -1,7 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/Decoder"
-import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -16,13 +14,6 @@ describe("Decoder", () => {
     expect(_.isSuccess).exist
     expect(_.isFailure).exist
     expect(_.isWarning).exist
-  })
-
-  it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
-    expect(() => _.decoderFor(schema)).toThrowError(
-      new Error("Missing support for Decoder compiler, data type @fp-ts/schema/test/missing")
-    )
   })
 
   it("string", () => {

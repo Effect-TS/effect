@@ -48,17 +48,6 @@ export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
 /**
  * @since 1.0.0
  */
-export const declare: (
-  id: symbol,
-  keyof: ReadonlyArray<AST.KeyOf>,
-  config: Option<unknown>,
-  provider: Provider,
-  ...schemas: ReadonlyArray<Schema<any>>
-) => Schema<any> = I.declareSchema
-
-/**
- * @since 1.0.0
- */
 export const typeAlias: (
   id: symbol,
   config: Option<unknown>,

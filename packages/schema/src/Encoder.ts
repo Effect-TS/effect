@@ -38,21 +38,6 @@ export const provideEncoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Encoder<unknown, A> => {
     const go = (ast: AST.AST): Encoder<unknown, any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.findHandler(I.EncoderId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Encoder compiler, data type ${String(ast.id.description)}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
             ast.provider,
@@ -233,7 +218,7 @@ const _union = (
     // ---------------------------------------------
     // compute encoder candidates
     // ---------------------------------------------
-    const encoders = []
+    const encoders: Array<Encoder<any, any>> = []
     for (let i = 0; i < members.length; i++) {
       if (members[i][0].is(input)) {
         encoders.push(members[i][1])
@@ -247,7 +232,7 @@ const _union = (
     // ---------------------------------------------
     // compute best output
     // ---------------------------------------------
-    let weight = null
+    let weight: number | null = null
     for (let i = 1; i < encoders.length; i++) {
       const o = encoders[i].encode(input)
       const w = getWeight(o)

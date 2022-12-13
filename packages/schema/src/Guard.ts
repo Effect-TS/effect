@@ -37,21 +37,6 @@ export const provideGuardFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Guard<A> => {
     const go = (ast: AST.AST): Guard<any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.findHandler(I.GuardId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Guard compiler, data type ${String(ast.id.description)}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
             ast.provider,

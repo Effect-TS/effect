@@ -192,15 +192,6 @@ export const makePretty = <A>(
 export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
-export const declareSchema = (
-  id: symbol,
-  keyof: ReadonlyArray<AST.KeyOf>,
-  config: Option<unknown>,
-  provider: Provider,
-  ...schemas: ReadonlyArray<Schema<any>>
-): Schema<any> => makeSchema(AST.declare(id, keyof, config, provider, schemas.map((s) => s.ast)))
-
-/** @internal */
 export const typeAlias = (
   id: symbol,
   config: Option<unknown>,

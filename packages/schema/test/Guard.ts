@@ -1,8 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
-import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 
 const guardFor = G.guardFor
@@ -10,13 +8,6 @@ const guardFor = G.guardFor
 describe("Guard", () => {
   it("GuardId", () => {
     expect(G.GuardId).exist
-  })
-
-  it("should throw on missing support", () => {
-    const schema = S.declare(Symbol("@fp-ts/schema/test/missing"), [], O.none, empty)
-    expect(() => G.guardFor(schema)).toThrowError(
-      new Error("Missing support for Guard compiler, data type @fp-ts/schema/test/missing")
-    )
   })
 
   it("string", () => {

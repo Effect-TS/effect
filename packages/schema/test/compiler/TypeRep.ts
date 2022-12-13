@@ -4,7 +4,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { AST } from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import type { Provider } from "@fp-ts/schema/Provider"
-import { empty, findHandler, Semigroup } from "@fp-ts/schema/Provider"
+import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -25,7 +25,7 @@ export const lazy = <A>(
   )
 }
 export const TypeRepId: unique symbol = Symbol.for(
-  "@fp-ts/schema/interpreter/TypeRepInterpreter"
+  "@fp-ts/schema/test/compiler/TypeRep"
 )
 
 export type TypeRepId = typeof TypeRepId
@@ -36,27 +36,24 @@ export const provideTypeRepFor = (
   <A>(schema: Schema<A>): TypeRep<A> => {
     const go = (ast: AST): TypeRep<any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            Semigroup.combine(provider),
-            findHandler(TypeRepId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for TypeRep compiler, data type ${String(ast.id.description)}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
-            ast.typeParameters.map(go),
-            RA.match(
-              () => make(ast, String(ast.id)),
-              (typeParameters) => make(ast, `${String(ast.id)}<${typeParameters.typeRep}>`)
+            ast.provider,
+            P.Semigroup.combine(provider),
+            P.findHandler(TypeRepId, ast.id),
+            O.match(
+              () =>
+                pipe(
+                  ast.typeParameters.map(go),
+                  RA.match(
+                    () => make(ast, String(ast.id)),
+                    (typeParameters) => make(ast, `${String(ast.id)}<${typeParameters.typeRep}>`)
+                  )
+                ),
+              (handler) =>
+                O.isSome(ast.config) ?
+                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                  handler(...ast.typeParameters.map(go))
             )
           )
         case "LiteralType":
@@ -133,7 +130,7 @@ export const provideTypeRepFor = (
   }
 
 describe("typeRepFor", () => {
-  const typeRepFor = provideTypeRepFor(empty)
+  const typeRepFor = provideTypeRepFor(P.empty)
   it("struct", () => {
     const schema = S.struct({
       a: S.string,

@@ -17,7 +17,6 @@ import type { Provider } from "@fp-ts/schema/Provider"
  * @since 1.0.0
  */
 export type AST =
-  | Declaration
   | TypeAliasDeclaration
   | LiteralType
   | UndefinedKeyword
@@ -33,34 +32,6 @@ export type AST =
   | Tuple
   | Union
   | Lazy
-
-/**
- * @since 1.0.0
- */
-export interface Declaration {
-  readonly _tag: "Declaration"
-  readonly id: symbol
-  readonly keyof: ReadonlyArray<KeyOf>
-  readonly config: Option<unknown>
-  readonly provider: Provider
-  readonly nodes: ReadonlyArray<AST>
-}
-
-/**
- * @since 1.0.0
- */
-export const declare = (
-  id: symbol,
-  keyof: ReadonlyArray<KeyOf>,
-  config: Option<unknown>,
-  provider: Provider,
-  nodes: ReadonlyArray<AST>
-): Declaration => ({ _tag: "Declaration", id, keyof, config, provider, nodes })
-
-/**
- * @since 1.0.0
- */
-export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
 
 /**
  * @since 1.0.0
@@ -413,8 +384,6 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
 
 const getWeight = (ast: AST): number => {
   switch (ast._tag) {
-    case "Declaration":
-      return ast.keyof.length
     case "TypeAliasDeclaration":
       return getWeight(ast.type)
     case "Tuple": {
@@ -493,8 +462,6 @@ export type KeyOf =
  */
 export const keyof = (ast: AST): ReadonlyArray<KeyOf> => {
   switch (ast._tag) {
-    case "Declaration":
-      return ast.keyof
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]

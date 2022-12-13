@@ -83,21 +83,6 @@ export const provideDecoderFor = (provider: Provider) =>
   <A>(schema: Schema<A>): Decoder<unknown, A> => {
     const go = (ast: AST.AST): Decoder<unknown, any> => {
       switch (ast._tag) {
-        case "Declaration": {
-          const handler = pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.findHandler(I.DecoderId, ast.id)
-          )
-          if (O.isSome(handler)) {
-            return O.isSome(ast.config) ?
-              handler.value(ast.config.value)(...ast.nodes.map(go)) :
-              handler.value(...ast.nodes.map(go))
-          }
-          throw new Error(
-            `Missing support for Decoder compiler, data type ${String(ast.id.description)}`
-          )
-        }
         case "TypeAliasDeclaration":
           return pipe(
             ast.provider,
