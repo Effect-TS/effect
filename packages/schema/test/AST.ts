@@ -5,38 +5,152 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
 describe("AST", () => {
+  describe("struct", () => {
+    describe("should give precedence to fields / index signatures containing less inhabitants", () => {
+      it("literals", () => {
+        const schema = S.struct({ a: S.string, b: S.literal("b") })
+        expect(schema.ast).toEqual({
+          "_tag": "Struct",
+          "fields": [
+            {
+              "key": "b",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "LiteralType",
+                "literal": "b"
+              }
+            },
+            {
+              "key": "a",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "StringKeyword"
+              }
+            }
+          ],
+          "indexSignatures": []
+        })
+      })
+
+      it("booleans", () => {
+        const schema = S.struct({ a: S.string, b: S.boolean })
+        expect(schema.ast).toEqual({
+          "_tag": "Struct",
+          "fields": [
+            {
+              "key": "b",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "BooleanKeyword"
+              }
+            },
+            {
+              "key": "a",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "StringKeyword"
+              }
+            }
+          ],
+          "indexSignatures": []
+        })
+      })
+
+      it("undefined", () => {
+        const schema = S.struct({ a: S.string, b: S.undefined })
+        expect(schema.ast).toEqual({
+          "_tag": "Struct",
+          "fields": [
+            {
+              "key": "b",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "UndefinedKeyword"
+              }
+            },
+            {
+              "key": "a",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "StringKeyword"
+              }
+            }
+          ],
+          "indexSignatures": []
+        })
+      })
+
+      it("boolean vs literal", () => {
+        const schema = S.struct({ a: S.boolean, b: S.literal(null) })
+        expect(schema.ast).toEqual({
+          "_tag": "Struct",
+          "fields": [
+            {
+              "key": "b",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "LiteralType",
+                "literal": null
+              }
+            },
+            {
+              "key": "a",
+              "optional": false,
+              "readonly": true,
+              "value": {
+                "_tag": "BooleanKeyword"
+              }
+            }
+          ],
+          "indexSignatures": []
+        })
+      })
+    })
+  })
+
   describe("union", () => {
-    it("should give precedence to schemas containing more infos", () => {
-      const a = S.struct({ a: S.string })
-      const ab = S.struct({ a: S.string, b: S.number })
-      const schema = S.union(a, ab)
-      expect(schema.ast).toEqual({
-        _tag: "Union",
-        members: [ab.ast, a.ast]
+    describe("should give precedence to schemas containing more infos", () => {
+      it("1 required vs 2 required", () => {
+        const a = S.struct({ a: S.string })
+        const ab = S.struct({ a: S.string, b: S.number })
+        const schema = S.union(a, ab)
+        expect(schema.ast).toEqual({
+          _tag: "Union",
+          members: [ab.ast, a.ast]
+        })
+      })
+
+      it("1 required vs 2 optional", () => {
+        const a = S.struct({ a: S.string })
+        const ab = S.struct({}, { a: S.string, b: S.number })
+        const schema = S.union(a, ab)
+        expect(schema.ast).toEqual({
+          _tag: "Union",
+          members: [ab.ast, a.ast]
+        })
       })
     })
 
-    it("should give max precedence to schemas containing literals", () => {
-      const a = S.struct({ a: S.string })
-      const b = S.struct({ b: S.literal("b") })
-      const schema = S.union(a, b)
-      expect(schema.ast).toEqual({
-        _tag: "Union",
-        members: [b.ast, a.ast]
+    describe("should remove duplicated ASTs", () => {
+      it("plain", () => {
+        const a = S.literal("a")
+        const schema = S.union(a, a)
+        expect(schema.ast).toEqual(a.ast)
       })
-    })
 
-    it("should remove duplicated ASTs", () => {
-      const a = S.literal("a")
-      const schema = S.union(a, a)
-      expect(schema.ast).toEqual(a.ast)
-    })
-
-    it("should remove duplicated ASTs from nested unions", () => {
-      const a = S.literal("a")
-      const b = S.literal("b")
-      const schema = S.union(a, b, S.union(a, b))
-      expect(schema.ast).toEqual(S.union(a, b).ast)
+      it("nested", () => {
+        const a = S.literal("a")
+        const b = S.literal("b")
+        const schema = S.union(a, b, S.union(a, b))
+        expect(schema.ast).toEqual(S.union(a, b).ast)
+      })
     })
   })
 

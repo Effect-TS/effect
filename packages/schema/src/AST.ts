@@ -254,13 +254,46 @@ export interface Struct {
   readonly indexSignatures: ReadonlyArray<IndexSignature>
 }
 
+// a lower number means "more severe"
+const getSeverity = (ast: AST): number => {
+  switch (ast._tag) {
+    case "TypeAliasDeclaration":
+      return getSeverity(ast.type)
+    case "NeverKeyword":
+      return 0
+    case "LiteralType":
+    case "UndefinedKeyword":
+      return 1
+    case "BooleanKeyword":
+      return 2
+    case "StringKeyword":
+    case "NumberKeyword":
+    case "BigIntKeyword":
+    case "SymbolKeyword":
+      return 3
+    case "UnknownKeyword":
+    case "AnyKeyword":
+      return 4
+    default:
+      return 5
+  }
+}
+
+const sortBySeverityAsc = RA.sort(
+  pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getSeverity(value)))
+)
+
 /**
  * @since 1.0.0
  */
 export const struct = (
   fields: ReadonlyArray<Field>,
   indexSignatures: ReadonlyArray<IndexSignature>
-): Struct => ({ _tag: "Struct", fields, indexSignatures })
+): Struct => ({
+  _tag: "Struct",
+  fields: sortBySeverityAsc(fields),
+  indexSignatures: sortBySeverityAsc(indexSignatures)
+})
 
 /**
  * @since 1.0.0
@@ -315,6 +348,27 @@ export interface Union {
   readonly members: readonly [AST, AST, ...Array<AST>]
 }
 
+const getWeight = (ast: AST): number => {
+  switch (ast._tag) {
+    case "TypeAliasDeclaration":
+      return getWeight(ast.type)
+    case "Tuple":
+      return ast.components.length + (O.isSome(ast.rest) ? 1 : 0)
+    case "Struct":
+      return ast.fields.length + ast.indexSignatures.length
+    case "Union":
+      return ast.members.reduce((n, member) => n + getWeight(member), 0)
+    case "Lazy":
+      return 10
+    default:
+      return 0
+  }
+}
+
+const sortByWeightDesc = RA.sort(
+  Order.reverse(pipe(Number.Order, Order.contramap(getWeight)))
+)
+
 /**
  * @since 1.0.0
  */
@@ -330,7 +384,7 @@ export const union = (candidates: ReadonlyArray<AST>): AST => {
       return uniq[0]
     default: {
       // @ts-expect-error (TypeScript doesn't know that `members` has >= 2 elements after sorting)
-      return { _tag: "Union", members: sortByWeight(uniq) }
+      return { _tag: "Union", members: sortByWeightDesc(uniq) }
     }
   }
 }
@@ -339,39 +393,6 @@ export const union = (candidates: ReadonlyArray<AST>): AST => {
  * @since 1.0.0
  */
 export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
-
-const getWeight = (ast: AST): number => {
-  switch (ast._tag) {
-    case "TypeAliasDeclaration":
-      return getWeight(ast.type)
-    case "Tuple": {
-      let n = ast.components.reduce(
-        (n, c) =>
-          n +
-          (c.value._tag === "LiteralType" ? c.optional ? 2000 : 20_000 : c.optional ? 100 : 1_000),
-        0
-      )
-      if (O.isSome(ast.rest)) {
-        n += 1
-      }
-      return n
-    }
-    case "Struct": {
-      const fieldsWeight = ast.fields.reduce(
-        (n, c) =>
-          n +
-          (c.value._tag === "LiteralType" ? c.optional ? 2000 : 20_000 : c.optional ? 100 : 1_000),
-        0
-      )
-      const indexSignaturesWeight = ast.indexSignatures.length
-      return fieldsWeight + indexSignaturesWeight
-    }
-    default:
-      return 0
-  }
-}
-
-const sortByWeight = RA.sort(Order.reverse(pipe(Number.Order, Order.contramap(getWeight))))
 
 /**
  * @since 1.0.0
