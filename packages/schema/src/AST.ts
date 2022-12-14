@@ -3,7 +3,6 @@
  */
 
 import * as Order from "@fp-ts/core/typeclass/Order"
-import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
 import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
@@ -267,18 +266,6 @@ export const struct = (
  * @since 1.0.0
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
-
-/**
- * @since 1.0.0
- */
-export const StructIntersectionSemigroup: Semigroup.Semigroup<Struct> = Semigroup.fromCombine(
-  (that) =>
-    (self) =>
-      struct(
-        self.fields.concat(that.fields),
-        self.indexSignatures.concat(that.indexSignatures)
-      )
-)
 
 /**
  * @since 1.0.0

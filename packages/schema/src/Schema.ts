@@ -255,7 +255,10 @@ export const extend = <B>(
 ) =>
   <A>(self: Schema<A>): Schema<A & B> => {
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
-      return make(AST.StructIntersectionSemigroup.combine(that.ast)(self.ast))
+      return make(AST.struct(
+        self.ast.fields.concat(that.ast.fields),
+        self.ast.indexSignatures.concat(that.ast.indexSignatures)
+      ))
     }
     throw new Error("`extend` is not supported on this schema")
   }
