@@ -345,14 +345,14 @@ const getWeight = (ast: AST): number => {
     case "TypeAliasDeclaration":
       return getWeight(ast.type)
     case "Tuple": {
-      let n = ast.components.reduce((n, c) => n + (c.optional ? 2 : 200), 0)
+      let n = ast.components.reduce((n, c) => n + (c.optional ? 100 : 1_000), 0)
       if (O.isSome(ast.rest)) {
         n += 1
       }
       return n
     }
     case "Struct": {
-      const fieldsWeight = ast.fields.reduce((n, c) => n + (c.optional ? 100 : 1000), 0)
+      const fieldsWeight = ast.fields.reduce((n, c) => n + (c.optional ? 100 : 1_000), 0)
       const indexSignaturesWeight = ast.indexSignatures.length
       return fieldsWeight + indexSignaturesWeight
     }

@@ -114,21 +114,6 @@ describe("AST", () => {
       ])
     })
 
-    /*
-    type U = {
-      readonly a: string
-      readonly b: number
-      [_: string]: string | number
-    } | {
-      a?: boolean
-      readonly c: Date
-    }
-
-    type P = Pick<U, "a">
-    type O = Omit<U, "b">
-    type K = keyof U
-    */
-
     describe("union", () => {
       it("required fields", () => {
         const schema = S.union(
