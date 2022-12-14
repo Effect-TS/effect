@@ -287,21 +287,20 @@ export const struct: {
   Optional extends Record<PropertyKey, Schema<any>>
 >(
   required: Required,
-  optional?: Optional
+  optional: Optional = {} as any
 ): Schema<
   Spread<
     & { readonly [K in keyof Required]: Infer<Required[K]> }
     & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
   >
 > => {
-  const _optional: any = optional || {}
   return makeSchema(
     AST.struct(
       ownKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
         .concat(
-          ownKeys(_optional).map((key) => AST.field(key, _optional[key].ast, true, true))
+          ownKeys(optional).map((key) => AST.field(key, optional[key].ast, true, true))
         ),
-      AST.indexSignatures(O.none, O.none, O.none)
+      []
     )
   )
 }
@@ -316,7 +315,10 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
 /** @internal */
 export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
   makeSchema(
-    AST.struct([], AST.indexSignatures(O.some(AST.indexSignature(value.ast, true)), O.none, O.none))
+    AST.struct(
+      [],
+      [AST.indexSignature("string", value.ast, true)]
+    )
   )
 
 // ---------------------------------------------

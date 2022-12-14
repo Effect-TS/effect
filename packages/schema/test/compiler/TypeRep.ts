@@ -110,11 +110,7 @@ export const provideTypeRepFor = (
                   field.optional ? "?" : ""
                 }: ${fields[i].typeRep}`
               }).join(", ") +
-              (pipe(
-                ast.indexSignatures.string,
-                O.map((is) => `readonly [_: string]: ${go(is.value).typeRep}`),
-                O.getOrElse(() => "")
-              ))
+              ast.indexSignatures.map((is) => `readonly [_: ${is.key}]: ${go(is.value).typeRep}`)
               + " }"
           )
         }

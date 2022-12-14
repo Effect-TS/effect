@@ -177,10 +177,10 @@ describe("Guard", () => {
       expect(guard.is({})).toEqual(true)
       expect(guard.is({ a: "a" })).toEqual(true)
       expect(guard.is({ a: 1 })).toEqual(false)
-      expect(guard.is({ [a]: 1 })).toEqual(false)
+      expect(guard.is({ [a]: 1 })).toEqual(true)
       expect(guard.is({ a: "a", b: "b" })).toEqual(true)
       expect(guard.is({ a: "a", b: 1 })).toEqual(false)
-      expect(guard.is({ [a]: "a", b: "b" })).toEqual(false)
+      expect(guard.is({ [a]: 1, b: "b" })).toEqual(true)
     })
 
     it("symbolIndexSignature", () => {
@@ -192,10 +192,10 @@ describe("Guard", () => {
       expect(guard.is({})).toEqual(true)
       expect(guard.is({ [a]: "a" })).toEqual(true)
       expect(guard.is({ [a]: 1 })).toEqual(false)
-      expect(guard.is({ a: 1 })).toEqual(false)
+      expect(guard.is({ a: 1 })).toEqual(true)
       expect(guard.is({ [a]: "a", [b]: "b" })).toEqual(true)
       expect(guard.is({ [a]: "a", [b]: 1 })).toEqual(false)
-      expect(guard.is({ a: "a", [b]: "b" })).toEqual(false)
+      expect(guard.is({ a: 1, [b]: "b" })).toEqual(true)
     })
   })
 

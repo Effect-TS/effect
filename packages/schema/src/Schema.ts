@@ -241,7 +241,10 @@ export const stringIndexSignature: <A>(value: Schema<A>) => Schema<{ readonly [_
  */
 export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
   make(
-    AST.struct([], AST.indexSignatures(O.none, O.none, O.some(AST.indexSignature(value.ast, true))))
+    AST.struct(
+      [],
+      [AST.indexSignature("symbol", value.ast, true)]
+    )
   )
 
 /**
@@ -252,7 +255,7 @@ export const extend = <B>(
 ) =>
   <A>(self: Schema<A>): Schema<A & B> => {
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
-      return make(AST.StructSemigroup.combine(that.ast)(self.ast))
+      return make(AST.StructIntersectionSemigroup.combine(that.ast)(self.ast))
     }
     throw new Error("`extend` is not supported on this schema")
   }

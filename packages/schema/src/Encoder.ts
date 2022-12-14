@@ -81,8 +81,7 @@ export const provideEncoderFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            ast.indexSignatures.map((is) => go(is.value))
           )
         case "Union":
           return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
@@ -144,8 +143,7 @@ const _tuple = (
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Encoder<any, any>>,
-  oStringIndexSignature: Option<Encoder<any, any>>,
-  oSymbolIndexSignature: Option<Encoder<any, any>>
+  indexSignatures: ReadonlyArray<Encoder<any, any>>
 ): Encoder<any, any> =>
   make(
     I.makeSchema(ast),
@@ -180,19 +178,16 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (O.isSome(oStringIndexSignature)) {
-        const encoder = oStringIndexSignature.value
-        for (const key of Object.keys(input)) {
-          if (!(key in fieldKeys)) {
-            output[key] = encoder.encode(input[key])
-          }
-        }
-      }
-      if (O.isSome(oSymbolIndexSignature)) {
-        const encoder = oSymbolIndexSignature.value
-        for (const key of Object.getOwnPropertySymbols(input)) {
-          if (!(key in fieldKeys)) {
-            output[key] = encoder.encode(input[key])
+      if (indexSignatures.length > 0) {
+        const keys = Object.keys(input)
+        const symbols = Object.getOwnPropertySymbols(input)
+        for (let i = 0; i < indexSignatures.length; i++) {
+          const encoder = indexSignatures[i]
+          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          for (const key of ks) {
+            if (!(key in fieldKeys)) {
+              output[key] = encoder.encode(input[key])
+            }
           }
         }
       }

@@ -1,7 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as A from "@fp-ts/schema/Arbitrary"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as G from "@fp-ts/schema/Guard"
@@ -44,7 +44,7 @@ type EnumJSONSchema = {
 }
 
 type OneOfJSONSchema = {
-  "oneOf": Array<JSONSchema>
+  "oneOf": ReadonlyArray<JSONSchema>
 }
 
 type ObjectJSONSchema = {
@@ -115,13 +115,17 @@ const provideJsonSchemaFor = (
             ast.components.map((c) => go(c.value)),
             pipe(ast.rest, O.map(go))
           )
-        case "Struct":
+        case "Struct": {
+          const indexSignatures = ast.indexSignatures.filter((is) => is.key === "string")
+          if (AST.indexSignature.length < ast.indexSignatures.length) {
+            throw new Error("unsuported index signatures")
+          }
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            indexSignatures.map((is) => go(is.value))
           )
+        }
         case "Union":
           return _union(ast.members.map(go))
       }
@@ -193,8 +197,7 @@ const _tuple = (
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<JSONSchema>,
-  oStringIndexSignature: O.Option<JSONSchema>,
-  oSymbolIndexSignature: O.Option<JSONSchema>
+  indexSignatures: ReadonlyArray<JSONSchema>
 ): JSONSchema => {
   const output: ObjectJSONSchema = { type: "object", required: [], properties: {} }
   // ---------------------------------------------
@@ -217,13 +220,8 @@ const _struct = (
   // ---------------------------------------------
   // handle index signatures
   // ---------------------------------------------
-  if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
-    if (O.isSome(oStringIndexSignature)) {
-      output.additionalProperties = oStringIndexSignature.value
-    }
-    if (O.isSome(oSymbolIndexSignature)) {
-      throw new Error(`Cannot encode symbol signature to a JSON schema`)
-    }
+  if (indexSignatures.length > 0) {
+    output.additionalProperties = { oneOf: indexSignatures }
   }
 
   return output

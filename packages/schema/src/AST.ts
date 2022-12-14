@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Monoid from "@fp-ts/core/typeclass/Monoid"
 import * as Order from "@fp-ts/core/typeclass/Order"
 import * as Semigroup from "@fp-ts/core/typeclass/Semigroup"
 import { pipe } from "@fp-ts/data/Function"
@@ -233,6 +232,7 @@ export const field = (
  * @since 1.0.0
  */
 export interface IndexSignature {
+  readonly key: "string" | "symbol"
   readonly value: AST
   readonly readonly: boolean
 }
@@ -241,27 +241,10 @@ export interface IndexSignature {
  * @since 1.0.0
  */
 export const indexSignature = (
+  key: "string" | "symbol",
   value: AST,
   readonly: boolean
-): IndexSignature => ({ value, readonly })
-
-/**
- * @since 1.0.0
- */
-export interface IndexSignatures {
-  "string": Option<IndexSignature>
-  "number": Option<IndexSignature>
-  "symbol": Option<IndexSignature>
-}
-
-/**
- * @since 1.0.0
- */
-export const indexSignatures = (
-  string: Option<IndexSignature>,
-  number: Option<IndexSignature>,
-  symbol: Option<IndexSignature>
-): IndexSignatures => ({ string, number, symbol })
+): IndexSignature => ({ key, value, readonly })
 
 /**
  * @since 1.0.0
@@ -269,7 +252,7 @@ export const indexSignatures = (
 export interface Struct {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
-  readonly indexSignatures: IndexSignatures
+  readonly indexSignatures: ReadonlyArray<IndexSignature>
 }
 
 /**
@@ -277,7 +260,7 @@ export interface Struct {
  */
 export const struct = (
   fields: ReadonlyArray<Field>,
-  indexSignatures: IndexSignatures
+  indexSignatures: ReadonlyArray<IndexSignature>
 ): Struct => ({ _tag: "Struct", fields, indexSignatures })
 
 /**
@@ -285,21 +268,15 @@ export const struct = (
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
 
-const IndexSignaturesMonoid: Monoid.Monoid<IndexSignatures> = Monoid.struct({
-  string: O.getMonoid(Semigroup.last()),
-  number: O.getMonoid(Semigroup.last()),
-  symbol: O.getMonoid(Semigroup.last())
-})
-
 /**
  * @since 1.0.0
  */
-export const StructSemigroup: Semigroup.Semigroup<Struct> = Semigroup.fromCombine(
+export const StructIntersectionSemigroup: Semigroup.Semigroup<Struct> = Semigroup.fromCombine(
   (that) =>
     (self) =>
       struct(
-        self.fields.concat(that.fields), // TODO: handle duplicated keys
-        IndexSignaturesMonoid.combine(that.indexSignatures)(self.indexSignatures)
+        self.fields.concat(that.fields),
+        self.indexSignatures.concat(that.indexSignatures)
       )
 )
 
@@ -388,17 +365,9 @@ const getWeight = (ast: AST): number => {
       return n
     }
     case "Struct": {
-      let n = ast.fields.reduce((n, c) => n + (c.optional ? 4 : 400), 0)
-      if (O.isSome(ast.indexSignatures.string)) {
-        n += 1
-      }
-      if (O.isSome(ast.indexSignatures.number)) {
-        n += 1
-      }
-      if (O.isSome(ast.indexSignatures.symbol)) {
-        n += 1
-      }
-      return n
+      const fieldsWeight = ast.fields.reduce((n, c) => n + (c.optional ? 100 : 1000), 0)
+      const indexSignaturesWeight = ast.indexSignatures.length
+      return fieldsWeight + indexSignaturesWeight
     }
     default:
       return 0
@@ -451,7 +420,7 @@ export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
   return struct(
     getFields(ast).filter((field) => keys.includes(field.key)),
-    indexSignatures(O.none, O.none, O.none)
+    []
   )
 }
 
@@ -461,7 +430,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
   return struct(
     getFields(ast).filter((field) => !keys.includes(field.key)),
-    indexSignatures(O.none, O.none, O.none)
+    []
   )
 }
 

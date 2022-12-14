@@ -81,8 +81,7 @@ export const provideArbitraryFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            ast.indexSignatures.map((is) => go(is.value))
           )
         case "Union": {
           const members = ast.members.map(go)
@@ -107,7 +106,7 @@ export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbit
 const _tuple = (
   ast: AST.Tuple,
   components: ReadonlyArray<Arbitrary<any>>,
-  oRest: O.Option<Arbitrary<any>>
+  rest: O.Option<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
     I.makeSchema(ast),
@@ -127,9 +126,9 @@ const _tuple = (
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRest)) {
+      if (O.isSome(rest)) {
         output = output.chain((as) =>
-          fc.array(oRest.value.arbitrary(fc)).map((rest) => [...as, ...rest])
+          fc.array(rest.value.arbitrary(fc)).map((rest) => [...as, ...rest])
         )
       }
 
@@ -140,8 +139,7 @@ const _tuple = (
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Arbitrary<any>>,
-  oStringIndexSignature: O.Option<Arbitrary<any>>,
-  oSymbolIndexSignature: O.Option<Arbitrary<any>>
+  indexSignatures: ReadonlyArray<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
     I.makeSchema(ast),
@@ -172,25 +170,30 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
-        if (O.isSome(oStringIndexSignature)) {
-          const arb = oStringIndexSignature.value.arbitrary(fc)
-          output = output.chain((o) =>
-            fc.dictionary(fc.string(), arb, { maxKeys: 10 }).map((d) => ({ ...o, ...d }))
-          )
-        }
-        if (O.isSome(oSymbolIndexSignature)) {
-          const arb = oSymbolIndexSignature.value.arbitrary(fc)
-          output = output.chain((o) =>
-            fc.dictionary(fc.string(), arb, { maxKeys: 10 }).map((d) => {
-              const symbols: any = {}
+      for (let i = 0; i < indexSignatures.length; i++) {
+        const key = ast.indexSignatures[i].key
+        const value = indexSignatures[i].arbitrary(fc)
+        output = output.chain((o) => {
+          if (key === "string") {
+            return fc.dictionary(fc.string(), value, { maxKeys: 10 }).map((d) => ({ ...o, ...d }))
+          } else if (key === "symbol") {
+            return fc.dictionary(fc.string(), value, { maxKeys: 10 }).map((d) => {
+              const sd = {}
               for (const s in d) {
-                symbols[Symbol(s)] = d[s]
+                sd[Symbol(s)] = d[s]
               }
-              return ({ ...o, ...symbols })
+              return ({ ...o, ...sd })
             })
-          )
-        }
+          } else {
+            return fc.dictionary(fc.integer().map(String), value, { maxKeys: 10 }).map((d) => {
+              const nd = {}
+              for (const s in d) {
+                nd[Number(s)] = d[s]
+              }
+              return ({ ...o, ...nd })
+            })
+          }
+        })
       }
 
       return output

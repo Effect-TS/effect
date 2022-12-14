@@ -85,8 +85,7 @@ export const providePrettyFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            ast.indexSignatures.map((is) => go(is.value))
           )
         case "Union":
           return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
@@ -112,8 +111,7 @@ const _propertyKey = (key: PropertyKey): string =>
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Pretty<any>>,
-  oStringIndexSignature: O.Option<Pretty<any>>,
-  oSymbolIndexSignature: O.Option<Pretty<any>>
+  indexSignatures: ReadonlyArray<Pretty<any>>
 ): Pretty<any> =>
   make(
     I.makeSchema(ast),
@@ -146,16 +144,13 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
-        if (O.isSome(oStringIndexSignature)) {
-          const pretty = oStringIndexSignature.value
-          for (const key of Object.keys(input)) {
-            output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
-          }
-        }
-        if (O.isSome(oSymbolIndexSignature)) {
-          const pretty = oSymbolIndexSignature.value
-          for (const key of Object.getOwnPropertySymbols(input)) {
+      if (indexSignatures.length > 0) {
+        const keys = Object.keys(input)
+        const symbols = Object.getOwnPropertySymbols(input)
+        for (let i = 0; i < indexSignatures.length; i++) {
+          const pretty = indexSignatures[i]
+          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          for (const key of ks) {
             output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
           }
         }

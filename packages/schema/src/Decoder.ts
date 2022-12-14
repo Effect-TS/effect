@@ -5,7 +5,6 @@
 import { isBoolean } from "@fp-ts/data/Boolean"
 import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
-import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
@@ -218,8 +217,7 @@ export const provideDecoderFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            ast.indexSignatures.map((is) => go(is.value))
           )
         case "Union":
           return _union(ast, ast.members.map(go))
@@ -241,8 +239,7 @@ export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provide
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Decoder<any, any>>,
-  oStringIndexSignature: Option<Decoder<any, any>>,
-  oSymbolIndexSignature: Option<Decoder<any, any>>
+  indexSignatures: ReadonlyArray<Decoder<any, any>>
 ): Decoder<any, any> =>
   make(
     I.makeSchema(ast),
@@ -288,22 +285,13 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
-        if (O.isSome(oStringIndexSignature)) {
-          const decoder = oStringIndexSignature.value
-          for (const key of Object.keys(input)) {
-            const t = decoder.decode(input[key])
-            if (isFailure(t)) {
-              return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
-            } else if (isWarning(t)) {
-              es.push(DE.key(key, t.left))
-            }
-            output[key] = t.right
-          }
-        }
-        if (O.isSome(oSymbolIndexSignature)) {
-          const decoder = oSymbolIndexSignature.value
-          for (const key of Object.getOwnPropertySymbols(input)) {
+      if (indexSignatures.length > 0) {
+        const keys = Object.keys(input)
+        const symbols = Object.getOwnPropertySymbols(input)
+        for (let i = 0; i < indexSignatures.length; i++) {
+          const decoder = indexSignatures[i]
+          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          for (const key of ks) {
             const t = decoder.decode(input[key])
             if (isFailure(t)) {
               return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors

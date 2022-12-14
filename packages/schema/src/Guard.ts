@@ -116,8 +116,7 @@ export const provideGuardFor = (provider: Provider) =>
           return _struct(
             ast,
             ast.fields.map((f) => go(f.value)),
-            pipe(ast.indexSignatures.string, O.map((is) => go(is.value))),
-            pipe(ast.indexSignatures.symbol, O.map((is) => go(is.value)))
+            ast.indexSignatures.map((is) => go(is.value))
           )
         case "Union": {
           const members = ast.members.map(go)
@@ -142,8 +141,7 @@ export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(P.em
 const _struct = (
   ast: AST.Struct,
   fields: ReadonlyArray<Guard<any>>,
-  oStringIndexSignature: O.Option<Guard<any>>,
-  oSymbolIndexSignature: O.Option<Guard<any>>
+  indexSignatures: ReadonlyArray<Guard<any>>
 ): Guard<any> =>
   make(
     I.makeSchema(ast),
@@ -180,26 +178,13 @@ const _struct = (
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      const keys = Object.keys(input)
-      const symbols = Object.getOwnPropertySymbols(input)
-      if (O.isSome(oStringIndexSignature) || O.isSome(oSymbolIndexSignature)) {
-        if (O.isSome(oStringIndexSignature)) {
-          if (symbols.length > 0) {
-            return false
-          }
-          const guard = oStringIndexSignature.value
-          for (const key of keys) {
-            if (!guard.is(input[key])) {
-              return false
-            }
-          }
-        }
-        if (O.isSome(oSymbolIndexSignature)) {
-          if (keys.length > 0) {
-            return false
-          }
-          const guard = oSymbolIndexSignature.value
-          for (const key of symbols) {
+      if (indexSignatures.length > 0) {
+        const keys = Object.keys(input)
+        const symbols = Object.getOwnPropertySymbols(input)
+        for (let i = 0; i < indexSignatures.length; i++) {
+          const guard = indexSignatures[i]
+          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          for (const key of ks) {
             if (!guard.is(input[key])) {
               return false
             }
