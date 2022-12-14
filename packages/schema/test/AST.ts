@@ -16,6 +16,16 @@ describe("AST", () => {
       })
     })
 
+    it("should give max precedence to schemas containing literals", () => {
+      const a = S.struct({ a: S.string })
+      const b = S.struct({ b: S.literal("b") })
+      const schema = S.union(a, b)
+      expect(schema.ast).toEqual({
+        _tag: "Union",
+        members: [b.ast, a.ast]
+      })
+    })
+
     it("should remove duplicated ASTs", () => {
       const a = S.literal("a")
       const schema = S.union(a, a)
