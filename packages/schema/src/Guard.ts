@@ -73,7 +73,7 @@ export const provideGuardFor = (provider: Provider) =>
         case "OptionalType":
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map(go)
+          const elements = ast.elements.map(go)
           const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
           return make(
             I.makeSchema(ast),
@@ -83,10 +83,10 @@ export const provideGuardFor = (provider: Provider) =>
               }
               let i = 0
               // ---------------------------------------------
-              // handle components
+              // handle elements
               // ---------------------------------------------
-              for (; i < components.length; i++) {
-                if (!components[i].is(input[i])) {
+              for (; i < elements.length; i++) {
+                if (!elements[i].is(input[i])) {
                   return false
                 }
               }

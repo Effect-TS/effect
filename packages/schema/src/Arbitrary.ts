@@ -76,7 +76,7 @@ export const provideArbitraryFor = (provider: Provider) =>
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map(go),
+            ast.elements.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct":
@@ -107,16 +107,16 @@ export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbit
 
 const _tuple = (
   ast: AST.Tuple,
-  components: ReadonlyArray<Arbitrary<any>>,
+  elements: ReadonlyArray<Arbitrary<any>>,
   rest: O.Option<Arbitrary<any>>
 ): Arbitrary<any> =>
   make(
     I.makeSchema(ast),
     (fc) => {
       // ---------------------------------------------
-      // handle components
+      // handle elements
       // ---------------------------------------------
-      let output = fc.tuple(...components.map((c) => c.arbitrary(fc)))
+      let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
 
       // ---------------------------------------------
       // handle rest element

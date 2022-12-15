@@ -82,16 +82,16 @@ export const provideTypeRepFor = (
         case "OptionalType":
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map(go)
+          const elements = ast.elements.map(go)
           const rest = pipe(
             ast.rest,
-            O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
+            O.map((ast) => (elements.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
             O.getOrElse(() => "")
           )
           return make(
             ast,
             `${ast.isReadonly ? "readonly " : ""}[${
-              components.map((c) => c.typeRep).join(", ")
+              elements.map((c) => c.typeRep).join(", ")
             }${rest}]`
           )
         }

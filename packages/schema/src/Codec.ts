@@ -250,10 +250,10 @@ export const keyof = <A>(schema: Schema<A>): Codec<keyof A> => codecFor(S.keyof(
 /**
  * @since 1.0.0
  */
-export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
-  ...components: Components
-): Codec<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
-  codecFor(S.tuple<Components>(...components))
+export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
+  ...elements: Elements
+): Codec<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
+  codecFor(S.tuple<Elements>(...elements))
 
 /**
  * @since 1.0.0

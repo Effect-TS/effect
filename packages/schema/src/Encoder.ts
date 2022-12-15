@@ -76,7 +76,7 @@ export const provideEncoderFor = (provider: Provider) =>
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map(go),
+            ast.elements.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct":
@@ -104,7 +104,7 @@ export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provide
 
 const _tuple = (
   ast: AST.Tuple,
-  components: ReadonlyArray<Encoder<any, any>>,
+  elements: ReadonlyArray<Encoder<any, any>>,
   oRest: Option<Encoder<any, any>>
 ): Encoder<any, any> =>
   make(
@@ -113,18 +113,18 @@ const _tuple = (
       const output: Array<any> = []
       let i = 0
       // ---------------------------------------------
-      // handle components
+      // handle elements
       // ---------------------------------------------
-      for (; i < components.length; i++) {
+      for (; i < elements.length; i++) {
         // ---------------------------------------------
-        // handle optional components
+        // handle optional elements
         // ---------------------------------------------
-        if (AST.isOptionalType(ast.components[i]) && input[i] === undefined) {
+        if (AST.isOptionalType(ast.elements[i]) && input[i] === undefined) {
           if (i < input.length) {
             output[i] = undefined
           }
         } else {
-          const encoder = components[i]
+          const encoder = elements[i]
           output[i] = encoder.encode(input[i])
         }
       }

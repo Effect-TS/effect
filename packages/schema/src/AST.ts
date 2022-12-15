@@ -243,7 +243,7 @@ export const isOptionalType = (ast: AST): ast is OptionalType => ast._tag === "O
  */
 export interface Tuple {
   readonly _tag: "Tuple"
-  readonly components: ReadonlyArray<AST>
+  readonly elements: ReadonlyArray<AST>
   readonly rest: Option<AST>
   readonly isReadonly: boolean
 }
@@ -252,10 +252,10 @@ export interface Tuple {
  * @since 1.0.0
  */
 export const tuple = (
-  components: ReadonlyArray<AST>,
+  elements: ReadonlyArray<AST>,
   rest: Option<AST>,
   isReadonly: boolean
-): Tuple => ({ _tag: "Tuple", components, rest, isReadonly })
+): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly })
 
 /**
  * @since 1.0.0
@@ -365,7 +365,7 @@ const getWeight = (ast: AST): number => {
     case "TypeAliasDeclaration":
       return getWeight(ast.type)
     case "Tuple":
-      return ast.components.length + (O.isSome(ast.rest) ? 1 : 0)
+      return ast.elements.length + (O.isSome(ast.rest) ? 1 : 0)
     case "Struct":
       return ast.fields.length + ast.indexSignatures.length
     case "Union":
@@ -432,7 +432,7 @@ export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
     case "TypeAliasDeclaration":
       return keyof(ast.type)
     case "Tuple":
-      return ast.components.map((_, i) => String(i))
+      return ast.elements.map((_, i) => String(i))
     case "Struct":
       return ast.fields.map((field) => field.key)
     case "Union": {
@@ -477,7 +477,7 @@ export const getFields = (
     case "TypeAliasDeclaration":
       return getFields(ast.type)
     case "Tuple":
-      return ast.components.map((c, i) => field(i, c, true))
+      return ast.elements.map((c, i) => field(i, c, true))
     case "Struct":
       return ast.fields
     case "Union": {
@@ -516,7 +516,7 @@ export const partial = (ast: AST): AST => {
       return partial(ast.type)
     case "Tuple":
       return tuple(
-        ast.components.map(optionalType),
+        ast.elements.map(optionalType),
         pipe(ast.rest, O.map(optionalType)),
         ast.isReadonly
       )

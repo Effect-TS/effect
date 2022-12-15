@@ -151,7 +151,7 @@ export const provideDecoderFor = (provider: Provider) =>
         case "OptionalType":
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map(go)
+          const elements = ast.elements.map(go)
           const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
           return make(
             I.makeSchema(ast),
@@ -163,13 +163,13 @@ export const provideDecoderFor = (provider: Provider) =>
               const es: Array<DE.DecodeError> = []
               let i = 0
               // ---------------------------------------------
-              // handle components
+              // handle elements
               // ---------------------------------------------
-              for (; i < components.length; i++) {
-                if (AST.isOptionalType(ast.components[i]) && input[i] === undefined) {
+              for (; i < elements.length; i++) {
+                if (AST.isOptionalType(ast.elements[i]) && input[i] === undefined) {
                   continue
                 }
-                const decoder = components[i]
+                const decoder = elements[i]
                 const t = decoder.decode(input[i])
                 if (isFailure(t)) {
                   return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors

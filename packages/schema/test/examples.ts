@@ -69,7 +69,7 @@ describe("examples", () => {
     it("custom schema combinator", () => {
       const pair = <A>(schema: S.Schema<A>): S.Schema<readonly [A, A]> => {
         const tuple = AST.tuple(
-          [schema.ast, schema.ast], // <= components definitions
+          [schema.ast, schema.ast], // <= elements definitions
           O.none, // <= rest element
           true // <= specifies if the tuple is readonly
         )

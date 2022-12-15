@@ -114,7 +114,7 @@ const provideJsonSchemaFor = (
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map(go),
+            ast.elements.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct": {
@@ -153,15 +153,15 @@ export const _of = (
 
 const _tuple = (
   ast: AST.Tuple,
-  components: ReadonlyArray<JSONSchema>,
+  elements: ReadonlyArray<JSONSchema>,
   oRest: O.Option<JSONSchema>
 ): JSONSchema => {
   const output: ArrayJSONSchema = { type: "array" }
   let i = 0
   // ---------------------------------------------
-  // handle components
+  // handle elements
   // ---------------------------------------------
-  for (; i < components.length; i++) {
+  for (; i < elements.length; i++) {
     if (output.minItems === undefined) {
       output.minItems = 0
     }
@@ -169,17 +169,17 @@ const _tuple = (
       output.maxItems = 0
     }
     // ---------------------------------------------
-    // handle optional components
+    // handle optional elements
     // ---------------------------------------------
-    if (!AST.isOptionalType(ast.components[i])) {
+    if (!AST.isOptionalType(ast.elements[i])) {
       output.minItems = output.minItems + 1
       output.maxItems = output.maxItems + 1
     }
     if (output.items === undefined) {
       output.items = []
-      output.items.push(components[i])
+      output.items.push(elements[i])
     } else if (Array.isArray(output.items)) {
-      output.items.push(components[i])
+      output.items.push(elements[i])
     }
   }
   // ---------------------------------------------

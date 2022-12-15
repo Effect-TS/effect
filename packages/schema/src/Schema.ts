@@ -142,9 +142,9 @@ export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
 /**
  * @since 1.0.0
  */
-export const tuple: <Components extends ReadonlyArray<Schema<any>>>(
-  ...components: Components
-) => Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> = I.tuple
+export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
+  ...elements: Elements
+) => Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> = I.tuple
 
 /**
  * @since 1.0.0
@@ -156,11 +156,11 @@ export const rest = <R>(rest: Schema<R>) =>
       return make(pipe(
         a.rest,
         O.match(
-          () => AST.tuple(a.components, O.some(rest.ast), true),
+          () => AST.tuple(a.elements, O.some(rest.ast), true),
           (value) =>
             // if `self` already contains a rest element merge them into a union
             AST.tuple(
-              a.components,
+              a.elements,
               O.some(AST.union([value, rest.ast])),
               true
             )
