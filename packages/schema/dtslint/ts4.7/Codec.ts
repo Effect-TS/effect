@@ -56,6 +56,9 @@ pipe(C.number, C.int);
 // Constructors
 //
 
+// $ExpectType Codec<never>
+C.literal();
+
 // $ExpectType Codec<"a">
 C.literal("a");
 

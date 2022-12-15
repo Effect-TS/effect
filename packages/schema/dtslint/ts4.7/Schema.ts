@@ -1,6 +1,17 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as S from "@fp-ts/schema/Schema"
 
+//
+// tuple
+//
+
+// $ExpectType Schema<readonly [string, number]>
+S.tuple(S.string,  S.number)
+
+//
+// struct
+//
+
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.struct({ a: S.string,  b: S.number })
 

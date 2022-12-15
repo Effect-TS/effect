@@ -8,7 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import type { Both, These } from "@fp-ts/data/These"
+import type { Both, Validated } from "@fp-ts/data/These"
 import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -21,7 +21,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export interface Decoder<I, A> extends Schema<A> {
   readonly I: (_: I) => void
-  readonly decode: (i: I) => These<NonEmptyReadonlyArray<DE.DecodeError>, A>
+  readonly decode: (i: I) => Validated<DE.DecodeError, A>
 }
 
 /**

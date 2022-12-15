@@ -57,25 +57,9 @@ export const isFailure = T.isLeft
 export const isWarning = T.isBoth
 
 /** @internal */
-export const flatMap = <A, E2, B>(
-  f: (a: A) => T.These<NonEmptyReadonlyArray<E2>, B>
-) =>
-  <E1>(self: T.These<NonEmptyReadonlyArray<E1>, A>): T.These<NonEmptyReadonlyArray<E1 | E2>, B> => {
-    if (T.isLeft(self)) {
-      return self
-    }
-    if (T.isRight(self)) {
-      return f(self.right)
-    }
-    const that = f(self.right)
-    if (T.isLeft(that)) {
-      return T.left(RA.prependAllNonEmpty(that.left)(self.left))
-    }
-    if (T.isRight(that)) {
-      return T.both(self.left, that.right)
-    }
-    return T.both(RA.prependAllNonEmpty(that.left)(self.left), that.right)
-  }
+export const flatMap: <A, E2, B>(f: (a: A) => T.Validated<E2, B>) => <E1>(
+  self: T.Validated<E1, A>
+) => T.Validated<E1 | E2, B> = T.flatMap
 
 /** @internal */
 export const compose = <B, C>(bc: Decoder<B, C>) =>
@@ -209,8 +193,7 @@ const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Litera
 /** @internal */
 export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
-): Schema<Literals[number]> =>
-  literals.length === 1 ? makeLiteral(literals[0]) : union(...literals.map(makeLiteral))
+): Schema<Literals[number]> => union(...literals.map(makeLiteral))
 
 /** @internal */
 export const isUndefined = (u: unknown): u is undefined => u === undefined

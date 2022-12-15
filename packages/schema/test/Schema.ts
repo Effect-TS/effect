@@ -1,5 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as ast from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import { empty } from "@fp-ts/schema/Provider"
 import * as _ from "@fp-ts/schema/Schema"
@@ -22,6 +22,20 @@ describe("Schema", () => {
     expect(_.json).exist
   })
 
+  describe("literal", () => {
+    it("should return never with no literals", () => {
+      expect(_.literal().ast).toEqual(AST.neverKeyword)
+    })
+
+    it("should return an unwrapped AST with exactly one literal", () => {
+      expect(_.literal(1).ast).toEqual(AST.literalType(1))
+    })
+
+    it("should return a union with more than one literal", () => {
+      expect(_.literal(1, 2).ast).toEqual(AST.union([AST.literalType(1), AST.literalType(2)]))
+    })
+  })
+
   it("nativeEnum", () => {
     enum Fruits {
       Apple,
@@ -34,35 +48,6 @@ describe("Schema", () => {
     expect(guard.is(0)).toEqual(true)
     expect(guard.is(1)).toEqual(true)
     expect(guard.is(3)).toEqual(false)
-  })
-
-  it("rename", () => {
-    const rename = <A, From extends keyof A, To extends PropertyKey>(
-      from: From,
-      to: To
-    ) =>
-      (schema: _.Schema<A>): _.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
-        if (ast.isStruct(schema.ast)) {
-          const fields = schema.ast.fields.slice()
-          const i = fields.findIndex((field) => field.key === from)
-          fields[i] = ast.field(to, fields[i].value, fields[i].isReadonly)
-          return _.make(
-            ast.struct(fields, schema.ast.indexSignatures)
-          )
-        }
-        throw new Error("cannot rename")
-      }
-
-    const schema = pipe(
-      _.struct({
-        a: _.string,
-        b: _.number
-      }),
-      rename("a", "aa")
-    )
-    const guard = guardFor(schema)
-    expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
-    expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
   })
 
   describe("keyof", () => {
@@ -94,6 +79,37 @@ describe("Schema", () => {
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(false)
       expect(guard.is("c")).toEqual(false)
+    })
+  })
+
+  describe("experimental", () => {
+    it("rename", () => {
+      const rename = <A, From extends keyof A, To extends PropertyKey>(
+        from: From,
+        to: To
+      ) =>
+        (schema: _.Schema<A>): _.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
+          if (AST.isStruct(schema.ast)) {
+            const fields = schema.ast.fields.slice()
+            const i = fields.findIndex((field) => field.key === from)
+            fields[i] = AST.field(to, fields[i].value, fields[i].isReadonly)
+            return _.make(
+              AST.struct(fields, schema.ast.indexSignatures)
+            )
+          }
+          throw new Error("cannot rename")
+        }
+
+      const schema = pipe(
+        _.struct({
+          a: _.string,
+          b: _.number
+        }),
+        rename("a", "aa")
+      )
+      const guard = guardFor(schema)
+      expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
+      expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
     })
   })
 })
