@@ -254,11 +254,10 @@ export interface Struct {
   readonly indexSignatures: ReadonlyArray<IndexSignature>
 }
 
-// a lower number means "more severe"
-const getSeverity = (ast: AST): number => {
+const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
     case "TypeAliasDeclaration":
-      return getSeverity(ast.type)
+      return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
     case "LiteralType":
@@ -279,8 +278,8 @@ const getSeverity = (ast: AST): number => {
   }
 }
 
-const sortBySeverityAsc = RA.sort(
-  pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getSeverity(value)))
+const sortByCardinalityAsc = RA.sort(
+  pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getCardinality(value)))
 )
 
 /**
@@ -291,8 +290,8 @@ export const struct = (
   indexSignatures: ReadonlyArray<IndexSignature>
 ): Struct => ({
   _tag: "Struct",
-  fields: sortBySeverityAsc(fields),
-  indexSignatures: sortBySeverityAsc(indexSignatures)
+  fields: sortByCardinalityAsc(fields),
+  indexSignatures: sortByCardinalityAsc(indexSignatures)
 })
 
 /**
