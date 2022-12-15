@@ -256,14 +256,13 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
     & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: Infer<Fields[K]> }
     & { readonly [K in OptionalKeys<Fields>]?: Infer<Fields[K]> }
   >
-> => {
-  return makeSchema(
+> =>
+  makeSchema(
     AST.struct(
       ownKeys(fields).map((key) => AST.field(key, fields[key].ast, true)),
       []
     )
   )
-}
 
 /** @internal */
 export const tuple = <Components extends ReadonlyArray<Schema<any>>>(

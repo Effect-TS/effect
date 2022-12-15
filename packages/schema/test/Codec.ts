@@ -1,28 +1,41 @@
 import * as AST from "@fp-ts/schema/AST"
-import * as _ from "@fp-ts/schema/Codec"
+import * as C from "@fp-ts/schema/Codec"
 import * as S from "@fp-ts/schema/Schema"
+
+/*
+const codec: C.Codec<{
+    readonly a: string;
+    readonly b: number;
+    readonly c?: boolean | undefined;
+}>
+*/
+export const codec = C.struct({
+  a: C.string,
+  b: C.number,
+  c: C.optional(C.boolean)
+})
 
 describe("Codec", () => {
   it("exports", () => {
-    expect(_.make).exist
-    expect(_.filter).exist
-    expect(_.filterWith).exist
-    expect(_.refine).exist
-    expect(_.string).exist
-    expect(_.number).exist
-    expect(_.boolean).exist
-    expect(_.bigint).exist
-    expect(_.unknown).exist
-    expect(_.any).exist
-    expect(_.never).exist
-    expect(_.json).exist
+    expect(C.make).exist
+    expect(C.filter).exist
+    expect(C.filterWith).exist
+    expect(C.refine).exist
+    expect(C.string).exist
+    expect(C.number).exist
+    expect(C.boolean).exist
+    expect(C.bigint).exist
+    expect(C.unknown).exist
+    expect(C.any).exist
+    expect(C.never).exist
+    expect(C.json).exist
   })
 
   it("parseOrThrow", () => {
-    const Person = _.struct({
-      firstName: _.string,
-      lastName: _.string,
-      age: _.optional(_.number)
+    const Person = C.struct({
+      firstName: C.string,
+      lastName: C.string,
+      age: C.optional(C.number)
     })
 
     const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
@@ -58,7 +71,7 @@ describe("Codec", () => {
         }
       ]
     })
-    const codec = _.codecFor(schema)
-    expect(codec.decode({ _tag: "C", c: 1 })).toEqual(_.success({ _tag: "C", c: 1 }))
+    const codec = C.codecFor(schema)
+    expect(codec.decode({ _tag: "C", c: 1 })).toEqual(C.success({ _tag: "C", c: 1 }))
   })
 })

@@ -2,37 +2,37 @@ import { pipe } from "@fp-ts/data/Function"
 import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import { empty } from "@fp-ts/schema/Provider"
-import * as _ from "@fp-ts/schema/Schema"
+import * as S from "@fp-ts/schema/Schema"
 
 const guardFor = G.provideGuardFor(empty)
 
 describe("Schema", () => {
   it("exist", () => {
-    expect(_.make).exist
-    expect(_.filter).exist
-    expect(_.filterWith).exist
-    expect(_.refine).exist
-    expect(_.string).exist
-    expect(_.number).exist
-    expect(_.boolean).exist
-    expect(_.bigint).exist
-    expect(_.unknown).exist
-    expect(_.any).exist
-    expect(_.never).exist
-    expect(_.json).exist
+    expect(S.make).exist
+    expect(S.filter).exist
+    expect(S.filterWith).exist
+    expect(S.refine).exist
+    expect(S.string).exist
+    expect(S.number).exist
+    expect(S.boolean).exist
+    expect(S.bigint).exist
+    expect(S.unknown).exist
+    expect(S.any).exist
+    expect(S.never).exist
+    expect(S.json).exist
   })
 
   describe("literal", () => {
     it("should return never with no literals", () => {
-      expect(_.literal().ast).toEqual(AST.neverKeyword)
+      expect(S.literal().ast).toEqual(AST.neverKeyword)
     })
 
     it("should return an unwrapped AST with exactly one literal", () => {
-      expect(_.literal(1).ast).toEqual(AST.literalType(1))
+      expect(S.literal(1).ast).toEqual(AST.literalType(1))
     })
 
     it("should return a union with more than one literal", () => {
-      expect(_.literal(1, 2).ast).toEqual(AST.union([AST.literalType(1), AST.literalType(2)]))
+      expect(S.literal(1, 2).ast).toEqual(AST.union([AST.literalType(1), AST.literalType(2)]))
     })
   })
 
@@ -41,7 +41,7 @@ describe("Schema", () => {
       Apple,
       Banana
     }
-    const schema = _.nativeEnum(Fruits)
+    const schema = S.nativeEnum(Fruits)
     const guard = guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)
@@ -52,11 +52,11 @@ describe("Schema", () => {
 
   describe("keyof", () => {
     it("struct", () => {
-      const schema = _.struct({
-        a: _.string,
-        b: _.number
+      const schema = S.struct({
+        a: S.string,
+        b: S.number
       })
-      const keyOf = _.keyof(schema)
+      const keyOf = S.keyof(schema)
       const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(true)
@@ -64,17 +64,17 @@ describe("Schema", () => {
     })
 
     it("union", () => {
-      const schema = _.union(
-        _.struct({
-          a: _.string,
-          b: _.number
+      const schema = S.union(
+        S.struct({
+          a: S.string,
+          b: S.number
         }),
-        _.struct({
-          a: _.boolean,
-          c: _.number
+        S.struct({
+          a: S.boolean,
+          c: S.number
         })
       )
-      const keyOf = _.keyof(schema)
+      const keyOf = S.keyof(schema)
       const guard = guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(false)
@@ -88,12 +88,12 @@ describe("Schema", () => {
         from: From,
         to: To
       ) =>
-        (schema: _.Schema<A>): _.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
+        (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
           if (AST.isStruct(schema.ast)) {
             const fields = schema.ast.fields.slice()
             const i = fields.findIndex((field) => field.key === from)
             fields[i] = AST.field(to, fields[i].value, fields[i].isReadonly)
-            return _.make(
+            return S.make(
               AST.struct(fields, schema.ast.indexSignatures)
             )
           }
@@ -101,15 +101,71 @@ describe("Schema", () => {
         }
 
       const schema = pipe(
-        _.struct({
-          a: _.string,
-          b: _.number
+        S.struct({
+          a: S.string,
+          b: S.number
         }),
         rename("a", "aa")
       )
       const guard = guardFor(schema)
       expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
       expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
+    })
+
+    it("crazy struct", () => {
+      type OptionalKeys<A> = {
+        [K in keyof A]: K extends `${string}?` ? K : never
+      }[keyof A]
+
+      type RequiredKeys<A> = {
+        [K in keyof A]: K extends `${string}?` ? never : K
+      }[keyof A]
+
+      const struct = <Fields extends Record<PropertyKey, S.Schema<any>>>(
+        fields: Fields
+      ): S.Schema<
+        S.Spread<
+          & { readonly [K in RequiredKeys<Fields>]: S.Infer<Fields[K]> }
+          & {
+            readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: S.Infer<
+              Fields[K]
+            >
+          }
+        >
+      > =>
+        S.make(
+          AST.struct(
+            Object.keys(fields).map((key) => {
+              const isOptional = key.endsWith("?")
+              return AST.field(
+                isOptional ? key.substring(0, key.length - 1) : key,
+                isOptional ? S.optional(fields[key]).ast : fields[key].ast,
+                true
+              )
+            }),
+            []
+          )
+        )
+
+      /*
+      const schema: S.Schema<{
+        readonly a: string;
+        readonly b: number;
+        readonly c?: boolean | undefined;
+      }>
+      */
+      const schema = struct({
+        a: S.string,
+        b: S.number,
+        "c?": S.boolean
+      })
+
+      const guard = guardFor(schema)
+      expect(guard.is({ a: "a", b: 1 })).toBe(true)
+      expect(guard.is({ a: "a", b: 1, c: true })).toBe(true)
+
+      expect(guard.is({ a: "a" })).toBe(false)
+      expect(guard.is({ a: "a", b: 1, c: 1 })).toBe(false)
     })
   })
 })
