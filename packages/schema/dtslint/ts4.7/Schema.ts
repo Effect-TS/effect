@@ -35,7 +35,7 @@ pipe(S.struct({ a: S.string,  b: S.number }), S.pick('a'))
 pipe(S.struct({ a: S.string,  b: S.number }), S.omit('a'))
 
 //
-// restElement
+// rest
 //
 
 // $ExpectType Schema<readonly [string, number]>

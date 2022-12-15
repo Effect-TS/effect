@@ -63,6 +63,12 @@ export const typeAliasDeclaration = (
 /**
  * @since 1.0.0
  */
+export const isTypeAliasDeclaration = (ast: AST): ast is TypeAliasDeclaration =>
+  ast._tag === "TypeAliasDeclaration"
+
+/**
+ * @since 1.0.0
+ */
 export type Literal = string | number | boolean | null | bigint | symbol
 
 /**
@@ -80,6 +86,11 @@ export const literalType = (literal: Literal): LiteralType => ({
   _tag: "LiteralType",
   literal
 })
+
+/**
+ * @since 1.0.0
+ */
+export const isLiteralType = (ast: AST): ast is LiteralType => ast._tag === "LiteralType"
 
 /**
  * @since 1.0.0
@@ -405,6 +416,11 @@ export interface Lazy {
  * @since 1.0.0
  */
 export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
+
+/**
+ * @since 1.0.0
+ */
+export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 
 /**
  * @since 1.0.0

@@ -7,86 +7,43 @@ import * as S from "@fp-ts/schema/Schema"
 describe("AST", () => {
   describe("struct", () => {
     describe("should give precedence to fields / index signatures containing less inhabitants", () => {
-      it("literals", () => {
+      it("literal vs string", () => {
         const schema = S.struct({ a: S.string, b: S.literal("b") })
         expect(schema.ast).toEqual({
-          "_tag": "Struct",
-          "fields": [
-            {
-              "key": "b",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "LiteralType",
-                "literal": "b"
-              }
-            },
-            {
-              "key": "a",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "StringKeyword"
-              }
-            }
+          _tag: "Struct",
+          fields: [
+            _.field("b", _.literalType("b"), false, true),
+            _.field("a", _.stringKeyword, false, true)
           ],
-          "indexSignatures": []
+          indexSignatures: []
         })
       })
 
-      it("booleans", () => {
-        const schema = S.struct({ a: S.string, b: S.boolean })
-        expect(schema.ast).toEqual({
-          "_tag": "Struct",
-          "fields": [
-            {
-              "key": "b",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "BooleanKeyword"
-              }
-            },
-            {
-              "key": "a",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "StringKeyword"
-              }
-            }
-          ],
-          "indexSignatures": []
-        })
-      })
-
-      it("undefined", () => {
+      it("undefined vs string", () => {
         const schema = S.struct({ a: S.string, b: S.undefined })
         expect(schema.ast).toEqual({
-          "_tag": "Struct",
-          "fields": [
-            {
-              "key": "b",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "UndefinedKeyword"
-              }
-            },
-            {
-              "key": "a",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "StringKeyword"
-              }
-            }
+          _tag: "Struct",
+          fields: [
+            _.field("b", _.undefinedKeyword, false, true),
+            _.field("a", _.stringKeyword, false, true)
           ],
-          "indexSignatures": []
+          indexSignatures: []
         })
       })
 
-      it("boolean vs literal", () => {
+      it("boolean vs string", () => {
+        const schema = S.struct({ a: S.string, b: S.boolean })
+        expect(schema.ast).toEqual({
+          _tag: "Struct",
+          fields: [
+            _.field("b", _.booleanKeyword, false, true),
+            _.field("a", _.stringKeyword, false, true)
+          ],
+          indexSignatures: []
+        })
+      })
+
+      it("literal vs boolean", () => {
         const schema = S.struct({ a: S.boolean, b: S.literal(null) })
         expect(schema.ast).toEqual({
           "_tag": "Struct",

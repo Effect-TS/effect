@@ -306,6 +306,12 @@ export const struct: {
 }
 
 /** @internal */
+export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
+  ...components: Components
+): Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
+  makeSchema(AST.tuple(components.map((c) => AST.component(c.ast, false)), O.none, true))
+
+/** @internal */
 export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))
 
 /** @internal */
