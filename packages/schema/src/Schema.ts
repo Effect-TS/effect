@@ -192,23 +192,33 @@ export type Spread<A> = {
 /**
  * @since 1.0.0
  */
-export const struct: {
-  <Required extends Record<PropertyKey, Schema<any>>>(
-    required: Required
-  ): Schema<{ readonly [K in keyof Required]: Infer<Required[K]> }>
-  <
-    Required extends Record<PropertyKey, Schema<any>>,
-    Optional extends Record<PropertyKey, Schema<any>>
-  >(
-    required: Required,
-    optional: Optional
-  ): Schema<
-    Spread<
-      & { readonly [K in keyof Required]: Infer<Required[K]> }
-      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
-    >
+export interface OptionalSchema<A> extends Schema<A> {
+  readonly OptionalSchema: true
+}
+
+/**
+ * @since 1.0.0
+ */
+export const optional: <A>(schema: Schema<A>) => OptionalSchema<A | undefined> = I.optional
+
+/**
+ * @since 1.0.0
+ */
+export type OptionalKeys<T> = {
+  [K in keyof T]: T[K] extends OptionalSchema<any> ? K : never
+}[keyof T]
+
+/**
+ * @since 1.0.0
+ */
+export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) => Schema<
+  Spread<
+    & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: Infer<Fields[K]> }
+    & { readonly [K in OptionalKeys<Fields>]?: Infer<Fields[K]> }
   >
-} = I.struct
+> = I.struct
 
 /**
  * @since 1.0.0

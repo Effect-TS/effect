@@ -277,34 +277,25 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export const struct: {
-  <Required extends Record<PropertyKey, Schema<any>>>(
-    required: Required
-  ): Codec<{ readonly [K in keyof Required]: Infer<Required[K]> }>
-  <
-    Required extends Record<PropertyKey, Schema<any>>,
-    Optional extends Record<PropertyKey, Schema<any>>
-  >(
-    required: Required,
-    optional: Optional
-  ): Codec<
-    S.Spread<
-      & { readonly [K in keyof Required]: Infer<Required[K]> }
-      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
-    >
-  >
-} = <
-  Required extends Record<PropertyKey, Schema<any>>,
-  Optional extends Record<PropertyKey, Schema<any>>
->(
-  required: Required,
-  optional?: Optional
+export interface OptionalCodec<A> extends Codec<A>, S.OptionalSchema<A> {}
+
+/**
+ * @since 1.0.0
+ */
+export const optional = <A>(schema: Schema<A>): OptionalCodec<A | undefined> =>
+  codecFor(S.optional(schema)) as any
+
+/**
+ * @since 1.0.0
+ */
+export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
 ): Codec<
   S.Spread<
-    & { readonly [K in keyof Required]: Infer<Required[K]> }
-    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+    & { readonly [K in Exclude<keyof Fields, S.OptionalKeys<Fields>>]: Infer<Fields[K]> }
+    & { readonly [K in S.OptionalKeys<Fields>]?: Infer<Fields[K]> }
   >
-> => codecFor(S.struct(required, optional || {}))
+> => codecFor(S.struct(fields))
 
 /**
  * @since 1.0.0

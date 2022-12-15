@@ -117,8 +117,8 @@ describe("Encoder", () => {
       })
 
       it("optional fields", () => {
-        const ab = S.struct({ a: S.string }, { b: S.number })
-        const ac = S.struct({ a: S.string }, { c: S.number })
+        const ab = S.struct({ a: S.string, b: S.optional(S.number) })
+        const ac = S.struct({ a: S.string, c: S.optional(S.number) })
         const schema = S.union(ab, ac)
         const encoder = _.encoderFor(schema)
         expect(encoder.encode({ a: "a", c: 1 })).toEqual({ a: "a", c: 1 })

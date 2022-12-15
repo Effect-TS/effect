@@ -1,5 +1,6 @@
 import { pipe } from "@fp-ts/data/Function";
 import * as C from "@fp-ts/schema/Codec";
+import * as S from "@fp-ts/schema/Schema";
 
 //
 // Primitives
@@ -109,7 +110,10 @@ pipe(
 );
 
 // $ExpectType Codec<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
-C.struct({ a: C.string, b: C.number }, { c: C.boolean })
+C.struct({ a: C.string, b: C.number, c: C.optional(C.boolean) })
+
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
+S.struct({ a: C.string, b: C.number, c: C.optional(C.boolean) })
 
 // $ExpectType Codec<Option<number>>
 C.option(C.number)

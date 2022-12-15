@@ -17,7 +17,7 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Provider } from "@fp-ts/schema/Provider"
-import type { Schema } from "@fp-ts/schema/Schema"
+import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
 // ---------------------------------------------
 // Decoder APIs
@@ -261,45 +261,22 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
-type Spread<A> = {
-  [K in keyof A]: A[K]
-} extends infer B ? B : never
+/** @internal */
+export const optional = <A>(schema: Schema<A>): OptionalSchema<A | undefined> =>
+  makeSchema(AST.optionalType(schema.ast)) as any
 
 /** @internal */
-export const struct: {
-  <Required extends Record<PropertyKey, Schema<any>>>(
-    required: Required
-  ): Schema<{ readonly [K in keyof Required]: Infer<Required[K]> }>
-  <
-    Required extends Record<PropertyKey, Schema<any>>,
-    Optional extends Record<PropertyKey, Schema<any>>
-  >(
-    required: Required,
-    optional: Optional
-  ): Schema<
-    Spread<
-      & { readonly [K in keyof Required]: Infer<Required[K]> }
-      & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
-    >
-  >
-} = <
-  Required extends Record<PropertyKey, Schema<any>>,
-  Optional extends Record<PropertyKey, Schema<any>>
->(
-  required: Required,
-  optional: Optional = {} as any
+export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
 ): Schema<
   Spread<
-    & { readonly [K in keyof Required]: Infer<Required[K]> }
-    & { readonly [K in keyof Optional]?: Infer<Optional[K]> }
+    & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: Infer<Fields[K]> }
+    & { readonly [K in OptionalKeys<Fields>]?: Infer<Fields[K]> }
   >
 > => {
   return makeSchema(
     AST.struct(
-      ownKeys(required).map((key) => AST.field(key, required[key].ast, true))
-        .concat(
-          ownKeys(optional).map((key) => AST.field(key, AST.optionalType(optional[key].ast), true))
-        ),
+      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, true)),
       []
     )
   )

@@ -132,6 +132,19 @@ describe("Decoder", () => {
     })
   })
 
+  it("optional", () => {
+    const schema = S.optional(S.number)
+    const decoder = _.decoderFor(schema)
+    Util.expectSuccess(decoder, undefined)
+    Util.expectSuccess(decoder, 1)
+    Util.expectFailure(
+      decoder,
+      "a",
+      `member: "a" did not satisfy is(undefined), member: "a" did not satisfy is(number)`
+    )
+    Util.expectWarning(decoder, NaN, "did not satisfy not(isNaN)", NaN)
+  })
+
   describe("struct", () => {
     it("should handle strings as keys", () => {
       const schema = S.struct({ a: S.string, b: S.number })
@@ -161,7 +174,7 @@ describe("Decoder", () => {
       })
     })
 
-    it("should not fail on optional fields", () => {
+    it("should not add optional keys", () => {
       const schema = S.partial(S.struct({ a: S.string, b: S.number }))
       const decoder = _.decoderFor(schema)
       expect(decoder.decode({})).toEqual(_.success({}))
@@ -293,16 +306,16 @@ describe("Decoder", () => {
         })
 
         it("optional fields", () => {
-          const ab = S.struct({ a: S.string }, { b: S.number })
-          const ac = S.struct({ a: S.string }, { c: S.number })
+          const ab = S.struct({ a: S.string, b: S.optional(S.number) })
+          const ac = S.struct({ a: S.string, c: S.optional(S.number) })
           const schema = S.union(ab, ac)
           const decoder = _.decoderFor(schema)
           expect(decoder.decode({ a: "a", c: 1 })).toEqual(_.success({ a: "a", c: 1 }))
         })
 
         it("less warnings heuristic", () => {
-          const ab = S.struct({ a: S.string }, { b: S.string })
-          const ac = S.struct({ a: S.string }, { c: S.number })
+          const ab = S.struct({ a: S.string, b: S.optional(S.string) })
+          const ac = S.struct({ a: S.string, c: S.optional(S.number) })
           const schema = S.union(ab, ac)
           const decoder = _.decoderFor(schema)
           Util.expectWarning(decoder, { a: "a", c: NaN }, "/c did not satisfy not(isNaN)", {

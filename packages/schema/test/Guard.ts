@@ -145,18 +145,31 @@ describe("Guard", () => {
   })
 
   describe("struct", () => {
-    it("baseline", () => {
+    it("required fields", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const guard = G.guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({ a: "a", b: 1 })).toEqual(true)
     })
 
-    it("should not fail on optional fields", () => {
-      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+    it("required and optional fields (split syntax)", () => {
+      const schema = S.struct({ a: S.string, b: S.optional(S.number) })
       const guard = G.guardFor(schema)
-      expect(guard.is({})).toEqual(true)
-      expect(guard.is({ a: undefined })).toEqual(true)
+      expect(guard.is({ a: "a" })).toEqual(true)
+      expect(guard.is({ a: "a", b: undefined })).toEqual(true)
+      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+      expect(guard.is({ a: 1 })).toEqual(false)
+      expect(guard.is({ a: "a", b: "b" })).toEqual(false)
+    })
+
+    it("required and optional fields (optional combinator)", () => {
+      const schema = S.struct({ a: S.string, b: S.optional(S.number) })
+      const guard = G.guardFor(schema)
+      expect(guard.is({ a: "a" })).toEqual(true)
+      expect(guard.is({ a: "a", b: undefined })).toEqual(true)
+      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+      expect(guard.is({ a: 1 })).toEqual(false)
+      expect(guard.is({ a: "a", b: "b" })).toEqual(false)
     })
 
     it("{ readonly [_: string]: unknown }", () => {

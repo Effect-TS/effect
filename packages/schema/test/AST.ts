@@ -71,7 +71,7 @@ describe("AST", () => {
 
       it("1 required vs 2 optional", () => {
         const a = S.struct({ a: S.string })
-        const ab = S.struct({}, { a: S.string, b: S.number })
+        const ab = S.struct({ a: S.optional(S.string), b: S.optional(S.number) })
         const schema = S.union(a, ab)
         expect(schema.ast).toEqual({
           _tag: "Union",
@@ -194,7 +194,7 @@ describe("AST", () => {
       it("optional fields", () => {
         const schema = S.union(
           S.struct({ a: S.string, b: S.number }),
-          S.struct({ c: S.boolean }, { a: S.boolean })
+          S.struct({ c: S.boolean, a: S.optional(S.boolean) })
         )
         expect(_.getFields(schema.ast)).toEqual([
           _.field("a", _.optionalType(_.union([S.string.ast, S.boolean.ast])), true)

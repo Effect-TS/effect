@@ -21,9 +21,8 @@ describe("Codec", () => {
   it("parseOrThrow", () => {
     const Person = _.struct({
       firstName: _.string,
-      lastName: _.string
-    }, {
-      age: _.number
+      lastName: _.string,
+      age: _.optional(_.number)
     })
 
     const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
