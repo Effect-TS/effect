@@ -43,17 +43,17 @@ describe("Codec", () => {
         {
           _tag: "Struct",
           fields: [
-            AST.field("_tag", AST.literalType("AB"), false, true),
-            AST.field("b", AST.booleanKeyword, false, true),
-            AST.field("a", AST.stringKeyword, false, true)
+            AST.field("_tag", AST.literalType("AB"), true),
+            AST.field("b", AST.booleanKeyword, true),
+            AST.field("a", AST.stringKeyword, true)
           ],
           indexSignatures: []
         },
         {
           _tag: "Struct",
           fields: [
-            AST.field("_tag", AST.literalType("C"), false, true),
-            AST.field("c", AST.numberKeyword, false, true)
+            AST.field("_tag", AST.literalType("C"), true),
+            AST.field("c", AST.numberKeyword, true)
           ],
           indexSignatures: []
         }

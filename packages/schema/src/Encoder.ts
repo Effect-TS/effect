@@ -5,7 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -71,10 +71,12 @@ export const provideEncoderFor = (provider: Provider) =>
           return make(I.bigint, (n) => n.toString())
         case "SymbolKeyword":
           return make(I.bigint, identity)
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map((c) => go(c.value)),
+            ast.components.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct":
@@ -117,7 +119,7 @@ const _tuple = (
         // ---------------------------------------------
         // handle optional components
         // ---------------------------------------------
-        if (ast.components[i].optional && input[i] === undefined) {
+        if (AST.isOptionalType(ast.components[i]) && input[i] === undefined) {
           if (i < input.length) {
             output[i] = undefined
           }
@@ -149,29 +151,19 @@ const _struct = (
     I.makeSchema(ast),
     (input: { readonly [_: string | symbol]: unknown }) => {
       const output: any = {}
-      const fieldKeys: any = {}
+      const processedKeys: any = {}
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
         const key = ast.fields[i].key
-        fieldKeys[key] = null
-        // ---------------------------------------------
-        // handle optional fields
-        // ---------------------------------------------
-        const optional = ast.fields[i].optional
-        if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(input, key)) {
-            continue
-          }
-          if (input[key] === undefined) {
-            output[key] = undefined
-            continue
-          }
+        processedKeys[key] = null
+        if (
+          AST.isOptionalType(ast.fields[i].value) &&
+          !Object.prototype.hasOwnProperty.call(input, key)
+        ) {
+          continue
         }
-        // ---------------------------------------------
-        // handle required fields
-        // ---------------------------------------------
         const encoder = fields[i]
         output[key] = encoder.encode(input[key])
       }
@@ -185,7 +177,7 @@ const _struct = (
           const encoder = indexSignatures[i]
           const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
           for (const key of ks) {
-            if (!(key in fieldKeys)) {
+            if (!(key in processedKeys)) {
               output[key] = encoder.encode(input[key])
             }
           }

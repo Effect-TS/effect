@@ -1,7 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type { AST } from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -12,7 +12,7 @@ interface TypeRep<in out A> extends S.Schema<A> {
   readonly typeRep: string
 }
 
-const make = (ast: AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
+const make = (ast: AST.AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
 
 export const lazy = <A>(
   name: string,
@@ -34,7 +34,7 @@ export const provideTypeRepFor = (
   provider: Provider
 ) =>
   <A>(schema: Schema<A>): TypeRep<A> => {
-    const go = (ast: AST): TypeRep<any> => {
+    const go = (ast: AST.AST): TypeRep<any> => {
       switch (ast._tag) {
         case "TypeAliasDeclaration":
           return pipe(
@@ -79,8 +79,10 @@ export const provideTypeRepFor = (
           return make(ast, "bigint")
         case "SymbolKeyword":
           return make(ast, "symbol")
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map((c) => go(c.value))
+          const components = ast.components.map(go)
           const rest = pipe(
             ast.rest,
             O.map((ast) => (components.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
@@ -88,7 +90,7 @@ export const provideTypeRepFor = (
           )
           return make(
             ast,
-            `${ast.readonly ? "readonly " : ""}[${
+            `${ast.isReadonly ? "readonly " : ""}[${
               components.map((c) => c.typeRep).join(", ")
             }${rest}]`
           )
@@ -106,8 +108,8 @@ export const provideTypeRepFor = (
             ast,
             "{ " +
               ast.fields.map((field, i) => {
-                return `${field.readonly ? "readonly " : ""}${String(field.key)}${
-                  field.optional ? "?" : ""
+                return `${field.isReadonly ? "readonly " : ""}${String(field.key)}${
+                  AST.isOptionalType(field.value) ? "?" : ""
                 }: ${fields[i].typeRep}`
               }).join(", ") +
               ast.indexSignatures.map((is) => `readonly [_: ${is.key}]: ${go(is.value).typeRep}`)

@@ -4,7 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -71,10 +71,12 @@ export const provideArbitraryFor = (provider: Provider) =>
           return make(I.bigint, (fc) => fc.bigInt())
         case "SymbolKeyword":
           return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map((c) => go(c.value)),
+            ast.components.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct":
@@ -114,14 +116,7 @@ const _tuple = (
       // ---------------------------------------------
       // handle components
       // ---------------------------------------------
-      let output = fc.tuple(...components.map((c, i) => {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        return ast.components[i].optional ?
-          fc.oneof(fc.constant(undefined), c.arbitrary(fc)) :
-          c.arbitrary(fc)
-      }))
+      let output = fc.tuple(...components.map((c) => c.arbitrary(fc)))
 
       // ---------------------------------------------
       // handle rest element
@@ -152,19 +147,10 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        const optional = field.optional
-        if (optional) {
-          // ---------------------------------------------
-          // handle optional fields
-          // ---------------------------------------------
-          arbs[key] = fields[i].arbitrary(fc)
-        } else {
+        if (!AST.isOptionalType(field.value)) {
           requiredKeys.push(key)
-          // ---------------------------------------------
-          // handle required fields
-          // ---------------------------------------------
-          arbs[key] = fields[i].arbitrary(fc)
         }
+        arbs[key] = fields[i].arbitrary(fc)
       }
       let output = fc.record<any, any>(arbs, { requiredKeys })
       // ---------------------------------------------

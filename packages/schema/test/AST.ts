@@ -12,8 +12,8 @@ describe("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            _.field("b", _.literalType("b"), false, true),
-            _.field("a", _.stringKeyword, false, true)
+            _.field("b", _.literalType("b"), true),
+            _.field("a", _.stringKeyword, true)
           ],
           indexSignatures: []
         })
@@ -24,8 +24,8 @@ describe("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            _.field("b", _.undefinedKeyword, false, true),
-            _.field("a", _.stringKeyword, false, true)
+            _.field("b", _.undefinedKeyword, true),
+            _.field("a", _.stringKeyword, true)
           ],
           indexSignatures: []
         })
@@ -36,8 +36,8 @@ describe("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            _.field("b", _.booleanKeyword, false, true),
-            _.field("a", _.stringKeyword, false, true)
+            _.field("b", _.booleanKeyword, true),
+            _.field("a", _.stringKeyword, true)
           ],
           indexSignatures: []
         })
@@ -46,27 +46,12 @@ describe("AST", () => {
       it("literal vs boolean", () => {
         const schema = S.struct({ a: S.boolean, b: S.literal(null) })
         expect(schema.ast).toEqual({
-          "_tag": "Struct",
-          "fields": [
-            {
-              "key": "b",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "LiteralType",
-                "literal": null
-              }
-            },
-            {
-              "key": "a",
-              "optional": false,
-              "readonly": true,
-              "value": {
-                "_tag": "BooleanKeyword"
-              }
-            }
+          _tag: "Struct",
+          fields: [
+            _.field("b", _.literalType(null), true),
+            _.field("a", _.booleanKeyword, true)
           ],
-          "indexSignatures": []
+          indexSignatures: []
         })
       })
     })
@@ -175,23 +160,23 @@ describe("AST", () => {
     it("type alias", () => {
       const schema = DataOption.schema(S.number)
       expect(_.getFields(schema.ast)).toEqual([
-        _.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true)
+        _.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, true)
       ])
     })
 
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       expect(_.getFields(schema.ast)).toEqual([
-        _.field(0, S.string.ast, false, true),
-        _.field(1, S.number.ast, false, true)
+        _.field(0, S.string.ast, true),
+        _.field(1, S.number.ast, true)
       ])
     })
 
     it("struct", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       expect(_.getFields(schema.ast)).toEqual([
-        _.field("a", S.string.ast, false, true),
-        _.field("b", S.number.ast, false, true)
+        _.field("a", S.string.ast, true),
+        _.field("b", S.number.ast, true)
       ])
     })
 
@@ -202,7 +187,7 @@ describe("AST", () => {
           S.struct({ a: S.boolean, c: S.boolean })
         )
         expect(_.getFields(schema.ast)).toEqual([
-          _.field("a", _.union([S.string.ast, S.boolean.ast]), false, true)
+          _.field("a", _.union([S.string.ast, S.boolean.ast]), true)
         ])
       })
 
@@ -212,7 +197,7 @@ describe("AST", () => {
           S.struct({ c: S.boolean }, { a: S.boolean })
         )
         expect(_.getFields(schema.ast)).toEqual([
-          _.field("a", _.union([S.string.ast, S.boolean.ast]), true, true)
+          _.field("a", _.optionalType(_.union([S.string.ast, S.boolean.ast])), true)
         ])
       })
     })
@@ -230,8 +215,8 @@ describe("AST", () => {
           })
       )
       expect(_.getFields(Category.ast)).toEqual([
-        _.field("name", S.string.ast, false, true),
-        _.field("categories", _.tuple([], O.some(Category.ast), true), false, true)
+        _.field("name", S.string.ast, true),
+        _.field("categories", _.tuple([], O.some(Category.ast), true), true)
       ])
     })
   })

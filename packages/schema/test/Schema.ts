@@ -45,7 +45,7 @@ describe("Schema", () => {
         if (ast.isStruct(schema.ast)) {
           const fields = schema.ast.fields.slice()
           const i = fields.findIndex((field) => field.key === from)
-          fields[i] = ast.field(to, fields[i].value, fields[i].optional, fields[i].readonly)
+          fields[i] = ast.field(to, fields[i].value, fields[i].isReadonly)
           return _.make(
             ast.struct(fields, schema.ast.indexSignatures)
           )

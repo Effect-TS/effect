@@ -4,7 +4,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -75,10 +75,12 @@ export const providePrettyFor = (provider: Provider) =>
           return make(I.boolean, (bi) => `${bi.toString()}n`)
         case "SymbolKeyword":
           return make(I.symbol, (s) => String(s))
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map((c) => go(c.value)),
+            ast.components.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct":
@@ -123,22 +125,9 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        // ---------------------------------------------
-        // handle optional fields
-        // ---------------------------------------------
-        const optional = field.optional
-        if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(input, key)) {
-            continue
-          }
-          if (input[key] === undefined) {
-            output.push(`${_propertyKey(key)}: undefined`)
-            continue
-          }
+        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+          continue
         }
-        // ---------------------------------------------
-        // handle required fields
-        // ---------------------------------------------
         output.push(`${_propertyKey(key)}: ${fields[i].pretty(input[key])}`)
       }
       // ---------------------------------------------
@@ -174,10 +163,7 @@ const _tuple = (
       // handle components
       // ---------------------------------------------
       for (; i < components.length; i++) {
-        // ---------------------------------------------
-        // handle optional components
-        // ---------------------------------------------
-        if (ast.components[i].optional && input[i] === undefined) {
+        if (AST.isOptionalType(ast.components[i]) && input[i] === undefined) {
           if (i < input.length) {
             output[i] = "undefined"
           }

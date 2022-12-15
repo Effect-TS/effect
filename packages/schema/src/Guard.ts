@@ -70,8 +70,10 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.bigint, I.isBigInt)
         case "SymbolKeyword":
           return make(I.symbol, I.isSymbol)
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map((c) => go(c.value))
+          const components = ast.components.map(go)
           const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
           return make(
             I.makeSchema(ast),
@@ -84,12 +86,6 @@ export const provideGuardFor = (provider: Provider) =>
               // handle components
               // ---------------------------------------------
               for (; i < components.length; i++) {
-                // ---------------------------------------------
-                // handle optional components
-                // ---------------------------------------------
-                if (ast.components[i].optional && input[i] === undefined) {
-                  continue
-                }
                 if (!components[i].is(input[i])) {
                   return false
                 }
@@ -155,21 +151,9 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        // ---------------------------------------------
-        // handle optional fields
-        // ---------------------------------------------
-        const optional = field.optional
-        if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(input, key)) {
-            continue
-          }
-          if (input[key] === undefined) {
-            continue
-          }
+        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+          continue
         }
-        // ---------------------------------------------
-        // handle required fields
-        // ---------------------------------------------
         const guard = fields[i]
         if (!guard.is(input[key])) {
           return false

@@ -296,9 +296,9 @@ export const struct: {
 > => {
   return makeSchema(
     AST.struct(
-      ownKeys(required).map((key) => AST.field(key, required[key].ast, false, true))
+      ownKeys(required).map((key) => AST.field(key, required[key].ast, true))
         .concat(
-          ownKeys(optional).map((key) => AST.field(key, optional[key].ast, true, true))
+          ownKeys(optional).map((key) => AST.field(key, AST.optionalType(optional[key].ast), true))
         ),
       []
     )
@@ -309,7 +309,7 @@ export const struct: {
 export const tuple = <Components extends ReadonlyArray<Schema<any>>>(
   ...components: Components
 ): Schema<{ readonly [K in keyof Components]: Infer<Components[K]> }> =>
-  makeSchema(AST.tuple(components.map((c) => AST.component(c.ast, false)), O.none, true))
+  makeSchema(AST.tuple(components.map((c) => c.ast), O.none, true))
 
 /** @internal */
 export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))

@@ -109,10 +109,12 @@ const provideJsonSchemaFor = (
           return { type: "number" }
         case "BooleanKeyword":
           return { type: "boolean" }
+        case "OptionalType":
+          return go(ast.type)
         case "Tuple":
           return _tuple(
             ast,
-            ast.components.map((c) => go(c.value)),
+            ast.components.map(go),
             pipe(ast.rest, O.map(go))
           )
         case "Struct": {
@@ -169,7 +171,7 @@ const _tuple = (
     // ---------------------------------------------
     // handle optional components
     // ---------------------------------------------
-    if (!ast.components[i].optional) {
+    if (!AST.isOptionalType(ast.components[i])) {
       output.minItems = output.minItems + 1
       output.maxItems = output.maxItems + 1
     }
@@ -210,7 +212,7 @@ const _struct = (
       // ---------------------------------------------
       // handle optional fields
       // ---------------------------------------------
-      if (!ast.fields[i].optional) {
+      if (!AST.isOptionalType(ast.fields[i].value)) {
         output.required.push(key)
       }
     } else {

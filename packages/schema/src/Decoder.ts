@@ -148,8 +148,10 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         case "SymbolKeyword":
           return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
+        case "OptionalType":
+          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const components = ast.components.map((c) => go(c.value))
+          const components = ast.components.map(go)
           const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
           return make(
             I.makeSchema(ast),
@@ -164,10 +166,7 @@ export const provideDecoderFor = (provider: Provider) =>
               // handle components
               // ---------------------------------------------
               for (; i < components.length; i++) {
-                // ---------------------------------------------
-                // handle optional components
-                // ---------------------------------------------
-                if (ast.components[i].optional && input[i] === undefined) {
+                if (AST.isOptionalType(ast.components[i]) && input[i] === undefined) {
                   continue
                 }
                 const decoder = components[i]
@@ -257,22 +256,9 @@ const _struct = (
         const field = ast.fields[i]
         const key = field.key
         processedKeys[key] = null
-        // ---------------------------------------------
-        // handle optional fields
-        // ---------------------------------------------
-        const optional = field.optional
-        if (optional) {
-          if (!Object.prototype.hasOwnProperty.call(input, key)) {
-            continue
-          }
-          if (input[key] === undefined) {
-            output[key] = undefined
-            continue
-          }
+        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+          continue
         }
-        // ---------------------------------------------
-        // handle required fields
-        // ---------------------------------------------
         const decoder = fields[i]
         const t = decoder.decode(input[key])
         if (isFailure(t)) {

@@ -25,8 +25,9 @@ export type AST =
   | BooleanKeyword
   | BigIntKeyword
   | SymbolKeyword
-  | Struct
+  | OptionalType
   | Tuple
+  | Struct
   | Union
   | Lazy
 
@@ -221,11 +222,53 @@ export const symbolKeyword: SymbolKeyword = {
 /**
  * @since 1.0.0
  */
+export interface OptionalType {
+  readonly _tag: "OptionalType"
+  readonly type: AST
+}
+
+/**
+ * @since 1.0.0
+ */
+export const optionalType = (type: AST): OptionalType =>
+  isOptionalType(type) ? type : ({ _tag: "OptionalType", type })
+
+/**
+ * @since 1.0.0
+ */
+export const isOptionalType = (ast: AST): ast is OptionalType => ast._tag === "OptionalType"
+
+/**
+ * @since 1.0.0
+ */
+export interface Tuple {
+  readonly _tag: "Tuple"
+  readonly components: ReadonlyArray<AST>
+  readonly rest: Option<AST>
+  readonly isReadonly: boolean
+}
+
+/**
+ * @since 1.0.0
+ */
+export const tuple = (
+  components: ReadonlyArray<AST>,
+  rest: Option<AST>,
+  isReadonly: boolean
+): Tuple => ({ _tag: "Tuple", components, rest, isReadonly })
+
+/**
+ * @since 1.0.0
+ */
+export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
+
+/**
+ * @since 1.0.0
+ */
 export interface Field {
   readonly key: PropertyKey
   readonly value: AST
-  readonly optional: boolean
-  readonly readonly: boolean
+  readonly isReadonly: boolean
 }
 
 /**
@@ -234,9 +277,8 @@ export interface Field {
 export const field = (
   key: PropertyKey,
   value: AST,
-  optional: boolean,
-  readonly: boolean
-): Field => ({ key, value, optional, readonly })
+  isReadonly: boolean
+): Field => ({ key, value, isReadonly })
 
 /**
  * @since 1.0.0
@@ -244,7 +286,7 @@ export const field = (
 export interface IndexSignature {
   readonly key: "string" | "symbol"
   readonly value: AST
-  readonly readonly: boolean
+  readonly isReadonly: boolean
 }
 
 /**
@@ -253,8 +295,8 @@ export interface IndexSignature {
 export const indexSignature = (
   key: "string" | "symbol",
   value: AST,
-  readonly: boolean
-): IndexSignature => ({ key, value, readonly })
+  isReadonly: boolean
+): IndexSignature => ({ key, value, isReadonly })
 
 /**
  * @since 1.0.0
@@ -309,46 +351,6 @@ export const struct = (
  * @since 1.0.0
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
-
-/**
- * @since 1.0.0
- */
-export interface Component {
-  readonly value: AST
-  readonly optional: boolean
-}
-
-/**
- * @since 1.0.0
- */
-export const component = (value: AST, optional: boolean): Component => ({
-  value,
-  optional
-})
-
-/**
- * @since 1.0.0
- */
-export interface Tuple {
-  readonly _tag: "Tuple"
-  readonly components: ReadonlyArray<Component>
-  readonly rest: Option<AST>
-  readonly readonly: boolean
-}
-
-/**
- * @since 1.0.0
- */
-export const tuple = (
-  components: ReadonlyArray<Component>,
-  rest: Option<AST>,
-  readonly: boolean
-): Tuple => ({ _tag: "Tuple", components, rest, readonly })
-
-/**
- * @since 1.0.0
- */
-export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
 
 /**
  * @since 1.0.0
@@ -475,19 +477,27 @@ export const getFields = (
     case "TypeAliasDeclaration":
       return getFields(ast.type)
     case "Tuple":
-      return ast.components.map((c, i) => field(i, c.value, c.optional, true))
+      return ast.components.map((c, i) => field(i, c, true))
     case "Struct":
       return ast.fields
     case "Union": {
       const fields = pipe(ast.members, RA.flatMap(getFields))
       return keyof(ast).map((key) => {
-        const members = fields.filter((field) => field.key === key)
-        return field(
-          key,
-          union(members.map((field) => field.value)),
-          members.some((field) => field.optional),
-          members.some((field) => field.readonly)
+        let isTypeOptional = false
+        let isReadonly = false
+        const type = union(
+          fields.filter((field) => field.key === key).map((field) => {
+            if (field.isReadonly) {
+              isReadonly = true
+            }
+            if (isOptionalType(field.value)) {
+              isTypeOptional = true
+              return field.value.type
+            }
+            return field.value
+          })
         )
+        return field(key, isTypeOptional ? optionalType(type) : type, isReadonly)
       })
     }
     case "Lazy":
@@ -497,25 +507,29 @@ export const getFields = (
   }
 }
 
-const orUndefined = (ast: AST): AST => union([undefinedKeyword, ast])
-
 /**
  * @since 1.0.0
  */
 export const partial = (ast: AST): AST => {
-  if (isStruct(ast)) {
-    return struct(
-      ast.fields.map((f) => field(f.key, f.value, true, f.readonly)),
-      ast.indexSignatures
-    )
-  } else if (isTuple(ast)) {
-    return tuple(
-      ast.components.map((c) => component(c.value, true)),
-      pipe(ast.rest, O.map(orUndefined)),
-      ast.readonly
-    )
-  } else if (isUnion(ast)) {
-    return union(ast.members.map(partial))
+  switch (ast._tag) {
+    case "TypeAliasDeclaration":
+      return partial(ast.type)
+    case "Tuple":
+      return tuple(
+        ast.components.map(optionalType),
+        pipe(ast.rest, O.map(optionalType)),
+        ast.isReadonly
+      )
+    case "Struct":
+      return struct(
+        ast.fields.map((f) => field(f.key, optionalType(f.value), f.isReadonly)),
+        ast.indexSignatures
+      )
+    case "Union":
+      return union(ast.members.map(partial))
+    case "Lazy":
+      return lazy(() => partial(ast.f()))
+    default:
+      return ast
   }
-  return ast
 }

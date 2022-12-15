@@ -1,5 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
+import * as O from "@fp-ts/data/Option"
+import * as DataOption from "@fp-ts/schema/data/Option"
+import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -216,7 +218,7 @@ describe("Guard", () => {
       const schema: S.Schema<Category> = S.lazy<Category>(() =>
         S.struct({
           name: S.string,
-          categories: readonlySet.schema(schema)
+          categories: DataReadonlySet.schema(schema)
         })
       )
       const guard = G.guardFor(schema)
@@ -245,13 +247,13 @@ describe("Guard", () => {
       const schemaA: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          bs: readonlySet.schema(schemaB)
+          bs: DataReadonlySet.schema(schemaB)
         })
       )
       const schemaB: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
-          as: readonlySet.schema(schemaA)
+          as: DataReadonlySet.schema(schemaA)
         })
       )
       const A = G.guardFor(schemaA)
@@ -276,7 +278,7 @@ describe("Guard", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: readonlySet.schema(A)
+          as: DataReadonlySet.schema(A)
         })
       )
       const schemaB = pipe(A, S.pick("as"))
@@ -294,7 +296,7 @@ describe("Guard", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: readonlySet.schema(A)
+          as: DataReadonlySet.schema(A)
         })
       )
       const schemaB = pipe(A, S.omit("a"))
@@ -409,6 +411,14 @@ describe("Guard", () => {
   })
 
   describe("partial", () => {
+    it("type alias", () => {
+      const schema = pipe(DataOption.schema(S.number), S.partial)
+      const guard = guardFor(schema)
+      expect(guard.is(O.none)).toEqual(true)
+      expect(guard.is(O.some(1))).toEqual(true)
+      expect(guard.is({})).toEqual(true)
+    })
+
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const guard = guardFor(schema)
