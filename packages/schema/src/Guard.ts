@@ -6,8 +6,9 @@ import { isBoolean } from "@fp-ts/data/Boolean"
 import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -72,7 +73,7 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.symbol, I.isSymbol)
         case "Tuple": {
           const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
+          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
           return make(
             I.makeSchema(ast),
             (input: unknown): input is any => {
@@ -83,14 +84,18 @@ export const provideGuardFor = (provider: Provider) =>
               // ---------------------------------------------
               // handle elements
               // ---------------------------------------------
-              for (; i < elements.length; i++) {
+              for (; i < ast.elements.length; i++) {
                 if (input.length < i + 1) {
+                  // the input element is missing...
                   if (ast.elements[i].isOptional) {
+                    // ...but the element is optional, go on
                     continue
+                  } else {
+                    // ...but the element is required, bail out
+                    return false
                   }
-                  return false
-                }
-                if (!elements[i].is(input[i])) {
+                } else if (!elements[i].is(input[i])) {
+                  // the input element is present but is not valid, bail out
                   return false
                 }
               }
@@ -98,12 +103,30 @@ export const provideGuardFor = (provider: Provider) =>
               // handle rest element
               // ---------------------------------------------
               if (O.isSome(rest)) {
-                const [ast, guard] = rest.value
-                if (ast !== AST.unknownKeyword && ast !== AST.anyKeyword) {
-                  for (; i < input.length; i++) {
-                    if (!guard.is(input[i])) {
+                const head = RA.headNonEmpty(rest.value)
+                const tail = RA.tailNonEmpty(rest.value)
+                for (; i < input.length; i++) {
+                  if (!head.is(input[i])) {
+                    // the input element is not valid...
+                    if (tail.length === 0) {
+                      // ...and there are no more elements, bail out
                       return false
+                    } else {
+                      // ...but there is at least on post rest element to try
+                      break
                     }
+                  }
+                }
+                // ---------------------------------------------
+                // handle post rest elements
+                // ---------------------------------------------
+                for (let e = 0; e < tail.length; e++) {
+                  if (input.length < i + e + 1) {
+                    // the input element is missing and the element is required, bail out
+                    return false
+                  } else if (!tail[e].is(input[i + e])) {
+                    // the input element is present but is not valid, bail out
+                    return false
                   }
                 }
               }

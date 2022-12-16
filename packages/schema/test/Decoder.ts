@@ -229,6 +229,23 @@ describe.concurrent("Decoder", () => {
       )
     })
 
+    it.skip("post rest elements", () => {
+      const schema = pipe(S.array(S.number), S.element(S.boolean))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [true])
+      Util.expectSuccess(decoder, [1, true])
+      Util.expectSuccess(decoder, [1, 2, true])
+      Util.expectSuccess(decoder, [1, 2, 3, true])
+
+      Util.expectFailure(decoder, ["b"], ``)
+      Util.expectFailure(decoder, [1], ``)
+      Util.expectFailure(decoder, [1, "b"], ``)
+      Util.expectFailure(decoder, [1, 2], ``)
+      Util.expectFailure(decoder, [1, 2, "b"], ``)
+      Util.expectFailure(decoder, [1, 2, 3], ``)
+      Util.expectFailure(decoder, [1, 2, 3, "b"], ``)
+    })
+
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const decoder = _.decoderFor(schema)
