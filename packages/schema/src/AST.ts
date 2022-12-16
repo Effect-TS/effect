@@ -241,10 +241,15 @@ export const isOptionalType = (ast: AST): ast is OptionalType => ast._tag === "O
 /**
  * @since 1.0.0
  */
+export type Element = AST
+
+/**
+ * @since 1.0.0
+ */
 export interface Tuple {
   readonly _tag: "Tuple"
-  readonly elements: ReadonlyArray<AST>
-  readonly rest: Option<RA.NonEmptyReadonlyArray<AST>>
+  readonly elements: ReadonlyArray<Element>
+  readonly rest: Option<readonly [AST, ...Array<Element>]>
   readonly isReadonly: boolean
 }
 
@@ -252,8 +257,8 @@ export interface Tuple {
  * @since 1.0.0
  */
 export const tuple = (
-  elements: ReadonlyArray<AST>,
-  rest: Option<RA.NonEmptyReadonlyArray<AST>>,
+  elements: ReadonlyArray<Element>,
+  rest: Option<readonly [AST, ...Array<Element>]>,
   isReadonly: boolean
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly })
 
@@ -428,7 +433,7 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
  * @since 1.0.0
  */
 export const addRestElement = (ast: Tuple, restElement: AST): Tuple => {
-  const rest: RA.NonEmptyReadonlyArray<AST> = pipe(
+  const rest: readonly [AST, ...Array<Element>] = pipe(
     ast.rest,
     O.match(
       () => [restElement],
@@ -442,14 +447,23 @@ export const addRestElement = (ast: Tuple, restElement: AST): Tuple => {
 /**
  * @since 1.0.0
  */
-export const addElement = (ast: Tuple, element: AST): Tuple =>
-  pipe(
+export const addElement = (ast: Tuple, element: Element): Tuple => {
+  if (ast.elements.some(isOptionalType) && !isOptionalType(element)) {
+    throw new Error("A required element cannot follow an optional element. ts(1257)")
+  }
+  return pipe(
     ast.rest,
     O.match(
       () => tuple([...ast.elements, element], O.none, ast.isReadonly),
-      (rest) => tuple(ast.elements, O.some(pipe(rest, RA.append(element))), ast.isReadonly)
+      (rest) => {
+        if (isOptionalType(element)) {
+          throw new Error("An optional element cannot follow a rest element. ts(1266)")
+        }
+        return tuple(ast.elements, O.some(pipe(rest, RA.append(element))), ast.isReadonly)
+      }
     )
   )
+}
 
 /**
  * @since 1.0.0

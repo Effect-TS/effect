@@ -86,6 +86,20 @@ describe.concurrent("AST", () => {
         AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword, AST.booleanKeyword]), true)
       )
     })
+
+    it("A required element cannot follow an optional element", () => {
+      const tuple = AST.tuple([AST.optionalType(AST.stringKeyword)], O.none, true)
+      expect(() => AST.addElement(tuple, AST.numberKeyword)).toThrowError(
+        new Error("A required element cannot follow an optional element. ts(1257)")
+      )
+    })
+
+    it("An optional element cannot follow a rest element", () => {
+      const tuple = AST.tuple([], O.some([AST.stringKeyword]), true)
+      expect(() => AST.addElement(tuple, AST.optionalType(AST.numberKeyword))).toThrowError(
+        new Error("An optional element cannot follow a rest element. ts(1266)")
+      )
+    })
   })
 
   describe.concurrent("struct", () => {

@@ -8,6 +8,30 @@ import * as S from "@fp-ts/schema/Schema"
 // $ExpectType Schema<readonly [string, number]>
 S.tuple(S.string,  S.number)
 
+// --- element ---
+
+// $ExpectType Schema<readonly [string, number, boolean]>
+pipe(S.tuple(S.string, S.number), S.element(S.boolean))
+
+// $ExpectType Schema<readonly [string, number, ...boolean[], bigint]>
+pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.element(S.bigint))
+
+// --- optionalElement ---
+
+// $ExpectType Schema<readonly [string, number, (boolean | undefined)?]>
+pipe(S.tuple(S.string, S.number), S.optionalElement(S.boolean))
+
+// --- rest ---
+
+// $ExpectType Schema<readonly [string, number]>
+pipe(S.tuple(S.string, S.number))
+
+// $ExpectType Schema<readonly [string, number, ...boolean[]]>
+pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
+
+// $ExpectType Schema<readonly [string, number, ...(number | boolean)[]]>
+pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.rest(S.number))
+
 //
 // struct
 //
@@ -44,16 +68,3 @@ pipe(S.struct({ a: S.string,  b: S.number }), S.pick('a'))
 
 // $ExpectType Schema<{ readonly b: number; }>
 pipe(S.struct({ a: S.string,  b: S.number }), S.omit('a'))
-
-//
-// rest
-//
-
-// $ExpectType Schema<readonly [string, number]>
-pipe(S.tuple(S.string, S.number))
-
-// $ExpectType Schema<readonly [string, number, ...boolean[]]>
-pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
-
-// $ExpectType Schema<readonly [string, number, ...(number | boolean)[]]>
-pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.rest(S.number))
