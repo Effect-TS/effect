@@ -45,6 +45,33 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
+  describe.concurrent("tuple", () => {
+    it("required element", () => {
+      const schema = S.tuple(S.number)
+      property(schema)
+    })
+
+    it("required element with undefined", () => {
+      const schema = S.tuple(S.union(S.number, S.undefined))
+      property(schema)
+    })
+
+    it("optional element", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.number))
+      property(schema)
+    })
+
+    it("optional element with undefined", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+      property(schema)
+    })
+
+    it("array", () => {
+      const schema = S.array(S.string)
+      property(schema)
+    })
+  })
+
   describe.concurrent("struct", () => {
     it("required field", () => {
       const schema = S.struct({ a: S.number })
@@ -65,18 +92,16 @@ describe.concurrent("Arbitrary", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       property(schema)
     })
+
+    it("baseline", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      property(schema)
+    })
   })
 
   it("union", () => {
     const schema = S.union(S.string, S.number)
     property(schema)
-  })
-
-  describe.concurrent("struct", () => {
-    it("baseline", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
-      property(schema)
-    })
   })
 
   it("stringIndexSignature", () => {
@@ -89,11 +114,6 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
-  it("array", () => {
-    const schema = S.array(S.string)
-    property(schema)
-  })
-
   describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
@@ -101,7 +121,7 @@ describe.concurrent("Arbitrary", () => {
     })
 
     it("tuple", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.partial)
+      const schema = S.partial(S.tuple(S.string, S.number))
       property(schema)
     })
 

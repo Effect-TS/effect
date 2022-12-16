@@ -166,13 +166,76 @@ describe.concurrent("Decoder", () => {
   })
 
   describe.concurrent("tuple", () => {
+    it("required element", () => {
+      const schema = S.tuple(S.number)
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [1])
+
+      Util.expectWarning(decoder, [1, "b"], `/1 index is unexpected`, [1])
+
+      Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+      Util.expectFailure(decoder, [], `/0 did not satisfy is(required)`)
+      Util.expectFailure(decoder, [undefined], `/0 undefined did not satisfy is(number)`)
+      Util.expectFailure(decoder, ["a"], `/0 "a" did not satisfy is(number)`)
+    })
+
+    it("required element with undefined", () => {
+      const schema = S.tuple(S.union(S.number, S.undefined))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [1])
+      Util.expectSuccess(decoder, [undefined])
+
+      Util.expectWarning(decoder, [1, "b"], `/1 index is unexpected`, [1])
+
+      Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+      Util.expectFailure(decoder, [], `/0 did not satisfy is(required)`)
+      Util.expectFailure(
+        decoder,
+        ["a"],
+        `/0 member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
+      )
+    })
+
+    it("optional element", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.number))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [])
+      Util.expectSuccess(decoder, [1])
+
+      Util.expectWarning(decoder, [1, "b"], `/1 index is unexpected`, [1])
+
+      Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+      Util.expectFailure(
+        decoder,
+        ["a"],
+        `/0 "a" did not satisfy is(number)`
+      )
+    })
+
+    it("optional element with undefined", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [])
+      Util.expectSuccess(decoder, [1])
+      Util.expectSuccess(decoder, [undefined])
+
+      Util.expectWarning(decoder, [1, "b"], `/1 index is unexpected`, [1])
+
+      Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+      Util.expectFailure(
+        decoder,
+        ["a"],
+        `/0 member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
+      )
+    })
+
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const decoder = _.decoderFor(schema)
       expect(decoder.decode(["a", 1])).toEqual(_.success(["a", 1]))
 
       Util.expectFailure(decoder, {}, "{} did not satisfy is(ReadonlyArray<unknown>)")
-      Util.expectFailure(decoder, ["a"], "/1 undefined did not satisfy is(number)")
+      Util.expectFailure(decoder, ["a"], "/1 did not satisfy is(required)")
 
       Util.expectWarning(decoder, ["a", NaN], "/1 did not satisfy not(isNaN)", ["a", NaN])
     })

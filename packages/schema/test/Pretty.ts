@@ -55,7 +55,7 @@ describe.concurrent("Pretty", () => {
       const schema = S.partial(S.struct({ a: S.number }))
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
-      expect(pretty.pretty({ a: undefined })).toEqual(`{ a: undefined }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
     })
   })
 
@@ -97,12 +97,46 @@ describe.concurrent("Pretty", () => {
   })
 
   describe.concurrent("tuple", () => {
+    it("required element", () => {
+      const schema = S.tuple(S.number)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([1])).toEqual(`[1]`)
+      const x = [1, "b"] as any
+      expect(pretty.pretty(x)).toEqual(`[1]`)
+    })
+
+    it("required element with undefined", () => {
+      const schema = S.tuple(S.union(S.number, S.undefined))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([1])).toEqual(`[1]`)
+      expect(pretty.pretty([undefined])).toEqual(`[undefined]`)
+      const x = [1, "b"] as any
+      expect(pretty.pretty(x)).toEqual(`[1]`)
+    })
+
+    it("optional element", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.number))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty([1])).toEqual(`[1]`)
+      const x = [1, "b"] as any
+      expect(pretty.pretty(x)).toEqual(`[1]`)
+    })
+
+    it("optional element with undefined", () => {
+      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty([1])).toEqual(`[1]`)
+      const x = [1, "b"] as any
+      expect(pretty.pretty(x)).toEqual(`[1]`)
+      expect(pretty.pretty([undefined])).toEqual(`[undefined]`)
+    })
+
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(["a", 1])).toEqual(
-        `["a", 1]`
-      )
+      expect(pretty.pretty(["a", 1])).toEqual(`["a", 1]`)
     })
 
     it("rest element", () => {
@@ -192,7 +226,6 @@ describe.concurrent("Pretty", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
-      expect(pretty.pretty({ a: undefined })).toEqual(`{ a: undefined }`)
       expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
     })
 
@@ -200,9 +233,7 @@ describe.concurrent("Pretty", () => {
       const schema = pipe(S.tuple(S.string, S.number), S.partial)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty([])).toEqual("[]")
-      expect(pretty.pretty([undefined])).toEqual("[undefined]")
       expect(pretty.pretty(["a"])).toEqual(`["a"]`)
-      expect(pretty.pretty(["a", undefined])).toEqual(`["a", undefined]`)
     })
 
     it("array", () => {

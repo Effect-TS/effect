@@ -157,7 +157,7 @@ const _struct = (
 const _tuple = (
   ast: AST.Tuple,
   elements: ReadonlyArray<Pretty<any>>,
-  oRest: O.Option<Pretty<any>>
+  rest: O.Option<Pretty<any>>
 ): Pretty<any> =>
   make(
     I.makeSchema(ast),
@@ -168,20 +168,20 @@ const _tuple = (
       // handle elements
       // ---------------------------------------------
       for (; i < elements.length; i++) {
-        if (ast.elements[i].isOptional && input[i] === undefined) {
-          if (i < input.length) {
-            output[i] = "undefined"
+        if (input.length < i + 1) {
+          if (ast.elements[i].isOptional) {
+            continue
           }
+          output[i] = "undefined"
         } else {
-          const pretty = elements[i]
-          output[i] = pretty.pretty(input[i])
+          output[i] = elements[i].pretty(input[i])
         }
       }
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(oRest)) {
-        const pretty = oRest.value
+      if (O.isSome(rest)) {
+        const pretty = rest.value
         for (; i < input.length; i++) {
           output[i] = pretty.pretty(input[i])
         }

@@ -164,8 +164,11 @@ export const provideDecoderFor = (provider: Provider) =>
               // handle elements
               // ---------------------------------------------
               for (; i < elements.length; i++) {
-                if (ast.elements[i].isOptional && input[i] === undefined) {
-                  continue
+                if (input.length < i + 1) {
+                  if (ast.elements[i].isOptional) {
+                    continue
+                  }
+                  return failure(DE.index(i, [DE.missing]))
                 }
                 const decoder = elements[i]
                 const t = decoder.decode(input[i])

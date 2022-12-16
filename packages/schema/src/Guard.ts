@@ -84,8 +84,11 @@ export const provideGuardFor = (provider: Provider) =>
               // handle elements
               // ---------------------------------------------
               for (; i < elements.length; i++) {
-                if (ast.elements[i].isOptional && input.length < i + 1) {
-                  continue
+                if (input.length < i + 1) {
+                  if (ast.elements[i].isOptional) {
+                    continue
+                  }
+                  return false
                 }
                 if (!elements[i].is(input[i])) {
                   return false

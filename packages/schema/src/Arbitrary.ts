@@ -115,6 +115,16 @@ const _tuple = (
       // handle elements
       // ---------------------------------------------
       let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
+      if (elements.length > 0) {
+        const optionalIndex = ast.elements.findIndex((e) => e.isOptional)
+        if (optionalIndex !== -1) {
+          output = output.chain((as) =>
+            fc.integer({ min: optionalIndex, max: elements.length - 1 }).map((i) => {
+              return ast.elements[i].isOptional ? as.slice(0, i - 1) : as
+            })
+          )
+        }
+      }
 
       // ---------------------------------------------
       // handle rest element
