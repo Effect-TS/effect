@@ -92,7 +92,7 @@ describe.concurrent("Schema", () => {
           if (AST.isStruct(schema.ast)) {
             const fields = schema.ast.fields.slice()
             const i = fields.findIndex((field) => field.key === from)
-            fields[i] = AST.field(to, fields[i].value, fields[i].isReadonly)
+            fields[i] = AST.field(to, fields[i].value, fields[i].isOptional, fields[i].isReadonly)
             return S.make(
               AST.struct(fields, schema.ast.indexSignatures)
             )
@@ -139,7 +139,8 @@ describe.concurrent("Schema", () => {
               const isOptional = key.endsWith("?")
               return AST.field(
                 isOptional ? key.substring(0, key.length - 1) : key,
-                isOptional ? S.optional(fields[key]).ast : fields[key].ast,
+                fields[key].ast,
+                isOptional,
                 true
               )
             }),

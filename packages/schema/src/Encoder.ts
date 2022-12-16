@@ -5,7 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -71,8 +71,6 @@ export const provideEncoderFor = (provider: Provider) =>
           return make(I.bigint, (n) => n.toString())
         case "SymbolKeyword":
           return make(I.bigint, identity)
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
@@ -159,7 +157,7 @@ const _struct = (
         const key = ast.fields[i].key
         processedKeys[key] = null
         if (
-          AST.isOptionalType(ast.fields[i].value) &&
+          ast.fields[i].isOptional &&
           !Object.prototype.hasOwnProperty.call(input, key)
         ) {
           continue

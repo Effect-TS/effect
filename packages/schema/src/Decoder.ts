@@ -148,8 +148,6 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         case "SymbolKeyword":
           return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
           const elements = ast.elements.map((e) => go(e.type))
           const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
@@ -256,7 +254,7 @@ const _struct = (
         const field = ast.fields[i]
         const key = field.key
         processedKeys[key] = null
-        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
           continue
         }
         const decoder = fields[i]

@@ -1,4 +1,5 @@
 import * as C from "@fp-ts/schema/Codec"
+import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Codec", () => {
   it("exports", () => {
@@ -22,6 +23,8 @@ describe.concurrent("Codec", () => {
       lastName: C.string,
       age: C.optional(C.number)
     })
+
+    Util.expectSuccess(Person, { firstName: "Michael", lastName: "Arnaldi" })
 
     const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
     const string = Person.stringify(person)

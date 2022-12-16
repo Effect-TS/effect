@@ -209,13 +209,9 @@ describe.concurrent("Decoder", () => {
   it("optional", () => {
     const schema = S.optional(S.number)
     const decoder = _.decoderFor(schema)
-    Util.expectSuccess(decoder, undefined)
     Util.expectSuccess(decoder, 1)
-    Util.expectFailure(
-      decoder,
-      "a",
-      `member: "a" did not satisfy is(undefined), member: "a" did not satisfy is(number)`
-    )
+    Util.expectFailure(decoder, undefined, `undefined did not satisfy is(number)`)
+    Util.expectFailure(decoder, "a", `"a" did not satisfy is(number)`)
     Util.expectWarning(decoder, NaN, "did not satisfy not(isNaN)", NaN)
   })
 
@@ -306,11 +302,12 @@ describe.concurrent("Decoder", () => {
 
   describe.concurrent("partial", () => {
     it("struct", () => {
-      const schema = pipe(S.struct({ a: S.number }), S.partial)
+      const schema = S.partial(S.struct({ a: S.number }))
       const decoder = _.decoderFor(schema)
-      expect(decoder.decode({ a: 1 })).toEqual(_.success({ a: 1 }))
-      expect(decoder.decode({ a: undefined })).toEqual(_.success({ a: undefined }))
       expect(decoder.decode({})).toEqual(_.success({}))
+      expect(decoder.decode({ a: 1 })).toEqual(_.success({ a: 1 }))
+
+      Util.expectFailure(decoder, { a: undefined }, `/a undefined did not satisfy is(number)`)
     })
 
     it("tuple", () => {

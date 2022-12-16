@@ -25,7 +25,6 @@ export type AST =
   | BooleanKeyword
   | BigIntKeyword
   | SymbolKeyword
-  | OptionalType
   | Tuple
   | Struct
   | Union
@@ -222,25 +221,6 @@ export const symbolKeyword: SymbolKeyword = {
 /**
  * @since 1.0.0
  */
-export interface OptionalType {
-  readonly _tag: "OptionalType"
-  readonly type: AST
-}
-
-/**
- * @since 1.0.0
- */
-export const optionalType = (type: AST): OptionalType =>
-  isOptionalType(type) ? type : ({ _tag: "OptionalType", type })
-
-/**
- * @since 1.0.0
- */
-export const isOptionalType = (ast: AST): ast is OptionalType => ast._tag === "OptionalType"
-
-/**
- * @since 1.0.0
- */
 export interface Element {
   readonly type: AST
   readonly isOptional: boolean
@@ -281,6 +261,7 @@ export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
 export interface Field {
   readonly key: PropertyKey
   readonly value: AST
+  readonly isOptional: boolean
   readonly isReadonly: boolean
 }
 
@@ -290,8 +271,9 @@ export interface Field {
 export const field = (
   key: PropertyKey,
   value: AST,
+  isOptional: boolean,
   isReadonly: boolean
-): Field => ({ key, value, isReadonly })
+): Field => ({ key, value, isOptional, isReadonly })
 
 /**
  * @since 1.0.0
@@ -528,27 +510,28 @@ export const getFields = (
     case "TypeAliasDeclaration":
       return getFields(ast.type)
     case "Tuple":
-      return ast.elements.map((element, i) => field(i, element.type, true))
+      return ast.elements.map((element, i) =>
+        field(i, element.type, element.isOptional, ast.isReadonly)
+      )
     case "Struct":
       return ast.fields
     case "Union": {
       const fields = pipe(ast.members, RA.flatMap(getFields))
       return keyof(ast).map((key) => {
-        let isTypeOptional = false
+        let isOptional = false
         let isReadonly = false
         const type = union(
           fields.filter((field) => field.key === key).map((field) => {
             if (field.isReadonly) {
               isReadonly = true
             }
-            if (isOptionalType(field.value)) {
-              isTypeOptional = true
-              return field.value.type
+            if (field.isOptional) {
+              isOptional = true
             }
             return field.value
           })
         )
-        return field(key, isTypeOptional ? optionalType(type) : type, isReadonly)
+        return field(key, type, isOptional, isReadonly)
       })
     }
     case "Lazy":
@@ -576,7 +559,7 @@ export const partial = (ast: AST): AST => {
       )
     case "Struct":
       return struct(
-        ast.fields.map((f) => field(f.key, optionalType(f.value), f.isReadonly)),
+        ast.fields.map((f) => field(f.key, f.value, true, f.isReadonly)),
         ast.indexSignatures
       )
     case "Union":

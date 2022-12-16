@@ -1,7 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -79,8 +79,6 @@ export const provideTypeRepFor = (
           return make(ast, "bigint")
         case "SymbolKeyword":
           return make(ast, "symbol")
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
           const elements = ast.elements.map((e) => go(e.type))
           const rest = pipe(
@@ -109,7 +107,7 @@ export const provideTypeRepFor = (
             "{ " +
               ast.fields.map((field, i) => {
                 return `${field.isReadonly ? "readonly " : ""}${String(field.key)}${
-                  AST.isOptionalType(field.value) ? "?" : ""
+                  field.isOptional ? "?" : ""
                 }: ${fields[i].typeRep}`
               }).join(", ") +
               ast.indexSignatures.map((is) => `readonly [_: ${is.key}]: ${go(is.value).typeRep}`)

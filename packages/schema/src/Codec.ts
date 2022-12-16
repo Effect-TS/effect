@@ -277,13 +277,7 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export interface OptionalCodec<A> extends Codec<A>, S.OptionalSchema<A> {}
-
-/**
- * @since 1.0.0
- */
-export const optional = <A>(schema: Schema<A>): OptionalCodec<A | undefined> =>
-  codecFor(S.optional(schema)) as any
+export const optional: <A>(schema: Schema<A>) => S.Optional<A> = I.optional
 
 /**
  * @since 1.0.0

@@ -17,7 +17,7 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Provider } from "@fp-ts/schema/Provider"
-import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
+import type { Optional, OptionalKeys, Schema, Spread } from "@fp-ts/schema/Schema"
 
 // ---------------------------------------------
 // Decoder APIs
@@ -245,8 +245,16 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
 /** @internal */
-export const optional = <A>(schema: Schema<A>): OptionalSchema<A | undefined> =>
-  makeSchema(AST.optionalType(schema.ast)) as any
+export const OptionalId: symbol = Symbol.for("@fp-ts/schema/optional")
+
+const isOptional = <A>(schema: Schema<A>): boolean => schema["_id"] === OptionalId
+
+/** @internal */
+export const optional = <A>(schema: Schema<A>): Optional<A> => {
+  const out: any = makeSchema(schema.ast)
+  out["_id"] = OptionalId
+  return out
+}
 
 /** @internal */
 export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
@@ -259,7 +267,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 > =>
   makeSchema(
     AST.struct(
-      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, true)),
+      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, isOptional(fields[key]), true)),
       []
     )
   )

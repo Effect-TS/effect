@@ -199,21 +199,27 @@ export type Spread<A> = {
 
 /**
  * @since 1.0.0
+ * @category symbol
  */
-export interface OptionalSchema<A> extends Schema<A> {
-  readonly OptionalSchema: true
+export type OptionalId = typeof I.OptionalId
+
+/**
+ * @since 1.0.0
+ */
+export interface Optional<A> extends Schema<A> {
+  readonly _id: OptionalId
 }
 
 /**
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => OptionalSchema<A | undefined> = I.optional
+export const optional: <A>(schema: Schema<A>) => Optional<A> = I.optional
 
 /**
  * @since 1.0.0
  */
 export type OptionalKeys<T> = {
-  [K in keyof T]: T[K] extends OptionalSchema<any> ? K : never
+  [K in keyof T]: T[K] extends Optional<any> ? K : never
 }[keyof T]
 
 /**

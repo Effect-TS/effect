@@ -130,8 +130,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType("b"), true),
-            AST.field("a", AST.stringKeyword, true)
+            AST.field("b", AST.literalType("b"), false, true),
+            AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: []
         })
@@ -142,8 +142,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.undefinedKeyword, true),
-            AST.field("a", AST.stringKeyword, true)
+            AST.field("b", AST.undefinedKeyword, false, true),
+            AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: []
         })
@@ -154,8 +154,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.booleanKeyword, true),
-            AST.field("a", AST.stringKeyword, true)
+            AST.field("b", AST.booleanKeyword, false, true),
+            AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: []
         })
@@ -166,8 +166,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType(null), true),
-            AST.field("a", AST.booleanKeyword, true)
+            AST.field("b", AST.literalType(null), false, true),
+            AST.field("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: []
         })
@@ -278,23 +278,23 @@ describe.concurrent("AST", () => {
     it("type alias", () => {
       const schema = DataOption.schema(S.number)
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, true)
+        AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true)
       ])
     })
 
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field(0, S.string.ast, true),
-        AST.field(1, S.number.ast, true)
+        AST.field(0, S.string.ast, false, true),
+        AST.field(1, S.number.ast, false, true)
       ])
     })
 
     it("struct", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("a", S.string.ast, true),
-        AST.field("b", S.number.ast, true)
+        AST.field("a", S.string.ast, false, true),
+        AST.field("b", S.number.ast, false, true)
       ])
     })
 
@@ -305,7 +305,7 @@ describe.concurrent("AST", () => {
           S.struct({ a: S.boolean, c: S.boolean })
         )
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), true)
+          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), false, true)
         ])
       })
 
@@ -315,7 +315,7 @@ describe.concurrent("AST", () => {
           S.struct({ c: S.boolean, a: S.optional(S.boolean) })
         )
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.optionalType(AST.union([S.string.ast, S.boolean.ast])), true)
+          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), true, true)
         ])
       })
     })
@@ -333,8 +333,8 @@ describe.concurrent("AST", () => {
           })
       )
       expect(AST.getFields(Category.ast)).toEqual([
-        AST.field("name", S.string.ast, true),
-        AST.field("categories", AST.tuple([], O.some([Category.ast]), true), true)
+        AST.field("name", S.string.ast, false, true),
+        AST.field("categories", AST.tuple([], O.some([Category.ast]), true), false, true)
       ])
     })
   })

@@ -109,8 +109,6 @@ const provideJsonSchemaFor = (
           return { type: "number" }
         case "BooleanKeyword":
           return { type: "boolean" }
-        case "OptionalType":
-          return go(ast.type)
         case "Tuple":
           return _tuple(
             ast,
@@ -212,7 +210,7 @@ const _struct = (
       // ---------------------------------------------
       // handle optional fields
       // ---------------------------------------------
-      if (!AST.isOptionalType(ast.fields[i].value)) {
+      if (!ast.fields[i].isOptional) {
         output.required.push(key)
       }
     } else {
@@ -352,10 +350,13 @@ describe("jsonSchemaFor", () => {
       assertFalse(schema, { a: 1, b: 1 })
     })
 
-    it("should not fail on optional fields", () => {
+    it("optional fields", () => {
       const schema = S.partial(S.struct({ a: S.string, b: S.number }))
       assertTrue(schema, {})
-      assertTrue(schema, { a: undefined })
+      assertTrue(schema, { a: "a" })
+      assertTrue(schema, { b: 1 })
+      assertFalse(schema, null)
+      assertFalse(schema, { a: 1, b: 1 })
     })
   })
 

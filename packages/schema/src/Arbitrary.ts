@@ -4,7 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
@@ -71,8 +71,6 @@ export const provideArbitraryFor = (provider: Provider) =>
           return make(I.bigint, (fc) => fc.bigInt())
         case "SymbolKeyword":
           return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
@@ -147,7 +145,7 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        if (!AST.isOptionalType(field.value)) {
+        if (!field.isOptional) {
           requiredKeys.push(key)
         }
         arbs[key] = fields[i].arbitrary(fc)

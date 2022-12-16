@@ -70,8 +70,6 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.bigint, I.isBigInt)
         case "SymbolKeyword":
           return make(I.symbol, I.isSymbol)
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
           const elements = ast.elements.map((e) => go(e.type))
           const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
@@ -154,7 +152,7 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
           continue
         }
         const guard = fields[i]

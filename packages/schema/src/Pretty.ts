@@ -4,7 +4,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -75,8 +75,6 @@ export const providePrettyFor = (provider: Provider) =>
           return make(I.boolean, (bi) => `${bi.toString()}n`)
         case "SymbolKeyword":
           return make(I.symbol, (s) => String(s))
-        case "OptionalType":
-          return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple":
           return _tuple(
             ast,
@@ -125,7 +123,7 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        if (AST.isOptionalType(field.value) && !Object.prototype.hasOwnProperty.call(input, key)) {
+        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
           continue
         }
         output.push(`${_propertyKey(key)}: ${fields[i].pretty(input[key])}`)
