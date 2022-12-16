@@ -244,7 +244,7 @@ export const isOptionalType = (ast: AST): ast is OptionalType => ast._tag === "O
 export interface Tuple {
   readonly _tag: "Tuple"
   readonly elements: ReadonlyArray<AST>
-  readonly rest: Option<AST>
+  readonly rest: Option<RA.NonEmptyReadonlyArray<AST>>
   readonly isReadonly: boolean
 }
 
@@ -253,7 +253,7 @@ export interface Tuple {
  */
 export const tuple = (
   elements: ReadonlyArray<AST>,
-  rest: Option<AST>,
+  rest: Option<RA.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly })
 
@@ -427,6 +427,33 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 /**
  * @since 1.0.0
  */
+export const addRestElement = (ast: Tuple, restElement: AST): Tuple => {
+  const rest: RA.NonEmptyReadonlyArray<AST> = pipe(
+    ast.rest,
+    O.match(
+      () => [restElement],
+      // if `ast` already contains a rest element merge them into a union
+      (existing) => [union([...existing, restElement])]
+    )
+  )
+  return tuple(ast.elements, O.some(rest), ast.isReadonly)
+}
+
+/**
+ * @since 1.0.0
+ */
+export const addElement = (ast: Tuple, element: AST): Tuple =>
+  pipe(
+    ast.rest,
+    O.match(
+      () => tuple([...ast.elements, element], O.none, ast.isReadonly),
+      (rest) => tuple(ast.elements, O.some(pipe(rest, RA.append(element))), ast.isReadonly)
+    )
+  )
+
+/**
+ * @since 1.0.0
+ */
 export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
   switch (ast._tag) {
     case "TypeAliasDeclaration":
@@ -519,7 +546,7 @@ export const partial = (ast: AST): AST => {
     case "Tuple":
       return tuple(
         ast.elements.map(optionalType),
-        pipe(ast.rest, O.map(optionalType)),
+        pipe(ast.rest, O.map((existing) => [union([...existing, undefinedKeyword])])),
         ast.isReadonly
       )
     case "Struct":

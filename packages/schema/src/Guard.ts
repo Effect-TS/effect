@@ -74,7 +74,7 @@ export const provideGuardFor = (provider: Provider) =>
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
           const elements = ast.elements.map(go)
-          const rest = pipe(ast.rest, O.map((ast) => [ast, go(ast)] as const))
+          const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
           return make(
             I.makeSchema(ast),
             (input: unknown): input is any => {

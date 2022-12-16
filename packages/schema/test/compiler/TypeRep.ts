@@ -85,7 +85,7 @@ export const provideTypeRepFor = (
           const elements = ast.elements.map(go)
           const rest = pipe(
             ast.rest,
-            O.map((ast) => (elements.length > 0 ? ", " : "") + `...${go(ast).typeRep}[]`),
+            O.map(([head]) => (elements.length > 0 ? ", " : "") + `...${go(head).typeRep}[]`), // TODO: handle tail
             O.getOrElse(() => "")
           )
           return make(

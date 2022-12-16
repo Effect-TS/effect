@@ -5,6 +5,89 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("AST", () => {
+  describe.concurrent("partial", () => {
+    describe.concurrent("tuple", () => {
+      it("elements only", () => {
+        const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+        expect(AST.partial(tuple)).toEqual(
+          AST.tuple([AST.optionalType(AST.stringKeyword)], O.none, true)
+        )
+      })
+
+      it("elements and rest", () => {
+        const tuple = AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
+        expect(AST.partial(tuple)).toEqual(
+          AST.tuple(
+            [AST.optionalType(AST.stringKeyword)],
+            O.some([AST.union([AST.numberKeyword, AST.undefinedKeyword])]),
+            true
+          )
+        )
+      })
+
+      it("elements and rest elements", () => {
+        const tuple = AST.tuple(
+          [AST.stringKeyword],
+          O.some([AST.numberKeyword, AST.booleanKeyword]),
+          true
+        )
+        expect(AST.partial(tuple)).toEqual(
+          AST.tuple(
+            [AST.optionalType(AST.stringKeyword)],
+            O.some([AST.union([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])]),
+            true
+          )
+        )
+      })
+    })
+  })
+
+  describe.concurrent("addRestElement", () => {
+    /*
+    type Rest<A extends ReadonlyArray<any>, R> = readonly [...A, ...Array<R>]
+    type Test1 = Rest<readonly [string], number>
+    type Test2 = Rest<Test1, boolean>
+    type Test3 = Rest<readonly [string, ...Array<number>, string], boolean>
+    */
+
+    it("non existing rest element", () => {
+      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+      const actual = AST.addRestElement(tuple, AST.numberKeyword)
+      expect(actual).toEqual(
+        AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
+      )
+    })
+
+    it("multiple `rest` calls must result in a union", () => {
+      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+      const actual1 = AST.addRestElement(tuple, AST.numberKeyword)
+      const actual2 = AST.addRestElement(actual1, AST.booleanKeyword)
+      expect(actual2).toEqual(
+        AST.tuple(
+          [AST.stringKeyword],
+          O.some([AST.union([AST.numberKeyword, AST.booleanKeyword])]),
+          true
+        )
+      )
+    })
+  })
+
+  describe.concurrent("addElement", () => {
+    it("non existing rest element", () => {
+      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+      expect(AST.addElement(tuple, AST.numberKeyword)).toEqual(
+        AST.tuple([AST.stringKeyword, AST.numberKeyword], O.none, true)
+      )
+    })
+
+    it("existing rest element", () => {
+      const tuple = AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
+      expect(AST.addElement(tuple, AST.booleanKeyword)).toEqual(
+        AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword, AST.booleanKeyword]), true)
+      )
+    })
+  })
+
   describe.concurrent("struct", () => {
     describe.concurrent("should give precedence to fields / index signatures containing less inhabitants", () => {
       it("literal vs string", () => {
@@ -216,7 +299,7 @@ describe.concurrent("AST", () => {
       )
       expect(AST.getFields(Category.ast)).toEqual([
         AST.field("name", S.string.ast, true),
-        AST.field("categories", AST.tuple([], O.some(Category.ast), true), true)
+        AST.field("categories", AST.tuple([], O.some([Category.ast]), true), true)
       ])
     })
   })

@@ -334,9 +334,9 @@ describe.concurrent("Decoder", () => {
         `1 error(s) found
 └─ index 0
    ├─ union member
-   │  └─ "a" did not satisfy is(undefined)
+   │  └─ "a" did not satisfy is(number)
    └─ union member
-      └─ "a" did not satisfy is(number)`
+      └─ "a" did not satisfy is(undefined)`
       )
     })
 
@@ -356,9 +356,9 @@ describe.concurrent("Decoder", () => {
 ├─ union member
 │  └─ index 0
 │     ├─ union member
-│     │  └─ "a" did not satisfy is(undefined)
+│     │  └─ "a" did not satisfy is(number)
 │     └─ union member
-│        └─ "a" did not satisfy is(number)
+│        └─ "a" did not satisfy is(undefined)
 └─ union member
    └─ ["a"] did not satisfy is(string)`
         )

@@ -5,7 +5,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
@@ -152,20 +151,7 @@ export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
 export const rest = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
-      const a = self.ast
-      return make(pipe(
-        a.rest,
-        O.match(
-          () => AST.tuple(a.elements, O.some(rest.ast), true),
-          (value) =>
-            // if `self` already contains a rest element merge them into a union
-            AST.tuple(
-              a.elements,
-              O.some(AST.union([value, rest.ast])),
-              true
-            )
-        )
-      ))
+      return make(AST.addRestElement(self.ast, rest.ast))
     }
     throw new Error("`rest` is not supported on this schema")
   }

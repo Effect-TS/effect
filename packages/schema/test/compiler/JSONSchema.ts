@@ -115,7 +115,7 @@ const provideJsonSchemaFor = (
           return _tuple(
             ast,
             ast.elements.map(go),
-            pipe(ast.rest, O.map(go))
+            pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
           )
         case "Struct": {
           const indexSignatures = ast.indexSignatures.filter((is) => is.key === "string")

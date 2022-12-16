@@ -77,7 +77,7 @@ export const provideArbitraryFor = (provider: Provider) =>
           return _tuple(
             ast,
             ast.elements.map(go),
-            pipe(ast.rest, O.map(go))
+            pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
           )
         case "Struct":
           return _struct(

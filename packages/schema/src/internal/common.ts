@@ -275,7 +275,7 @@ export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(()
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
-  makeSchema(AST.tuple([], O.some(item.ast), true))
+  makeSchema(AST.tuple([], O.some([item.ast]), true))
 
 /** @internal */
 export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
