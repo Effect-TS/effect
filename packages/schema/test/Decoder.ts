@@ -3,9 +3,10 @@ import * as _ from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Decoder", () => {
+describe.concurrent("Decoder", () => {
   it("exports", () => {
     expect(_.DecoderId).exist
+    expect(_.make).exist
     expect(_.success).exist
     expect(_.failure).exist
     expect(_.failures).exist
@@ -23,7 +24,7 @@ describe("Decoder", () => {
     Util.expectFailure(decoder, 1, "1 did not satisfy is(string)")
   })
 
-  describe("number", () => {
+  describe.concurrent("number", () => {
     const decoder = _.decoderFor(S.number)
 
     it("baseline", () => {
@@ -91,7 +92,80 @@ describe("Decoder", () => {
     )
   })
 
-  describe("tuple", () => {
+  describe.concurrent("enums", () => {
+    it("Numeric enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.nativeEnum(Fruits)
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, Fruits.Apple)
+      Util.expectSuccess(decoder, Fruits.Banana)
+      Util.expectSuccess(decoder, 0)
+      Util.expectSuccess(decoder, 1)
+
+      Util.expectFailure(
+        decoder,
+        3,
+        `member: 3 did not satisfy isEqual(0), member: 3 did not satisfy isEqual(1)`
+      )
+    })
+
+    it("String enums", () => {
+      enum Fruits {
+        Apple = "apple",
+        Banana = "banana",
+        Cantaloupe = 0
+      }
+      const schema = S.nativeEnum(Fruits)
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, Fruits.Apple)
+      Util.expectSuccess(decoder, Fruits.Cantaloupe)
+      Util.expectSuccess(decoder, "apple")
+      Util.expectSuccess(decoder, "banana")
+      Util.expectSuccess(decoder, 0)
+
+      Util.expectFailureTree(
+        decoder,
+        "Cantaloupe",
+        `3 error(s) found
+├─ union member
+│  └─ "Cantaloupe" did not satisfy isEqual("apple")
+├─ union member
+│  └─ "Cantaloupe" did not satisfy isEqual("banana")
+└─ union member
+   └─ "Cantaloupe" did not satisfy isEqual(0)`
+      )
+    })
+
+    it("Const enums", () => {
+      const Fruits = {
+        Apple: "apple",
+        Banana: "banana",
+        Cantaloupe: 3
+      } as const
+      const schema = S.nativeEnum(Fruits)
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, "apple")
+      Util.expectSuccess(decoder, "banana")
+      Util.expectSuccess(decoder, 3)
+
+      Util.expectFailureTree(
+        decoder,
+        "Cantaloupe",
+        `3 error(s) found
+├─ union member
+│  └─ "Cantaloupe" did not satisfy isEqual("apple")
+├─ union member
+│  └─ "Cantaloupe" did not satisfy isEqual("banana")
+└─ union member
+   └─ "Cantaloupe" did not satisfy isEqual(3)`
+      )
+    })
+  })
+
+  describe.concurrent("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const decoder = _.decoderFor(schema)
@@ -145,7 +219,7 @@ describe("Decoder", () => {
     Util.expectWarning(decoder, NaN, "did not satisfy not(isNaN)", NaN)
   })
 
-  describe("struct", () => {
+  describe.concurrent("struct", () => {
     it("should handle strings as keys", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const decoder = _.decoderFor(schema)
@@ -230,7 +304,7 @@ describe("Decoder", () => {
     })
   })
 
-  describe("partial", () => {
+  describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const decoder = _.decoderFor(schema)
@@ -266,7 +340,7 @@ describe("Decoder", () => {
       )
     })
 
-    describe("union", () => {
+    describe.concurrent("union", () => {
       it("baseline", () => {
         const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
         const decoder = _.decoderFor(schema)
@@ -296,7 +370,7 @@ describe("Decoder", () => {
         Util.expectFailure(decoder, 1, "1 did not satisfy is(never)")
       })
 
-      describe("should give precedence to schemas containing more infos", () => {
+      describe.concurrent("should give precedence to schemas containing more infos", () => {
         it("more required fields", () => {
           const a = S.struct({ a: S.string })
           const ab = S.struct({ a: S.string, b: S.number })
@@ -351,7 +425,7 @@ describe("Decoder", () => {
     )
   })
 
-  describe("omit", () => {
+  describe.concurrent("omit", () => {
     it("baseline", () => {
       const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
       const schema = pipe(base, S.omit("c"))

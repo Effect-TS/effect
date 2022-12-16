@@ -7,9 +7,10 @@ import * as S from "@fp-ts/schema/Schema"
 
 const guardFor = G.guardFor
 
-describe("Guard", () => {
-  it("GuardId", () => {
+describe.concurrent("Guard", () => {
+  it("exports", () => {
     expect(G.GuardId).exist
+    expect(G.make).exist
   })
 
   it("string", () => {
@@ -45,15 +46,25 @@ describe("Guard", () => {
     expect(guard.is("a")).toEqual(false)
   })
 
-  it("literal", () => {
-    const schema = S.literal(1, "a")
-    const guard = G.guardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is(null)).toEqual(false)
+  describe.concurrent("literal", () => {
+    it("1 member", () => {
+      const schema = S.literal(1)
+      const guard = G.guardFor(schema)
+      expect(guard.is(1)).toEqual(true)
+      expect(guard.is("a")).toEqual(false)
+      expect(guard.is(null)).toEqual(false)
+    })
+
+    it("2 members", () => {
+      const schema = S.literal(1, "a")
+      const guard = G.guardFor(schema)
+      expect(guard.is(1)).toEqual(true)
+      expect(guard.is("a")).toEqual(true)
+      expect(guard.is(null)).toEqual(false)
+    })
   })
 
-  describe("enums", () => {
+  describe.concurrent("enums", () => {
     it("Numeric enums", () => {
       enum Fruits {
         Apple,
@@ -99,7 +110,7 @@ describe("Guard", () => {
     })
   })
 
-  describe("tuple", () => {
+  describe.concurrent("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const guard = G.guardFor(schema)
@@ -144,7 +155,7 @@ describe("Guard", () => {
     })
   })
 
-  describe("struct", () => {
+  describe.concurrent("struct", () => {
     it("required fields", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const guard = G.guardFor(schema)
@@ -222,7 +233,7 @@ describe("Guard", () => {
     expect(guard.is("a")).toEqual(true)
   })
 
-  describe("lazy", () => {
+  describe.concurrent("lazy", () => {
     it("baseline", () => {
       interface Category {
         readonly name: string
@@ -330,7 +341,7 @@ describe("Guard", () => {
     expect(guard.is({ a: "a", b: 1, c: "a" })).toEqual(true)
   })
 
-  describe("omit", () => {
+  describe.concurrent("omit", () => {
     it("baseline", () => {
       const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
       const schema = pipe(base, S.omit("c"))
@@ -367,7 +378,7 @@ describe("Guard", () => {
     expect(guard.is("a")).toEqual(true)
   })
 
-  describe("rest", () => {
+  describe.concurrent("rest", () => {
     it("baseline", () => {
       const schema = pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
       const guard = guardFor(schema)
@@ -394,7 +405,7 @@ describe("Guard", () => {
     })
   })
 
-  describe("extend", () => {
+  describe.concurrent("extend", () => {
     it("struct", () => {
       const schema = pipe(
         S.struct({ a: S.string }),
@@ -423,7 +434,7 @@ describe("Guard", () => {
     })
   })
 
-  describe("partial", () => {
+  describe.concurrent("partial", () => {
     it("type alias", () => {
       const schema = pipe(DataOption.schema(S.number), S.partial)
       const guard = guardFor(schema)
@@ -484,5 +495,37 @@ describe("Guard", () => {
     expect(guard.is("aa")).toEqual(true)
 
     expect(guard.is("")).toEqual(false)
+  })
+
+  describe.concurrent("nullables", () => {
+    it("nullable (1)", () => {
+      /* Schema<{ readonly a: number | null; }> */
+      const schema = S.struct({ a: S.union(S.number, S.literal(null)) })
+      const guard = guardFor(schema)
+      expect(guard.is({})).toBe(false)
+      expect(guard.is({ a: null })).toBe(true)
+      expect(guard.is({ a: undefined })).toBe(false)
+      expect(guard.is({ a: 1 })).toBe(true)
+    })
+
+    it("nullable (2)", () => {
+      /* Schema<{ readonly a: number | null | undefined; }> */
+      const schema = S.struct({ a: S.union(S.number, S.literal(null), S.undefined) })
+      const guard = guardFor(schema)
+      expect(guard.is({})).toBe(true)
+      expect(guard.is({ a: null })).toBe(true)
+      expect(guard.is({ a: undefined })).toBe(true)
+      expect(guard.is({ a: 1 })).toBe(true)
+    })
+
+    it("nullable (3)", () => {
+      /*Schema<{ readonly a?: number | null | undefined; }> */
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null))) })
+      const guard = guardFor(schema)
+      expect(guard.is({})).toBe(true)
+      expect(guard.is({ a: null })).toBe(true)
+      expect(guard.is({ a: undefined })).toBe(true)
+      expect(guard.is({ a: 1 })).toBe(true)
+    })
   })
 })

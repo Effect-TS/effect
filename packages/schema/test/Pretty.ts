@@ -3,9 +3,10 @@ import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 
-describe("Pretty", () => {
-  it("PrettyId", () => {
+describe.concurrent("Pretty", () => {
+  it("exports", () => {
     expect(P.PrettyId).exist
+    expect(P.make).exist
   })
 
   it("declaration", () => {
@@ -16,7 +17,7 @@ describe("Pretty", () => {
     )
   })
 
-  describe("struct", () => {
+  describe.concurrent("struct", () => {
     it("baseline", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const pretty = P.prettyFor(schema)
@@ -95,7 +96,7 @@ describe("Pretty", () => {
     )
   })
 
-  describe("tuple", () => {
+  describe.concurrent("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const pretty = P.prettyFor(schema)
@@ -148,7 +149,7 @@ describe("Pretty", () => {
     )
   })
 
-  describe("partial", () => {
+  describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const pretty = P.prettyFor(schema)

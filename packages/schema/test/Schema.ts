@@ -6,7 +6,7 @@ import * as S from "@fp-ts/schema/Schema"
 
 const guardFor = G.provideGuardFor(empty)
 
-describe("Schema", () => {
+describe.concurrent("Schema", () => {
   it("exist", () => {
     expect(S.make).exist
     expect(S.filter).exist
@@ -22,7 +22,7 @@ describe("Schema", () => {
     expect(S.json).exist
   })
 
-  describe("literal", () => {
+  describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
       expect(S.literal().ast).toEqual(AST.neverKeyword)
     })
@@ -50,7 +50,7 @@ describe("Schema", () => {
     expect(guard.is(3)).toEqual(false)
   })
 
-  describe("keyof", () => {
+  describe.concurrent("keyof", () => {
     it("struct", () => {
       const schema = S.struct({
         a: S.string,
@@ -82,7 +82,7 @@ describe("Schema", () => {
     })
   })
 
-  describe("experimental", () => {
+  describe.concurrent("experimental", () => {
     it("rename", () => {
       const rename = <A, From extends keyof A, To extends PropertyKey>(
         from: From,

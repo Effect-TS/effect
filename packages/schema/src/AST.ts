@@ -469,7 +469,9 @@ export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
   )
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const getFields = (
   ast: AST
 ): ReadonlyArray<Field> => {

@@ -7,8 +7,8 @@ import * as S from "@fp-ts/schema/Schema"
 // import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
 
-describe("examples", () => {
-  describe("README", () => {
+describe.concurrent("examples", () => {
+  describe.concurrent("README", () => {
     it("Summary", () => {
       const Person = C.struct({
         name: C.string,

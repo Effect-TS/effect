@@ -5,7 +5,7 @@ import * as S from "@fp-ts/schema/Schema"
 
 const NumberFromString = pipe(S.string, parseFloat.schema)
 
-describe("Encoder", () => {
+describe.concurrent("Encoder", () => {
   it("exports", () => {
     expect(_.EncoderId).exist
   })
@@ -37,7 +37,7 @@ describe("Encoder", () => {
     expect(encoder.encode(a)).toEqual(a)
   })
 
-  describe("tuple", () => {
+  describe.concurrent("tuple", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, NumberFromString)
       const encoder = _.encoderFor(schema)
@@ -52,7 +52,7 @@ describe("Encoder", () => {
     })
   })
 
-  describe("struct", () => {
+  describe.concurrent("struct", () => {
     it("baseline", () => {
       const schema = S.struct({ a: S.string, b: NumberFromString })
       const encoder = _.encoderFor(schema)
@@ -99,7 +99,7 @@ describe("Encoder", () => {
     })
   })
 
-  describe("union", () => {
+  describe.concurrent("union", () => {
     it("union", () => {
       const schema = S.union(S.string, NumberFromString)
       const encoder = _.encoderFor(schema)
@@ -107,7 +107,7 @@ describe("Encoder", () => {
       expect(encoder.encode(1)).toEqual("1")
     })
 
-    describe("should give precedence to schemas containing more infos", () => {
+    describe.concurrent("should give precedence to schemas containing more infos", () => {
       it("more required fields", () => {
         const a = S.struct({ a: S.string })
         const ab = S.struct({ a: S.string, b: S.number })
@@ -126,7 +126,7 @@ describe("Encoder", () => {
     })
   })
 
-  describe("partial", () => {
+  describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const encoder = _.encoderFor(schema)
