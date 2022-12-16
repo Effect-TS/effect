@@ -76,7 +76,7 @@ export const provideEncoderFor = (provider: Provider) =>
         case "Tuple":
           return _tuple(
             ast,
-            ast.elements.map(go),
+            ast.elements.map((e) => go(e.type)),
             pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
           )
         case "Struct":
@@ -119,7 +119,7 @@ const _tuple = (
         // ---------------------------------------------
         // handle optional elements
         // ---------------------------------------------
-        if (AST.isOptionalType(ast.elements[i]) && input[i] === undefined) {
+        if (ast.elements[i].isOptional && input[i] === undefined) {
           if (i < input.length) {
             output[i] = undefined
           }

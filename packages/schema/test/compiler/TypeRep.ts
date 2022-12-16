@@ -82,7 +82,7 @@ export const provideTypeRepFor = (
         case "OptionalType":
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const elements = ast.elements.map(go)
+          const elements = ast.elements.map((e) => go(e.type))
           const rest = pipe(
             ast.rest,
             O.map(([head]) => (elements.length > 0 ? ", " : "") + `...${go(head).typeRep}[]`), // TODO: handle tail

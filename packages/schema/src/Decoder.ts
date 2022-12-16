@@ -151,7 +151,7 @@ export const provideDecoderFor = (provider: Provider) =>
         case "OptionalType":
           return go(AST.union([AST.undefinedKeyword, ast.type]))
         case "Tuple": {
-          const elements = ast.elements.map(go)
+          const elements = ast.elements.map((e) => go(e.type))
           const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
           return make(
             I.makeSchema(ast),
@@ -166,7 +166,7 @@ export const provideDecoderFor = (provider: Provider) =>
               // handle elements
               // ---------------------------------------------
               for (; i < elements.length; i++) {
-                if (AST.isOptionalType(ast.elements[i]) && input[i] === undefined) {
+                if (ast.elements[i].isOptional && input[i] === undefined) {
                   continue
                 }
                 const decoder = elements[i]

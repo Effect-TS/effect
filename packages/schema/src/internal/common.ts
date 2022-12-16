@@ -268,7 +268,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
 ): Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
-  makeSchema(AST.tuple(elements.map((c) => c.ast), O.none, true))
+  makeSchema(AST.tuple(elements.map((schema) => AST.element(schema.ast, false)), O.none, true))
 
 /** @internal */
 export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))

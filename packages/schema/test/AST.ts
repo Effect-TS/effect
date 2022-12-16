@@ -8,17 +8,25 @@ describe.concurrent("AST", () => {
   describe.concurrent("partial", () => {
     describe.concurrent("tuple", () => {
       it("elements only", () => {
-        const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+        // type A = [string]
+        // type B = Partial<A>
+        const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
         expect(AST.partial(tuple)).toEqual(
-          AST.tuple([AST.optionalType(AST.stringKeyword)], O.none, true)
+          AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
         )
       })
 
       it("elements and rest", () => {
-        const tuple = AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
+        // type A = readonly [string, ...Array<number>]
+        // type B = Partial<A>
+        const tuple = AST.tuple(
+          [AST.element(AST.stringKeyword, false)],
+          O.some([AST.numberKeyword]),
+          true
+        )
         expect(AST.partial(tuple)).toEqual(
           AST.tuple(
-            [AST.optionalType(AST.stringKeyword)],
+            [AST.element(AST.stringKeyword, true)],
             O.some([AST.union([AST.numberKeyword, AST.undefinedKeyword])]),
             true
           )
@@ -27,13 +35,13 @@ describe.concurrent("AST", () => {
 
       it("elements and rest elements", () => {
         const tuple = AST.tuple(
-          [AST.stringKeyword],
+          [AST.element(AST.stringKeyword, false)],
           O.some([AST.numberKeyword, AST.booleanKeyword]),
           true
         )
         expect(AST.partial(tuple)).toEqual(
           AST.tuple(
-            [AST.optionalType(AST.stringKeyword)],
+            [AST.element(AST.stringKeyword, true)],
             O.some([AST.union([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])]),
             true
           )
@@ -48,23 +56,24 @@ describe.concurrent("AST", () => {
     type Test1 = Rest<readonly [string], number>
     type Test2 = Rest<Test1, boolean>
     type Test3 = Rest<readonly [string, ...Array<number>, string], boolean>
+    type Test4 = Rest<readonly [string, ...Array<number>, boolean], bigint>
     */
 
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
       const actual = AST.addRestElement(tuple, AST.numberKeyword)
       expect(actual).toEqual(
-        AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
+        AST.tuple([AST.element(AST.stringKeyword, false)], O.some([AST.numberKeyword]), true)
       )
     })
 
     it("multiple `rest` calls must result in a union", () => {
-      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
       const actual1 = AST.addRestElement(tuple, AST.numberKeyword)
       const actual2 = AST.addRestElement(actual1, AST.booleanKeyword)
       expect(actual2).toEqual(
         AST.tuple(
-          [AST.stringKeyword],
+          [AST.element(AST.stringKeyword, false)],
           O.some([AST.union([AST.numberKeyword, AST.booleanKeyword])]),
           true
         )
@@ -74,29 +83,41 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("addElement", () => {
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.stringKeyword], O.none, true)
-      expect(AST.addElement(tuple, AST.numberKeyword)).toEqual(
-        AST.tuple([AST.stringKeyword, AST.numberKeyword], O.none, true)
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+      expect(AST.addElement(tuple, AST.element(AST.numberKeyword, false))).toEqual(
+        AST.tuple(
+          [AST.element(AST.stringKeyword, false), AST.element(AST.numberKeyword, false)],
+          O.none,
+          true
+        )
       )
     })
 
     it("existing rest element", () => {
-      const tuple = AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword]), true)
-      expect(AST.addElement(tuple, AST.booleanKeyword)).toEqual(
-        AST.tuple([AST.stringKeyword], O.some([AST.numberKeyword, AST.booleanKeyword]), true)
+      const tuple = AST.tuple(
+        [AST.element(AST.stringKeyword, false)],
+        O.some([AST.numberKeyword]),
+        true
+      )
+      expect(AST.addElement(tuple, AST.element(AST.booleanKeyword, false))).toEqual(
+        AST.tuple(
+          [AST.element(AST.stringKeyword, false)],
+          O.some([AST.numberKeyword, AST.booleanKeyword]),
+          true
+        )
       )
     })
 
     it("A required element cannot follow an optional element", () => {
-      const tuple = AST.tuple([AST.optionalType(AST.stringKeyword)], O.none, true)
-      expect(() => AST.addElement(tuple, AST.numberKeyword)).toThrowError(
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
+      expect(() => AST.addElement(tuple, AST.element(AST.numberKeyword, false))).toThrowError(
         new Error("A required element cannot follow an optional element. ts(1257)")
       )
     })
 
     it("An optional element cannot follow a rest element", () => {
       const tuple = AST.tuple([], O.some([AST.stringKeyword]), true)
-      expect(() => AST.addElement(tuple, AST.optionalType(AST.numberKeyword))).toThrowError(
+      expect(() => AST.addElement(tuple, AST.element(AST.numberKeyword, true))).toThrowError(
         new Error("An optional element cannot follow a rest element. ts(1266)")
       )
     })

@@ -162,7 +162,7 @@ export const rest = <R>(rest: Schema<R>) =>
 export const element = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.addElement(self.ast, element.ast))
+      return make(AST.addElement(self.ast, AST.element(element.ast, false)))
     }
     throw new Error("`element` is not supported on this schema")
   }
@@ -173,7 +173,7 @@ export const element = <E>(element: Schema<E>) =>
 export const optionalElement = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E?]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.addElement(self.ast, AST.optionalType(element.ast)))
+      return make(AST.addElement(self.ast, AST.element(element.ast, true)))
     }
     throw new Error("`optionalElement` is not supported on this schema")
   }
