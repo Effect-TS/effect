@@ -53,10 +53,40 @@ describe.concurrent("Encoder", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("baseline", () => {
-      const schema = S.struct({ a: S.string, b: NumberFromString })
+    it("required field", () => {
+      const schema = S.struct({ a: S.number })
       const encoder = _.encoderFor(schema)
-      expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: "1" })
+      expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
+      const x = { a: 1, b: "b" }
+      expect(encoder.encode(x)).toStrictEqual({ a: 1 })
+    })
+
+    it("required field with undefined", () => {
+      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      const encoder = _.encoderFor(schema)
+      expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
+      expect(encoder.encode({ a: undefined })).toStrictEqual({ a: undefined })
+      const x = { a: 1, b: "b" }
+      expect(encoder.encode(x)).toStrictEqual({ a: 1 })
+    })
+
+    it("optional field", () => {
+      const schema = S.struct({ a: S.optional(S.number) })
+      const encoder = _.encoderFor(schema)
+      expect(encoder.encode({})).toStrictEqual({})
+      expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
+      const x = { a: 1, b: "b" }
+      expect(encoder.encode(x)).toStrictEqual({ a: 1 })
+    })
+
+    it("optional field with undefined", () => {
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const encoder = _.encoderFor(schema)
+      expect(encoder.encode({})).toStrictEqual({})
+      expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
+      const x = { a: 1, b: "b" }
+      expect(encoder.encode(x)).toStrictEqual({ a: 1 })
+      expect(encoder.encode({ a: undefined })).toStrictEqual({ a: undefined })
     })
 
     it("extend stringIndexSignature", () => {
@@ -85,17 +115,6 @@ describe.concurrent("Encoder", () => {
       const schema = S.struct({ [a]: S.string })
       const encoder = _.encoderFor(schema)
       expect(encoder.encode({ [a]: "a" })).toEqual({ [a]: "a" })
-    })
-
-    it("should not output optional fields", () => {
-      const schema = S.partial(S.struct({ a: S.number }))
-      const encoder = _.encoderFor(schema)
-      expect(encoder.encode({})).toEqual({})
-      const output = encoder.encode({ a: undefined })
-      expect(output).toEqual({ a: undefined })
-      if (output !== null && typeof output === "object") {
-        expect(Object.keys(output)).toEqual(["a"])
-      }
     })
   })
 
@@ -131,7 +150,6 @@ describe.concurrent("Encoder", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const encoder = _.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
-      expect(encoder.encode({ a: undefined })).toEqual({ a: undefined })
       expect(encoder.encode({})).toEqual({})
     })
 

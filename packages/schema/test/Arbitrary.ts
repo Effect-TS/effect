@@ -45,6 +45,28 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
+  describe.concurrent("struct", () => {
+    it("required field", () => {
+      const schema = S.struct({ a: S.number })
+      property(schema)
+    })
+
+    it("required field with undefined", () => {
+      const schema = S.struct({ a: S.union(S.number, S.undefined) })
+      property(schema)
+    })
+
+    it("optional field", () => {
+      const schema = S.struct({ a: S.optional(S.number) })
+      property(schema)
+    })
+
+    it("optional field with undefined", () => {
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      property(schema)
+    })
+  })
+
   it("union", () => {
     const schema = S.union(S.string, S.number)
     property(schema)
@@ -110,6 +132,12 @@ describe.concurrent("Arbitrary", () => {
     it("nullable (3)", () => {
       /*Schema<{ readonly a?: number | null | undefined; }> */
       const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null))) })
+      property(schema)
+    })
+
+    it("nullable (4)", () => {
+      /* Schema<{ readonly a?: number | null | undefined; }> */
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null), S.undefined)) })
       property(schema)
     })
   })

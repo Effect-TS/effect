@@ -152,11 +152,13 @@ const _struct = (
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
-          continue
+        if (!Object.prototype.hasOwnProperty.call(input, key)) {
+          if (field.isOptional) {
+            continue
+          }
+          return false
         }
-        const guard = fields[i]
-        if (!guard.is(input[key])) {
+        if (!fields[i].is(input[key])) {
           return false
         }
       }

@@ -105,8 +105,15 @@ export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P
 const _literalType = (literal: AST.Literal): string =>
   typeof literal === "bigint" ? literal.toString() : JSON.stringify(literal)
 
-const _propertyKey = (key: PropertyKey): string =>
-  typeof key === "symbol" ? String(key) : JSON.stringify(key)
+const _propertyKey = (key: PropertyKey): string => {
+  if (typeof key === "symbol") {
+    return String(key)
+  } else if (typeof key === "number") {
+    return String(key)
+  }
+  const out = JSON.stringify(key)
+  return out.length === key.length + 2 ? key : out
+}
 
 const _struct = (
   ast: AST.Struct,

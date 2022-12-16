@@ -21,6 +21,7 @@ export type DecodeError =
   | GreaterThanOrEqualTo
   | Index
   | Key
+  | Missing
   | UnexpectedKey
   | UnexpectedIndex
   | Member
@@ -251,6 +252,15 @@ export const key = (
   key,
   errors
 })
+
+/**
+ * @since 1.0.0
+ */
+export interface Missing {
+  readonly _tag: "Missing"
+}
+
+export const missing: Missing = { _tag: "Missing" }
 
 /**
  * @since 1.0.0

@@ -43,7 +43,7 @@ describe.concurrent("examples", () => {
       )
       expect(() => Person.parseOrThrow("{}", (errors) => JSON.stringify(errors))).toThrow(
         new Error(
-          "Cannot decode JSON, errors: [{\"_tag\":\"Key\",\"key\":\"name\",\"errors\":[{\"_tag\":\"NotType\",\"expected\":\"string\"}]}]"
+          `Cannot decode JSON, errors: [{"_tag":"Key","key":"name","errors":[{"_tag":"Missing"}]}]`
         )
       )
 
@@ -59,7 +59,7 @@ describe.concurrent("examples", () => {
 
       // pretty print
       expect(Person.pretty({ name: "name", age: 18 })).toEqual(
-        "{ \"name\": \"name\", \"age\": 18 }"
+        `{ name: "name", age: 18 }`
       )
 
       // arbitrary

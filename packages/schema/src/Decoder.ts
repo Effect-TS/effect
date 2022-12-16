@@ -254,8 +254,11 @@ const _struct = (
         const field = ast.fields[i]
         const key = field.key
         processedKeys[key] = null
-        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
-          continue
+        if (!Object.prototype.hasOwnProperty.call(input, key)) {
+          if (field.isOptional) {
+            continue
+          }
+          return failure(DE.key(key, [DE.missing]))
         }
         const decoder = fields[i]
         const t = decoder.decode(input[key])

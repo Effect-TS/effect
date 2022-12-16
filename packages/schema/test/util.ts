@@ -70,6 +70,8 @@ const format = (e: DE.DecodeError): string => {
       return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Key":
       return `/${String(e.key)} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
+    case "Missing":
+      return `did not satisfy is(required)`
     case "UnexpectedKey":
       return `/${String(e.key)} key is unexpected`
     case "UnexpectedIndex":
@@ -150,6 +152,8 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(`index ${String(e.index)} index is unexpected`)
     case "Key":
       return make(`key ${String(e.key)}`, e.errors.map(go))
+    case "Missing":
+      return make(`did not satisfy not(isNaN)`)
     case "UnexpectedKey":
       return make(`key ${String(e.key)} key is unexpected`)
     case "Member":

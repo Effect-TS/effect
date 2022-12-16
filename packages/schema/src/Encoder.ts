@@ -154,12 +154,10 @@ const _struct = (
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
-        const key = ast.fields[i].key
+        const field = ast.fields[i]
+        const key = field.key
         processedKeys[key] = null
-        if (
-          ast.fields[i].isOptional &&
-          !Object.prototype.hasOwnProperty.call(input, key)
-        ) {
+        if (!Object.prototype.hasOwnProperty.call(input, key) && field.isOptional) {
           continue
         }
         const encoder = fields[i]

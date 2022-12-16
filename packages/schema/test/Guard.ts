@@ -156,21 +156,51 @@ describe.concurrent("Guard", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required fields", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
+    it("required field", () => {
+      const schema = S.struct({ a: S.number })
       const guard = G.guardFor(schema)
+      expect(guard.is({ a: 1 })).toEqual(true)
+      expect(guard.is({ a: 1, b: "b" })).toEqual(true)
+
       expect(guard.is(null)).toEqual(false)
-      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
+      expect(guard.is({})).toEqual(false)
+      expect(guard.is({ a: undefined })).toEqual(false)
     })
 
-    it("required and optional fields (optional combinator)", () => {
-      const schema = S.struct({ a: S.string, b: S.optional(S.number) })
+    it("required field with undefined", () => {
+      const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const guard = G.guardFor(schema)
-      expect(guard.is({ a: "a" })).toEqual(true)
-      expect(guard.is({ a: "a", b: 1 })).toEqual(true)
-      expect(guard.is({ a: 1 })).toEqual(false)
-      expect(guard.is({ a: "a", b: "b" })).toEqual(false)
-      expect(guard.is({ a: "a", b: undefined })).toEqual(false)
+      expect(guard.is({ a: 1 })).toEqual(true)
+      expect(guard.is({ a: 1, b: "b" })).toEqual(true)
+      expect(guard.is({ a: undefined })).toEqual(true)
+
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({})).toEqual(false)
+      expect(guard.is({ a: "a" })).toEqual(false)
+    })
+
+    it("optional field", () => {
+      const schema = S.struct({ a: S.optional(S.number) })
+      const guard = G.guardFor(schema)
+      expect(guard.is({})).toEqual(true)
+      expect(guard.is({ a: 1 })).toEqual(true)
+      expect(guard.is({ a: 1, b: "b" })).toEqual(true)
+
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({ a: "a" })).toEqual(false)
+      expect(guard.is({ a: undefined })).toEqual(false)
+    })
+
+    it("optional field with undefined", () => {
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const guard = G.guardFor(schema)
+      expect(guard.is({})).toEqual(true)
+      expect(guard.is({ a: 1 })).toEqual(true)
+      expect(guard.is({ a: 1, b: "b" })).toEqual(true)
+      expect(guard.is({ a: undefined })).toEqual(true)
+
+      expect(guard.is(null)).toEqual(false)
+      expect(guard.is({ a: "a" })).toEqual(false)
     })
 
     it("{ readonly [_: string]: unknown }", () => {
@@ -502,20 +532,30 @@ describe.concurrent("Guard", () => {
       /* Schema<{ readonly a: number | null | undefined; }> */
       const schema = S.struct({ a: S.union(S.number, S.literal(null), S.undefined) })
       const guard = guardFor(schema)
-      expect(guard.is({})).toBe(true)
+      expect(guard.is({})).toBe(false)
       expect(guard.is({ a: null })).toBe(true)
       expect(guard.is({ a: undefined })).toBe(true)
       expect(guard.is({ a: 1 })).toBe(true)
     })
 
     it("nullable (3)", () => {
-      /*Schema<{ readonly a?: number | null | undefined; }> */
+      /* Schema<{ readonly a?: number | null; }> */
       const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null))) })
       const guard = guardFor(schema)
       expect(guard.is({})).toBe(true)
       expect(guard.is({ a: null })).toBe(true)
-      expect(guard.is({ a: 1 })).toBe(true)
       expect(guard.is({ a: undefined })).toBe(false)
+      expect(guard.is({ a: 1 })).toBe(true)
+    })
+
+    it("nullable (4)", () => {
+      /* Schema<{ readonly a?: number | null | undefined; }> */
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null), S.undefined)) })
+      const guard = guardFor(schema)
+      expect(guard.is({})).toBe(true)
+      expect(guard.is({ a: null })).toBe(true)
+      expect(guard.is({ a: undefined })).toBe(true)
+      expect(guard.is({ a: 1 })).toBe(true)
     })
   })
 })

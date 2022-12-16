@@ -216,38 +216,79 @@ describe.concurrent("Decoder", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("should handle strings as keys", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
+    it("required field", () => {
+      const schema = S.struct({ a: S.number })
       const decoder = _.decoderFor(schema)
-      expect(decoder.decode({ a: "a", b: 1 })).toEqual(_.success({ a: "a", b: 1 }))
+      Util.expectSuccess(decoder, { a: 1 })
+
+      Util.expectWarning(decoder, { a: 1, b: "b" }, "/b key is unexpected", { a: 1 })
 
       Util.expectFailure(
         decoder,
         null,
-        "null did not satisfy is({ readonly [_: string]: unknown })"
+        `null did not satisfy is({ readonly [_: string]: unknown })`
       )
-      Util.expectFailure(decoder, { a: "a", b: "a" }, "/b \"a\" did not satisfy is(number)")
-      Util.expectFailure(decoder, { a: 1, b: "a" }, "/a 1 did not satisfy is(string)")
-
-      Util.expectWarning(decoder, { a: "a", b: NaN }, "/b did not satisfy not(isNaN)", {
-        a: "a",
-        b: NaN
-      })
+      Util.expectFailure(decoder, {}, "/a did not satisfy is(required)")
+      Util.expectFailure(decoder, { a: undefined }, "/a undefined did not satisfy is(number)")
     })
 
-    it("additional fields should raise a warning", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
+    it("required field with undefined", () => {
+      const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const decoder = _.decoderFor(schema)
-      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c key is unexpected", {
-        a: "a",
-        b: 1
-      })
+      Util.expectSuccess(decoder, { a: 1 })
+      Util.expectSuccess(decoder, { a: undefined })
+
+      Util.expectWarning(decoder, { a: 1, b: "b" }, "/b key is unexpected", { a: 1 })
+
+      Util.expectFailure(
+        decoder,
+        null,
+        `null did not satisfy is({ readonly [_: string]: unknown })`
+      )
+      Util.expectFailure(decoder, {}, "/a did not satisfy is(required)")
+      Util.expectFailure(
+        decoder,
+        { a: "a" },
+        `/a member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
+      )
     })
 
-    it("should not add optional keys", () => {
-      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+    it("optional field", () => {
+      const schema = S.struct({ a: S.optional(S.number) })
       const decoder = _.decoderFor(schema)
-      expect(decoder.decode({})).toEqual(_.success({}))
+      Util.expectSuccess(decoder, {})
+      Util.expectSuccess(decoder, { a: 1 })
+
+      Util.expectWarning(decoder, { a: 1, b: "b" }, "/b key is unexpected", { a: 1 })
+
+      Util.expectFailure(
+        decoder,
+        null,
+        `null did not satisfy is({ readonly [_: string]: unknown })`
+      )
+      Util.expectFailure(decoder, { a: "a" }, `/a "a" did not satisfy is(number)`)
+      Util.expectFailure(decoder, { a: undefined }, `/a undefined did not satisfy is(number)`)
+    })
+
+    it("optional field with undefined", () => {
+      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, {})
+      Util.expectSuccess(decoder, { a: 1 })
+      Util.expectSuccess(decoder, { a: undefined })
+
+      Util.expectWarning(decoder, { a: 1, b: "b" }, "/b key is unexpected", { a: 1 })
+
+      Util.expectFailure(
+        decoder,
+        null,
+        `null did not satisfy is({ readonly [_: string]: unknown })`
+      )
+      Util.expectFailure(
+        decoder,
+        { a: "a" },
+        `/a member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
+      )
     })
 
     it("stringIndexSignature", () => {
@@ -260,21 +301,6 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
 
       Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
-    })
-
-    it("extend stringIndexSignature", () => {
-      const schema = pipe(
-        S.struct({ a: S.string }),
-        S.extend(S.stringIndexSignature(S.string))
-      )
-      const decoder = _.decoderFor(schema)
-      expect(decoder.decode({ a: "a" })).toEqual(_.success({ a: "a" }))
-      expect(decoder.decode({ a: "a", b: "b" })).toEqual(_.success({ a: "a", b: "b" }))
-
-      Util.expectFailure(decoder, {}, "/a undefined did not satisfy is(string)")
-      Util.expectFailure(decoder, { b: "b" }, "/a undefined did not satisfy is(string)")
-      Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
-      Util.expectFailure(decoder, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
     })
 
     it("symbolIndexSignature", () => {
@@ -297,6 +323,36 @@ describe.concurrent("Decoder", () => {
         "/Symbol(@fp-ts/schema/test/a) did not satisfy not(isNaN)",
         { [a]: NaN }
       )
+    })
+
+    it("additional fields should raise a warning", () => {
+      const schema = S.struct({ a: S.string, b: S.number })
+      const decoder = _.decoderFor(schema)
+      Util.expectWarning(decoder, { a: "a", b: 1, c: true }, "/c key is unexpected", {
+        a: "a",
+        b: 1
+      })
+    })
+
+    it("should not add optional keys", () => {
+      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+      const decoder = _.decoderFor(schema)
+      expect(decoder.decode({})).toEqual(_.success({}))
+    })
+
+    it("extend stringIndexSignature", () => {
+      const schema = pipe(
+        S.struct({ a: S.string }),
+        S.extend(S.stringIndexSignature(S.string))
+      )
+      const decoder = _.decoderFor(schema)
+      expect(decoder.decode({ a: "a" })).toEqual(_.success({ a: "a" }))
+      expect(decoder.decode({ a: "a", b: "b" })).toEqual(_.success({ a: "a", b: "b" }))
+
+      Util.expectFailure(decoder, {}, "/a did not satisfy is(required)")
+      Util.expectFailure(decoder, { b: "b" }, "/a did not satisfy is(required)")
+      Util.expectFailure(decoder, { a: 1 }, "/a 1 did not satisfy is(string)")
+      Util.expectFailure(decoder, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
     })
   })
 
@@ -434,8 +490,8 @@ describe.concurrent("Decoder", () => {
         null,
         "null did not satisfy is({ readonly [_: string]: unknown })"
       )
-      Util.expectFailure(decoder, { a: "a" }, "/b undefined did not satisfy is(number)")
-      Util.expectFailure(decoder, { b: 1 }, "/a undefined did not satisfy is(string)")
+      Util.expectFailure(decoder, { a: "a" }, `/b did not satisfy is(required)`)
+      Util.expectFailure(decoder, { b: 1 }, "/a did not satisfy is(required)")
     })
 
     it("involving a symbol", () => {
@@ -450,11 +506,11 @@ describe.concurrent("Decoder", () => {
         null,
         "null did not satisfy is({ readonly [_: string]: unknown })"
       )
-      Util.expectFailure(decoder, { [a]: "a" }, "/b undefined did not satisfy is(number)")
+      Util.expectFailure(decoder, { [a]: "a" }, `/b did not satisfy is(required)`)
       Util.expectFailure(
         decoder,
         { b: 1 },
-        "/Symbol(@fp-ts/schema/test/a) undefined did not satisfy is(string)"
+        `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`
       )
     })
   })
