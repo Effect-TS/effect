@@ -229,7 +229,7 @@ describe.concurrent("Decoder", () => {
       )
     })
 
-    it.skip("post rest elements", () => {
+    it("post rest element", () => {
       const schema = pipe(S.array(S.number), S.element(S.boolean))
       const decoder = _.decoderFor(schema)
       Util.expectSuccess(decoder, [true])
@@ -237,13 +237,57 @@ describe.concurrent("Decoder", () => {
       Util.expectSuccess(decoder, [1, 2, true])
       Util.expectSuccess(decoder, [1, 2, 3, true])
 
-      Util.expectFailure(decoder, ["b"], ``)
-      Util.expectFailure(decoder, [1], ``)
-      Util.expectFailure(decoder, [1, "b"], ``)
-      Util.expectFailure(decoder, [1, 2], ``)
-      Util.expectFailure(decoder, [1, 2, "b"], ``)
-      Util.expectFailure(decoder, [1, 2, 3], ``)
-      Util.expectFailure(decoder, [1, 2, 3, "b"], ``)
+      Util.expectWarning(decoder, [NaN, true], `/0 did not satisfy not(isNaN)`, [NaN, true])
+
+      Util.expectFailure(decoder, ["b"], `/0 "b" did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1], `/0 1 did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1, "b"], `/1 "b" did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1, 2], `/1 2 did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1, 2, "b"], `/2 "b" did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1, 2, 3], `/2 3 did not satisfy is(boolean)`)
+      Util.expectFailure(decoder, [1, 2, 3, "b"], `/3 "b" did not satisfy is(boolean)`)
+    })
+
+    it("post rest elements", () => {
+      const schema = pipe(
+        S.array(S.number),
+        S.element(S.boolean),
+        S.element(S.union(S.string, S.undefined))
+      )
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [true, "c"])
+      Util.expectSuccess(decoder, [1, true, "c"])
+      Util.expectSuccess(decoder, [1, 2, true, "c"])
+      Util.expectSuccess(decoder, [1, 2, 3, true, "c"])
+      Util.expectSuccess(decoder, [1, 2, 3, true, undefined])
+
+      Util.expectFailure(decoder, [], `/0 did not satisfy is(required)`)
+      Util.expectFailure(decoder, [true], `/1 did not satisfy is(required)`)
+      Util.expectFailure(decoder, [1, 2, 3, true], `/2 3 did not satisfy is(boolean)`)
+    })
+
+    it("post rest elements when rest is unknown", () => {
+      const schema = pipe(S.array(S.unknown), S.element(S.boolean))
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, [1, "a", 2, "b", true])
+      Util.expectSuccess(decoder, [true])
+
+      Util.expectFailure(decoder, [], `/0 did not satisfy is(required)`)
+    })
+
+    it("all", () => {
+      const schema = pipe(
+        S.tuple(S.string),
+        S.rest(S.number),
+        S.element(S.boolean)
+      )
+      const decoder = _.decoderFor(schema)
+      Util.expectSuccess(decoder, ["a", true])
+      Util.expectSuccess(decoder, ["a", 1, true])
+      Util.expectSuccess(decoder, ["a", 1, 2, true])
+
+      Util.expectFailure(decoder, [], `/0 did not satisfy is(required)`)
+      Util.expectFailure(decoder, ["b"], `/1 did not satisfy is(required)`)
     })
 
     it("baseline", () => {

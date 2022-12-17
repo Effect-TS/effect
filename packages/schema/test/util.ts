@@ -149,13 +149,13 @@ const go = (e: DE.DecodeError): Tree<string> => {
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
     case "UnexpectedIndex":
-      return make(`index ${String(e.index)} index is unexpected`)
+      return make(`${String(e.index)} index is unexpected`)
     case "Key":
       return make(`key ${String(e.key)}`, e.errors.map(go))
     case "Missing":
       return make(`did not satisfy not(isNaN)`)
     case "UnexpectedKey":
-      return make(`key ${String(e.key)} key is unexpected`)
+      return make(`${String(e.key)} key is unexpected`)
     case "Member":
       return make(`union member`, e.errors.map(go))
   }

@@ -7,9 +7,10 @@ import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -150,7 +151,7 @@ export const provideDecoderFor = (provider: Provider) =>
           return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
         case "Tuple": {
           const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(([head]) => [head, go(head)] as const)) // TODO: handle tail
+          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
           return make(
             I.makeSchema(ast),
             (input: unknown) => {
@@ -165,37 +166,66 @@ export const provideDecoderFor = (provider: Provider) =>
               // ---------------------------------------------
               for (; i < elements.length; i++) {
                 if (input.length < i + 1) {
+                  // the input element is missing...
                   if (ast.elements[i].isOptional) {
+                    // ...but the element is optional, go on
                     continue
+                  } else {
+                    // ...but the element is required, bail out
+                    return failure(DE.index(i, [DE.missing]))
                   }
-                  return failure(DE.index(i, [DE.missing]))
+                } else {
+                  const decoder = elements[i]
+                  const t = decoder.decode(input[i])
+                  if (isFailure(t)) {
+                    // the input element is present but is not valid, bail out
+                    return failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  } else if (isWarning(t)) {
+                    es.push(DE.index(i, t.left))
+                  }
+                  output[i] = t.right
                 }
-                const decoder = elements[i]
-                const t = decoder.decode(input[i])
-                if (isFailure(t)) {
-                  return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors
-                } else if (isWarning(t)) {
-                  es.push(DE.index(i, t.left))
-                }
-                output[i] = t.right
               }
               // ---------------------------------------------
               // handle rest element
               // ---------------------------------------------
               if (O.isSome(rest)) {
-                const [ast, decoder] = rest.value
-                if (ast !== AST.unknownKeyword && ast !== AST.anyKeyword) {
-                  for (; i < input.length; i++) {
-                    const t = decoder.decode(input[i])
-                    if (isFailure(t)) {
+                const head = RA.headNonEmpty(rest.value)
+                const tail = RA.tailNonEmpty(rest.value)
+                for (; i < input.length - tail.length; i++) {
+                  const t = head.decode(input[i])
+                  if (isFailure(t)) {
+                    // the input element is not valid...
+                    if (tail.length === 0) {
+                      // ...and there are no more elements, bail out
                       return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors
+                    } else {
+                      // ...but there is at least on post rest element to try
+                      break
+                    }
+                  } else if (isWarning(t)) {
+                    es.push(DE.index(i, t.left))
+                  }
+                  output[i] = t.right
+                }
+                // ---------------------------------------------
+                // handle post rest elements
+                // ---------------------------------------------
+                for (let j = 0; j < tail.length; j++) {
+                  i += j
+                  if (input.length < i + 1) {
+                    // the input element is missing and the element is required, bail out
+                    return failure(DE.index(i, [DE.missing]))
+                  } else {
+                    const t = tail[j].decode(input[i])
+                    if (isFailure(t)) {
+                      // the input element is present but is not valid, bail out
+                      return failures(I.mutableAppend(es, DE.index(i, t.left)))
                     } else if (isWarning(t)) {
                       es.push(DE.index(i, t.left))
                     }
                     output[i] = t.right
                   }
-                } else {
-                  output.push(...input.slice(i))
                 }
               } else {
                 // ---------------------------------------------

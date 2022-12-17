@@ -105,7 +105,7 @@ export const provideGuardFor = (provider: Provider) =>
               if (O.isSome(rest)) {
                 const head = RA.headNonEmpty(rest.value)
                 const tail = RA.tailNonEmpty(rest.value)
-                for (; i < input.length; i++) {
+                for (; i < input.length - tail.length; i++) {
                   if (!head.is(input[i])) {
                     // the input element is not valid...
                     if (tail.length === 0) {
@@ -120,11 +120,12 @@ export const provideGuardFor = (provider: Provider) =>
                 // ---------------------------------------------
                 // handle post rest elements
                 // ---------------------------------------------
-                for (let e = 0; e < tail.length; e++) {
-                  if (input.length < i + e + 1) {
+                for (let j = 0; j < tail.length; j++) {
+                  i += j
+                  if (input.length < i + 1) {
                     // the input element is missing and the element is required, bail out
                     return false
-                  } else if (!tail[e].is(input[i + e])) {
+                  } else if (!tail[j].is(input[i])) {
                     // the input element is present but is not valid, bail out
                     return false
                   }

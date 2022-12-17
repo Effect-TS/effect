@@ -216,33 +216,34 @@ describe.concurrent("Guard", () => {
       expect(guard.is([1, true, "c"])).toEqual(true)
       expect(guard.is([1, 2, true, "c"])).toEqual(true)
       expect(guard.is([1, 2, 3, true, "c"])).toEqual(true)
+      expect(guard.is([1, 2, 3, true, undefined])).toEqual(true)
 
       expect(guard.is([])).toEqual(false)
       expect(guard.is([true])).toEqual(false)
+      expect(guard.is([1, 2, 3, true])).toEqual(false)
     })
 
-    it.skip("post rest elements when rest is unknown", () => {
+    it("post rest elements when rest is unknown", () => {
       const schema = pipe(S.array(S.unknown), S.element(S.boolean))
       const guard = G.guardFor(schema)
+      expect(guard.is([1, "a", 2, "b", true])).toEqual(true)
       expect(guard.is([true])).toEqual(true)
+      expect(guard.is([])).toEqual(false)
     })
 
     it("all", () => {
-      const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
+      const schema = pipe(
+        S.tuple(S.string),
+        S.rest(S.number),
+        S.element(S.boolean)
+      )
       const guard = G.guardFor(schema)
       expect(guard.is(["a", true])).toEqual(true)
       expect(guard.is(["a", 1, true])).toEqual(true)
       expect(guard.is(["a", 1, 2, true])).toEqual(true)
-      expect(guard.is(["a", 1, 2, 3, true])).toEqual(true)
 
       expect(guard.is([])).toEqual(false)
       expect(guard.is(["b"])).toEqual(false)
-      expect(guard.is([1])).toEqual(false)
-      expect(guard.is([1, "b"])).toEqual(false)
-      expect(guard.is([1, 2])).toEqual(false)
-      expect(guard.is([1, 2, "b"])).toEqual(false)
-      expect(guard.is([1, 2, 3])).toEqual(false)
-      expect(guard.is([1, 2, 3, "b"])).toEqual(false)
     })
 
     it("nonEmptyArray", () => {
