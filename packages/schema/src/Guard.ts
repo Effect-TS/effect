@@ -57,6 +57,8 @@ export const provideGuardFor = (provider: Provider) =>
           return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)
         case "UndefinedKeyword":
           return make(I._undefined, I.isUndefined)
+        case "VoidKeyword":
+          return make(I._void, I.isUndefined)
         case "NeverKeyword":
           return make(I.never, I.isNever) as any
         case "UnknownKeyword":

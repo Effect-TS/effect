@@ -330,11 +330,20 @@ export const refine: <A, B extends A>(
 // data
 // ---------------------------------------------
 
-/**
- * @since 1.0.0
- */
-// eslint-disable-next-line no-shadow-restricted-names
-export const undefined: Schema<undefined> = I._undefined
+const _undefined: Schema<undefined> = I._undefined
+
+const _void: Schema<void> = I._void
+
+export {
+  /**
+   * @since 1.0.0
+   */
+  _undefined as undefined,
+  /**
+   * @since 1.0.0
+   */
+  _void as void
+}
 
 /**
  * @since 1.0.0

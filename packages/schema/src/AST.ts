@@ -18,6 +18,7 @@ export type AST =
   | LiteralType
   | UniqueSymbol
   | UndefinedKeyword
+  | VoidKeyword
   | NeverKeyword
   | UnknownKeyword
   | AnyKeyword
@@ -119,6 +120,20 @@ export interface UndefinedKeyword {
  */
 export const undefinedKeyword: UndefinedKeyword = {
   _tag: "UndefinedKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export interface VoidKeyword {
+  readonly _tag: "VoidKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const voidKeyword: VoidKeyword = {
+  _tag: "VoidKeyword"
 }
 
 /**

@@ -384,6 +384,21 @@ export const refine = <A, B extends A>(
 // data
 // ---------------------------------------------
 
+const _undefined: Codec<undefined> = codecFor(S.undefined)
+
+const _void: Codec<void> = codecFor(S.void)
+
+export {
+  /**
+   * @since 1.0.0
+   */
+  _undefined as undefined,
+  /**
+   * @since 1.0.0
+   */
+  _void as void
+}
+
 /**
  * @since 1.0.0
  */

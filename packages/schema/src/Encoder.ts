@@ -57,6 +57,8 @@ export const provideEncoderFor = (provider: Provider) =>
           return make(I.makeSchema(ast), identity)
         case "UndefinedKeyword":
           return make(I._undefined, identity)
+        case "VoidKeyword":
+          return make(I._void, identity)
         case "NeverKeyword":
           return make(I.never, absurd) as any
         case "UnknownKeyword":

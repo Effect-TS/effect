@@ -97,6 +97,8 @@ const provideTypeScriptFor = (
         }
         case "UndefinedKeyword":
           return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword))
+        case "VoidKeyword":
+          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword))
         case "NeverKeyword":
           return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword))
         case "UnknownKeyword":
@@ -222,6 +224,12 @@ describe.concurrent("TypeScript", () => {
     const schema = S.undefined
     const node = typeScriptFor(schema)
     expect(printNode(node.typeNode)).toEqual("undefined")
+  })
+
+  it("void", () => {
+    const schema = S.void
+    const node = typeScriptFor(schema)
+    expect(printNode(node.typeNode)).toEqual("void")
   })
 
   it("string", () => {

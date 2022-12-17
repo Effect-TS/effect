@@ -114,6 +114,12 @@ export const provideDecoderFor = (provider: Provider) =>
             I.isUndefined,
             (u) => DE.notType("undefined", u)
           )
+        case "VoidKeyword":
+          return I.fromRefinement(
+            I._void,
+            I.isUndefined,
+            (u) => DE.notType("void", u)
+          )
         case "NeverKeyword":
           return make(
             I.never,

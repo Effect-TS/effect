@@ -6,6 +6,12 @@ import * as S from "@fp-ts/schema/Schema";
 // Primitives
 //
 
+// $ExpectType Codec<void>
+C.void;
+
+// $ExpectType Codec<undefined>
+C.undefined;
+
 // $ExpectType Codec<string>
 C.string;
 
@@ -79,6 +85,12 @@ C.union(C.string, C.number);
 // $ExpectType Codec<readonly [string, number]>
 C.tuple(C.string, C.number);
 
+// $ExpectType Codec<readonly [string, number, boolean]>
+pipe(C.tuple(C.string, C.number), C.element(C.boolean))
+
+// $ExpectType Codec<readonly [string, number, boolean?]>
+pipe(C.tuple(C.string, C.number), C.optionalElement(C.boolean))
+
 // $ExpectType Codec<readonly [string, number, ...boolean[]]>
 pipe(C.tuple(C.string, C.number), C.rest(C.boolean))
 
@@ -112,11 +124,8 @@ pipe(
   C.extend(C.stringIndexSignature(C.string))
 );
 
-// $ExpectType Codec<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
+// $ExpectType Codec<{ readonly a: string; readonly b: number; readonly c?: boolean; }>
 C.struct({ a: C.string, b: C.number, c: C.optional(C.boolean) })
-
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
-S.struct({ a: C.string, b: C.number, c: C.optional(C.boolean) })
 
 // $ExpectType Codec<Option<number>>
 C.option(C.number)

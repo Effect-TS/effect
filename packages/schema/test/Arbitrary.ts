@@ -17,6 +17,11 @@ describe.concurrent("Arbitrary", () => {
     expect(A.make).exist
   })
 
+  it("void", () => {
+    const schema = S.void
+    property(schema)
+  })
+
   it("type alias", () => {
     const schema = readonlySet.schema(S.string)
     property(schema)

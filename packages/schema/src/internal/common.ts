@@ -235,6 +235,9 @@ export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
 /** @internal */
 export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword)
 
+/** @internal */
+export const _void: Schema<void> = makeSchema(AST.voidKeyword)
+
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */

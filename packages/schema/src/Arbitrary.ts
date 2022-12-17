@@ -56,6 +56,8 @@ export const provideArbitraryFor = (provider: Provider) =>
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))
         case "UndefinedKeyword":
           return make(I._undefined, (fc) => fc.constant(undefined))
+        case "VoidKeyword":
+          return make(I._void, (fc) => fc.constant(undefined))
         case "NeverKeyword":
           return make(I.never, () => {
             throw new Error("cannot build an Arbitrary for `never`")

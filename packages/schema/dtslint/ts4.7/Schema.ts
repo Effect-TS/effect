@@ -18,7 +18,7 @@ pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.element(S.bigint))
 
 // --- optionalElement ---
 
-// $ExpectType Schema<readonly [string, number, (boolean | undefined)?]>
+// $ExpectType Schema<readonly [string, number, boolean?]>
 pipe(S.tuple(S.string, S.number), S.optionalElement(S.boolean))
 
 // --- rest ---
@@ -39,7 +39,7 @@ pipe(S.tuple(S.string, S.number), S.rest(S.boolean), S.rest(S.number))
 // $ExpectType Schema<{ readonly a: string; readonly b: number; }>
 S.struct({ a: S.string,  b: S.number })
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean | undefined; }>
+// $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }>
 S.struct({ a: S.string,  b: S.number, c: S.optional(S.boolean) })
 
 //

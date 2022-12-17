@@ -56,6 +56,8 @@ export const providePrettyFor = (provider: Provider) =>
           return make(I.makeSchema(ast), (s) => String(s))
         case "UndefinedKeyword":
           return make(I._undefined, () => "undefined")
+        case "VoidKeyword":
+          return make(I._void, () => "void(0)")
         case "NeverKeyword":
           return make(I.never, () => {
             throw new Error("cannot pretty print a `never` value")
