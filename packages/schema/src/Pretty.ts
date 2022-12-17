@@ -88,9 +88,8 @@ export const providePrettyFor = (provider: Provider) =>
                   if (ast.elements[i].isOptional) {
                     continue
                   }
-                  output[i] = "undefined"
                 } else {
-                  output[i] = elements[i].pretty(input[i])
+                  output.push(elements[i].pretty(input[i]))
                 }
               }
               // ---------------------------------------------
@@ -100,14 +99,14 @@ export const providePrettyFor = (provider: Provider) =>
                 const head = RA.headNonEmpty(rest.value)
                 const tail = RA.tailNonEmpty(rest.value)
                 for (; i < input.length - tail.length; i++) {
-                  output[i] = head.pretty(input[i])
+                  output.push(head.pretty(input[i]))
                 }
                 // ---------------------------------------------
                 // handle post rest elements
                 // ---------------------------------------------
                 for (let j = 0; j < tail.length; j++) {
                   i += j
-                  output[i] = tail[j].pretty(input[i])
+                  output.push(tail[j].pretty(input[i]))
                 }
               }
 
@@ -137,17 +136,14 @@ export const providePrettyFor = (provider: Provider) =>
 export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P.empty)
 
 const _literalType = (literal: AST.Literal): string =>
-  typeof literal === "bigint" ? literal.toString() : JSON.stringify(literal)
+  typeof literal === "bigint" ?
+    `${literal.toString()}n` :
+    typeof literal === "symbol" ?
+    String(literal) :
+    JSON.stringify(literal)
 
-const _propertyKey = (key: PropertyKey): string => {
-  if (typeof key === "symbol") {
-    return String(key)
-  } else if (typeof key === "number") {
-    return String(key)
-  }
-  const out = JSON.stringify(key)
-  return out.length === key.length + 2 ? key : out
-}
+const _propertyKey = (key: PropertyKey): string =>
+  typeof key === "string" ? JSON.stringify(key) : String(key)
 
 const _struct = (
   ast: AST.Struct,

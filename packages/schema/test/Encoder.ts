@@ -31,10 +31,15 @@ describe.concurrent("Encoder", () => {
     expect(encoder.encode(1n)).toEqual("1")
   })
 
-  it("Encoder", () => {
+  it("symbol", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const encoder = E.encoderFor(S.symbol)
     expect(encoder.encode(a)).toEqual(a)
+  })
+
+  it("literal", () => {
+    const encoder = E.encoderFor(S.literal(null))
+    expect(encoder.encode(null)).toEqual(null)
   })
 
   describe.concurrent("tuple", () => {
@@ -212,6 +217,25 @@ describe.concurrent("Encoder", () => {
       expect(encoder.encode([])).toEqual([])
       expect(encoder.encode([1])).toEqual([1])
       expect(encoder.encode([undefined])).toEqual([undefined])
+    })
+  })
+
+  it("lazy", () => {
+    interface A {
+      readonly a: number
+      readonly as: ReadonlyArray<A>
+    }
+    const schema: S.Schema<A> = S.lazy<A>(() =>
+      S.struct({
+        a: NumberFromString,
+        as: S.array(schema)
+      })
+    )
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode({ a: 1, as: [] })).toEqual({ a: "1", as: [] })
+    expect(encoder.encode({ a: 1, as: [{ a: 2, as: [] }] })).toEqual({
+      a: "1",
+      as: [{ a: "2", as: [] }]
     })
   })
 })

@@ -195,14 +195,8 @@ export const provideDecoderFor = (provider: Provider) =>
                 for (; i < input.length - tail.length; i++) {
                   const t = head.decode(input[i])
                   if (isFailure(t)) {
-                    // the input element is not valid...
-                    if (tail.length === 0) {
-                      // ...and there are no more elements, bail out
-                      return failures(I.mutableAppend(es, DE.index(i, t.left))) // bail out on a fatal errors
-                    } else {
-                      // ...but there is at least on post rest element to try
-                      break
-                    }
+                    // the input element is not valid, bail out
+                    return failures(I.mutableAppend(es, DE.index(i, t.left)))
                   } else if (isWarning(t)) {
                     es.push(DE.index(i, t.left))
                   }

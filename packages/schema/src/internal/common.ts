@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
@@ -60,11 +59,6 @@ export const isWarning = T.isBoth
 export const flatMap: <A, E2, B>(f: (a: A) => T.Validated<E2, B>) => <E1>(
   self: T.Validated<E1, A>
 ) => T.Validated<E1 | E2, B> = T.flatMap
-
-/** @internal */
-export const compose = <B, C>(bc: Decoder<B, C>) =>
-  <A>(ab: Decoder<A, B>): Decoder<A, C> =>
-    makeDecoder(bc, (a) => pipe(ab.decode(a), flatMap(bc.decode)))
 
 /** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {

@@ -13,6 +13,11 @@ describe.concurrent("Guard", () => {
     expect(G.make).exist
   })
 
+  it("never", () => {
+    const guard = G.guardFor(S.never)
+    expect(guard.is("a")).toEqual(false)
+  })
+
   it("string", () => {
     const guard = G.guardFor(S.string)
     expect(guard.is("a")).toEqual(true)

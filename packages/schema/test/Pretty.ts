@@ -22,7 +22,7 @@ describe.concurrent("Pretty", () => {
       const schema = S.struct({ a: S.string, b: S.number })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: "a", b: 1 })).toEqual(
-        `{ a: "a", b: 1 }`
+        `{ "a": "a", "b": 1 }`
       )
     })
 
@@ -38,7 +38,7 @@ describe.concurrent("Pretty", () => {
       const schema = S.stringIndexSignature(S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: "a", b: "b" })).toEqual(
-        `{ a: "a", b: "b" }`
+        `{ "a": "a", "b": "b" }`
       )
     })
 
@@ -55,32 +55,34 @@ describe.concurrent("Pretty", () => {
       const schema = S.partial(S.struct({ a: S.number }))
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
     })
+  })
+
+  it("never", () => {
+    const schema = S.never
+    const pretty = P.prettyFor(schema)
+    expect(() => pretty.pretty("a" as any as never)).toThrowError(
+      new Error("cannot pretty print a `never` value")
+    )
   })
 
   it("string", () => {
     const schema = S.string
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty("a")).toEqual(
-      `"a"`
-    )
+    expect(pretty.pretty("a")).toEqual(`"a"`)
   })
 
   it("number", () => {
     const schema = S.number
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(1)).toEqual(
-      "1"
-    )
+    expect(pretty.pretty(1)).toEqual("1")
   })
 
   it("boolean", () => {
     const schema = S.boolean
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(true)).toEqual(
-      "true"
-    )
+    expect(pretty.pretty(true)).toEqual("true")
   })
 
   it("bigint", () => {
@@ -88,12 +90,25 @@ describe.concurrent("Pretty", () => {
     expect(pretty.pretty(1n)).toEqual("1n")
   })
 
-  it("literal", () => {
-    const schema = S.literal(null)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(null)).toEqual(
-      "null"
-    )
+  describe.concurrent("literal", () => {
+    it("null", () => {
+      const schema = S.literal(null)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(null)).toEqual("null")
+    })
+
+    it("bigint", () => {
+      const schema = S.literal(1n)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(1n)).toEqual("1n")
+    })
+
+    it("symbol", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const schema = S.literal(a)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(a)).toEqual("Symbol(@fp-ts/schema/test/a)")
+    })
   })
 
   describe.concurrent("tuple", () => {
@@ -225,40 +240,46 @@ describe.concurrent("Pretty", () => {
   })
 
   describe.concurrent("struct", () => {
+    it("should escape keys", () => {
+      const schema = S.struct({ "-": S.number })
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty({ "-": 1 })).toEqual(`{ "-": 1 }`)
+    })
+
     it("required field", () => {
       const schema = S.struct({ a: S.number })
       const pretty = P.prettyFor(schema)
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
       const x = { a: 1, b: "b" }
-      expect(pretty.pretty(x)).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
     it("required field with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const pretty = P.prettyFor(schema)
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
-      expect(pretty.pretty({ a: undefined })).toEqual(`{ a: undefined }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
+      expect(pretty.pretty({ a: undefined })).toEqual(`{ "a": undefined }`)
       const x = { a: 1, b: "b" }
-      expect(pretty.pretty(x)).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
     it("optional field", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual(`{}`)
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
       const x = { a: 1, b: "b" }
-      expect(pretty.pretty(x)).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
     it("optional field with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual(`{}`)
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
       const x = { a: 1, b: "b" }
-      expect(pretty.pretty(x)).toEqual(`{ a: 1 }`)
-      expect(pretty.pretty({ a: undefined })).toEqual(`{ a: undefined }`)
+      expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
+      expect(pretty.pretty({ a: undefined })).toEqual(`{ "a": undefined }`)
     })
   })
 
@@ -286,7 +307,7 @@ describe.concurrent("Pretty", () => {
     )
     const pretty = P.prettyFor(A)
     expect(pretty.pretty({ a: "a", as: new Set() })).toEqual(
-      `{ a: "a", as: new Set([]) }`
+      `{ "a": "a", "as": new Set([]) }`
     )
   })
 
@@ -295,7 +316,7 @@ describe.concurrent("Pretty", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
-      expect(pretty.pretty({ a: 1 })).toEqual(`{ a: 1 }`)
+      expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
     })
 
     it("tuple", () => {

@@ -59,7 +59,7 @@ describe.concurrent("examples", () => {
 
       // pretty print
       expect(Person.pretty({ name: "name", age: 18 })).toEqual(
-        `{ name: "name", age: 18 }`
+        `{ "name": "name", "age": 18 }`
       )
 
       // arbitrary

@@ -19,19 +19,13 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const id = Symbol.for("@fp-ts/schema/data/ReadonlySet")
 
-/**
- * @since 1.0.0
- */
-export const guard = <A>(item: Guard<A>): Guard<ReadonlySet<A>> =>
+const guard = <A>(item: Guard<A>): Guard<ReadonlySet<A>> =>
   I.makeGuard(
     schema(item),
     (u): u is Set<A> => u instanceof Set && Array.from(u.values()).every(item.is)
   )
 
-/**
- * @since 1.0.0
- */
-export const decoder = <A>(item: Decoder<unknown, A>): Decoder<unknown, ReadonlySet<A>> =>
+const decoder = <A>(item: Decoder<unknown, A>): Decoder<unknown, ReadonlySet<A>> =>
   I.makeDecoder(
     schema(item),
     (i) => pipe(D.decoderFor(I.array(item)).decode(i), T.map((as) => new Set(as)))
@@ -40,16 +34,10 @@ export const decoder = <A>(item: Decoder<unknown, A>): Decoder<unknown, Readonly
 const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, ReadonlySet<A>> =>
   I.makeEncoder(schema(item), (set) => Array.from(set).map(item.encode))
 
-/**
- * @since 1.0.0
- */
-export const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
+const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
   I.makeArbitrary(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
-/**
- * @since 1.0.0
- */
-export const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
+const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
   I.makePretty(
     schema(item),
     (set) => `new Set([${Array.from(set.values()).map((a) => item.pretty(a)).join(", ")}])`

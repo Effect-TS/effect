@@ -1,12 +1,17 @@
 import * as _ from "@fp-ts/schema/data/filter/MaxLength"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
+import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe("MaxLength", () => {
-  it("id", () => {
+  it("exports", () => {
     expect(_.id).exist
+  })
+
+  it("property tests", () => {
+    Util.property(_.schema(0)(S.string))
   })
 
   it("Guard", () => {
@@ -21,5 +26,10 @@ describe("MaxLength", () => {
     expect(decoder.decode("")).toEqual(D.success(""))
     expect(decoder.decode("a")).toEqual(D.success("a"))
     Util.expectFailure(decoder, "aa", "\"aa\" did not satisfy MaxLength(1)")
+  })
+
+  it("Pretty", () => {
+    const pretty = P.prettyFor(_.schema(0)(S.string))
+    expect(pretty.pretty("a")).toEqual(`"a"`)
   })
 })

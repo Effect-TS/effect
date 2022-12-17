@@ -248,6 +248,14 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(decoder, [1, 2, 3, "b"], `/3 "b" did not satisfy is(boolean)`)
     })
 
+    it("post rest element warnings", () => {
+      const schema = pipe(S.array(S.string), S.element(S.number))
+      const decoder = _.decoderFor(schema)
+
+      Util.expectWarning(decoder, [NaN], `/0 did not satisfy not(isNaN)`, [NaN])
+      Util.expectWarning(decoder, ["a", NaN], `/1 did not satisfy not(isNaN)`, ["a", NaN])
+    })
+
     it("post rest elements", () => {
       const schema = pipe(
         S.array(S.number),

@@ -107,14 +107,8 @@ export const provideGuardFor = (provider: Provider) =>
                 const tail = RA.tailNonEmpty(rest.value)
                 for (; i < input.length - tail.length; i++) {
                   if (!head.is(input[i])) {
-                    // the input element is not valid...
-                    if (tail.length === 0) {
-                      // ...and there are no more elements, bail out
-                      return false
-                    } else {
-                      // ...but there is at least on post rest element to try
-                      break
-                    }
+                    // the input element is not valid, bail out
+                    return false
                   }
                 }
                 // ---------------------------------------------
