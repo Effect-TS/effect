@@ -251,6 +251,14 @@ export const provideDecoderFor = (provider: Provider) =>
           )
         case "Union":
           return _union(ast, ast.members.map(go))
+        case "Enums":
+          return I.makeDecoder(
+            I.makeSchema(ast),
+            (u) =>
+              ast.enums.some(([_, value]) => value === u) ?
+                I.success(u) :
+                I.failure(DE.notEnums(ast.enums, u))
+          )
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }

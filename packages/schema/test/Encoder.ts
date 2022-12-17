@@ -42,6 +42,45 @@ describe.concurrent("Encoder", () => {
     expect(encoder.encode(null)).toEqual(null)
   })
 
+  describe.concurrent("enums", () => {
+    it("Numeric enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.enums(Fruits)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode(Fruits.Apple)).toEqual(0)
+      expect(encoder.encode(Fruits.Banana)).toEqual(1)
+    })
+
+    it("String enums", () => {
+      enum Fruits {
+        Apple = "apple",
+        Banana = "banana",
+        Cantaloupe = 0
+      }
+      const schema = S.enums(Fruits)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode(Fruits.Apple)).toEqual("apple")
+      expect(encoder.encode(Fruits.Banana)).toEqual("banana")
+      expect(encoder.encode(Fruits.Cantaloupe)).toEqual(0)
+    })
+
+    it("Const enums", () => {
+      const Fruits = {
+        Apple: "apple",
+        Banana: "banana",
+        Cantaloupe: 3
+      } as const
+      const schema = S.enums(Fruits)
+      const encoder = E.encoderFor(schema)
+      expect(encoder.encode(Fruits.Apple)).toEqual("apple")
+      expect(encoder.encode(Fruits.Banana)).toEqual("banana")
+      expect(encoder.encode(Fruits.Cantaloupe)).toEqual(3)
+    })
+  })
+
   describe.concurrent("tuple", () => {
     it("required element", () => {
       const schema = S.tuple(S.number)

@@ -46,6 +46,37 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
+  describe.concurrent("enums", () => {
+    it("Numeric enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.enums(Fruits)
+      property(schema)
+    })
+
+    it("String enums", () => {
+      enum Fruits {
+        Apple = "apple",
+        Banana = "banana",
+        Cantaloupe = 0
+      }
+      const schema = S.enums(Fruits)
+      property(schema)
+    })
+
+    it("Const enums", () => {
+      const Fruits = {
+        Apple: "apple",
+        Banana: "banana",
+        Cantaloupe: 3
+      } as const
+      const schema = S.enums(Fruits)
+      property(schema)
+    })
+  })
+
   it("tuple", () => {
     const schema = S.tuple(S.string, S.number)
     property(schema)

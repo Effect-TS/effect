@@ -186,9 +186,9 @@ export const uniqueSymbol = <S extends symbol>(symbol: S): Codec<S> =>
 /**
  * @since 1.0.0
  */
-export const nativeEnum = <A extends { [_: string]: string | number }>(
+export const enums = <A extends { [_: string]: string | number }>(
   nativeEnum: A
-): Codec<A> => codecFor(S.nativeEnum(nativeEnum))
+): Codec<A[keyof A]> => codecFor(S.enums(nativeEnum))
 
 // ---------------------------------------------
 // filters

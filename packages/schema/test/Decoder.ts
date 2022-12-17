@@ -112,7 +112,7 @@ describe.concurrent("Decoder", () => {
         Apple,
         Banana
       }
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const decoder = _.decoderFor(schema)
       Util.expectSuccess(decoder, Fruits.Apple)
       Util.expectSuccess(decoder, Fruits.Banana)
@@ -122,7 +122,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         3,
-        `member: 3 did not satisfy isEqual(0), member: 3 did not satisfy isEqual(1)`
+        `3 did not satisfy isEnum([["Apple",0],["Banana",1]])`
       )
     })
 
@@ -132,7 +132,7 @@ describe.concurrent("Decoder", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const decoder = _.decoderFor(schema)
       Util.expectSuccess(decoder, Fruits.Apple)
       Util.expectSuccess(decoder, Fruits.Cantaloupe)
@@ -140,16 +140,10 @@ describe.concurrent("Decoder", () => {
       Util.expectSuccess(decoder, "banana")
       Util.expectSuccess(decoder, 0)
 
-      Util.expectFailureTree(
+      Util.expectFailure(
         decoder,
         "Cantaloupe",
-        `3 error(s) found
-├─ union member
-│  └─ "Cantaloupe" did not satisfy isEqual("apple")
-├─ union member
-│  └─ "Cantaloupe" did not satisfy isEqual("banana")
-└─ union member
-   └─ "Cantaloupe" did not satisfy isEqual(0)`
+        `"Cantaloupe" did not satisfy isEnum([["Apple","apple"],["Banana","banana"],["Cantaloupe",0]])`
       )
     })
 
@@ -159,22 +153,16 @@ describe.concurrent("Decoder", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const decoder = _.decoderFor(schema)
       Util.expectSuccess(decoder, "apple")
       Util.expectSuccess(decoder, "banana")
       Util.expectSuccess(decoder, 3)
 
-      Util.expectFailureTree(
+      Util.expectFailure(
         decoder,
         "Cantaloupe",
-        `3 error(s) found
-├─ union member
-│  └─ "Cantaloupe" did not satisfy isEqual("apple")
-├─ union member
-│  └─ "Cantaloupe" did not satisfy isEqual("banana")
-└─ union member
-   └─ "Cantaloupe" did not satisfy isEqual(3)`
+        `"Cantaloupe" did not satisfy isEnum([["Apple","apple"],["Banana","banana"],["Cantaloupe",3]])`
       )
     })
   })

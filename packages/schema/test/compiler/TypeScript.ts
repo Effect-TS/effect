@@ -7,7 +7,7 @@ import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 
-export const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions) => {
+const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions) => {
   const sourceFile = ts.createSourceFile(
     "print.ts",
     "",
@@ -27,10 +27,9 @@ interface TypeScript<A> extends S.Schema<A> {
   readonly typeNode: ts.TypeNode
 }
 
-export const make = (ast: AST.AST, typeNode: ts.TypeNode): TypeScript<any> =>
-  ({ ast, typeNode }) as any
+const make = (ast: AST.AST, typeNode: ts.TypeNode): TypeScript<any> => ({ ast, typeNode }) as any
 
-export const provideTypeScriptFor = (
+const provideTypeScriptFor = (
   provider: Provider
 ) =>
   <A>(schema: S.Schema<A>): TypeScript<A> => {
@@ -85,11 +84,17 @@ export const provideTypeScriptFor = (
             return make(ast, ts.factory.createLiteralTypeNode(ts.factory.createNull()))
           }
         }
-        case "UniqueSymbol":
+        case "UniqueSymbol": {
+          const node = ts.factory.createCallExpression(
+            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier("Symbol"), "for"),
+            [],
+            [ts.factory.createStringLiteral(ast.symbol.description!)]
+          )
           return make(
             ast,
-            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(String(ast.symbol)))
+            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(printNode(node)))
           )
+        }
         case "UndefinedKeyword":
           return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword))
         case "NeverKeyword":
@@ -144,6 +149,24 @@ export const provideTypeScriptFor = (
             ast,
             ts.factory.createUnionTypeNode(ast.members.map((member) => go(member).typeNode))
           )
+        case "Enums": {
+          const node = ts.factory.createEnumDeclaration(
+            undefined,
+            "name",
+            ast.enums.map(([key, value]) =>
+              ts.factory.createEnumMember(
+                key,
+                typeof value === "string" ?
+                  ts.factory.createStringLiteral(value) :
+                  ts.factory.createNumericLiteral(value)
+              )
+            )
+          )
+          return make(
+            ast,
+            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(printNode(node)))
+          )
+        }
         case "Struct": {
           const members: Array<ts.PropertySignature | ts.IndexSignatureDeclaration> = ast.fields
             .map((field) =>
@@ -273,7 +296,20 @@ describe.concurrent("TypeScript", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const schema = S.uniqueSymbol(a)
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual(`typeof Symbol(@fp-ts/schema/test/a)`)
+    expect(printNode(node.typeNode)).toEqual(`typeof Symbol.for("@fp-ts/schema/test/a")`)
+  })
+
+  it("enums", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const schema = S.enums(Fruits)
+    const node = typeScriptFor(schema)
+    expect(printNode(node.typeNode)).toEqual(`typeof enum name {
+    Apple = 0,
+    Banana = 1
+}`)
   })
 
   describe.concurrent("tuple", () => {
@@ -480,7 +516,7 @@ describe.concurrent("TypeScript", () => {
     expect(printNode(node.typeNode)).toEqual("string | number")
   })
 
-  it("compile to TypeScript AST", () => {
+  it("example: compile to TypeScript AST", () => {
     const schema = S.struct({
       name: S.string,
       age: S.number

@@ -124,6 +124,8 @@ export const providePrettyFor = (provider: Provider) =>
           )
         case "Union":
           return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
+        case "Enums":
+          return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }

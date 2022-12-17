@@ -36,12 +36,12 @@ describe.concurrent("Schema", () => {
     })
   })
 
-  it("nativeEnum", () => {
+  it("enums", () => {
     enum Fruits {
       Apple,
       Banana
     }
-    const schema = S.nativeEnum(Fruits)
+    const schema = S.enums(Fruits)
     const guard = guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)

@@ -116,6 +116,45 @@ describe.concurrent("Pretty", () => {
     expect(pretty.pretty(a)).toEqual("Symbol(@fp-ts/schema/test/a)")
   })
 
+  describe.concurrent("enums", () => {
+    it("Numeric enums", () => {
+      enum Fruits {
+        Apple,
+        Banana
+      }
+      const schema = S.enums(Fruits)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(Fruits.Apple)).toEqual(`0`)
+      expect(pretty.pretty(Fruits.Banana)).toEqual(`1`)
+    })
+
+    it("String enums", () => {
+      enum Fruits {
+        Apple = "apple",
+        Banana = "banana",
+        Cantaloupe = 0
+      }
+      const schema = S.enums(Fruits)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(Fruits.Apple)).toEqual(`"apple"`)
+      expect(pretty.pretty(Fruits.Banana)).toEqual(`"banana"`)
+      expect(pretty.pretty(Fruits.Cantaloupe)).toEqual(`0`)
+    })
+
+    it("Const enums", () => {
+      const Fruits = {
+        Apple: "apple",
+        Banana: "banana",
+        Cantaloupe: 3
+      } as const
+      const schema = S.enums(Fruits)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(Fruits.Apple)).toEqual(`"apple"`)
+      expect(pretty.pretty(Fruits.Banana)).toEqual(`"banana"`)
+      expect(pretty.pretty(Fruits.Cantaloupe)).toEqual(`3`)
+    })
+  })
+
   describe.concurrent("tuple", () => {
     it("required element", () => {
       const schema = S.tuple(S.number)

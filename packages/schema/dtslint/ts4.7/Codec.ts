@@ -70,8 +70,8 @@ enum Fruits {
   Banana,
 }
 
-// $ExpectType Codec<typeof Fruits>
-C.nativeEnum(Fruits);
+// $ExpectType Codec<Fruits>
+C.enums(Fruits);
 
 // $ExpectType Codec<string | number>
 C.union(C.string, C.number);
@@ -79,7 +79,7 @@ C.union(C.string, C.number);
 // $ExpectType Codec<readonly [string, number]>
 C.tuple(C.string, C.number);
 
-// $ExpectType Schema<readonly [string, number, ...boolean[]]>
+// $ExpectType Codec<readonly [string, number, ...boolean[]]>
 pipe(C.tuple(C.string, C.number), C.rest(C.boolean))
 
 // $ExpectType Codec<readonly number[]>

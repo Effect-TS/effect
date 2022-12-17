@@ -84,7 +84,7 @@ describe.concurrent("Guard", () => {
         Apple,
         Banana
       }
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const guard = G.guardFor(schema)
       expect(guard.is(Fruits.Apple)).toEqual(true)
       expect(guard.is(Fruits.Banana)).toEqual(true)
@@ -99,7 +99,7 @@ describe.concurrent("Guard", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const guard = G.guardFor(schema)
       expect(guard.is(Fruits.Apple)).toEqual(true)
       expect(guard.is(Fruits.Cantaloupe)).toEqual(true)
@@ -115,7 +115,7 @@ describe.concurrent("Guard", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.nativeEnum(Fruits)
+      const schema = S.enums(Fruits)
       const guard = G.guardFor(schema)
       expect(guard.is("apple")).toEqual(true)
       expect(guard.is("banana")).toEqual(true)

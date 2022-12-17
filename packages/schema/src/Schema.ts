@@ -70,11 +70,11 @@ export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.unique
 /**
  * @since 1.0.0
  */
-export const nativeEnum = <A extends { [_: string]: string | number }>(nativeEnum: A): Schema<A> =>
-  make(AST.union(
-    Object.keys(nativeEnum).filter(
-      (key) => typeof nativeEnum[nativeEnum[key]] !== "number"
-    ).map((key) => AST.literalType(nativeEnum[key]))
+export const enums = <A extends { [_: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
+  make(AST.enums(
+    Object.keys(enums).filter(
+      (key) => typeof enums[enums[key]] !== "number"
+    ).map((key) => [key, enums[key]])
   ))
 
 // ---------------------------------------------

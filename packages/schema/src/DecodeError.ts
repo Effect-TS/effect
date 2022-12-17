@@ -11,6 +11,7 @@ export type DecodeError =
   | Custom
   | NotType
   | NotEqual
+  | NotEnums
   | NaN
   | NotFinite
   | MinLength
@@ -78,6 +79,23 @@ export const notEqual = (
   expected: unknown,
   actual: unknown
 ): NotEqual => ({ _tag: "NotEqual", expected, actual })
+
+/**
+ * @since 1.0.0
+ */
+export interface NotEnums {
+  readonly _tag: "NotEnums"
+  readonly enums: ReadonlyArray<readonly [string, string | number]>
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const notEnums = (
+  enums: ReadonlyArray<readonly [string, string | number]>,
+  actual: unknown
+): NotEnums => ({ _tag: "NotEnums", enums, actual })
 
 /**
  * @since 1.0.0

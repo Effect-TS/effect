@@ -73,6 +73,8 @@ const format = (e: DE.DecodeError): string => {
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "NotEqual":
       return `${JSON.stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
+    case "NotEnums":
+      return `${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Key":
@@ -153,6 +155,8 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(
         `${JSON.stringify(e.actual)} did not satisfy isEqual(${JSON.stringify(e.expected)})`
       )
+    case "NotEnums":
+      return make(`${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
     case "UnexpectedIndex":

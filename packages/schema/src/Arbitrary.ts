@@ -129,6 +129,15 @@ export const provideArbitraryFor = (provider: Provider) =>
             (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
           )
         }
+        case "Enums": {
+          if (ast.enums.length === 0) {
+            throw new Error("cannot build an Arbitrary for an empty enum")
+          }
+          return make(
+            I.makeSchema(ast),
+            (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
+          )
+        }
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }

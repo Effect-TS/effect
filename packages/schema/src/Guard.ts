@@ -145,6 +145,11 @@ export const provideGuardFor = (provider: Provider) =>
             (a): a is any => members.some((guard) => guard.is(a))
           )
         }
+        case "Enums":
+          return make(
+            I.makeSchema(ast),
+            (a): a is any => ast.enums.some(([_, value]) => value === a)
+          )
         case "Lazy":
           return _lazy(() => go(ast.f()))
       }

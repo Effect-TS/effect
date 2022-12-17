@@ -30,6 +30,7 @@ export type AST =
   | Struct
   | Union
   | Lazy
+  | Enums
 
 /**
  * @since 1.0.0
@@ -414,6 +415,22 @@ export const union = (candidates: ReadonlyArray<AST>): AST => {
  * @since 1.0.0
  */
 export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
+
+/**
+ * @since 1.0.0
+ */
+export interface Enums {
+  readonly _tag: "Enums"
+  readonly enums: ReadonlyArray<readonly [string, string | number]>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const enums = (enums: ReadonlyArray<readonly [string, string | number]>): Enums => ({
+  _tag: "Enums",
+  enums
+})
 
 /**
  * @since 1.0.0
