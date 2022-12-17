@@ -4,6 +4,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -58,13 +59,9 @@ export const providePrettyFor = (provider: Provider) =>
             throw new Error("cannot pretty print a `never` value")
           }) as any
         case "UnknownKeyword":
-          return make(I.unknown, () => {
-            throw new Error("cannot pretty print an `unknown` value")
-          })
+          return make(I.unknown, (u) => JSON.stringify(u, null, 2))
         case "AnyKeyword":
-          return make(I.any, () => {
-            throw new Error("cannot pretty print an `any` value")
-          })
+          return make(I.any, (a) => JSON.stringify(a, null, 2))
         case "StringKeyword":
           return make(I.string, (s) => JSON.stringify(s))
         case "NumberKeyword":
@@ -75,12 +72,49 @@ export const providePrettyFor = (provider: Provider) =>
           return make(I.boolean, (bi) => `${bi.toString()}n`)
         case "SymbolKeyword":
           return make(I.symbol, (s) => String(s))
-        case "Tuple":
-          return _tuple(
-            ast,
-            ast.elements.map((e) => go(e.type)),
-            pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
+        case "Tuple": {
+          const elements = ast.elements.map((e) => go(e.type))
+          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+          return make(
+            I.makeSchema(ast),
+            (input: ReadonlyArray<unknown>) => {
+              const output: Array<string> = []
+              let i = 0
+              // ---------------------------------------------
+              // handle elements
+              // ---------------------------------------------
+              for (; i < elements.length; i++) {
+                if (input.length < i + 1) {
+                  if (ast.elements[i].isOptional) {
+                    continue
+                  }
+                  output[i] = "undefined"
+                } else {
+                  output[i] = elements[i].pretty(input[i])
+                }
+              }
+              // ---------------------------------------------
+              // handle rest element
+              // ---------------------------------------------
+              if (O.isSome(rest)) {
+                const head = RA.headNonEmpty(rest.value)
+                const tail = RA.tailNonEmpty(rest.value)
+                for (; i < input.length - tail.length; i++) {
+                  output[i] = head.pretty(input[i])
+                }
+                // ---------------------------------------------
+                // handle post rest elements
+                // ---------------------------------------------
+                for (let j = 0; j < tail.length; j++) {
+                  i += j
+                  output[i] = tail[j].pretty(input[i])
+                }
+              }
+
+              return "[" + output.join(", ") + "]"
+            }
           )
+        }
         case "Struct":
           return _struct(
             ast,
@@ -151,43 +185,6 @@ const _struct = (
       }
 
       return isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
-    }
-  )
-
-const _tuple = (
-  ast: AST.Tuple,
-  elements: ReadonlyArray<Pretty<any>>,
-  rest: O.Option<Pretty<any>>
-): Pretty<any> =>
-  make(
-    I.makeSchema(ast),
-    (input: ReadonlyArray<unknown>) => {
-      const output: Array<string> = []
-      let i = 0
-      // ---------------------------------------------
-      // handle elements
-      // ---------------------------------------------
-      for (; i < elements.length; i++) {
-        if (input.length < i + 1) {
-          if (ast.elements[i].isOptional) {
-            continue
-          }
-          output[i] = "undefined"
-        } else {
-          output[i] = elements[i].pretty(input[i])
-        }
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(rest)) {
-        const pretty = rest.value
-        for (; i < input.length; i++) {
-          output[i] = pretty.pretty(input[i])
-        }
-      }
-
-      return "[" + output.join(", ") + "]"
     }
   )
 

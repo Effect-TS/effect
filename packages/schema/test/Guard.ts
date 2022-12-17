@@ -256,13 +256,15 @@ describe.concurrent("Guard", () => {
     })
 
     it("ReadonlyArray<unknown>", () => {
-      const guard = guardFor(S.array(S.unknown))
+      const schema = S.array(S.unknown)
+      const guard = guardFor(schema)
       expect(guard.is([])).toEqual(true)
       expect(guard.is(["a", 1, true])).toEqual(true)
     })
 
     it("ReadonlyArray<any>", () => {
-      const guard = guardFor(S.array(S.any))
+      const schema = S.array(S.any)
+      const guard = guardFor(schema)
       expect(guard.is([])).toEqual(true)
       expect(guard.is(["a", 1, true])).toEqual(true)
     })

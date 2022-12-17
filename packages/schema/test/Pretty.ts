@@ -139,19 +139,88 @@ describe.concurrent("Pretty", () => {
       expect(pretty.pretty(["a", 1])).toEqual(`["a", 1]`)
     })
 
-    it("rest element", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
+    it("empty tuple", () => {
+      const schema = S.tuple()
       const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+    })
+
+    it("optional elements", () => {
+      const schema = S.partial(S.tuple(S.string, S.number))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty(["a"])).toEqual(`["a"]`)
       expect(pretty.pretty(["a", 1])).toEqual(`["a", 1]`)
-      expect(pretty.pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
     })
 
     it("array", () => {
       const schema = S.array(S.string)
       const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(["a", "b"])).toEqual(
-        `["a", "b"]`
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty(["a"])).toEqual(`["a"]`)
+    })
+
+    it("post rest element", () => {
+      const schema = pipe(S.array(S.number), S.element(S.boolean))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([true])).toEqual(`[true]`)
+      expect(pretty.pretty([1, true])).toEqual(`[1, true]`)
+      expect(pretty.pretty([1, 2, true])).toEqual(`[1, 2, true]`)
+      expect(pretty.pretty([1, 2, 3, true])).toEqual(`[1, 2, 3, true]`)
+    })
+
+    it("post rest elements", () => {
+      const schema = pipe(
+        S.array(S.number),
+        S.element(S.boolean),
+        S.element(S.union(S.string, S.undefined))
       )
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([true, "c"])).toEqual(`[true, "c"]`)
+      expect(pretty.pretty([1, true, "c"])).toEqual(`[1, true, "c"]`)
+      expect(pretty.pretty([1, 2, true, "c"])).toEqual(`[1, 2, true, "c"]`)
+      expect(pretty.pretty([1, 2, 3, true, "c"])).toEqual(`[1, 2, 3, true, "c"]`)
+      expect(pretty.pretty([1, 2, 3, true, undefined])).toEqual(`[1, 2, 3, true, undefined]`)
+    })
+
+    it("post rest elements when rest is unknown", () => {
+      const schema = pipe(S.array(S.unknown), S.element(S.boolean))
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([1, "a", 2, "b", true])).toEqual(`[1, "a", 2, "b", true]`)
+      expect(pretty.pretty([true])).toEqual(`[true]`)
+    })
+
+    it("all", () => {
+      const schema = pipe(
+        S.tuple(S.string),
+        S.rest(S.number),
+        S.element(S.boolean)
+      )
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty(["a", true])).toEqual(`["a", true]`)
+      expect(pretty.pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
+      expect(pretty.pretty(["a", 1, 2, true])).toEqual(`["a", 1, 2, true]`)
+    })
+
+    it("nonEmptyArray", () => {
+      const schema = S.nonEmptyArray(S.number)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([1])).toEqual(`[1]`)
+      expect(pretty.pretty([1, 2])).toEqual(`[1, 2]`)
+    })
+
+    it("ReadonlyArray<unknown>", () => {
+      const schema = S.array(S.unknown)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
+    })
+
+    it("ReadonlyArray<any>", () => {
+      const schema = S.array(S.any)
+      const pretty = P.prettyFor(schema)
+      expect(pretty.pretty([])).toEqual(`[]`)
+      expect(pretty.pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
     })
   })
 
