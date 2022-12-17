@@ -4,6 +4,7 @@
 
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -71,12 +72,48 @@ export const provideArbitraryFor = (provider: Provider) =>
           return make(I.bigint, (fc) => fc.bigInt())
         case "SymbolKeyword":
           return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
-        case "Tuple":
-          return _tuple(
-            ast,
-            ast.elements.map((e) => go(e.type)),
-            pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
+        case "Tuple": {
+          const elements = ast.elements.map((e) => go(e.type))
+          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+          return make(
+            I.makeSchema(ast),
+            (fc) => {
+              // ---------------------------------------------
+              // handle elements
+              // ---------------------------------------------
+              let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
+              if (elements.length > 0) {
+                const optionalIndex = ast.elements.findIndex((e) => e.isOptional)
+                if (optionalIndex !== -1) {
+                  output = output.chain((as) =>
+                    fc.integer({ min: optionalIndex, max: elements.length - 1 }).map((i) => {
+                      return ast.elements[i].isOptional ? as.slice(0, i - 1) : as
+                    })
+                  )
+                }
+              }
+
+              // ---------------------------------------------
+              // handle rest element
+              // ---------------------------------------------
+              if (O.isSome(rest)) {
+                const head = RA.headNonEmpty(rest.value)
+                const tail = RA.tailNonEmpty(rest.value)
+                output = output.chain((as) =>
+                  fc.array(head.arbitrary(fc)).map((rest) => [...as, ...rest])
+                )
+                // ---------------------------------------------
+                // handle post rest elements
+                // ---------------------------------------------
+                for (let j = 0; j < tail.length; j++) {
+                  output = output.chain((as) => tail[j].arbitrary(fc).map((a) => [...as, a]))
+                }
+              }
+
+              return output
+            }
           )
+        }
         case "Struct":
           return _struct(
             ast,
@@ -102,42 +139,6 @@ export const provideArbitraryFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(P.empty)
-
-const _tuple = (
-  ast: AST.Tuple,
-  elements: ReadonlyArray<Arbitrary<any>>,
-  rest: O.Option<Arbitrary<any>>
-): Arbitrary<any> =>
-  make(
-    I.makeSchema(ast),
-    (fc) => {
-      // ---------------------------------------------
-      // handle elements
-      // ---------------------------------------------
-      let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
-      if (elements.length > 0) {
-        const optionalIndex = ast.elements.findIndex((e) => e.isOptional)
-        if (optionalIndex !== -1) {
-          output = output.chain((as) =>
-            fc.integer({ min: optionalIndex, max: elements.length - 1 }).map((i) => {
-              return ast.elements[i].isOptional ? as.slice(0, i - 1) : as
-            })
-          )
-        }
-      }
-
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(rest)) {
-        output = output.chain((as) =>
-          fc.array(rest.value.arbitrary(fc)).map((rest) => [...as, ...rest])
-        )
-      }
-
-      return output
-    }
-  )
 
 const _struct = (
   ast: AST.Struct,

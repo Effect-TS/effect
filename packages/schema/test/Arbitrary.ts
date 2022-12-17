@@ -66,8 +66,66 @@ describe.concurrent("Arbitrary", () => {
       property(schema)
     })
 
+    it("baseline", () => {
+      const schema = S.tuple(S.string, S.number)
+      property(schema)
+    })
+
+    it("empty tuple", () => {
+      const schema = S.tuple()
+      property(schema)
+    })
+
+    it("optional elements", () => {
+      const schema = S.partial(S.tuple(S.string, S.number))
+      property(schema)
+    })
+
     it("array", () => {
       const schema = S.array(S.string)
+      property(schema)
+    })
+
+    it("post rest element", () => {
+      const schema = pipe(S.array(S.number), S.element(S.boolean))
+      property(schema)
+    })
+
+    it("post rest elements", () => {
+      const schema = pipe(
+        S.array(S.number),
+        S.element(S.boolean),
+        S.element(S.union(S.string, S.undefined))
+      )
+      property(schema)
+    })
+
+    it("post rest elements when rest is unknown", () => {
+      const schema = pipe(S.array(S.unknown), S.element(S.boolean))
+      property(schema)
+    })
+
+    it("all", () => {
+      const schema = pipe(
+        S.tuple(S.string),
+        S.rest(S.number),
+        S.element(S.boolean)
+      )
+      property(schema)
+    })
+
+    it("nonEmptyArray", () => {
+      const schema = S.nonEmptyArray(S.number)
+      property(schema)
+    })
+
+    it("ReadonlyArray<unknown>", () => {
+      const schema = S.array(S.unknown)
+      property(schema)
+    })
+
+    it("ReadonlyArray<any>", () => {
+      const schema = S.array(S.any)
       property(schema)
     })
   })
