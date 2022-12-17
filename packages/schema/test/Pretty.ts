@@ -102,13 +102,6 @@ describe.concurrent("Pretty", () => {
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty(1n)).toEqual("1n")
     })
-
-    it("symbol", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const schema = S.literal(a)
-      const pretty = P.prettyFor(schema)
-      expect(pretty.pretty(a)).toEqual("Symbol(@fp-ts/schema/test/a)")
-    })
   })
 
   describe.concurrent("tuple", () => {

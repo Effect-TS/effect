@@ -14,7 +14,7 @@ interface TypeRep<in out A> extends S.Schema<A> {
 
 const make = (ast: AST.AST, typeRep: string): TypeRep<any> => ({ ast, typeRep }) as any
 
-export const lazy = <A>(
+const lazy = <A>(
   name: string,
   f: () => TypeRep<A>
 ): TypeRep<A> => {
@@ -24,11 +24,10 @@ export const lazy = <A>(
     name
   )
 }
-export const TypeRepId: unique symbol = Symbol.for(
+
+const TypeRepId: unique symbol = Symbol.for(
   "@fp-ts/schema/test/compiler/TypeRep"
 )
-
-export type TypeRepId = typeof TypeRepId
 
 export const provideTypeRepFor = (
   provider: Provider
