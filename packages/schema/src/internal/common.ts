@@ -190,6 +190,10 @@ export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
 ): Schema<Literals[number]> => union(...literals.map(makeLiteral))
 
 /** @internal */
+export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> =>
+  makeSchema(AST.uniqueSymbol(symbol))
+
+/** @internal */
 export const isUndefined = (u: unknown): u is undefined => u === undefined
 
 /** @internal */

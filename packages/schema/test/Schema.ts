@@ -51,16 +51,33 @@ describe.concurrent("Schema", () => {
   })
 
   describe.concurrent("keyof", () => {
-    it("struct", () => {
-      const schema = S.struct({
-        a: S.string,
-        b: S.number
+    describe.concurrent("struct", () => {
+      it("string keys", () => {
+        const schema = S.struct({
+          a: S.string,
+          b: S.number
+        })
+        const keyOf = S.keyof(schema)
+        const guard = guardFor(keyOf)
+        expect(guard.is("a")).toEqual(true)
+        expect(guard.is("b")).toEqual(true)
+        expect(guard.is("c")).toEqual(false)
       })
-      const keyOf = S.keyof(schema)
-      const guard = guardFor(keyOf)
-      expect(guard.is("a")).toEqual(true)
-      expect(guard.is("b")).toEqual(true)
-      expect(guard.is("c")).toEqual(false)
+
+      it("symbol keys", () => {
+        const a = Symbol.for("@fp-ts/schema/test/a")
+        const b = Symbol.for("@fp-ts/schema/test/b")
+        const schema = S.struct({
+          [a]: S.string,
+          [b]: S.number
+        })
+        const keyOf = S.keyof(schema)
+        const guard = guardFor(keyOf)
+        expect(guard.is(a)).toEqual(true)
+        expect(guard.is(b)).toEqual(true)
+        expect(guard.is("a")).toEqual(false)
+        expect(guard.is("b")).toEqual(false)
+      })
     })
 
     it("union", () => {

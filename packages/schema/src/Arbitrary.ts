@@ -52,6 +52,8 @@ export const provideArbitraryFor = (provider: Provider) =>
           )
         case "LiteralType":
           return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
+        case "UniqueSymbol":
+          return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))
         case "UndefinedKeyword":
           return make(I._undefined, (fc) => fc.constant(undefined))
         case "NeverKeyword":

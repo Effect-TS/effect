@@ -16,7 +16,14 @@ export const property = <A>(schema: Schema<A>) => {
   const decoder = D.decoderFor(schema)
   const encoder = UE.encoderFor(schema)
   fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
-    return guard.is(a) && !D.isFailure(decoder.decode(encoder.encode(a)))
+    if (!guard.is(a)) {
+      return false
+    }
+    const roundtrip = decoder.decode(encoder.encode(a))
+    if (D.isFailure(roundtrip)) {
+      return false
+    }
+    return guard.is(roundtrip.right)
   }))
 }
 
@@ -65,7 +72,7 @@ const format = (e: DE.DecodeError): string => {
     case "NotType":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "NotEqual":
-      return `${JSON.stringify(e.actual)} did not satisfy isEqual(${e.expected})`
+      return `${JSON.stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Key":

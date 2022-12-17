@@ -85,6 +85,11 @@ export const provideTypeScriptFor = (
             return make(ast, ts.factory.createLiteralTypeNode(ts.factory.createNull()))
           }
         }
+        case "UniqueSymbol":
+          return make(
+            ast,
+            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(String(ast.symbol)))
+          )
         case "UndefinedKeyword":
           return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword))
         case "NeverKeyword":
@@ -262,6 +267,13 @@ describe.concurrent("TypeScript", () => {
       const node = typeScriptFor(schema)
       expect(printNode(node.typeNode)).toEqual(`null`)
     })
+  })
+
+  it("uniqueSymbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.uniqueSymbol(a)
+    const node = typeScriptFor(schema)
+    expect(printNode(node.typeNode)).toEqual(`typeof Symbol(@fp-ts/schema/test/a)`)
   })
 
   describe.concurrent("tuple", () => {
@@ -466,5 +478,18 @@ describe.concurrent("TypeScript", () => {
     const schema = S.union(S.string, S.number)
     const node = typeScriptFor(schema)
     expect(printNode(node.typeNode)).toEqual("string | number")
+  })
+
+  it("compile to TypeScript AST", () => {
+    const schema = S.struct({
+      name: S.string,
+      age: S.number
+    })
+    // const typeNode: ts.TypeNode
+    const { typeNode } = typeScriptFor(schema)
+    expect(printNode(typeNode)).toEqual(`{
+    readonly name: string;
+    readonly age: number;
+}`)
   })
 })

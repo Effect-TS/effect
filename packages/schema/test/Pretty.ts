@@ -90,6 +90,11 @@ describe.concurrent("Pretty", () => {
     expect(pretty.pretty(1n)).toEqual("1n")
   })
 
+  it("bigint", () => {
+    const pretty = P.prettyFor(S.bigint)
+    expect(pretty.pretty(1n)).toEqual("1n")
+  })
+
   describe.concurrent("literal", () => {
     it("null", () => {
       const schema = S.literal(null)
@@ -102,6 +107,13 @@ describe.concurrent("Pretty", () => {
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty(1n)).toEqual("1n")
     })
+  })
+
+  it("uniqueSymbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.uniqueSymbol(a)
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty(a)).toEqual("Symbol(@fp-ts/schema/test/a)")
   })
 
   describe.concurrent("tuple", () => {

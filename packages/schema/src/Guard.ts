@@ -52,7 +52,9 @@ export const provideGuardFor = (provider: Provider) =>
             )
           )
         case "LiteralType":
-          return make(I.makeSchema(ast), (u): u is any => u === ast.literal)
+          return make(I.makeSchema(ast), (u): u is typeof ast.literal => u === ast.literal)
+        case "UniqueSymbol":
+          return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)
         case "UndefinedKeyword":
           return make(I._undefined, I.isUndefined)
         case "NeverKeyword":

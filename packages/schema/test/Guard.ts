@@ -69,6 +69,15 @@ describe.concurrent("Guard", () => {
     })
   })
 
+  it("uniqueSymbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.uniqueSymbol(a)
+    const guard = G.guardFor(schema)
+    expect(guard.is(a)).toEqual(true)
+    expect(guard.is(Symbol.for("@fp-ts/schema/test/a"))).toEqual(true)
+    expect(guard.is("Symbol(@fp-ts/schema/test/a)")).toEqual(false)
+  })
+
   describe.concurrent("enums", () => {
     it("Numeric enums", () => {
       enum Fruits {

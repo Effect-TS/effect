@@ -92,6 +92,20 @@ describe.concurrent("Decoder", () => {
     )
   })
 
+  it("uniqueSymbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.uniqueSymbol(a)
+    const decoder = _.decoderFor(schema)
+    Util.expectSuccess(decoder, a)
+    Util.expectSuccess(decoder, Symbol.for("@fp-ts/schema/test/a"))
+
+    Util.expectFailure(
+      decoder,
+      "Symbol(@fp-ts/schema/test/a)",
+      `"Symbol(@fp-ts/schema/test/a)" did not satisfy isEqual(Symbol(@fp-ts/schema/test/a))`
+    )
+  })
+
   describe.concurrent("enums", () => {
     it("Numeric enums", () => {
       enum Fruits {

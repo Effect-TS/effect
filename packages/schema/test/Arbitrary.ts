@@ -40,6 +40,12 @@ describe.concurrent("Arbitrary", () => {
     })
   })
 
+  it("uniqueSymbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.uniqueSymbol(a)
+    property(schema)
+  })
+
   it("tuple", () => {
     const schema = S.tuple(S.string, S.number)
     property(schema)

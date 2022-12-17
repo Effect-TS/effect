@@ -99,8 +99,14 @@ export const provideDecoderFor = (provider: Provider) =>
         case "LiteralType":
           return I.fromRefinement(
             I.makeSchema(ast),
-            (u): u is AST.Literal => u === ast.literal,
+            (u): u is typeof ast.literal => u === ast.literal,
             (u) => DE.notEqual(ast.literal, u)
+          )
+        case "UniqueSymbol":
+          return I.fromRefinement(
+            I.makeSchema(ast),
+            (u): u is typeof ast.symbol => u === ast.symbol,
+            (u) => DE.notEqual(ast.symbol, u)
           )
         case "UndefinedKeyword":
           return I.fromRefinement(

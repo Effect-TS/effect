@@ -52,6 +52,8 @@ export const providePrettyFor = (provider: Provider) =>
           )
         case "LiteralType":
           return make(I.makeSchema(ast), _literalType)
+        case "UniqueSymbol":
+          return make(I.makeSchema(ast), (s) => String(s))
         case "UndefinedKeyword":
           return make(I._undefined, () => "undefined")
         case "NeverKeyword":

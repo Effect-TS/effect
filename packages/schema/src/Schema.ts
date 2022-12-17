@@ -65,6 +65,11 @@ export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
 /**
  * @since 1.0.0
  */
+export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.uniqueSymbol
+
+/**
+ * @since 1.0.0
+ */
 export const nativeEnum = <A extends { [_: string]: string | number }>(nativeEnum: A): Schema<A> =>
   make(AST.union(
     Object.keys(nativeEnum).filter(
@@ -136,7 +141,13 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  make(AST.union(AST.keyof(schema.ast).map(AST.literalType)))
+  make(
+    AST.union(
+      AST.keyof(schema.ast).map((key) =>
+        typeof key === "symbol" ? AST.uniqueSymbol(key) : AST.literalType(key)
+      )
+    )
+  )
 
 /**
  * @since 1.0.0

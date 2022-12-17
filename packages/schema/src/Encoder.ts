@@ -52,6 +52,7 @@ export const provideEncoderFor = (provider: Provider) =>
             )
           )
         case "LiteralType":
+        case "UniqueSymbol":
           return make(I.makeSchema(ast), identity)
         case "UndefinedKeyword":
           return make(I._undefined, identity)

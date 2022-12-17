@@ -180,6 +180,12 @@ export const literal = <A extends ReadonlyArray<Literal>>(
 /**
  * @since 1.0.0
  */
+export const uniqueSymbol = <S extends symbol>(symbol: S): Codec<S> =>
+  codecFor(S.uniqueSymbol(symbol))
+
+/**
+ * @since 1.0.0
+ */
 export const nativeEnum = <A extends { [_: string]: string | number }>(
   nativeEnum: A
 ): Codec<A> => codecFor(S.nativeEnum(nativeEnum))
@@ -259,8 +265,22 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
  * @since 1.0.0
  */
 export const rest = <R>(rest: Schema<R>) =>
-  <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> =>
+  <A extends ReadonlyArray<any>>(self: Schema<A>): Codec<readonly [...A, ...Array<R>]> =>
     codecFor(S.rest(rest)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const element = <E>(element: Schema<E>) =>
+  <A extends ReadonlyArray<any>>(self: Schema<A>): Codec<readonly [...A, E]> =>
+    codecFor(S.element(element)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const optionalElement = <E>(element: Schema<E>) =>
+  <A extends ReadonlyArray<any>>(self: Schema<A>): Codec<readonly [...A, E?]> =>
+    codecFor(S.optionalElement(element)(self))
 
 /**
  * @since 1.0.0

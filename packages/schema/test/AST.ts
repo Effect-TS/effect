@@ -290,12 +290,24 @@ describe.concurrent("AST", () => {
       ])
     })
 
-    it("struct", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
-      expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("a", S.string.ast, false, true),
-        AST.field("b", S.number.ast, false, true)
-      ])
+    describe.concurrent("struct", () => {
+      it("string keys", () => {
+        const schema = S.struct({ a: S.string, b: S.number })
+        expect(AST.getFields(schema.ast)).toEqual([
+          AST.field("a", S.string.ast, false, true),
+          AST.field("b", S.number.ast, false, true)
+        ])
+      })
+
+      it("symbol keys", () => {
+        const a = Symbol.for("@fp-ts/schema/test/a")
+        const b = Symbol.for("@fp-ts/schema/test/b")
+        const schema = S.struct({ [a]: S.string, [b]: S.number })
+        expect(AST.getFields(schema.ast)).toEqual([
+          AST.field(a, S.string.ast, false, true),
+          AST.field(b, S.number.ast, false, true)
+        ])
+      })
     })
 
     describe.concurrent("union", () => {

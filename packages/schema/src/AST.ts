@@ -16,6 +16,7 @@ import type { Provider } from "@fp-ts/schema/Provider"
 export type AST =
   | TypeAliasDeclaration
   | LiteralType
+  | UniqueSymbol
   | UndefinedKeyword
   | NeverKeyword
   | UnknownKeyword
@@ -69,7 +70,7 @@ export const isTypeAliasDeclaration = (ast: AST): ast is TypeAliasDeclaration =>
 /**
  * @since 1.0.0
  */
-export type Literal = string | number | boolean | null | bigint | symbol
+export type Literal = string | number | boolean | null | bigint
 
 /**
  * @since 1.0.0
@@ -91,6 +92,19 @@ export const literalType = (literal: Literal): LiteralType => ({
  * @since 1.0.0
  */
 export const isLiteralType = (ast: AST): ast is LiteralType => ast._tag === "LiteralType"
+
+export interface UniqueSymbol {
+  readonly _tag: "UniqueSymbol"
+  readonly symbol: symbol
+}
+
+/**
+ * @since 1.0.0
+ */
+export const uniqueSymbol = (symbol: symbol): UniqueSymbol => ({
+  _tag: "UniqueSymbol",
+  symbol
+})
 
 /**
  * @since 1.0.0
