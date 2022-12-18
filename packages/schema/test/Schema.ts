@@ -1,10 +1,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
-import { empty } from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
-
-const guardFor = G.provideGuardFor(empty)
 
 describe.concurrent("Schema", () => {
   it("exist", () => {
@@ -42,7 +39,7 @@ describe.concurrent("Schema", () => {
       Banana
     }
     const schema = S.enums(Fruits)
-    const guard = guardFor(schema)
+    const guard = G.guardFor(schema)
     expect(guard.is(Fruits.Apple)).toEqual(true)
     expect(guard.is(Fruits.Banana)).toEqual(true)
     expect(guard.is(0)).toEqual(true)
@@ -58,7 +55,7 @@ describe.concurrent("Schema", () => {
           b: S.number
         })
         const keyOf = S.keyof(schema)
-        const guard = guardFor(keyOf)
+        const guard = G.guardFor(keyOf)
         expect(guard.is("a")).toEqual(true)
         expect(guard.is("b")).toEqual(true)
         expect(guard.is("c")).toEqual(false)
@@ -72,7 +69,7 @@ describe.concurrent("Schema", () => {
           [b]: S.number
         })
         const keyOf = S.keyof(schema)
-        const guard = guardFor(keyOf)
+        const guard = G.guardFor(keyOf)
         expect(guard.is(a)).toEqual(true)
         expect(guard.is(b)).toEqual(true)
         expect(guard.is("a")).toEqual(false)
@@ -92,7 +89,7 @@ describe.concurrent("Schema", () => {
         })
       )
       const keyOf = S.keyof(schema)
-      const guard = guardFor(keyOf)
+      const guard = G.guardFor(keyOf)
       expect(guard.is("a")).toEqual(true)
       expect(guard.is("b")).toEqual(false)
       expect(guard.is("c")).toEqual(false)
@@ -124,7 +121,7 @@ describe.concurrent("Schema", () => {
         }),
         rename("a", "aa")
       )
-      const guard = guardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
       expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
     })
@@ -178,7 +175,7 @@ describe.concurrent("Schema", () => {
         "c?": S.boolean
       })
 
-      const guard = guardFor(schema)
+      const guard = G.guardFor(schema)
       expect(guard.is({ a: "a", b: 1 })).toBe(true)
       expect(guard.is({ a: "a", b: 1, c: true })).toBe(true)
 

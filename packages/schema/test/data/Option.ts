@@ -6,7 +6,7 @@ import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Option", () => {
+describe.concurrent("Option", () => {
   it("exports", () => {
     expect(_.id).exist
     expect(_.Provider).exist

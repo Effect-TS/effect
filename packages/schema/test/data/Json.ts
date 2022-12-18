@@ -3,7 +3,7 @@ import * as _ from "@fp-ts/schema/data/Json"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("Json", () => {
+describe.concurrent("Json", () => {
   const schema = _.Schema
 
   it("exports", () => {

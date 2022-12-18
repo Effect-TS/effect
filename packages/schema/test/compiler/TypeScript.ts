@@ -39,7 +39,7 @@ const provideTypeScriptFor = (
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(TypeScriptId, ast.id),
+            P.find(TypeScriptId, ast.id),
             O.match(
               () =>
                 pipe(
@@ -211,7 +211,7 @@ const provideTypeScriptFor = (
     return go(schema.ast)
   }
 
-const typeScriptFor = provideTypeScriptFor(P.empty)
+const typeScriptFor = provideTypeScriptFor(P.empty())
 
 describe.concurrent("TypeScript", () => {
   it("never", () => {

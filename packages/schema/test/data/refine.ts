@@ -15,7 +15,7 @@ const Int = refine(
   (n: number) => isInt(n) ? D.success(n) : D.failure(DE.custom("not an int", n))
 )
 
-describe("refine", () => {
+describe.concurrent("refine", () => {
   const schema = pipe(S.number, Int)
 
   it("property tests", () => {

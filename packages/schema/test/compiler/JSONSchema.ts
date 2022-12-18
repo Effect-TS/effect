@@ -89,7 +89,7 @@ const provideJsonSchemaFor = (
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(JSONSchemaId, ast.id),
+            P.find(JSONSchemaId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>

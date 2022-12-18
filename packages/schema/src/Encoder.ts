@@ -42,7 +42,7 @@ export const provideEncoderFor = (provider: Provider) =>
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(I.EncoderId, ast.id),
+            P.find(I.EncoderId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>
@@ -101,7 +101,7 @@ export const provideEncoderFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provideEncoderFor(
-  P.empty
+  P.empty()
 )
 
 const _tuple = (

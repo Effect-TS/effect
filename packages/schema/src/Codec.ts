@@ -168,7 +168,7 @@ export const provideCodecFor = (provider: Provider) => {
 /**
  * @since 1.0.0
  */
-export const codecFor: <A>(schema: Schema<A>) => Codec<A> = provideCodecFor(empty)
+export const codecFor: <A>(schema: Schema<A>) => Codec<A> = provideCodecFor(empty())
 
 /**
  * @since 1.0.0

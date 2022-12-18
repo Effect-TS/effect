@@ -41,7 +41,7 @@ export const provideArbitraryFor = (provider: Provider) =>
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(I.ArbitraryId, ast.id),
+            P.find(I.ArbitraryId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>
@@ -151,7 +151,7 @@ export const provideArbitraryFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(P.empty)
+export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(P.empty())
 
 const _struct = (
   ast: AST.Struct,

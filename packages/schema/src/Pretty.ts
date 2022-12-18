@@ -41,7 +41,7 @@ export const providePrettyFor = (provider: Provider) =>
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(I.PrettyId, ast.id),
+            P.find(I.PrettyId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>
@@ -139,7 +139,7 @@ export const providePrettyFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P.empty)
+export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P.empty())
 
 const _literalType = (literal: AST.Literal): string =>
   typeof literal === "bigint" ?

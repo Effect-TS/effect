@@ -5,7 +5,7 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("parseFloat", () => {
+describe.concurrent("parseFloat", () => {
   const schema = parseFloat.schema(S.string)
 
   it("id", () => {

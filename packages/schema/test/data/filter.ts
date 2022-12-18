@@ -6,7 +6,7 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe("filter", () => {
+describe.concurrent("filter", () => {
   it("struct", () => {
     const struct = S.struct({
       a: S.number,

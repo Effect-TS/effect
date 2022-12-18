@@ -42,7 +42,7 @@ export const provideGuardFor = (provider: Provider) =>
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(I.GuardId, ast.id),
+            P.find(I.GuardId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>
@@ -163,7 +163,7 @@ export const provideGuardFor = (provider: Provider) =>
 /**
  * @since 1.0.0
  */
-export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(P.empty)
+export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(P.empty())
 
 const _struct = (
   ast: AST.Struct,

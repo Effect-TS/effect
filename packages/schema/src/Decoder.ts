@@ -87,7 +87,7 @@ export const provideDecoderFor = (provider: Provider) =>
           return pipe(
             ast.provider,
             P.Semigroup.combine(provider),
-            P.findHandler(I.DecoderId, ast.id),
+            P.find(I.DecoderId, ast.id),
             O.match(
               () => go(ast.type),
               (handler) =>
@@ -277,7 +277,7 @@ export const provideDecoderFor = (provider: Provider) =>
  * @since 1.0.0
  */
 export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(
-  P.empty
+  P.empty()
 )
 
 const _struct = (
