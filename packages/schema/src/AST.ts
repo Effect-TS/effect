@@ -340,6 +340,7 @@ const getCardinality = (ast: AST): number => {
       return 0
     case "LiteralType":
     case "UndefinedKeyword":
+    case "UniqueSymbol":
       return 1
     case "BooleanKeyword":
       return 2

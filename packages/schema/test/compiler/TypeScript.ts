@@ -1,3 +1,6 @@
+import type { TypeLambda } from "@fp-ts/core/HKT"
+import type * as applicative from "@fp-ts/core/typeclass/Applicative"
+import * as covariant from "@fp-ts/core/typeclass/Covariant"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
@@ -7,7 +10,7 @@ import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 
-const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions) => {
+const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions): string => {
   const sourceFile = ts.createSourceFile(
     "print.ts",
     "",
@@ -19,15 +22,83 @@ const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions) => {
   return printer.printNode(ts.EmitHint.Unspecified, node, sourceFile)
 }
 
+const printNodes = (nodes: Writer<ts.TypeNode>, printerOptions?: ts.PrinterOptions): string => {
+  const declarations = nodes[1]
+  let out = ""
+  if (declarations.length > 0) {
+    out += declarations.map((declaration) => printNode(declaration, printerOptions)).join("\n") +
+      "\n"
+  }
+  out += printNode(nodes[0], printerOptions)
+  return out
+}
+
 const TypeScriptId: unique symbol = Symbol.for(
   "@fp-ts/schema/test/compiler/TypeScript"
 )
 
-interface TypeScript<A> extends S.Schema<A> {
-  readonly typeNode: ts.TypeNode
+type Writer<A> = readonly [A, ReadonlyArray<ts.Declaration>]
+
+interface WriterLambda extends TypeLambda {
+  readonly type: Writer<this["Target"]>
 }
 
-const make = (ast: AST.AST, typeNode: ts.TypeNode): TypeScript<any> => ({ ast, typeNode }) as any
+const map = <A, B>(f: (a: A) => B) => (self: Writer<A>): Writer<B> => [f(self[0]), self[1]]
+
+const Applicative: applicative.Applicative<WriterLambda> = {
+  imap: covariant.imap<WriterLambda>(map),
+  map,
+  product: (that) => (self) => [[self[0], that[0]], self[1].concat(that[1])],
+  productMany: (collection) =>
+    (self) => {
+      const as = Array.from(collection)
+      return [
+        [self[0], ...as.map((a) => a[0])],
+        RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))
+      ]
+    },
+  productAll: (collection) => {
+    const as = Array.from(collection)
+    return [as.map((a) => a[0]), RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))]
+  },
+  of: (a) => [a, []]
+}
+
+interface TypeScript<A> extends S.Schema<A> {
+  readonly nodes: Writer<ts.TypeNode>
+}
+
+const make = (ast: AST.AST, nodes: Writer<ts.TypeNode>): TypeScript<any> => ({ ast, nodes }) as any
+
+const of: <A>(a: A) => Writer<A> = Applicative.of
+
+const traverse: <A, B>(
+  f: (a: A) => Writer<B>
+) => (self: ReadonlyArray<A>) => Writer<ReadonlyArray<B>> = RA.traverse(Applicative)
+
+const append = <B>(b: Writer<B>) =>
+  <A>(
+    as: Writer<ReadonlyArray<A>>
+  ): Writer<ReadonlyArray<A | B>> => [[...as[0], b[0]], as[1].concat(b[1])]
+
+const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
+  <A>(
+    as: Writer<ReadonlyArray<A>>
+  ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
+
+// TODO
+const getSymbolIdentifier = (ast: AST.UniqueSymbol): ts.Identifier =>
+  ts.factory.createIdentifier(ast.symbol.description!.substring(ast.symbol.description!.length - 1))
+
+// TODO
+const getEnumIdentifier = (_ast: AST.Enums): ts.Identifier => ts.factory.createIdentifier("myenum")
+
+const getPropertyName = (ast: AST.Field): ts.PropertyName =>
+  typeof ast.key === "symbol" ?
+    ts.factory.createComputedPropertyName(ts.factory.createIdentifier(
+      ast.key.description!.substring(ast.key.description!.length - 1)
+    )) :
+    ts.factory.createIdentifier(String(ast.key))
 
 const provideTypeScriptFor = (
   provider: Provider
@@ -46,10 +117,10 @@ const provideTypeScriptFor = (
                   ast.typeParameters.map(go),
                   RA.match(
                     () => {
-                      throw new Error("Unhandled schema")
+                      throw new Error("Unhandled schema") // TODO
                     },
                     (_typeParameters) => {
-                      throw new Error("Unhandled schema")
+                      throw new Error("Unhandled schema") // TODO
                     }
                   )
                 ),
@@ -64,97 +135,138 @@ const provideTypeScriptFor = (
           if (typeof literal === "string") {
             return make(
               ast,
-              ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(literal))
+              of(ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(literal)))
             )
           } else if (typeof literal === "number") {
             return make(
               ast,
-              ts.factory.createLiteralTypeNode(ts.factory.createNumericLiteral(literal))
+              of(ts.factory.createLiteralTypeNode(ts.factory.createNumericLiteral(literal)))
             )
           } else if (typeof literal === "boolean") {
             return literal === true ?
-              make(ast, ts.factory.createLiteralTypeNode(ts.factory.createTrue())) :
-              make(ast, ts.factory.createLiteralTypeNode(ts.factory.createFalse()))
+              make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createTrue()))) :
+              make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createFalse())))
           } else if (typeof literal === "bigint") {
             return make(
               ast,
-              ts.factory.createLiteralTypeNode(ts.factory.createBigIntLiteral(literal.toString()))
+              of(
+                ts.factory.createLiteralTypeNode(ts.factory.createBigIntLiteral(literal.toString()))
+              )
             )
           } else {
-            return make(ast, ts.factory.createLiteralTypeNode(ts.factory.createNull()))
+            return make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createNull())))
           }
         }
         case "UniqueSymbol": {
-          const node = ts.factory.createCallExpression(
-            ts.factory.createPropertyAccessExpression(ts.factory.createIdentifier("Symbol"), "for"),
-            [],
-            [ts.factory.createStringLiteral(ast.symbol.description!)]
+          const id = getSymbolIdentifier(ast)
+          const typeNode = ts.factory.createTypeQueryNode(id)
+          const declaration = ts.factory.createVariableDeclaration(
+            id,
+            undefined,
+            undefined,
+            ts.factory.createCallExpression(
+              ts.factory.createPropertyAccessExpression(
+                ts.factory.createIdentifier("Symbol"),
+                "for"
+              ),
+              [],
+              [ts.factory.createStringLiteral(ast.symbol.description!)]
+            )
           )
           return make(
             ast,
-            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(printNode(node)))
+            [typeNode, [declaration]]
           )
         }
         case "UndefinedKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword)))
         case "VoidKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword)))
         case "NeverKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword)))
         case "UnknownKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword)))
         case "AnyKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)))
         case "StringKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)))
         case "NumberKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)))
         case "BooleanKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword)))
         case "BigIntKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword)))
         case "SymbolKeyword":
-          return make(ast, ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword))
+          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)))
         case "Tuple": {
-          const elements: Array<ts.TypeNode> = ast.elements.map((e) => {
-            const element = go(e.type).typeNode
-            return e.isOptional ? ts.factory.createOptionalTypeNode(element) : element
-          })
-          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
-          if (O.isSome(rest)) {
-            const head = RA.headNonEmpty(rest.value)
-            const tail = RA.tailNonEmpty(rest.value)
-            if (elements.length === 0 && tail.length === 0) {
-              const array = ts.factory.createArrayTypeNode(head.typeNode)
+          let elements = pipe(
+            ast.elements,
+            traverse((e) =>
+              pipe(
+                go(e.type).nodes,
+                map((element) =>
+                  e.isOptional ? ts.factory.createOptionalTypeNode(element) : element
+                )
+              )
+            )
+          )
+          if (O.isSome(ast.rest)) {
+            const isArray = RA.isEmpty(ast.elements) && ast.rest.value.length === 1
+            if (isArray) {
               return make(
                 ast,
-                ast.isReadonly ?
-                  ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, array) :
-                  array
+                pipe(
+                  go(RA.headNonEmpty(ast.rest.value)).nodes,
+                  map((item) => {
+                    const arrayTypeNode = ts.factory.createArrayTypeNode(item)
+                    return ast.isReadonly ?
+                      ts.factory.createTypeOperatorNode(
+                        ts.SyntaxKind.ReadonlyKeyword,
+                        arrayTypeNode
+                      ) :
+                      arrayTypeNode
+                  })
+                )
+              )
+            } else {
+              elements = pipe(
+                elements,
+                append(pipe(
+                  go(RA.headNonEmpty(ast.rest.value)).nodes,
+                  map((head) => ts.factory.createRestTypeNode(ts.factory.createArrayTypeNode(head)))
+                )),
+                appendAll(pipe(RA.tailNonEmpty(ast.rest.value), traverse((ast) => go(ast).nodes)))
               )
             }
-            elements.push(
-              ts.factory.createRestTypeNode(ts.factory.createArrayTypeNode(head.typeNode))
-            )
-            elements.push(...tail.map((element) => element.typeNode))
           }
-          const tuple = ts.factory.createTupleTypeNode(elements)
           return make(
             ast,
-            ast.isReadonly ?
-              ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, tuple) :
-              tuple
+            pipe(
+              elements,
+              map((elements) => {
+                const tuple = ts.factory.createTupleTypeNode(elements)
+                return ast.isReadonly ?
+                  ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, tuple) :
+                  tuple
+              })
+            )
           )
         }
         case "Union":
           return make(
             ast,
-            ts.factory.createUnionTypeNode(ast.members.map((member) => go(member).typeNode))
+            pipe(
+              ast.members,
+              traverse((ast) => go(ast).nodes),
+              map((members) => ts.factory.createUnionTypeNode(members))
+            )
           )
         case "Enums": {
-          const node = ts.factory.createEnumDeclaration(
+          const id = getEnumIdentifier(ast)
+          const typeNode = ts.factory.createTypeQueryNode(id)
+          const declaration = ts.factory.createEnumDeclaration(
             undefined,
-            "name",
+            id,
             ast.enums.map(([key, value]) =>
               ts.factory.createEnumMember(
                 key,
@@ -166,43 +278,60 @@ const provideTypeScriptFor = (
           )
           return make(
             ast,
-            ts.factory.createTypeQueryNode(ts.factory.createIdentifier(printNode(node)))
+            [typeNode, [declaration]]
           )
         }
-        case "Struct": {
-          const members: Array<ts.PropertySignature | ts.IndexSignatureDeclaration> = ast.fields
-            .map((field) =>
-              ts.factory.createPropertySignature(
-                field.isReadonly ?
-                  [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                  undefined,
-                String(field.key),
-                field.isOptional ? ts.factory.createToken(ts.SyntaxKind.QuestionToken) : undefined,
-                go(field.value).typeNode
-              )
-            )
-          members.push(...ast.indexSignatures.map((is) =>
-            ts.factory.createIndexSignature(
-              is.isReadonly ?
-                [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                undefined,
-              [ts.factory.createParameterDeclaration(
-                undefined,
-                undefined,
-                "_",
-                undefined,
-                is.key === "string" ?
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
-              )],
-              go(is.value).typeNode
-            )
-          ))
+        case "Struct":
           return make(
             ast,
-            ts.factory.createTypeLiteralNode(members)
+            pipe(
+              ast.fields,
+              traverse(
+                (field) =>
+                  pipe(
+                    go(field.value).nodes,
+                    map((value) =>
+                      ts.factory.createPropertySignature(
+                        field.isReadonly ?
+                          [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                          undefined,
+                        getPropertyName(field),
+                        field.isOptional ?
+                          ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
+                          undefined,
+                        value
+                      )
+                    )
+                  )
+              ),
+              appendAll(pipe(
+                ast.indexSignatures,
+                traverse((indexSignature) =>
+                  pipe(
+                    go(indexSignature.value).nodes,
+                    map((value) =>
+                      ts.factory.createIndexSignature(
+                        indexSignature.isReadonly ?
+                          [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                          undefined,
+                        [ts.factory.createParameterDeclaration(
+                          undefined,
+                          undefined,
+                          "_",
+                          undefined,
+                          indexSignature.key === "string" ?
+                            ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
+                            ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
+                        )],
+                        value
+                      )
+                    )
+                  )
+                )
+              )),
+              map((members) => ts.factory.createTypeLiteralNode(members))
+            )
           )
-        }
         case "Lazy":
           throw new Error("Unhandled schema: TODO")
       }
@@ -217,94 +346,94 @@ describe.concurrent("TypeScript", () => {
   it("never", () => {
     const schema = S.never
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("never")
+    expect(printNodes(node.nodes)).toEqual("never")
   })
 
   it("undefined", () => {
     const schema = S.undefined
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("undefined")
+    expect(printNodes(node.nodes)).toEqual("undefined")
   })
 
   it("void", () => {
     const schema = S.void
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("void")
+    expect(printNodes(node.nodes)).toEqual("void")
   })
 
   it("string", () => {
     const schema = S.string
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("string")
+    expect(printNodes(node.nodes)).toEqual("string")
   })
 
   it("number", () => {
     const schema = S.number
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("number")
+    expect(printNodes(node.nodes)).toEqual("number")
   })
 
   it("boolean", () => {
     const schema = S.boolean
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("boolean")
+    expect(printNodes(node.nodes)).toEqual("boolean")
   })
 
   it("bigint", () => {
     const schema = S.bigint
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("bigint")
+    expect(printNodes(node.nodes)).toEqual("bigint")
   })
 
   it("symbol", () => {
     const schema = S.symbol
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("symbol")
+    expect(printNodes(node.nodes)).toEqual("symbol")
   })
 
   it("undefined", () => {
     const schema = S.undefined
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("undefined")
+    expect(printNodes(node.nodes)).toEqual("undefined")
   })
 
   describe.concurrent("literal", () => {
     it("string", () => {
       const schema = S.literal("a")
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`"a"`)
+      expect(printNodes(node.nodes)).toEqual(`"a"`)
     })
 
     it("number", () => {
       const schema = S.literal(1)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual("1")
+      expect(printNodes(node.nodes)).toEqual("1")
     })
 
     it("true", () => {
       const schema = S.literal(true)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`true`)
+      expect(printNodes(node.nodes)).toEqual(`true`)
     })
 
     it("false", () => {
       const schema = S.literal(false)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`false`)
+      expect(printNodes(node.nodes)).toEqual(`false`)
     })
 
     it("null", () => {
       const schema = S.literal(null)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`null`)
+      expect(printNodes(node.nodes)).toEqual(`null`)
     })
   })
 
   it("uniqueSymbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const schema = S.uniqueSymbol(a)
+    const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"))
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual(`typeof Symbol.for("@fp-ts/schema/test/a")`)
+    expect(printNodes(node.nodes)).toEqual(`a = Symbol.for("@fp-ts/schema/test/a")
+typeof a`)
   })
 
   it("enums", () => {
@@ -314,17 +443,18 @@ describe.concurrent("TypeScript", () => {
     }
     const schema = S.enums(Fruits)
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual(`typeof enum name {
+    expect(printNodes(node.nodes)).toEqual(`enum myenum {
     Apple = 0,
     Banana = 1
-}`)
+}
+typeof myenum`)
   })
 
   describe.concurrent("tuple", () => {
     it("required element", () => {
       const schema = S.tuple(S.number)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     number
 ]`)
     })
@@ -332,7 +462,7 @@ describe.concurrent("TypeScript", () => {
     it("required element with undefined", () => {
       const schema = S.tuple(S.union(S.number, S.undefined))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     number | undefined
 ]`)
     })
@@ -340,7 +470,7 @@ describe.concurrent("TypeScript", () => {
     it("optional element", () => {
       const schema = pipe(S.tuple(), S.optionalElement(S.number))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     number?
 ]`)
     })
@@ -348,7 +478,7 @@ describe.concurrent("TypeScript", () => {
     it("optional element with undefined", () => {
       const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     (number | undefined)?
 ]`)
     })
@@ -356,7 +486,7 @@ describe.concurrent("TypeScript", () => {
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     string,
     number
 ]`)
@@ -365,14 +495,14 @@ describe.concurrent("TypeScript", () => {
     it("empty tuple", () => {
       const schema = S.tuple()
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
 ]`)
     })
 
     it("optional elements", () => {
       const schema = S.partial(S.tuple(S.string, S.number))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     string?,
     number?
 ]`)
@@ -381,13 +511,13 @@ describe.concurrent("TypeScript", () => {
     it("array", () => {
       const schema = S.array(S.string)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly string[]`)
+      expect(printNodes(node.nodes)).toEqual(`readonly string[]`)
     })
 
     it("post rest element", () => {
       const schema = pipe(S.array(S.number), S.element(S.boolean))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     ...number[],
     boolean
 ]`)
@@ -400,7 +530,7 @@ describe.concurrent("TypeScript", () => {
         S.element(S.union(S.string, S.undefined))
       )
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     ...number[],
     boolean,
     string | undefined
@@ -410,7 +540,7 @@ describe.concurrent("TypeScript", () => {
     it("post rest elements when rest is unknown", () => {
       const schema = pipe(S.array(S.unknown), S.element(S.boolean))
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     ...unknown[],
     boolean
 ]`)
@@ -423,17 +553,34 @@ describe.concurrent("TypeScript", () => {
         S.element(S.boolean)
       )
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     string,
     ...number[],
     boolean
 ]`)
     })
 
+    it("all with symbols", () => {
+      const schema = pipe(
+        S.tuple(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"))),
+        S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"))),
+        S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c")))
+      )
+      const node = typeScriptFor(schema)
+      expect(printNodes(node.nodes)).toEqual(`a = Symbol.for("@fp-ts/schema/test/a")
+b = Symbol.for("@fp-ts/schema/test/b")
+c = Symbol.for("@fp-ts/schema/test/c")
+readonly [
+    typeof a,
+    ...(typeof b)[],
+    typeof c
+]`)
+    })
+
     it("nonEmptyArray", () => {
       const schema = S.nonEmptyArray(S.number)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly [
+      expect(printNodes(node.nodes)).toEqual(`readonly [
     number,
     ...number[]
 ]`)
@@ -442,13 +589,13 @@ describe.concurrent("TypeScript", () => {
     it("ReadonlyArray<unknown>", () => {
       const schema = S.array(S.unknown)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly unknown[]`)
+      expect(printNodes(node.nodes)).toEqual(`readonly unknown[]`)
     })
 
     it("ReadonlyArray<any>", () => {
       const schema = S.array(S.any)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`readonly any[]`)
+      expect(printNodes(node.nodes)).toEqual(`readonly any[]`)
     })
   })
 
@@ -456,7 +603,7 @@ describe.concurrent("TypeScript", () => {
     it("required field", () => {
       const schema = S.struct({ a: S.number })
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly a: number;
 }`)
     })
@@ -464,7 +611,7 @@ describe.concurrent("TypeScript", () => {
     it("required field with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly a: number | undefined;
 }`)
     })
@@ -472,7 +619,7 @@ describe.concurrent("TypeScript", () => {
     it("optional field", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly a?: number;
 }`)
     })
@@ -480,7 +627,7 @@ describe.concurrent("TypeScript", () => {
     it("optional field with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly a?: number | undefined;
 }`)
     })
@@ -488,7 +635,7 @@ describe.concurrent("TypeScript", () => {
     it("{ readonly [_: string]: unknown }", () => {
       const schema = S.stringIndexSignature(S.unknown)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly [_: string]: unknown;
 }`)
     })
@@ -496,7 +643,7 @@ describe.concurrent("TypeScript", () => {
     it("{ readonly [_: string]: any }", () => {
       const schema = S.stringIndexSignature(S.any)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly [_: string]: any;
 }`)
     })
@@ -504,7 +651,7 @@ describe.concurrent("TypeScript", () => {
     it("stringIndexSignature", () => {
       const schema = S.stringIndexSignature(S.string)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly [_: string]: string;
 }`)
     })
@@ -512,16 +659,33 @@ describe.concurrent("TypeScript", () => {
     it("symbolIndexSignature", () => {
       const schema = S.symbolIndexSignature(S.string)
       const node = typeScriptFor(schema)
-      expect(printNode(node.typeNode)).toEqual(`{
+      expect(printNodes(node.nodes)).toEqual(`{
     readonly [_: symbol]: string;
+}`)
+    })
+
+    it("all with symbols", () => {
+      const a = Symbol.for("@fp-ts/schema/test/a")
+      const schema = pipe(
+        S.struct({ [a]: S.uniqueSymbol(a), b: S.number }),
+        S.extend(S.stringIndexSignature(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"))))
+      )
+      const node = typeScriptFor(schema)
+      expect(printNodes(node.nodes)).toEqual(`a = Symbol.for("@fp-ts/schema/test/a")
+c = Symbol.for("@fp-ts/schema/test/c")
+{
+    readonly [a]: typeof a;
+    readonly b: number;
+    readonly [_: string]: typeof c;
 }`)
     })
   })
 
   it("union", () => {
-    const schema = S.union(S.string, S.number)
+    const schema = S.union(S.string, S.number, S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")))
     const node = typeScriptFor(schema)
-    expect(printNode(node.typeNode)).toEqual("string | number")
+    expect(printNodes(node.nodes)).toEqual(`a = Symbol.for("@fp-ts/schema/test/a")
+string | number | typeof a`)
   })
 
   it("example: compile to TypeScript AST", () => {
@@ -530,8 +694,8 @@ describe.concurrent("TypeScript", () => {
       age: S.number
     })
     // const typeNode: ts.TypeNode
-    const { typeNode } = typeScriptFor(schema)
-    expect(printNode(typeNode)).toEqual(`{
+    const { nodes } = typeScriptFor(schema)
+    expect(printNodes(nodes)).toEqual(`{
     readonly name: string;
     readonly age: number;
 }`)
