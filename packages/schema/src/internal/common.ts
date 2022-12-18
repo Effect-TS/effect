@@ -171,7 +171,7 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
 export const typeAlias = (
-  id: symbol,
+  id: unknown,
   config: Option<unknown>,
   provider: Provider,
   typeParameters: ReadonlyArray<Schema<any>>,

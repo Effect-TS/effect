@@ -358,7 +358,7 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
  * @since 1.0.0
  */
 export const filter = <A>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<A, A>["decode"]
 ) => (schema: Schema<A>): Codec<A> => codecFor(S.filter(id, decode)(schema))
 
@@ -366,7 +366,7 @@ export const filter = <A>(
  * @since 1.0.0
  */
 export const filterWith = <Config, A>(
-  id: symbol,
+  id: unknown,
   decode: (config: Config) => Decoder<A, A>["decode"]
 ) =>
   (config: Config) =>
@@ -376,7 +376,7 @@ export const filterWith = <Config, A>(
  * @since 1.0.0
  */
 export const refine = <A, B extends A>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<A, B>["decode"]
 ) => (schema: Schema<A>): Codec<B> => codecFor(S.refine(id, decode)(schema))
 

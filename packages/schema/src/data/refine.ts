@@ -16,7 +16,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const refine = <B, C extends B>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<B, C>["decode"]
 ) => {
   const _isC = (b: B): b is C => !I.isFailure(decode(b))

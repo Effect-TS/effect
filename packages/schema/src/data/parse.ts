@@ -16,7 +16,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const parse = <A, B>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<A, B>["decode"],
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,

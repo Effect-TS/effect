@@ -16,7 +16,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const filter = <B>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<B, B>["decode"]
 ) => {
   const _predicate = (b: B): boolean => !I.isFailure(decode(b))

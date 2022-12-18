@@ -38,7 +38,7 @@ export type AST =
  */
 export interface TypeAliasDeclaration {
   readonly _tag: "TypeAliasDeclaration"
-  readonly id: symbol
+  readonly id: unknown
   readonly config: Option<unknown>
   readonly provider: Provider
   readonly typeParameters: ReadonlyArray<AST>
@@ -49,7 +49,7 @@ export interface TypeAliasDeclaration {
  * @since 1.0.0
  */
 export const typeAliasDeclaration = (
-  id: symbol,
+  id: unknown,
   config: Option<unknown>,
   provider: Provider,
   typeParameters: ReadonlyArray<AST>,

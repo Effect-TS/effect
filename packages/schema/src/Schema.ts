@@ -48,7 +48,7 @@ export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
  * @since 1.0.0
  */
 export const typeAlias: (
-  id: symbol,
+  id: unknown,
   config: Option<unknown>,
   provider: Provider,
   typeParameters: ReadonlyArray<Schema<any>>,
@@ -306,7 +306,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  * @since 1.0.0
  */
 export const filter: <A>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<A, A>["decode"]
 ) => (schema: Schema<A>) => Schema<A> = DataFilter.filter
 
@@ -314,7 +314,7 @@ export const filter: <A>(
  * @since 1.0.0
  */
 export const filterWith: <Config, A>(
-  id: symbol,
+  id: unknown,
   decode: (config: Config) => Decoder<A, A>["decode"]
 ) => (config: Config) => (schema: Schema<A>) => Schema<A> = DataFilterWith.filterWith
 
@@ -322,7 +322,7 @@ export const filterWith: <Config, A>(
  * @since 1.0.0
  */
 export const refine: <A, B extends A>(
-  id: symbol,
+  id: unknown,
   decode: Decoder<A, B>["decode"]
 ) => (schema: Schema<A>) => Schema<B> = DataRefine.refine
 
