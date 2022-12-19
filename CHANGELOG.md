@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.13
+
+### Patch Changes
+
+- [#1360](https://github.com/Effect-TS/effect/pull/1360) [`fef698b15`](https://github.com/Effect-TS/effect/commit/fef698b151dba7a4f9598a452cf6acbd1bee7567) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Elect selected modules to main export
+
 ## 2.0.0-next.12
 
 ### Patch Changes
