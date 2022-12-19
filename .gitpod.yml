@@ -1,5 +1,5 @@
 tasks:
-  - init: npm install -g pmpm && pnpm install && pnpm build
+  - init: npm install -g pnpm && pnpm install && pnpm build
 github:
   prebuilds:
     addCheck: true
