@@ -50,7 +50,7 @@ type OneOfJSONSchema = {
 type ObjectJSONSchema = {
   type: "object"
   required: Array<string>
-  properties: { [_: string]: JSONSchema }
+  properties: { [x: string]: JSONSchema }
   additionalProperties?: JSONSchema
 }
 
@@ -135,7 +135,7 @@ const provideJsonSchemaFor = (
     return go(schema.ast)
   }
 
-const jsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideJsonSchemaFor(P.empty)
+const jsonSchemaFor: <A>(schema: Schema<A>) => JSONSchema = provideJsonSchemaFor(P.empty())
 
 export const _of = (
   value: unknown

@@ -112,13 +112,13 @@ pipe(C.struct({ a: C.string,  b: C.number }), C.omit('a'));
 // $ExpectType Codec<Partial<{ readonly a: string; readonly b: number; }>>
 C.partial(C.struct({ a: C.string,  b: C.number }));
 
-// $ExpectType Codec<{ readonly [_: string]: string; }>
+// $ExpectType Codec<{ readonly [x: string]: string; }>
 C.stringIndexSignature(C.string)
 
-// $ExpectType Codec<{ readonly [_: symbol]: string; }>
+// $ExpectType Codec<{ readonly [x: symbol]: string; }>
 C.symbolIndexSignature(C.string)
 
-// $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly [_: string]: string; }>
+// $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly [x: string]: string; }>
 pipe(
   C.struct({ a: C.string, b: C.string }),
   C.extend(C.stringIndexSignature(C.string))

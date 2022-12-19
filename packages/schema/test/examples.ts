@@ -31,7 +31,7 @@ describe.concurrent("examples", () => {
         C.success({ name: "name", age: 18 })
       )
       expect(Person.decode(null)).toEqual(
-        C.failure(DE.notType("{ readonly [_: string]: unknown }", null))
+        C.failure(DE.notType("{ readonly [x: string]: unknown }", null))
       )
 
       // parse from JSON string

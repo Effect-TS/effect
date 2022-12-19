@@ -332,7 +332,7 @@ const provideTypeScriptFor = (
                         [ts.factory.createParameterDeclaration(
                           undefined,
                           undefined,
-                          "_",
+                          "x",
                           undefined,
                           indexSignature.key === "string" ?
                             ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
@@ -650,19 +650,19 @@ describe.concurrent("TypeScript", () => {
 }`])
     })
 
-    it("{ readonly [_: string]: unknown }", () => {
+    it("{ readonly [x: string]: unknown }", () => {
       const schema = S.stringIndexSignature(S.unknown)
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([`{
-    readonly [_: string]: unknown;
+    readonly [x: string]: unknown;
 }`])
     })
 
-    it("{ readonly [_: string]: any }", () => {
+    it("{ readonly [x: string]: any }", () => {
       const schema = S.stringIndexSignature(S.any)
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([`{
-    readonly [_: string]: any;
+    readonly [x: string]: any;
 }`])
     })
 
@@ -670,7 +670,7 @@ describe.concurrent("TypeScript", () => {
       const schema = S.stringIndexSignature(S.string)
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([`{
-    readonly [_: string]: string;
+    readonly [x: string]: string;
 }`])
     })
 
@@ -678,7 +678,7 @@ describe.concurrent("TypeScript", () => {
       const schema = S.symbolIndexSignature(S.string)
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([`{
-    readonly [_: symbol]: string;
+    readonly [x: symbol]: string;
 }`])
     })
 
@@ -695,7 +695,7 @@ describe.concurrent("TypeScript", () => {
         `{
     readonly [a]: typeof a;
     readonly b: number;
-    readonly [_: string]: typeof c;
+    readonly [x: string]: typeof c;
 }`
       ])
     })

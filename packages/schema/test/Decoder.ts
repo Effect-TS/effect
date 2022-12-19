@@ -360,7 +360,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        `null did not satisfy is({ readonly [_: string]: unknown })`
+        `null did not satisfy is({ readonly [x: string]: unknown })`
       )
       Util.expectFailure(decoder, {}, "/a did not satisfy is(required)")
       Util.expectFailure(decoder, { a: undefined }, "/a undefined did not satisfy is(number)")
@@ -377,7 +377,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        `null did not satisfy is({ readonly [_: string]: unknown })`
+        `null did not satisfy is({ readonly [x: string]: unknown })`
       )
       Util.expectFailure(decoder, {}, "/a did not satisfy is(required)")
       Util.expectFailure(
@@ -398,7 +398,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        `null did not satisfy is({ readonly [_: string]: unknown })`
+        `null did not satisfy is({ readonly [x: string]: unknown })`
       )
       Util.expectFailure(decoder, { a: "a" }, `/a "a" did not satisfy is(number)`)
       Util.expectFailure(decoder, { a: undefined }, `/a undefined did not satisfy is(number)`)
@@ -416,7 +416,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        `null did not satisfy is({ readonly [_: string]: unknown })`
+        `null did not satisfy is({ readonly [x: string]: unknown })`
       )
       Util.expectFailure(
         decoder,
@@ -431,7 +431,7 @@ describe.concurrent("Decoder", () => {
       expect(decoder.decode({})).toEqual(_.success({}))
       expect(decoder.decode({ a: 1 })).toEqual(_.success({ a: 1 }))
 
-      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [_: string]: unknown })")
+      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
       Util.expectFailure(decoder, { a: "a" }, "/a \"a\" did not satisfy is(number)")
 
       Util.expectWarning(decoder, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
@@ -444,7 +444,7 @@ describe.concurrent("Decoder", () => {
       expect(decoder.decode({})).toEqual(_.success({}))
       expect(decoder.decode({ [a]: 1 })).toEqual(_.success({ [a]: 1 }))
 
-      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [_: string]: unknown })")
+      Util.expectFailure(decoder, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
       Util.expectFailure(
         decoder,
         { [a]: "a" },
@@ -608,7 +608,7 @@ describe.concurrent("Decoder", () => {
     Util.expectFailure(
       decoder,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 did not satisfy is({ readonly [_: string]: unknown })"
+      "/as /0 /as /0 1 did not satisfy is({ readonly [x: string]: unknown })"
     )
   })
 
@@ -622,7 +622,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        "null did not satisfy is({ readonly [_: string]: unknown })"
+        "null did not satisfy is({ readonly [x: string]: unknown })"
       )
       Util.expectFailure(decoder, { a: "a" }, `/b did not satisfy is(required)`)
       Util.expectFailure(decoder, { b: 1 }, "/a did not satisfy is(required)")
@@ -638,7 +638,7 @@ describe.concurrent("Decoder", () => {
       Util.expectFailure(
         decoder,
         null,
-        "null did not satisfy is({ readonly [_: string]: unknown })"
+        "null did not satisfy is({ readonly [x: string]: unknown })"
       )
       Util.expectFailure(decoder, { [a]: "a" }, `/b did not satisfy is(required)`)
       Util.expectFailure(

@@ -151,7 +151,7 @@ const _struct = (
 ): Encoder<any, any> =>
   make(
     I.makeSchema(ast),
-    (input: { readonly [_: string | symbol]: unknown }) => {
+    (input: { readonly [x: string | symbol]: unknown }) => {
       const output: any = {}
       const processedKeys: any = {}
       // ---------------------------------------------

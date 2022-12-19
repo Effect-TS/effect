@@ -289,7 +289,7 @@ const _struct = (
     I.makeSchema(ast),
     (input: unknown) => {
       if (!I.isUnknownObject(input)) {
-        return failure(DE.notType("{ readonly [_: string]: unknown }", input))
+        return failure(DE.notType("{ readonly [x: string]: unknown }", input))
       }
       const output: any = {}
       const processedKeys: any = {}

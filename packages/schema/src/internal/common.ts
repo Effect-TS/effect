@@ -16,7 +16,7 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Provider } from "@fp-ts/schema/Provider"
-import type { Optional, OptionalKeys, Schema, Spread } from "@fp-ts/schema/Schema"
+import type { FieldSchema, OptionalKeys, Schema, Spread } from "@fp-ts/schema/Schema"
 
 // ---------------------------------------------
 // Decoder APIs
@@ -74,7 +74,7 @@ export const isNonEmpty = RA.isNonEmpty
 // ---------------------------------------------
 
 /** @internal */
-export const isUnknownObject = (u: unknown): u is { readonly [_: PropertyKey]: unknown } =>
+export const isUnknownObject = (u: unknown): u is { readonly [x: PropertyKey]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
 /** @internal */
@@ -246,14 +246,18 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
 /** @internal */
-export const OptionalId: symbol = Symbol.for("@fp-ts/schema/optional")
+export const FieldSchemaId: symbol = Symbol.for("@fp-ts/schema/Schema/Field")
 
-const isOptional = <A>(schema: Schema<A>): boolean => schema["_id"] === OptionalId
+const isFieldSchema = <A>(schema: Schema<A>): schema is FieldSchema<A, boolean> =>
+  schema["_id"] === FieldSchemaId
+
+const isOptional = <A>(schema: Schema<A>): boolean => isFieldSchema(schema) && schema.isOptional
 
 /** @internal */
-export const optional = <A>(schema: Schema<A>): Optional<A> => {
+export const optional = <A>(schema: Schema<A>): FieldSchema<A, true> => {
   const out: any = makeSchema(schema.ast)
-  out["_id"] = OptionalId
+  out["_id"] = FieldSchemaId
+  out.isOptional = true
   return out
 }
 
@@ -287,7 +291,7 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
   makeSchema(AST.tuple([], O.some([item.ast]), true))
 
 /** @internal */
-export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: string]: A }> =>
+export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x: string]: A }> =>
   makeSchema(
     AST.struct(
       [],

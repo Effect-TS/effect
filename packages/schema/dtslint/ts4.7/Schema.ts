@@ -49,10 +49,10 @@ S.struct({ a: S.string,  b: S.number, c: S.optional(S.boolean) })
 // $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly c: boolean; }>
 pipe(S.struct({ a: S.string,  b: S.number }), S.extend(S.struct({ c: S.boolean })))
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly [_: string]: boolean; }>
+// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly [x: string]: boolean; }>
 pipe(S.struct({a: S.string, b: S.number}), S.extend(S.stringIndexSignature(S.boolean)))
 
-// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly [_: symbol]: boolean; }>
+// $ExpectType Schema<{ readonly a: string; readonly b: number; } & { readonly [x: symbol]: boolean; }>
 pipe(S.struct({a: S.string, b: S.number}), S.extend(S.symbolIndexSignature(S.boolean)))
 
 //

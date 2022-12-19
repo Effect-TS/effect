@@ -186,7 +186,7 @@ export const uniqueSymbol = <S extends symbol>(symbol: S): Codec<S> =>
 /**
  * @since 1.0.0
  */
-export const enums = <A extends { [_: string]: string | number }>(
+export const enums = <A extends { [x: string]: string | number }>(
   nativeEnum: A
 ): Codec<A[keyof A]> => codecFor(S.enums(nativeEnum))
 
@@ -297,7 +297,7 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => S.Optional<A> = I.optional
+export const optional: <A>(schema: Schema<A>) => S.FieldSchema<A, true> = I.optional
 
 /**
  * @since 1.0.0
@@ -333,13 +333,13 @@ export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.par
 /**
  * @since 1.0.0
  */
-export const stringIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [_: string]: A }> =>
+export const stringIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [x: string]: A }> =>
   codecFor(S.symbolIndexSignature(value))
 
 /**
  * @since 1.0.0
  */
-export const symbolIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [_: symbol]: A }> =>
+export const symbolIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [x: symbol]: A }> =>
   codecFor(S.symbolIndexSignature(value))
 
 /**

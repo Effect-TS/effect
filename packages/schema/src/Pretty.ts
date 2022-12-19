@@ -158,7 +158,7 @@ const _struct = (
 ): Pretty<any> =>
   make(
     I.makeSchema(ast),
-    (input: { readonly [_: string | symbol]: unknown }) => {
+    (input: { readonly [x: string | symbol]: unknown }) => {
       const output: Array<string> = []
       // ---------------------------------------------
       // handle fields

@@ -70,7 +70,7 @@ export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.unique
 /**
  * @since 1.0.0
  */
-export const enums = <A extends { [_: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
+export const enums = <A extends { [x: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
   make(AST.enums(
     Object.keys(enums).filter(
       (key) => typeof enums[enums[key]] !== "number"
@@ -212,25 +212,26 @@ export type Spread<A> = {
  * @since 1.0.0
  * @category symbol
  */
-export type OptionalId = typeof I.OptionalId
+export type FieldSchemaId = typeof I.FieldSchemaId
 
 /**
  * @since 1.0.0
  */
-export interface Optional<A> extends Schema<A> {
-  readonly _id: OptionalId
+export interface FieldSchema<A, isOptional extends boolean> extends Schema<A> {
+  readonly _id: FieldSchemaId
+  readonly isOptional: isOptional
 }
 
 /**
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => Optional<A> = I.optional
+export const optional: <A>(schema: Schema<A>) => FieldSchema<A, true> = I.optional
 
 /**
  * @since 1.0.0
  */
 export type OptionalKeys<T> = {
-  [K in keyof T]: T[K] extends Optional<any> ? K : never
+  [K in keyof T]: T[K] extends FieldSchema<any, true> ? K : never
 }[keyof T]
 
 /**
@@ -267,13 +268,13 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 /**
  * @since 1.0.0
  */
-export const stringIndexSignature: <A>(value: Schema<A>) => Schema<{ readonly [_: string]: A }> =
+export const stringIndexSignature: <A>(value: Schema<A>) => Schema<{ readonly [x: string]: A }> =
   I.stringIndexSignature
 
 /**
  * @since 1.0.0
  */
-export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [_: symbol]: A }> =>
+export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x: symbol]: A }> =>
   make(
     AST.struct(
       [],

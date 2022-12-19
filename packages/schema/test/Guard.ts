@@ -333,14 +333,14 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: "a" })).toEqual(false)
     })
 
-    it("{ readonly [_: string]: unknown }", () => {
+    it("{ readonly [x: string]: unknown }", () => {
       const schema = S.stringIndexSignature(S.unknown)
       const guard = guardFor(schema)
       expect(guard.is({})).toEqual(true)
       expect(guard.is({ a: "a", b: 1, c: true })).toEqual(true)
     })
 
-    it("{ readonly [_: string]: any }", () => {
+    it("{ readonly [x: string]: any }", () => {
       const schema = S.stringIndexSignature(S.any)
       const guard = guardFor(schema)
       expect(guard.is({})).toEqual(true)

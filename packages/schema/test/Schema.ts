@@ -19,6 +19,13 @@ describe.concurrent("Schema", () => {
     expect(S.json).exist
   })
 
+  describe.concurrent("optional", () => {
+    it("should flatten optional calls", () => {
+      const schema = S.optional(S.optional(S.string))
+      expect(schema).toEqual(S.optional(S.string))
+    })
+  })
+
   describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
       expect(S.literal().ast).toEqual(AST.neverKeyword)
@@ -166,7 +173,7 @@ describe.concurrent("Schema", () => {
       const schema: S.Schema<{
         readonly a: string;
         readonly b: number;
-        readonly c?: boolean | undefined;
+        readonly c?: boolean;
       }>
       */
       const schema = struct({
