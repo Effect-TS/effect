@@ -63,5 +63,6 @@ export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
     O.none,
     Provider,
     [item],
-    I.struct({})
+    I.struct({}),
+    []
   )

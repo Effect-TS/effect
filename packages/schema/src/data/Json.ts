@@ -39,7 +39,7 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.typeAlias(id, O.none, Provider, [], JsonSchema)
+export const Schema: S.Schema<Json> = I.typeAlias(id, O.none, Provider, [], JsonSchema, [])
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)
 

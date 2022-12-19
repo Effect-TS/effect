@@ -69,9 +69,10 @@ describe.concurrent("examples", () => {
     it("custom schema combinator", () => {
       const pair = <A>(schema: S.Schema<A>): S.Schema<readonly [A, A]> => {
         const tuple = AST.tuple(
-          [AST.element(schema.ast, false), AST.element(schema.ast, false)], // <= elements definitions
+          [AST.element(schema.ast, false, []), AST.element(schema.ast, false, [])], // <= elements definitions
           O.none, // <= rest element
-          true // <= specifies if the tuple is readonly
+          true, // <= specifies if the tuple is readonly
+          [] // <= annotations
         )
         return S.make(tuple) // <= wrap the AST value in a Schema
       }
