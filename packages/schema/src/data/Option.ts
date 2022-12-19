@@ -13,7 +13,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("Option")
+export const id = Symbol.for("@fp-ts/data/Option")
 
 const decoder = <A>(
   value: Decoder<unknown, A>
@@ -58,5 +58,6 @@ export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
     I.union(
       I.struct({ _tag: I.literal("None") }),
       I.struct({ _tag: I.literal("Some"), value })
-    )
+    ),
+    []
   )

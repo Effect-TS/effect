@@ -44,7 +44,7 @@ export const filter = <B>(
   })
 
   const schema = <A extends B>(self: Schema<A>): Schema<A> =>
-    I.typeAlias(id, O.none, Provider, [self], self)
+    I.typeAlias(id, O.none, Provider, [self], self, [])
 
   return schema
 }

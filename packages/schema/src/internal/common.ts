@@ -175,75 +175,85 @@ export const typeAlias = (
   config: Option<unknown>,
   provider: Provider,
   typeParameters: ReadonlyArray<Schema<any>>,
-  type: Schema<any>
+  type: Schema<any>,
+  annotations: ReadonlyArray<unknown>
 ): Schema<any> =>
   makeSchema(
-    AST.typeAliasDeclaration(id, config, provider, typeParameters.map((tp) => tp.ast), type.ast)
+    AST.typeAliasDeclaration(
+      id,
+      config,
+      provider,
+      typeParameters.map((tp) => tp.ast),
+      type.ast,
+      annotations
+    )
   )
 
-const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
-  makeSchema(AST.literalType(value))
+const makeLiteral = <Literal extends AST.Literal>(
+  value: Literal,
+  annotations: ReadonlyArray<unknown>
+): Schema<Literal> => makeSchema(AST.literalType(value, annotations))
 
 /** @internal */
 export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
-): Schema<Literals[number]> => union(...literals.map(makeLiteral))
+): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal, [])))
 
 /** @internal */
 export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> =>
-  makeSchema(AST.uniqueSymbol(symbol))
+  makeSchema(AST.uniqueSymbol(symbol, []))
 
 /** @internal */
 export const isUndefined = (u: unknown): u is undefined => u === undefined
 
 /** @internal */
-export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
+export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword([]))
 
 /** @internal */
 export const isNever = (_u: unknown): _u is never => false
 
 /** @internal */
-export const never: Schema<never> = makeSchema(AST.neverKeyword)
+export const never: Schema<never> = makeSchema(AST.neverKeyword([]))
 
 /** @internal */
 export const isUnknown = (_u: unknown): _u is unknown => true
 
 /** @internal */
-export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword)
+export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword([]))
 
 /** @internal */
-export const any: Schema<any> = makeSchema(AST.anyKeyword)
+export const any: Schema<any> = makeSchema(AST.anyKeyword([]))
 
 /** @internal */
-export const string: Schema<string> = makeSchema(AST.stringKeyword)
+export const string: Schema<string> = makeSchema(AST.stringKeyword([]))
 
 /** @internal */
-export const number: Schema<number> = makeSchema(AST.numberKeyword)
+export const number: Schema<number> = makeSchema(AST.numberKeyword([]))
 
 /** @internal */
-export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword)
+export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword([]))
 
 /** @internal */
 export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
 
 /** @internal */
-export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword)
+export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword([]))
 
 /** @internal */
 export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
 
 /** @internal */
-export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword)
+export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword([]))
 
 /** @internal */
-export const _void: Schema<void> = makeSchema(AST.voidKeyword)
+export const _void: Schema<void> = makeSchema(AST.voidKeyword([]))
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
+): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast), []))
 
 /** @internal */
 export const FieldSchemaId: symbol = Symbol.for("@fp-ts/schema/Schema/Field")
@@ -253,11 +263,15 @@ const isFieldSchema = <A>(schema: Schema<A>): schema is FieldSchema<A, boolean> 
 
 const isOptional = <A>(schema: Schema<A>): boolean => isFieldSchema(schema) && schema.isOptional
 
+const getAnnotations = <A>(schema: Schema<A>): AST.Annotated["annotations"] =>
+  isFieldSchema(schema) ? schema.annotations : []
+
 /** @internal */
 export const optional = <A>(schema: Schema<A>): FieldSchema<A, true> => {
   const out: any = makeSchema(schema.ast)
   out["_id"] = FieldSchemaId
   out.isOptional = true
+  out.annotations = []
   return out
 }
 
@@ -272,7 +286,10 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 > =>
   makeSchema(
     AST.struct(
-      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, isOptional(fields[key]), true)),
+      ownKeys(fields).map((key) =>
+        AST.field(key, fields[key].ast, isOptional(fields[key]), true, getAnnotations(fields[key]))
+      ),
+      [],
       []
     )
   )
@@ -281,23 +298,31 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
 ): Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
-  makeSchema(AST.tuple(elements.map((schema) => AST.element(schema.ast, false)), O.none, true))
+  makeSchema(
+    AST.tuple(elements.map((schema) => AST.element(schema.ast, false, [])), O.none, true, [])
+  )
 
 /** @internal */
-export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))
+export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast, []))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
-  makeSchema(AST.tuple([], O.some([item.ast]), true))
+  makeSchema(AST.tuple([], O.some([item.ast]), true, []))
 
 /** @internal */
 export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x: string]: A }> =>
   makeSchema(
     AST.struct(
       [],
-      [AST.indexSignature("string", value.ast, true)]
+      [AST.indexSignature("string", value.ast, true, [])],
+      []
     )
   )
+
+/** @internal */
+export const annotation = (
+  annotation: unknown
+) => <A>(schema: Schema<A>): Schema<A> => makeSchema(AST.appendAnnotation(schema.ast, annotation))
 
 // ---------------------------------------------
 // general helpers

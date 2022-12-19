@@ -67,5 +67,6 @@ export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     O.none,
     Provider,
     [item],
-    I.struct({ _id: I.literal(Symbol.for("@fp-ts/data/Chunk")) })
+    I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
+    []
   )

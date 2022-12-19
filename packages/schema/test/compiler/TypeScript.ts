@@ -5,6 +5,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
+import * as DataOption from "@fp-ts/schema/data/Option"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import * as S from "@fp-ts/schema/Schema"
@@ -83,30 +84,41 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-// TODO: remove
-const _getSymbolIdentifier = (symbol: symbol): ts.Identifier => {
-  const parts = symbol.description!.split("/")
-  return ts.factory.createIdentifier(parts[parts.length - 1])
+const IdentifierAnnotationId = Symbol.for("@fp-ts/schema/test/compiler/TypeScript")
+
+interface IdentifierAnnotation {
+  readonly _id: typeof IdentifierAnnotationId
+  readonly identifier: string
 }
 
-// TODO
-const getTypeAliasIdentifier = (ast: AST.TypeAliasDeclaration): O.Option<ts.Identifier> => {
-  if (typeof ast.id === "symbol") {
-    return O.some(_getSymbolIdentifier(ast.id))
-  }
-  return O.none
-}
+const isIdentifierAnnotation = (u: unknown): u is IdentifierAnnotation =>
+  typeof u === "object" && u !== null && u["_id"] === IdentifierAnnotationId
 
-// TODO
-const getSymbolIdentifier = (ast: AST.UniqueSymbol): ts.Identifier =>
-  _getSymbolIdentifier(ast.symbol)
+const identifierAnnotation = (identifier: string): IdentifierAnnotation => ({
+  _id: IdentifierAnnotationId,
+  identifier
+})
 
-// TODO
-const getEnumIdentifier = (_ast: AST.Enums): ts.Identifier => ts.factory.createIdentifier("myenum")
+const getIdentifier = (ast: AST.AST): O.Option<ts.Identifier> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isIdentifierAnnotation),
+    O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
+  )
+
+const createSymbol = (description: string | undefined) =>
+  ts.factory.createCallExpression(
+    ts.factory.createPropertyAccessExpression(
+      ts.factory.createIdentifier("Symbol"),
+      "for"
+    ),
+    [],
+    description === undefined ? [] : [ts.factory.createStringLiteral(description)]
+  )
 
 const getPropertyName = (ast: AST.Field): ts.PropertyName =>
   typeof ast.key === "symbol" ?
-    ts.factory.createComputedPropertyName(_getSymbolIdentifier(ast.key)) :
+    ts.factory.createComputedPropertyName(createSymbol(ast.key.description)) :
     ts.factory.createIdentifier(String(ast.key))
 
 const provideTypeScriptFor = (
@@ -123,7 +135,7 @@ const provideTypeScriptFor = (
             O.match(
               () =>
                 pipe(
-                  getTypeAliasIdentifier(ast),
+                  getIdentifier(ast),
                   O.match(
                     () => go(ast.type),
                     (id) =>
@@ -173,20 +185,18 @@ const provideTypeScriptFor = (
           }
         }
         case "UniqueSymbol": {
-          const id = getSymbolIdentifier(ast)
+          const id = pipe(
+            getIdentifier(ast),
+            O.getOrThrow(() =>
+              new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
+            )
+          )
           const typeNode = ts.factory.createTypeQueryNode(id)
           const declaration = ts.factory.createVariableDeclaration(
             id,
             undefined,
             undefined,
-            ts.factory.createCallExpression(
-              ts.factory.createPropertyAccessExpression(
-                ts.factory.createIdentifier("Symbol"),
-                "for"
-              ),
-              [],
-              [ts.factory.createStringLiteral(ast.symbol.description!)]
-            )
+            createSymbol(ast.symbol.description)
           )
           return make(
             ast,
@@ -277,7 +287,10 @@ const provideTypeScriptFor = (
             )
           )
         case "Enums": {
-          const id = getEnumIdentifier(ast)
+          const id = pipe(
+            getIdentifier(ast),
+            O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
+          )
           const typeNode = ts.factory.createTypeQueryNode(id)
           const declaration = ts.factory.createEnumDeclaration(
             undefined,
@@ -354,6 +367,25 @@ const provideTypeScriptFor = (
 
     return go(schema.ast)
   }
+
+const provider: P.Provider = new Map([
+  [
+    TypeScriptId,
+    new Map([
+      [
+        DataOption.id,
+        <A>(typeParameter: TypeScript<A>): TypeScript<O.Option<A>> =>
+          make(
+            DataOption.schema(typeParameter).ast,
+            pipe(
+              typeParameter.nodes,
+              map((typeParameter) => ts.factory.createTypeReferenceNode("Option", [typeParameter]))
+            )
+          )
+      ]
+    ])
+  ]
+])
 
 const typeScriptFor = provideTypeScriptFor(P.empty())
 
@@ -445,7 +477,10 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("uniqueSymbol", () => {
-    const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"))
+    const schema = pipe(
+      S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
+      S.annotation(identifierAnnotation("a"))
+    )
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
   })
@@ -455,14 +490,14 @@ describe.concurrent("TypeScript", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits)
+    const schema = pipe(S.enums(Fruits), S.annotation(identifierAnnotation("Fruits")))
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([
-      `enum myenum {
+      `enum Fruits {
     Apple = 0,
     Banana = 1
 }`,
-      `typeof myenum`
+      `typeof Fruits`
     ])
   })
 
@@ -578,9 +613,20 @@ describe.concurrent("TypeScript", () => {
 
     it("all with symbols", () => {
       const schema = pipe(
-        S.tuple(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"))),
-        S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"))),
-        S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c")))
+        S.tuple(
+          pipe(
+            S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
+            S.annotation(identifierAnnotation("a"))
+          )
+        ),
+        S.rest(pipe(
+          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b")),
+          S.annotation(identifierAnnotation("b"))
+        )),
+        S.element(pipe(
+          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c")),
+          S.annotation(identifierAnnotation("c"))
+        ))
       )
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([
@@ -684,25 +730,43 @@ describe.concurrent("TypeScript", () => {
 
     it("all with symbols", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
+      const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
-        S.struct({ [a]: S.uniqueSymbol(a), b: S.number }),
-        S.extend(S.stringIndexSignature(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"))))
+        S.struct({
+          [a]: pipe(S.uniqueSymbol(b), S.annotation(identifierAnnotation("b"))),
+          c: S.number
+        }),
+        S.extend(
+          S.stringIndexSignature(
+            pipe(
+              S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d")),
+              S.annotation(identifierAnnotation("d"))
+            )
+          )
+        )
       )
       const node = typeScriptFor(schema)
       expect(printNodes(node.nodes)).toEqual([
-        `a = Symbol.for("@fp-ts/schema/test/a")`,
-        `c = Symbol.for("@fp-ts/schema/test/c")`,
+        `b = Symbol.for("@fp-ts/schema/test/b")`,
+        `d = Symbol.for("@fp-ts/schema/test/d")`,
         `{
-    readonly [a]: typeof a;
-    readonly b: number;
-    readonly [x: string]: typeof c;
+    readonly [Symbol.for("@fp-ts/schema/test/a")]: typeof b;
+    readonly c: number;
+    readonly [x: string]: typeof d;
 }`
       ])
     })
   })
 
   it("union", () => {
-    const schema = S.union(S.string, S.number, S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")))
+    const schema = S.union(
+      S.string,
+      S.number,
+      pipe(
+        S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
+        S.annotation(identifierAnnotation("a"))
+      )
+    )
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([
       `a = Symbol.for("@fp-ts/schema/test/a")`,
@@ -710,8 +774,19 @@ describe.concurrent("TypeScript", () => {
     ])
   })
 
-  it("Option", () => {
+  it("Option (by Provider)", () => {
+    const typeScriptFor = provideTypeScriptFor(provider)
     const schema = S.option(S.struct({ a: S.string }))
+    const node = typeScriptFor(schema)
+    expect(printNodes(node.nodes)).toEqual([`Option<{
+    readonly a: string;
+}>`])
+  })
+
+  it("Option (by annotation)", () => {
+    const option = <A>(value: S.Schema<A>): S.Schema<O.Option<A>> =>
+      pipe(DataOption.schema(value), S.annotation(identifierAnnotation("Option")))
+    const schema = option(S.struct({ a: S.string }))
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([`Option<{
     readonly a: string;

@@ -20,7 +20,6 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataRefine from "@fp-ts/schema/data/refine"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
 
 /**
  * @since 1.0.0
@@ -47,17 +46,6 @@ export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
 /**
  * @since 1.0.0
  */
-export const typeAlias: (
-  id: unknown,
-  config: Option<unknown>,
-  provider: Provider,
-  typeParameters: ReadonlyArray<Schema<any>>,
-  type: Schema<any>
-) => Schema<any> = I.typeAlias
-
-/**
- * @since 1.0.0
- */
 export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
 ) => Schema<Literals[number]> = I.literal
@@ -71,11 +59,14 @@ export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.unique
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
-  make(AST.enums(
-    Object.keys(enums).filter(
-      (key) => typeof enums[enums[key]] !== "number"
-    ).map((key) => [key, enums[key]])
-  ))
+  make(
+    AST.enums(
+      Object.keys(enums).filter(
+        (key) => typeof enums[enums[key]] !== "number"
+      ).map((key) => [key, enums[key]]),
+      []
+    )
+  )
 
 // ---------------------------------------------
 // filters
@@ -144,8 +135,9 @@ export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
   make(
     AST.union(
       AST.keyof(schema.ast).map((key) =>
-        typeof key === "symbol" ? AST.uniqueSymbol(key) : AST.literalType(key)
-      )
+        typeof key === "symbol" ? AST.uniqueSymbol(key, []) : AST.literalType(key, [])
+      ),
+      []
     )
   )
 
@@ -162,7 +154,7 @@ export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
 export const rest = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.addRestElement(self.ast, rest.ast))
+      return make(AST.appendRestElement(self.ast, rest.ast, []))
     }
     throw new Error("`rest` is not supported on this schema")
   }
@@ -173,7 +165,7 @@ export const rest = <R>(rest: Schema<R>) =>
 export const element = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.addElement(self.ast, AST.element(element.ast, false)))
+      return make(AST.appendElement(self.ast, AST.element(element.ast, false, []), []))
     }
     throw new Error("`element` is not supported on this schema")
   }
@@ -184,7 +176,7 @@ export const element = <E>(element: Schema<E>) =>
 export const optionalElement = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E?]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.addElement(self.ast, AST.element(element.ast, true)))
+      return make(AST.appendElement(self.ast, AST.element(element.ast, true, []), []))
     }
     throw new Error("`optionalElement` is not supported on this schema")
   }
@@ -217,7 +209,7 @@ export type FieldSchemaId = typeof I.FieldSchemaId
 /**
  * @since 1.0.0
  */
-export interface FieldSchema<A, isOptional extends boolean> extends Schema<A> {
+export interface FieldSchema<A, isOptional extends boolean> extends Schema<A>, AST.Annotated {
   readonly _id: FieldSchemaId
   readonly isOptional: isOptional
 }
@@ -251,19 +243,19 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> =>
-    make(AST.pick(self.ast, keys))
+    make(AST.pick(self.ast, keys, []))
 
 /**
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> =>
-    make(AST.omit(self.ast, keys))
+    make(AST.omit(self.ast, keys, []))
 
 /**
  * @since 1.0.0
  */
-export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast))
+export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast, []))
 
 /**
  * @since 1.0.0
@@ -278,7 +270,8 @@ export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x:
   make(
     AST.struct(
       [],
-      [AST.indexSignature("symbol", value.ast, true)]
+      [AST.indexSignature("symbol", value.ast, true, [])],
+      []
     )
   )
 
@@ -292,7 +285,8 @@ export const extend = <B>(
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
       return make(AST.struct(
         self.ast.fields.concat(that.ast.fields),
-        self.ast.indexSignatures.concat(that.ast.indexSignatures)
+        self.ast.indexSignatures.concat(that.ast.indexSignatures),
+        []
       ))
     }
     throw new Error("`extend` is not supported on this schema")
@@ -326,6 +320,13 @@ export const refine: <A, B extends A>(
   id: unknown,
   decode: Decoder<A, B>["decode"]
 ) => (schema: Schema<A>) => Schema<B> = DataRefine.refine
+
+/**
+ * @since 1.0.0
+ */
+export const annotation: (
+  annotation: unknown
+) => <A>(schema: Schema<A>) => Schema<A> = I.annotation
 
 // ---------------------------------------------
 // data
