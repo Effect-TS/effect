@@ -8,6 +8,8 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
+import type { GuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { isGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
@@ -31,6 +33,12 @@ export interface Guard<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
+const getGuardAnnotation = (ast: AST.TypeAliasDeclaration): O.Option<GuardAnnotation> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isGuardAnnotation)
+  )
+
 /**
  * @since 1.0.0
  */
@@ -40,15 +48,23 @@ export const provideGuardFor = (provider: Provider) =>
       switch (ast._tag) {
         case "TypeAliasDeclaration":
           return pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.find(I.GuardId, ast.id),
-            O.match(
-              () => go(ast.type),
-              (handler) =>
-                O.isSome(ast.config) ?
-                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                  handler(...ast.typeParameters.map(go))
+            getGuardAnnotation(ast),
+            O.map((annotation) =>
+              annotation.handler(annotation.config, ...ast.typeParameters.map(go))
+            ),
+            O.getOrElse(() =>
+              pipe(
+                ast.provider,
+                P.Semigroup.combine(provider),
+                P.find(I.GuardId, ast.id),
+                O.match(
+                  () => go(ast.type),
+                  (handler) =>
+                    O.isSome(ast.config) ?
+                      handler(ast.config.value)(...ast.typeParameters.map(go)) :
+                      handler(...ast.typeParameters.map(go))
+                )
+              )
             )
           )
         case "LiteralType":

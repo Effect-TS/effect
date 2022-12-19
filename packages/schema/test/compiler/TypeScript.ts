@@ -1,7 +1,7 @@
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import type * as applicative from "@fp-ts/core/typeclass/Applicative"
 import * as covariant from "@fp-ts/core/typeclass/Covariant"
-import { pipe } from "@fp-ts/data/Function"
+import { flow, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
@@ -84,25 +84,29 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const IdentifierAnnotationId = Symbol.for("@fp-ts/schema/test/compiler/TypeScript")
+const TsIdentifierAnnotationId = Symbol.for("@fp-ts/schema/annotation/TsIdentifierAnnotation")
 
-interface IdentifierAnnotation {
-  readonly _id: typeof IdentifierAnnotationId
+type TsIdentifierAnnotationId = typeof TsIdentifierAnnotationId
+
+interface TsIdentifierAnnotation {
+  readonly _id: TsIdentifierAnnotationId
   readonly identifier: string
 }
 
-const isIdentifierAnnotation = (u: unknown): u is IdentifierAnnotation =>
-  typeof u === "object" && u !== null && u["_id"] === IdentifierAnnotationId
+const isTsIdentifierAnnotation = (u: unknown): u is TsIdentifierAnnotation =>
+  typeof u === "object" && u !== null && u["_id"] === TsIdentifierAnnotationId
 
-const identifierAnnotation = (identifier: string): IdentifierAnnotation => ({
-  _id: IdentifierAnnotationId,
+const tsIdentifierAnnotation = (identifier: string): TsIdentifierAnnotation => ({
+  _id: TsIdentifierAnnotationId,
   identifier
 })
+
+const tsIdentifier = flow(tsIdentifierAnnotation, S.annotation)
 
 const getIdentifier = (ast: AST.AST): O.Option<ts.Identifier> =>
   pipe(
     ast.annotations,
-    RA.findFirst(isIdentifierAnnotation),
+    RA.findFirst(isTsIdentifierAnnotation),
     O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
   )
 
@@ -479,7 +483,7 @@ describe.concurrent("TypeScript", () => {
   it("uniqueSymbol", () => {
     const schema = pipe(
       S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-      S.annotation(identifierAnnotation("a"))
+      tsIdentifier("a")
     )
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
@@ -490,7 +494,7 @@ describe.concurrent("TypeScript", () => {
       Apple,
       Banana
     }
-    const schema = pipe(S.enums(Fruits), S.annotation(identifierAnnotation("Fruits")))
+    const schema = pipe(S.enums(Fruits), tsIdentifier("Fruits"))
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([
       `enum Fruits {
@@ -616,16 +620,16 @@ describe.concurrent("TypeScript", () => {
         S.tuple(
           pipe(
             S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-            S.annotation(identifierAnnotation("a"))
+            tsIdentifier("a")
           )
         ),
         S.rest(pipe(
           S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b")),
-          S.annotation(identifierAnnotation("b"))
+          tsIdentifier("b")
         )),
         S.element(pipe(
           S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c")),
-          S.annotation(identifierAnnotation("c"))
+          tsIdentifier("c")
         ))
       )
       const node = typeScriptFor(schema)
@@ -733,14 +737,14 @@ describe.concurrent("TypeScript", () => {
       const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
         S.struct({
-          [a]: pipe(S.uniqueSymbol(b), S.annotation(identifierAnnotation("b"))),
+          [a]: pipe(S.uniqueSymbol(b), tsIdentifier("b")),
           c: S.number
         }),
         S.extend(
           S.stringIndexSignature(
             pipe(
               S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d")),
-              S.annotation(identifierAnnotation("d"))
+              tsIdentifier("d")
             )
           )
         )
@@ -764,7 +768,7 @@ describe.concurrent("TypeScript", () => {
       S.number,
       pipe(
         S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-        S.annotation(identifierAnnotation("a"))
+        tsIdentifier("a")
       )
     )
     const node = typeScriptFor(schema)
@@ -785,7 +789,7 @@ describe.concurrent("TypeScript", () => {
 
   it("Option (by annotation)", () => {
     const option = <A>(value: S.Schema<A>): S.Schema<O.Option<A>> =>
-      pipe(DataOption.schema(value), S.annotation(identifierAnnotation("Option")))
+      pipe(S.option(value), tsIdentifier("Option"))
     const schema = option(S.struct({ a: S.string }))
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([`Option<{
