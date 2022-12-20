@@ -19,7 +19,8 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const filter = <B>(
-  decode: Decoder<B, B>["decode"]
+  decode: Decoder<B, B>["decode"],
+  annotations: ReadonlyArray<unknown>
 ): <A extends B>(self: Schema<A>) => Schema<A> => {
   const predicate = (b: B): boolean => !I.isFailure(decode(b))
 
@@ -39,6 +40,7 @@ export const filter = <B>(
 
   const schema = <A extends B>(self: Schema<A>): Schema<A> =>
     I.typeAlias([self], self, [
+      ...annotations,
       decoderAnnotation(decoder),
       guardAnnotation(guard),
       encoderAnnotation(encoder),

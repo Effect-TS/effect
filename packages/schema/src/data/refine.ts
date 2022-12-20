@@ -19,7 +19,8 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const refine = <B, C extends B>(
-  decode: Decoder<B, C>["decode"]
+  decode: Decoder<B, C>["decode"],
+  annotations: ReadonlyArray<unknown>
 ) => {
   const isC = (b: B): b is C => !I.isFailure(decode(b))
 
@@ -39,6 +40,7 @@ export const refine = <B, C extends B>(
 
   const schema = <A extends B>(self: Schema<A>): Schema<A & C> =>
     I.typeAlias([self], self, [
+      ...annotations,
       decoderAnnotation(decoder),
       guardAnnotation(guard),
       encoderAnnotation(encoder),

@@ -1,7 +1,11 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
+import { isJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import type { JSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
+import * as DataInt from "@fp-ts/schema/data/filter/Int"
 import * as G from "@fp-ts/schema/Guard"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -59,12 +63,21 @@ type JSONSchema =
   | OneOfJSONSchema
   | ObjectJSONSchema
 
-// const JSONSchemaId = Symbol.for(
-//   "@fp-ts/schema/test/compiler/JSONSchema"
-// )
+const getJSONSchemaAnnotation = (ast: AST.AST): O.Option<JSONSchemaAnnotation> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isJSONSchemaAnnotation)
+  )
 
 const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const go = (ast: AST.AST): JSONSchema => {
+    const annotation = getJSONSchemaAnnotation(ast)
+    if (O.isSome(annotation)) {
+      const { schema } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ?
+        { ...go(ast.type), ...schema } :
+        schema as any
+    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
         return go(ast.type)
@@ -87,7 +100,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
       case "Struct": {
         const indexSignatures = ast.indexSignatures.filter((is) => is.key === "string")
         if (AST.indexSignature.length < ast.indexSignatures.length) {
-          throw new Error("unsuported index signatures")
+          throw new Error("unsupported index signatures")
         }
         return _struct(
           ast,
@@ -272,6 +285,12 @@ describe("jsonSchemaFor", () => {
     assertFalse(schema, "a")
   })
 
+  it("integer", () => {
+    const schema = DataInt.schema(S.number)
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "integer" })
+  })
+
   it("union", () => {
     const schema = S.union(S.string, S.number)
     assertTrue(schema, 1)
@@ -337,20 +356,22 @@ describe("jsonSchemaFor", () => {
     assertFalse(schema, { a: "a", b: 1 })
   })
 
-  // TODO
-  it.skip("minLength", () => {
+  it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
-    assertTrue(schema, "a")
-    assertTrue(schema, "aa")
-    assertFalse(schema, "")
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
   })
 
-  // TODO
-  it.skip("maxLength", () => {
+  it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
-    assertTrue(schema, "")
-    assertTrue(schema, "a")
-    assertFalse(schema, "aa")
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "string", maxLength: 1 })
+  })
+
+  it("min/max", () => {
+    const schema = pipe(S.number, S.greaterThan(0), S.lessThanOrEqualTo(10))
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "number", exclusiveMinimum: 0, maximum: 10 })
   })
 })
 

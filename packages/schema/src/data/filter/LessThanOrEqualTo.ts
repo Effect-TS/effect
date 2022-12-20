@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { jsonSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import { filter } from "@fp-ts/schema/data/filter"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -12,5 +13,8 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const schema = (max: number): <A extends number>(self: Schema<A>) => Schema<A> =>
   filter(
-    (n: number) => n <= max ? I.success(n) : I.failure(DE.lessThanOrEqualTo(max, n))
+    (n: number) => n <= max ? I.success(n) : I.failure(DE.lessThanOrEqualTo(max, n)),
+    [
+      jsonSchemaAnnotation({ maximum: max })
+    ]
   )

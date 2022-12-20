@@ -304,14 +304,16 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  * @since 1.0.0
  */
 export const filter: <B>(
-  decode: Decoder<B, B>["decode"]
+  decode: Decoder<B, B>["decode"],
+  annotations: ReadonlyArray<unknown>
 ) => <A extends B>(self: Schema<A>) => Schema<A> = DataFilter.filter
 
 /**
  * @since 1.0.0
  */
 export const refine: <A, B extends A>(
-  decode: Decoder<A, B>["decode"]
+  decode: Decoder<A, B>["decode"],
+  annotations: ReadonlyArray<unknown>
 ) => (self: Schema<A>) => Schema<B> = DataRefine.refine
 
 /**
@@ -322,7 +324,8 @@ export const parse: <A, B>(
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
-  pretty: Pretty<B>["pretty"]
+  pretty: Pretty<B>["pretty"],
+  annotations: ReadonlyArray<unknown>
 ) => (self: Schema<A>) => Schema<B> = DataParse.parse
 
 /**

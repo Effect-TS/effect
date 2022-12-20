@@ -10,7 +10,8 @@ import * as Util from "@fp-ts/schema/test/util"
 type Int = number & { __brand: "Int" }
 const isInt = (n: number): n is Int => Number.isInteger(n)
 const Int = refine(
-  (n: number) => isInt(n) ? D.success(n) : D.failure(DE.custom("not an int", n))
+  (n: number) => isInt(n) ? D.success(n) : D.failure(DE.custom("not an int", n)),
+  []
 )
 
 describe.concurrent("refine", () => {

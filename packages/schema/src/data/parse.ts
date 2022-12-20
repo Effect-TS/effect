@@ -23,7 +23,8 @@ export const parse = <A, B>(
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
-  pretty: Pretty<B>["pretty"]
+  pretty: Pretty<B>["pretty"],
+  annotations: ReadonlyArray<unknown>
 ): (self: Schema<A>) => Schema<B> => {
   const guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
@@ -39,6 +40,7 @@ export const parse = <A, B>(
 
   const schema = (self: Schema<A>): Schema<B> =>
     I.typeAlias([self], self, [
+      ...annotations,
       decoderAnnotation(decoder),
       guardAnnotation(guard),
       encoderAnnotation(encoder),
