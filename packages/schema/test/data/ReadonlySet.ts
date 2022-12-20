@@ -25,7 +25,7 @@ describe.concurrent("ReadonlySet", () => {
     expect(guard.is(new Set(["a", "b", 1]))).toEqual(false)
   })
 
-  it("Decoder", () => {
+  it("decoder", () => {
     const schema = _.schema(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(new Set([])))
@@ -43,7 +43,7 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
   })
 
-  it("Encoder", () => {
+  it("encoder", () => {
     const schema = _.schema(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(new Set())).toEqual([])

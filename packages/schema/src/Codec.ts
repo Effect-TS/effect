@@ -151,7 +151,6 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
 export const provideCodecFor = (provider: Provider) => {
   const decoderFor = provideDecoderFor(provider)
   const encoderFor = provideEncoderFor(provider)
-  const guardFor = G.provideGuardFor(provider)
   const arbitraryFor = A.provideArbitraryFor(provider)
   const prettyFor = P.providePrettyFor(provider)
   return <A>(schema: Schema<A>): Codec<A> =>
@@ -159,7 +158,7 @@ export const provideCodecFor = (provider: Provider) => {
       schema,
       decoderFor(schema).decode,
       encoderFor(schema).encode,
-      guardFor(schema).is,
+      G.guardFor(schema).is,
       arbitraryFor(schema).arbitrary,
       prettyFor(schema).pretty
     )

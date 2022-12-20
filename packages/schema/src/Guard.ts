@@ -10,16 +10,9 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { GuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { isGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-
-/**
- * @since 1.0.0
- */
-export const GuardId = I.GuardId
 
 /**
  * @since 1.0.0
@@ -33,7 +26,7 @@ export interface Guard<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
-const getGuardAnnotation = (ast: AST.TypeAliasDeclaration): O.Option<GuardAnnotation> =>
+const getGuardAnnotation = (ast: AST.AST): O.Option<GuardAnnotation<unknown>> =>
   pipe(
     ast.annotations,
     RA.findFirst(isGuardAnnotation)
@@ -42,144 +35,125 @@ const getGuardAnnotation = (ast: AST.TypeAliasDeclaration): O.Option<GuardAnnota
 /**
  * @since 1.0.0
  */
-export const provideGuardFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Guard<A> => {
-    const go = (ast: AST.AST): Guard<any> => {
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return pipe(
-            getGuardAnnotation(ast),
-            O.map((annotation) =>
-              annotation.handler(annotation.config, ...ast.typeParameters.map(go))
-            ),
-            O.getOrElse(() =>
-              pipe(
-                ast.provider,
-                P.Semigroup.combine(provider),
-                P.find(I.GuardId, ast.id),
-                O.match(
-                  () => go(ast.type),
-                  (handler) =>
-                    O.isSome(ast.config) ?
-                      handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                      handler(...ast.typeParameters.map(go))
-                )
-              )
-            )
-          )
-        case "LiteralType":
-          return make(I.makeSchema(ast), (u): u is typeof ast.literal => u === ast.literal)
-        case "UniqueSymbol":
-          return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)
-        case "UndefinedKeyword":
-          return make(I._undefined, I.isUndefined)
-        case "VoidKeyword":
-          return make(I._void, I.isUndefined)
-        case "NeverKeyword":
-          return make(I.never, I.isNever) as any
-        case "UnknownKeyword":
-          return make(I.unknown, I.isUnknown)
-        case "AnyKeyword":
-          return make(I.any, I.isUnknown)
-        case "StringKeyword":
-          return make(I.string, isString)
-        case "NumberKeyword":
-          return make(I.number, isNumber)
-        case "BooleanKeyword":
-          return make(I.boolean, isBoolean)
-        case "BigIntKeyword":
-          return make(I.bigint, I.isBigInt)
-        case "SymbolKeyword":
-          return make(I.symbol, I.isSymbol)
-        case "Tuple": {
-          const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
-          return make(
-            I.makeSchema(ast),
-            (input: unknown): input is any => {
-              if (!Array.isArray(input)) {
+export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
+  const go = (ast: AST.AST): Guard<any> => {
+    const annotation = getGuardAnnotation(ast)
+    if (O.isSome(annotation)) {
+      return AST.isTypeAliasDeclaration(ast) ?
+        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+        annotation.value.handler(annotation.value.config, go(ast))
+    }
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return go(ast.type)
+      case "LiteralType":
+        return make(I.makeSchema(ast), (u): u is typeof ast.literal => u === ast.literal)
+      case "UniqueSymbol":
+        return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)
+      case "UndefinedKeyword":
+        return make(I._undefined, I.isUndefined)
+      case "VoidKeyword":
+        return make(I._void, I.isUndefined)
+      case "NeverKeyword":
+        return make(I.never, I.isNever) as any
+      case "UnknownKeyword":
+        return make(I.unknown, I.isUnknown)
+      case "AnyKeyword":
+        return make(I.any, I.isUnknown)
+      case "StringKeyword":
+        return make(I.string, isString)
+      case "NumberKeyword":
+        return make(I.number, isNumber)
+      case "BooleanKeyword":
+        return make(I.boolean, isBoolean)
+      case "BigIntKeyword":
+        return make(I.bigint, I.isBigInt)
+      case "SymbolKeyword":
+        return make(I.symbol, I.isSymbol)
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        return make(
+          I.makeSchema(ast),
+          (input: unknown): input is any => {
+            if (!Array.isArray(input)) {
+              return false
+            }
+            let i = 0
+            // ---------------------------------------------
+            // handle elements
+            // ---------------------------------------------
+            for (; i < ast.elements.length; i++) {
+              if (input.length < i + 1) {
+                // the input element is missing...
+                if (ast.elements[i].isOptional) {
+                  // ...but the element is optional, go on
+                  continue
+                } else {
+                  // ...but the element is required, bail out
+                  return false
+                }
+              } else if (!elements[i].is(input[i])) {
+                // the input element is present but is not valid, bail out
                 return false
               }
-              let i = 0
-              // ---------------------------------------------
-              // handle elements
-              // ---------------------------------------------
-              for (; i < ast.elements.length; i++) {
-                if (input.length < i + 1) {
-                  // the input element is missing...
-                  if (ast.elements[i].isOptional) {
-                    // ...but the element is optional, go on
-                    continue
-                  } else {
-                    // ...but the element is required, bail out
-                    return false
-                  }
-                } else if (!elements[i].is(input[i])) {
-                  // the input element is present but is not valid, bail out
+            }
+            // ---------------------------------------------
+            // handle rest element
+            // ---------------------------------------------
+            if (O.isSome(rest)) {
+              const head = RA.headNonEmpty(rest.value)
+              const tail = RA.tailNonEmpty(rest.value)
+              for (; i < input.length - tail.length; i++) {
+                if (!head.is(input[i])) {
+                  // the input element is not valid, bail out
                   return false
                 }
               }
               // ---------------------------------------------
-              // handle rest element
+              // handle post rest elements
               // ---------------------------------------------
-              if (O.isSome(rest)) {
-                const head = RA.headNonEmpty(rest.value)
-                const tail = RA.tailNonEmpty(rest.value)
-                for (; i < input.length - tail.length; i++) {
-                  if (!head.is(input[i])) {
-                    // the input element is not valid, bail out
-                    return false
-                  }
-                }
-                // ---------------------------------------------
-                // handle post rest elements
-                // ---------------------------------------------
-                for (let j = 0; j < tail.length; j++) {
-                  i += j
-                  if (input.length < i + 1) {
-                    // the input element is missing and the element is required, bail out
-                    return false
-                  } else if (!tail[j].is(input[i])) {
-                    // the input element is present but is not valid, bail out
-                    return false
-                  }
+              for (let j = 0; j < tail.length; j++) {
+                i += j
+                if (input.length < i + 1) {
+                  // the input element is missing and the element is required, bail out
+                  return false
+                } else if (!tail[j].is(input[i])) {
+                  // the input element is present but is not valid, bail out
+                  return false
                 }
               }
-
-              return true
             }
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            ast.indexSignatures.map((is) => go(is.value))
-          )
-        case "Union": {
-          const members = ast.members.map(go)
-          return make(
-            I.makeSchema(ast),
-            (a): a is any => members.some((guard) => guard.is(a))
-          )
-        }
-        case "Enums":
-          return make(
-            I.makeSchema(ast),
-            (a): a is any => ast.enums.some(([_, value]) => value === a)
-          )
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
-    }
 
-    return go(schema.ast)
+            return true
+          }
+        )
+      }
+      case "Struct":
+        return _struct(
+          ast,
+          ast.fields.map((f) => go(f.value)),
+          ast.indexSignatures.map((is) => go(is.value))
+        )
+      case "Union": {
+        const members = ast.members.map(go)
+        return make(
+          I.makeSchema(ast),
+          (a): a is any => members.some((guard) => guard.is(a))
+        )
+      }
+      case "Enums":
+        return make(
+          I.makeSchema(ast),
+          (a): a is any => ast.enums.some(([_, value]) => value === a)
+        )
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
+    }
   }
 
-/**
- * @since 1.0.0
- */
-export const guardFor: <A>(schema: Schema<A>) => Guard<A> = provideGuardFor(P.empty())
+  return go(schema.ast)
+}
 
 const _struct = (
   ast: AST.Struct,

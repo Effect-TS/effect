@@ -48,7 +48,6 @@ const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
-  // [I.GuardId]: guard,
   [I.ArbitraryId]: arbitrary,
   [I.DecoderId]: decoder,
   [I.EncoderId]: encoder,

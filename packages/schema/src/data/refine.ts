@@ -3,6 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -36,7 +37,6 @@ export const refine = <B, C extends B>(
   const _pretty = (self: Pretty<B>): Pretty<C> => I.makePretty(schema(self), (b) => self.pretty(b))
 
   const Provider = P.make(id, {
-    [I.GuardId]: _guard,
     [I.ArbitraryId]: _arbitrary,
     [I.DecoderId]: _decoder,
     [I.EncoderId]: _encoder,
@@ -44,7 +44,9 @@ export const refine = <B, C extends B>(
   })
 
   const schema = <A extends B>(self: Schema<A>): Schema<A & C> =>
-    I.typeAlias(id, O.none, Provider, [self], self, [])
+    I.typeAlias(id, O.none, Provider, [self], self, [
+      guardAnnotation(null, (_, self) => _guard(self))
+    ])
 
   return schema
 }

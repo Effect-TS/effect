@@ -3,6 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -36,14 +37,16 @@ export const parse = <A, B>(
   const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
   const Provider = P.make(id, {
-    [I.GuardId]: _guard,
     [I.ArbitraryId]: _arbitrary,
     [I.DecoderId]: _decoder,
     [I.EncoderId]: _encoder,
     [I.PrettyId]: _pretty
   })
 
-  const schema = (self: Schema<A>): Schema<B> => I.typeAlias(id, O.none, Provider, [self], self, [])
+  const schema = (self: Schema<A>): Schema<B> =>
+    I.typeAlias(id, O.none, Provider, [self], self, [
+      guardAnnotation(null, (_, self) => _guard(self))
+    ])
 
   return schema
 }

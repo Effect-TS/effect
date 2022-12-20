@@ -9,7 +9,6 @@ const guardFor = G.guardFor
 
 describe.concurrent("Guard", () => {
   it("exports", () => {
-    expect(G.GuardId).exist
     expect(G.make).exist
   })
 

@@ -27,7 +27,7 @@ describe.concurrent("Chunk", () => {
     expect(guard.is({ _id: Symbol.for("@fp-ts/schema/test/FakeChunk") })).toEqual(false)
   })
 
-  it("Decoder", () => {
+  it("decoder", () => {
     const schema = _.schema(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty()))
@@ -45,7 +45,7 @@ describe.concurrent("Chunk", () => {
     Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
   })
 
-  it("Encoder", () => {
+  it("encoder", () => {
     const schema = _.schema(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(C.empty())).toEqual([])
@@ -54,7 +54,7 @@ describe.concurrent("Chunk", () => {
     )
   })
 
-  it("Pretty", () => {
+  it("pretty", () => {
     const schema = _.schema(S.string)
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(C.empty())).toEqual("Chunk()")

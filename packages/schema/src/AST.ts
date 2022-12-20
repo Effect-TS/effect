@@ -513,9 +513,9 @@ export const enums = (
 /**
  * @since 1.0.0
  */
-export const appendAnnotation = (ast: AST, annotation: unknown): AST => ({
+export const prependAnnotation = (ast: AST, annotation: unknown): AST => ({
   ...ast,
-  annotations: pipe(ast.annotations, RA.append(annotation))
+  annotations: pipe(ast.annotations, RA.prepend(annotation))
 })
 
 /**

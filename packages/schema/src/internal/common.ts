@@ -96,11 +96,6 @@ export const isJson = (u: unknown): u is Json =>
 // ---------------------------------------------
 
 /** @internal */
-export const GuardId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Guard"
-)
-
-/** @internal */
 export const ArbitraryId: unique symbol = Symbol.for(
   "@fp-ts/schema/Arbitrary"
 )
@@ -322,7 +317,7 @@ export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x:
 /** @internal */
 export const annotation = (
   annotation: unknown
-) => <A>(schema: Schema<A>): Schema<A> => makeSchema(AST.appendAnnotation(schema.ast, annotation))
+) => <A>(schema: Schema<A>): Schema<A> => makeSchema(AST.prependAnnotation(schema.ast, annotation))
 
 // ---------------------------------------------
 // general helpers
