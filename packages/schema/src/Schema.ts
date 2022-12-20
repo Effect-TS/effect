@@ -7,7 +7,6 @@ import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
 import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
@@ -18,7 +17,6 @@ import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataParse from "@fp-ts/schema/data/parse"
-import * as DataRefine from "@fp-ts/schema/data/refine"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -303,18 +301,10 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 /**
  * @since 1.0.0
  */
-export const filter: <B>(
-  decode: Decoder<B, B>["decode"],
-  annotations: ReadonlyArray<unknown>
-) => <A extends B>(self: Schema<A>) => Schema<A> = DataFilter.filter
-
-/**
- * @since 1.0.0
- */
-export const refine: <A, B extends A>(
+export const filter = <A, B extends A>(
   decode: Decoder<A, B>["decode"],
   annotations: ReadonlyArray<unknown>
-) => (self: Schema<A>) => Schema<B> = DataRefine.refine
+) => (self: Schema<A>): Schema<B> => I.refinement(self, decode, annotations)
 
 /**
  * @since 1.0.0

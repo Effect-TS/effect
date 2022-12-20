@@ -5,7 +5,6 @@ describe.concurrent("Codec", () => {
   it("exports", () => {
     expect(C.make).exist
     expect(C.filter).exist
-    expect(C.refine).exist
     expect(C.string).exist
     expect(C.number).exist
     expect(C.boolean).exist

@@ -342,18 +342,10 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 /**
  * @since 1.0.0
  */
-export const filter = <A>(
-  decode: Decoder<A, A>["decode"],
-  annotations: ReadonlyArray<unknown>
-) => (self: Schema<A>): Codec<A> => codecFor(S.filter(decode, annotations)(self))
-
-/**
- * @since 1.0.0
- */
-export const refine = <A, B extends A>(
+export const filter = <A, B extends A>(
   decode: Decoder<A, B>["decode"],
   annotations: ReadonlyArray<unknown>
-) => (self: Schema<A>): Codec<B> => codecFor(S.refine(decode, annotations)(self))
+) => (self: Schema<A>): Codec<B> => codecFor(S.filter(decode, annotations)(self))
 
 /**
  * @since 1.0.0

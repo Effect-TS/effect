@@ -8,6 +8,7 @@ import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 
 /**
  * @since 1.0.0
@@ -31,6 +32,7 @@ export type AST =
   | Union
   | Lazy
   | Enums
+  | Refinement
 
 /**
  * @since 1.0.0
@@ -55,12 +57,7 @@ export const typeAliasDeclaration = (
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: ReadonlyArray<unknown>
-): TypeAliasDeclaration => ({
-  _tag: "TypeAliasDeclaration",
-  typeParameters,
-  type,
-  annotations
-})
+): TypeAliasDeclaration => ({ _tag: "TypeAliasDeclaration", typeParameters, type, annotations })
 
 /**
  * @since 1.0.0
@@ -87,11 +84,7 @@ export interface LiteralType extends Annotated {
 export const literalType = (
   literal: Literal,
   annotations: ReadonlyArray<unknown>
-): LiteralType => ({
-  _tag: "LiteralType",
-  literal,
-  annotations
-})
+): LiteralType => ({ _tag: "LiteralType", literal, annotations })
 
 /**
  * @since 1.0.0
@@ -109,11 +102,7 @@ export interface UniqueSymbol extends Annotated {
 export const uniqueSymbol = (
   symbol: symbol,
   annotations: ReadonlyArray<unknown>
-): UniqueSymbol => ({
-  _tag: "UniqueSymbol",
-  symbol,
-  annotations
-})
+): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
 
 /**
  * @since 1.0.0
@@ -494,11 +483,25 @@ export interface Enums extends Annotated {
 export const enums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
   annotations: ReadonlyArray<unknown>
-): Enums => ({
-  _tag: "Enums",
-  enums,
-  annotations
-})
+): Enums => ({ _tag: "Enums", enums, annotations })
+
+/**
+ * @since 1.0.0
+ */
+export interface Refinement extends Annotated {
+  readonly _tag: "Refinement"
+  readonly from: AST
+  readonly decode: Decoder<any, any>["decode"]
+}
+
+/**
+ * @since 1.0.0
+ */
+export const refinement = (
+  from: AST,
+  decode: Decoder<any, any>["decode"],
+  annotations: ReadonlyArray<unknown>
+): Refinement => ({ _tag: "Refinement", from, decode, annotations })
 
 /**
  * @since 1.0.0

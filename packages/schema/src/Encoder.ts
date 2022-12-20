@@ -8,7 +8,7 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import type { EncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -38,14 +38,15 @@ const getEncoderAnnotation = (ast: AST.AST): O.Option<EncoderAnnotation> =>
  */
 export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
-    const annotation = getEncoderAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { handler } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getEncoderAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ handler }) => handler(...ast.typeParameters.map(go))
+          )
+        )
       case "LiteralType":
       case "UniqueSymbol":
       case "Enums":
@@ -86,6 +87,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
       case "Lazy":
         return _lazy(() => go(ast.f()))
+      case "Refinement":
+        return go(ast.from)
     }
   }
 

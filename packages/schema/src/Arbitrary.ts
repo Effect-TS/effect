@@ -7,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import type { ArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
@@ -36,14 +36,15 @@ const getArbitraryAnnotation = (ast: AST.AST): O.Option<ArbitraryAnnotation> =>
  */
 export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const go = (ast: AST.AST): Arbitrary<any> => {
-    const annotation = getArbitraryAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { handler } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getArbitraryAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ handler }) => handler(...ast.typeParameters.map(go))
+          )
+        )
       case "LiteralType":
         return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
       case "UniqueSymbol":
@@ -125,6 +126,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
         )
       }
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
       case "Enums": {
         if (ast.enums.length === 0) {
           throw new Error("cannot build an Arbitrary for an empty enum")
@@ -134,8 +137,13 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
         )
       }
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      case "Refinement": {
+        const type = go(ast.from)
+        return make(
+          I.makeSchema(ast),
+          (fc) => type.arbitrary(fc).filter((a) => !I.isFailure(ast.decode(a)))
+        )
+      }
     }
   }
 

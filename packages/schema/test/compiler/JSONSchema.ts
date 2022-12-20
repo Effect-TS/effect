@@ -71,16 +71,15 @@ const getJSONSchemaAnnotation = (ast: AST.AST): O.Option<JSONSchemaAnnotation> =
 
 const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const go = (ast: AST.AST): JSONSchema => {
-    const annotation = getJSONSchemaAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { schema } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ?
-        { ...go(ast.type), ...schema } :
-        schema as any
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getJSONSchemaAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ schema }) => ({ ...go(ast.type), ...schema })
+          )
+        )
       case "LiteralType":
         return _of(ast.literal)
       case "UndefinedKeyword":
@@ -110,6 +109,14 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
       }
       case "Union":
         return _union(ast.members.map(go))
+      case "Refinement": {
+        const annotation = getJSONSchemaAnnotation(ast)
+        if (O.isSome(annotation)) {
+          const { schema } = annotation.value
+          return { ...go(ast.from), ...schema }
+        }
+        return go(ast.from)
+      }
     }
     throw new Error(`Unhandled ${ast._tag}`)
   }

@@ -7,7 +7,7 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { PrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import { isPrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -36,14 +36,15 @@ const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation> =>
  */
 export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
   const go = (ast: AST.AST): Pretty<any> => {
-    const annotation = getPrettyAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { handler } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getPrettyAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ handler }) => handler(...ast.typeParameters.map(go))
+          )
+        )
       case "LiteralType":
         return make(I.makeSchema(ast), _literalType)
       case "UniqueSymbol":
@@ -120,10 +121,12 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         )
       case "Union":
         return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
-      case "Enums":
-        return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
       case "Lazy":
         return _lazy(() => go(ast.f()))
+      case "Enums":
+        return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
+      case "Refinement":
+        return go(ast.from)
     }
   }
 

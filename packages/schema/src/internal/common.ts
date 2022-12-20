@@ -144,13 +144,18 @@ export const typeAlias = (
   type: Schema<any>,
   annotations: ReadonlyArray<unknown>
 ): Schema<any> =>
-  makeSchema(
-    AST.typeAliasDeclaration(
-      typeParameters.map((tp) => tp.ast),
-      type.ast,
-      annotations
-    )
-  )
+  makeSchema(AST.typeAliasDeclaration(
+    typeParameters.map((tp) => tp.ast),
+    type.ast,
+    annotations
+  ))
+
+/** @internal */
+export const refinement = <A, B extends A>(
+  from: Schema<A>,
+  decode: Decoder<A, B>["decode"],
+  annotations: ReadonlyArray<unknown>
+): Schema<B> => makeSchema(AST.refinement(from.ast, decode, annotations))
 
 const makeLiteral = <Literal extends AST.Literal>(
   value: Literal,

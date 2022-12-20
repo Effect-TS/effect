@@ -268,29 +268,6 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
             map((members) => ts.factory.createUnionTypeNode(members))
           )
         )
-      case "Enums": {
-        const id = pipe(
-          getIdentifier(ast),
-          O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
-        )
-        const typeNode = ts.factory.createTypeQueryNode(id)
-        const declaration = ts.factory.createEnumDeclaration(
-          undefined,
-          id,
-          ast.enums.map(([key, value]) =>
-            ts.factory.createEnumMember(
-              key,
-              typeof value === "string" ?
-                ts.factory.createStringLiteral(value) :
-                ts.factory.createNumericLiteral(value)
-            )
-          )
-        )
-        return make(
-          ast,
-          [typeNode, [declaration]]
-        )
-      }
       case "Struct":
         return make(
           ast,
@@ -344,6 +321,32 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         )
       case "Lazy":
         throw new Error("Unhandled schema: TODO")
+      case "Enums": {
+        const id = pipe(
+          getIdentifier(ast),
+          O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
+        )
+        const typeNode = ts.factory.createTypeQueryNode(id)
+        const declaration = ts.factory.createEnumDeclaration(
+          undefined,
+          id,
+          ast.enums.map(([key, value]) =>
+            ts.factory.createEnumMember(
+              key,
+              typeof value === "string" ?
+                ts.factory.createStringLiteral(value) :
+                ts.factory.createNumericLiteral(value)
+            )
+          )
+        )
+        return make(
+          ast,
+          [typeNode, [declaration]]
+        )
+      }
+      case "Refinement":
+        // TODO
+        return go(ast.from)
     }
   }
 

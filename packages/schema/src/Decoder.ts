@@ -12,7 +12,7 @@ import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
 import type { DecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { isDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -82,14 +82,15 @@ const getDecoderAnnotation = (ast: AST.AST): O.Option<DecoderAnnotation> =>
  */
 export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<unknown, any> => {
-    const annotation = getDecoderAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { handler } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getDecoderAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ handler }) => handler(...ast.typeParameters.map(go))
+          )
+        )
       case "LiteralType":
         return I.fromRefinement(
           I.makeSchema(ast),
@@ -251,6 +252,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       case "Union":
         return _union(ast, ast.members.map(go))
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
       case "Enums":
         return I.makeDecoder(
           I.makeSchema(ast),
@@ -259,8 +262,13 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               I.success(u) :
               I.failure(DE.notEnums(ast.enums, u))
         )
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      case "Refinement": {
+        const type = go(ast.from)
+        return make(
+          I.makeSchema(ast),
+          (u) => pipe(type.decode(u), I.flatMap(ast.decode))
+        )
+      }
     }
   }
 

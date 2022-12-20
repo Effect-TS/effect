@@ -10,7 +10,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { GuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { isGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -37,14 +37,15 @@ const getGuardAnnotation = (ast: AST.AST): O.Option<GuardAnnotation> =>
  */
 export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const go = (ast: AST.AST): Guard<any> => {
-    const annotation = getGuardAnnotation(ast)
-    if (O.isSome(annotation)) {
-      const { handler } = annotation.value
-      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
-    }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
-        return go(ast.type)
+        return pipe(
+          getGuardAnnotation(ast),
+          O.match(
+            () => go(ast.type),
+            ({ handler }) => handler(...ast.typeParameters.map(go))
+          )
+        )
       case "LiteralType":
         return make(I.makeSchema(ast), (u): u is typeof ast.literal => u === ast.literal)
       case "UniqueSymbol":
@@ -141,13 +142,17 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
           (a): a is any => members.some((guard) => guard.is(a))
         )
       }
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
       case "Enums":
         return make(
           I.makeSchema(ast),
           (a): a is any => ast.enums.some(([_, value]) => value === a)
         )
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      case "Refinement": {
+        const type = go(ast.from)
+        return make(I.makeSchema(ast), (u): u is any => type.is(u) && !I.isFailure(ast.decode(u)))
+      }
     }
   }
 
