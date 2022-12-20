@@ -4,12 +4,15 @@ import * as covariant from "@fp-ts/core/typeclass/Covariant"
 import { flow, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isDocumentationAnnotation } from "@fp-ts/schema/annotation/DocumentationAnnotation"
+import {
+  documentationAnnotation,
+  isDocumentationAnnotation
+} from "@fp-ts/schema/annotation/DocumentationAnnotation"
 import {
   identifierAnnotation,
   isIdentifierAnnotation
 } from "@fp-ts/schema/annotation/IdentifierAnnotation"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
@@ -33,10 +36,6 @@ const printNodes = (
   const [typeNode, declarations] = nodes
   return [...declarations, typeNode].map((node) => printNode(node, printerOptions))
 }
-
-// const TypeScriptId: unique symbol = Symbol.for(
-//   "@fp-ts/schema/test/compiler/TypeScript"
-// )
 
 type Writer<A> = readonly [A, ReadonlyArray<ts.Declaration>]
 
@@ -96,14 +95,14 @@ const getIdentifier = (ast: AST.AST): O.Option<ts.Identifier> =>
     O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
   )
 
-const getDocumentation = (ast: AST.AST): O.Option<string> =>
+const getDocumentation = (annotated: AST.Annotated): O.Option<string> =>
   pipe(
-    ast.annotations,
+    annotated.annotations,
     RA.findFirst(isDocumentationAnnotation),
     O.map((annotation) => annotation.documentation)
   )
 
-export const addJsDocComment = (node: ts.Node, documentation: string) => {
+const addJsDocComment = (node: ts.Node, documentation: string): void => {
   ts.addSyntheticLeadingComment(
     node,
     ts.SyntaxKind.MultiLineCommentTrivia,
@@ -111,6 +110,15 @@ export const addJsDocComment = (node: ts.Node, documentation: string) => {
     true
   )
 }
+
+const addDocumentationOf = (annotated: AST.Annotated) =>
+  <N extends ts.Node>(node: N): N => {
+    const documentation = getDocumentation(annotated)
+    if (O.isSome(documentation)) {
+      addJsDocComment(node, documentation.value)
+    }
+    return node
+  }
 
 const createSymbol = (description: string | undefined) =>
   ts.factory.createCallExpression(
@@ -129,252 +137,244 @@ const getPropertyName = (ast: AST.Field): ts.PropertyName =>
 
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
-    const get = () => {
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return pipe(
-            getIdentifier(ast),
-            O.match(
-              () => go(ast.type),
-              (id) =>
-                make(
-                  ast,
-                  pipe(
-                    ast.typeParameters,
-                    traverse((ast) => go(ast).nodes),
-                    map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
-                  )
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return pipe(
+          getIdentifier(ast),
+          O.match(
+            () => go(ast.type),
+            (id) =>
+              make(
+                ast,
+                pipe(
+                  ast.typeParameters,
+                  traverse((ast) => go(ast).nodes),
+                  map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
                 )
+              )
+          )
+        )
+      case "LiteralType": {
+        const literal = ast.literal
+        if (typeof literal === "string") {
+          return make(
+            ast,
+            of(ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(literal)))
+          )
+        } else if (typeof literal === "number") {
+          return make(
+            ast,
+            of(ts.factory.createLiteralTypeNode(ts.factory.createNumericLiteral(literal)))
+          )
+        } else if (typeof literal === "boolean") {
+          return literal === true ?
+            make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createTrue()))) :
+            make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createFalse())))
+        } else if (typeof literal === "bigint") {
+          return make(
+            ast,
+            of(
+              ts.factory.createLiteralTypeNode(ts.factory.createBigIntLiteral(literal.toString()))
             )
           )
-        case "LiteralType": {
-          const literal = ast.literal
-          if (typeof literal === "string") {
-            return make(
-              ast,
-              of(ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(literal)))
+        } else {
+          return make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createNull())))
+        }
+      }
+      case "UniqueSymbol": {
+        const id = pipe(
+          getIdentifier(ast),
+          O.getOrThrow(() =>
+            new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
+          )
+        )
+        const typeNode = ts.factory.createTypeQueryNode(id)
+        const declaration = ts.factory.createVariableDeclaration(
+          id,
+          undefined,
+          undefined,
+          createSymbol(ast.symbol.description)
+        )
+        return make(
+          ast,
+          [typeNode, [declaration]]
+        )
+      }
+      case "UndefinedKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword)))
+      case "VoidKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword)))
+      case "NeverKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword)))
+      case "UnknownKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword)))
+      case "AnyKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)))
+      case "StringKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)))
+      case "NumberKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)))
+      case "BooleanKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword)))
+      case "BigIntKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword)))
+      case "SymbolKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)))
+      case "Tuple": {
+        let elements = pipe(
+          ast.elements,
+          traverse((e) =>
+            pipe(
+              go(e.type).nodes,
+              map((element) => e.isOptional ? ts.factory.createOptionalTypeNode(element) : element)
             )
-          } else if (typeof literal === "number") {
+          )
+        )
+        if (O.isSome(ast.rest)) {
+          const isArray = RA.isEmpty(ast.elements) && ast.rest.value.length === 1
+          if (isArray) {
             return make(
               ast,
-              of(ts.factory.createLiteralTypeNode(ts.factory.createNumericLiteral(literal)))
-            )
-          } else if (typeof literal === "boolean") {
-            return literal === true ?
-              make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createTrue()))) :
-              make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createFalse())))
-          } else if (typeof literal === "bigint") {
-            return make(
-              ast,
-              of(
-                ts.factory.createLiteralTypeNode(ts.factory.createBigIntLiteral(literal.toString()))
+              pipe(
+                go(RA.headNonEmpty(ast.rest.value)).nodes,
+                map((item) => {
+                  const arrayTypeNode = ts.factory.createArrayTypeNode(item)
+                  return ast.isReadonly ?
+                    ts.factory.createTypeOperatorNode(
+                      ts.SyntaxKind.ReadonlyKeyword,
+                      arrayTypeNode
+                    ) :
+                    arrayTypeNode
+                })
               )
             )
           } else {
-            return make(ast, of(ts.factory.createLiteralTypeNode(ts.factory.createNull())))
+            elements = pipe(
+              elements,
+              append(pipe(
+                go(RA.headNonEmpty(ast.rest.value)).nodes,
+                map((head) => ts.factory.createRestTypeNode(ts.factory.createArrayTypeNode(head)))
+              )),
+              appendAll(pipe(RA.tailNonEmpty(ast.rest.value), traverse((ast) => go(ast).nodes)))
+            )
           }
         }
-        case "UniqueSymbol": {
-          const id = pipe(
-            getIdentifier(ast),
-            O.getOrThrow(() =>
-              new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
-            )
+        return make(
+          ast,
+          pipe(
+            elements,
+            map((elements) => {
+              const tuple = ts.factory.createTupleTypeNode(elements)
+              return ast.isReadonly ?
+                ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, tuple) :
+                tuple
+            })
           )
-          const typeNode = ts.factory.createTypeQueryNode(id)
-          const declaration = ts.factory.createVariableDeclaration(
-            id,
-            undefined,
-            undefined,
-            createSymbol(ast.symbol.description)
+        )
+      }
+      case "Union":
+        return make(
+          ast,
+          pipe(
+            ast.members,
+            traverse((ast) => go(ast).nodes),
+            map((members) => ts.factory.createUnionTypeNode(members))
           )
-          return make(
-            ast,
-            [typeNode, [declaration]]
-          )
-        }
-        case "UndefinedKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword)))
-        case "VoidKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword)))
-        case "NeverKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword)))
-        case "UnknownKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.UnknownKeyword)))
-        case "AnyKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)))
-        case "StringKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)))
-        case "NumberKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword)))
-        case "BooleanKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BooleanKeyword)))
-        case "BigIntKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword)))
-        case "SymbolKeyword":
-          return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)))
-        case "Tuple": {
-          let elements = pipe(
-            ast.elements,
-            traverse((e) =>
-              pipe(
-                go(e.type).nodes,
-                map((element) =>
-                  e.isOptional ? ts.factory.createOptionalTypeNode(element) : element
+        )
+      case "Struct":
+        return make(
+          ast,
+          pipe(
+            ast.fields,
+            traverse(
+              (field) =>
+                pipe(
+                  go(field.value).nodes,
+                  map((value) =>
+                    ts.factory.createPropertySignature(
+                      field.isReadonly ?
+                        [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                        undefined,
+                      getPropertyName(field),
+                      field.isOptional ?
+                        ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
+                        undefined,
+                      value
+                    )
+                  ),
+                  map(addDocumentationOf(field))
+                )
+            ),
+            appendAll(pipe(
+              ast.indexSignatures,
+              traverse((indexSignature) =>
+                pipe(
+                  go(indexSignature.value).nodes,
+                  map((value) =>
+                    ts.factory.createIndexSignature(
+                      indexSignature.isReadonly ?
+                        [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                        undefined,
+                      [ts.factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        "x",
+                        undefined,
+                        indexSignature.key === "string" ?
+                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
+                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
+                      )],
+                      value
+                    )
+                  )
                 )
               )
+            )),
+            map((members) => ts.factory.createTypeLiteralNode(members)),
+            map(addDocumentationOf(ast))
+          )
+        )
+      case "Lazy":
+        throw new Error("Unhandled schema: TODO")
+      case "Enums": {
+        const id = pipe(
+          getIdentifier(ast),
+          O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
+        )
+        const typeNode = ts.factory.createTypeQueryNode(id)
+        const declaration = ts.factory.createEnumDeclaration(
+          undefined,
+          id,
+          ast.enums.map(([key, value]) =>
+            ts.factory.createEnumMember(
+              key,
+              typeof value === "string" ?
+                ts.factory.createStringLiteral(value) :
+                ts.factory.createNumericLiteral(value)
             )
           )
-          if (O.isSome(ast.rest)) {
-            const isArray = RA.isEmpty(ast.elements) && ast.rest.value.length === 1
-            if (isArray) {
-              return make(
+        )
+        return make(
+          ast,
+          [typeNode, [declaration]]
+        )
+      }
+      case "Refinement":
+        return pipe(
+          getIdentifier(ast),
+          O.match(
+            () => go(ast.from),
+            (id) =>
+              make(
                 ast,
                 pipe(
-                  go(RA.headNonEmpty(ast.rest.value)).nodes,
-                  map((item) => {
-                    const arrayTypeNode = ts.factory.createArrayTypeNode(item)
-                    return ast.isReadonly ?
-                      ts.factory.createTypeOperatorNode(
-                        ts.SyntaxKind.ReadonlyKeyword,
-                        arrayTypeNode
-                      ) :
-                      arrayTypeNode
-                  })
+                  go(ast.from).nodes,
+                  map((typeParameter) => ts.factory.createTypeReferenceNode(id, [typeParameter]))
                 )
               )
-            } else {
-              elements = pipe(
-                elements,
-                append(pipe(
-                  go(RA.headNonEmpty(ast.rest.value)).nodes,
-                  map((head) => ts.factory.createRestTypeNode(ts.factory.createArrayTypeNode(head)))
-                )),
-                appendAll(pipe(RA.tailNonEmpty(ast.rest.value), traverse((ast) => go(ast).nodes)))
-              )
-            }
-          }
-          return make(
-            ast,
-            pipe(
-              elements,
-              map((elements) => {
-                const tuple = ts.factory.createTupleTypeNode(elements)
-                return ast.isReadonly ?
-                  ts.factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, tuple) :
-                  tuple
-              })
-            )
           )
-        }
-        case "Union":
-          return make(
-            ast,
-            pipe(
-              ast.members,
-              traverse((ast) => go(ast).nodes),
-              map((members) => ts.factory.createUnionTypeNode(members))
-            )
-          )
-        case "Struct":
-          return make(
-            ast,
-            pipe(
-              ast.fields,
-              traverse(
-                (field) =>
-                  pipe(
-                    go(field.value).nodes,
-                    map((value) =>
-                      ts.factory.createPropertySignature(
-                        field.isReadonly ?
-                          [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                          undefined,
-                        getPropertyName(field),
-                        field.isOptional ?
-                          ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
-                          undefined,
-                        value
-                      )
-                    )
-                  )
-              ),
-              appendAll(pipe(
-                ast.indexSignatures,
-                traverse((indexSignature) =>
-                  pipe(
-                    go(indexSignature.value).nodes,
-                    map((value) =>
-                      ts.factory.createIndexSignature(
-                        indexSignature.isReadonly ?
-                          [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                          undefined,
-                        [ts.factory.createParameterDeclaration(
-                          undefined,
-                          undefined,
-                          "x",
-                          undefined,
-                          indexSignature.key === "string" ?
-                            ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
-                            ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
-                        )],
-                        value
-                      )
-                    )
-                  )
-                )
-              )),
-              map((members) => ts.factory.createTypeLiteralNode(members))
-            )
-          )
-        case "Lazy":
-          throw new Error("Unhandled schema: TODO")
-        case "Enums": {
-          const id = pipe(
-            getIdentifier(ast),
-            O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
-          )
-          const typeNode = ts.factory.createTypeQueryNode(id)
-          const declaration = ts.factory.createEnumDeclaration(
-            undefined,
-            id,
-            ast.enums.map(([key, value]) =>
-              ts.factory.createEnumMember(
-                key,
-                typeof value === "string" ?
-                  ts.factory.createStringLiteral(value) :
-                  ts.factory.createNumericLiteral(value)
-              )
-            )
-          )
-          return make(
-            ast,
-            [typeNode, [declaration]]
-          )
-        }
-        case "Refinement":
-          return pipe(
-            getIdentifier(ast),
-            O.match(
-              () => go(ast.from),
-              (id) =>
-                make(
-                  ast,
-                  pipe(
-                    go(ast.from).nodes,
-                    map((typeParameter) => ts.factory.createTypeReferenceNode(id, [typeParameter]))
-                  )
-                )
-            )
-          )
-      }
+        )
     }
-    const out = get()
-    const documentation = getDocumentation(ast)
-    if (O.isSome(documentation)) {
-      addJsDocComment(out.nodes[0], documentation.value)
-    }
-    return out
   }
 
   return go(schema.ast)
@@ -792,20 +792,33 @@ describe.concurrent("TypeScript", () => {
     expect(printNodes(nodes)).toEqual([`number`])
   })
 
-  describe.concurrent("doc", () => {
-    it("plain type", () => {
-      const schema = pipe(S.number, S.doc("description"))
-      const { nodes } = typeScriptFor(schema)
-      expect(printNodes(nodes)).toEqual([`/** description */
-number`])
-    })
-
+  describe.concurrent("jsDoc", () => {
     it("struct", () => {
-      const schema = pipe(S.struct({ a: S.number }), S.doc("description"))
+      const schema = pipe(
+        S.struct({ a: S.number }),
+        S.annotation(documentationAnnotation("description"))
+      )
       const { nodes } = typeScriptFor(schema)
       expect(printNodes(nodes)).toEqual([`/** description */
 {
     readonly a: number;
+}`])
+    })
+
+    it("fields", () => {
+      const schema = S.make(AST.struct(
+        [
+          AST.field("a", AST.stringKeyword([]), false, true, [
+            documentationAnnotation("description")
+          ])
+        ],
+        [],
+        []
+      ))
+      const { nodes } = typeScriptFor(schema)
+      expect(printNodes(nodes)).toEqual([`{
+    /** description */
+    readonly a: string;
 }`])
     })
   })
