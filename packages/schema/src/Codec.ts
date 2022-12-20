@@ -377,6 +377,13 @@ export const annotations = (
   annotations: ReadonlyArray<unknown>
 ) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotations(annotations)(schema))
 
+/**
+ * @since 1.0.0
+ */
+export const doc = (
+  documentation: string
+) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.doc(documentation)(schema))
+
 // ---------------------------------------------
 // data
 // ---------------------------------------------

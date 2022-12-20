@@ -5,6 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import { documentationAnnotation } from "@fp-ts/schema/annotation/DocumentationAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
@@ -331,6 +332,13 @@ export const annotation: (
 export const annotations: (
   annotations: ReadonlyArray<unknown>
 ) => <A>(schema: Schema<A>) => Schema<A> = I.annotations
+
+/**
+ * @since 1.0.0
+ */
+export const doc = (
+  documentation: string
+): <A>(schema: Schema<A>) => Schema<A> => annotation(documentationAnnotation(documentation))
 
 // ---------------------------------------------
 // data
