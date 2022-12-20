@@ -14,11 +14,9 @@ import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
 import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
-import * as DataFilterWith from "@fp-ts/schema/data/filterWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataRefine from "@fp-ts/schema/data/refine"
-import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
 
 /**
@@ -300,26 +298,12 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 /**
  * @since 1.0.0
  */
-export const filter: <A>(
-  id: unknown,
-  decode: Decoder<A, A>["decode"]
-) => (schema: Schema<A>) => Schema<A> = DataFilter.filter
+export const filter = DataFilter.filter
 
 /**
  * @since 1.0.0
  */
-export const filterWith: <Config, A>(
-  id: unknown,
-  decode: (config: Config) => Decoder<A, A>["decode"]
-) => (config: Config) => (schema: Schema<A>) => Schema<A> = DataFilterWith.filterWith
-
-/**
- * @since 1.0.0
- */
-export const refine: <A, B extends A>(
-  id: unknown,
-  decode: Decoder<A, B>["decode"]
-) => (schema: Schema<A>) => Schema<B> = DataRefine.refine
+export const refine = DataRefine.refine
 
 /**
  * @since 1.0.0

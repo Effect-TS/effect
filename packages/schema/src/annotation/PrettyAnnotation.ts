@@ -6,9 +6,7 @@ import type { Pretty } from "@fp-ts/schema/Pretty"
 /**
  * @since 1.0.0
  */
-export const PrettyAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/schema/annotation/PrettyAnnotation"
-)
+export const PrettyAnnotationId = "@fp-ts/schema/annotation/PrettyAnnotation"
 
 /**
  * @since 1.0.0

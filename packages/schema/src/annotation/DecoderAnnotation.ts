@@ -6,9 +6,7 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 /**
  * @since 1.0.0
  */
-export const DecoderAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/schema/annotation/DecoderAnnotation"
-)
+export const DecoderAnnotationId = "@fp-ts/schema/annotation/DecoderAnnotation"
 
 /**
  * @since 1.0.0

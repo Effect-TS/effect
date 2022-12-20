@@ -7,11 +7,9 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const id = Symbol.for("@fp-ts/schema/data/int")
 type Int = number & { __brand: "Int" }
 const isInt = (n: number): n is Int => Number.isInteger(n)
 const Int = refine(
-  id,
   (n: number) => isInt(n) ? D.success(n) : D.failure(DE.custom("not an int", n))
 )
 

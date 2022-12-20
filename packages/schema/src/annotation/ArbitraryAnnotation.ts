@@ -6,9 +6,7 @@ import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 /**
  * @since 1.0.0
  */
-export const ArbitraryAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/schema/annotation/ArbitraryAnnotation"
-)
+export const ArbitraryAnnotationId = "@fp-ts/schema/annotation/ArbitraryAnnotation"
 
 /**
  * @since 1.0.0

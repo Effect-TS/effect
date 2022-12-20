@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
@@ -14,14 +13,12 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
  */
 export const parse = <A, B>(
-  id: unknown,
   decode: Decoder<A, B>["decode"],
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,
@@ -40,10 +37,8 @@ export const parse = <A, B>(
 
   const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
-  const Provider = P.make(id, {})
-
   const schema = (self: Schema<A>): Schema<B> =>
-    I.typeAlias(id, O.none, Provider, [self], self, [
+    I.typeAlias([self], self, [
       decoderAnnotation(null, (_, self) => decoder(self)),
       guardAnnotation(null, (_, self) => guard(self)),
       encoderAnnotation(null, (_, self) => encoder(self)),

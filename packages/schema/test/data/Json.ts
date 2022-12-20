@@ -6,20 +6,12 @@ import * as Util from "@fp-ts/schema/test/util"
 describe.concurrent("Json", () => {
   const schema = _.Schema
 
-  it("exports", () => {
-    expect(_.id).exist
-  })
-
   it("property tests", () => {
     Util.property(schema)
   })
 
   it("keyof", () => {
     expect(AST.keyof(schema.ast)).toEqual([])
-  })
-
-  it("Provider", () => {
-    expect(_.Provider).exist
   })
 
   it("Pretty", () => {

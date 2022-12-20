@@ -8,7 +8,6 @@ import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type { Provider } from "@fp-ts/schema/Provider"
 
 /**
  * @since 1.0.0
@@ -45,9 +44,6 @@ export interface Annotated {
  */
 export interface TypeAliasDeclaration extends Annotated {
   readonly _tag: "TypeAliasDeclaration"
-  readonly id: unknown
-  readonly config: Option<unknown>
-  readonly provider: Provider
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
 }
@@ -56,17 +52,11 @@ export interface TypeAliasDeclaration extends Annotated {
  * @since 1.0.0
  */
 export const typeAliasDeclaration = (
-  id: unknown,
-  config: Option<unknown>,
-  provider: Provider,
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: ReadonlyArray<unknown>
 ): TypeAliasDeclaration => ({
   _tag: "TypeAliasDeclaration",
-  id,
-  config,
-  provider,
   typeParameters,
   type,
   annotations

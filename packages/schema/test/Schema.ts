@@ -7,7 +7,6 @@ describe.concurrent("Schema", () => {
   it("exist", () => {
     expect(S.make).exist
     expect(S.filter).exist
-    expect(S.filterWith).exist
     expect(S.refine).exist
     expect(S.string).exist
     expect(S.number).exist

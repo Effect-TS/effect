@@ -3,7 +3,6 @@
  */
 
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
-import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
@@ -15,7 +14,6 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
-import type { Provider } from "@fp-ts/schema/Provider"
 import type { FieldSchema, OptionalKeys, Schema, Spread } from "@fp-ts/schema/Schema"
 
 // ---------------------------------------------
@@ -142,18 +140,12 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
 export const typeAlias = (
-  id: unknown,
-  config: Option<unknown>,
-  provider: Provider,
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
   annotations: ReadonlyArray<unknown>
 ): Schema<any> =>
   makeSchema(
     AST.typeAliasDeclaration(
-      id,
-      config,
-      provider,
       typeParameters.map((tp) => tp.ast),
       type.ast,
       annotations

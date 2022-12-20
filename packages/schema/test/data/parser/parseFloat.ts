@@ -8,10 +8,6 @@ import * as Util from "@fp-ts/schema/test/util"
 describe.concurrent("parseFloat", () => {
   const schema = parseFloat.schema(S.string)
 
-  it("id", () => {
-    expect(parseFloat.id).exist
-  })
-
   it("property tests", () => {
     Util.property(schema)
   })

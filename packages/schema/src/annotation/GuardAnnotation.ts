@@ -6,9 +6,7 @@ import type { Guard } from "@fp-ts/schema/Guard"
 /**
  * @since 1.0.0
  */
-export const GuardAnnotationId: unique symbol = Symbol.for(
-  "@fp-ts/schema/annotation/GuardAnnotation"
-)
+export const GuardAnnotationId = "@fp-ts/schema/annotation/GuardAnnotation"
 
 /**
  * @since 1.0.0

@@ -11,8 +11,6 @@ import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -36,108 +34,102 @@ const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation<unknown>> 
 /**
  * @since 1.0.0
  */
-export const providePrettyFor = (_provider: Provider) =>
-  <A>(schema: Schema<A>): Pretty<A> => {
-    const go = (ast: AST.AST): Pretty<any> => {
-      const annotation = getPrettyAnnotation(ast)
-      if (O.isSome(annotation)) {
-        return AST.isTypeAliasDeclaration(ast) ?
-          annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
-          annotation.value.handler(annotation.value.config, go(ast))
-      }
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return go(ast.type)
-        case "LiteralType":
-          return make(I.makeSchema(ast), _literalType)
-        case "UniqueSymbol":
-          return make(I.makeSchema(ast), (s) => String(s))
-        case "UndefinedKeyword":
-          return make(I._undefined, () => "undefined")
-        case "VoidKeyword":
-          return make(I._void, () => "void(0)")
-        case "NeverKeyword":
-          return make(I.never, () => {
-            throw new Error("cannot pretty print a `never` value")
-          }) as any
-        case "UnknownKeyword":
-          return make(I.unknown, (u) => JSON.stringify(u, null, 2))
-        case "AnyKeyword":
-          return make(I.any, (a) => JSON.stringify(a, null, 2))
-        case "StringKeyword":
-          return make(I.string, (s) => JSON.stringify(s))
-        case "NumberKeyword":
-          return make(I.number, (n) => JSON.stringify(n))
-        case "BooleanKeyword":
-          return make(I.boolean, (b) => JSON.stringify(b))
-        case "BigIntKeyword":
-          return make(I.boolean, (bi) => `${bi.toString()}n`)
-        case "SymbolKeyword":
-          return make(I.symbol, (s) => String(s))
-        case "Tuple": {
-          const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
-          return make(
-            I.makeSchema(ast),
-            (input: ReadonlyArray<unknown>) => {
-              const output: Array<string> = []
-              let i = 0
-              // ---------------------------------------------
-              // handle elements
-              // ---------------------------------------------
-              for (; i < elements.length; i++) {
-                if (input.length < i + 1) {
-                  if (ast.elements[i].isOptional) {
-                    continue
-                  }
-                } else {
-                  output.push(elements[i].pretty(input[i]))
-                }
-              }
-              // ---------------------------------------------
-              // handle rest element
-              // ---------------------------------------------
-              if (O.isSome(rest)) {
-                const head = RA.headNonEmpty(rest.value)
-                const tail = RA.tailNonEmpty(rest.value)
-                for (; i < input.length - tail.length; i++) {
-                  output.push(head.pretty(input[i]))
-                }
-                // ---------------------------------------------
-                // handle post rest elements
-                // ---------------------------------------------
-                for (let j = 0; j < tail.length; j++) {
-                  i += j
-                  output.push(tail[j].pretty(input[i]))
-                }
-              }
-
-              return "[" + output.join(", ") + "]"
-            }
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            ast.indexSignatures.map((is) => go(is.value))
-          )
-        case "Union":
-          return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
-        case "Enums":
-          return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
+export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
+  const go = (ast: AST.AST): Pretty<any> => {
+    const annotation = getPrettyAnnotation(ast)
+    if (O.isSome(annotation)) {
+      return AST.isTypeAliasDeclaration(ast) ?
+        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+        annotation.value.handler(annotation.value.config, go(ast))
     }
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return go(ast.type)
+      case "LiteralType":
+        return make(I.makeSchema(ast), _literalType)
+      case "UniqueSymbol":
+        return make(I.makeSchema(ast), (s) => String(s))
+      case "UndefinedKeyword":
+        return make(I._undefined, () => "undefined")
+      case "VoidKeyword":
+        return make(I._void, () => "void(0)")
+      case "NeverKeyword":
+        return make(I.never, () => {
+          throw new Error("cannot pretty print a `never` value")
+        }) as any
+      case "UnknownKeyword":
+        return make(I.unknown, (u) => JSON.stringify(u, null, 2))
+      case "AnyKeyword":
+        return make(I.any, (a) => JSON.stringify(a, null, 2))
+      case "StringKeyword":
+        return make(I.string, (s) => JSON.stringify(s))
+      case "NumberKeyword":
+        return make(I.number, (n) => JSON.stringify(n))
+      case "BooleanKeyword":
+        return make(I.boolean, (b) => JSON.stringify(b))
+      case "BigIntKeyword":
+        return make(I.boolean, (bi) => `${bi.toString()}n`)
+      case "SymbolKeyword":
+        return make(I.symbol, (s) => String(s))
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        return make(
+          I.makeSchema(ast),
+          (input: ReadonlyArray<unknown>) => {
+            const output: Array<string> = []
+            let i = 0
+            // ---------------------------------------------
+            // handle elements
+            // ---------------------------------------------
+            for (; i < elements.length; i++) {
+              if (input.length < i + 1) {
+                if (ast.elements[i].isOptional) {
+                  continue
+                }
+              } else {
+                output.push(elements[i].pretty(input[i]))
+              }
+            }
+            // ---------------------------------------------
+            // handle rest element
+            // ---------------------------------------------
+            if (O.isSome(rest)) {
+              const head = RA.headNonEmpty(rest.value)
+              const tail = RA.tailNonEmpty(rest.value)
+              for (; i < input.length - tail.length; i++) {
+                output.push(head.pretty(input[i]))
+              }
+              // ---------------------------------------------
+              // handle post rest elements
+              // ---------------------------------------------
+              for (let j = 0; j < tail.length; j++) {
+                i += j
+                output.push(tail[j].pretty(input[i]))
+              }
+            }
 
-    return go(schema.ast)
+            return "[" + output.join(", ") + "]"
+          }
+        )
+      }
+      case "Struct":
+        return _struct(
+          ast,
+          ast.fields.map((f) => go(f.value)),
+          ast.indexSignatures.map((is) => go(is.value))
+        )
+      case "Union":
+        return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
+      case "Enums":
+        return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
+    }
   }
 
-/**
- * @since 1.0.0
- */
-export const prettyFor: <A>(schema: Schema<A>) => Pretty<A> = providePrettyFor(P.empty())
+  return go(schema.ast)
+}
 
 const _literalType = (literal: AST.Literal): string =>
   typeof literal === "bigint" ?

@@ -9,13 +9,7 @@ import * as I from "@fp-ts/schema/internal/common"
 /**
  * @since 1.0.0
  */
-export const id = Symbol.for("@fp-ts/schema/data/parser/parseFloat")
-
-/**
- * @since 1.0.0
- */
 export const schema = parse(
-  id,
   (s: string) => {
     const n = parseFloat(s)
     return isNaN(n) ?

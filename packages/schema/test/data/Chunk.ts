@@ -8,11 +8,6 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Chunk", () => {
-  it("exports", () => {
-    expect(_.id).exist
-    expect(_.Provider).exist
-  })
-
   it("property tests", () => {
     Util.property(_.schema(S.number))
   })

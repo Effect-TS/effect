@@ -343,28 +343,16 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 /**
  * @since 1.0.0
  */
-export const filter = <A>(
-  id: unknown,
-  decode: Decoder<A, A>["decode"]
-) => (schema: Schema<A>): Codec<A> => codecFor(S.filter(id, decode)(schema))
-
-/**
- * @since 1.0.0
- */
-export const filterWith = <Config, A>(
-  id: unknown,
+export const filter = <Config, A>(
   decode: (config: Config) => Decoder<A, A>["decode"]
-) =>
-  (config: Config) =>
-    (schema: Schema<A>): Codec<A> => codecFor(S.filterWith(id, decode)(config)(schema))
+) => (config: Config) => (schema: Schema<A>): Codec<A> => codecFor(S.filter(decode)(config)(schema))
 
 /**
  * @since 1.0.0
  */
 export const refine = <A, B extends A>(
-  id: unknown,
   decode: Decoder<A, B>["decode"]
-) => (schema: Schema<A>): Codec<B> => codecFor(S.refine(id, decode)(schema))
+) => (schema: Schema<A>): Codec<B> => codecFor(S.refine(decode)(schema))
 
 // ---------------------------------------------
 // data
