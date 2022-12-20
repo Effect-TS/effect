@@ -4,6 +4,10 @@ import * as covariant from "@fp-ts/core/typeclass/Covariant"
 import { flow, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
+import {
+  identifierAnnotation,
+  isIdentifierAnnotation
+} from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
@@ -81,29 +85,12 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const TsIdentifierAnnotationId = Symbol.for("@fp-ts/schema/annotation/TsIdentifierAnnotation")
-
-type TsIdentifierAnnotationId = typeof TsIdentifierAnnotationId
-
-interface TsIdentifierAnnotation {
-  readonly _id: TsIdentifierAnnotationId
-  readonly identifier: string
-}
-
-const isTsIdentifierAnnotation = (u: unknown): u is TsIdentifierAnnotation =>
-  typeof u === "object" && u !== null && u["_id"] === TsIdentifierAnnotationId
-
-const tsIdentifierAnnotation = (identifier: string): TsIdentifierAnnotation => ({
-  _id: TsIdentifierAnnotationId,
-  identifier
-})
-
-const tsIdentifier = flow(tsIdentifierAnnotation, S.annotation)
+const tsIdentifier = flow(identifierAnnotation, S.annotation)
 
 const getIdentifier = (ast: AST.AST): O.Option<ts.Identifier> =>
   pipe(
     ast.annotations,
-    RA.findFirst(isTsIdentifierAnnotation),
+    RA.findFirst(isIdentifierAnnotation),
     O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
   )
 
