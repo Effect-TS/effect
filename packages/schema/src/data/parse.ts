@@ -3,6 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -24,12 +25,12 @@ export const parse = <A, B>(
   arbitrary: Arbitrary<B>["arbitrary"],
   pretty: Pretty<B>["pretty"]
 ) => {
-  const _guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
+  const guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
-  const _decoder = (self: Decoder<unknown, A>): Decoder<unknown, B> =>
+  const decoder = (self: Decoder<unknown, A>): Decoder<unknown, B> =>
     I.makeDecoder(schema(self), (i) => pipe(self.decode(i), I.flatMap(decode)))
 
-  const _encoder = (self: Encoder<unknown, A>): Encoder<unknown, B> =>
+  const encoder = (self: Encoder<unknown, A>): Encoder<unknown, B> =>
     I.makeEncoder(schema(self), (b) => self.encode(encode(b)))
 
   const _arbitrary = (self: Arbitrary<A>): Arbitrary<B> => I.makeArbitrary(schema(self), arbitrary)
@@ -37,15 +38,15 @@ export const parse = <A, B>(
   const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
   const Provider = P.make(id, {
-    [I.ArbitraryId]: _arbitrary,
-    [I.DecoderId]: _decoder,
-    [I.EncoderId]: _encoder,
+    [I.DecoderId]: decoder,
+    [I.EncoderId]: encoder,
     [I.PrettyId]: _pretty
   })
 
   const schema = (self: Schema<A>): Schema<B> =>
     I.typeAlias(id, O.none, Provider, [self], self, [
-      guardAnnotation(null, (_, self) => _guard(self))
+      guardAnnotation(null, (_, self) => guard(self)),
+      arbitraryAnnotation(null, (_, self) => _arbitrary(self))
     ])
 
   return schema

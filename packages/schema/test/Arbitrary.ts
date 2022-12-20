@@ -13,7 +13,6 @@ export const property = <A>(schema: S.Schema<A>) => {
 
 describe.concurrent("Arbitrary", () => {
   it("exports", () => {
-    expect(A.ArbitraryId).exist
     expect(A.make).exist
   })
 

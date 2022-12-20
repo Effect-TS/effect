@@ -6,6 +6,7 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
+import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -52,7 +53,6 @@ const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
  * @since 1.0.0
  */
 export const Provider = make(id, {
-  [I.ArbitraryId]: arbitrary,
   [I.DecoderId]: decoder,
   [I.EncoderId]: encoder,
   [I.PrettyId]: pretty
@@ -68,5 +68,8 @@ export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     Provider,
     [item],
     I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
-    [guardAnnotation(null, (_, item) => guard(item))]
+    [
+      guardAnnotation(null, (_, item) => guard(item)),
+      arbitraryAnnotation(null, (_, item) => arbitrary(item))
+    ]
   )

@@ -5,17 +5,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type * as AST from "@fp-ts/schema/AST"
+import { isArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import type { ArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
-
-/**
- * @since 1.0.0
- */
-export const ArbitraryId = I.ArbitraryId
 
 /**
  * @since 1.0.0
@@ -30,128 +25,123 @@ export interface Arbitrary<A> extends Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
+const getArbitraryAnnotation = (ast: AST.AST): O.Option<ArbitraryAnnotation<unknown>> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isArbitraryAnnotation)
+  )
+
 /**
  * @since 1.0.0
  */
-export const provideArbitraryFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Arbitrary<A> => {
-    const go = (ast: AST.AST): Arbitrary<any> => {
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.find(I.ArbitraryId, ast.id),
-            O.match(
-              () => go(ast.type),
-              (handler) =>
-                O.isSome(ast.config) ?
-                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                  handler(...ast.typeParameters.map(go))
-            )
-          )
-        case "LiteralType":
-          return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
-        case "UniqueSymbol":
-          return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))
-        case "UndefinedKeyword":
-          return make(I._undefined, (fc) => fc.constant(undefined))
-        case "VoidKeyword":
-          return make(I._void, (fc) => fc.constant(undefined))
-        case "NeverKeyword":
-          return make(I.never, () => {
-            throw new Error("cannot build an Arbitrary for `never`")
-          }) as any
-        case "UnknownKeyword":
-          return make(I.unknown, (fc) => fc.anything())
-        case "AnyKeyword":
-          return make(I.any, (fc) => fc.anything())
-        case "StringKeyword":
-          return make(I.string, (fc) => fc.string())
-        case "NumberKeyword":
-          return make(I.number, (fc) => fc.float())
-        case "BooleanKeyword":
-          return make(I.boolean, (fc) => fc.boolean())
-        case "BigIntKeyword":
-          return make(I.bigint, (fc) => fc.bigInt())
-        case "SymbolKeyword":
-          return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
-        case "Tuple": {
-          const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
-          return make(
-            I.makeSchema(ast),
-            (fc) => {
-              // ---------------------------------------------
-              // handle elements
-              // ---------------------------------------------
-              let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
-              if (elements.length > 0) {
-                const optionalIndex = ast.elements.findIndex((e) => e.isOptional)
-                if (optionalIndex !== -1) {
-                  output = output.chain((as) =>
-                    fc.integer({ min: optionalIndex, max: elements.length - 1 }).map((i) => {
-                      return ast.elements[i].isOptional ? as.slice(0, i - 1) : as
-                    })
-                  )
-                }
-              }
-
-              // ---------------------------------------------
-              // handle rest element
-              // ---------------------------------------------
-              if (O.isSome(rest)) {
-                const head = RA.headNonEmpty(rest.value)
-                const tail = RA.tailNonEmpty(rest.value)
-                output = output.chain((as) =>
-                  fc.array(head.arbitrary(fc)).map((rest) => [...as, ...rest])
-                )
-                // ---------------------------------------------
-                // handle post rest elements
-                // ---------------------------------------------
-                for (let j = 0; j < tail.length; j++) {
-                  output = output.chain((as) => tail[j].arbitrary(fc).map((a) => [...as, a]))
-                }
-              }
-
-              return output
-            }
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            ast.indexSignatures.map((is) => go(is.value))
-          )
-        case "Union": {
-          const members = ast.members.map(go)
-          return make(
-            I.makeSchema(ast),
-            (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
-          )
-        }
-        case "Enums": {
-          if (ast.enums.length === 0) {
-            throw new Error("cannot build an Arbitrary for an empty enum")
-          }
-          return make(
-            I.makeSchema(ast),
-            (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
-          )
-        }
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
+export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
+  const go = (ast: AST.AST): Arbitrary<any> => {
+    const annotation = getArbitraryAnnotation(ast)
+    if (O.isSome(annotation)) {
+      return AST.isTypeAliasDeclaration(ast) ?
+        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+        annotation.value.handler(annotation.value.config, go(ast))
     }
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return go(ast.type)
+      case "LiteralType":
+        return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
+      case "UniqueSymbol":
+        return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))
+      case "UndefinedKeyword":
+        return make(I._undefined, (fc) => fc.constant(undefined))
+      case "VoidKeyword":
+        return make(I._void, (fc) => fc.constant(undefined))
+      case "NeverKeyword":
+        return make(I.never, () => {
+          throw new Error("cannot build an Arbitrary for `never`")
+        }) as any
+      case "UnknownKeyword":
+        return make(I.unknown, (fc) => fc.anything())
+      case "AnyKeyword":
+        return make(I.any, (fc) => fc.anything())
+      case "StringKeyword":
+        return make(I.string, (fc) => fc.string())
+      case "NumberKeyword":
+        return make(I.number, (fc) => fc.float())
+      case "BooleanKeyword":
+        return make(I.boolean, (fc) => fc.boolean())
+      case "BigIntKeyword":
+        return make(I.bigint, (fc) => fc.bigInt())
+      case "SymbolKeyword":
+        return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        return make(
+          I.makeSchema(ast),
+          (fc) => {
+            // ---------------------------------------------
+            // handle elements
+            // ---------------------------------------------
+            let output = fc.tuple(...elements.map((c) => c.arbitrary(fc)))
+            if (elements.length > 0) {
+              const optionalIndex = ast.elements.findIndex((e) => e.isOptional)
+              if (optionalIndex !== -1) {
+                output = output.chain((as) =>
+                  fc.integer({ min: optionalIndex, max: elements.length - 1 }).map((i) => {
+                    return ast.elements[i].isOptional ? as.slice(0, i - 1) : as
+                  })
+                )
+              }
+            }
 
-    return go(schema.ast)
+            // ---------------------------------------------
+            // handle rest element
+            // ---------------------------------------------
+            if (O.isSome(rest)) {
+              const head = RA.headNonEmpty(rest.value)
+              const tail = RA.tailNonEmpty(rest.value)
+              output = output.chain((as) =>
+                fc.array(head.arbitrary(fc)).map((rest) => [...as, ...rest])
+              )
+              // ---------------------------------------------
+              // handle post rest elements
+              // ---------------------------------------------
+              for (let j = 0; j < tail.length; j++) {
+                output = output.chain((as) => tail[j].arbitrary(fc).map((a) => [...as, a]))
+              }
+            }
+
+            return output
+          }
+        )
+      }
+      case "Struct":
+        return _struct(
+          ast,
+          ast.fields.map((f) => go(f.value)),
+          ast.indexSignatures.map((is) => go(is.value))
+        )
+      case "Union": {
+        const members = ast.members.map(go)
+        return make(
+          I.makeSchema(ast),
+          (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+        )
+      }
+      case "Enums": {
+        if (ast.enums.length === 0) {
+          throw new Error("cannot build an Arbitrary for an empty enum")
+        }
+        return make(
+          I.makeSchema(ast),
+          (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
+        )
+      }
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
+    }
   }
 
-/**
- * @since 1.0.0
- */
-export const arbitraryFor: <A>(schema: Schema<A>) => Arbitrary<A> = provideArbitraryFor(P.empty())
+  return go(schema.ast)
+}
 
 const _struct = (
   ast: AST.Struct,

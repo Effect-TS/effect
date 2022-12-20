@@ -3,6 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -33,15 +34,13 @@ export const filterWith = <Config, B>(
     (self: Encoder<unknown, B>): Encoder<unknown, B> =>
       I.makeEncoder(schema(config)(self), self.encode)
 
-  const arbitrary = (config: Config) =>
-    (self: Arbitrary<B>): Arbitrary<B> =>
-      I.makeArbitrary(schema(config)(self), (fc) => self.arbitrary(fc).filter(predicate(config)))
+  const arbitrary = (config: Config, self: Arbitrary<B>): Arbitrary<B> =>
+    I.makeArbitrary(schema(config)(self), (fc) => self.arbitrary(fc).filter(predicate(config)))
 
   const pretty = (config: Config) =>
     (self: Pretty<B>): Pretty<B> => I.makePretty(schema(config)(self), (b) => self.pretty(b))
 
   const Provider = P.make(id, {
-    [I.ArbitraryId]: arbitrary,
     [I.DecoderId]: decoder,
     [I.EncoderId]: encoder,
     [I.PrettyId]: pretty
@@ -50,7 +49,8 @@ export const filterWith = <Config, B>(
   const schema = (config: Config) =>
     <A extends B>(self: Schema<A>): Schema<A> =>
       I.typeAlias(id, O.some(config), Provider, [self], self, [
-        guardAnnotation(config, (config, self) => guard(config, self))
+        guardAnnotation(config, (config, self) => guard(config, self)),
+        arbitraryAnnotation(config, (config, self) => arbitrary(config, self))
       ])
 
   return schema

@@ -96,11 +96,6 @@ export const isJson = (u: unknown): u is Json =>
 // ---------------------------------------------
 
 /** @internal */
-export const ArbitraryId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Arbitrary"
-)
-
-/** @internal */
 export const DecoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/Decoder"
 )
