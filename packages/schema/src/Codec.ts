@@ -17,7 +17,7 @@ import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import { decoderFor } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
-import { provideEncoderFor } from "@fp-ts/schema/Encoder"
+import { encoderFor } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import { guardFor } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -149,7 +149,6 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
  * @since 1.0.0
  */
 export const provideCodecFor = (provider: Provider) => {
-  const encoderFor = provideEncoderFor(provider)
   const prettyFor = P.providePrettyFor(provider)
   return <A>(schema: Schema<A>): Codec<A> =>
     make(

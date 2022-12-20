@@ -8,6 +8,7 @@ import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -54,7 +55,6 @@ const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
  * @since 1.0.0
  */
 export const Provider = make(id, {
-  [I.EncoderId]: encoder,
   [I.PrettyId]: pretty
 })
 
@@ -71,6 +71,7 @@ export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     [
       decoderAnnotation(null, (_, item) => decoder(item)),
       guardAnnotation(null, (_, item) => guard(item)),
+      encoderAnnotation(null, (_, item) => encoder(item)),
       arbitraryAnnotation(null, (_, item) => arbitrary(item))
     ]
   )

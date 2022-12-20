@@ -5,12 +5,13 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import type * as AST from "@fp-ts/schema/AST"
+import * as RA from "@fp-ts/data/ReadonlyArray"
+import { isEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import type { EncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -23,86 +24,74 @@ export interface Encoder<S, A> extends Schema<A> {
 /**
  * @since 1.0.0
  */
-export const EncoderId = I.EncoderId
-
-/**
- * @since 1.0.0
- */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
 
+const getEncoderAnnotation = (ast: AST.AST): O.Option<EncoderAnnotation<unknown>> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isEncoderAnnotation)
+  )
+
 /**
  * @since 1.0.0
  */
-export const provideEncoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Encoder<unknown, A> => {
-    const go = (ast: AST.AST): Encoder<unknown, any> => {
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.find(I.EncoderId, ast.id),
-            O.match(
-              () => go(ast.type),
-              (handler) =>
-                O.isSome(ast.config) ?
-                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                  handler(...ast.typeParameters.map(go))
-            )
-          )
-        case "LiteralType":
-        case "UniqueSymbol":
-        case "Enums":
-          return make(I.makeSchema(ast), identity)
-        case "UndefinedKeyword":
-          return make(I._undefined, identity)
-        case "VoidKeyword":
-          return make(I._void, identity)
-        case "NeverKeyword":
-          return make(I.never, absurd) as any
-        case "UnknownKeyword":
-          return make(I.unknown, identity)
-        case "AnyKeyword":
-          return make(I.any, identity)
-        case "StringKeyword":
-          return make(I.string, identity)
-        case "NumberKeyword":
-          return make(I.number, identity)
-        case "BooleanKeyword":
-          return make(I.boolean, identity)
-        case "BigIntKeyword":
-          return make(I.bigint, (n) => n.toString())
-        case "SymbolKeyword":
-          return make(I.bigint, identity)
-        case "Tuple":
-          return _tuple(
-            ast,
-            ast.elements.map((e) => go(e.type)),
-            pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
-          )
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            ast.indexSignatures.map((is) => go(is.value))
-          )
-        case "Union":
-          return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
+export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
+  const go = (ast: AST.AST): Encoder<unknown, any> => {
+    const annotation = getEncoderAnnotation(ast)
+    if (O.isSome(annotation)) {
+      return AST.isTypeAliasDeclaration(ast) ?
+        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+        annotation.value.handler(annotation.value.config, go(ast))
     }
-
-    return go(schema.ast)
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return go(ast.type)
+      case "LiteralType":
+      case "UniqueSymbol":
+      case "Enums":
+        return make(I.makeSchema(ast), identity)
+      case "UndefinedKeyword":
+        return make(I._undefined, identity)
+      case "VoidKeyword":
+        return make(I._void, identity)
+      case "NeverKeyword":
+        return make(I.never, absurd) as any
+      case "UnknownKeyword":
+        return make(I.unknown, identity)
+      case "AnyKeyword":
+        return make(I.any, identity)
+      case "StringKeyword":
+        return make(I.string, identity)
+      case "NumberKeyword":
+        return make(I.number, identity)
+      case "BooleanKeyword":
+        return make(I.boolean, identity)
+      case "BigIntKeyword":
+        return make(I.bigint, (n) => n.toString())
+      case "SymbolKeyword":
+        return make(I.bigint, identity)
+      case "Tuple":
+        return _tuple(
+          ast,
+          ast.elements.map((e) => go(e.type)),
+          pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
+        )
+      case "Struct":
+        return _struct(
+          ast,
+          ast.fields.map((f) => go(f.value)),
+          ast.indexSignatures.map((is) => go(is.value))
+        )
+      case "Union":
+        return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
+    }
   }
 
-/**
- * @since 1.0.0
- */
-export const encoderFor: <A>(schema: Schema<A>) => Encoder<unknown, A> = provideEncoderFor(
-  P.empty()
-)
+  return go(schema.ast)
+}
 
 const _tuple = (
   ast: AST.Tuple,
