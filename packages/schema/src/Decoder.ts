@@ -10,11 +10,11 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import type * as AST from "@fp-ts/schema/AST"
+import type { DecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { isDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Provider } from "@fp-ts/schema/Provider"
-import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -24,11 +24,6 @@ export interface Decoder<I, A> extends Schema<A> {
   readonly I: (_: I) => void
   readonly decode: (i: I) => Validated<DE.DecodeError, A>
 }
-
-/**
- * @since 1.0.0
- */
-export const DecoderId = I.DecoderId
 
 /**
  * @since 1.0.0
@@ -76,119 +71,154 @@ export const isFailure = I.isFailure
  */
 export const isWarning = I.isWarning
 
+const getDecoderAnnotation = (ast: AST.AST): O.Option<DecoderAnnotation<unknown>> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isDecoderAnnotation)
+  )
+
 /**
  * @since 1.0.0
  */
-export const provideDecoderFor = (provider: Provider) =>
-  <A>(schema: Schema<A>): Decoder<unknown, A> => {
-    const go = (ast: AST.AST): Decoder<unknown, any> => {
-      switch (ast._tag) {
-        case "TypeAliasDeclaration":
-          return pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.find(I.DecoderId, ast.id),
-            O.match(
-              () => go(ast.type),
-              (handler) =>
-                O.isSome(ast.config) ?
-                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                  handler(...ast.typeParameters.map(go))
-            )
-          )
-        case "LiteralType":
-          return I.fromRefinement(
-            I.makeSchema(ast),
-            (u): u is typeof ast.literal => u === ast.literal,
-            (u) => DE.notEqual(ast.literal, u)
-          )
-        case "UniqueSymbol":
-          return I.fromRefinement(
-            I.makeSchema(ast),
-            (u): u is typeof ast.symbol => u === ast.symbol,
-            (u) => DE.notEqual(ast.symbol, u)
-          )
-        case "UndefinedKeyword":
-          return I.fromRefinement(
-            I._undefined,
-            I.isUndefined,
-            (u) => DE.notType("undefined", u)
-          )
-        case "VoidKeyword":
-          return I.fromRefinement(
-            I._void,
-            I.isUndefined,
-            (u) => DE.notType("void", u)
-          )
-        case "NeverKeyword":
-          return make(
-            I.never,
-            (u) => I.failure(DE.notType("never", u))
-          ) as any
-        case "UnknownKeyword":
-          return make(I.unknown, I.success)
-        case "AnyKeyword":
-          return make(I.any, I.success)
-        case "StringKeyword":
-          return I.fromRefinement(I.string, isString, (u) => DE.notType("string", u))
-        case "NumberKeyword":
-          return I.makeDecoder(I.makeSchema(ast), (u) =>
-            isNumber(u) ?
-              isNaN(u) ?
-                I.warning(DE.nan, u) :
-                isFinite(u) ?
-                I.success(u) :
-                I.warning(DE.notFinite, u) :
-              I.failure(DE.notType("number", u)))
-        case "BooleanKeyword":
-          return I.fromRefinement(I.boolean, isBoolean, (u) => DE.notType("boolean", u))
-        case "BigIntKeyword":
-          return I.makeDecoder<unknown, bigint>(
-            I.bigint,
-            (u) => {
-              if (I.isBigInt(u)) {
-                return I.success(u)
-              }
-              if (isString(u) || isNumber(u) || isBoolean(u)) {
-                try {
-                  return I.success(BigInt(u))
-                } catch (_e) {
-                  return I.failure(DE.notType("bigint", u))
-                }
-              }
-              return I.failure(DE.notType("string | number | boolean", u))
+export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
+  const go = (ast: AST.AST): Decoder<unknown, any> => {
+    const annotation = getDecoderAnnotation(ast)
+    if (O.isSome(annotation)) {
+      return AST.isTypeAliasDeclaration(ast) ?
+        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+        annotation.value.handler(annotation.value.config, go(ast))
+    }
+    switch (ast._tag) {
+      case "TypeAliasDeclaration":
+        return go(ast.type)
+      case "LiteralType":
+        return I.fromRefinement(
+          I.makeSchema(ast),
+          (u): u is typeof ast.literal => u === ast.literal,
+          (u) => DE.notEqual(ast.literal, u)
+        )
+      case "UniqueSymbol":
+        return I.fromRefinement(
+          I.makeSchema(ast),
+          (u): u is typeof ast.symbol => u === ast.symbol,
+          (u) => DE.notEqual(ast.symbol, u)
+        )
+      case "UndefinedKeyword":
+        return I.fromRefinement(
+          I._undefined,
+          I.isUndefined,
+          (u) => DE.notType("undefined", u)
+        )
+      case "VoidKeyword":
+        return I.fromRefinement(
+          I._void,
+          I.isUndefined,
+          (u) => DE.notType("void", u)
+        )
+      case "NeverKeyword":
+        return make(
+          I.never,
+          (u) => I.failure(DE.notType("never", u))
+        ) as any
+      case "UnknownKeyword":
+        return make(I.unknown, I.success)
+      case "AnyKeyword":
+        return make(I.any, I.success)
+      case "StringKeyword":
+        return I.fromRefinement(I.string, isString, (u) => DE.notType("string", u))
+      case "NumberKeyword":
+        return I.makeDecoder(I.makeSchema(ast), (u) =>
+          isNumber(u) ?
+            isNaN(u) ?
+              I.warning(DE.nan, u) :
+              isFinite(u) ?
+              I.success(u) :
+              I.warning(DE.notFinite, u) :
+            I.failure(DE.notType("number", u)))
+      case "BooleanKeyword":
+        return I.fromRefinement(I.boolean, isBoolean, (u) => DE.notType("boolean", u))
+      case "BigIntKeyword":
+        return I.makeDecoder<unknown, bigint>(
+          I.bigint,
+          (u) => {
+            if (I.isBigInt(u)) {
+              return I.success(u)
             }
-          )
-        case "SymbolKeyword":
-          return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
-        case "Tuple": {
-          const elements = ast.elements.map((e) => go(e.type))
-          const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
-          return make(
-            I.makeSchema(ast),
-            (input: unknown) => {
-              if (!Array.isArray(input)) {
-                return failure(DE.notType("ReadonlyArray<unknown>", input))
+            if (isString(u) || isNumber(u) || isBoolean(u)) {
+              try {
+                return I.success(BigInt(u))
+              } catch (_e) {
+                return I.failure(DE.notType("bigint", u))
               }
-              const output: Array<any> = []
-              const es: Array<DE.DecodeError> = []
-              let i = 0
-              // ---------------------------------------------
-              // handle elements
-              // ---------------------------------------------
-              for (; i < elements.length; i++) {
-                if (input.length < i + 1) {
-                  // the input element is missing...
-                  if (ast.elements[i].isOptional) {
-                    // ...but the element is optional, go on
-                    continue
-                  } else {
-                    // ...but the element is required, bail out
-                    return failure(DE.index(i, [DE.missing]))
-                  }
+            }
+            return I.failure(DE.notType("string | number | boolean", u))
+          }
+        )
+      case "SymbolKeyword":
+        return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        return make(
+          I.makeSchema(ast),
+          (input: unknown) => {
+            if (!Array.isArray(input)) {
+              return failure(DE.notType("ReadonlyArray<unknown>", input))
+            }
+            const output: Array<any> = []
+            const es: Array<DE.DecodeError> = []
+            let i = 0
+            // ---------------------------------------------
+            // handle elements
+            // ---------------------------------------------
+            for (; i < elements.length; i++) {
+              if (input.length < i + 1) {
+                // the input element is missing...
+                if (ast.elements[i].isOptional) {
+                  // ...but the element is optional, go on
+                  continue
                 } else {
-                  const decoder = elements[i]
-                  const t = decoder.decode(input[i])
+                  // ...but the element is required, bail out
+                  return failure(DE.index(i, [DE.missing]))
+                }
+              } else {
+                const decoder = elements[i]
+                const t = decoder.decode(input[i])
+                if (isFailure(t)) {
+                  // the input element is present but is not valid, bail out
+                  return failures(I.mutableAppend(es, DE.index(i, t.left)))
+                } else if (isWarning(t)) {
+                  es.push(DE.index(i, t.left))
+                }
+                output[i] = t.right
+              }
+            }
+            // ---------------------------------------------
+            // handle rest element
+            // ---------------------------------------------
+            if (O.isSome(rest)) {
+              const head = RA.headNonEmpty(rest.value)
+              const tail = RA.tailNonEmpty(rest.value)
+              for (; i < input.length - tail.length; i++) {
+                const t = head.decode(input[i])
+                if (isFailure(t)) {
+                  // the input element is not valid, bail out
+                  return failures(I.mutableAppend(es, DE.index(i, t.left)))
+                } else if (isWarning(t)) {
+                  es.push(DE.index(i, t.left))
+                }
+                output[i] = t.right
+              }
+              // ---------------------------------------------
+              // handle post rest elements
+              // ---------------------------------------------
+              for (let j = 0; j < tail.length; j++) {
+                i += j
+                if (input.length < i + 1) {
+                  // the input element is missing and the element is required, bail out
+                  return failure(DE.index(i, [DE.missing]))
+                } else {
+                  const t = tail[j].decode(input[i])
                   if (isFailure(t)) {
                     // the input element is present but is not valid, bail out
                     return failures(I.mutableAppend(es, DE.index(i, t.left)))
@@ -198,87 +228,45 @@ export const provideDecoderFor = (provider: Provider) =>
                   output[i] = t.right
                 }
               }
+            } else {
               // ---------------------------------------------
-              // handle rest element
+              // handle additional indexes
               // ---------------------------------------------
-              if (O.isSome(rest)) {
-                const head = RA.headNonEmpty(rest.value)
-                const tail = RA.tailNonEmpty(rest.value)
-                for (; i < input.length - tail.length; i++) {
-                  const t = head.decode(input[i])
-                  if (isFailure(t)) {
-                    // the input element is not valid, bail out
-                    return failures(I.mutableAppend(es, DE.index(i, t.left)))
-                  } else if (isWarning(t)) {
-                    es.push(DE.index(i, t.left))
-                  }
-                  output[i] = t.right
-                }
-                // ---------------------------------------------
-                // handle post rest elements
-                // ---------------------------------------------
-                for (let j = 0; j < tail.length; j++) {
-                  i += j
-                  if (input.length < i + 1) {
-                    // the input element is missing and the element is required, bail out
-                    return failure(DE.index(i, [DE.missing]))
-                  } else {
-                    const t = tail[j].decode(input[i])
-                    if (isFailure(t)) {
-                      // the input element is present but is not valid, bail out
-                      return failures(I.mutableAppend(es, DE.index(i, t.left)))
-                    } else if (isWarning(t)) {
-                      es.push(DE.index(i, t.left))
-                    }
-                    output[i] = t.right
-                  }
-                }
-              } else {
-                // ---------------------------------------------
-                // handle additional indexes
-                // ---------------------------------------------
-                for (; i < input.length; i++) {
-                  es.push(DE.unexpectedIndex(i))
-                }
+              for (; i < input.length; i++) {
+                es.push(DE.unexpectedIndex(i))
               }
-
-              // ---------------------------------------------
-              // compute output
-              // ---------------------------------------------
-              return I.isNonEmpty(es) ? warnings(es, output) : success(output)
             }
-          )
-        }
-        case "Struct":
-          return _struct(
-            ast,
-            ast.fields.map((f) => go(f.value)),
-            ast.indexSignatures.map((is) => go(is.value))
-          )
-        case "Union":
-          return _union(ast, ast.members.map(go))
-        case "Enums":
-          return I.makeDecoder(
-            I.makeSchema(ast),
-            (u) =>
-              ast.enums.some(([_, value]) => value === u) ?
-                I.success(u) :
-                I.failure(DE.notEnums(ast.enums, u))
-          )
-        case "Lazy":
-          return _lazy(() => go(ast.f()))
-      }
-    }
 
-    return go(schema.ast)
+            // ---------------------------------------------
+            // compute output
+            // ---------------------------------------------
+            return I.isNonEmpty(es) ? warnings(es, output) : success(output)
+          }
+        )
+      }
+      case "Struct":
+        return _struct(
+          ast,
+          ast.fields.map((f) => go(f.value)),
+          ast.indexSignatures.map((is) => go(is.value))
+        )
+      case "Union":
+        return _union(ast, ast.members.map(go))
+      case "Enums":
+        return I.makeDecoder(
+          I.makeSchema(ast),
+          (u) =>
+            ast.enums.some(([_, value]) => value === u) ?
+              I.success(u) :
+              I.failure(DE.notEnums(ast.enums, u))
+        )
+      case "Lazy":
+        return _lazy(() => go(ast.f()))
+    }
   }
 
-/**
- * @since 1.0.0
- */
-export const decoderFor: <A>(schema: Schema<A>) => Decoder<unknown, A> = provideDecoderFor(
-  P.empty()
-)
+  return go(schema.ast)
+}
 
 const _struct = (
   ast: AST.Struct,

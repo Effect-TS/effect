@@ -91,15 +91,6 @@ export const isJson = (u: unknown): u is Json =>
   isJsonArray(u) ||
   isJsonObject(u)
 
-// ---------------------------------------------
-// Compiler IDs
-// ---------------------------------------------
-
-/** @internal */
-export const DecoderId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Decoder"
-)
-
 /** @internal */
 export const EncoderId: unique symbol = Symbol.for(
   "@fp-ts/schema/Encoder"

@@ -11,15 +11,15 @@ import type { Option } from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as A from "@fp-ts/schema/Arbitrary"
+import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
 import type { Literal } from "@fp-ts/schema/AST"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
-import { provideDecoderFor } from "@fp-ts/schema/Decoder"
+import { decoderFor } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import { provideEncoderFor } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
-import * as G from "@fp-ts/schema/Guard"
+import { guardFor } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import * as P from "@fp-ts/schema/Pretty"
@@ -149,7 +149,6 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
  * @since 1.0.0
  */
 export const provideCodecFor = (provider: Provider) => {
-  const decoderFor = provideDecoderFor(provider)
   const encoderFor = provideEncoderFor(provider)
   const prettyFor = P.providePrettyFor(provider)
   return <A>(schema: Schema<A>): Codec<A> =>
@@ -157,8 +156,8 @@ export const provideCodecFor = (provider: Provider) => {
       schema,
       decoderFor(schema).decode,
       encoderFor(schema).encode,
-      G.guardFor(schema).is,
-      A.arbitraryFor(schema).arbitrary,
+      guardFor(schema).is,
+      arbitraryFor(schema).arbitrary,
       prettyFor(schema).pretty
     )
 }

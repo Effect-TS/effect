@@ -5,7 +5,6 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Decoder", () => {
   it("exports", () => {
-    expect(_.DecoderId).exist
     expect(_.make).exist
     expect(_.success).exist
     expect(_.failure).exist

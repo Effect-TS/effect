@@ -2,6 +2,7 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
+import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -41,7 +42,6 @@ const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
  * @since 1.0.0
  */
 export const Provider = make(id, {
-  [I.DecoderId]: decoder,
   [I.EncoderId]: encoder,
   [I.PrettyId]: pretty
 })
@@ -59,5 +59,7 @@ export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
       I.struct({ _tag: I.literal("None") }),
       I.struct({ _tag: I.literal("Some"), value })
     ),
-    []
+    [
+      decoderAnnotation(null, (_, item) => decoder(item))
+    ]
   )

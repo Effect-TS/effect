@@ -5,6 +5,7 @@ import { identity } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -20,7 +21,6 @@ export const id = Symbol.for("@fp-ts/schema/data/Json")
  * @since 1.0.0
  */
 export const Provider: P.Provider = P.make(id, {
-  [I.DecoderId]: () => Decoder,
   [I.EncoderId]: () => Encoder,
   [I.PrettyId]: () => Pretty
 })
@@ -40,6 +40,7 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
  * @since 1.0.0
  */
 export const Schema: S.Schema<Json> = I.typeAlias(id, O.none, Provider, [], JsonSchema, [
+  decoderAnnotation(null, () => Decoder),
   guardAnnotation(null, () => Guard),
   arbitraryAnnotation(null, () => Arbitrary)
 ])
