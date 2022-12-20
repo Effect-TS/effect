@@ -7,6 +7,7 @@ import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotatio
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -39,15 +40,14 @@ export const refine = <B, C extends B>(
 
   const pretty = (self: Pretty<B>): Pretty<C> => I.makePretty(schema(self), (b) => self.pretty(b))
 
-  const Provider = P.make(id, {
-    [I.PrettyId]: pretty
-  })
+  const Provider = P.make(id, {})
 
   const schema = <A extends B>(self: Schema<A>): Schema<A & C> =>
     I.typeAlias(id, O.none, Provider, [self], self, [
       decoderAnnotation(null, (_, self) => decoder(self)),
       guardAnnotation(null, (_, self) => guard(self)),
       encoderAnnotation(null, (_, self) => encoder(self)),
+      prettyAnnotation(null, (_, self) => pretty(self)),
       arbitraryAnnotation(null, (_, self) => arbitrary(self))
     ])
 

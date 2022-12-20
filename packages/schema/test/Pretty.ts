@@ -5,7 +5,6 @@ import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Pretty", () => {
   it("exports", () => {
-    expect(P.PrettyId).exist
     expect(P.make).exist
   })
 

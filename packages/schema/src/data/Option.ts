@@ -4,6 +4,7 @@ import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -42,9 +43,7 @@ const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
 /**
  * @since 1.0.0
  */
-export const Provider = make(id, {
-  [I.PrettyId]: pretty
-})
+export const Provider = make(id, {})
 
 /**
  * @since 1.0.0
@@ -61,6 +60,7 @@ export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
     ),
     [
       decoderAnnotation(null, (_, item) => decoder(item)),
-      encoderAnnotation(null, (_, item) => encoder(item))
+      encoderAnnotation(null, (_, item) => encoder(item)),
+      prettyAnnotation(null, (_, item) => pretty(item))
     ]
   )

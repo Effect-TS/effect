@@ -22,9 +22,7 @@ import type { Guard } from "@fp-ts/schema/Guard"
 import { guardFor } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
-import * as P from "@fp-ts/schema/Pretty"
-import type { Provider } from "@fp-ts/schema/Provider"
-import { empty } from "@fp-ts/schema/Provider"
+import { prettyFor } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -148,23 +146,15 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
 /**
  * @since 1.0.0
  */
-export const provideCodecFor = (provider: Provider) => {
-  const prettyFor = P.providePrettyFor(provider)
-  return <A>(schema: Schema<A>): Codec<A> =>
-    make(
-      schema,
-      decoderFor(schema).decode,
-      encoderFor(schema).encode,
-      guardFor(schema).is,
-      arbitraryFor(schema).arbitrary,
-      prettyFor(schema).pretty
-    )
-}
-
-/**
- * @since 1.0.0
- */
-export const codecFor: <A>(schema: Schema<A>) => Codec<A> = provideCodecFor(empty())
+export const codecFor = <A>(schema: Schema<A>): Codec<A> =>
+  make(
+    schema,
+    decoderFor(schema).decode,
+    encoderFor(schema).encode,
+    guardFor(schema).is,
+    arbitraryFor(schema).arbitrary,
+    prettyFor(schema).pretty
+  )
 
 /**
  * @since 1.0.0

@@ -8,6 +8,7 @@ import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotatio
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Provider"
@@ -21,9 +22,7 @@ export const id = Symbol.for("@fp-ts/schema/data/Json")
 /**
  * @since 1.0.0
  */
-export const Provider: P.Provider = P.make(id, {
-  [I.PrettyId]: () => Pretty
-})
+export const Provider: P.Provider = P.make(id, {})
 
 const JsonSchema: S.Schema<Json> = I.lazy(() =>
   I.union(
@@ -43,6 +42,7 @@ export const Schema: S.Schema<Json> = I.typeAlias(id, O.none, Provider, [], Json
   decoderAnnotation(null, () => Decoder),
   guardAnnotation(null, () => Guard),
   encoderAnnotation(null, () => Encoder),
+  prettyAnnotation(null, () => Pretty),
   arbitraryAnnotation(null, () => Arbitrary)
 ])
 

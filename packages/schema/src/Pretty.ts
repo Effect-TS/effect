@@ -5,18 +5,15 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type * as AST from "@fp-ts/schema/AST"
+import type { PrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import { isPrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Provider } from "@fp-ts/schema/Provider"
 import * as P from "@fp-ts/schema/Provider"
 import type { Schema } from "@fp-ts/schema/Schema"
-
-/**
- * @since 1.0.0
- */
-export const PrettyId = I.PrettyId
 
 /**
  * @since 1.0.0
@@ -30,26 +27,27 @@ export interface Pretty<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
 
+const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation<unknown>> =>
+  pipe(
+    ast.annotations,
+    RA.findFirst(isPrettyAnnotation)
+  )
+
 /**
  * @since 1.0.0
  */
-export const providePrettyFor = (provider: Provider) =>
+export const providePrettyFor = (_provider: Provider) =>
   <A>(schema: Schema<A>): Pretty<A> => {
     const go = (ast: AST.AST): Pretty<any> => {
+      const annotation = getPrettyAnnotation(ast)
+      if (O.isSome(annotation)) {
+        return AST.isTypeAliasDeclaration(ast) ?
+          annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
+          annotation.value.handler(annotation.value.config, go(ast))
+      }
       switch (ast._tag) {
         case "TypeAliasDeclaration":
-          return pipe(
-            ast.provider,
-            P.Semigroup.combine(provider),
-            P.find(I.PrettyId, ast.id),
-            O.match(
-              () => go(ast.type),
-              (handler) =>
-                O.isSome(ast.config) ?
-                  handler(ast.config.value)(...ast.typeParameters.map(go)) :
-                  handler(...ast.typeParameters.map(go))
-            )
-          )
+          return go(ast.type)
         case "LiteralType":
           return make(I.makeSchema(ast), _literalType)
         case "UniqueSymbol":

@@ -7,6 +7,7 @@ import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotatio
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -37,12 +38,10 @@ export const filterWith = <Config, B>(
   const arbitrary = (config: Config, self: Arbitrary<B>): Arbitrary<B> =>
     I.makeArbitrary(schema(config)(self), (fc) => self.arbitrary(fc).filter(predicate(config)))
 
-  const pretty = (config: Config) =>
-    (self: Pretty<B>): Pretty<B> => I.makePretty(schema(config)(self), (b) => self.pretty(b))
+  const pretty = (config: Config, self: Pretty<B>): Pretty<B> =>
+    I.makePretty(schema(config)(self), (b) => self.pretty(b))
 
-  const Provider = P.make(id, {
-    [I.PrettyId]: pretty
-  })
+  const Provider = P.make(id, {})
 
   const schema = (config: Config) =>
     <A extends B>(self: Schema<A>): Schema<A> =>
@@ -50,6 +49,7 @@ export const filterWith = <Config, B>(
         decoderAnnotation(config, (config, self) => decoder(config, self)),
         guardAnnotation(config, (config, self) => guard(config, self)),
         encoderAnnotation(config, (config, self) => encoder(config, self)),
+        prettyAnnotation(config, (config, self) => pretty(config, self)),
         arbitraryAnnotation(config, (config, self) => arbitrary(config, self))
       ])
 

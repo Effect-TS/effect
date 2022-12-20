@@ -91,11 +91,6 @@ export const isJson = (u: unknown): u is Json =>
   isJsonArray(u) ||
   isJsonObject(u)
 
-/** @internal */
-export const PrettyId: unique symbol = Symbol.for(
-  "@fp-ts/schema/Pretty"
-)
-
 // ---------------------------------------------
 // artifacts constructors
 // ---------------------------------------------
