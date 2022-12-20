@@ -1,5 +1,45 @@
 # @fp-ts/schema
 
+## 0.0.6
+
+### Patch Changes
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`ad6b0f2`](https://github.com/fp-ts/schema/commit/ad6b0f228b4741a20b81fee00935210b8b3d23bc) Thanks [@gcanti](https://github.com/gcanti)! - AST: add UndefinedKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`2627797`](https://github.com/fp-ts/schema/commit/2627797447654748848fbba2c28f0e6c7b7ceb35) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest @fp-ts/data
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`ed431fc`](https://github.com/fp-ts/schema/commit/ed431fcef6ef6410fcf5fca5e2f0920ec9069d13) Thanks [@gcanti](https://github.com/gcanti)! - remove /data/JsonArray, /data/JsonObject
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`13cd7b3`](https://github.com/fp-ts/schema/commit/13cd7b32ffcfbd9f050ade6fc7e9d67572eeb501) Thanks [@gcanti](https://github.com/gcanti)! - AST: add BigIntKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`6c68055`](https://github.com/fp-ts/schema/commit/6c68055384e5aff67adc74fb38237af0e2839af3) Thanks [@gcanti](https://github.com/gcanti)! - DecodeError: make NotType's expected field a string
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`39b16d5`](https://github.com/fp-ts/schema/commit/39b16d5344bb93308804c851ba71eb7b7b487be8) Thanks [@gcanti](https://github.com/gcanti)! - rename restElement to rest
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`eb29477`](https://github.com/fp-ts/schema/commit/eb294777d45c701d2ec1a29f349685312eb272fa) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest fp-ts/data
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`b26b6ac`](https://github.com/fp-ts/schema/commit/b26b6ac7d9df4050786fcebe9072d983edb61096) Thanks [@gcanti](https://github.com/gcanti)! - AST: add NumberKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`4e53571`](https://github.com/fp-ts/schema/commit/4e535716bdd8d54ad4017978028feaff30f7b6f9) Thanks [@gcanti](https://github.com/gcanti)! - AST: add BooleanKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`aacc8b1`](https://github.com/fp-ts/schema/commit/aacc8b191d68fd02872c265993b4d9fb7e4fa2b8) Thanks [@gcanti](https://github.com/gcanti)! - AST: refactor Of to LiteralType
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`430307b`](https://github.com/fp-ts/schema/commit/430307b3614e33c45b4116e03158303bc288143f) Thanks [@gcanti](https://github.com/gcanti)! - AST: add SymbolKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`b5c02ad`](https://github.com/fp-ts/schema/commit/b5c02ad20d67b0009015387247b621bf2f00d064) Thanks [@gcanti](https://github.com/gcanti)! - AST: add TypeAliasDeclaration
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`59c0627`](https://github.com/fp-ts/schema/commit/59c062742907b242fe5ee761826f7949b57cd034) Thanks [@gcanti](https://github.com/gcanti)! - remove /data/UnknownArray, /data/UnknownObject
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`ca88e4f`](https://github.com/fp-ts/schema/commit/ca88e4f462ca4eace633e52e9278a2b6c63195d3) Thanks [@gcanti](https://github.com/gcanti)! - remove /data/Option in favour of option combinator in Schema.ts
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`aa98a60`](https://github.com/fp-ts/schema/commit/aa98a6077ea10a7d2fa02ca2bb9143e8847d2974) Thanks [@gcanti](https://github.com/gcanti)! - remove chunk, list and readonlySet from Schema and Codec
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`f4b5b59`](https://github.com/fp-ts/schema/commit/f4b5b592e8d436cb1af6a5b8c8e676697573381d) Thanks [@gcanti](https://github.com/gcanti)! - AST: add AnyKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`e9699ac`](https://github.com/fp-ts/schema/commit/e9699ac8ba8372ebdfff2bd5a7da024308b8a4a4) Thanks [@gcanti](https://github.com/gcanti)! - AST: add UnknownKeyword
+
+- [#26](https://github.com/fp-ts/schema/pull/26) [`2520ce9`](https://github.com/fp-ts/schema/commit/2520ce9550bdc5216d72220e3b740416640c8575) Thanks [@gcanti](https://github.com/gcanti)! - AST: add NeverKeyword
+
 ## 0.0.5
 
 ### Patch Changes
