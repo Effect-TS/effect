@@ -4,6 +4,7 @@ import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
 import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { identifierAnnotation } from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -47,6 +48,7 @@ export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
     [
       decoderAnnotation(decoder),
       encoderAnnotation(encoder),
-      prettyAnnotation(pretty)
+      prettyAnnotation(pretty),
+      identifierAnnotation("Option")
     ]
   )

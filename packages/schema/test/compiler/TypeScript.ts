@@ -9,6 +9,7 @@ import {
   isIdentifierAnnotation
 } from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
+import * as DataInt from "@fp-ts/schema/data/filter/Int"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 
@@ -332,8 +333,20 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         )
       }
       case "Refinement":
-        // TODO
-        return go(ast.from)
+        return pipe(
+          getIdentifier(ast),
+          O.match(
+            () => go(ast.from),
+            (id) =>
+              make(
+                ast,
+                pipe(
+                  go(ast.from).nodes,
+                  map((typeParameter) => ts.factory.createTypeReferenceNode(id, [typeParameter]))
+                )
+              )
+          )
+        )
     }
   }
 
@@ -725,10 +738,8 @@ describe.concurrent("TypeScript", () => {
     ])
   })
 
-  it("Option (by annotation)", () => {
-    const option = <A>(value: S.Schema<A>): S.Schema<O.Option<A>> =>
-      pipe(S.option(value), tsIdentifier("Option"))
-    const schema = option(S.struct({ a: S.string }))
+  it("Option", () => {
+    const schema = S.option(S.struct({ a: S.string }))
     const node = typeScriptFor(schema)
     expect(printNodes(node.nodes)).toEqual([`Option<{
     readonly a: string;
@@ -746,5 +757,11 @@ describe.concurrent("TypeScript", () => {
     readonly name: string;
     readonly age: number;
 }`])
+  })
+
+  it("integer", () => {
+    const schema = DataInt.schema(S.number)
+    const { nodes } = typeScriptFor(schema)
+    expect(printNodes(nodes)).toEqual([`number`])
   })
 })
