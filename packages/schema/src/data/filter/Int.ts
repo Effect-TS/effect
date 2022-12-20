@@ -11,6 +11,5 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const schema: <A extends number>(self: Schema<A>) => Schema<A> = filter(
-  (_config: null) =>
-    (n: number) => Number.isInteger(n) ? I.success(n) : I.failure(DE.notType("Int", n))
-)(null)
+  (n: number) => Number.isInteger(n) ? I.success(n) : I.failure(DE.notType("Int", n))
+)

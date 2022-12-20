@@ -27,7 +27,7 @@ export interface Encoder<S, A> extends Schema<A> {
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
 
-const getEncoderAnnotation = (ast: AST.AST): O.Option<EncoderAnnotation<unknown>> =>
+const getEncoderAnnotation = (ast: AST.AST): O.Option<EncoderAnnotation> =>
   pipe(
     ast.annotations,
     RA.findFirst(isEncoderAnnotation)
@@ -40,13 +40,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
     const annotation = getEncoderAnnotation(ast)
     if (O.isSome(annotation)) {
-      const { config, handler } = annotation.value
-      if (AST.isTypeAliasDeclaration(ast)) {
-        return ast.typeParameters.length > 0 ?
-          handler(config, ...ast.typeParameters.map(go)) :
-          handler(config, go(ast.type))
-      }
-      return handler(config, go({ ...ast, annotations: [] }))
+      const { handler } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

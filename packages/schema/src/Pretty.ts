@@ -25,7 +25,7 @@ export interface Pretty<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
 
-const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation<unknown>> =>
+const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation> =>
   pipe(
     ast.annotations,
     RA.findFirst(isPrettyAnnotation)
@@ -38,13 +38,8 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
   const go = (ast: AST.AST): Pretty<any> => {
     const annotation = getPrettyAnnotation(ast)
     if (O.isSome(annotation)) {
-      const { config, handler } = annotation.value
-      if (AST.isTypeAliasDeclaration(ast)) {
-        return ast.typeParameters.length > 0 ?
-          handler(config, ...ast.typeParameters.map(go)) :
-          handler(config, go(ast.type))
-      }
-      return handler(config, go({ ...ast, annotations: [] }))
+      const { handler } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

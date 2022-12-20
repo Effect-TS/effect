@@ -49,10 +49,10 @@ export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
     [item],
     I.struct({}),
     [
-      decoderAnnotation(null, (_, item) => decoder(item)),
-      guardAnnotation(null, (_, item) => guard(item)),
-      encoderAnnotation(null, (_, item) => encoder(item)),
-      prettyAnnotation(null, (_, item) => pretty(item)),
-      arbitraryAnnotation(null, (_, item) => arbitrary(item))
+      decoderAnnotation(decoder),
+      guardAnnotation(guard),
+      encoderAnnotation(encoder),
+      prettyAnnotation(pretty),
+      arbitraryAnnotation(arbitrary)
     ]
   )

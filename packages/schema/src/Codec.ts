@@ -5,8 +5,7 @@
 import type { Left, Right } from "@fp-ts/data/Either"
 import * as E from "@fp-ts/data/Either"
 import { identity, pipe } from "@fp-ts/data/Function"
-import type { Json } from "@fp-ts/data/Json"
-import { parse, stringify } from "@fp-ts/data/Json"
+import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
@@ -71,7 +70,7 @@ export const make = <A>(
       text: string,
       format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
     ) => {
-      const json = parse(text)
+      const json = Json.parse(text)
       if (E.isLeft(json)) {
         throw new Error(`Cannot parse JSON from: ${text}`)
       }
@@ -84,7 +83,7 @@ export const make = <A>(
       throw new Error(message)
     },
     stringify: (value: A) => {
-      const json = stringify(encode(value))
+      const json = Json.stringify(encode(value))
       if (E.isLeft(json)) {
         throw new Error(`Cannot encode JSON, error: ${String(json.left)}`)
       }
@@ -343,16 +342,45 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 /**
  * @since 1.0.0
  */
-export const filter = <Config, A>(
-  decode: (config: Config) => Decoder<A, A>["decode"]
-) => (config: Config) => (schema: Schema<A>): Codec<A> => codecFor(S.filter(decode)(config)(schema))
+export const filter = <A>(
+  decode: Decoder<A, A>["decode"]
+) => (self: Schema<A>): Codec<A> => codecFor(S.filter(decode)(self))
 
 /**
  * @since 1.0.0
  */
 export const refine = <A, B extends A>(
   decode: Decoder<A, B>["decode"]
-) => (schema: Schema<A>): Codec<B> => codecFor(S.refine(decode)(schema))
+) => (self: Schema<A>): Codec<B> => codecFor(S.refine(decode)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const parse = <A, B>(
+  decode: Decoder<A, B>["decode"],
+  encode: Encoder<A, B>["encode"],
+  is: (u: unknown) => u is B,
+  arbitrary: Arbitrary<B>["arbitrary"],
+  pretty: Pretty<B>["pretty"]
+) =>
+  (self: Schema<A>): Codec<B> =>
+    codecFor(
+      S.parse(decode, encode, is, arbitrary, pretty)(self)
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const annotation = (
+  annotation: unknown
+) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotation(annotation)(schema))
+
+/**
+ * @since 1.0.0
+ */
+export const annotations = (
+  annotations: ReadonlyArray<unknown>
+) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotations(annotations)(schema))
 
 // ---------------------------------------------
 // data
@@ -416,7 +444,7 @@ export const never: Codec<never> = codecFor(S.never)
 /**
  * @since 1.0.0
  */
-export const json: Codec<Json> = codecFor(S.json)
+export const json: Codec<Json.Json> = codecFor(S.json)
 
 /**
  * @since 1.0.0

@@ -11,26 +11,20 @@ export const PrettyAnnotationId = "@fp-ts/schema/annotation/PrettyAnnotation"
 /**
  * @since 1.0.0
  */
-export interface PrettyAnnotation<Config> {
+export interface PrettyAnnotation {
   readonly _id: typeof PrettyAnnotationId
-  readonly config: Config
-  readonly handler: (config: Config, ...Prettys: ReadonlyArray<Pretty<any>>) => Pretty<any>
+  readonly handler: (...Prettys: ReadonlyArray<Pretty<any>>) => Pretty<any>
 }
 
 /**
  * @since 1.0.0
  */
-export const isPrettyAnnotation = (u: unknown): u is PrettyAnnotation<unknown> =>
+export const isPrettyAnnotation = (u: unknown): u is PrettyAnnotation =>
   typeof u === "object" && u !== null && u["_id"] === PrettyAnnotationId
 
 /**
  * @since 1.0.0
  */
-export const prettyAnnotation = <Config>(
-  config: Config,
-  handler: (config: Config, ...Prettys: ReadonlyArray<Pretty<any>>) => Pretty<any>
-): PrettyAnnotation<Config> => ({
-  _id: PrettyAnnotationId,
-  config,
-  handler
-})
+export const prettyAnnotation = (
+  handler: (...Prettys: ReadonlyArray<Pretty<any>>) => Pretty<any>
+): PrettyAnnotation => ({ _id: PrettyAnnotationId, handler })

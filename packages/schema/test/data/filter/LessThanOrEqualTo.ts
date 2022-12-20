@@ -6,10 +6,6 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("LessThanOrEqualTo", () => {
-  it("exports", () => {
-    expect(_.id).exist
-  })
-
   it("property tests", () => {
     Util.property(_.schema(0)(S.number))
   })

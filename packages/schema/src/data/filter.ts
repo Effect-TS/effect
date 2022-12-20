@@ -18,38 +18,33 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const filter = <Config, B>(
-  decode: (config: Config) => Decoder<B, B>["decode"]
-) => {
-  const predicate = (config: Config) => (b: B): boolean => !I.isFailure(decode(config)(b))
+export const filter = <B>(
+  decode: Decoder<B, B>["decode"]
+): <A extends B>(self: Schema<A>) => Schema<A> => {
+  const predicate = (b: B): boolean => !I.isFailure(decode(b))
 
-  const guard = (config: Config, self: Guard<B>): Guard<B> =>
-    I.makeGuard(schema(config)(self), (u): u is B => self.is(u) && predicate(config)(u))
+  const guard = (self: Guard<B>): Guard<B> =>
+    I.makeGuard(self, (u): u is B => self.is(u) && predicate(u))
 
-  const decoder = (config: Config, self: Decoder<unknown, B>): Decoder<unknown, B> =>
-    I.makeDecoder(schema(config)(self), (i) => pipe(self.decode(i), I.flatMap(decode(config))))
+  const decoder = (self: Decoder<unknown, B>): Decoder<unknown, B> =>
+    I.makeDecoder(self, (i) => pipe(self.decode(i), I.flatMap(decode)))
 
-  const encoder = (config: Config, self: Encoder<unknown, B>): Encoder<unknown, B> =>
-    I.makeEncoder(schema(config)(self), self.encode)
+  const encoder = (self: Encoder<unknown, B>): Encoder<unknown, B> =>
+    I.makeEncoder(self, self.encode)
 
-  const arbitrary = (config: Config, self: Arbitrary<B>): Arbitrary<B> =>
-    I.makeArbitrary(schema(config)(self), (fc) => self.arbitrary(fc).filter(predicate(config)))
+  const arbitrary = (self: Arbitrary<B>): Arbitrary<B> =>
+    I.makeArbitrary(self, (fc) => self.arbitrary(fc).filter(predicate))
 
-  const pretty = (config: Config, self: Pretty<B>): Pretty<B> =>
-    I.makePretty(schema(config)(self), (b) => self.pretty(b))
+  const pretty = (self: Pretty<B>): Pretty<B> => I.makePretty(self, (b) => self.pretty(b))
 
-  const schema = (config: Config) =>
-    <A extends B>(self: Schema<A>): Schema<A> =>
-      pipe(
-        self,
-        I.annotations([
-          decoderAnnotation(config, decoder),
-          guardAnnotation(config, guard),
-          encoderAnnotation(config, encoder),
-          prettyAnnotation(config, pretty),
-          arbitraryAnnotation(config, arbitrary)
-        ])
-      )
+  const schema = <A extends B>(self: Schema<A>): Schema<A> =>
+    I.typeAlias([self], self, [
+      decoderAnnotation(decoder),
+      guardAnnotation(guard),
+      encoderAnnotation(encoder),
+      prettyAnnotation(pretty),
+      arbitraryAnnotation(arbitrary)
+    ])
 
   return schema
 }

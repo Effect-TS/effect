@@ -25,7 +25,7 @@ export interface Arbitrary<A> extends Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
-const getArbitraryAnnotation = (ast: AST.AST): O.Option<ArbitraryAnnotation<unknown>> =>
+const getArbitraryAnnotation = (ast: AST.AST): O.Option<ArbitraryAnnotation> =>
   pipe(
     ast.annotations,
     RA.findFirst(isArbitraryAnnotation)
@@ -38,13 +38,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const go = (ast: AST.AST): Arbitrary<any> => {
     const annotation = getArbitraryAnnotation(ast)
     if (O.isSome(annotation)) {
-      const { config, handler } = annotation.value
-      if (AST.isTypeAliasDeclaration(ast)) {
-        return ast.typeParameters.length > 0 ?
-          handler(config, ...ast.typeParameters.map(go)) :
-          handler(config, go(ast.type))
-      }
-      return handler(config, go({ ...ast, annotations: [] }))
+      const { handler } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

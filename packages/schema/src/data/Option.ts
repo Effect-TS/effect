@@ -45,8 +45,8 @@ export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
       I.struct({ _tag: I.literal("Some"), value })
     ),
     [
-      decoderAnnotation(null, (_, item) => decoder(item)),
-      encoderAnnotation(null, (_, item) => encoder(item)),
-      prettyAnnotation(null, (_, item) => pretty(item))
+      decoderAnnotation(decoder),
+      encoderAnnotation(encoder),
+      prettyAnnotation(pretty)
     ]
   )

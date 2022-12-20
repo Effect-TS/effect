@@ -8,7 +8,6 @@ import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -25,7 +24,7 @@ export const parse = <A, B>(
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
   pretty: Pretty<B>["pretty"]
-) => {
+): (self: Schema<A>) => Schema<B> => {
   const guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
   const decoder = (self: Decoder<unknown, A>): Decoder<unknown, B> =>
@@ -39,13 +38,13 @@ export const parse = <A, B>(
   const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
   const schema = (self: Schema<A>): Schema<B> =>
-    I.makeSchema(AST.prependAllAnnotations(self.ast, [
-      decoderAnnotation(null, (_, self) => decoder(self)),
-      guardAnnotation(null, (_, self) => guard(self)),
-      encoderAnnotation(null, (_, self) => encoder(self)),
-      prettyAnnotation(null, (_, self) => _pretty(self)),
-      arbitraryAnnotation(null, (_, self) => _arbitrary(self))
-    ]))
+    I.typeAlias([self], self, [
+      decoderAnnotation(decoder),
+      guardAnnotation(guard),
+      encoderAnnotation(encoder),
+      prettyAnnotation(_pretty),
+      arbitraryAnnotation(_arbitrary)
+    ])
 
   return schema
 }

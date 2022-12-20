@@ -27,11 +27,11 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
  * @since 1.0.0
  */
 export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, [
-  decoderAnnotation(null, () => Decoder),
-  guardAnnotation(null, () => Guard),
-  encoderAnnotation(null, () => Encoder),
-  prettyAnnotation(null, () => Pretty),
-  arbitraryAnnotation(null, () => Arbitrary)
+  decoderAnnotation(() => Decoder),
+  guardAnnotation(() => Guard),
+  encoderAnnotation(() => Encoder),
+  prettyAnnotation(() => Pretty),
+  arbitraryAnnotation(() => Arbitrary)
 ])
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)

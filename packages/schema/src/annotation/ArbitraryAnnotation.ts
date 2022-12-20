@@ -11,26 +11,20 @@ export const ArbitraryAnnotationId = "@fp-ts/schema/annotation/ArbitraryAnnotati
 /**
  * @since 1.0.0
  */
-export interface ArbitraryAnnotation<Config> {
+export interface ArbitraryAnnotation {
   readonly _id: typeof ArbitraryAnnotationId
-  readonly config: Config
-  readonly handler: (config: Config, ...Arbitrarys: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
+  readonly handler: (...Arbitrarys: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
 }
 
 /**
  * @since 1.0.0
  */
-export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation<unknown> =>
+export const isArbitraryAnnotation = (u: unknown): u is ArbitraryAnnotation =>
   typeof u === "object" && u !== null && u["_id"] === ArbitraryAnnotationId
 
 /**
  * @since 1.0.0
  */
-export const arbitraryAnnotation = <Config>(
-  config: Config,
-  handler: (config: Config, ...Arbitrarys: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
-): ArbitraryAnnotation<Config> => ({
-  _id: ArbitraryAnnotationId,
-  config,
-  handler
-})
+export const arbitraryAnnotation = (
+  handler: (...Arbitrarys: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
+): ArbitraryAnnotation => ({ _id: ArbitraryAnnotationId, handler })

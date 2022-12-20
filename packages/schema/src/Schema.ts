@@ -5,6 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataFilter from "@fp-ts/schema/data/filter"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
@@ -16,8 +17,12 @@ import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
+import * as DataParse from "@fp-ts/schema/data/parse"
 import * as DataRefine from "@fp-ts/schema/data/refine"
+import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 
 /**
  * @since 1.0.0
@@ -298,12 +303,27 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 /**
  * @since 1.0.0
  */
-export const filter = DataFilter.filter
+export const filter: <B>(
+  decode: Decoder<B, B>["decode"]
+) => <A extends B>(self: Schema<A>) => Schema<A> = DataFilter.filter
 
 /**
  * @since 1.0.0
  */
-export const refine = DataRefine.refine
+export const refine: <A, B extends A>(
+  decode: Decoder<A, B>["decode"]
+) => (self: Schema<A>) => Schema<B> = DataRefine.refine
+
+/**
+ * @since 1.0.0
+ */
+export const parse: <A, B>(
+  decode: Decoder<A, B>["decode"],
+  encode: Encoder<A, B>["encode"],
+  is: (u: unknown) => u is B,
+  arbitrary: Arbitrary<B>["arbitrary"],
+  pretty: Pretty<B>["pretty"]
+) => (self: Schema<A>) => Schema<B> = DataParse.parse
 
 /**
  * @since 1.0.0

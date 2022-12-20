@@ -11,29 +11,20 @@ export const EncoderAnnotationId = "@fp-ts/schema/annotation/EncoderAnnotation"
 /**
  * @since 1.0.0
  */
-export interface EncoderAnnotation<Config> {
+export interface EncoderAnnotation {
   readonly _id: typeof EncoderAnnotationId
-  readonly config: Config
-  readonly handler: (
-    config: Config,
-    ...Encoders: ReadonlyArray<Encoder<any, any>>
-  ) => Encoder<any, any>
+  readonly handler: (...Encoders: ReadonlyArray<Encoder<any, any>>) => Encoder<any, any>
 }
 
 /**
  * @since 1.0.0
  */
-export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation<unknown> =>
+export const isEncoderAnnotation = (u: unknown): u is EncoderAnnotation =>
   typeof u === "object" && u !== null && u["_id"] === EncoderAnnotationId
 
 /**
  * @since 1.0.0
  */
-export const encoderAnnotation = <Config>(
-  config: Config,
-  handler: (config: Config, ...Encoders: ReadonlyArray<Encoder<any, any>>) => Encoder<any, any>
-): EncoderAnnotation<Config> => ({
-  _id: EncoderAnnotationId,
-  config,
-  handler
-})
+export const encoderAnnotation = (
+  handler: (...Encoders: ReadonlyArray<Encoder<any, any>>) => Encoder<any, any>
+): EncoderAnnotation => ({ _id: EncoderAnnotationId, handler })

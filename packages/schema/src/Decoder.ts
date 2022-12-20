@@ -71,7 +71,7 @@ export const isFailure = I.isFailure
  */
 export const isWarning = I.isWarning
 
-const getDecoderAnnotation = (ast: AST.AST): O.Option<DecoderAnnotation<unknown>> =>
+const getDecoderAnnotation = (ast: AST.AST): O.Option<DecoderAnnotation> =>
   pipe(
     ast.annotations,
     RA.findFirst(isDecoderAnnotation)
@@ -84,13 +84,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<unknown, any> => {
     const annotation = getDecoderAnnotation(ast)
     if (O.isSome(annotation)) {
-      const { config, handler } = annotation.value
-      if (AST.isTypeAliasDeclaration(ast)) {
-        return ast.typeParameters.length > 0 ?
-          handler(config, ...ast.typeParameters.map(go)) :
-          handler(config, go(ast.type))
-      }
-      return handler(config, go({ ...ast, annotations: [] }))
+      const { handler } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

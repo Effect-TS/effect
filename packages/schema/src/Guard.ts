@@ -26,7 +26,7 @@ export interface Guard<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
-const getGuardAnnotation = (ast: AST.AST): O.Option<GuardAnnotation<unknown>> =>
+const getGuardAnnotation = (ast: AST.AST): O.Option<GuardAnnotation> =>
   pipe(
     ast.annotations,
     RA.findFirst(isGuardAnnotation)
@@ -39,13 +39,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const go = (ast: AST.AST): Guard<any> => {
     const annotation = getGuardAnnotation(ast)
     if (O.isSome(annotation)) {
-      const { config, handler } = annotation.value
-      if (AST.isTypeAliasDeclaration(ast)) {
-        return ast.typeParameters.length > 0 ?
-          handler(config, ...ast.typeParameters.map(go)) :
-          handler(config, go(ast.type))
-      }
-      return handler(config, go({ ...ast, annotations: [] }))
+      const { handler } = annotation.value
+      return AST.isTypeAliasDeclaration(ast) ? handler(...ast.typeParameters.map(go)) : handler()
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":
