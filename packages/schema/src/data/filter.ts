@@ -40,13 +40,16 @@ export const filter = <Config, B>(
 
   const schema = (config: Config) =>
     <A extends B>(self: Schema<A>): Schema<A> =>
-      I.typeAlias([self], self, [
-        decoderAnnotation(config, (config, self) => decoder(config, self)),
-        guardAnnotation(config, (config, self) => guard(config, self)),
-        encoderAnnotation(config, (config, self) => encoder(config, self)),
-        prettyAnnotation(config, (config, self) => pretty(config, self)),
-        arbitraryAnnotation(config, (config, self) => arbitrary(config, self))
-      ])
+      pipe(
+        self,
+        I.annotations([
+          decoderAnnotation(config, decoder),
+          guardAnnotation(config, guard),
+          encoderAnnotation(config, encoder),
+          prettyAnnotation(config, pretty),
+          arbitraryAnnotation(config, arbitrary)
+        ])
+      )
 
   return schema
 }

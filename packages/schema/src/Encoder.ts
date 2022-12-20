@@ -40,9 +40,13 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
     const annotation = getEncoderAnnotation(ast)
     if (O.isSome(annotation)) {
-      return AST.isTypeAliasDeclaration(ast) ?
-        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
-        annotation.value.handler(annotation.value.config, go(ast))
+      const { config, handler } = annotation.value
+      if (AST.isTypeAliasDeclaration(ast)) {
+        return ast.typeParameters.length > 0 ?
+          handler(config, ...ast.typeParameters.map(go)) :
+          handler(config, go(ast.type))
+      }
+      return handler(config, go({ ...ast, annotations: [] }))
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

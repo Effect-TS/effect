@@ -38,9 +38,13 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const go = (ast: AST.AST): Arbitrary<any> => {
     const annotation = getArbitraryAnnotation(ast)
     if (O.isSome(annotation)) {
-      return AST.isTypeAliasDeclaration(ast) ?
-        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
-        annotation.value.handler(annotation.value.config, go(ast))
+      const { config, handler } = annotation.value
+      if (AST.isTypeAliasDeclaration(ast)) {
+        return ast.typeParameters.length > 0 ?
+          handler(config, ...ast.typeParameters.map(go)) :
+          handler(config, go(ast.type))
+      }
+      return handler(config, go({ ...ast, annotations: [] }))
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

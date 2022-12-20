@@ -84,9 +84,13 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<unknown, any> => {
     const annotation = getDecoderAnnotation(ast)
     if (O.isSome(annotation)) {
-      return AST.isTypeAliasDeclaration(ast) ?
-        annotation.value.handler(annotation.value.config, ...ast.typeParameters.map(go)) :
-        annotation.value.handler(annotation.value.config, go(ast))
+      const { config, handler } = annotation.value
+      if (AST.isTypeAliasDeclaration(ast)) {
+        return ast.typeParameters.length > 0 ?
+          handler(config, ...ast.typeParameters.map(go)) :
+          handler(config, go(ast.type))
+      }
+      return handler(config, go({ ...ast, annotations: [] }))
     }
     switch (ast._tag) {
       case "TypeAliasDeclaration":

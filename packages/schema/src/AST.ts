@@ -511,6 +511,14 @@ export const prependAnnotation = (ast: AST, annotation: unknown): AST => ({
 /**
  * @since 1.0.0
  */
+export const prependAllAnnotations = (ast: AST, annotations: ReadonlyArray<unknown>): AST => ({
+  ...ast,
+  annotations: pipe(ast.annotations, RA.prependAll(annotations))
+})
+
+/**
+ * @since 1.0.0
+ */
 export const appendRestElement = (
   ast: Tuple,
   restElement: AST,

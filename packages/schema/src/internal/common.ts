@@ -287,6 +287,13 @@ export const annotation = (
   annotation: unknown
 ) => <A>(schema: Schema<A>): Schema<A> => makeSchema(AST.prependAnnotation(schema.ast, annotation))
 
+/** @internal */
+export const annotations = (
+  annotations: ReadonlyArray<unknown>
+) =>
+  <A>(schema: Schema<A>): Schema<A> =>
+    makeSchema(AST.prependAllAnnotations(schema.ast, annotations))
+
 // ---------------------------------------------
 // general helpers
 // ---------------------------------------------

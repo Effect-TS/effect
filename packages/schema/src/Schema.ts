@@ -312,6 +312,13 @@ export const annotation: (
   annotation: unknown
 ) => <A>(schema: Schema<A>) => Schema<A> = I.annotation
 
+/**
+ * @since 1.0.0
+ */
+export const annotations: (
+  annotations: ReadonlyArray<unknown>
+) => <A>(schema: Schema<A>) => Schema<A> = I.annotations
+
 // ---------------------------------------------
 // data
 // ---------------------------------------------
