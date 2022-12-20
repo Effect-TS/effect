@@ -1,3 +1,6 @@
+/**
+ * @since 1.0.0
+ */
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"

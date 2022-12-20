@@ -278,6 +278,9 @@ export interface Missing {
   readonly _tag: "Missing"
 }
 
+/**
+ * @since 1.0.0
+ */
 export const missing: Missing = { _tag: "Missing" }
 
 /**

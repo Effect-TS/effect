@@ -91,6 +91,9 @@ export const literalType = (
  */
 export const isLiteralType = (ast: AST): ast is LiteralType => ast._tag === "LiteralType"
 
+/**
+ * @since 1.0.0
+ */
 export interface UniqueSymbol extends Annotated {
   readonly _tag: "UniqueSymbol"
   readonly symbol: symbol
