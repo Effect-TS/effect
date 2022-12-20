@@ -282,7 +282,7 @@ export const nonEmptyArray = <A>(
 /**
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => S.FieldSchema<A, true> = I.optional
+export const optional: <A>(schema: Schema<A>) => S.OptionalSchema<A, true> = I.optional
 
 /**
  * @since 1.0.0

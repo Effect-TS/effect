@@ -211,7 +211,7 @@ export type FieldSchemaId = typeof I.FieldSchemaId
 /**
  * @since 1.0.0
  */
-export interface FieldSchema<A, isOptional extends boolean> extends Schema<A>, AST.Annotated {
+export interface OptionalSchema<A, isOptional extends boolean> extends Schema<A>, AST.Annotated {
   readonly _id: FieldSchemaId
   readonly isOptional: isOptional
 }
@@ -219,13 +219,13 @@ export interface FieldSchema<A, isOptional extends boolean> extends Schema<A>, A
 /**
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => FieldSchema<A, true> = I.optional
+export const optional: <A>(schema: Schema<A>) => OptionalSchema<A, true> = I.optional
 
 /**
  * @since 1.0.0
  */
 export type OptionalKeys<T> = {
-  [K in keyof T]: T[K] extends FieldSchema<any, true> ? K : never
+  [K in keyof T]: T[K] extends OptionalSchema<any, true> ? K : never
 }[keyof T]
 
 /**

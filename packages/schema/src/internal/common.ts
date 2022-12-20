@@ -14,7 +14,7 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
-import type { FieldSchema, OptionalKeys, Schema, Spread } from "@fp-ts/schema/Schema"
+import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
 // ---------------------------------------------
 // Decoder APIs
@@ -226,20 +226,15 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 /** @internal */
 export const FieldSchemaId: symbol = Symbol.for("@fp-ts/schema/Schema/Field")
 
-const isFieldSchema = <A>(schema: Schema<A>): schema is FieldSchema<A, boolean> =>
+const isOptionalSchema = <A>(schema: Schema<A>): schema is OptionalSchema<A, boolean> =>
   schema["_id"] === FieldSchemaId
 
-const isOptional = <A>(schema: Schema<A>): boolean => isFieldSchema(schema) && schema.isOptional
-
-const getAnnotations = <A>(schema: Schema<A>): AST.Annotated["annotations"] =>
-  isFieldSchema(schema) ? schema.annotations : []
+const isOptional = <A>(schema: Schema<A>): boolean => isOptionalSchema(schema)
 
 /** @internal */
-export const optional = <A>(schema: Schema<A>): FieldSchema<A, true> => {
+export const optional = <A>(schema: Schema<A>): OptionalSchema<A, true> => {
   const out: any = makeSchema(schema.ast)
   out["_id"] = FieldSchemaId
-  out.isOptional = true
-  out.annotations = []
   return out
 }
 
@@ -255,7 +250,13 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   makeSchema(
     AST.struct(
       ownKeys(fields).map((key) =>
-        AST.field(key, fields[key].ast, isOptional(fields[key]), true, getAnnotations(fields[key]))
+        AST.field(
+          key,
+          fields[key].ast,
+          isOptional(fields[key]),
+          true,
+          []
+        )
       ),
       [],
       []
