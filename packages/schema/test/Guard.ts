@@ -683,6 +683,16 @@ describe.concurrent("Guard", () => {
     expect(guard.is("b")).toEqual(false)
   })
 
+  it("endsWith", () => {
+    const schema = S.string.endsWith("a")
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is("ba")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is("b")).toEqual(false)
+  })
+
   it("filter", () => {
     const schema = S.string.filter((s) =>
       s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))

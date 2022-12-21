@@ -462,6 +462,9 @@ export class StringBuilder<A extends string> extends Codec<A> {
   startsWith(s: string) {
     return new StringBuilder(S.startsWith(s)(this))
   }
+  endsWith(s: string) {
+    return new StringBuilder(S.endsWith(s)(this))
+  }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],
     annotations: ReadonlyArray<unknown> = []

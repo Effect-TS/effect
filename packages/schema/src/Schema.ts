@@ -7,6 +7,7 @@ import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
+import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
 import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
@@ -93,6 +94,12 @@ export const maxLength: (
  */
 export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
   DataStartsWith.schema
+
+/**
+ * @since 1.0.0
+ */
+export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
+  DataEndsWith.schema
 
 /**
  * @since 1.0.0
@@ -432,6 +439,9 @@ export class StringBuilder<A extends string> implements Schema<A> {
   }
   startsWith(s: string) {
     return new StringBuilder(startsWith(s)(this))
+  }
+  endsWith(s: string) {
+    return new StringBuilder(endsWith(s)(this))
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],

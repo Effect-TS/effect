@@ -17,6 +17,7 @@ export type DecodeError =
   | MinLength
   | MaxLength
   | StartsWith
+  | EndsWith
   | LessThan
   | GreaterThan
   | LessThanOrEqualTo
@@ -173,6 +174,24 @@ export interface StartsWith {
 export const startsWith = (startsWith: string, actual: unknown): StartsWith => ({
   _tag: "StartsWith",
   startsWith,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface EndsWith {
+  readonly _tag: "EndsWith"
+  readonly endsWith: string
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const endsWith = (endsWith: string, actual: unknown): EndsWith => ({
+  _tag: "EndsWith",
+  endsWith,
   actual
 })
 
