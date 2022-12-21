@@ -164,7 +164,7 @@ function _catch<N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(
     self: P.STM<R, E, A>
   ): P.STM<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> =>
     P.catchAll_(self, (e) => {
-      if (tag in e && e[tag] === k) {
+      if (typeof e === "object" && e !== null && tag in e && e[tag] === k) {
         return f(e as any)
       }
       return P.fail(e as any)
@@ -181,7 +181,7 @@ export function catch_<N extends keyof E, K extends E[N] & string, E, R, A, R1, 
   f: (e: Extract<E, { [n in N]: K }>) => P.STM<R1, E1, A1>
 ): P.STM<R & R1, Exclude<E, { [n in N]: K }> | E1, A | A1> {
   return P.catchAll_(self, (e) => {
-    if (tag in e && e[tag] === k) {
+    if (typeof e === "object" && e !== null && tag in e && e[tag] === k) {
       return f(e as any)
     }
     return P.fail(e as any)
@@ -603,7 +603,7 @@ export function filterOrFail_<R, E, E1, A>(
   p: Predicate<A>,
   failWith: unknown
 ) {
-  return filterOrElse_(fa, p, (x) => fail((failWith as (a: A) => E1)(x)))
+  return filterOrElse_(fa, p, (x) => P.fail((failWith as (a: A) => E1)(x)))
 }
 
 /**
