@@ -546,21 +546,32 @@ export const appendRestElement = (
  */
 export const appendElement = (
   ast: Tuple,
-  element: Element,
+  newElement: Element,
   annotations: ReadonlyArray<unknown>
 ): Tuple => {
-  if (ast.elements.some((e) => e.isOptional) && !element.isOptional) {
-    throw new Error("A required element cannot follow an optional element. ts(1257)")
-  }
   return pipe(
     ast.rest,
     O.match(
-      () => tuple([...ast.elements, element], O.none, ast.isReadonly, annotations),
+      () => {
+        if (ast.elements.some((e) => e.isOptional) && !newElement.isOptional) {
+          throw new Error("A required element cannot follow an optional element. ts(1257)")
+        }
+        return tuple([...ast.elements, newElement], O.none, ast.isReadonly, annotations)
+      },
       (rest) => {
-        if (element.isOptional) {
+        if (newElement.isOptional) {
           throw new Error("An optional element cannot follow a rest element. ts(1266)")
         }
-        return tuple(ast.elements, O.some([...rest, element.type]), ast.isReadonly, annotations)
+        return tuple(
+          ast.elements.map((e) =>
+            // adding a post rest element makes all optional elements required
+            // but also adds `undefined` to their type
+            e.isOptional ? element(union([e.type, undefinedKeyword([])], []), false, []) : e
+          ),
+          O.some([...rest, newElement.type]),
+          ast.isReadonly,
+          annotations
+        )
       }
     )
   )

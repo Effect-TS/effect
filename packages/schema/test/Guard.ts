@@ -172,6 +172,20 @@ describe.concurrent("Guard", () => {
       expect(guard.is(["a"])).toEqual(false)
     })
 
+    it("optional element followed by rest and another element", () => {
+      const schema = pipe(
+        S.tuple(S.string),
+        S.optionalElement(S.number),
+        S.rest(S.string),
+        S.element(S.boolean)
+      )
+      const guard = G.guardFor(schema)
+      expect(guard.is(["a", 1, true])).toEqual(true)
+      expect(guard.is(["a", 1, "b", true])).toEqual(true)
+      expect(guard.is(["a", undefined, true])).toEqual(true)
+      expect(guard.is(["a", undefined, "b", true])).toEqual(true)
+    })
+
     it("baseline", () => {
       const schema = S.tuple(S.string, S.number)
       const guard = G.guardFor(schema)
