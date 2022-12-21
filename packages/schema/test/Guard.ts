@@ -646,72 +646,128 @@ describe.concurrent("Guard", () => {
     })
   })
 
-  it("maxLength", () => {
-    const schema = S.string.max(1)
-    const guard = G.guardFor(schema)
-    expect(guard.is("")).toEqual(true)
-    expect(guard.is("a")).toEqual(true)
+  describe.concurrent("StringBuilder", () => {
+    it("max", () => {
+      const schema = S.string.max(1)
+      const guard = G.guardFor(schema)
+      expect(guard.is("")).toEqual(true)
+      expect(guard.is("a")).toEqual(true)
 
-    expect(guard.is("aa")).toEqual(false)
+      expect(guard.is("aa")).toEqual(false)
+    })
+
+    it("min", () => {
+      const schema = S.string.nonEmpty()
+      const guard = G.guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+      expect(guard.is("aa")).toEqual(true)
+
+      expect(guard.is("")).toEqual(false)
+    })
+
+    it("length", () => {
+      const schema = S.string.length(1)
+      const guard = G.guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+
+      expect(guard.is("")).toEqual(false)
+      expect(guard.is("aa")).toEqual(false)
+    })
+
+    it("startsWith", () => {
+      const schema = S.string.startsWith("a")
+      const guard = G.guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+      expect(guard.is("ab")).toEqual(true)
+
+      expect(guard.is("")).toEqual(false)
+      expect(guard.is("b")).toEqual(false)
+    })
+
+    it("endsWith", () => {
+      const schema = S.string.endsWith("a")
+      const guard = G.guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+      expect(guard.is("ba")).toEqual(true)
+
+      expect(guard.is("")).toEqual(false)
+      expect(guard.is("b")).toEqual(false)
+    })
+
+    it("regex", () => {
+      const schema = S.string.regex(/^abb+$/)
+      const guard = G.guardFor(schema)
+      expect(guard.is("abb")).toEqual(true)
+      expect(guard.is("abbb")).toEqual(true)
+
+      expect(guard.is("ab")).toEqual(false)
+      expect(guard.is("a")).toEqual(false)
+    })
+
+    it("filter", () => {
+      const schema = S.string.filter((s) =>
+        s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))
+      )
+      const guard = G.guardFor(schema)
+      expect(guard.is("a")).toEqual(true)
+
+      expect(guard.is("")).toEqual(false)
+      expect(guard.is("aa")).toEqual(false)
+    })
   })
 
-  it("minLength", () => {
-    const schema = S.string.nonEmpty()
-    const guard = G.guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("aa")).toEqual(true)
+  describe.concurrent("NumberBuilder", () => {
+    it("gt", () => {
+      const schema = S.number.gt(0)
+      const guard = G.guardFor(schema)
+      expect(guard.is(-1)).toEqual(false)
+      expect(guard.is(0)).toEqual(false)
+      expect(guard.is(1)).toEqual(true)
+    })
 
-    expect(guard.is("")).toEqual(false)
-  })
+    it("gte", () => {
+      const schema = S.number.gte(0)
+      const guard = G.guardFor(schema)
+      expect(guard.is(-1)).toEqual(false)
+      expect(guard.is(0)).toEqual(true)
+      expect(guard.is(1)).toEqual(true)
+    })
 
-  it("length", () => {
-    const schema = S.string.length(1)
-    const guard = G.guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
+    it("lt", () => {
+      const schema = S.number.lt(0)
+      const guard = G.guardFor(schema)
+      expect(guard.is(-1)).toEqual(true)
+      expect(guard.is(0)).toEqual(false)
+      expect(guard.is(1)).toEqual(false)
+    })
 
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("aa")).toEqual(false)
-  })
+    it("lte", () => {
+      const schema = S.number.lte(0)
+      const guard = G.guardFor(schema)
+      expect(guard.is(-1)).toEqual(true)
+      expect(guard.is(0)).toEqual(true)
+      expect(guard.is(1)).toEqual(false)
+    })
 
-  it("startsWith", () => {
-    const schema = S.string.startsWith("a")
-    const guard = G.guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("ab")).toEqual(true)
+    it("int", () => {
+      const schema = S.number.int()
+      const guard = G.guardFor(schema)
+      expect(guard.is(0)).toEqual(true)
+      expect(guard.is(1)).toEqual(true)
+      expect(guard.is(1.2)).toEqual(false)
+    })
 
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("b")).toEqual(false)
-  })
-
-  it("endsWith", () => {
-    const schema = S.string.endsWith("a")
-    const guard = G.guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("ba")).toEqual(true)
-
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("b")).toEqual(false)
-  })
-
-  it("regex", () => {
-    const schema = S.string.regex(/^abb+$/)
-    const guard = G.guardFor(schema)
-    expect(guard.is("abb")).toEqual(true)
-    expect(guard.is("abbb")).toEqual(true)
-
-    expect(guard.is("ab")).toEqual(false)
-    expect(guard.is("a")).toEqual(false)
-  })
-
-  it("filter", () => {
-    const schema = S.string.filter((s) =>
-      s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))
-    )
-    const guard = G.guardFor(schema)
-    expect(guard.is("a")).toEqual(true)
-
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("aa")).toEqual(false)
+    it("filter", () => {
+      const schema = S.number.filter((n) =>
+        n % 2 === 0 ? D.success(n) : D.failure(DE.notType("Even", n))
+      )
+      const guard = G.guardFor(schema)
+      expect(guard.is(0)).toEqual(true)
+      expect(guard.is(1)).toEqual(false)
+      expect(guard.is(2)).toEqual(true)
+      expect(guard.is(3)).toEqual(false)
+      expect(guard.is(4)).toEqual(true)
+    })
   })
 
   describe.concurrent("nullables", () => {

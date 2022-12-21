@@ -329,7 +329,7 @@ export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.par
  * @since 1.0.0
  */
 export const stringIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [x: string]: A }> =>
-  codecFor(S.symbolIndexSignature(value))
+  codecFor(S.stringIndexSignature(value))
 
 /**
  * @since 1.0.0
@@ -494,5 +494,36 @@ export class StringBuilder<A extends string> extends Codec<A> {
     annotations: ReadonlyArray<unknown> = []
   ) {
     return new StringBuilder(S.filter(decode, annotations)(this))
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export class NumberBuilder<A extends number> extends Codec<A> {
+  constructor(schema: Schema<A>) {
+    super(schema)
+  }
+
+  gt(n: number) {
+    return new NumberBuilder(S.greaterThan(n)(this))
+  }
+  gte(n: number) {
+    return new NumberBuilder(S.greaterThanOrEqualTo(n)(this))
+  }
+  lt(n: number) {
+    return new NumberBuilder(S.lessThan(n)(this))
+  }
+  lte(n: number) {
+    return new NumberBuilder(S.lessThanOrEqualTo(n)(this))
+  }
+  int() {
+    return new NumberBuilder(S.int(this))
+  }
+  filter<B extends A>(
+    decode: Decoder<A, B>["decode"],
+    annotations: ReadonlyArray<unknown> = []
+  ) {
+    return new NumberBuilder(S.filter(decode, annotations)(this))
   }
 }

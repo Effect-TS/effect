@@ -390,11 +390,6 @@ export const any: Schema<any> = I.any
 /**
  * @since 1.0.0
  */
-export const number: Schema<number> = I.number
-
-/**
- * @since 1.0.0
- */
 export const boolean: Schema<boolean> = I.boolean
 
 /**
@@ -465,3 +460,42 @@ export class StringBuilder<A extends string> implements Schema<A> {
  * @since 1.0.0
  */
 export const string = new StringBuilder(I.string)
+
+/**
+ * @since 1.0.0
+ */
+export class NumberBuilder<A extends number> implements Schema<A> {
+  readonly A!: (_: A) => A
+  readonly ast: AST.AST
+
+  constructor(readonly schema: Schema<A>) {
+    this.ast = schema.ast
+  }
+
+  gt(n: number) {
+    return new NumberBuilder(greaterThan(n)(this))
+  }
+  gte(n: number) {
+    return new NumberBuilder(greaterThanOrEqualTo(n)(this))
+  }
+  lt(n: number) {
+    return new NumberBuilder(lessThan(n)(this))
+  }
+  lte(n: number) {
+    return new NumberBuilder(lessThanOrEqualTo(n)(this))
+  }
+  int() {
+    return new NumberBuilder(int(this))
+  }
+  filter<B extends A>(
+    decode: Decoder<A, B>["decode"],
+    annotations: ReadonlyArray<unknown> = []
+  ) {
+    return new NumberBuilder(filter(decode, annotations)(this))
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const number = new NumberBuilder(I.number)
