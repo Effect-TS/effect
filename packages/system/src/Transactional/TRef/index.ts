@@ -609,10 +609,10 @@ export function updateAndGet<A>(
  */
 export function concrete<EA, EB, A, B>(
   _: XTRef<EA, EB, A, B>
-): asserts _ is  // @ts-expect-error
-  | (Atomic<A> & Atomic<B>)
-  | Derived<unknown, EA, EB, A, B>
-  | DerivedAll<unknown, EA, EB, A, B> {
+): asserts _ is
+  | Atomic<any>
+  | Derived<any, any, any, any, any>
+  | DerivedAll<any, any, any, any, any> {
   //
 }
 

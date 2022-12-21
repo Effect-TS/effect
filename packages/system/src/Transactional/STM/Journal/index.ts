@@ -90,8 +90,9 @@ export function collectTodos(journal: Journal): Map<TxnId, Todo> {
  * Executes the todos in the current thread, sequentially.
  */
 export function execTodos(todos: Map<TxnId, Todo>) {
-  for (const todo of todos) {
-    todo[1]()
+  const todosSorted = Array.from(todos.entries()).sort((x, y) => x[0] - y[0])
+  for (const [_, todo] of todosSorted) {
+    todo()
   }
 }
 
