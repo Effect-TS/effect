@@ -693,6 +693,16 @@ describe.concurrent("Guard", () => {
     expect(guard.is("b")).toEqual(false)
   })
 
+  it("regex", () => {
+    const schema = S.string.regex(/^abb+$/)
+    const guard = G.guardFor(schema)
+    expect(guard.is("abb")).toEqual(true)
+    expect(guard.is("abbb")).toEqual(true)
+
+    expect(guard.is("ab")).toEqual(false)
+    expect(guard.is("a")).toEqual(false)
+  })
+
   it("filter", () => {
     const schema = S.string.filter((s) =>
       s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))

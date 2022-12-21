@@ -185,6 +185,27 @@ export const maxLength = (maxLength: number) =>
 /**
  * @since 1.0.0
  */
+export const startsWith = (startsWith: string) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.startsWith(startsWith)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const endsWith = (endsWith: string) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.endsWith(endsWith)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const regex = (regex: RegExp) =>
+  <A extends string>(self: Schema<A>): Codec<A> =>
+    codecFor(
+      S.regex(regex)(self)
+    )
+
+/**
+ * @since 1.0.0
+ */
 export const lessThan = (min: number) =>
   <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
 
@@ -464,6 +485,9 @@ export class StringBuilder<A extends string> extends Codec<A> {
   }
   endsWith(s: string) {
     return new StringBuilder(S.endsWith(s)(this))
+  }
+  regex(r: RegExp) {
+    return new StringBuilder(S.regex(r)(this))
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],

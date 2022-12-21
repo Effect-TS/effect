@@ -69,6 +69,8 @@ const format = (e: DE.DecodeError): string => {
       return `${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`
     case "EndsWith":
       return `${JSON.stringify(e.actual)} did not satisfy EndsWith(${e.endsWith})`
+    case "Regex":
+      return `${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`
     case "NaN":
       return `did not satisfy not(isNaN)`
     case "NotFinite":
@@ -153,6 +155,8 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(`${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`)
     case "EndsWith":
       return make(`${JSON.stringify(e.actual)} did not satisfy EndsWith(${e.endsWith})`)
+    case "Regex":
+      return make(`${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`)
     case "NaN":
       return make(`did not satisfy not(isNaN)`)
     case "NotFinite":

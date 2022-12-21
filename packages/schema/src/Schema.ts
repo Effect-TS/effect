@@ -15,6 +15,7 @@ import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
 import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
+import * as DataRegex from "@fp-ts/schema/data/filter/Regex"
 import * as DataStartsWith from "@fp-ts/schema/data/filter/StartsWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
@@ -100,6 +101,12 @@ export const startsWith: (startsWith: string) => <A extends string>(self: Schema
  */
 export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
   DataEndsWith.schema
+
+/**
+ * @since 1.0.0
+ */
+export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> =
+  DataRegex.schema
 
 /**
  * @since 1.0.0
@@ -442,6 +449,9 @@ export class StringBuilder<A extends string> implements Schema<A> {
   }
   endsWith(s: string) {
     return new StringBuilder(endsWith(s)(this))
+  }
+  regex(r: RegExp) {
+    return new StringBuilder(regex(r)(this))
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],

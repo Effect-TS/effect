@@ -18,6 +18,7 @@ export type DecodeError =
   | MaxLength
   | StartsWith
   | EndsWith
+  | Regex
   | LessThan
   | GreaterThan
   | LessThanOrEqualTo
@@ -192,6 +193,24 @@ export interface EndsWith {
 export const endsWith = (endsWith: string, actual: unknown): EndsWith => ({
   _tag: "EndsWith",
   endsWith,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Regex {
+  readonly _tag: "Regex"
+  readonly regex: RegExp
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const regex = (regex: RegExp, actual: unknown): Regex => ({
+  _tag: "Regex",
+  regex,
   actual
 })
 
