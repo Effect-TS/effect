@@ -703,4 +703,16 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: 1 })).toBe(true)
     })
   })
+
+  describe.concurrent("StringBuilder", () => {
+    it("should return a valid schema", () => {
+      const schema = S.string.nonEmpty().max(2).nonEmptyArray()
+      const guard = guardFor(schema)
+      expect(guard.is(["a"])).toBe(true)
+      expect(guard.is(["aa"])).toBe(true)
+      expect(guard.is([])).toBe(false)
+      expect(guard.is([""])).toBe(false)
+      expect(guard.is(["aaa"])).toBe(false)
+    })
+  })
 })

@@ -369,11 +369,6 @@ export const any: Schema<any> = I.any
 /**
  * @since 1.0.0
  */
-export const string: Schema<string> = I.string
-
-/**
- * @since 1.0.0
- */
 export const number: Schema<number> = I.number
 
 /**
@@ -400,3 +395,44 @@ export const json: Schema<Json> = DataJson.Schema
  * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
+
+// ---------------------------------------------
+// experimental
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export class StringBuilder<A extends string> implements Schema<A> {
+  readonly A!: (_: A) => A
+  constructor(readonly ast: AST.AST) {}
+  max(n: number): StringBuilder<A> {
+    return new StringBuilder(maxLength(n)(this).ast)
+  }
+  min(n: number): StringBuilder<A> {
+    return new StringBuilder(minLength(n)(this).ast)
+  }
+  length(n: number): StringBuilder<A> {
+    return this.min(n).max(n)
+  }
+  nonEmpty(): StringBuilder<A> {
+    return this.min(1)
+  }
+  filter<B extends A>(
+    decode: Decoder<A, B>["decode"],
+    annotations: ReadonlyArray<unknown> = []
+  ): StringBuilder<B> {
+    return new StringBuilder(filter(decode, annotations)(this).ast)
+  }
+  array(): Schema<ReadonlyArray<A>> {
+    return array(this)
+  }
+  nonEmptyArray(): Schema<readonly [A, ...Array<A>]> {
+    return nonEmptyArray(this)
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const string = new StringBuilder(I.string.ast)
