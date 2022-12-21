@@ -2,6 +2,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -645,7 +647,7 @@ describe.concurrent("Guard", () => {
   })
 
   it("maxLength", () => {
-    const schema = pipe(S.string, S.maxLength(1))
+    const schema = S.string.max(1)
     const guard = G.guardFor(schema)
     expect(guard.is("")).toEqual(true)
     expect(guard.is("a")).toEqual(true)
@@ -654,12 +656,42 @@ describe.concurrent("Guard", () => {
   })
 
   it("minLength", () => {
-    const schema = pipe(S.string, S.minLength(1))
+    const schema = S.string.nonEmpty()
     const guard = G.guardFor(schema)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is("aa")).toEqual(true)
 
     expect(guard.is("")).toEqual(false)
+  })
+
+  it("length", () => {
+    const schema = S.string.length(1)
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is("aa")).toEqual(false)
+  })
+
+  it("startsWith", () => {
+    const schema = S.string.startsWith("a")
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is("ab")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is("b")).toEqual(false)
+  })
+
+  it("filter", () => {
+    const schema = S.string.filter((s) =>
+      s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))
+    )
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is("aa")).toEqual(false)
   })
 
   describe.concurrent("nullables", () => {
@@ -701,18 +733,6 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: null })).toBe(true)
       expect(guard.is({ a: undefined })).toBe(true)
       expect(guard.is({ a: 1 })).toBe(true)
-    })
-  })
-
-  describe.concurrent("StringBuilder", () => {
-    it("should return a valid schema", () => {
-      const schema = S.string.nonEmpty().max(2).nonEmptyArray()
-      const guard = guardFor(schema)
-      expect(guard.is(["a"])).toBe(true)
-      expect(guard.is(["aa"])).toBe(true)
-      expect(guard.is([])).toBe(false)
-      expect(guard.is([""])).toBe(false)
-      expect(guard.is(["aaa"])).toBe(false)
     })
   })
 })

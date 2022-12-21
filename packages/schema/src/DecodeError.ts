@@ -16,6 +16,7 @@ export type DecodeError =
   | NotFinite
   | MinLength
   | MaxLength
+  | StartsWith
   | LessThan
   | GreaterThan
   | LessThanOrEqualTo
@@ -154,6 +155,24 @@ export interface MaxLength {
 export const maxLength = (maxLength: number, actual: unknown): MaxLength => ({
   _tag: "MaxLength",
   maxLength,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface StartsWith {
+  readonly _tag: "StartsWith"
+  readonly startsWith: string
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const startsWith = (startsWith: string, actual: unknown): StartsWith => ({
+  _tag: "StartsWith",
+  startsWith,
   actual
 })
 

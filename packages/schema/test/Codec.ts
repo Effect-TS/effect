@@ -3,7 +3,6 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Codec", () => {
   it("exports", () => {
-    expect(C.make).exist
     expect(C.filter).exist
     expect(C.string).exist
     expect(C.number).exist

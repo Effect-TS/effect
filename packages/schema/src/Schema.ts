@@ -14,6 +14,7 @@ import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
 import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
+import * as DataStartsWith from "@fp-ts/schema/data/filter/StartsWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataParse from "@fp-ts/schema/data/parse"
@@ -86,6 +87,12 @@ export const minLength: (
 export const maxLength: (
   maxLength: number
 ) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = DataMaxLength.schema
+
+/**
+ * @since 1.0.0
+ */
+export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
+  DataStartsWith.schema
 
 /**
  * @since 1.0.0
@@ -397,7 +404,7 @@ export const json: Schema<Json> = DataJson.Schema
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
 
 // ---------------------------------------------
-// experimental
+// builders
 // ---------------------------------------------
 
 /**
@@ -405,34 +412,36 @@ export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.sch
  */
 export class StringBuilder<A extends string> implements Schema<A> {
   readonly A!: (_: A) => A
-  constructor(readonly ast: AST.AST) {}
-  max(n: number): StringBuilder<A> {
-    return new StringBuilder(maxLength(n)(this).ast)
+  readonly ast: AST.AST
+
+  constructor(readonly schema: Schema<A>) {
+    this.ast = schema.ast
   }
-  min(n: number): StringBuilder<A> {
-    return new StringBuilder(minLength(n)(this).ast)
+
+  max(n: number) {
+    return new StringBuilder(maxLength(n)(this))
   }
-  length(n: number): StringBuilder<A> {
+  min(n: number) {
+    return new StringBuilder(minLength(n)(this))
+  }
+  length(n: number) {
     return this.min(n).max(n)
   }
-  nonEmpty(): StringBuilder<A> {
+  nonEmpty() {
     return this.min(1)
+  }
+  startsWith(s: string) {
+    return new StringBuilder(startsWith(s)(this))
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],
     annotations: ReadonlyArray<unknown> = []
-  ): StringBuilder<B> {
-    return new StringBuilder(filter(decode, annotations)(this).ast)
-  }
-  array(): Schema<ReadonlyArray<A>> {
-    return array(this)
-  }
-  nonEmptyArray(): Schema<readonly [A, ...Array<A>]> {
-    return nonEmptyArray(this)
+  ) {
+    return new StringBuilder(filter(decode, annotations)(this))
   }
 }
 
 /**
  * @since 1.0.0
  */
-export const string = new StringBuilder(I.string.ast)
+export const string = new StringBuilder(I.string)

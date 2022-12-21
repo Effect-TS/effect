@@ -65,6 +65,8 @@ const format = (e: DE.DecodeError): string => {
       return `${JSON.stringify(e.actual)} did not satisfy MaxLength(${e.maxLength})`
     case "MinLength":
       return `${JSON.stringify(e.actual)} did not satisfy MinLength(${e.minLength})`
+    case "StartsWith":
+      return `${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`
     case "NaN":
       return `did not satisfy not(isNaN)`
     case "NotFinite":
@@ -145,6 +147,8 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(`${JSON.stringify(e.actual)} did not satisfy MaxLength(${e.maxLength})`)
     case "MinLength":
       return make(`${JSON.stringify(e.actual)} did not satisfy MinLength(${e.minLength})`)
+    case "StartsWith":
+      return make(`${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`)
     case "NaN":
       return make(`did not satisfy not(isNaN)`)
     case "NotFinite":
