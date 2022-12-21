@@ -73,13 +73,15 @@ const format = (e: DE.DecodeError): string => {
       return `${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`
     case "NaN":
       return `did not satisfy not(isNaN)`
-    case "NotFinite":
+    case "Finite":
       return `did not satisfy isFinite`
-    case "NotType":
+    case "Type":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
-    case "NotEqual":
+    case "Parse":
+      return `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+    case "Equal":
       return `${JSON.stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
-    case "NotEnums":
+    case "Enums":
       return `${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
@@ -159,15 +161,19 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(`${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`)
     case "NaN":
       return make(`did not satisfy not(isNaN)`)
-    case "NotFinite":
+    case "Finite":
       return make(`did not satisfy isFinite`)
-    case "NotType":
+    case "Type":
       return make(`${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`)
-    case "NotEqual":
+    case "Parse":
+      return make(
+        `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+      )
+    case "Equal":
       return make(
         `${JSON.stringify(e.actual)} did not satisfy isEqual(${JSON.stringify(e.expected)})`
       )
-    case "NotEnums":
+    case "Enums":
       return make(`${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))

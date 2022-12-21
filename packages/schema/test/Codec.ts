@@ -130,7 +130,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(
       codec,
       1.2,
-      "1.2 did not satisfy is(bigint)"
+      `1.2 did not satisfy parsing from (string | number | boolean) to (bigint)`
     )
   })
 
@@ -723,7 +723,7 @@ describe.concurrent("Codec", () => {
 
     it("filter", () => {
       const codec = C.string.filter((s) =>
-        s.length === 1 ? C.success(s) : C.failure(DE.notType("Char", s))
+        s.length === 1 ? C.success(s) : C.failure(DE.type("Char", s))
       )
       Util.expectSuccess(codec, "a")
 
@@ -772,7 +772,7 @@ describe.concurrent("Codec", () => {
 
     it("filter", () => {
       const codec = C.number.filter((n) =>
-        n % 2 === 0 ? C.success(n) : C.failure(DE.notType("Even", n))
+        n % 2 === 0 ? C.success(n) : C.failure(DE.type("Even", n))
       )
       Util.expectSuccess(codec, 0)
       Util.expectSuccess(codec, 2)

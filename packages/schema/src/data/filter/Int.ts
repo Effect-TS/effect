@@ -13,7 +13,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 export const schema = <A extends number>(self: Schema<A>): Schema<A> =>
   I.refinement(
     self,
-    (n) => Number.isInteger(n) ? I.success(n) : I.failure(DE.notType("Int", n)),
+    (n) => Number.isInteger(n) ? I.success(n) : I.failure(DE.type("Int", n)),
     [
       jsonSchemaAnnotation({ type: "integer" })
     ]

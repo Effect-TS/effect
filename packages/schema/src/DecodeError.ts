@@ -9,11 +9,11 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
  */
 export type DecodeError =
   | Custom
-  | NotType
-  | NotEqual
-  | NotEnums
+  | Type
+  | Equal
+  | Enums
   | NaN
-  | NotFinite
+  | Finite
   | MinLength
   | MaxLength
   | StartsWith
@@ -23,6 +23,7 @@ export type DecodeError =
   | GreaterThan
   | LessThanOrEqualTo
   | GreaterThanOrEqualTo
+  | Parse
   | Index
   | Key
   | Missing
@@ -51,8 +52,8 @@ export const custom = (config: unknown, actual: unknown): Custom => ({
 /**
  * @since 1.0.0
  */
-export interface NotType {
-  readonly _tag: "NotType"
+export interface Type {
+  readonly _tag: "Type"
   readonly expected: string
   readonly actual: unknown
 }
@@ -60,8 +61,8 @@ export interface NotType {
 /**
  * @since 1.0.0
  */
-export const notType = (expected: string, actual: unknown): NotType => ({
-  _tag: "NotType",
+export const type = (expected: string, actual: unknown): Type => ({
+  _tag: "Type",
   expected,
   actual
 })
@@ -69,8 +70,8 @@ export const notType = (expected: string, actual: unknown): NotType => ({
 /**
  * @since 1.0.0
  */
-export interface NotEqual {
-  readonly _tag: "NotEqual"
+export interface Equal {
+  readonly _tag: "Equal"
   readonly expected: unknown
   readonly actual: unknown
 }
@@ -78,16 +79,16 @@ export interface NotEqual {
 /**
  * @since 1.0.0
  */
-export const notEqual = (
+export const equal = (
   expected: unknown,
   actual: unknown
-): NotEqual => ({ _tag: "NotEqual", expected, actual })
+): Equal => ({ _tag: "Equal", expected, actual })
 
 /**
  * @since 1.0.0
  */
-export interface NotEnums {
-  readonly _tag: "NotEnums"
+export interface Enums {
+  readonly _tag: "Enums"
   readonly enums: ReadonlyArray<readonly [string, string | number]>
   readonly actual: unknown
 }
@@ -95,10 +96,10 @@ export interface NotEnums {
 /**
  * @since 1.0.0
  */
-export const notEnums = (
+export const enums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
   actual: unknown
-): NotEnums => ({ _tag: "NotEnums", enums, actual })
+): Enums => ({ _tag: "Enums", enums, actual })
 
 /**
  * @since 1.0.0
@@ -115,14 +116,14 @@ export const nan: NaN = { _tag: "NaN" }
 /**
  * @since 1.0.0
  */
-export interface NotFinite {
-  readonly _tag: "NotFinite"
+export interface Finite {
+  readonly _tag: "Finite"
 }
 
 /**
  * @since 1.0.0
  */
-export const notFinite: NotFinite = { _tag: "NotFinite" }
+export const finite: Finite = { _tag: "Finite" }
 
 /**
  * @since 1.0.0
@@ -265,6 +266,26 @@ export interface GreaterThanOrEqualTo {
 export const greaterThanOrEqualTo = (min: number, actual: unknown): GreaterThanOrEqualTo => ({
   _tag: "GreaterThanOrEqualTo",
   min,
+  actual
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface Parse {
+  readonly _tag: "Parse"
+  readonly from: string
+  readonly to: string
+  readonly actual: unknown
+}
+
+/**
+ * @since 1.0.0
+ */
+export const parse = (from: string, to: string, actual: unknown): Parse => ({
+  _tag: "Parse",
+  from,
+  to,
   actual
 })
 

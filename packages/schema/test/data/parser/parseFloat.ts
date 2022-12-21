@@ -22,8 +22,8 @@ describe.concurrent("parseFloat", () => {
     const decoder = D.decoderFor(schema)
     expect(decoder.decode("1")).toEqual(D.success(1))
     expect(decoder.decode("1a")).toEqual(D.success(1))
-    Util.expectFailure(decoder, "a", "\"a\" \"cannot be converted to a number by parseFloat\"")
-    Util.expectFailure(decoder, "a1", "\"a1\" \"cannot be converted to a number by parseFloat\"")
+    Util.expectFailure(decoder, "a", `"a" did not satisfy parsing from (string) to (number)`)
+    Util.expectFailure(decoder, "a1", `"a1" did not satisfy parsing from (string) to (number)`)
   })
 
   it("Encoder", () => {

@@ -36,7 +36,7 @@ export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, [
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)
 
-const Decoder = I.fromRefinement<Json>(Schema, I.isJson, (u) => DE.notType("Json", u))
+const Decoder = I.fromRefinement<Json>(Schema, I.isJson, (u) => DE.type("Json", u))
 
 const Encoder = I.makeEncoder<unknown, Json>(Schema, identity)
 

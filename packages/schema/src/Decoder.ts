@@ -95,37 +95,37 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.literal => u === ast.literal,
-          (u) => DE.notEqual(ast.literal, u)
+          (u) => DE.equal(ast.literal, u)
         )
       case "UniqueSymbol":
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.symbol => u === ast.symbol,
-          (u) => DE.notEqual(ast.symbol, u)
+          (u) => DE.equal(ast.symbol, u)
         )
       case "UndefinedKeyword":
         return I.fromRefinement(
           I._undefined,
           I.isUndefined,
-          (u) => DE.notType("undefined", u)
+          (u) => DE.type("undefined", u)
         )
       case "VoidKeyword":
         return I.fromRefinement(
           I._void,
           I.isUndefined,
-          (u) => DE.notType("void", u)
+          (u) => DE.type("void", u)
         )
       case "NeverKeyword":
         return make(
           I.never,
-          (u) => I.failure(DE.notType("never", u))
+          (u) => I.failure(DE.type("never", u))
         ) as any
       case "UnknownKeyword":
         return make(I.unknown, I.success)
       case "AnyKeyword":
         return make(I.any, I.success)
       case "StringKeyword":
-        return I.fromRefinement(I.string, isString, (u) => DE.notType("string", u))
+        return I.fromRefinement(I.string, isString, (u) => DE.type("string", u))
       case "NumberKeyword":
         return I.makeDecoder(I.makeSchema(ast), (u) =>
           isNumber(u) ?
@@ -133,10 +133,10 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               I.warning(DE.nan, u) :
               isFinite(u) ?
               I.success(u) :
-              I.warning(DE.notFinite, u) :
-            I.failure(DE.notType("number", u)))
+              I.warning(DE.finite, u) :
+            I.failure(DE.type("number", u)))
       case "BooleanKeyword":
-        return I.fromRefinement(I.boolean, isBoolean, (u) => DE.notType("boolean", u))
+        return I.fromRefinement(I.boolean, isBoolean, (u) => DE.type("boolean", u))
       case "BigIntKeyword":
         return I.makeDecoder<unknown, bigint>(
           I.bigint,
@@ -148,14 +148,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               try {
                 return I.success(BigInt(u))
               } catch (_e) {
-                return I.failure(DE.notType("bigint", u))
+                return I.failure(DE.parse("string | number | boolean", "bigint", u))
               }
             }
-            return I.failure(DE.notType("string | number | boolean", u))
+            return I.failure(DE.type("string | number | boolean", u))
           }
         )
       case "SymbolKeyword":
-        return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.notType("symbol", u))
+        return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.type("symbol", u))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -163,7 +163,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           I.makeSchema(ast),
           (input: unknown) => {
             if (!Array.isArray(input)) {
-              return failure(DE.notType("ReadonlyArray<unknown>", input))
+              return failure(DE.type("ReadonlyArray<unknown>", input))
             }
             const output: Array<any> = []
             const es: Array<DE.DecodeError> = []
@@ -260,7 +260,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           (u) =>
             ast.enums.some(([_, value]) => value === u) ?
               I.success(u) :
-              I.failure(DE.notEnums(ast.enums, u))
+              I.failure(DE.enums(ast.enums, u))
         )
       case "Refinement": {
         const type = go(ast.from)
@@ -284,7 +284,7 @@ const _struct = (
     I.makeSchema(ast),
     (input: unknown) => {
       if (!I.isUnknownObject(input)) {
-        return failure(DE.notType("{ readonly [x: string]: unknown }", input))
+        return failure(DE.type("{ readonly [x: string]: unknown }", input))
       }
       const output: any = {}
       const processedKeys: any = {}
@@ -379,7 +379,7 @@ const _union = <I>(
       }
     }
 
-    return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.notType("never", u))
+    return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.type("never", u))
   })
 
 const _lazy = <I, A>(

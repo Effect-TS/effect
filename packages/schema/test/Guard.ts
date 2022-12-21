@@ -706,7 +706,7 @@ describe.concurrent("Guard", () => {
 
     it("filter", () => {
       const schema = S.string.filter((s) =>
-        s.length === 1 ? D.success(s) : D.failure(DE.notType("Char", s))
+        s.length === 1 ? D.success(s) : D.failure(DE.type("Char", s))
       )
       const guard = G.guardFor(schema)
       expect(guard.is("a")).toEqual(true)
@@ -759,7 +759,7 @@ describe.concurrent("Guard", () => {
 
     it("filter", () => {
       const schema = S.number.filter((n) =>
-        n % 2 === 0 ? D.success(n) : D.failure(DE.notType("Even", n))
+        n % 2 === 0 ? D.success(n) : D.failure(DE.type("Even", n))
       )
       const guard = G.guardFor(schema)
       expect(guard.is(0)).toEqual(true)
