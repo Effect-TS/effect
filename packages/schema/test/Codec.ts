@@ -1,18 +1,70 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as C from "@fp-ts/schema/Codec"
+import * as DE from "@fp-ts/schema/DecodeError"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Codec", () => {
   it("exports", () => {
+    expect(C.success).exist
+    expect(C.failure).exist
+    expect(C.failures).exist
+    expect(C.warning).exist
+    expect(C.warnings).exist
+
+    expect(C.isSuccess).exist
+    expect(C.isFailure).exist
+    expect(C.isWarning).exist
+
+    expect(C.codecFor).exist
+
+    expect(C.literal).exist
+    expect(C.uniqueSymbol).exist
+    expect(C.enums).exist
+
+    expect(C.minLength).exist
+    expect(C.maxLength).exist
+    expect(C.startsWith).exist
+    expect(C.endsWith).exist
+    expect(C.regex).exist
+    expect(C.lessThan).exist
+    expect(C.lessThanOrEqualTo).exist
+    expect(C.greaterThan).exist
+    expect(C.greaterThanOrEqualTo).exist
+    expect(C.int).exist
+
+    expect(C.union).exist
+    expect(C.keyof).exist
+    expect(C.tuple).exist
+    expect(C.rest).exist
+    expect(C.element).exist
+    expect(C.optionalElement).exist
+    expect(C.array).exist
+    expect(C.optional).exist
+    expect(C.struct).exist
+    expect(C.pick).exist
+    expect(C.omit).exist
+    expect(C.partial).exist
+    expect(C.stringIndexSignature).exist
+    expect(C.symbolIndexSignature).exist
+    expect(C.extend).exist
+    expect(C.lazy).exist
     expect(C.filter).exist
+    expect(C.parse).exist
+    expect(C.annotation).exist
+    expect(C.annotations).exist
+
+    expect(C.undefined).exist
+    expect(C.void).exist
     expect(C.string).exist
     expect(C.number).exist
     expect(C.boolean).exist
     expect(C.bigint).exist
+    expect(C.symbol).exist
     expect(C.unknown).exist
     expect(C.any).exist
     expect(C.never).exist
     expect(C.json).exist
+    expect(C.option).exist
   })
 
   it("parseOrThrow", () => {
@@ -614,6 +666,120 @@ describe.concurrent("Codec", () => {
         { b: 1 },
         `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`
       )
+    })
+  })
+
+  describe.concurrent("StringBuilder", () => {
+    it("max", () => {
+      const codec = C.string.max(1)
+      Util.expectSuccess(codec, "")
+      Util.expectSuccess(codec, "a")
+
+      Util.expectFailure(codec, "aa", `"aa" did not satisfy MaxLength(1)`)
+    })
+
+    it("min", () => {
+      const codec = C.string.nonEmpty()
+      Util.expectSuccess(codec, "a")
+      Util.expectSuccess(codec, "aa")
+
+      Util.expectFailure(codec, "", `"" did not satisfy MinLength(1)`)
+    })
+
+    it("length", () => {
+      const codec = C.string.length(1)
+      Util.expectSuccess(codec, "a")
+
+      Util.expectFailure(codec, "", `"" did not satisfy MinLength(1)`)
+      Util.expectFailure(codec, "aa", `"aa" did not satisfy MaxLength(1)`)
+    })
+
+    it("startsWith", () => {
+      const codec = C.string.startsWith("a")
+      Util.expectSuccess(codec, "a")
+      Util.expectSuccess(codec, "ab")
+
+      Util.expectFailure(codec, "", `"" did not satisfy StartsWith(a)`)
+      Util.expectFailure(codec, "b", `"b" did not satisfy StartsWith(a)`)
+    })
+
+    it("endsWith", () => {
+      const codec = C.string.endsWith("a")
+      Util.expectSuccess(codec, "a")
+      Util.expectSuccess(codec, "ba")
+
+      Util.expectFailure(codec, "", `"" did not satisfy EndsWith(a)`)
+      Util.expectFailure(codec, "b", `"b" did not satisfy EndsWith(a)`)
+    })
+
+    it("regex", () => {
+      const codec = C.string.regex(/^abb+$/)
+      Util.expectSuccess(codec, "abb")
+      Util.expectSuccess(codec, "abbb")
+
+      Util.expectFailure(codec, "ab", `"ab" did not satisfy Regex(^abb+$)`)
+      Util.expectFailure(codec, "a", `"a" did not satisfy Regex(^abb+$)`)
+    })
+
+    it("filter", () => {
+      const codec = C.string.filter((s) =>
+        s.length === 1 ? C.success(s) : C.failure(DE.notType("Char", s))
+      )
+      Util.expectSuccess(codec, "a")
+
+      Util.expectFailure(codec, "", `"" did not satisfy is(Char)`)
+      Util.expectFailure(codec, "aa", `"aa" did not satisfy is(Char)`)
+    })
+  })
+
+  describe.concurrent("NumberBuilder", () => {
+    it("gt", () => {
+      const codec = C.number.gt(0)
+      Util.expectSuccess(codec, 1)
+    })
+
+    it("gte", () => {
+      const codec = C.number.gte(0)
+      Util.expectSuccess(codec, 0)
+      Util.expectSuccess(codec, 1)
+
+      Util.expectFailure(codec, -1, `-1 did not satisfy GreaterThanOrEqualTo(0)`)
+    })
+
+    it("lt", () => {
+      const codec = C.number.lt(0)
+      Util.expectSuccess(codec, -1)
+
+      Util.expectFailure(codec, 0, `0 did not satisfy LessThan(0)`)
+      Util.expectFailure(codec, 1, `1 did not satisfy LessThan(0)`)
+    })
+
+    it("lte", () => {
+      const codec = C.number.lte(0)
+      Util.expectSuccess(codec, -1)
+      Util.expectSuccess(codec, 0)
+
+      Util.expectFailure(codec, 1, `1 did not satisfy LessThanOrEqualTo(0)`)
+    })
+
+    it("int", () => {
+      const codec = C.number.int()
+      Util.expectSuccess(codec, 0)
+      Util.expectSuccess(codec, 1)
+
+      Util.expectFailure(codec, 1.2, `1.2 did not satisfy is(Int)`)
+    })
+
+    it("filter", () => {
+      const codec = C.number.filter((n) =>
+        n % 2 === 0 ? C.success(n) : C.failure(DE.notType("Even", n))
+      )
+      Util.expectSuccess(codec, 0)
+      Util.expectSuccess(codec, 2)
+      Util.expectSuccess(codec, 4)
+
+      Util.expectFailure(codec, 1, `1 did not satisfy is(Even)`)
+      Util.expectFailure(codec, 3, `3 did not satisfy is(Even)`)
     })
   })
 })

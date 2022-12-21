@@ -186,51 +186,54 @@ export const maxLength = (maxLength: number) =>
  * @since 1.0.0
  */
 export const startsWith = (startsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.startsWith(startsWith)(self))
+  <A extends string>(self: Schema<A>): StringBuilder<A> =>
+    new StringBuilder(S.startsWith(startsWith)(self))
 
 /**
  * @since 1.0.0
  */
 export const endsWith = (endsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.endsWith(endsWith)(self))
+  <A extends string>(self: Schema<A>): StringBuilder<A> =>
+    new StringBuilder(S.endsWith(endsWith)(self))
 
 /**
  * @since 1.0.0
  */
 export const regex = (regex: RegExp) =>
-  <A extends string>(self: Schema<A>): Codec<A> =>
-    codecFor(
-      S.regex(regex)(self)
-    )
+  <A extends string>(self: Schema<A>): StringBuilder<A> => new StringBuilder(S.regex(regex)(self))
 
 /**
  * @since 1.0.0
  */
 export const lessThan = (min: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
+  <A extends number>(self: Schema<A>): NumberBuilder<A> => new NumberBuilder(S.lessThan(min)(self))
 
 /**
  * @since 1.0.0
  */
 export const lessThanOrEqualTo = (min: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThanOrEqualTo(min)(self))
+  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+    new NumberBuilder(S.lessThanOrEqualTo(min)(self))
 
 /**
  * @since 1.0.0
  */
 export const greaterThan = (max: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThan(max)(self))
+  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+    new NumberBuilder(S.greaterThan(max)(self))
 
 /**
  * @since 1.0.0
  */
 export const greaterThanOrEqualTo = (max: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
+  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+    new NumberBuilder(S.greaterThanOrEqualTo(max)(self))
 
 /**
  * @since 1.0.0
  */
-export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.int(self))
+export const int = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+  new NumberBuilder(S.int(self))
 
 // ---------------------------------------------
 // combinators
@@ -409,16 +412,6 @@ export {
 /**
  * @since 1.0.0
  */
-export const string: Codec<string> = codecFor(S.string)
-
-/**
- * @since 1.0.0
- */
-export const number: Codec<number> = codecFor(S.number)
-
-/**
- * @since 1.0.0
- */
 export const boolean: Codec<boolean> = codecFor(S.boolean)
 
 /**
@@ -481,13 +474,13 @@ export class StringBuilder<A extends string> extends Codec<A> {
     return this.min(1)
   }
   startsWith(s: string) {
-    return new StringBuilder(S.startsWith(s)(this))
+    return startsWith(s)(this)
   }
   endsWith(s: string) {
-    return new StringBuilder(S.endsWith(s)(this))
+    return endsWith(s)(this)
   }
   regex(r: RegExp) {
-    return new StringBuilder(S.regex(r)(this))
+    return regex(r)(this)
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],
@@ -500,25 +493,30 @@ export class StringBuilder<A extends string> extends Codec<A> {
 /**
  * @since 1.0.0
  */
+export const string = new StringBuilder(S.string)
+
+/**
+ * @since 1.0.0
+ */
 export class NumberBuilder<A extends number> extends Codec<A> {
   constructor(schema: Schema<A>) {
     super(schema)
   }
 
   gt(n: number) {
-    return new NumberBuilder(S.greaterThan(n)(this))
+    return greaterThan(n)(this)
   }
   gte(n: number) {
-    return new NumberBuilder(S.greaterThanOrEqualTo(n)(this))
+    return greaterThanOrEqualTo(n)(this)
   }
   lt(n: number) {
-    return new NumberBuilder(S.lessThan(n)(this))
+    return lessThan(n)(this)
   }
   lte(n: number) {
-    return new NumberBuilder(S.lessThanOrEqualTo(n)(this))
+    return lessThanOrEqualTo(n)(this)
   }
   int() {
-    return new NumberBuilder(S.int(this))
+    return int(this)
   }
   filter<B extends A>(
     decode: Decoder<A, B>["decode"],
@@ -527,3 +525,8 @@ export class NumberBuilder<A extends number> extends Codec<A> {
     return new NumberBuilder(S.filter(decode, annotations)(this))
   }
 }
+
+/**
+ * @since 1.0.0
+ */
+export const number = new NumberBuilder(S.number)

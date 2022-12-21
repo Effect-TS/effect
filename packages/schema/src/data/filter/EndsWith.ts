@@ -19,7 +19,7 @@ export const schema = (
       (s) =>
         s.endsWith(endsWith) ?
           I.success(s) :
-          I.failure(DE.startsWith(endsWith, s)),
+          I.failure(DE.endsWith(endsWith, s)),
       [
         jsonSchemaAnnotation({ endsWith })
       ]
