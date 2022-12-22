@@ -157,7 +157,7 @@ export const finite: <A extends number>(self: Schema<A>) => Schema<A> = DataFini
 /**
  * @since 1.0.0
  */
-export const instanceOf: <A extends typeof DataInstanceOf.Class>(
+export const instanceOf: <A extends typeof Class>(
   constructor: A
 ) => (self: Schema<object>) => Schema<InstanceType<A>> = DataInstanceOf.schema
 
@@ -171,6 +171,11 @@ export const instanceOf: <A extends typeof DataInstanceOf.Class>(
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ) => Schema<Infer<Members[number]>> = I.union
+
+/**
+ * @since 1.0.0
+ */
+export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, literal(null))
 
 /**
  * @since 1.0.0

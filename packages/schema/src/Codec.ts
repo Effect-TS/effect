@@ -261,7 +261,7 @@ export const finite = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
  */
 export const instanceOf = <A extends typeof Class>(
   constructor: A
-) => (self: Schema<object>): Schema<InstanceType<A>> => codecFor(S.instanceOf(constructor)(self))
+) => (self: Schema<object>): Codec<InstanceType<A>> => codecFor(S.instanceOf(constructor)(self))
 
 // ---------------------------------------------
 // combinators
@@ -273,6 +273,11 @@ export const instanceOf = <A extends typeof Class>(
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Codec<Infer<Members[number]>> => codecFor(S.union(...members))
+
+/**
+ * @since 1.0.0
+ */
+export const nullable = <A>(self: Schema<A>): Codec<A | null> => codecFor(S.nullable(self))
 
 /**
  * @since 1.0.0
