@@ -9,9 +9,7 @@ import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import { mapLeft } from "@fp-ts/data/These"
 import type { Both, These } from "@fp-ts/data/These"
-import { decoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
 import type { AST, Literal } from "@fp-ts/schema/AST"
@@ -429,15 +427,14 @@ export const annotations = (
  */
 export const transformDecodeResult = <A>(
   f: (i: unknown, result: DecodeResult<A>) => DecodeResult<A>
-): (self: Schema<A>) => Schema<A> => annotation(decoderOutputAnnotation(I.transformResult(f)))
+) => (self: Schema<A>): Codec<A> => codecFor(S.transformDecodeResult(f)(self))
 
 /**
  * @since 1.0.0
  */
 export const withError = <A>(
   f: (i: unknown, errors: NonEmptyReadonlyArray<DecodeError>) => DecodeError
-): (self: Schema<A>) => Schema<A> =>
-  transformDecodeResult((actual, result) => pipe(result, mapLeft((errors) => [f(actual, errors)])))
+) => (self: Schema<A>): Codec<A> => codecFor(pipe(self, S.withError(f)))
 
 // ---------------------------------------------
 // data

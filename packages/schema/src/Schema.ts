@@ -6,6 +6,9 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
+import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import * as T from "@fp-ts/data/These"
+import { decoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
@@ -25,7 +28,8 @@ import * as DataStartsWith from "@fp-ts/schema/data/filter/StartsWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataParse from "@fp-ts/schema/data/parse"
-import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { DecodeError } from "@fp-ts/schema/DecodeError"
+import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
@@ -380,6 +384,23 @@ export const annotation: (
 export const annotations: (
   annotations: ReadonlyArray<unknown>
 ) => <A>(self: Schema<A>) => Schema<A> = I.annotations
+
+/**
+ * @since 1.0.0
+ */
+export const transformDecodeResult = <A>(
+  f: (i: unknown, result: DecodeResult<A>) => DecodeResult<A>
+): (self: Schema<A>) => Schema<A> => annotation(decoderOutputAnnotation(I.transformResult(f)))
+
+/**
+ * @since 1.0.0
+ */
+export const withError = <A>(
+  f: (i: unknown, errors: NonEmptyReadonlyArray<DecodeError>) => DecodeError
+): (self: Schema<A>) => Schema<A> =>
+  transformDecodeResult((actual, result) =>
+    pipe(result, T.mapLeft((errors) => [f(actual, errors)]))
+  )
 
 // ---------------------------------------------
 // data
