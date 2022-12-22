@@ -9,6 +9,7 @@ import type { Refinement } from "@fp-ts/data/Predicate"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
+import * as DataFinite from "@fp-ts/schema/data/filter/Finite"
 import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
 import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
@@ -145,6 +146,11 @@ export const int: <A extends number>(self: Schema<A>) => Schema<A> = DataInt.sch
  * @since 1.0.0
  */
 export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = DataNonNaN.schema
+
+/**
+ * @since 1.0.0
+ */
+export const finite: <A extends number>(self: Schema<A>) => Schema<A> = DataFinite.schema
 
 // ---------------------------------------------
 // combinators
@@ -498,6 +504,9 @@ export class NumberBuilder<A extends number> implements Schema<A> {
   }
   nonNaN() {
     return new NumberBuilder(nonNaN(this))
+  }
+  finite() {
+    return new NumberBuilder(finite(this))
   }
   filter<B extends A>(
     refinement: Refinement<A, B>,

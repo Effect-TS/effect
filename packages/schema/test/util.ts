@@ -50,8 +50,8 @@ const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
 }
 
 const stringify = (actual: unknown): string => {
-  if (typeof actual === "number" && isNaN(actual)) {
-    return "NaN"
+  if (typeof actual === "number") {
+    return Number.isNaN(actual) ? "NaN" : String(actual)
   }
   return JSON.stringify(actual)
 }
@@ -60,8 +60,6 @@ const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Meta":
       return `${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`
-    case "NaN":
-      return `did not satisfy not(isNaN)`
     case "Type":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
@@ -130,8 +128,6 @@ const go = (e: DE.DecodeError): Tree<string> => {
   switch (e._tag) {
     case "Meta":
       return make(`${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`)
-    case "NaN":
-      return make(`did not satisfy not(isNaN)`)
     case "Type":
       return make(`${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`)
     case "Refinement":

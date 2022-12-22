@@ -66,10 +66,10 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
       case "NumberKeyword":
         return make(
           I.number,
-          (n) => Number.isNaN(n) ? "NaN" : Number.isFinite(n) ? JSON.stringify(n) : n.toString()
+          (n) => Number.isNaN(n) ? "NaN" : String(n)
         )
       case "BooleanKeyword":
-        return make(I.boolean, (b) => JSON.stringify(b))
+        return make(I.boolean, (b) => String(b))
       case "BigIntKeyword":
         return make(I.boolean, (bi) => `${bi.toString()}n`)
       case "SymbolKeyword":

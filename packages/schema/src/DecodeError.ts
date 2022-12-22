@@ -12,7 +12,6 @@ export type DecodeError =
   | Type
   | Equal
   | Enums
-  | NaN
   | Refinement
   | Parse
   | Index
@@ -94,18 +93,6 @@ export const enums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
   actual: unknown
 ): Enums => ({ _tag: "Enums", enums, actual })
-
-/**
- * @since 1.0.0
- */
-export interface NaN {
-  readonly _tag: "NaN"
-}
-
-/**
- * @since 1.0.0
- */
-export const nan: NaN = { _tag: "NaN" }
 
 /**
  * @since 1.0.0

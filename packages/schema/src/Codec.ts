@@ -249,6 +249,12 @@ export const int = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
 export const nonNaN = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
   new NumberBuilder(S.nonNaN(self))
 
+/**
+ * @since 1.0.0
+ */
+export const finite = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+  new NumberBuilder(S.finite(self))
+
 // ---------------------------------------------
 // combinators
 // ---------------------------------------------
@@ -551,6 +557,9 @@ export class NumberBuilder<A extends number> extends Codec<A> {
   }
   nonNaN() {
     return nonNaN(this)
+  }
+  finite() {
+    return finite(this)
   }
   filter<B extends A>(
     refinement: Refinement<A, B>,
