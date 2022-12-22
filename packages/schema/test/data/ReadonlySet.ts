@@ -27,15 +27,16 @@ describe.concurrent("ReadonlySet", () => {
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.success(new Set([1, 2, 3]))
     )
-    // should handle warnings
+
     Util.expectWarning(
       decoder,
       [1, NaN, 3],
       "/1 did not satisfy not(isNaN)",
       new Set([1, NaN, 3])
     )
+    Util.expectWarning(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)", new Set([1]))
+
     Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
-    Util.expectFailure(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)")
   })
 
   it("encoder", () => {

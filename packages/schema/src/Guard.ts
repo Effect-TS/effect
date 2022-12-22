@@ -129,12 +129,52 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
           }
         )
       }
-      case "Struct":
-        return _struct(
-          ast,
-          ast.fields.map((f) => go(f.value)),
-          ast.indexSignatures.map((is) => go(is.value))
+      case "Struct": {
+        const fields = ast.fields.map((f) => go(f.value))
+        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        return make(
+          I.makeSchema(ast),
+          (input: unknown): input is any => {
+            if (!I.isUnknownObject(input)) {
+              return false
+            }
+            // ---------------------------------------------
+            // handle fields
+            // ---------------------------------------------
+            for (let i = 0; i < fields.length; i++) {
+              const field = ast.fields[i]
+              const key = field.key
+              if (!Object.prototype.hasOwnProperty.call(input, key)) {
+                if (field.isOptional) {
+                  continue
+                }
+                return false
+              }
+              if (!fields[i].is(input[key])) {
+                return false
+              }
+            }
+            // ---------------------------------------------
+            // handle index signatures
+            // ---------------------------------------------
+            if (indexSignatures.length > 0) {
+              const keys = Object.keys(input)
+              const symbols = Object.getOwnPropertySymbols(input)
+              for (let i = 0; i < indexSignatures.length; i++) {
+                const guard = indexSignatures[i]
+                const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+                for (const key of ks) {
+                  if (!guard.is(input[key])) {
+                    return false
+                  }
+                }
+              }
+            }
+
+            return true
+          }
         )
+      }
       case "Union": {
         const members = ast.members.map(go)
         return make(
@@ -142,8 +182,15 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
           (a): a is any => members.some((guard) => guard.is(a))
         )
       }
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      case "Lazy": {
+        const f = () => go(ast.f())
+        const get = I.memoize<void, Guard<A>>(f)
+        const schema = I.lazy(f)
+        return make(
+          schema,
+          (a): a is A => get().is(a)
+        )
+      }
       case "Enums":
         return make(
           I.makeSchema(ast),
@@ -157,63 +204,4 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   }
 
   return go(schema.ast)
-}
-
-const _struct = (
-  ast: AST.Struct,
-  fields: ReadonlyArray<Guard<any>>,
-  indexSignatures: ReadonlyArray<Guard<any>>
-): Guard<any> =>
-  make(
-    I.makeSchema(ast),
-    (input: unknown): input is any => {
-      if (!I.isUnknownObject(input)) {
-        return false
-      }
-      // ---------------------------------------------
-      // handle fields
-      // ---------------------------------------------
-      for (let i = 0; i < fields.length; i++) {
-        const field = ast.fields[i]
-        const key = field.key
-        if (!Object.prototype.hasOwnProperty.call(input, key)) {
-          if (field.isOptional) {
-            continue
-          }
-          return false
-        }
-        if (!fields[i].is(input[key])) {
-          return false
-        }
-      }
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (indexSignatures.length > 0) {
-        const keys = Object.keys(input)
-        const symbols = Object.getOwnPropertySymbols(input)
-        for (let i = 0; i < indexSignatures.length; i++) {
-          const guard = indexSignatures[i]
-          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
-          for (const key of ks) {
-            if (!guard.is(input[key])) {
-              return false
-            }
-          }
-        }
-      }
-
-      return true
-    }
-  )
-
-const _lazy = <A>(
-  f: () => Guard<A>
-): Guard<A> => {
-  const get = I.memoize<void, Guard<A>>(f)
-  const schema = I.lazy(f)
-  return make(
-    schema,
-    (a): a is A => get().is(a)
-  )
 }

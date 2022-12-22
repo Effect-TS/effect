@@ -190,7 +190,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                 } else if (isWarning(t)) {
                   es.push(DE.index(i, t.left))
                 }
-                output[i] = t.right
+                output.push(t.right)
               }
             }
             // ---------------------------------------------
@@ -202,12 +202,13 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               for (; i < input.length - tail.length; i++) {
                 const t = head.decode(input[i])
                 if (isFailure(t)) {
-                  // the input element is not valid, bail out
-                  return failures(I.mutableAppend(es, DE.index(i, t.left)))
-                } else if (isWarning(t)) {
                   es.push(DE.index(i, t.left))
+                } else {
+                  if (isWarning(t)) {
+                    es.push(DE.index(i, t.left))
+                  }
+                  output.push(t.right)
                 }
-                output[i] = t.right
               }
               // ---------------------------------------------
               // handle post rest elements
@@ -225,7 +226,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                   } else if (isWarning(t)) {
                     es.push(DE.index(i, t.left))
                   }
-                  output[i] = t.right
+                  output.push(t.right)
                 }
               }
             } else {
@@ -244,16 +245,119 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           }
         )
       }
-      case "Struct":
-        return _struct(
-          ast,
-          ast.fields.map((f) => go(f.value)),
-          ast.indexSignatures.map((is) => go(is.value))
+      case "Struct": {
+        const fields = ast.fields.map((f) => go(f.value))
+        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        return make(
+          I.makeSchema(ast),
+          (input: unknown) => {
+            if (!I.isUnknownObject(input)) {
+              return failure(DE.type("{ readonly [x: string]: unknown }", input))
+            }
+            const output: any = {}
+            const processedKeys: any = {}
+            const es: Array<DE.DecodeError> = []
+            // ---------------------------------------------
+            // handle fields
+            // ---------------------------------------------
+            for (let i = 0; i < fields.length; i++) {
+              const field = ast.fields[i]
+              const key = field.key
+              processedKeys[key] = null
+              if (!Object.prototype.hasOwnProperty.call(input, key)) {
+                if (field.isOptional) {
+                  continue
+                }
+                return failure(DE.key(key, [DE.missing]))
+              }
+              const decoder = fields[i]
+              const t = decoder.decode(input[key])
+              if (isFailure(t)) {
+                return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
+              } else if (isWarning(t)) {
+                es.push(DE.key(key, t.left))
+              }
+              output[key] = t.right
+            }
+            // ---------------------------------------------
+            // handle index signatures
+            // ---------------------------------------------
+            if (indexSignatures.length > 0) {
+              const keys = Object.keys(input)
+              const symbols = Object.getOwnPropertySymbols(input)
+              for (let i = 0; i < indexSignatures.length; i++) {
+                const decoder = indexSignatures[i]
+                const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+                for (const key of ks) {
+                  const t = decoder.decode(input[key])
+                  if (isFailure(t)) {
+                    es.push(DE.key(key, t.left))
+                  } else {
+                    if (isWarning(t)) {
+                      es.push(DE.key(key, t.left))
+                    }
+                    output[key] = t.right
+                  }
+                }
+              }
+            } else {
+              // ---------------------------------------------
+              // handle additional keys
+              // ---------------------------------------------
+              for (const key of I.ownKeys(input)) {
+                if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
+                  es.push(DE.unexpectedKey(key))
+                }
+              }
+            }
+
+            // ---------------------------------------------
+            // compute output
+            // ---------------------------------------------
+            return I.isNonEmpty(es) ? warnings(es, output) : success(output)
+          }
         )
-      case "Union":
-        return _union(ast, ast.members.map(go))
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      }
+      case "Union": {
+        const members = ast.members.map(go)
+        return make(I.makeSchema(ast), (u) => {
+          const es: Array<DE.DecodeError> = []
+          let output: Both<NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
+
+          // ---------------------------------------------
+          // compute best output
+          // ---------------------------------------------
+          for (let i = 0; i < members.length; i++) {
+            const t = members[i].decode(u)
+            if (isSuccess(t)) {
+              // if there are no warnings this is the best output
+              return t
+            } else if (isWarning(t)) {
+              // choose the output with less warnings related to unexpected keys / indexes
+              if (
+                !output ||
+                output.left.filter(isUnexpectedError).length >
+                  t.left.filter(isUnexpectedError).length
+              ) {
+                output = t
+              }
+            } else {
+              es.push(DE.member(t.left))
+            }
+          }
+
+          return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.type("never", u))
+        })
+      }
+      case "Lazy": {
+        const f = () => go(ast.f())
+        const get = I.memoize<void, Decoder<unknown, any>>(f)
+        const schema = I.lazy(f)
+        return make(
+          schema,
+          (a) => get().decode(a)
+        )
+      }
       case "Enums":
         return I.makeDecoder(
           I.makeSchema(ast),
@@ -275,120 +379,5 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   return go(schema.ast)
 }
 
-const _struct = (
-  ast: AST.Struct,
-  fields: ReadonlyArray<Decoder<any, any>>,
-  indexSignatures: ReadonlyArray<Decoder<any, any>>
-): Decoder<any, any> =>
-  make(
-    I.makeSchema(ast),
-    (input: unknown) => {
-      if (!I.isUnknownObject(input)) {
-        return failure(DE.type("{ readonly [x: string]: unknown }", input))
-      }
-      const output: any = {}
-      const processedKeys: any = {}
-      const es: Array<DE.DecodeError> = []
-      // ---------------------------------------------
-      // handle fields
-      // ---------------------------------------------
-      for (let i = 0; i < fields.length; i++) {
-        const field = ast.fields[i]
-        const key = field.key
-        processedKeys[key] = null
-        if (!Object.prototype.hasOwnProperty.call(input, key)) {
-          if (field.isOptional) {
-            continue
-          }
-          return failure(DE.key(key, [DE.missing]))
-        }
-        const decoder = fields[i]
-        const t = decoder.decode(input[key])
-        if (isFailure(t)) {
-          return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
-        } else if (isWarning(t)) {
-          es.push(DE.key(key, t.left))
-        }
-        output[key] = t.right
-      }
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (indexSignatures.length > 0) {
-        const keys = Object.keys(input)
-        const symbols = Object.getOwnPropertySymbols(input)
-        for (let i = 0; i < indexSignatures.length; i++) {
-          const decoder = indexSignatures[i]
-          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
-          for (const key of ks) {
-            const t = decoder.decode(input[key])
-            if (isFailure(t)) {
-              return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
-            } else if (isWarning(t)) {
-              es.push(DE.key(key, t.left))
-            }
-            output[key] = t.right
-          }
-        }
-      } else {
-        // ---------------------------------------------
-        // handle additional keys
-        // ---------------------------------------------
-        for (const key of I.ownKeys(input)) {
-          if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
-            es.push(DE.unexpectedKey(key))
-          }
-        }
-      }
-
-      // ---------------------------------------------
-      // compute output
-      // ---------------------------------------------
-      return I.isNonEmpty(es) ? warnings(es, output) : success(output)
-    }
-  )
-
-const isUnexpected = (e: DE.DecodeError) =>
+const isUnexpectedError = (e: DE.DecodeError) =>
   e._tag === "UnexpectedIndex" || e._tag === "UnexpectedKey"
-
-const _union = <I>(
-  ast: AST.Union,
-  members: ReadonlyArray<Decoder<I, any>>
-): Decoder<I, any> =>
-  make(I.makeSchema(ast), (u) => {
-    const es: Array<DE.DecodeError> = []
-    let output: Both<NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
-
-    // ---------------------------------------------
-    // compute best output
-    // ---------------------------------------------
-    for (let i = 0; i < members.length; i++) {
-      const t = members[i].decode(u)
-      if (isSuccess(t)) {
-        // if there are no warnings this is the best output
-        return t
-      } else if (isWarning(t)) {
-        // choose the output with less warnings related to unexpected keys / indexes
-        if (
-          !output || output.left.filter(isUnexpected).length > t.left.filter(isUnexpected).length
-        ) {
-          output = t
-        }
-      } else {
-        es.push(DE.member(t.left))
-      }
-    }
-
-    return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.type("never", u))
-  })
-
-const _lazy = <I, A>(
-  f: () => Decoder<I, A>
-): Decoder<I, A> => {
-  const get = I.memoize<void, Decoder<I, A>>(f)
-  const schema = I.lazy(f)
-  return make(
-    schema,
-    (a) => get().decode(a)
-  )
-}

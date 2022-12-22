@@ -85,7 +85,7 @@ describe.concurrent("Codec", () => {
 
   it("string", () => {
     const codec = C.string
-    expect(codec.decode("a")).toEqual(C.success("a"))
+    Util.expectSuccess(codec, "a")
 
     Util.expectFailure(codec, 1, "1 did not satisfy is(string)")
   })
@@ -110,8 +110,8 @@ describe.concurrent("Codec", () => {
 
   it("boolean", () => {
     const codec = C.boolean
-    expect(codec.decode(true)).toEqual(C.success(true))
-    expect(codec.decode(false)).toEqual(C.success(false))
+    Util.expectSuccess(codec, true)
+    Util.expectSuccess(codec, false)
 
     Util.expectFailure(codec, 1, "1 did not satisfy is(boolean)")
   })
@@ -119,9 +119,10 @@ describe.concurrent("Codec", () => {
   it("bigint", () => {
     const codec = C.bigint
 
-    expect(codec.decode(0n)).toEqual(C.success(0n))
-    expect(codec.decode(1n)).toEqual(C.success(1n))
+    Util.expectSuccess(codec, 0n)
+    Util.expectSuccess(codec, 1n)
     expect(codec.decode("1")).toEqual(C.success(1n))
+
     Util.expectFailure(
       codec,
       null,
@@ -137,14 +138,15 @@ describe.concurrent("Codec", () => {
   it("symbol", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const codec = C.symbol
-    expect(codec.decode(a)).toEqual(C.success(a))
+    Util.expectSuccess(codec, a)
+
     Util.expectFailure(codec, 1, "1 did not satisfy is(symbol)")
   })
 
   it("literal", () => {
     const codec = C.literal(1, "a")
-    expect(codec.decode(1)).toEqual(C.success(1))
-    expect(codec.decode("a")).toEqual(C.success("a"))
+    Util.expectSuccess(codec, 1)
+    Util.expectSuccess(codec, "a")
 
     Util.expectFailureTree(
       codec,
@@ -354,7 +356,7 @@ describe.concurrent("Codec", () => {
 
     it("baseline", () => {
       const codec = C.tuple(C.string, C.number)
-      expect(codec.decode(["a", 1])).toEqual(C.success(["a", 1]))
+      Util.expectSuccess(codec, ["a", 1])
 
       Util.expectFailure(codec, {}, "{} did not satisfy is(ReadonlyArray<unknown>)")
       Util.expectFailure(codec, ["a"], "/1 did not satisfy is(required)")
@@ -369,23 +371,16 @@ describe.concurrent("Codec", () => {
 
     it("rest", () => {
       const codec = pipe(C.tuple(C.string, C.number), C.rest(C.boolean))
-      expect(codec.decode(["a", 1])).toEqual(C.success(["a", 1]))
-      expect(codec.decode(["a", 1, true])).toEqual(C.success(["a", 1, true]))
-      expect(codec.decode(["a", 1, true, false])).toEqual(C.success(["a", 1, true, false]))
+      Util.expectSuccess(codec, ["a", 1])
+      Util.expectSuccess(codec, ["a", 1, true])
+      Util.expectSuccess(codec, ["a", 1, true, true])
 
-      Util.expectFailure(codec, ["a", 1, true, "a", true], "/3 \"a\" did not satisfy is(boolean)")
-    })
-
-    it("ReadonlyArray<unknown>", () => {
-      const codec = C.array(C.unknown)
-      expect(codec.decode([])).toEqual(C.success([]))
-      expect(codec.decode(["a", 1, true])).toEqual(C.success(["a", 1, true]))
-    })
-
-    it("ReadonlyArray<any>", () => {
-      const codec = C.array(C.any)
-      expect(codec.decode([])).toEqual(C.success([]))
-      expect(codec.decode(["a", 1, true])).toEqual(C.success(["a", 1, true]))
+      Util.expectWarning(
+        codec,
+        ["a", 1, true, "b", true],
+        "/3 \"b\" did not satisfy is(boolean)",
+        ["a", 1, true, true]
+      )
     })
   })
 
@@ -463,28 +458,29 @@ describe.concurrent("Codec", () => {
 
     it("stringIndexSignature", () => {
       const codec = C.stringIndexSignature(C.number)
-      expect(codec.decode({})).toEqual(C.success({}))
-      expect(codec.decode({ a: 1 })).toEqual(C.success({ a: 1 }))
+      Util.expectSuccess(codec, {})
+      Util.expectSuccess(codec, { a: 1 })
 
       Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
-      Util.expectFailure(codec, { a: "a" }, "/a \"a\" did not satisfy is(number)")
 
+      Util.expectWarning(codec, { a: "a" }, "/a \"a\" did not satisfy is(number)", {})
       Util.expectWarning(codec, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
     })
 
     it("symbolIndexSignature", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
       const codec = C.symbolIndexSignature(C.number)
-      expect(codec.decode({})).toEqual(C.success({}))
-      expect(codec.decode({ [a]: 1 })).toEqual(C.success({ [a]: 1 }))
+      Util.expectSuccess(codec, {})
+      Util.expectSuccess(codec, { [a]: 1 })
 
       Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
-      Util.expectFailure(
+
+      Util.expectWarning(
         codec,
         { [a]: "a" },
-        "/Symbol(@fp-ts/schema/test/a) \"a\" did not satisfy is(number)"
+        "/Symbol(@fp-ts/schema/test/a) \"a\" did not satisfy is(number)",
+        {}
       )
-
       Util.expectWarning(
         codec,
         { [a]: NaN },
@@ -503,7 +499,7 @@ describe.concurrent("Codec", () => {
 
     it("should not add optional keys", () => {
       const codec = C.partial(C.struct({ a: C.string, b: C.number }))
-      expect(codec.decode({})).toEqual(C.success({}))
+      Util.expectSuccess(codec, {})
     })
 
     it("extend stringIndexSignature", () => {
@@ -511,104 +507,46 @@ describe.concurrent("Codec", () => {
         C.struct({ a: C.string }),
         C.extend(C.stringIndexSignature(C.string))
       )
-      expect(codec.decode({ a: "a" })).toEqual(C.success({ a: "a" }))
-      expect(codec.decode({ a: "a", b: "b" })).toEqual(C.success({ a: "a", b: "b" }))
+      Util.expectSuccess(codec, { a: "a" })
+      Util.expectSuccess(codec, { a: "a", b: "b" })
 
       Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
       Util.expectFailure(codec, { b: "b" }, "/a did not satisfy is(required)")
       Util.expectFailure(codec, { a: 1 }, "/a 1 did not satisfy is(string)")
-      Util.expectFailure(codec, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
+
+      Util.expectWarning(codec, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)", { a: "a" })
+    })
+
+    describe.concurrent("should give precedence to schemas containing more infos", () => {
+      it("more required fields", () => {
+        const a = C.struct({ a: C.string })
+        const ab = C.struct({ a: C.string, b: C.number })
+        const codec = C.union(a, ab)
+        Util.expectSuccess(codec, { a: "a", b: 1 })
+      })
+
+      it("optional fields", () => {
+        const ab = C.struct({ a: C.string, b: C.optional(C.number) })
+        const ac = C.struct({ a: C.string, c: C.optional(C.number) })
+        const codec = C.union(ab, ac)
+        Util.expectSuccess(codec, { a: "a", c: 1 })
+      })
+
+      it("less warnings heuristic", () => {
+        const ab = C.struct({ a: C.string, b: C.optional(C.string) })
+        const ac = C.struct({ a: C.string, c: C.optional(C.number) })
+        const codec = C.union(ab, ac)
+        Util.expectWarning(codec, { a: "a", c: NaN }, "/c did not satisfy not(isNaN)", {
+          a: "a",
+          c: NaN
+        })
+      })
     })
   })
 
-  describe.concurrent("partial", () => {
-    it("struct", () => {
-      const codec = C.partial(C.struct({ a: C.number }))
-      expect(codec.decode({})).toEqual(C.success({}))
-      expect(codec.decode({ a: 1 })).toEqual(C.success({ a: 1 }))
-
-      Util.expectFailure(codec, { a: undefined }, `/a undefined did not satisfy is(number)`)
-    })
-
-    it("tuple", () => {
-      const codec = pipe(C.tuple(C.string, C.number), C.partial)
-      expect(codec.decode([])).toEqual(C.success([]))
-      expect(codec.decode(["a"])).toEqual(C.success(["a"]))
-      expect(codec.decode(["a", 1])).toEqual(C.success(["a", 1]))
-    })
-
-    it("array", () => {
-      const codec = pipe(C.array(C.number), C.partial)
-      expect(codec.decode([])).toEqual(C.success([]))
-      expect(codec.decode([1])).toEqual(C.success([1]))
-      expect(codec.decode([undefined])).toEqual(C.success([undefined]))
-
-      Util.expectFailureTree(
-        codec,
-        ["a"],
-        `1 error(s) found
-└─ index 0
-   ├─ union member
-   │  └─ "a" did not satisfy is(number)
-   └─ union member
-      └─ "a" did not satisfy is(undefined)`
-      )
-    })
-
-    describe.concurrent("union", () => {
-      it("baseline", () => {
-        const codec = pipe(C.union(C.string, C.array(C.number)), C.partial)
-        expect(codec.decode("a")).toEqual(C.success("a"))
-        expect(codec.decode([])).toEqual(C.success([]))
-        expect(codec.decode([1])).toEqual(C.success([1]))
-        expect(codec.decode([undefined])).toEqual(C.success([undefined]))
-
-        Util.expectFailureTree(
-          codec,
-          ["a"],
-          `2 error(s) found
-├─ union member
-│  └─ index 0
-│     ├─ union member
-│     │  └─ "a" did not satisfy is(number)
-│     └─ union member
-│        └─ "a" did not satisfy is(undefined)
-└─ union member
-   └─ ["a"] did not satisfy is(string)`
-        )
-      })
-
-      it("empty union", () => {
-        const codec = C.union()
-        Util.expectFailure(codec, 1, "1 did not satisfy is(never)")
-      })
-
-      describe.concurrent("should give precedence to schemas containing more infos", () => {
-        it("more required fields", () => {
-          const a = C.struct({ a: C.string })
-          const ab = C.struct({ a: C.string, b: C.number })
-          const codec = C.union(a, ab)
-          expect(codec.decode({ a: "a", b: 1 })).toEqual(C.success({ a: "a", b: 1 }))
-        })
-
-        it("optional fields", () => {
-          const ab = C.struct({ a: C.string, b: C.optional(C.number) })
-          const ac = C.struct({ a: C.string, c: C.optional(C.number) })
-          const codec = C.union(ab, ac)
-          expect(codec.decode({ a: "a", c: 1 })).toEqual(C.success({ a: "a", c: 1 }))
-        })
-
-        it("less warnings heuristic", () => {
-          const ab = C.struct({ a: C.string, b: C.optional(C.string) })
-          const ac = C.struct({ a: C.string, c: C.optional(C.number) })
-          const codec = C.union(ab, ac)
-          Util.expectWarning(codec, { a: "a", c: NaN }, "/c did not satisfy not(isNaN)", {
-            a: "a",
-            c: NaN
-          })
-        })
-      })
-    })
+  it("empty union", () => {
+    const codec = C.union()
+    Util.expectFailure(codec, 1, "1 did not satisfy is(never)")
   })
 
   it("lazy", () => {
@@ -622,16 +560,78 @@ describe.concurrent("Codec", () => {
         as: C.array(codec)
       })
     )
-    expect(codec.decode({ a: "a1", as: [] })).toEqual(C.success({ a: "a1", as: [] }))
-    expect(codec.decode({ a: "a1", as: [{ a: "a2", as: [] }] })).toEqual(
-      C.success({ a: "a1", as: [{ a: "a2", as: [] }] })
-    )
+
+    Util.expectSuccess(codec, { a: "a1", as: [] })
+    Util.expectSuccess(codec, { a: "a1", as: [{ a: "a2", as: [] }] })
 
     Util.expectFailure(
       codec,
-      { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 did not satisfy is({ readonly [x: string]: unknown })"
+      { a: "a1" },
+      `/as did not satisfy is(required)`
     )
+
+    Util.expectWarning(
+      codec,
+      { a: "a1", as: [{ a: "a2", as: [1] }] },
+      "/as /0 /as /0 1 did not satisfy is({ readonly [x: string]: unknown })",
+      { a: "a1", as: [{ a: "a2", as: [] }] }
+    )
+  })
+
+  describe.concurrent("partial", () => {
+    it("struct", () => {
+      const codec = C.partial(C.struct({ a: C.number }))
+      Util.expectSuccess(codec, {})
+      Util.expectSuccess(codec, { a: 1 })
+
+      Util.expectFailure(codec, { a: undefined }, `/a undefined did not satisfy is(number)`)
+    })
+
+    it("tuple", () => {
+      const codec = C.partial(C.tuple(C.string, C.number))
+      Util.expectSuccess(codec, [])
+      Util.expectSuccess(codec, ["a"])
+      Util.expectSuccess(codec, ["a", 1])
+    })
+
+    it("array", () => {
+      const codec = C.partial(C.array(C.number))
+      Util.expectSuccess(codec, [])
+      Util.expectSuccess(codec, [1])
+      Util.expectSuccess(codec, [undefined])
+
+      Util.expectWarningTree(
+        codec,
+        ["a"],
+        `1 error(s) found
+└─ index 0
+   ├─ union member
+   │  └─ "a" did not satisfy is(number)
+   └─ union member
+      └─ "a" did not satisfy is(undefined)`,
+        []
+      )
+    })
+
+    it("union", () => {
+      const codec = C.partial(C.union(C.string, C.array(C.number)))
+      Util.expectSuccess(codec, "a")
+      Util.expectSuccess(codec, [])
+      Util.expectSuccess(codec, [1])
+      Util.expectSuccess(codec, [undefined])
+
+      Util.expectWarningTree(
+        codec,
+        ["a"],
+        `1 error(s) found
+└─ index 0
+   ├─ union member
+   │  └─ "a" did not satisfy is(number)
+   └─ union member
+      └─ "a" did not satisfy is(undefined)`,
+        []
+      )
+    })
   })
 
   describe.concurrent("omit", () => {
