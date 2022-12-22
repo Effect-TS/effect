@@ -7,7 +7,7 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import type { Refinement } from "@fp-ts/data/Predicate"
+import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
@@ -140,11 +140,6 @@ export const isFailure: <E, A>(self: These<E, A>) => self is Left<E> = I.isFailu
  * @since 1.0.0
  */
 export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWarning
-
-/**
- * @since 1.0.0
- */
-export const transform = <A>(self: Codec<A>): Codec<A> => pipe(self)
 
 /**
  * @since 1.0.0
@@ -435,6 +430,17 @@ export const transformDecodeResult = <A>(
 export const withError = <A>(
   f: (i: unknown, errors: NonEmptyReadonlyArray<DecodeError>) => DecodeError
 ) => (self: Schema<A>): Codec<A> => codecFor(pipe(self, S.withError(f)))
+
+/**
+ * @since 1.0.0
+ */
+export const condemn = (predicate: Predicate<DecodeError>) =>
+  <A>(self: Schema<A>): Codec<A> => codecFor(S.condemn(predicate)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const exact = <A>(self: Schema<A>): Codec<A> => codecFor(S.exact(self))
 
 // ---------------------------------------------
 // data

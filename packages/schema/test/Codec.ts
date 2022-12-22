@@ -403,6 +403,14 @@ describe.concurrent("Codec", () => {
   })
 
   describe.concurrent("struct", () => {
+    it("exact", () => {
+      const loose = C.struct({ a: C.number })
+      Util.expectWarning(loose, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
+      const exact = C.exact(loose)
+      Util.expectSuccess(exact, { a: 1 })
+      Util.expectFailure(exact, { a: 1, b: "b" }, `/b key is unexpected`)
+    })
+
     it("required field", () => {
       const codec = C.struct({ a: C.number })
       Util.expectSuccess(codec, { a: 1 })

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { Predicate } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 
 /**
@@ -239,3 +240,25 @@ export const member = (
   _tag: "Member",
   errors
 })
+
+/**
+ * @since 1.0.0
+ */
+export const some = (
+  predicate: Predicate<DecodeError>
+): (errors: NonEmptyReadonlyArray<DecodeError>) => boolean => {
+  const go = (e: DecodeError): boolean => {
+    switch (e._tag) {
+      case "Index":
+      case "Key":
+      case "Member":
+        return gos(e.errors)
+      default:
+        return predicate(e)
+    }
+  }
+  const gos = (errors: NonEmptyReadonlyArray<DecodeError>): boolean => {
+    return errors.some(go)
+  }
+  return gos
+}

@@ -5,7 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import type { Refinement } from "@fp-ts/data/Predicate"
+import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import { decoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
@@ -29,6 +29,7 @@ import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataParse from "@fp-ts/schema/data/parse"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
+import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -401,6 +402,23 @@ export const withError = <A>(
   transformDecodeResult((actual, result) =>
     pipe(result, T.mapLeft((errors) => [f(actual, errors)]))
   )
+
+/**
+ * @since 1.0.0
+ */
+export const condemn = (predicate: Predicate<DE.DecodeError>): <A>(self: Schema<A>) => Schema<A> =>
+  transformDecodeResult((_, result) =>
+    T.isRight(result) || !pipe(result.left, DE.some(predicate)) ?
+      result :
+      T.condemn(result)
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const exact: <A>(self: Schema<A>) => Schema<A> = condemn((e) =>
+  e._tag === "UnexpectedKey" || e._tag === "UnexpectedIndex"
+)
 
 // ---------------------------------------------
 // data
