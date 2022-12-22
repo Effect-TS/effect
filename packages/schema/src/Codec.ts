@@ -15,6 +15,7 @@ import { decoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputA
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
 import type { AST, Literal } from "@fp-ts/schema/AST"
+import type { Class } from "@fp-ts/schema/data/filter/InstanceOf"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
 import { decoderFor } from "@fp-ts/schema/Decoder"
@@ -254,6 +255,13 @@ export const nonNaN = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
  */
 export const finite = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
   new NumberBuilder(S.finite(self))
+
+/**
+ * @since 1.0.0
+ */
+export const instanceOf = <A extends typeof Class>(
+  constructor: A
+) => (self: Schema<object>): Schema<InstanceType<A>> => codecFor(S.instanceOf(constructor)(self))
 
 // ---------------------------------------------
 // combinators

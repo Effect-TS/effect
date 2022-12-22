@@ -53,23 +53,23 @@ const stringify = (actual: unknown): string => {
   if (typeof actual === "number") {
     return Number.isNaN(actual) ? "NaN" : String(actual)
   }
-  return JSON.stringify(actual)
+  return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
 }
 
 const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Meta":
-      return `${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`
+      return `${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`
     case "Type":
-      return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
+      return `${stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
-      return `${stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.meta)})`
+      return `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
     case "Parse":
-      return `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+      return `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
-      return `${JSON.stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
+      return `${stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
     case "Enums":
-      return `${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`
+      return `${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Key":
@@ -127,23 +127,23 @@ const toTree = (errors: NonEmptyReadonlyArray<DE.DecodeError>): Tree<string> => 
 const go = (e: DE.DecodeError): Tree<string> => {
   switch (e._tag) {
     case "Meta":
-      return make(`${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`)
+      return make(`${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`)
     case "Type":
-      return make(`${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`)
+      return make(`${stringify(e.actual)} did not satisfy is(${e.expected})`)
     case "Refinement":
       return make(
-        `${JSON.stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.meta)})`
+        `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
       )
     case "Parse":
       return make(
-        `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+        `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
       )
     case "Equal":
       return make(
-        `${JSON.stringify(e.actual)} did not satisfy isEqual(${JSON.stringify(e.expected)})`
+        `${stringify(e.actual)} did not satisfy isEqual(${stringify(e.expected)})`
       )
     case "Enums":
-      return make(`${JSON.stringify(e.actual)} did not satisfy isEnum(${JSON.stringify(e.enums)})`)
+      return make(`${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
     case "UnexpectedIndex":
