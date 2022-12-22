@@ -50,6 +50,16 @@ describe.concurrent("Guard", () => {
     expect(guard.is("a")).toEqual(false)
   })
 
+  it("object", () => {
+    const guard = G.guardFor(S.object)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is("a")).toEqual(false)
+    expect(guard.is(1)).toEqual(false)
+    expect(guard.is(true)).toEqual(false)
+  })
+
   describe.concurrent("literal", () => {
     it("1 member", () => {
       const schema = S.literal(1)

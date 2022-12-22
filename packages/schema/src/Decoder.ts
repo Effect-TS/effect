@@ -167,6 +167,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       case "SymbolKeyword":
         return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.type("symbol", u))
+      case "ObjectKeyword":
+        return I.fromRefinement(I.object, I.isObject, (u) => DE.type("object", u))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

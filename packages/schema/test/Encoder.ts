@@ -33,6 +33,13 @@ describe.concurrent("Encoder", () => {
     expect(encoder.encode(a)).toEqual(a)
   })
 
+  it("object", () => {
+    const encoder = E.encoderFor(S.object)
+    expect(encoder.encode({})).toEqual({})
+    expect(encoder.encode([])).toEqual([])
+    expect(encoder.encode([1, 2, 3])).toEqual([1, 2, 3])
+  })
+
   it("literal", () => {
     const encoder = E.encoderFor(S.literal(null))
     expect(encoder.encode(null)).toEqual(null)

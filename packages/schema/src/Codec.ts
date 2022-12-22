@@ -463,6 +463,11 @@ export const symbol: Codec<symbol> = codecFor(S.symbol)
 /**
  * @since 1.0.0
  */
+export const object: Codec<object> = codecFor(S.object)
+
+/**
+ * @since 1.0.0
+ */
 export const unknown: Codec<unknown> = codecFor(S.unknown)
 
 /**

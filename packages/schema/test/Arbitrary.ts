@@ -16,6 +16,11 @@ describe.concurrent("Arbitrary", () => {
     expect(A.make).exist
   })
 
+  it("object", () => {
+    const schema = S.object
+    property(schema)
+  })
+
   it("void", () => {
     const schema = S.void
     property(schema)
@@ -288,6 +293,31 @@ describe.concurrent("Arbitrary", () => {
 
   it("greaterThan", () => {
     const schema = pipe(S.number, S.greaterThan(1))
+    property(schema)
+  })
+
+  it("startsWith", () => {
+    const schema = pipe(S.string, S.startsWith("a"))
+    property(schema)
+  })
+
+  it("endsWith", () => {
+    const schema = pipe(S.string, S.endsWith("a"))
+    property(schema)
+  })
+
+  it("int", () => {
+    const schema = pipe(S.number, S.int)
+    property(schema)
+  })
+
+  it("nonNaN", () => {
+    const schema = pipe(S.number, S.nonNaN)
+    property(schema)
+  })
+
+  it("finite", () => {
+    const schema = pipe(S.number, S.finite)
     property(schema)
   })
 })

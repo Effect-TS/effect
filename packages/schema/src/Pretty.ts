@@ -74,6 +74,8 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         return make(I.boolean, (bi) => `${bi.toString()}n`)
       case "SymbolKeyword":
         return make(I.symbol, (s) => String(s))
+      case "ObjectKeyword":
+        return make(I.object, (a) => JSON.stringify(a, null, 2))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

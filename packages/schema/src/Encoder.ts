@@ -71,6 +71,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         return make(I.bigint, (n) => n.toString())
       case "SymbolKeyword":
         return make(I.bigint, identity)
+      case "ObjectKeyword":
+        return make(I.object, identity)
       case "Tuple":
         return _tuple(
           ast,

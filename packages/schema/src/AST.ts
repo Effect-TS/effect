@@ -27,6 +27,7 @@ export type AST =
   | BooleanKeyword
   | BigIntKeyword
   | SymbolKeyword
+  | ObjectKeyword
   | Tuple
   | Struct
   | Union
@@ -254,6 +255,21 @@ export interface SymbolKeyword extends Annotated {
  */
 export const symbolKeyword = (annotations: ReadonlyArray<unknown>): SymbolKeyword => ({
   _tag: "SymbolKeyword",
+  annotations
+})
+
+/**
+ * @since 1.0.0
+ */
+export interface ObjectKeyword extends Annotated {
+  readonly _tag: "ObjectKeyword"
+}
+
+/**
+ * @since 1.0.0
+ */
+export const objectKeyword = (annotations: ReadonlyArray<unknown>): ObjectKeyword => ({
+  _tag: "ObjectKeyword",
   annotations
 })
 

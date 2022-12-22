@@ -419,6 +419,11 @@ export const symbol: Schema<symbol> = I.symbol
 /**
  * @since 1.0.0
  */
+export const object: Schema<object> = I.object
+
+/**
+ * @since 1.0.0
+ */
 export const json: Schema<Json> = DataJson.Schema
 
 /**

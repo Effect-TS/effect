@@ -70,6 +70,8 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         return make(I.bigint, I.isBigInt)
       case "SymbolKeyword":
         return make(I.symbol, I.isSymbol)
+      case "ObjectKeyword":
+        return make(I.object, I.isObject)
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

@@ -148,6 +148,17 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, 1, "1 did not satisfy is(symbol)")
   })
 
+  it("object", () => {
+    const codec = C.object
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, [])
+
+    Util.expectFailure(codec, null, `null did not satisfy is(object)`)
+    Util.expectFailure(codec, "a", `"a" did not satisfy is(object)`)
+    Util.expectFailure(codec, 1, `1 did not satisfy is(object)`)
+    Util.expectFailure(codec, true, `true did not satisfy is(object)`)
+  })
+
   it("literal", () => {
     const codec = C.literal(1, "a")
     Util.expectSuccess(codec, 1)

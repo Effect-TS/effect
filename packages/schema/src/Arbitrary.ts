@@ -71,6 +71,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         return make(I.bigint, (fc) => fc.bigInt())
       case "SymbolKeyword":
         return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
+      case "ObjectKeyword":
+        return make(I.object, (fc) => fc.object())
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

@@ -220,6 +220,8 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.BigIntKeyword)))
       case "SymbolKeyword":
         return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)))
+      case "ObjectKeyword":
+        return make(ast, of(ts.factory.createKeywordTypeNode(ts.SyntaxKind.ObjectKeyword)))
       case "Tuple": {
         let elements = pipe(
           ast.elements,
@@ -427,6 +429,12 @@ describe.concurrent("TypeScript", () => {
     const schema = S.symbol
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual(["symbol"])
+  })
+
+  it("object", () => {
+    const schema = S.object
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual(["object"])
   })
 
   it("undefined", () => {
