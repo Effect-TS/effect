@@ -511,17 +511,17 @@ export const refinement = (
 /**
  * @since 1.0.0
  */
-export const prependAnnotation = (ast: AST, annotation: unknown): AST => ({
+export const appendAnnotation = (ast: AST, annotation: unknown): AST => ({
   ...ast,
-  annotations: pipe(ast.annotations, RA.prepend(annotation))
+  annotations: pipe(ast.annotations, RA.append(annotation))
 })
 
 /**
  * @since 1.0.0
  */
-export const prependAllAnnotations = (ast: AST, annotations: ReadonlyArray<unknown>): AST => ({
+export const appendAllAnnotations = (ast: AST, annotations: ReadonlyArray<unknown>): AST => ({
   ...ast,
-  annotations: pipe(ast.annotations, RA.prependAll(annotations))
+  annotations: pipe(ast.annotations, RA.appendAll(annotations))
 })
 
 /**

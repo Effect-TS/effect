@@ -8,12 +8,11 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
  * @since 1.0.0
  */
 export type DecodeError =
-  | Custom
+  | Meta
   | Type
   | Equal
   | Enums
   | NaN
-  | Finite
   | Refinement
   | Parse
   | Index
@@ -26,18 +25,21 @@ export type DecodeError =
 /**
  * @since 1.0.0
  */
-export interface Custom {
-  readonly _tag: "Custom"
-  readonly declaration: unknown
+export interface Meta {
+  readonly _tag: "Meta"
+  readonly meta: unknown
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const custom = (declaration: unknown, actual: unknown): Custom => ({
-  _tag: "Custom",
-  declaration,
+export const meta = (
+  meta: unknown,
+  actual: unknown
+): Meta => ({
+  _tag: "Meta",
+  meta,
   actual
 })
 
@@ -108,30 +110,18 @@ export const nan: NaN = { _tag: "NaN" }
 /**
  * @since 1.0.0
  */
-export interface Finite {
-  readonly _tag: "Finite"
-}
-
-/**
- * @since 1.0.0
- */
-export const finite: Finite = { _tag: "Finite" }
-
-/**
- * @since 1.0.0
- */
 export interface Refinement {
   readonly _tag: "Refinement"
-  readonly declaration: unknown
+  readonly meta: unknown
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const refinement = (declaration: unknown, actual: unknown): Refinement => ({
+export const refinement = (meta: unknown, actual: unknown): Refinement => ({
   _tag: "Refinement",
-  declaration,
+  meta,
   actual
 })
 

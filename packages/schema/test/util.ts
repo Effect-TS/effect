@@ -58,16 +58,14 @@ const stringify = (actual: unknown): string => {
 
 const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
-    case "Custom":
-      return `${JSON.stringify(e.actual)} ${JSON.stringify(e.declaration)}`
+    case "Meta":
+      return `${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`
     case "NaN":
       return `did not satisfy not(isNaN)`
-    case "Finite":
-      return `did not satisfy isFinite`
     case "Type":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
-      return `${stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.declaration)})`
+      return `${stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.meta)})`
     case "Parse":
       return `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
@@ -130,17 +128,15 @@ const toTree = (errors: NonEmptyReadonlyArray<DE.DecodeError>): Tree<string> => 
 
 const go = (e: DE.DecodeError): Tree<string> => {
   switch (e._tag) {
-    case "Custom":
-      return make(`${JSON.stringify(e.actual)} ${JSON.stringify(e.declaration)}`)
+    case "Meta":
+      return make(`${JSON.stringify(e.actual)} did not satisfy ${JSON.stringify(e.meta)}`)
     case "NaN":
       return make(`did not satisfy not(isNaN)`)
-    case "Finite":
-      return make(`did not satisfy isFinite`)
     case "Type":
       return make(`${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`)
     case "Refinement":
       return make(
-        `${JSON.stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.declaration)})`
+        `${JSON.stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.meta)})`
       )
     case "Parse":
       return make(

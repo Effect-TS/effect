@@ -4,7 +4,7 @@
 import { identity } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
@@ -27,7 +27,7 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
  * @since 1.0.0
  */
 export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, [
-  decoderAnnotation(() => Decoder),
+  decoderInputAnnotation(() => Decoder),
   guardAnnotation(() => Guard),
   encoderAnnotation(() => Encoder),
   prettyAnnotation(() => Pretty),

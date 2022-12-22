@@ -3,7 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
@@ -41,7 +41,7 @@ export const parse = <A, B>(
   const schema = (self: Schema<A>): Schema<B> =>
     I.typeAlias([self], self, [
       ...annotations,
-      decoderAnnotation(decoder),
+      decoderInputAnnotation(decoder),
       guardAnnotation(guard),
       encoderAnnotation(encoder),
       prettyAnnotation(_pretty),

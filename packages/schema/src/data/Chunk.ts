@@ -6,7 +6,7 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
 import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
 import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
@@ -53,7 +53,7 @@ export const schema = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     [item],
     I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
     [
-      decoderAnnotation(decoder),
+      decoderInputAnnotation(decoder),
       guardAnnotation(guard),
       encoderAnnotation(encoder),
       prettyAnnotation(pretty),

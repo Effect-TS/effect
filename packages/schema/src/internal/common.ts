@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
@@ -11,7 +12,7 @@ import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import type * as DE from "@fp-ts/schema/DecodeError"
-import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
@@ -55,9 +56,22 @@ export const isFailure = T.isLeft
 export const isWarning = T.isBoth
 
 /** @internal */
-export const flatMap: <A, E2, B>(f: (a: A) => T.Validated<E2, B>) => <E1>(
-  self: T.Validated<E1, A>
-) => T.Validated<E1 | E2, B> = T.flatMap
+export const flatMap = T.flatMap
+
+/** @internal */
+export const mapLeft = T.mapLeft
+
+/** @internal */
+export const mapLeftDecoder = (
+  f: (errors: NonEmptyReadonlyArray<DE.DecodeError>) => NonEmptyReadonlyArray<DE.DecodeError>
+) =>
+  <I, A>(self: Decoder<I, A>): Decoder<I, A> =>
+    makeDecoder(self, (i) => pipe(self.decode(i), mapLeft(f)))
+
+/** @internal */
+export const transformResult = <I, A>(
+  f: (i: I, result: DecodeResult<A>) => DecodeResult<A>
+) => (self: Decoder<I, A>): Decoder<I, A> => makeDecoder(self, (i) => f(i, self.decode(i)))
 
 /** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
@@ -293,14 +307,12 @@ export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x:
 /** @internal */
 export const annotation = (
   annotation: unknown
-) => <A>(schema: Schema<A>): Schema<A> => makeSchema(AST.prependAnnotation(schema.ast, annotation))
+) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.appendAnnotation(self.ast, annotation))
 
 /** @internal */
 export const annotations = (
   annotations: ReadonlyArray<unknown>
-) =>
-  <A>(schema: Schema<A>): Schema<A> =>
-    makeSchema(AST.prependAllAnnotations(schema.ast, annotations))
+) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.appendAllAnnotations(self.ast, annotations))
 
 // ---------------------------------------------
 // general helpers

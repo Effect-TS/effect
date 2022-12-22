@@ -10,8 +10,10 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import type { DecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
-import { isDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import type { DecoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
+import { isDecoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
+import type { DecoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
+import { isDecoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -76,10 +78,18 @@ export const isFailure = I.isFailure
  */
 export const isWarning = I.isWarning
 
-const getDecoderAnnotation = (ast: AST.AST): O.Option<DecoderAnnotation> =>
+const getDecoderInputAnnotation = (ast: AST.AST): O.Option<DecoderInputAnnotation> =>
   pipe(
     ast.annotations,
-    RA.findFirst(isDecoderAnnotation)
+    RA.findFirst(isDecoderInputAnnotation)
+  )
+
+const getDecoderOutputAnnotations = (
+  ast: AST.AST
+): ReadonlyArray<DecoderOutputAnnotation<any, any>> =>
+  pipe(
+    ast.annotations,
+    RA.filter(isDecoderOutputAnnotation)
   )
 
 /**
@@ -90,7 +100,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
     switch (ast._tag) {
       case "TypeAliasDeclaration":
         return pipe(
-          getDecoderAnnotation(ast),
+          getDecoderInputAnnotation(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))
@@ -383,7 +393,11 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
     }
   }
 
-  return go(schema.ast)
+  let out = go(schema.ast)
+  for (const annotation of getDecoderOutputAnnotations(schema.ast)) {
+    out = annotation.handler(out)
+  }
+  return out
 }
 
 const isUnexpectedError = (e: DE.DecodeError) =>

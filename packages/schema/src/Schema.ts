@@ -352,14 +352,14 @@ export const parse: <A, B>(
  */
 export const annotation: (
   annotation: unknown
-) => <A>(schema: Schema<A>) => Schema<A> = I.annotation
+) => <A>(self: Schema<A>) => Schema<A> = I.annotation
 
 /**
  * @since 1.0.0
  */
 export const annotations: (
   annotations: ReadonlyArray<unknown>
-) => <A>(schema: Schema<A>) => Schema<A> = I.annotations
+) => <A>(self: Schema<A>) => Schema<A> = I.annotations
 
 // ---------------------------------------------
 // data
