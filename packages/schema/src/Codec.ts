@@ -236,6 +236,12 @@ export const greaterThanOrEqualTo = (max: number) =>
 export const int = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
   new NumberBuilder(S.int(self))
 
+/**
+ * @since 1.0.0
+ */
+export const nonNaN = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
+  new NumberBuilder(S.nonNaN(self))
+
 // ---------------------------------------------
 // combinators
 // ---------------------------------------------
@@ -520,6 +526,9 @@ export class NumberBuilder<A extends number> extends Codec<A> {
   }
   int() {
     return int(this)
+  }
+  nonNaN() {
+    return nonNaN(this)
   }
   filter<B extends A>(
     refinement: Refinement<A, B>,

@@ -49,6 +49,13 @@ const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
   return pipe(errors, RA.map(format), RA.join(", "))
 }
 
+const stringify = (actual: unknown): string => {
+  if (typeof actual === "number" && isNaN(actual)) {
+    return "NaN"
+  }
+  return JSON.stringify(actual)
+}
+
 const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Custom":
@@ -60,9 +67,7 @@ const format = (e: DE.DecodeError): string => {
     case "Type":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
-      return `${JSON.stringify(e.actual)} did not satisfy refinement(${
-        JSON.stringify(e.declaration)
-      })`
+      return `${stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.declaration)})`
     case "Parse":
       return `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":

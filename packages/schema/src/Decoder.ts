@@ -132,14 +132,10 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
       case "StringKeyword":
         return I.fromRefinement(I.string, isString, (u) => DE.type("string", u))
       case "NumberKeyword":
-        return I.makeDecoder(I.makeSchema(ast), (u) =>
-          isNumber(u) ?
-            isNaN(u) ?
-              I.warning(DE.nan, u) :
-              isFinite(u) ?
-              I.success(u) :
-              I.warning(DE.finite, u) :
-            I.failure(DE.type("number", u)))
+        return I.makeDecoder(
+          I.makeSchema(ast),
+          (u) => isNumber(u) ? I.success(u) : I.failure(DE.type("number", u))
+        )
       case "BooleanKeyword":
         return I.fromRefinement(I.boolean, isBoolean, (u) => DE.type("boolean", u))
       case "BigIntKeyword":

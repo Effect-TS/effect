@@ -89,22 +89,11 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, 1, "1 did not satisfy is(string)")
   })
 
-  describe.concurrent("number", () => {
+  it("number", () => {
     const codec = C.number
-
-    it("baseline", () => {
-      expect(codec.decode(1)).toEqual(C.success(1))
-      Util.expectFailure(codec, "a", "\"a\" did not satisfy is(number)")
-    })
-
-    it("should warn for NaN", () => {
-      Util.expectWarning(codec, NaN, "did not satisfy not(isNaN)", NaN)
-    })
-
-    it("should warn for no finite values", () => {
-      Util.expectWarning(codec, Infinity, "did not satisfy isFinite", Infinity)
-      Util.expectWarning(codec, -Infinity, "did not satisfy isFinite", -Infinity)
-    })
+    Util.expectSuccess(codec, 1)
+    Util.expectSuccess(codec, NaN)
+    Util.expectFailure(codec, "a", "\"a\" did not satisfy is(number)")
   })
 
   it("boolean", () => {
@@ -290,13 +279,11 @@ describe.concurrent("Codec", () => {
     })
 
     it("post rest element", () => {
-      const codec = pipe(C.array(C.number), C.element(C.boolean))
+      const codec = pipe(C.array(C.number.nonNaN()), C.element(C.boolean))
       Util.expectSuccess(codec, [true])
       Util.expectSuccess(codec, [1, true])
       Util.expectSuccess(codec, [1, 2, true])
       Util.expectSuccess(codec, [1, 2, 3, true])
-
-      Util.expectWarning(codec, [NaN, true], `/0 did not satisfy not(isNaN)`, [NaN, true])
 
       Util.expectFailure(codec, ["b"], `/0 "b" did not satisfy is(boolean)`)
       Util.expectFailure(codec, [1], `/0 1 did not satisfy is(boolean)`)
@@ -308,10 +295,12 @@ describe.concurrent("Codec", () => {
     })
 
     it("post rest element warnings", () => {
-      const codec = pipe(C.array(C.string), C.element(C.number))
+      const codec = pipe(C.array(C.string), C.element(C.struct({ a: C.number })))
 
-      Util.expectWarning(codec, [NaN], `/0 did not satisfy not(isNaN)`, [NaN])
-      Util.expectWarning(codec, ["a", NaN], `/1 did not satisfy not(isNaN)`, ["a", NaN])
+      Util.expectWarning(codec, [{ a: 1, b: "b" }], `/0 /b key is unexpected`, [{ a: 1 }])
+      Util.expectWarning(codec, ["a", { a: 1, b: "b" }], `/1 /b key is unexpected`, ["a", {
+        a: 1
+      }])
     })
 
     it("post rest elements", () => {
@@ -354,13 +343,15 @@ describe.concurrent("Codec", () => {
     })
 
     it("baseline", () => {
-      const codec = C.tuple(C.string, C.number)
-      Util.expectSuccess(codec, ["a", 1])
+      const codec = C.tuple(C.string, C.struct({ a: C.number }))
+      Util.expectSuccess(codec, ["a", { a: 1 }])
 
       Util.expectFailure(codec, {}, "{} did not satisfy is(ReadonlyArray<unknown>)")
       Util.expectFailure(codec, ["a"], "/1 did not satisfy is(required)")
 
-      Util.expectWarning(codec, ["a", NaN], "/1 did not satisfy not(isNaN)", ["a", NaN])
+      Util.expectWarning(codec, ["a", { a: 1, b: "b" }], `/1 /b key is unexpected`, ["a", {
+        a: 1
+      }])
     })
 
     it("additional indexes should raise a warning", () => {
@@ -456,35 +447,42 @@ describe.concurrent("Codec", () => {
     })
 
     it("stringIndexSignature", () => {
-      const codec = C.stringIndexSignature(C.number)
+      const codec = C.stringIndexSignature(C.struct({ a: C.number }))
       Util.expectSuccess(codec, {})
-      Util.expectSuccess(codec, { a: 1 })
+      Util.expectSuccess(codec, { a: { a: 1 } })
 
       Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
 
-      Util.expectWarning(codec, { a: "a" }, "/a \"a\" did not satisfy is(number)", {})
-      Util.expectWarning(codec, { a: NaN }, "/a did not satisfy not(isNaN)", { a: NaN })
+      Util.expectWarning(
+        codec,
+        { a: "a" },
+        `/a "a" did not satisfy is({ readonly [x: string]: unknown })`,
+        {}
+      )
+      Util.expectWarning(codec, { a: { a: 1, b: "b" } }, `/a /b key is unexpected`, {
+        a: { a: 1 }
+      })
     })
 
     it("symbolIndexSignature", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
-      const codec = C.symbolIndexSignature(C.number)
+      const codec = C.symbolIndexSignature(C.struct({ a: C.number }))
       Util.expectSuccess(codec, {})
-      Util.expectSuccess(codec, { [a]: 1 })
+      Util.expectSuccess(codec, { [a]: { a: 1 } })
 
       Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
 
       Util.expectWarning(
         codec,
         { [a]: "a" },
-        "/Symbol(@fp-ts/schema/test/a) \"a\" did not satisfy is(number)",
+        `/Symbol(@fp-ts/schema/test/a) "a" did not satisfy is({ readonly [x: string]: unknown })`,
         {}
       )
       Util.expectWarning(
         codec,
-        { [a]: NaN },
-        "/Symbol(@fp-ts/schema/test/a) did not satisfy not(isNaN)",
-        { [a]: NaN }
+        { [a]: { a: 1, b: "b" } },
+        `/Symbol(@fp-ts/schema/test/a) /b key is unexpected`,
+        { [a]: { a: 1 } }
       )
     })
 
@@ -533,12 +531,17 @@ describe.concurrent("Codec", () => {
 
       it("less warnings heuristic", () => {
         const ab = C.struct({ a: C.string, b: C.optional(C.string) })
-        const ac = C.struct({ a: C.string, c: C.optional(C.number) })
+        const ac = C.struct({ a: C.string, c: C.optional(C.struct({ d: C.number })) })
         const codec = C.union(ab, ac)
-        Util.expectWarning(codec, { a: "a", c: NaN }, "/c did not satisfy not(isNaN)", {
-          a: "a",
-          c: NaN
-        })
+        Util.expectWarning(
+          codec,
+          { a: "a", c: { d: 1, e: "e" } },
+          `/c /e key is unexpected`,
+          {
+            a: "a",
+            c: { d: 1 }
+          }
+        )
       })
     })
   })

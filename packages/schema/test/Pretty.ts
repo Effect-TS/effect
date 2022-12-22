@@ -1,5 +1,4 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -8,12 +7,13 @@ describe.concurrent("Pretty", () => {
     expect(P.make).exist
   })
 
-  it("declaration", () => {
-    const schema = readonlySet.schema(S.string)
+  it("number", () => {
+    const schema = S.number
     const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(new Set("a"))).toEqual(
-      `new Set(["a"])`
-    )
+    expect(pretty.pretty(1)).toEqual("1")
+    expect(pretty.pretty(NaN)).toEqual("NaN")
+    expect(pretty.pretty(Infinity)).toEqual("Infinity")
+    expect(pretty.pretty(-Infinity)).toEqual("-Infinity")
   })
 
   describe.concurrent("struct", () => {
@@ -340,17 +340,17 @@ describe.concurrent("Pretty", () => {
   it("recursive", () => {
     interface A {
       readonly a: string
-      readonly as: ReadonlySet<A>
+      readonly as: ReadonlyArray<A>
     }
     const A: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
-        as: readonlySet.schema(A)
+        as: S.array(A)
       })
     )
     const pretty = P.prettyFor(A)
-    expect(pretty.pretty({ a: "a", as: new Set() })).toEqual(
-      `{ "a": "a", "as": new Set([]) }`
+    expect(pretty.pretty({ a: "a", as: [] })).toEqual(
+      `{ "a": "a", "as": [] }`
     )
   })
 

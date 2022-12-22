@@ -16,6 +16,7 @@ import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
 import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
 import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
 import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
+import * as DataNonNaN from "@fp-ts/schema/data/filter/NonNaN"
 import * as DataRegex from "@fp-ts/schema/data/filter/Regex"
 import * as DataStartsWith from "@fp-ts/schema/data/filter/StartsWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
@@ -139,6 +140,11 @@ export const greaterThanOrEqualTo: (
  * @since 1.0.0
  */
 export const int: <A extends number>(self: Schema<A>) => Schema<A> = DataInt.schema
+
+/**
+ * @since 1.0.0
+ */
+export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = DataNonNaN.schema
 
 // ---------------------------------------------
 // combinators
@@ -489,6 +495,9 @@ export class NumberBuilder<A extends number> implements Schema<A> {
   }
   int() {
     return new NumberBuilder(int(this))
+  }
+  nonNaN() {
+    return new NumberBuilder(nonNaN(this))
   }
   filter<B extends A>(
     refinement: Refinement<A, B>,

@@ -23,7 +23,7 @@ describe.concurrent("Chunk", () => {
   })
 
   it("decoder", () => {
-    const schema = _.schema(S.number)
+    const schema = _.schema(S.number.nonNaN())
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty()))
     expect(decoder.decode([1, 2, 3])).toEqual(
@@ -33,8 +33,8 @@ describe.concurrent("Chunk", () => {
     Util.expectWarning(
       decoder,
       [1, NaN, 3],
-      "/1 did not satisfy not(isNaN)",
-      C.fromIterable([1, NaN, 3])
+      `/1 NaN did not satisfy refinement({"type":"NonNaN"})`,
+      C.fromIterable([1, 3])
     )
     Util.expectWarning(
       decoder,
