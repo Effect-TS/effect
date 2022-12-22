@@ -19,9 +19,9 @@ describe.concurrent("LessThan", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.schema(0)(S.number))
-    Util.expectFailure(decoder, 0, "0 did not satisfy LessThan(0)")
-    Util.expectFailure(decoder, 1, "1 did not satisfy LessThan(0)")
-    expect(decoder.decode(-1)).toEqual(D.success(-1))
+    Util.expectSuccess(decoder, -1)
+    Util.expectFailure(decoder, 0, `0 did not satisfy refinement({"exclusiveMaximum":0})`)
+    Util.expectFailure(decoder, 1, `1 did not satisfy refinement({"exclusiveMaximum":0})`)
   })
 
   it("Pretty", () => {

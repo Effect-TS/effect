@@ -7,8 +7,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as Number from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
+import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type { Decoder } from "@fp-ts/schema/Decoder"
 
 /**
  * @since 1.0.0
@@ -494,7 +494,8 @@ export const enums = (
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
-  readonly decode: Decoder<any, any>["decode"]
+  readonly refinement: Predicate<any>
+  readonly declaration: unknown
 }
 
 /**
@@ -502,9 +503,10 @@ export interface Refinement extends Annotated {
  */
 export const refinement = (
   from: AST,
-  decode: Decoder<any, any>["decode"],
+  refinement: Predicate<any>,
+  declaration: unknown,
   annotations: ReadonlyArray<unknown>
-): Refinement => ({ _tag: "Refinement", from, decode, annotations })
+): Refinement => ({ _tag: "Refinement", from, refinement, declaration, annotations })
 
 /**
  * @since 1.0.0

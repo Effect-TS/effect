@@ -19,9 +19,9 @@ describe.concurrent("MinLength", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.schema(1)(S.string))
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    expect(decoder.decode("aa")).toEqual(D.success("aa"))
-    Util.expectFailure(decoder, "", "\"\" did not satisfy MinLength(1)")
+    Util.expectSuccess(decoder, "a")
+    Util.expectSuccess(decoder, "aa")
+    Util.expectFailure(decoder, "", `"" did not satisfy refinement({"minLength":1})`)
   })
 
   it("Pretty", () => {

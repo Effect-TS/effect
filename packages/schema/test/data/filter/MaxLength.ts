@@ -19,9 +19,9 @@ describe.concurrent("MaxLength", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.schema(1)(S.string))
-    expect(decoder.decode("")).toEqual(D.success(""))
-    expect(decoder.decode("a")).toEqual(D.success("a"))
-    Util.expectFailure(decoder, "aa", "\"aa\" did not satisfy MaxLength(1)")
+    Util.expectSuccess(decoder, "")
+    Util.expectSuccess(decoder, "a")
+    Util.expectFailure(decoder, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
   })
 
   it("Pretty", () => {

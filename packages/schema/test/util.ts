@@ -52,31 +52,17 @@ const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
 const format = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Custom":
-      return `${JSON.stringify(e.actual)} ${JSON.stringify(e.config)}`
-    case "LessThan":
-      return `${JSON.stringify(e.actual)} did not satisfy LessThan(${e.max})`
-    case "LessThanOrEqualTo":
-      return `${JSON.stringify(e.actual)} did not satisfy LessThanOrEqualTo(${e.max})`
-    case "GreaterThan":
-      return `${JSON.stringify(e.actual)} did not satisfy GreaterThan(${e.min})`
-    case "GreaterThanOrEqualTo":
-      return `${JSON.stringify(e.actual)} did not satisfy GreaterThanOrEqualTo(${e.min})`
-    case "MaxLength":
-      return `${JSON.stringify(e.actual)} did not satisfy MaxLength(${e.maxLength})`
-    case "MinLength":
-      return `${JSON.stringify(e.actual)} did not satisfy MinLength(${e.minLength})`
-    case "StartsWith":
-      return `${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`
-    case "EndsWith":
-      return `${JSON.stringify(e.actual)} did not satisfy EndsWith(${e.endsWith})`
-    case "Regex":
-      return `${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`
+      return `${JSON.stringify(e.actual)} ${JSON.stringify(e.declaration)}`
     case "NaN":
       return `did not satisfy not(isNaN)`
     case "Finite":
       return `did not satisfy isFinite`
     case "Type":
       return `${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`
+    case "Refinement":
+      return `${JSON.stringify(e.actual)} did not satisfy refinement(${
+        JSON.stringify(e.declaration)
+      })`
     case "Parse":
       return `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
@@ -140,31 +126,17 @@ const toTree = (errors: NonEmptyReadonlyArray<DE.DecodeError>): Tree<string> => 
 const go = (e: DE.DecodeError): Tree<string> => {
   switch (e._tag) {
     case "Custom":
-      return make(`${JSON.stringify(e.actual)} ${JSON.stringify(e.config)}`)
-    case "LessThan":
-      return make(`${JSON.stringify(e.actual)} did not satisfy LessThan(${e.max})`)
-    case "LessThanOrEqualTo":
-      return make(`${JSON.stringify(e.actual)} did not satisfy LessThanOrEqualTo(${e.max})`)
-    case "GreaterThan":
-      return make(`${JSON.stringify(e.actual)} did not satisfy GreaterThan(${e.min})`)
-    case "GreaterThanOrEqualTo":
-      return make(`${JSON.stringify(e.actual)} did not satisfy GreaterThanOrEqualTo(${e.min})`)
-    case "MaxLength":
-      return make(`${JSON.stringify(e.actual)} did not satisfy MaxLength(${e.maxLength})`)
-    case "MinLength":
-      return make(`${JSON.stringify(e.actual)} did not satisfy MinLength(${e.minLength})`)
-    case "StartsWith":
-      return make(`${JSON.stringify(e.actual)} did not satisfy StartsWith(${e.startsWith})`)
-    case "EndsWith":
-      return make(`${JSON.stringify(e.actual)} did not satisfy EndsWith(${e.endsWith})`)
-    case "Regex":
-      return make(`${JSON.stringify(e.actual)} did not satisfy Regex(${e.regex.source})`)
+      return make(`${JSON.stringify(e.actual)} ${JSON.stringify(e.declaration)}`)
     case "NaN":
       return make(`did not satisfy not(isNaN)`)
     case "Finite":
       return make(`did not satisfy isFinite`)
     case "Type":
       return make(`${JSON.stringify(e.actual)} did not satisfy is(${e.expected})`)
+    case "Refinement":
+      return make(
+        `${JSON.stringify(e.actual)} did not satisfy refinement(${JSON.stringify(e.declaration)})`
+      )
     case "Parse":
       return make(
         `${JSON.stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`

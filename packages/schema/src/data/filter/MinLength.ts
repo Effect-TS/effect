@@ -3,7 +3,6 @@
  */
 
 import { jsonSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -14,10 +13,6 @@ export const schema = (
   minLength: number
 ) =>
   <A extends { length: number }>(self: Schema<A>): Schema<A> =>
-    I.refinement(
-      self,
-      (a) => a.length >= minLength ? I.success(a) : I.failure(DE.minLength(minLength, a)),
-      [
-        jsonSchemaAnnotation({ minLength })
-      ]
-    )
+    I.refinement(self, (a): a is A => a.length >= minLength, { minLength }, [
+      jsonSchemaAnnotation({ minLength })
+    ])

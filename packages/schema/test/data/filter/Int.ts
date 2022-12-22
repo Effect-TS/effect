@@ -19,9 +19,9 @@ describe.concurrent("Int", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.schema(S.number))
-    expect(decoder.decode(0)).toEqual(D.success(0))
-    expect(decoder.decode(1)).toEqual(D.success(1))
-    Util.expectFailure(decoder, 0.5, "0.5 did not satisfy is(Int)")
+    Util.expectSuccess(decoder, 0)
+    Util.expectSuccess(decoder, 1)
+    Util.expectFailure(decoder, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
   })
 
   it("Pretty", () => {

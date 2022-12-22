@@ -2,8 +2,6 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
-import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -691,9 +689,7 @@ describe.concurrent("Guard", () => {
     })
 
     it("filter", () => {
-      const schema = S.string.filter((s) =>
-        s.length === 1 ? D.success(s) : D.failure(DE.type("Char", s))
-      )
+      const schema = S.string.filter((s): s is string => s.length === 1, { type: "Char" })
       const guard = G.guardFor(schema)
       expect(guard.is("a")).toEqual(true)
 
@@ -744,9 +740,7 @@ describe.concurrent("Guard", () => {
     })
 
     it("filter", () => {
-      const schema = S.number.filter((n) =>
-        n % 2 === 0 ? D.success(n) : D.failure(DE.type("Even", n))
-      )
+      const schema = S.number.filter((n): n is number => n % 2 === 0, { type: "Even" })
       const guard = G.guardFor(schema)
       expect(guard.is(0)).toEqual(true)
       expect(guard.is(1)).toEqual(false)

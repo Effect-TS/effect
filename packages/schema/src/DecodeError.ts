@@ -14,15 +14,7 @@ export type DecodeError =
   | Enums
   | NaN
   | Finite
-  | MinLength
-  | MaxLength
-  | StartsWith
-  | EndsWith
-  | Regex
-  | LessThan
-  | GreaterThan
-  | LessThanOrEqualTo
-  | GreaterThanOrEqualTo
+  | Refinement
   | Parse
   | Index
   | Key
@@ -36,16 +28,16 @@ export type DecodeError =
  */
 export interface Custom {
   readonly _tag: "Custom"
-  readonly config: unknown
+  readonly declaration: unknown
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const custom = (config: unknown, actual: unknown): Custom => ({
+export const custom = (declaration: unknown, actual: unknown): Custom => ({
   _tag: "Custom",
-  config,
+  declaration,
   actual
 })
 
@@ -128,144 +120,18 @@ export const finite: Finite = { _tag: "Finite" }
 /**
  * @since 1.0.0
  */
-export interface MinLength {
-  readonly _tag: "MinLength"
-  readonly minLength: number
+export interface Refinement {
+  readonly _tag: "Refinement"
+  readonly declaration: unknown
   readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
-export const minLength = (minLength: number, actual: unknown): MinLength => ({
-  _tag: "MinLength",
-  minLength,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface MaxLength {
-  readonly _tag: "MaxLength"
-  readonly maxLength: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const maxLength = (maxLength: number, actual: unknown): MaxLength => ({
-  _tag: "MaxLength",
-  maxLength,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface StartsWith {
-  readonly _tag: "StartsWith"
-  readonly startsWith: string
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const startsWith = (startsWith: string, actual: unknown): StartsWith => ({
-  _tag: "StartsWith",
-  startsWith,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface EndsWith {
-  readonly _tag: "EndsWith"
-  readonly endsWith: string
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const endsWith = (endsWith: string, actual: unknown): EndsWith => ({
-  _tag: "EndsWith",
-  endsWith,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface Regex {
-  readonly _tag: "Regex"
-  readonly regex: RegExp
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const regex = (regex: RegExp, actual: unknown): Regex => ({
-  _tag: "Regex",
-  regex,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface LessThan {
-  readonly _tag: "LessThan"
-  readonly max: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const lessThan = (max: number, actual: unknown): LessThan => ({
-  _tag: "LessThan",
-  max,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface LessThanOrEqualTo {
-  readonly _tag: "LessThanOrEqualTo"
-  readonly max: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const lessThanOrEqualTo = (max: number, actual: unknown): LessThanOrEqualTo => ({
-  _tag: "LessThanOrEqualTo",
-  max,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface GreaterThanOrEqualTo {
-  readonly _tag: "GreaterThanOrEqualTo"
-  readonly min: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const greaterThanOrEqualTo = (min: number, actual: unknown): GreaterThanOrEqualTo => ({
-  _tag: "GreaterThanOrEqualTo",
-  min,
+export const refinement = (declaration: unknown, actual: unknown): Refinement => ({
+  _tag: "Refinement",
+  declaration,
   actual
 })
 
@@ -286,24 +152,6 @@ export const parse = (from: string, to: string, actual: unknown): Parse => ({
   _tag: "Parse",
   from,
   to,
-  actual
-})
-
-/**
- * @since 1.0.0
- */
-export interface GreaterThan {
-  readonly _tag: "GreaterThan"
-  readonly min: number
-  readonly actual: unknown
-}
-
-/**
- * @since 1.0.0
- */
-export const greaterThan = (min: number, actual: unknown): GreaterThan => ({
-  _tag: "GreaterThan",
-  min,
   actual
 })
 

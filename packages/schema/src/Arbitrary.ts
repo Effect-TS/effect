@@ -141,7 +141,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
-          (fc) => type.arbitrary(fc).filter((a) => !I.isFailure(ast.decode(a)))
+          (fc) => type.arbitrary(fc).filter(ast.refinement)
         )
       }
     }

@@ -20,9 +20,14 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
+export type DecodeResult<A> = Validated<DE.DecodeError, A>
+
+/**
+ * @since 1.0.0
+ */
 export interface Decoder<I, A> extends Schema<A> {
   readonly I: (_: I) => void
-  readonly decode: (i: I) => Validated<DE.DecodeError, A>
+  readonly decode: (i: I) => DecodeResult<A>
 }
 
 /**
@@ -370,7 +375,13 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
-          (u) => pipe(type.decode(u), I.flatMap(ast.decode))
+          (u) =>
+            pipe(
+              type.decode(u),
+              I.flatMap((a) =>
+                ast.refinement(a) ? I.success(a) : I.failure(DE.refinement(ast.declaration, a))
+              )
+            )
         )
       }
     }

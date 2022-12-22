@@ -198,7 +198,10 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         )
       case "Refinement": {
         const type = go(ast.from)
-        return make(I.makeSchema(ast), (u): u is any => type.is(u) && !I.isFailure(ast.decode(u)))
+        return make(
+          I.makeSchema(ast),
+          (u): u is any => type.is(u) && ast.refinement(u)
+        )
       }
     }
   }

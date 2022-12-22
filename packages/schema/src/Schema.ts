@@ -5,6 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
@@ -323,9 +324,10 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  * @since 1.0.0
  */
 export const filter = <A, B extends A>(
-  decode: Decoder<A, B>["decode"],
+  refinement: Refinement<A, B>,
+  declaration: unknown,
   annotations: ReadonlyArray<unknown>
-) => (self: Schema<A>): Schema<B> => I.refinement(self, decode, annotations)
+) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, declaration, annotations)
 
 /**
  * @since 1.0.0
@@ -449,10 +451,11 @@ export class StringBuilder<A extends string> implements Schema<A> {
     return new StringBuilder(regex(r)(this))
   }
   filter<B extends A>(
-    decode: Decoder<A, B>["decode"],
+    refinement: Refinement<A, B>,
+    declaration: unknown,
     annotations: ReadonlyArray<unknown> = []
   ) {
-    return new StringBuilder(filter(decode, annotations)(this))
+    return new StringBuilder(filter(refinement, declaration, annotations)(this))
   }
 }
 
@@ -488,10 +491,11 @@ export class NumberBuilder<A extends number> implements Schema<A> {
     return new NumberBuilder(int(this))
   }
   filter<B extends A>(
-    decode: Decoder<A, B>["decode"],
+    refinement: Refinement<A, B>,
+    declaration: unknown,
     annotations: ReadonlyArray<unknown> = []
   ) {
-    return new NumberBuilder(filter(decode, annotations)(this))
+    return new NumberBuilder(filter(refinement, declaration, annotations)(this))
   }
 }
 

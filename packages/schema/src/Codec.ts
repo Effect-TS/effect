@@ -7,6 +7,7 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
@@ -356,9 +357,10 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
  * @since 1.0.0
  */
 export const filter = <A, B extends A>(
-  decode: Decoder<A, B>["decode"],
+  refinement: Refinement<A, B>,
+  declaration: unknown,
   annotations: ReadonlyArray<unknown>
-) => (self: Schema<A>): Codec<B> => codecFor(S.filter(decode, annotations)(self))
+) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, declaration, annotations)(self))
 
 /**
  * @since 1.0.0
@@ -483,10 +485,11 @@ export class StringBuilder<A extends string> extends Codec<A> {
     return regex(r)(this)
   }
   filter<B extends A>(
-    decode: Decoder<A, B>["decode"],
+    refinement: Refinement<A, B>,
+    declaration: unknown,
     annotations: ReadonlyArray<unknown> = []
   ) {
-    return new StringBuilder(S.filter(decode, annotations)(this))
+    return new StringBuilder(S.filter(refinement, declaration, annotations)(this))
   }
 }
 
@@ -519,10 +522,11 @@ export class NumberBuilder<A extends number> extends Codec<A> {
     return int(this)
   }
   filter<B extends A>(
-    decode: Decoder<A, B>["decode"],
+    refinement: Refinement<A, B>,
+    declaration: unknown,
     annotations: ReadonlyArray<unknown> = []
   ) {
-    return new NumberBuilder(S.filter(decode, annotations)(this))
+    return new NumberBuilder(S.filter(refinement, declaration, annotations)(this))
   }
 }
 

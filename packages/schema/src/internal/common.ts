@@ -4,6 +4,7 @@
 
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
@@ -153,9 +154,10 @@ export const typeAlias = (
 /** @internal */
 export const refinement = <A, B extends A>(
   from: Schema<A>,
-  decode: Decoder<A, B>["decode"],
+  refinement: Refinement<A, B>,
+  declaration: unknown,
   annotations: ReadonlyArray<unknown>
-): Schema<B> => makeSchema(AST.refinement(from.ast, decode, annotations))
+): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, declaration, annotations))
 
 const makeLiteral = <Literal extends AST.Literal>(
   value: Literal,

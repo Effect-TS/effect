@@ -3,7 +3,6 @@
  */
 
 import { jsonSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -14,13 +13,6 @@ export const schema = (
   regex: RegExp
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(
-      self,
-      (s) =>
-        regex.test(s) ?
-          I.success(s) :
-          I.failure(DE.regex(regex, s)),
-      [
-        jsonSchemaAnnotation({ regex })
-      ]
-    )
+    I.refinement(self, (a): a is A => regex.test(a), { pattern: regex.toString() }, [
+      jsonSchemaAnnotation({ pattern: regex.toString() })
+    ])
