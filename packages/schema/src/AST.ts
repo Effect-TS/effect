@@ -548,15 +548,11 @@ export const appendRestElement = (
   restElement: AST,
   annotations: Annotated["annotations"] = {}
 ): Tuple => {
-  const rest: RA.NonEmptyReadonlyArray<AST> = pipe(
-    ast.rest,
-    O.match(
-      () => [restElement],
-      // if `ast` already contains a rest element merge them into a union
-      (rest) => [union([...rest, restElement])]
-    )
-  )
-  return tuple(ast.elements, O.some(rest), ast.isReadonly, annotations)
+  if (O.isSome(ast.rest)) {
+    // example: `type A = [...string[], ...number[]]` is illegal
+    throw new Error("A rest element cannot follow another rest element. ts(1265)")
+  }
+  return tuple(ast.elements, O.some([restElement]), ast.isReadonly, annotations)
 }
 
 /**

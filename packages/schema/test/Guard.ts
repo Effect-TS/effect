@@ -504,21 +504,6 @@ describe.concurrent("Guard", () => {
       expect(guard.is(["a", 1, true, "a"])).toEqual(false)
       expect(guard.is(["a", 1, true, "a", true])).toEqual(false)
     })
-
-    it("multiple `rest` calls must result in a union", () => {
-      const schema = pipe(
-        S.tuple(S.string, S.number),
-        S.rest(S.boolean),
-        S.rest(S.string)
-      )
-      const guard = guardFor(schema)
-      expect(guard.is(["a", 1])).toEqual(true)
-      expect(guard.is(["a", 1, true])).toEqual(true)
-      expect(guard.is(["a", 1, true, false])).toEqual(true)
-      expect(guard.is(["a", 1, true, "a"])).toEqual(true)
-      expect(guard.is(["a", 1, true, "a", true])).toEqual(true)
-      expect(guard.is(["a", 1, true, "a", true, 1])).toEqual(false)
-    })
   })
 
   describe.concurrent("extend", () => {

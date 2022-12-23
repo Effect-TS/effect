@@ -73,17 +73,16 @@ describe.concurrent("AST", () => {
       )
     })
 
-    it("multiple `rest` calls must result in a union", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
-      const actual1 = AST.appendRestElement(tuple, numberKeyword)
-      const actual2 = AST.appendRestElement(actual1, booleanKeyword)
-      expect(actual2).toEqual(
-        AST.tuple(
-          [AST.element(stringKeyword, false)],
-          O.some([AST.union([numberKeyword, booleanKeyword])]),
-          true
+    it("multiple `rest` calls must throw", () => {
+      expect(() =>
+        AST.appendRestElement(
+          AST.appendRestElement(
+            AST.tuple([AST.element(stringKeyword, false)], O.none, true),
+            numberKeyword
+          ),
+          booleanKeyword
         )
-      )
+      ).toThrowError(new Error("A rest element cannot follow another rest element. ts(1265)"))
     })
   })
 
