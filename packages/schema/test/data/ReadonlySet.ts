@@ -21,22 +21,15 @@ describe.concurrent("ReadonlySet", () => {
   })
 
   it("decoder", () => {
-    const schema = _.schema(S.number.nonNaN())
+    const schema = _.schema(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(new Set([])))
     expect(decoder.decode([1, 2, 3])).toEqual(
       D.success(new Set([1, 2, 3]))
     )
 
-    Util.expectWarning(
-      decoder,
-      [1, NaN, 3],
-      `/1 NaN did not satisfy refinement({"type":"NonNaN"})`,
-      new Set([1, 3])
-    )
-    Util.expectWarning(decoder, [1, "a"], "/1 \"a\" did not satisfy is(number)", new Set([1]))
-
-    Util.expectFailure(decoder, null, "null did not satisfy is(ReadonlyArray<unknown>)")
+    Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+    Util.expectFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
   it("encoder", () => {

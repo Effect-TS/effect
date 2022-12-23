@@ -198,7 +198,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               for (; i < input.length - tail.length; i++) {
                 const t = head.decode(input[i])
                 if (isFailure(t)) {
-                  es.push(DE.index(i, t.left))
+                  return failures(I.mutableAppend(es, DE.index(i, t.left)))
                 } else {
                   if (isWarning(t)) {
                     es.push(DE.index(i, t.left))
@@ -227,10 +227,10 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               }
             } else {
               // ---------------------------------------------
-              // handle additional indexes
+              // handle unxpected indexes
               // ---------------------------------------------
               for (; i < input.length; i++) {
-                es.push(DE.unexpectedIndex(i))
+                return failures(I.mutableAppend(es, DE.unexpectedIndex(i)))
               }
             }
 
@@ -269,7 +269,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               const decoder = fields[i]
               const t = decoder.decode(input[key])
               if (isFailure(t)) {
-                return failures(I.mutableAppend(es, DE.key(key, t.left))) // bail out on a fatal errors
+                // the input key is present but is not valid, bail out
+                return failures(I.mutableAppend(es, DE.key(key, t.left)))
               } else if (isWarning(t)) {
                 es.push(DE.key(key, t.left))
               }
@@ -287,7 +288,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                 for (const key of ks) {
                   const t = decoder.decode(input[key])
                   if (isFailure(t)) {
-                    es.push(DE.key(key, t.left))
+                    return failures(I.mutableAppend(es, DE.key(key, t.left)))
                   } else {
                     if (isWarning(t)) {
                       es.push(DE.key(key, t.left))
@@ -298,11 +299,15 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               }
             } else {
               // ---------------------------------------------
-              // handle additional keys
+              // handle unexpected keys
               // ---------------------------------------------
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
-                  es.push(DE.unexpectedKey(key))
+                  if (ast.allowUnexpected) {
+                    es.push(DE.unexpectedKey(key))
+                  } else {
+                    return failures(I.mutableAppend(es, DE.unexpectedKey(key)))
+                  }
                 }
               }
             }

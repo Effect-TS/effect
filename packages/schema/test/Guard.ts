@@ -10,11 +10,12 @@ const guardFor = G.guardFor
 describe.concurrent("Guard", () => {
   it("exports", () => {
     expect(G.make).exist
+    expect(G.guardFor).exist
   })
 
   it("never", () => {
     const guard = G.guardFor(S.never)
-    expect(guard.is("a")).toEqual(false)
+    expect(guard.is(1)).toEqual(false)
   })
 
   it("string", () => {
@@ -26,6 +27,9 @@ describe.concurrent("Guard", () => {
   it("number", () => {
     const guard = G.guardFor(S.number)
     expect(guard.is(1)).toEqual(true)
+    expect(guard.is(NaN)).toEqual(true)
+    expect(guard.is(Infinity)).toEqual(true)
+    expect(guard.is(-Infinity)).toEqual(true)
     expect(guard.is("a")).toEqual(false)
   })
 
@@ -38,16 +42,18 @@ describe.concurrent("Guard", () => {
 
   it("bigint", () => {
     const guard = G.guardFor(S.bigint)
-    expect(guard.is(null)).toEqual(false)
     expect(guard.is(0n)).toEqual(true)
+    expect(guard.is(1n)).toEqual(true)
     expect(guard.is(BigInt("1"))).toEqual(true)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(1.2)).toEqual(false)
   })
 
   it("symbol", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const guard = G.guardFor(S.symbol)
     expect(guard.is(a)).toEqual(true)
-    expect(guard.is("a")).toEqual(false)
+    expect(guard.is("@fp-ts/schema/test/a")).toEqual(false)
   })
 
   it("object", () => {
@@ -60,22 +66,20 @@ describe.concurrent("Guard", () => {
     expect(guard.is(true)).toEqual(false)
   })
 
-  describe.concurrent("literal", () => {
-    it("1 member", () => {
-      const schema = S.literal(1)
-      const guard = G.guardFor(schema)
-      expect(guard.is(1)).toEqual(true)
-      expect(guard.is("a")).toEqual(false)
-      expect(guard.is(null)).toEqual(false)
-    })
+  it("literal 1 member", () => {
+    const schema = S.literal(1)
+    const guard = G.guardFor(schema)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(false)
+    expect(guard.is(null)).toEqual(false)
+  })
 
-    it("2 members", () => {
-      const schema = S.literal(1, "a")
-      const guard = G.guardFor(schema)
-      expect(guard.is(1)).toEqual(true)
-      expect(guard.is("a")).toEqual(true)
-      expect(guard.is(null)).toEqual(false)
-    })
+  it("literal 2 members", () => {
+    const schema = S.literal(1, "a")
+    const guard = G.guardFor(schema)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is(null)).toEqual(false)
   })
 
   it("uniqueSymbol", () => {
@@ -87,224 +91,175 @@ describe.concurrent("Guard", () => {
     expect(guard.is("Symbol(@fp-ts/schema/test/a)")).toEqual(false)
   })
 
-  describe.concurrent("enums", () => {
-    it("Numeric enums", () => {
-      enum Fruits {
-        Apple,
-        Banana
-      }
-      const schema = S.enums(Fruits)
-      const guard = G.guardFor(schema)
-      expect(guard.is(Fruits.Apple)).toEqual(true)
-      expect(guard.is(Fruits.Banana)).toEqual(true)
-      expect(guard.is(0)).toEqual(true)
-      expect(guard.is(1)).toEqual(true)
-      expect(guard.is(3)).toEqual(false)
-    })
-
-    it("String enums", () => {
-      enum Fruits {
-        Apple = "apple",
-        Banana = "banana",
-        Cantaloupe = 0
-      }
-      const schema = S.enums(Fruits)
-      const guard = G.guardFor(schema)
-      expect(guard.is(Fruits.Apple)).toEqual(true)
-      expect(guard.is(Fruits.Cantaloupe)).toEqual(true)
-      expect(guard.is("apple")).toEqual(true)
-      expect(guard.is("banana")).toEqual(true)
-      expect(guard.is(0)).toEqual(true)
-      expect(guard.is("Cantaloupe")).toEqual(false)
-    })
-
-    it("Const enums", () => {
-      const Fruits = {
-        Apple: "apple",
-        Banana: "banana",
-        Cantaloupe: 3
-      } as const
-      const schema = S.enums(Fruits)
-      const guard = G.guardFor(schema)
-      expect(guard.is("apple")).toEqual(true)
-      expect(guard.is("banana")).toEqual(true)
-      expect(guard.is(3)).toEqual(true)
-      expect(guard.is("Cantaloupe")).toEqual(false)
-    })
+  it("Numeric enums", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const schema = S.enums(Fruits)
+    const guard = G.guardFor(schema)
+    expect(guard.is(Fruits.Apple)).toEqual(true)
+    expect(guard.is(Fruits.Banana)).toEqual(true)
+    expect(guard.is(0)).toEqual(true)
+    expect(guard.is(1)).toEqual(true)
+    expect(guard.is(3)).toEqual(false)
   })
 
-  describe.concurrent("tuple", () => {
-    it("required element", () => {
-      const schema = S.tuple(S.number)
-      const guard = G.guardFor(schema)
-      expect(guard.is([1])).toEqual(true)
-      expect(guard.is([1, "b"])).toEqual(true)
+  it("String enums", () => {
+    enum Fruits {
+      Apple = "apple",
+      Banana = "banana",
+      Cantaloupe = 0
+    }
+    const schema = S.enums(Fruits)
+    const guard = G.guardFor(schema)
+    expect(guard.is(Fruits.Apple)).toEqual(true)
+    expect(guard.is(Fruits.Cantaloupe)).toEqual(true)
+    expect(guard.is("apple")).toEqual(true)
+    expect(guard.is("banana")).toEqual(true)
+    expect(guard.is(0)).toEqual(true)
+    expect(guard.is("Cantaloupe")).toEqual(false)
+  })
 
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is([])).toEqual(false)
-      expect(guard.is([undefined])).toEqual(false)
-      expect(guard.is(["a"])).toEqual(false)
-    })
+  it("Const enums", () => {
+    const Fruits = {
+      Apple: "apple",
+      Banana: "banana",
+      Cantaloupe: 3
+    } as const
+    const schema = S.enums(Fruits)
+    const guard = G.guardFor(schema)
+    expect(guard.is("apple")).toEqual(true)
+    expect(guard.is("banana")).toEqual(true)
+    expect(guard.is(3)).toEqual(true)
+    expect(guard.is("Cantaloupe")).toEqual(false)
+  })
 
-    it("required element with undefined", () => {
-      const schema = S.tuple(S.union(S.number, S.undefined))
-      const guard = G.guardFor(schema)
-      expect(guard.is([1])).toEqual(true)
-      expect(guard.is([1, "b"])).toEqual(true)
-      expect(guard.is([undefined])).toEqual(true)
+  it("tuple. empty", () => {
+    const schema = S.tuple()
+    const guard = G.guardFor(schema)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is([undefined])).toEqual(true)
+    expect(guard.is([1])).toEqual(true)
 
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is([])).toEqual(false)
-      expect(guard.is(["a"])).toEqual(false)
-    })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({})).toEqual(false)
+  })
 
-    it("optional element", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.number))
-      const guard = G.guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is([1])).toEqual(true)
-      expect(guard.is([1, "b"])).toEqual(true)
+  it("tuple. required element", () => {
+    const schema = S.tuple(S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is([1, "b"])).toEqual(true)
 
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is(["a"])).toEqual(false)
-      expect(guard.is([undefined])).toEqual(false)
-    })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is([])).toEqual(false)
+    expect(guard.is([undefined])).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+  })
 
-    it("optional element with undefined", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
-      const guard = G.guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is([1])).toEqual(true)
-      expect(guard.is([1, "b"])).toEqual(true)
-      expect(guard.is([undefined])).toEqual(true)
+  it("tuple. required element with undefined", () => {
+    const schema = S.tuple(S.union(S.number, S.undefined))
+    const guard = G.guardFor(schema)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is([1, "b"])).toEqual(true)
+    expect(guard.is([undefined])).toEqual(true)
 
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is(["a"])).toEqual(false)
-    })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is([])).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+  })
 
-    it("optional element followed by rest and another element", () => {
-      const schema = pipe(
-        S.tuple(S.string),
-        S.optionalElement(S.number),
-        S.rest(S.string),
-        S.element(S.boolean)
-      )
-      const guard = G.guardFor(schema)
-      expect(guard.is(["a", 1, true])).toEqual(true)
-      expect(guard.is(["a", 1, "b", true])).toEqual(true)
-      expect(guard.is(["a", undefined, true])).toEqual(true)
-      expect(guard.is(["a", undefined, "b", true])).toEqual(true)
-    })
+  it("tuple. optional element", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.number))
+    const guard = G.guardFor(schema)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is([1, "b"])).toEqual(true)
 
-    it("baseline", () => {
-      const schema = S.tuple(S.string, S.number)
-      const guard = G.guardFor(schema)
-      expect(guard.is(["a", 1])).toEqual(true)
-      expect(guard.is([1, 1])).toEqual(false)
-      expect(guard.is(["a", "b"])).toEqual(false)
-    })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+    expect(guard.is([undefined])).toEqual(false)
+  })
 
-    it("empty tuple", () => {
-      const schema = S.tuple()
-      const guard = G.guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-    })
+  it("tuple. optional element with undefined", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+    const guard = G.guardFor(schema)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is([1, "b"])).toEqual(true)
+    expect(guard.is([undefined])).toEqual(true)
 
-    it("optional elements", () => {
-      const schema = S.partial(S.tuple(S.string, S.number))
-      const guard = G.guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is(["a"])).toEqual(true)
-    })
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+  })
 
-    it("array", () => {
-      const schema = S.array(S.string)
-      const guard = guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is(["a"])).toEqual(true)
-      expect(guard.is(["a", 1])).toEqual(false)
-    })
+  it("tuple. e + e?", () => {
+    const schema = pipe(S.tuple(S.string), S.optionalElement(S.number))
+    const guard = G.guardFor(schema)
+    expect(guard.is(["a"])).toEqual(true)
+    expect(guard.is(["a", 1])).toEqual(true)
 
-    it("post rest element", () => {
-      const schema = pipe(S.array(S.number), S.element(S.boolean))
-      const guard = G.guardFor(schema)
-      expect(guard.is([true])).toEqual(true)
-      expect(guard.is([1, true])).toEqual(true)
-      expect(guard.is([1, 2, true])).toEqual(true)
-      expect(guard.is([1, 2, 3, true])).toEqual(true)
+    expect(guard.is([1])).toEqual(false)
+    expect(guard.is(["a", "b"])).toEqual(false)
+  })
 
-      expect(guard.is(["b"])).toEqual(false)
-      expect(guard.is([1])).toEqual(false)
-      expect(guard.is([1, "b"])).toEqual(false)
-      expect(guard.is([1, 2])).toEqual(false)
-      expect(guard.is([1, 2, "b"])).toEqual(false)
-      expect(guard.is([1, 2, 3])).toEqual(false)
-      expect(guard.is([1, 2, 3, "b"])).toEqual(false)
-    })
+  it("tuple. e + r", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number))
+    const guard = G.guardFor(schema)
+    expect(guard.is(["a"])).toEqual(true)
+    expect(guard.is(["a", 1])).toEqual(true)
+    expect(guard.is(["a", 1, 2])).toEqual(true)
 
-    it("post rest elements", () => {
-      const schema = pipe(
-        S.array(S.number),
-        S.element(S.boolean),
-        S.element(S.union(S.string, S.undefined))
-      )
-      const guard = G.guardFor(schema)
-      expect(guard.is([true, "c"])).toEqual(true)
-      expect(guard.is([1, true, "c"])).toEqual(true)
-      expect(guard.is([1, 2, true, "c"])).toEqual(true)
-      expect(guard.is([1, 2, 3, true, "c"])).toEqual(true)
-      expect(guard.is([1, 2, 3, true, undefined])).toEqual(true)
+    expect(guard.is([])).toEqual(false)
+  })
 
-      expect(guard.is([])).toEqual(false)
-      expect(guard.is([true])).toEqual(false)
-      expect(guard.is([1, 2, 3, true])).toEqual(false)
-    })
+  it("tuple. e? + r", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(S.number))
+    const guard = G.guardFor(schema)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is(["a"])).toEqual(true)
+    expect(guard.is(["a", 1])).toEqual(true)
+    expect(guard.is(["a", 1, 2])).toEqual(true)
 
-    it("post rest elements when rest is unknown", () => {
-      const schema = pipe(S.array(S.unknown), S.element(S.boolean))
-      const guard = G.guardFor(schema)
-      expect(guard.is([1, "a", 2, "b", true])).toEqual(true)
-      expect(guard.is([true])).toEqual(true)
-      expect(guard.is([])).toEqual(false)
-    })
+    expect(guard.is([1])).toEqual(false)
+  })
 
-    it("all", () => {
-      const schema = pipe(
-        S.tuple(S.string),
-        S.rest(S.number),
-        S.element(S.boolean)
-      )
-      const guard = G.guardFor(schema)
-      expect(guard.is(["a", true])).toEqual(true)
-      expect(guard.is(["a", 1, true])).toEqual(true)
-      expect(guard.is(["a", 1, 2, true])).toEqual(true)
+  it("tuple. r", () => {
+    const schema = S.array(S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is([])).toEqual(true)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is([1, 2])).toEqual(true)
 
-      expect(guard.is([])).toEqual(false)
-      expect(guard.is(["b"])).toEqual(false)
-    })
+    expect(guard.is(["a"])).toEqual(false)
+    expect(guard.is([1, "a"])).toEqual(false)
+  })
 
-    it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(S.number)
-      const guard = guardFor(schema)
-      expect(guard.is([1])).toEqual(true)
-      expect(guard.is([1, 2])).toEqual(true)
+  it("tuple. r + e", () => {
+    const schema = pipe(S.array(S.string), S.element(S.number))
+    const guard = G.guardFor(schema)
+    expect(guard.is([1])).toEqual(true)
+    expect(guard.is(["a", 1])).toEqual(true)
+    expect(guard.is(["a", "b", 1])).toEqual(true)
 
-      expect(guard.is([])).toEqual(false)
-    })
+    expect(guard.is([])).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+    expect(guard.is([1, 2])).toEqual(false)
+  })
 
-    it("ReadonlyArray<unknown>", () => {
-      const schema = S.array(S.unknown)
-      const guard = guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is(["a", 1, true])).toEqual(true)
-    })
+  it("tuple. e + r + e", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
+    const guard = G.guardFor(schema)
+    expect(guard.is(["a", true])).toEqual(true)
+    expect(guard.is(["a", 1, true])).toEqual(true)
+    expect(guard.is(["a", 1, 2, true])).toEqual(true)
 
-    it("ReadonlyArray<any>", () => {
-      const schema = S.array(S.any)
-      const guard = guardFor(schema)
-      expect(guard.is([])).toEqual(true)
-      expect(guard.is(["a", 1, true])).toEqual(true)
-    })
+    expect(guard.is([])).toEqual(false)
+    expect(guard.is(["a"])).toEqual(false)
+    expect(guard.is([true])).toEqual(false)
+    expect(guard.is(["a", 1])).toEqual(false)
+    expect(guard.is([1, true])).toEqual(false)
   })
 
   describe.concurrent("struct", () => {

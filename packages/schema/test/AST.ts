@@ -141,7 +141,8 @@ describe.concurrent("AST", () => {
             AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {}
+          annotations: {},
+          allowUnexpected: false
         })
       })
 
@@ -154,7 +155,8 @@ describe.concurrent("AST", () => {
             AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {}
+          annotations: {},
+          allowUnexpected: false
         })
       })
 
@@ -167,7 +169,8 @@ describe.concurrent("AST", () => {
             AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {}
+          annotations: {},
+          allowUnexpected: false
         })
       })
 
@@ -180,7 +183,8 @@ describe.concurrent("AST", () => {
             AST.field("a", booleanKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {}
+          annotations: {},
+          allowUnexpected: false
         })
       })
     })

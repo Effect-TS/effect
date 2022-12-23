@@ -167,6 +167,22 @@ export const instanceOf: <A extends typeof Class>(
 /**
  * @since 1.0.0
  */
+export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
+  AST.isStruct(self.ast) ?
+    make({ ...self.ast, allowUnexpected: true }) :
+    self
+
+/**
+ * @since 1.0.0
+ */
+export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
+  AST.isStruct(self.ast) ?
+    make({ ...self.ast, allowUnexpected: false }) :
+    self
+
+/**
+ * @since 1.0.0
+ */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ) => Schema<Infer<Members[number]>> = I.union
@@ -463,7 +479,7 @@ export class StringBuilder<A extends string> implements Schema<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: AST.Annotated["annotations"]
+    annotations: AST.Annotated["annotations"] = {}
   ) {
     return new StringBuilder(filter(refinement, declaration, annotations)(this))
   }
@@ -509,7 +525,7 @@ export class NumberBuilder<A extends number> implements Schema<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: AST.Annotated["annotations"]
+    annotations: AST.Annotated["annotations"] = {}
   ) {
     return new NumberBuilder(filter(refinement, declaration, annotations)(this))
   }

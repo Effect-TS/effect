@@ -364,6 +364,7 @@ export interface Struct extends Annotated {
   readonly _tag: "Struct"
   readonly fields: ReadonlyArray<Field>
   readonly indexSignatures: ReadonlyArray<IndexSignature>
+  readonly allowUnexpected: boolean
 }
 
 const getCardinality = (ast: AST): number => {
@@ -401,12 +402,14 @@ const sortByCardinalityAsc = RA.sort(
 export const struct = (
   fields: ReadonlyArray<Field>,
   indexSignatures: ReadonlyArray<IndexSignature>,
-  annotations: Annotated["annotations"] = {}
+  annotations: Annotated["annotations"] = {},
+  allowUnexpected = false
 ): Struct => ({
   _tag: "Struct",
   fields: sortByCardinalityAsc(fields),
   indexSignatures: sortByCardinalityAsc(indexSignatures),
-  annotations
+  annotations,
+  allowUnexpected
 })
 
 /**
@@ -564,29 +567,18 @@ export const appendElement = (
   newElement: Element,
   annotations: Annotated["annotations"] = {}
 ): Tuple => {
+  if (ast.elements.some((e) => e.isOptional) && !newElement.isOptional) {
+    throw new Error("A required element cannot follow an optional element. ts(1257)")
+  }
   return pipe(
     ast.rest,
     O.match(
-      () => {
-        if (ast.elements.some((e) => e.isOptional) && !newElement.isOptional) {
-          throw new Error("A required element cannot follow an optional element. ts(1257)")
-        }
-        return tuple([...ast.elements, newElement], O.none, ast.isReadonly, annotations)
-      },
+      () => tuple([...ast.elements, newElement], O.none, ast.isReadonly, annotations),
       (rest) => {
         if (newElement.isOptional) {
           throw new Error("An optional element cannot follow a rest element. ts(1266)")
         }
-        return tuple(
-          ast.elements.map((e) =>
-            // adding a post rest element makes all optional elements required
-            // but also adds `undefined` to their type
-            e.isOptional ? element(union([e.type, undefinedKeyword()]), false) : e
-          ),
-          O.some([...rest, newElement.type]),
-          ast.isReadonly,
-          annotations
-        )
+        return tuple(ast.elements, O.some([...rest, newElement.type]), ast.isReadonly, annotations)
       }
     )
   )

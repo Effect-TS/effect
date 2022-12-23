@@ -263,6 +263,17 @@ export const instanceOf = <A extends typeof Class>(
 /**
  * @since 1.0.0
  */
+export const allowUnexpected = <A>(self: Schema<A>): Codec<A> => codecFor(S.allowUnexpected(self))
+
+/**
+ * @since 1.0.0
+ */
+export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
+  codecFor(S.disallowUnexpected(self))
+
+/**
+ * @since 1.0.0
+ */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Codec<Infer<Members[number]>> => codecFor(S.union(...members))
