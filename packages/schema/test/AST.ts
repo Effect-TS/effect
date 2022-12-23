@@ -4,11 +4,11 @@ import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
-const stringKeyword = AST.stringKeyword([])
-const numberKeyword = AST.numberKeyword([])
-const booleanKeyword = AST.booleanKeyword([])
-const undefinedKeyword = AST.undefinedKeyword([])
-const neverKeyword = AST.neverKeyword([])
+const stringKeyword = AST.stringKeyword()
+const numberKeyword = AST.numberKeyword()
+const booleanKeyword = AST.booleanKeyword()
+const undefinedKeyword = AST.undefinedKeyword()
+const neverKeyword = AST.neverKeyword()
 
 describe.concurrent("AST", () => {
   describe.concurrent("partial", () => {
@@ -16,9 +16,9 @@ describe.concurrent("AST", () => {
       it("elements only", () => {
         // type A = [string]
         // type B = Partial<A>
-        const tuple = AST.tuple([AST.element(stringKeyword, false, [])], O.none, true, [])
-        expect(AST.partial(tuple, [])).toEqual(
-          AST.tuple([AST.element(stringKeyword, true, [])], O.none, true, [])
+        const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
+        expect(AST.partial(tuple)).toEqual(
+          AST.tuple([AST.element(stringKeyword, true)], O.none, true)
         )
       })
 
@@ -26,34 +26,30 @@ describe.concurrent("AST", () => {
         // type A = readonly [string, ...Array<number>]
         // type B = Partial<A>
         const tuple = AST.tuple(
-          [AST.element(stringKeyword, false, [])],
+          [AST.element(stringKeyword, false)],
           O.some([numberKeyword]),
-          true,
-          []
+          true
         )
-        expect(AST.partial(tuple, [])).toEqual(
+        expect(AST.partial(tuple)).toEqual(
           AST.tuple(
-            [AST.element(stringKeyword, true, [])],
-            O.some([AST.union([numberKeyword, undefinedKeyword], [])]),
-            true,
-            []
+            [AST.element(stringKeyword, true)],
+            O.some([AST.union([numberKeyword, undefinedKeyword])]),
+            true
           )
         )
       })
 
       it("elements and rest elements", () => {
         const tuple = AST.tuple(
-          [AST.element(stringKeyword, false, [])],
+          [AST.element(stringKeyword, false)],
           O.some([numberKeyword, booleanKeyword]),
-          true,
-          []
+          true
         )
-        expect(AST.partial(tuple, [])).toEqual(
+        expect(AST.partial(tuple)).toEqual(
           AST.tuple(
-            [AST.element(stringKeyword, true, [])],
-            O.some([AST.union([numberKeyword, booleanKeyword, undefinedKeyword], [])]),
-            true,
-            []
+            [AST.element(stringKeyword, true)],
+            O.some([AST.union([numberKeyword, booleanKeyword, undefinedKeyword])]),
+            true
           )
         )
       })
@@ -70,23 +66,22 @@ describe.concurrent("AST", () => {
     */
 
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false, [])], O.none, true, [])
-      const actual = AST.appendRestElement(tuple, numberKeyword, [])
+      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
+      const actual = AST.appendRestElement(tuple, numberKeyword)
       expect(actual).toEqual(
-        AST.tuple([AST.element(stringKeyword, false, [])], O.some([numberKeyword]), true, [])
+        AST.tuple([AST.element(stringKeyword, false)], O.some([numberKeyword]), true)
       )
     })
 
     it("multiple `rest` calls must result in a union", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false, [])], O.none, true, [])
-      const actual1 = AST.appendRestElement(tuple, numberKeyword, [])
-      const actual2 = AST.appendRestElement(actual1, booleanKeyword, [])
+      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
+      const actual1 = AST.appendRestElement(tuple, numberKeyword)
+      const actual2 = AST.appendRestElement(actual1, booleanKeyword)
       expect(actual2).toEqual(
         AST.tuple(
-          [AST.element(stringKeyword, false, [])],
-          O.some([AST.union([numberKeyword, booleanKeyword], [])]),
-          true,
-          []
+          [AST.element(stringKeyword, false)],
+          O.some([AST.union([numberKeyword, booleanKeyword])]),
+          true
         )
       )
     })
@@ -94,45 +89,42 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("appendElement", () => {
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false, [])], O.none, true, [])
-      expect(AST.appendElement(tuple, AST.element(numberKeyword, false, []), [])).toEqual(
+      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
+      expect(AST.appendElement(tuple, AST.element(numberKeyword, false))).toEqual(
         AST.tuple(
-          [AST.element(stringKeyword, false, []), AST.element(numberKeyword, false, [])],
+          [AST.element(stringKeyword, false), AST.element(numberKeyword, false)],
           O.none,
-          true,
-          []
+          true
         )
       )
     })
 
     it("existing rest element", () => {
       const tuple = AST.tuple(
-        [AST.element(stringKeyword, false, [])],
+        [AST.element(stringKeyword, false)],
         O.some([numberKeyword]),
-        true,
-        []
+        true
       )
-      expect(AST.appendElement(tuple, AST.element(booleanKeyword, false, []), [])).toEqual(
+      expect(AST.appendElement(tuple, AST.element(booleanKeyword, false))).toEqual(
         AST.tuple(
-          [AST.element(stringKeyword, false, [])],
+          [AST.element(stringKeyword, false)],
           O.some([numberKeyword, booleanKeyword]),
-          true,
-          []
+          true
         )
       )
     })
 
     it("A required element cannot follow an optional element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, true, [])], O.none, true, [])
-      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, false, []), []))
+      const tuple = AST.tuple([AST.element(stringKeyword, true)], O.none, true)
+      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, false)))
         .toThrowError(
           new Error("A required element cannot follow an optional element. ts(1257)")
         )
     })
 
     it("An optional element cannot follow a rest element", () => {
-      const tuple = AST.tuple([], O.some([stringKeyword]), true, [])
-      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, true, []), [])).toThrowError(
+      const tuple = AST.tuple([], O.some([stringKeyword]), true)
+      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, true))).toThrowError(
         new Error("An optional element cannot follow a rest element. ts(1266)")
       )
     })
@@ -145,11 +137,11 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType("b", []), false, true, []),
-            AST.field("a", stringKeyword, false, true, [])
+            AST.field("b", AST.literalType("b"), false, true),
+            AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: []
+          annotations: {}
         })
       })
 
@@ -158,11 +150,11 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", undefinedKeyword, false, true, []),
-            AST.field("a", stringKeyword, false, true, [])
+            AST.field("b", undefinedKeyword, false, true),
+            AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: []
+          annotations: {}
         })
       })
 
@@ -171,11 +163,11 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", booleanKeyword, false, true, []),
-            AST.field("a", stringKeyword, false, true, [])
+            AST.field("b", booleanKeyword, false, true),
+            AST.field("a", stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: []
+          annotations: {}
         })
       })
 
@@ -184,11 +176,11 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType(null, []), false, true, []),
-            AST.field("a", booleanKeyword, false, true, [])
+            AST.field("b", AST.literalType(null), false, true),
+            AST.field("a", booleanKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: []
+          annotations: {}
         })
       })
     })
@@ -203,7 +195,7 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Union",
           members: [ab.ast, a.ast],
-          annotations: []
+          annotations: {}
         })
       })
 
@@ -214,7 +206,7 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Union",
           members: [ab.ast, a.ast],
-          annotations: []
+          annotations: {}
         })
       })
     })
@@ -299,15 +291,15 @@ describe.concurrent("AST", () => {
     it("type alias", () => {
       const schema = DataOption.schema(S.number)
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true, [])
+        AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true)
       ])
     })
 
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field(0, S.string.ast, false, true, []),
-        AST.field(1, S.number.ast, false, true, [])
+        AST.field(0, S.string.ast, false, true),
+        AST.field(1, S.number.ast, false, true)
       ])
     })
 
@@ -315,8 +307,8 @@ describe.concurrent("AST", () => {
       it("string keys", () => {
         const schema = S.struct({ a: S.string, b: S.number })
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", S.string.ast, false, true, []),
-          AST.field("b", S.number.ast, false, true, [])
+          AST.field("a", S.string.ast, false, true),
+          AST.field("b", S.number.ast, false, true)
         ])
       })
 
@@ -325,8 +317,8 @@ describe.concurrent("AST", () => {
         const b = Symbol.for("@fp-ts/schema/test/b")
         const schema = S.struct({ [a]: S.string, [b]: S.number })
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field(a, S.string.ast, false, true, []),
-          AST.field(b, S.number.ast, false, true, [])
+          AST.field(a, S.string.ast, false, true),
+          AST.field(b, S.number.ast, false, true)
         ])
       })
     })
@@ -338,7 +330,7 @@ describe.concurrent("AST", () => {
           S.struct({ a: S.boolean, c: S.boolean })
         )
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.union([S.string.ast, S.boolean.ast], []), false, true, [])
+          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), false, true)
         ])
       })
 
@@ -348,7 +340,7 @@ describe.concurrent("AST", () => {
           S.struct({ c: S.boolean, a: S.optional(S.boolean) })
         )
         expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.union([S.string.ast, S.boolean.ast], []), true, true, [])
+          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), true, true)
         ])
       })
     })
@@ -366,8 +358,8 @@ describe.concurrent("AST", () => {
           })
       )
       expect(AST.getFields(Category.ast)).toEqual([
-        AST.field("name", S.string.ast, false, true, []),
-        AST.field("categories", AST.tuple([], O.some([Category.ast]), true, []), false, true, [])
+        AST.field("name", S.string.ast, false, true),
+        AST.field("categories", AST.tuple([], O.some([Category.ast]), true), false, true)
       ])
     })
   })

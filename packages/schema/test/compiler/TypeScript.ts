@@ -1,16 +1,18 @@
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import type * as applicative from "@fp-ts/core/typeclass/Applicative"
 import * as covariant from "@fp-ts/core/typeclass/Covariant"
-import { flow, pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import {
   documentationAnnotation,
-  isDocumentationAnnotation
+  DocumentationAnnotationId,
+  getDocumentationAnnotation
 } from "@fp-ts/schema/annotation/DocumentationAnnotation"
 import {
+  getIdentifierAnnotation,
   identifierAnnotation,
-  isIdentifierAnnotation
+  IdentifierAnnotationId
 } from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
@@ -86,19 +88,33 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const tsIdentifier = flow(identifierAnnotation, S.annotation)
+const tsIdentifier = (identifier: string) =>
+  <A>(self: S.Schema<A>): S.Schema<A> =>
+    pipe(
+      self,
+      S.annotations({
+        [IdentifierAnnotationId]: identifierAnnotation(identifier)
+      })
+    )
 
-const getIdentifier = (ast: AST.AST): O.Option<ts.Identifier> =>
+const jsDoc = (text: string) =>
+  <A>(self: S.Schema<A>): S.Schema<A> =>
+    pipe(
+      self,
+      S.annotations({
+        [DocumentationAnnotationId]: documentationAnnotation(text)
+      })
+    )
+
+const getIdentifier = (annotated: AST.Annotated): O.Option<ts.Identifier> =>
   pipe(
-    ast.annotations,
-    RA.findFirst(isIdentifierAnnotation),
+    getIdentifierAnnotation(annotated),
     O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
   )
 
 const getDocumentation = (annotated: AST.Annotated): O.Option<string> =>
   pipe(
-    annotated.annotations,
-    RA.findFirst(isDocumentationAnnotation),
+    getDocumentationAnnotation(annotated),
     O.map((annotation) => annotation.documentation)
   )
 
@@ -805,7 +821,7 @@ describe.concurrent("TypeScript", () => {
     it("struct", () => {
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.annotation(documentationAnnotation("description"))
+        jsDoc("description")
       )
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`/** description */
@@ -817,11 +833,10 @@ describe.concurrent("TypeScript", () => {
     it("fields", () => {
       const schema = S.make(AST.struct(
         [
-          AST.field("a", AST.stringKeyword([]), false, true, [
-            documentationAnnotation("description")
-          ])
+          AST.field("a", AST.stringKeyword(), false, true, {
+            [DocumentationAnnotationId]: documentationAnnotation("description")
+          })
         ],
-        [],
         []
       ))
       const ts = typeScriptFor(schema)

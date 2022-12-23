@@ -5,8 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import type { ArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import { getArbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -24,12 +23,6 @@ export interface Arbitrary<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
-
-const getArbitraryAnnotation = (ast: AST.AST): O.Option<ArbitraryAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isArbitraryAnnotation)
-  )
 
 /**
  * @since 1.0.0

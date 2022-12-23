@@ -8,8 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import type { GuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import { isGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { getGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -25,12 +24,6 @@ export interface Guard<A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
-
-const getGuardAnnotation = (ast: AST.AST): O.Option<GuardAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isGuardAnnotation)
-  )
 
 /**
  * @since 1.0.0

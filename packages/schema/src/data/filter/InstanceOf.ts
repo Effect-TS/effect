@@ -20,4 +20,4 @@ export const schema = <A extends typeof Class>(constructor: A) =>
   (self: Schema<object>): Schema<InstanceType<A>> =>
     I.refinement(self, (a): a is InstanceType<A> => a instanceof constructor, {
       instanceof: constructor
-    }, [])
+    })

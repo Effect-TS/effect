@@ -12,7 +12,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
-import type { AST, Literal } from "@fp-ts/schema/AST"
+import type { Annotated, AST, Literal } from "@fp-ts/schema/AST"
 import type { Class } from "@fp-ts/schema/data/filter/InstanceOf"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
@@ -381,7 +381,7 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
   declaration: unknown,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"]
 ) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, declaration, annotations)(self))
 
 /**
@@ -393,7 +393,7 @@ export const parse = <A, B>(
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
   pretty: Pretty<B>["pretty"],
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"]
 ) =>
   (self: Schema<A>): Codec<B> =>
     codecFor(
@@ -403,15 +403,8 @@ export const parse = <A, B>(
 /**
  * @since 1.0.0
  */
-export const annotation = (
-  annotation: unknown
-) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotation(annotation)(schema))
-
-/**
- * @since 1.0.0
- */
 export const annotations = (
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"]
 ) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotations(annotations)(schema))
 
 /**
@@ -539,7 +532,7 @@ export class StringBuilder<A extends string> extends Codec<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: ReadonlyArray<unknown> = []
+    annotations: Annotated["annotations"] = {}
   ) {
     return new StringBuilder(S.filter(refinement, declaration, annotations)(this))
   }
@@ -582,7 +575,7 @@ export class NumberBuilder<A extends number> extends Codec<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: ReadonlyArray<unknown> = []
+    annotations: Annotated["annotations"] = {}
   ) {
     return new NumberBuilder(S.filter(refinement, declaration, annotations)(this))
   }

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as I from "@fp-ts/schema/internal/common"
 
 /**
  * @since 1.0.0
@@ -16,20 +17,17 @@ export type JSONSchema = {}
  * @since 1.0.0
  */
 export interface JSONSchemaAnnotation {
-  readonly _id: typeof JSONSchemaAnnotationId
   readonly schema: JSONSchema
 }
 
 /**
  * @since 1.0.0
  */
-export const isJSONSchemaAnnotation = (u: unknown): u is JSONSchemaAnnotation =>
-  typeof u === "object" && u !== null && u["_id"] === JSONSchemaAnnotationId
+export const jsonSchemaAnnotation = (schema: JSONSchema): JSONSchemaAnnotation => ({
+  schema
+})
 
 /**
  * @since 1.0.0
  */
-export const jsonSchemaAnnotation = (schema: JSONSchema): JSONSchemaAnnotation => ({
-  _id: JSONSchemaAnnotationId,
-  schema
-})
+export const getJSONSchemaAnnotation = I.getAnnotation<JSONSchemaAnnotation>(JSONSchemaAnnotationId)

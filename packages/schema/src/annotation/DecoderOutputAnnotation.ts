@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Decoder } from "@fp-ts/schema/Decoder"
+import * as I from "@fp-ts/schema/internal/common"
 
 /**
  * @since 1.0.0
@@ -12,21 +13,19 @@ export const DecoderOutputAnnotationId = "@fp-ts/schema/annotation/DecoderOutput
  * @since 1.0.0
  */
 export interface DecoderOutputAnnotation<I, A> {
-  readonly _id: typeof DecoderOutputAnnotationId
   readonly handler: (decoder: Decoder<I, A>) => Decoder<I, A>
 }
 
 /**
  * @since 1.0.0
  */
-export const isDecoderOutputAnnotation = (
-  u: unknown
-): u is DecoderOutputAnnotation<any, any> =>
-  typeof u === "object" && u !== null && u["_id"] === DecoderOutputAnnotationId
+export const decoderOutputAnnotation = <I, A>(
+  handler: (decoder: Decoder<I, A>) => Decoder<I, A>
+): DecoderOutputAnnotation<I, A> => ({ handler })
 
 /**
  * @since 1.0.0
  */
-export const decoderOutputAnnotation = <I, A>(
-  handler: (decoder: Decoder<I, A>) => Decoder<I, A>
-): DecoderOutputAnnotation<I, A> => ({ _id: DecoderOutputAnnotationId, handler })
+export const getDecoderOuputAnnotation = I.getAnnotation<DecoderOutputAnnotation<any, any>>(
+  DecoderOutputAnnotationId
+)

@@ -2,11 +2,14 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
-import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
-import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import {
+  arbitraryAnnotation,
+  ArbitraryAnnotationId
+} from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import { decoderAnnotation, DecoderAnnotationId } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { encoderAnnotation, EncoderAnnotationId } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { guardAnnotation, GuardAnnotationId } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation, PrettyAnnotationId } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -23,8 +26,7 @@ export const parse = <A, B>(
   encode: Encoder<A, B>["encode"],
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
-  pretty: Pretty<B>["pretty"],
-  annotations: ReadonlyArray<unknown>
+  pretty: Pretty<B>["pretty"]
 ): (self: Schema<A>) => Schema<B> => {
   const guard = (self: Guard<A>): Guard<B> => I.makeGuard(schema(self), is)
 
@@ -39,14 +41,13 @@ export const parse = <A, B>(
   const _pretty = (self: Pretty<A>): Pretty<B> => I.makePretty(schema(self), pretty)
 
   const schema = (self: Schema<A>): Schema<B> =>
-    I.typeAlias([self], self, [
-      ...annotations,
-      decoderInputAnnotation(decoder),
-      guardAnnotation(guard),
-      encoderAnnotation(encoder),
-      prettyAnnotation(_pretty),
-      arbitraryAnnotation(_arbitrary)
-    ])
+    I.typeAlias([self], self, {
+      [DecoderAnnotationId]: decoderAnnotation(decoder),
+      [GuardAnnotationId]: guardAnnotation(guard),
+      [EncoderAnnotationId]: encoderAnnotation(encoder),
+      [PrettyAnnotationId]: prettyAnnotation(_pretty),
+      [ArbitraryAnnotationId]: arbitraryAnnotation(_arbitrary)
+    })
 
   return schema
 }

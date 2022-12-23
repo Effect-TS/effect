@@ -39,7 +39,7 @@ export type AST =
  * @since 1.0.0
  */
 export interface Annotated {
-  readonly annotations: ReadonlyArray<unknown>
+  readonly annotations: Record<string | symbol, unknown>
 }
 
 /**
@@ -57,7 +57,7 @@ export interface TypeAliasDeclaration extends Annotated {
 export const typeAliasDeclaration = (
   typeParameters: ReadonlyArray<AST>,
   type: AST,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): TypeAliasDeclaration => ({ _tag: "TypeAliasDeclaration", typeParameters, type, annotations })
 
 /**
@@ -84,7 +84,7 @@ export interface LiteralType extends Annotated {
  */
 export const literalType = (
   literal: Literal,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): LiteralType => ({ _tag: "LiteralType", literal, annotations })
 
 /**
@@ -105,7 +105,7 @@ export interface UniqueSymbol extends Annotated {
  */
 export const uniqueSymbol = (
   symbol: symbol,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
 
 /**
@@ -118,7 +118,9 @@ export interface UndefinedKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const undefinedKeyword = (annotations: ReadonlyArray<unknown>): UndefinedKeyword => ({
+export const undefinedKeyword = (
+  annotations: Annotated["annotations"] = {}
+): UndefinedKeyword => ({
   _tag: "UndefinedKeyword",
   annotations
 })
@@ -133,7 +135,7 @@ export interface VoidKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const voidKeyword = (annotations: ReadonlyArray<unknown>): VoidKeyword => ({
+export const voidKeyword = (annotations: Annotated["annotations"] = {}): VoidKeyword => ({
   _tag: "VoidKeyword",
   annotations
 })
@@ -148,7 +150,7 @@ export interface NeverKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const neverKeyword = (annotations: ReadonlyArray<unknown>): NeverKeyword => ({
+export const neverKeyword = (annotations: Annotated["annotations"] = {}): NeverKeyword => ({
   _tag: "NeverKeyword",
   annotations
 })
@@ -163,7 +165,7 @@ export interface UnknownKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const unknownKeyword = (annotations: ReadonlyArray<unknown>): UnknownKeyword => ({
+export const unknownKeyword = (annotations: Annotated["annotations"] = {}): UnknownKeyword => ({
   _tag: "UnknownKeyword",
   annotations
 })
@@ -178,7 +180,7 @@ export interface AnyKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const anyKeyword = (annotations: ReadonlyArray<unknown>): AnyKeyword => ({
+export const anyKeyword = (annotations: Annotated["annotations"] = {}): AnyKeyword => ({
   _tag: "AnyKeyword",
   annotations
 })
@@ -193,7 +195,7 @@ export interface StringKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const stringKeyword = (annotations: ReadonlyArray<unknown>): StringKeyword => ({
+export const stringKeyword = (annotations: Annotated["annotations"] = {}): StringKeyword => ({
   _tag: "StringKeyword",
   annotations
 })
@@ -208,7 +210,7 @@ export interface NumberKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const numberKeyword = (annotations: ReadonlyArray<unknown>): NumberKeyword => ({
+export const numberKeyword = (annotations: Annotated["annotations"] = {}): NumberKeyword => ({
   _tag: "NumberKeyword",
   annotations
 })
@@ -223,7 +225,7 @@ export interface BooleanKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const booleanKeyword = (annotations: ReadonlyArray<unknown>): BooleanKeyword => ({
+export const booleanKeyword = (annotations: Annotated["annotations"] = {}): BooleanKeyword => ({
   _tag: "BooleanKeyword",
   annotations
 })
@@ -238,7 +240,7 @@ export interface BigIntKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const bigIntKeyword = (annotations: ReadonlyArray<unknown>): BigIntKeyword => ({
+export const bigIntKeyword = (annotations: Annotated["annotations"] = {}): BigIntKeyword => ({
   _tag: "BigIntKeyword",
   annotations
 })
@@ -253,7 +255,7 @@ export interface SymbolKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const symbolKeyword = (annotations: ReadonlyArray<unknown>): SymbolKeyword => ({
+export const symbolKeyword = (annotations: Annotated["annotations"] = {}): SymbolKeyword => ({
   _tag: "SymbolKeyword",
   annotations
 })
@@ -268,7 +270,7 @@ export interface ObjectKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const objectKeyword = (annotations: ReadonlyArray<unknown>): ObjectKeyword => ({
+export const objectKeyword = (annotations: Annotated["annotations"] = {}): ObjectKeyword => ({
   _tag: "ObjectKeyword",
   annotations
 })
@@ -287,7 +289,7 @@ export interface Element extends Annotated {
 export const element = (
   type: AST,
   isOptional: boolean,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Element => ({ type, isOptional, annotations })
 
 /**
@@ -307,7 +309,7 @@ export const tuple = (
   elements: ReadonlyArray<Element>,
   rest: Option<RA.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations })
 
 /**
@@ -333,7 +335,7 @@ export const field = (
   value: AST,
   isOptional: boolean,
   isReadonly: boolean,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Field => ({ key, value, isOptional, isReadonly, annotations })
 
 /**
@@ -352,7 +354,7 @@ export const indexSignature = (
   key: "string" | "symbol",
   value: AST,
   isReadonly: boolean,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): IndexSignature => ({ key, value, isReadonly, annotations })
 
 /**
@@ -399,7 +401,7 @@ const sortByCardinalityAsc = RA.sort(
 export const struct = (
   fields: ReadonlyArray<Field>,
   indexSignatures: ReadonlyArray<IndexSignature>,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Struct => ({
   _tag: "Struct",
   fields: sortByCardinalityAsc(fields),
@@ -444,7 +446,10 @@ const sortByWeightDesc = RA.sort(
 /**
  * @since 1.0.0
  */
-export const union = (candidates: ReadonlyArray<AST>, annotations: ReadonlyArray<unknown>): AST => {
+export const union = (
+  candidates: ReadonlyArray<AST>,
+  annotations: Annotated["annotations"] = {}
+): AST => {
   const uniq = RA.uniq(pipe(
     candidates,
     RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
@@ -477,7 +482,7 @@ export interface Lazy extends Annotated {
 /**
  * @since 1.0.0
  */
-export const lazy = (f: () => AST, annotations: ReadonlyArray<unknown>): Lazy => ({
+export const lazy = (f: () => AST, annotations: Annotated["annotations"] = {}): Lazy => ({
   _tag: "Lazy",
   f,
   annotations
@@ -501,7 +506,7 @@ export interface Enums extends Annotated {
  */
 export const enums = (
   enums: ReadonlyArray<readonly [string, string | number]>,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Enums => ({ _tag: "Enums", enums, annotations })
 
 /**
@@ -521,23 +526,15 @@ export const refinement = (
   from: AST,
   refinement: Predicate<any>,
   declaration: unknown,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, refinement, declaration, annotations })
 
 /**
  * @since 1.0.0
  */
-export const appendAnnotation = (ast: AST, annotation: unknown): AST => ({
+export const annotations = (ast: AST, annotations: Annotated["annotations"] = {}): AST => ({
   ...ast,
-  annotations: pipe(ast.annotations, RA.append(annotation))
-})
-
-/**
- * @since 1.0.0
- */
-export const appendAllAnnotations = (ast: AST, annotations: ReadonlyArray<unknown>): AST => ({
-  ...ast,
-  annotations: pipe(ast.annotations, RA.appendAll(annotations))
+  annotations: { ...ast.annotations, ...annotations }
 })
 
 /**
@@ -546,14 +543,14 @@ export const appendAllAnnotations = (ast: AST, annotations: ReadonlyArray<unknow
 export const appendRestElement = (
   ast: Tuple,
   restElement: AST,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Tuple => {
   const rest: RA.NonEmptyReadonlyArray<AST> = pipe(
     ast.rest,
     O.match(
       () => [restElement],
       // if `ast` already contains a rest element merge them into a union
-      (rest) => [union([...rest, restElement], [])]
+      (rest) => [union([...rest, restElement])]
     )
   )
   return tuple(ast.elements, O.some(rest), ast.isReadonly, annotations)
@@ -565,7 +562,7 @@ export const appendRestElement = (
 export const appendElement = (
   ast: Tuple,
   newElement: Element,
-  annotations: ReadonlyArray<unknown>
+  annotations: Annotated["annotations"] = {}
 ): Tuple => {
   return pipe(
     ast.rest,
@@ -584,7 +581,7 @@ export const appendElement = (
           ast.elements.map((e) =>
             // adding a post rest element makes all optional elements required
             // but also adds `undefined` to their type
-            e.isOptional ? element(union([e.type, undefinedKeyword([])], []), false, []) : e
+            e.isOptional ? element(union([e.type, undefinedKeyword()]), false) : e
           ),
           O.some([...rest, newElement.type]),
           ast.isReadonly,
@@ -623,31 +620,15 @@ export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
 /**
  * @since 1.0.0
  */
-export const pick = (
-  ast: AST,
-  keys: ReadonlyArray<PropertyKey>,
-  annotations: ReadonlyArray<unknown>
-): Struct => {
-  return struct(
-    getFields(ast).filter((field) => keys.includes(field.key)),
-    [],
-    annotations
-  )
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(getFields(ast).filter((field) => keys.includes(field.key)), [])
 }
 
 /**
  * @since 1.0.0
  */
-export const omit = (
-  ast: AST,
-  keys: ReadonlyArray<PropertyKey>,
-  annotations: ReadonlyArray<unknown>
-): Struct => {
-  return struct(
-    getFields(ast).filter((field) => !keys.includes(field.key)),
-    [],
-    annotations
-  )
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(getFields(ast).filter((field) => !keys.includes(field.key)), [])
 }
 
 /**
@@ -661,7 +642,7 @@ export const getFields = (
       return getFields(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
-        field(i, element.type, element.isOptional, ast.isReadonly, [])
+        field(i, element.type, element.isOptional, ast.isReadonly)
       )
     case "Struct":
       return ast.fields
@@ -679,10 +660,9 @@ export const getFields = (
               isOptional = true
             }
             return field.value
-          }),
-          []
+          })
         )
-        return field(key, type, isOptional, isReadonly, [])
+        return field(key, type, isOptional, isReadonly)
       })
     }
     case "Lazy":
@@ -695,30 +675,28 @@ export const getFields = (
 /**
  * @since 1.0.0
  */
-export const partial = (ast: AST, annotations: ReadonlyArray<unknown>): AST => {
+export const partial = (ast: AST): AST => {
   switch (ast._tag) {
     case "TypeAliasDeclaration":
-      return partial(ast.type, annotations)
+      return partial(ast.type)
     case "Tuple":
       return tuple(
-        ast.elements.map((e) => element(e.type, true, [])),
+        ast.elements.map((e) => element(e.type, true)),
         pipe(
           ast.rest,
-          O.map((rest) => [union([...rest, undefinedKeyword([])], [])])
+          O.map((rest) => [union([...rest, undefinedKeyword()])])
         ),
-        ast.isReadonly,
-        annotations
+        ast.isReadonly
       )
     case "Struct":
       return struct(
         ast.fields.map((f) => field(f.key, f.value, true, f.isReadonly, f.annotations)),
-        ast.indexSignatures,
-        annotations
+        ast.indexSignatures
       )
     case "Union":
-      return union(ast.members.map((member) => partial(member, [])), annotations)
+      return union(ast.members.map((member) => partial(member)))
     case "Lazy":
-      return lazy(() => partial(ast.f(), []), annotations)
+      return lazy(() => partial(ast.f()))
     default:
       return ast
   }

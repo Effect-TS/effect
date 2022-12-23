@@ -3,11 +3,14 @@
  */
 import { identity } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
-import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
-import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import {
+  arbitraryAnnotation,
+  ArbitraryAnnotationId
+} from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import { decoderAnnotation, DecoderAnnotationId } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { encoderAnnotation, EncoderAnnotationId } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { guardAnnotation, GuardAnnotationId } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation, PrettyAnnotationId } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type * as S from "@fp-ts/schema/Schema"
@@ -26,13 +29,13 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, [
-  decoderInputAnnotation(() => Decoder),
-  guardAnnotation(() => Guard),
-  encoderAnnotation(() => Encoder),
-  prettyAnnotation(() => Pretty),
-  arbitraryAnnotation(() => Arbitrary)
-])
+export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, {
+  [DecoderAnnotationId]: decoderAnnotation(() => Decoder),
+  [GuardAnnotationId]: guardAnnotation(() => Guard),
+  [EncoderAnnotationId]: encoderAnnotation(() => Encoder),
+  [PrettyAnnotationId]: prettyAnnotation(() => Pretty),
+  [ArbitraryAnnotationId]: arbitraryAnnotation(() => Arbitrary)
+})
 
 const Guard = I.makeGuard<Json>(Schema, I.isJson)
 

@@ -2,7 +2,10 @@
  * @since 1.0.0
  */
 
-import { jsonSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import {
+  jsonSchemaAnnotation,
+  JSONSchemaAnnotationId
+} from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -11,6 +14,6 @@ import type { Schema } from "@fp-ts/schema/Schema"
  */
 export const schema = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a > min, { exclusiveMinimum: min }, [
-      jsonSchemaAnnotation({ exclusiveMinimum: min })
-    ])
+    I.refinement(self, (a): a is A => a > min, { exclusiveMinimum: min }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMinimum: min })
+    })

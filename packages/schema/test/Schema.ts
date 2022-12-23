@@ -26,16 +26,16 @@ describe.concurrent("Schema", () => {
 
   describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
-      expect(S.literal().ast).toEqual(AST.neverKeyword([]))
+      expect(S.literal().ast).toEqual(AST.neverKeyword())
     })
 
     it("should return an unwrapped AST with exactly one literal", () => {
-      expect(S.literal(1).ast).toEqual(AST.literalType(1, []))
+      expect(S.literal(1).ast).toEqual(AST.literalType(1))
     })
 
     it("should return a union with more than one literal", () => {
       expect(S.literal(1, 2).ast).toEqual(
-        AST.union([AST.literalType(1, []), AST.literalType(2, [])], [])
+        AST.union([AST.literalType(1), AST.literalType(2)])
       )
     })
   })
@@ -117,11 +117,10 @@ describe.concurrent("Schema", () => {
               to,
               fields[i].value,
               fields[i].isOptional,
-              fields[i].isReadonly,
-              []
+              fields[i].isReadonly
             )
             return S.make(
-              AST.struct(fields, schema.ast.indexSignatures, [])
+              AST.struct(fields, schema.ast.indexSignatures)
             )
           }
           throw new Error("cannot rename")
@@ -168,11 +167,9 @@ describe.concurrent("Schema", () => {
                 isOptional ? key.substring(0, key.length - 1) : key,
                 fields[key].ast,
                 isOptional,
-                true,
-                []
+                true
               )
             }),
-            [],
             []
           )
         )

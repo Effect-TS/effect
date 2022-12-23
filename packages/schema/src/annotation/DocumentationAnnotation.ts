@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import * as I from "@fp-ts/schema/internal/common"
 
 /**
  * @since 1.0.0
@@ -11,19 +12,19 @@ export const DocumentationAnnotationId = "@fp-ts/schema/annotation/Documentation
  * @since 1.0.0
  */
 export interface DocumentationAnnotation {
-  readonly _id: typeof DocumentationAnnotationId
   readonly documentation: string
 }
 
 /**
  * @since 1.0.0
  */
-export const isDocumentationAnnotation = (u: unknown): u is DocumentationAnnotation =>
-  typeof u === "object" && u !== null && u["_id"] === DocumentationAnnotationId
+export const documentationAnnotation = (
+  documentation: string
+): DocumentationAnnotation => ({ documentation })
 
 /**
  * @since 1.0.0
  */
-export const documentationAnnotation = (
-  documentation: string
-): DocumentationAnnotation => ({ _id: DocumentationAnnotationId, documentation })
+export const getDocumentationAnnotation = I.getAnnotation<DocumentationAnnotation>(
+  DocumentationAnnotationId
+)

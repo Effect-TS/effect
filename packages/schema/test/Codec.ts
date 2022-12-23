@@ -49,7 +49,6 @@ describe.concurrent("Codec", () => {
     expect(C.lazy).exist
     expect(C.filter).exist
     expect(C.parse).exist
-    expect(C.annotation).exist
     expect(C.annotations).exist
 
     expect(C.undefined).exist

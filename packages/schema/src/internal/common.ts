@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
@@ -26,25 +25,22 @@ import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema
 export const success: <A>(a: A) => T.These<never, A> = T.right
 
 /** @internal */
-export const failure = (e: DE.DecodeError): T.These<NonEmptyReadonlyArray<DE.DecodeError>, never> =>
-  T.left([e])
+export const failure = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> => T.left([e])
 
 /** @internal */
 export const failures = (
   es: NonEmptyReadonlyArray<DE.DecodeError>
-): T.These<NonEmptyReadonlyArray<DE.DecodeError>, never> => T.left(es)
+): T.Validated<DE.DecodeError, never> => T.left(es)
 
 /** @internal */
-export const warning = <A>(
-  e: DE.DecodeError,
-  a: A
-): T.These<NonEmptyReadonlyArray<DE.DecodeError>, A> => T.both([e], a)
+export const warning = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
+  T.both([e], a)
 
 /** @internal */
 export const warnings = <A>(
   es: NonEmptyReadonlyArray<DE.DecodeError>,
   a: A
-): T.These<NonEmptyReadonlyArray<DE.DecodeError>, A> => T.both(es, a)
+): T.Validated<DE.DecodeError, A> => T.both(es, a)
 
 /** @internal */
 export const isSuccess = T.isRight
@@ -60,13 +56,6 @@ export const flatMap = T.flatMap
 
 /** @internal */
 export const mapLeft = T.mapLeft
-
-/** @internal */
-export const mapLeftDecoder = (
-  f: (errors: NonEmptyReadonlyArray<DE.DecodeError>) => NonEmptyReadonlyArray<DE.DecodeError>
-) =>
-  <I, A>(self: Decoder<I, A>): Decoder<I, A> =>
-    makeDecoder(self, (i) => pipe(self.decode(i), mapLeft(f)))
 
 /** @internal */
 export const transformResult = <I, A>(
@@ -109,10 +98,8 @@ export const isJson = (u: unknown): u is Json =>
 // ---------------------------------------------
 
 /** @internal */
-export const makeGuard = <A>(
-  schema: Schema<A>,
-  is: Guard<A>["is"]
-): Guard<A> => ({ ast: schema.ast, is }) as any
+export const makeGuard = <A>(schema: Schema<A>, is: Guard<A>["is"]): Guard<A> =>
+  ({ ast: schema.ast, is }) as any
 
 /** @internal */
 export const makeArbitrary = <A>(
@@ -157,7 +144,7 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 export const typeAlias = (
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"] = {}
 ): Schema<any> =>
   makeSchema(AST.typeAliasDeclaration(
     typeParameters.map((tp) => tp.ast),
@@ -170,80 +157,80 @@ export const refinement = <A, B extends A>(
   from: Schema<A>,
   refinement: Refinement<A, B>,
   declaration: unknown,
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"] = {}
 ): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, declaration, annotations))
 
 const makeLiteral = <Literal extends AST.Literal>(
   value: Literal,
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"] = {}
 ): Schema<Literal> => makeSchema(AST.literalType(value, annotations))
 
 /** @internal */
 export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
   ...literals: Literals
-): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal, [])))
+): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
 
 /** @internal */
 export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> =>
-  makeSchema(AST.uniqueSymbol(symbol, []))
+  makeSchema(AST.uniqueSymbol(symbol))
 
 /** @internal */
 export const isUndefined = (u: unknown): u is undefined => u === undefined
 
 /** @internal */
-export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword([]))
+export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword())
 
 /** @internal */
 export const isNever = (_u: unknown): _u is never => false
 
 /** @internal */
-export const never: Schema<never> = makeSchema(AST.neverKeyword([]))
+export const never: Schema<never> = makeSchema(AST.neverKeyword())
 
 /** @internal */
 export const isUnknown = (_u: unknown): _u is unknown => true
 
 /** @internal */
-export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword([]))
+export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword())
 
 /** @internal */
-export const any: Schema<any> = makeSchema(AST.anyKeyword([]))
+export const any: Schema<any> = makeSchema(AST.anyKeyword())
 
 /** @internal */
-export const string: Schema<string> = makeSchema(AST.stringKeyword([]))
+export const string: Schema<string> = makeSchema(AST.stringKeyword())
 
 /** @internal */
-export const number: Schema<number> = makeSchema(AST.numberKeyword([]))
+export const number: Schema<number> = makeSchema(AST.numberKeyword())
 
 /** @internal */
-export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword([]))
+export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword())
 
 /** @internal */
 export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
 
 /** @internal */
-export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword([]))
+export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword())
 
 /** @internal */
 export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
 
 /** @internal */
-export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword([]))
+export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword())
 
 /** @internal */
-export const object: Schema<object> = makeSchema(AST.objectKeyword([]))
+export const object: Schema<object> = makeSchema(AST.objectKeyword())
 
 /** @internal */
 export const isObject = (u: unknown): u is object => typeof u === "object" && u !== null
 
 /** @internal */
-export const _void: Schema<void> = makeSchema(AST.voidKeyword([]))
+export const _void: Schema<void> = makeSchema(AST.voidKeyword())
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
 /** @internal */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast), []))
+): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
 /** @internal */
 export const FieldSchemaId: symbol = Symbol.for("@fp-ts/schema/Schema/Field")
@@ -271,16 +258,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 > =>
   makeSchema(
     AST.struct(
-      ownKeys(fields).map((key) =>
-        AST.field(
-          key,
-          fields[key].ast,
-          isOptional(fields[key]),
-          true,
-          []
-        )
-      ),
-      [],
+      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, isOptional(fields[key]), true)),
       []
     )
   )
@@ -289,39 +267,35 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
 ): Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
-  makeSchema(
-    AST.tuple(elements.map((schema) => AST.element(schema.ast, false, [])), O.none, true, [])
-  )
+  makeSchema(AST.tuple(elements.map((schema) => AST.element(schema.ast, false)), O.none, true))
 
 /** @internal */
-export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast, []))
+export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
-  makeSchema(AST.tuple([], O.some([item.ast]), true, []))
+  makeSchema(AST.tuple([], O.some([item.ast]), true))
 
 /** @internal */
 export const record = <K extends "string" | "symbol", A>(
   key: K,
   value: Schema<A>
 ): Schema<K extends "string" ? { readonly [x: string]: A } : { readonly [x: symbol]: A }> =>
-  makeSchema(
-    AST.struct(
-      [],
-      [AST.indexSignature(key, value.ast, true, [])],
-      []
-    )
-  )
-
-/** @internal */
-export const annotation = (
-  annotation: unknown
-) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.appendAnnotation(self.ast, annotation))
+  makeSchema(AST.struct([], [AST.indexSignature(key, value.ast, true)]))
 
 /** @internal */
 export const annotations = (
-  annotations: ReadonlyArray<unknown>
-) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.appendAllAnnotations(self.ast, annotations))
+  annotations: AST.Annotated["annotations"]
+) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.annotations(self.ast, annotations))
+
+/** @internal */
+export const getAnnotation = <A>(
+  key: string | symbol
+) =>
+  (annotated: AST.Annotated): O.Option<A> =>
+    Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
+      O.some(annotated.annotations[key] as any) :
+      O.none
 
 // ---------------------------------------------
 // general helpers

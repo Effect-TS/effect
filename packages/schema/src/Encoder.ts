@@ -5,9 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import type { EncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { getEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
@@ -26,12 +24,6 @@ export interface Encoder<S, A> extends Schema<A> {
  */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
-
-const getEncoderAnnotation = (ast: AST.AST): O.Option<EncoderAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isEncoderAnnotation)
-  )
 
 /**
  * @since 1.0.0

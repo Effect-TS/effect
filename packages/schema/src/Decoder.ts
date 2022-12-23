@@ -10,10 +10,8 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import type { DecoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
-import { isDecoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
-import type { DecoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
-import { isDecoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
+import { getDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { getDecoderOuputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -78,20 +76,6 @@ export const isFailure = I.isFailure
  */
 export const isWarning = I.isWarning
 
-const getDecoderInputAnnotation = (ast: AST.AST): O.Option<DecoderInputAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isDecoderInputAnnotation)
-  )
-
-const getDecoderOutputAnnotations = (
-  ast: AST.AST
-): ReadonlyArray<DecoderOutputAnnotation<any, any>> =>
-  pipe(
-    ast.annotations,
-    RA.filter(isDecoderOutputAnnotation)
-  )
-
 /**
  * @since 1.0.0
  */
@@ -100,7 +84,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
     switch (ast._tag) {
       case "TypeAliasDeclaration":
         return pipe(
-          getDecoderInputAnnotation(ast),
+          getDecoderAnnotation(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))
@@ -396,8 +380,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   }
 
   let out = go(schema.ast)
-  for (const annotation of getDecoderOutputAnnotations(schema.ast)) {
-    out = annotation.handler(out)
+  const annotation = getDecoderOuputAnnotation(schema.ast)
+  if (O.isSome(annotation)) {
+    out = annotation.value.handler(out)
   }
   return out
 }

@@ -1,8 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
-import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
-import type { JSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import { getJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataInt from "@fp-ts/schema/data/filter/Int"
@@ -62,12 +60,6 @@ type JSONSchema =
   | EnumJSONSchema
   | OneOfJSONSchema
   | ObjectJSONSchema
-
-const getJSONSchemaAnnotation = (ast: AST.AST): O.Option<JSONSchemaAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isJSONSchemaAnnotation)
-  )
 
 const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const go = (ast: AST.AST): JSONSchema => {

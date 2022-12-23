@@ -5,8 +5,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import type { PrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
-import { isPrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import { getPrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -24,12 +23,6 @@ export interface Pretty<A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
-
-const getPrettyAnnotation = (ast: AST.AST): O.Option<PrettyAnnotation> =>
-  pipe(
-    ast.annotations,
-    RA.findFirst(isPrettyAnnotation)
-  )
 
 /**
  * @since 1.0.0

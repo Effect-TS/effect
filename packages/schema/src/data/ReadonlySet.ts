@@ -3,11 +3,14 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
-import { arbitraryAnnotation } from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderInputAnnotation } from "@fp-ts/schema/annotation/DecoderInputAnnotation"
-import { encoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import { guardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
-import { prettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import {
+  arbitraryAnnotation,
+  ArbitraryAnnotationId
+} from "@fp-ts/schema/annotation/ArbitraryAnnotation"
+import { decoderAnnotation, DecoderAnnotationId } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { encoderAnnotation, EncoderAnnotationId } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { guardAnnotation, GuardAnnotationId } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { prettyAnnotation, PrettyAnnotationId } from "@fp-ts/schema/annotation/PrettyAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -48,11 +51,11 @@ export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
   I.typeAlias(
     [item],
     I.struct({}),
-    [
-      decoderInputAnnotation(decoder),
-      guardAnnotation(guard),
-      encoderAnnotation(encoder),
-      prettyAnnotation(pretty),
-      arbitraryAnnotation(arbitrary)
-    ]
+    {
+      [DecoderAnnotationId]: decoderAnnotation(decoder),
+      [GuardAnnotationId]: guardAnnotation(guard),
+      [EncoderAnnotationId]: encoderAnnotation(encoder),
+      [PrettyAnnotationId]: prettyAnnotation(pretty),
+      [ArbitraryAnnotationId]: arbitraryAnnotation(arbitrary)
+    }
   )

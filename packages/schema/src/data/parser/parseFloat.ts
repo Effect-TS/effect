@@ -20,6 +20,5 @@ export const schema: (self: Schema<string>) => Schema<number> = parse(
   String,
   isNumber,
   (fc) => fc.float().filter((n) => !isNaN(n) && isFinite(n)),
-  String,
-  []
+  String
 )

@@ -8,7 +8,10 @@ import type { Option } from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
-import { decoderOutputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
+import {
+  decoderOutputAnnotation,
+  DecoderOutputAnnotationId
+} from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
@@ -77,8 +80,7 @@ export const enums = <A extends { [x: string]: string | number }>(enums: A): Sch
     AST.enums(
       Object.keys(enums).filter(
         (key) => typeof enums[enums[key]] !== "number"
-      ).map((key) => [key, enums[key]]),
-      []
+      ).map((key) => [key, enums[key]])
     )
   )
 
@@ -189,9 +191,8 @@ export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
   make(
     AST.union(
       AST.keyof(schema.ast).map((key) =>
-        typeof key === "symbol" ? AST.uniqueSymbol(key, []) : AST.literalType(key, [])
-      ),
-      []
+        typeof key === "symbol" ? AST.uniqueSymbol(key) : AST.literalType(key)
+      )
     )
   )
 
@@ -208,7 +209,7 @@ export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
 export const rest = <R>(rest: Schema<R>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.appendRestElement(self.ast, rest.ast, []))
+      return make(AST.appendRestElement(self.ast, rest.ast))
     }
     throw new Error("`rest` is not supported on this schema")
   }
@@ -219,7 +220,7 @@ export const rest = <R>(rest: Schema<R>) =>
 export const element = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, AST.element(element.ast, false, []), []))
+      return make(AST.appendElement(self.ast, AST.element(element.ast, false)))
     }
     throw new Error("`element` is not supported on this schema")
   }
@@ -230,7 +231,7 @@ export const element = <E>(element: Schema<E>) =>
 export const optionalElement = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E?]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, AST.element(element.ast, true, []), []))
+      return make(AST.appendElement(self.ast, AST.element(element.ast, true)))
     }
     throw new Error("`optionalElement` is not supported on this schema")
   }
@@ -297,19 +298,19 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> =>
-    make(AST.pick(self.ast, keys, []))
+    make(AST.pick(self.ast, keys))
 
 /**
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> =>
-    make(AST.omit(self.ast, keys, []))
+    make(AST.omit(self.ast, keys))
 
 /**
  * @since 1.0.0
  */
-export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast, []))
+export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast))
 
 /**
  * @since 1.0.0
@@ -323,15 +324,12 @@ export const record: <K extends "string" | "symbol", A>(
 /**
  * @since 1.0.0
  */
-export const extend = <B>(
-  that: Schema<B>
-) =>
+export const extend = <B>(that: Schema<B>) =>
   <A>(self: Schema<A>): Schema<A & B> => {
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
       return make(AST.struct(
         self.ast.fields.concat(that.ast.fields),
-        self.ast.indexSignatures.concat(that.ast.indexSignatures),
-        []
+        self.ast.indexSignatures.concat(that.ast.indexSignatures)
       ))
     }
     throw new Error("`extend` is not supported on this schema")
@@ -348,7 +346,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
   declaration: unknown,
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"]
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, declaration, annotations)
 
 /**
@@ -360,21 +358,14 @@ export const parse: <A, B>(
   is: (u: unknown) => u is B,
   arbitrary: Arbitrary<B>["arbitrary"],
   pretty: Pretty<B>["pretty"],
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"]
 ) => (self: Schema<A>) => Schema<B> = DataParse.parse
 
 /**
  * @since 1.0.0
  */
-export const annotation: (
-  annotation: unknown
-) => <A>(self: Schema<A>) => Schema<A> = I.annotation
-
-/**
- * @since 1.0.0
- */
 export const annotations: (
-  annotations: ReadonlyArray<unknown>
+  annotations: AST.Annotated["annotations"]
 ) => <A>(self: Schema<A>) => Schema<A> = I.annotations
 
 /**
@@ -382,7 +373,10 @@ export const annotations: (
  */
 export const transformDecodeResult = <A>(
   f: (i: unknown, result: DecodeResult<A>) => DecodeResult<A>
-): (self: Schema<A>) => Schema<A> => annotation(decoderOutputAnnotation(I.transformResult(f)))
+): (self: Schema<A>) => Schema<A> =>
+  annotations({
+    [DecoderOutputAnnotationId]: decoderOutputAnnotation(I.transformResult(f))
+  })
 
 /**
  * @since 1.0.0
@@ -514,7 +508,7 @@ export class StringBuilder<A extends string> implements Schema<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: ReadonlyArray<unknown> = []
+    annotations: AST.Annotated["annotations"]
   ) {
     return new StringBuilder(filter(refinement, declaration, annotations)(this))
   }
@@ -560,7 +554,7 @@ export class NumberBuilder<A extends number> implements Schema<A> {
   filter<B extends A>(
     refinement: Refinement<A, B>,
     declaration: unknown,
-    annotations: ReadonlyArray<unknown> = []
+    annotations: AST.Annotated["annotations"]
   ) {
     return new NumberBuilder(filter(refinement, declaration, annotations)(this))
   }
