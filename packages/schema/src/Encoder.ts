@@ -44,27 +44,27 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "Enums":
         return make(I.makeSchema(ast), identity)
       case "UndefinedKeyword":
-        return make(I._undefined, identity)
+        return make(I.makeSchema(ast), identity)
       case "VoidKeyword":
-        return make(I._void, identity)
+        return make(I.makeSchema(ast), identity)
       case "NeverKeyword":
-        return make(I.never, absurd) as any
+        return make<unknown, never>(I.makeSchema(ast), absurd) as any
       case "UnknownKeyword":
-        return make(I.unknown, identity)
+        return make(I.makeSchema(ast), identity)
       case "AnyKeyword":
-        return make(I.any, identity)
+        return make(I.makeSchema(ast), identity)
       case "StringKeyword":
-        return make(I.string, identity)
+        return make(I.makeSchema(ast), identity)
       case "NumberKeyword":
-        return make(I.number, identity)
+        return make(I.makeSchema(ast), identity)
       case "BooleanKeyword":
-        return make(I.boolean, identity)
+        return make(I.makeSchema(ast), identity)
       case "BigIntKeyword":
-        return make(I.bigint, (n) => n.toString())
+        return make(I.makeSchema(ast), (n) => n.toString())
       case "SymbolKeyword":
-        return make(I.bigint, identity)
+        return make(I.makeSchema(ast), identity)
       case "ObjectKeyword":
-        return make(I.object, identity)
+        return make(I.makeSchema(ast), identity)
       case "Tuple":
         return _tuple(
           ast,

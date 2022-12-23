@@ -44,27 +44,27 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       case "UniqueSymbol":
         return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)
       case "UndefinedKeyword":
-        return make(I._undefined, I.isUndefined)
+        return make(I.makeSchema(ast), I.isUndefined)
       case "VoidKeyword":
-        return make(I._void, I.isUndefined)
+        return make(I.makeSchema(ast), I.isUndefined)
       case "NeverKeyword":
-        return make(I.never, I.isNever) as any
+        return make(I.makeSchema(ast), I.isNever) as any
       case "UnknownKeyword":
-        return make(I.unknown, I.isUnknown)
+        return make(I.makeSchema(ast), I.isUnknown)
       case "AnyKeyword":
-        return make(I.any, I.isUnknown)
+        return make(I.makeSchema(ast), I.isUnknown)
       case "StringKeyword":
-        return make(I.string, isString)
+        return make(I.makeSchema(ast), isString)
       case "NumberKeyword":
-        return make(I.number, isNumber)
+        return make(I.makeSchema(ast), isNumber)
       case "BooleanKeyword":
-        return make(I.boolean, isBoolean)
+        return make(I.makeSchema(ast), isBoolean)
       case "BigIntKeyword":
-        return make(I.bigint, I.isBigInt)
+        return make(I.makeSchema(ast), I.isBigInt)
       case "SymbolKeyword":
-        return make(I.symbol, I.isSymbol)
+        return make(I.makeSchema(ast), I.isSymbol)
       case "ObjectKeyword":
-        return make(I.object, I.isObject)
+        return make(I.makeSchema(ast), I.isObject)
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

@@ -7,7 +7,7 @@ import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
+import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
@@ -15,7 +15,7 @@ import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
 import type { Annotated, AST, Literal } from "@fp-ts/schema/AST"
 import type { Class } from "@fp-ts/schema/data/filter/InstanceOf"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
-import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 import { decoderFor } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import { encoderFor } from "@fp-ts/schema/Encoder"
@@ -406,31 +406,6 @@ export const parse = <A, B>(
 export const annotations = (
   annotations: Annotated["annotations"]
 ) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotations(annotations)(schema))
-
-/**
- * @since 1.0.0
- */
-export const transformDecodeResult = <A>(
-  f: (i: unknown, result: DecodeResult<A>) => DecodeResult<A>
-) => (self: Schema<A>): Codec<A> => codecFor(S.transformDecodeResult(f)(self))
-
-/**
- * @since 1.0.0
- */
-export const withError = <A>(
-  f: (i: unknown, errors: NonEmptyReadonlyArray<DecodeError>) => DecodeError
-) => (self: Schema<A>): Codec<A> => codecFor(pipe(self, S.withError(f)))
-
-/**
- * @since 1.0.0
- */
-export const condemn = (predicate: Predicate<DecodeError>) =>
-  <A>(self: Schema<A>): Codec<A> => codecFor(S.condemn(predicate)(self))
-
-/**
- * @since 1.0.0
- */
-export const exact = <A>(self: Schema<A>): Codec<A> => codecFor(S.exact(self))
 
 // ---------------------------------------------
 // data

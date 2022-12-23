@@ -1,6 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as C from "@fp-ts/schema/Codec"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Codec", () => {
@@ -79,22 +78,6 @@ describe.concurrent("Codec", () => {
 
     expect(string).toEqual(`{"firstName":"Michael","lastName":"Arnaldi"}`)
     expect(Person.parseOrThrow(string)).toEqual(person)
-  })
-
-  it("custom error", () => {
-    const schema = pipe(
-      C.string.min(5),
-      C.withError((actual, _errors) =>
-        DE.meta({ message: "Must be 5 or more characters long" }, actual)
-      )
-    )
-    const codec = C.codecFor(schema)
-    Util.expectSuccess(codec, "abcde")
-    Util.expectFailure(
-      codec,
-      "abc",
-      `"abc" did not satisfy {"message":"Must be 5 or more characters long"}`
-    )
   })
 
   it("string", () => {
@@ -401,14 +384,6 @@ describe.concurrent("Codec", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("exact", () => {
-      const loose = C.struct({ a: C.number })
-      Util.expectWarning(loose, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
-      const exact = C.exact(loose)
-      Util.expectSuccess(exact, { a: 1 })
-      Util.expectFailure(exact, { a: 1, b: "b" }, `/b key is unexpected`)
-    })
-
     it("required field", () => {
       const codec = C.struct({ a: C.number })
       Util.expectSuccess(codec, { a: 1 })

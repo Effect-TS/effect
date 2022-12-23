@@ -11,7 +11,7 @@ import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import type * as DE from "@fp-ts/schema/DecodeError"
-import type { Decoder, DecodeResult } from "@fp-ts/schema/Decoder"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
@@ -56,11 +56,6 @@ export const flatMap = T.flatMap
 
 /** @internal */
 export const mapLeft = T.mapLeft
-
-/** @internal */
-export const transformResult = <I, A>(
-  f: (i: I, result: DecodeResult<A>) => DecodeResult<A>
-) => (self: Decoder<I, A>): Decoder<I, A> => makeDecoder(self, (i) => f(i, self.decode(i)))
 
 /** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {

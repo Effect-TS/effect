@@ -43,29 +43,29 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "UniqueSymbol":
         return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))
       case "UndefinedKeyword":
-        return make(I._undefined, (fc) => fc.constant(undefined))
+        return make(I.makeSchema(ast), (fc) => fc.constant(undefined))
       case "VoidKeyword":
-        return make(I._void, (fc) => fc.constant(undefined))
+        return make(I.makeSchema(ast), (fc) => fc.constant(undefined))
       case "NeverKeyword":
-        return make(I.never, () => {
+        return make(I.makeSchema(ast), () => {
           throw new Error("cannot build an Arbitrary for `never`")
         }) as any
       case "UnknownKeyword":
-        return make(I.unknown, (fc) => fc.anything())
+        return make(I.makeSchema(ast), (fc) => fc.anything())
       case "AnyKeyword":
-        return make(I.any, (fc) => fc.anything())
+        return make(I.makeSchema(ast), (fc) => fc.anything())
       case "StringKeyword":
-        return make(I.string, (fc) => fc.string())
+        return make(I.makeSchema(ast), (fc) => fc.string())
       case "NumberKeyword":
-        return make(I.number, (fc) => fc.float())
+        return make(I.makeSchema(ast), (fc) => fc.float())
       case "BooleanKeyword":
-        return make(I.boolean, (fc) => fc.boolean())
+        return make(I.makeSchema(ast), (fc) => fc.boolean())
       case "BigIntKeyword":
-        return make(I.bigint, (fc) => fc.bigInt())
+        return make(I.makeSchema(ast), (fc) => fc.bigInt())
       case "SymbolKeyword":
-        return make(I.symbol, (fc) => fc.string().map((s) => Symbol.for(s)))
+        return make(I.makeSchema(ast), (fc) => fc.string().map((s) => Symbol.for(s)))
       case "ObjectKeyword":
-        return make(I.object, (fc) => fc.object())
+        return make(I.makeSchema(ast), (fc) => fc.object())
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

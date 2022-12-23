@@ -43,32 +43,32 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
       case "UniqueSymbol":
         return make(I.makeSchema(ast), (s) => String(s))
       case "UndefinedKeyword":
-        return make(I._undefined, () => "undefined")
+        return make(I.makeSchema(ast), () => "undefined")
       case "VoidKeyword":
-        return make(I._void, () => "void(0)")
+        return make(I.makeSchema(ast), () => "void(0)")
       case "NeverKeyword":
-        return make(I.never, () => {
+        return make(I.makeSchema(ast), () => {
           throw new Error("cannot pretty print a `never` value")
         }) as any
       case "UnknownKeyword":
-        return make(I.unknown, (u) => JSON.stringify(u, null, 2))
+        return make(I.makeSchema(ast), (u) => JSON.stringify(u, null, 2))
       case "AnyKeyword":
-        return make(I.any, (a) => JSON.stringify(a, null, 2))
+        return make(I.makeSchema(ast), (a) => JSON.stringify(a, null, 2))
       case "StringKeyword":
-        return make(I.string, (s) => JSON.stringify(s))
+        return make(I.makeSchema(ast), (s) => JSON.stringify(s))
       case "NumberKeyword":
         return make(
           I.number,
           (n) => Number.isNaN(n) ? "NaN" : String(n)
         )
       case "BooleanKeyword":
-        return make(I.boolean, (b) => String(b))
+        return make(I.makeSchema(ast), (b) => String(b))
       case "BigIntKeyword":
-        return make(I.boolean, (bi) => `${bi.toString()}n`)
+        return make(I.makeSchema(ast), (bi) => `${bi.toString()}n`)
       case "SymbolKeyword":
-        return make(I.symbol, (s) => String(s))
+        return make(I.makeSchema(ast), (s) => String(s))
       case "ObjectKeyword":
-        return make(I.object, (a) => JSON.stringify(a, null, 2))
+        return make(I.makeSchema(ast), (a) => JSON.stringify(a, null, 2))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

@@ -11,7 +11,6 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
 import { getDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
-import { getDecoderOuputAnnotation } from "@fp-ts/schema/annotation/DecoderOutputAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -104,37 +103,37 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       case "UndefinedKeyword":
         return I.fromRefinement(
-          I._undefined,
+          I.makeSchema(ast),
           I.isUndefined,
           (u) => DE.type("undefined", u)
         )
       case "VoidKeyword":
         return I.fromRefinement(
-          I._void,
+          I.makeSchema(ast),
           I.isUndefined,
           (u) => DE.type("void", u)
         )
       case "NeverKeyword":
         return make(
-          I.never,
+          I.makeSchema(ast),
           (u) => I.failure(DE.type("never", u))
         ) as any
       case "UnknownKeyword":
-        return make(I.unknown, I.success)
+        return make(I.makeSchema(ast), I.success)
       case "AnyKeyword":
-        return make(I.any, I.success)
+        return make(I.makeSchema(ast), I.success)
       case "StringKeyword":
-        return I.fromRefinement(I.string, isString, (u) => DE.type("string", u))
+        return I.fromRefinement(I.makeSchema(ast), isString, (u) => DE.type("string", u))
       case "NumberKeyword":
         return I.makeDecoder(
           I.makeSchema(ast),
           (u) => isNumber(u) ? I.success(u) : I.failure(DE.type("number", u))
         )
       case "BooleanKeyword":
-        return I.fromRefinement(I.boolean, isBoolean, (u) => DE.type("boolean", u))
+        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => DE.type("boolean", u))
       case "BigIntKeyword":
         return I.makeDecoder<unknown, bigint>(
-          I.bigint,
+          I.makeSchema(ast),
           (u) => {
             if (I.isBigInt(u)) {
               return I.success(u)
@@ -150,9 +149,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           }
         )
       case "SymbolKeyword":
-        return I.fromRefinement(I.symbol, I.isSymbol, (u) => DE.type("symbol", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => DE.type("symbol", u))
       case "ObjectKeyword":
-        return I.fromRefinement(I.object, I.isObject, (u) => DE.type("object", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => DE.type("object", u))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -379,12 +378,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
     }
   }
 
-  let out = go(schema.ast)
-  const annotation = getDecoderOuputAnnotation(schema.ast)
-  if (O.isSome(annotation)) {
-    out = annotation.value.handler(out)
-  }
-  return out
+  return go(schema.ast)
 }
 
 const isUnexpectedError = (e: DE.DecodeError) =>
