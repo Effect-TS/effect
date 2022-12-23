@@ -11,10 +11,10 @@ C.void;
 // $ExpectType Codec<undefined>
 C.undefined;
 
-// $ExpectType StringBuilder<string>
+// $ExpectType Codec<string>
 C.string;
 
-// $ExpectType NumberBuilder<number>
+// $ExpectType Codec<number>
 C.number;
 
 // $ExpectType Codec<boolean>
@@ -65,43 +65,43 @@ C.literal(true);
 //
 
 // $ExpectType Codec<string>
-pipe(C.string, C.minLength(1));
+pipe(C.string, C.maxLength(5));
 
 // $ExpectType Codec<string>
-pipe(C.string, C.maxLength(10));
+pipe(C.string, C.minLength(5));
 
-// $ExpectType StringBuilder<string>
-C.string.length(5);
+// $ExpectType Codec<string>
+pipe(C.string, C.length(5));
 
-// $ExpectType StringBuilder<string>
-C.string.regex(/a/);
+// $ExpectType Codec<string>
+pipe(C.string, C.regex(/a/));
 
-// $ExpectType StringBuilder<string>
-C.string.startsWith('a');
+// $ExpectType Codec<string>
+pipe(C.string, C.startsWith('a'));
 
-// $ExpectType StringBuilder<string>
-C.string.endsWith('a');
+// $ExpectType Codec<string>
+pipe(C.string, C.endsWith('a'));
 
-// $ExpectType NumberBuilder<number>
-pipe(C.number, C.lessThan(0));
+// $ExpectType Codec<number>
+pipe(C.number, C.greaterThan(5));
 
-// $ExpectType NumberBuilder<number>
-pipe(C.number, C.lessThanOrEqualTo(0));
+// $ExpectType Codec<number>
+pipe(C.number, C.greaterThanOrEqualTo(5));
 
-// $ExpectType NumberBuilder<number>
-pipe(C.number, C.greaterThan(10));
+// $ExpectType Codec<number>
+pipe(C.number, C.lessThan(5));
 
-// $ExpectType NumberBuilder<number>
-pipe(C.number, C.greaterThanOrEqualTo(10));
+// $ExpectType Codec<number>
+pipe(C.number, C.lessThanOrEqualTo(5));
 
-// $ExpectType NumberBuilder<number>
+// $ExpectType Codec<number>
 pipe(C.number, C.int);
 
-// $ExpectType NumberBuilder<number>
-C.number.nonNaN(); // not NaN
+// $ExpectType Codec<number>
+pipe(C.number, C.nonNaN); // not NaN
 
-// $ExpectType NumberBuilder<number>
-C.number.finite(); // value must be finite, not Infinity or -Infinity
+// $ExpectType Codec<number>
+pipe(C.number, C.finite); // value must be finite, not Infinity or -Infinity
 
 //
 // Native enums

@@ -174,80 +174,81 @@ export const enums = <A extends { [x: string]: string | number }>(
  * @since 1.0.0
  */
 export const minLength = (minLength: number) =>
-  <A extends { length: number }>(self: Schema<A>): Codec<A> =>
-    codecFor(S.minLength(minLength)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.minLength(minLength)(self))
 
 /**
  * @since 1.0.0
  */
 export const maxLength = (maxLength: number) =>
-  <A extends { length: number }>(self: Schema<A>): Codec<A> =>
-    codecFor(S.maxLength(maxLength)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.maxLength(maxLength)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const length = (length: number) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.length(length)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const nonEmpty = <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.nonEmpty(self))
 
 /**
  * @since 1.0.0
  */
 export const startsWith = (startsWith: string) =>
-  <A extends string>(self: Schema<A>): StringBuilder<A> =>
-    new StringBuilder(S.startsWith(startsWith)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.startsWith(startsWith)(self))
 
 /**
  * @since 1.0.0
  */
 export const endsWith = (endsWith: string) =>
-  <A extends string>(self: Schema<A>): StringBuilder<A> =>
-    new StringBuilder(S.endsWith(endsWith)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.endsWith(endsWith)(self))
 
 /**
  * @since 1.0.0
  */
 export const regex = (regex: RegExp) =>
-  <A extends string>(self: Schema<A>): StringBuilder<A> => new StringBuilder(S.regex(regex)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.regex(regex)(self))
 
 /**
  * @since 1.0.0
  */
 export const lessThan = (min: number) =>
-  <A extends number>(self: Schema<A>): NumberBuilder<A> => new NumberBuilder(S.lessThan(min)(self))
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
 
 /**
  * @since 1.0.0
  */
 export const lessThanOrEqualTo = (min: number) =>
-  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-    new NumberBuilder(S.lessThanOrEqualTo(min)(self))
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThanOrEqualTo(min)(self))
 
 /**
  * @since 1.0.0
  */
 export const greaterThan = (max: number) =>
-  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-    new NumberBuilder(S.greaterThan(max)(self))
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThan(max)(self))
 
 /**
  * @since 1.0.0
  */
 export const greaterThanOrEqualTo = (max: number) =>
-  <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-    new NumberBuilder(S.greaterThanOrEqualTo(max)(self))
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
 
 /**
  * @since 1.0.0
  */
-export const int = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-  new NumberBuilder(S.int(self))
+export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.int(self))
 
 /**
  * @since 1.0.0
  */
-export const nonNaN = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-  new NumberBuilder(S.nonNaN(self))
+export const nonNaN = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.nonNaN(self))
 
 /**
  * @since 1.0.0
  */
-export const finite = <A extends number>(self: Schema<A>): NumberBuilder<A> =>
-  new NumberBuilder(S.finite(self))
+export const finite = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.finite(self))
 
 /**
  * @since 1.0.0
@@ -392,7 +393,7 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
   declaration: unknown,
-  annotations: Annotated["annotations"]
+  annotations: Annotated["annotations"] = {}
 ) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, declaration, annotations)(self))
 
 /**
@@ -440,6 +441,16 @@ export {
 /**
  * @since 1.0.0
  */
+export const string: Codec<string> = codecFor(S.string)
+
+/**
+ * @since 1.0.0
+ */
+export const number: Codec<number> = codecFor(S.number)
+
+/**
+ * @since 1.0.0
+ */
 export const boolean: Codec<boolean> = codecFor(S.boolean)
 
 /**
@@ -481,93 +492,3 @@ export const json: Codec<Json.Json> = codecFor(S.json)
  * @since 1.0.0
  */
 export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(S.option(value))
-
-// ---------------------------------------------
-// builders
-// ---------------------------------------------
-
-/**
- * @since 1.0.0
- */
-export class StringBuilder<A extends string> extends Codec<A> {
-  constructor(schema: Schema<A>) {
-    super(schema)
-  }
-
-  max(n: number) {
-    return new StringBuilder(S.maxLength(n)(this))
-  }
-  min(n: number) {
-    return new StringBuilder(S.minLength(n)(this))
-  }
-  length(n: number) {
-    return this.min(n).max(n)
-  }
-  nonEmpty() {
-    return this.min(1)
-  }
-  startsWith(s: string) {
-    return startsWith(s)(this)
-  }
-  endsWith(s: string) {
-    return endsWith(s)(this)
-  }
-  regex(r: RegExp) {
-    return regex(r)(this)
-  }
-  filter<B extends A>(
-    refinement: Refinement<A, B>,
-    declaration: unknown,
-    annotations: Annotated["annotations"] = {}
-  ) {
-    return new StringBuilder(S.filter(refinement, declaration, annotations)(this))
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const string = new StringBuilder(S.string)
-
-/**
- * @since 1.0.0
- */
-export class NumberBuilder<A extends number> extends Codec<A> {
-  constructor(schema: Schema<A>) {
-    super(schema)
-  }
-
-  gt(n: number) {
-    return greaterThan(n)(this)
-  }
-  gte(n: number) {
-    return greaterThanOrEqualTo(n)(this)
-  }
-  lt(n: number) {
-    return lessThan(n)(this)
-  }
-  lte(n: number) {
-    return lessThanOrEqualTo(n)(this)
-  }
-  int() {
-    return int(this)
-  }
-  nonNaN() {
-    return nonNaN(this)
-  }
-  finite() {
-    return finite(this)
-  }
-  filter<B extends A>(
-    refinement: Refinement<A, B>,
-    declaration: unknown,
-    annotations: Annotated["annotations"] = {}
-  ) {
-    return new NumberBuilder(S.filter(refinement, declaration, annotations)(this))
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const number = new NumberBuilder(S.number)

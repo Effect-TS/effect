@@ -15,7 +15,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 export const schema = (
   minLength: number
 ) =>
-  <A extends { length: number }>(self: Schema<A>): Schema<A> =>
+  <A extends string>(self: Schema<A>): Schema<A> =>
     I.refinement(self, (a): a is A => a.length >= minLength, { minLength }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minLength })
     })

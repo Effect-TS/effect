@@ -83,16 +83,25 @@ export const enums = <A extends { [x: string]: string | number }>(enums: A): Sch
 /**
  * @since 1.0.0
  */
-export const minLength: (
-  minLength: number
-) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = DataMinLength.schema
+export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
+  DataMinLength.schema
 
 /**
  * @since 1.0.0
  */
-export const maxLength: (
-  maxLength: number
-) => <A extends { length: number }>(self: Schema<A>) => Schema<A> = DataMaxLength.schema
+export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
+  DataMaxLength.schema
+
+/**
+ * @since 1.0.0
+ */
+export const length = (length: number) =>
+  <A extends string>(self: Schema<A>): Schema<A> => minLength(length)(maxLength(length)(self))
+
+/**
+ * @since 1.0.0
+ */
+export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLength(1)
 
 /**
  * @since 1.0.0
@@ -354,7 +363,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
   declaration: unknown,
-  annotations: AST.Annotated["annotations"]
+  annotations: AST.Annotated["annotations"] = {}
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, declaration, annotations)
 
 /**
@@ -413,6 +422,16 @@ export const any: Schema<any> = I.any
 /**
  * @since 1.0.0
  */
+export const string: Schema<string> = I.string
+
+/**
+ * @since 1.0.0
+ */
+export const number: Schema<number> = I.number
+
+/**
+ * @since 1.0.0
+ */
 export const boolean: Schema<boolean> = I.boolean
 
 /**
@@ -439,99 +458,3 @@ export const json: Schema<Json> = DataJson.Schema
  * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.schema
-
-// ---------------------------------------------
-// builders
-// ---------------------------------------------
-
-/**
- * @since 1.0.0
- */
-export class StringBuilder<A extends string> implements Schema<A> {
-  readonly A!: (_: A) => A
-  readonly ast: AST.AST
-
-  constructor(readonly schema: Schema<A>) {
-    this.ast = schema.ast
-  }
-
-  max(n: number) {
-    return new StringBuilder(maxLength(n)(this))
-  }
-  min(n: number) {
-    return new StringBuilder(minLength(n)(this))
-  }
-  length(n: number) {
-    return this.min(n).max(n)
-  }
-  nonEmpty() {
-    return this.min(1)
-  }
-  startsWith(s: string) {
-    return new StringBuilder(startsWith(s)(this))
-  }
-  endsWith(s: string) {
-    return new StringBuilder(endsWith(s)(this))
-  }
-  regex(r: RegExp) {
-    return new StringBuilder(regex(r)(this))
-  }
-  filter<B extends A>(
-    refinement: Refinement<A, B>,
-    declaration: unknown,
-    annotations: AST.Annotated["annotations"] = {}
-  ) {
-    return new StringBuilder(filter(refinement, declaration, annotations)(this))
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const string = new StringBuilder(I.string)
-
-/**
- * @since 1.0.0
- */
-export class NumberBuilder<A extends number> implements Schema<A> {
-  readonly A!: (_: A) => A
-  readonly ast: AST.AST
-
-  constructor(readonly schema: Schema<A>) {
-    this.ast = schema.ast
-  }
-
-  gt(n: number) {
-    return new NumberBuilder(greaterThan(n)(this))
-  }
-  gte(n: number) {
-    return new NumberBuilder(greaterThanOrEqualTo(n)(this))
-  }
-  lt(n: number) {
-    return new NumberBuilder(lessThan(n)(this))
-  }
-  lte(n: number) {
-    return new NumberBuilder(lessThanOrEqualTo(n)(this))
-  }
-  int() {
-    return new NumberBuilder(int(this))
-  }
-  nonNaN() {
-    return new NumberBuilder(nonNaN(this))
-  }
-  finite() {
-    return new NumberBuilder(finite(this))
-  }
-  filter<B extends A>(
-    refinement: Refinement<A, B>,
-    declaration: unknown,
-    annotations: AST.Annotated["annotations"] = {}
-  ) {
-    return new NumberBuilder(filter(refinement, declaration, annotations)(this))
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const number = new NumberBuilder(I.number)

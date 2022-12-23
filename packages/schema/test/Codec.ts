@@ -627,113 +627,99 @@ describe.concurrent("Codec", () => {
     })
   })
 
-  describe.concurrent("StringBuilder", () => {
-    it("max", () => {
-      const codec = C.string.max(1)
-      Util.expectSuccess(codec, "")
-      Util.expectSuccess(codec, "a")
+  it("maxLength", () => {
+    const codec = pipe(C.string, C.maxLength(1))
+    Util.expectSuccess(codec, "")
+    Util.expectSuccess(codec, "a")
 
-      Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
-    })
-
-    it("min", () => {
-      const codec = C.string.nonEmpty()
-      Util.expectSuccess(codec, "a")
-      Util.expectSuccess(codec, "aa")
-
-      Util.expectFailure(codec, "", `"" did not satisfy refinement({"minLength":1})`)
-    })
-
-    it("length", () => {
-      const codec = C.string.length(1)
-      Util.expectSuccess(codec, "a")
-
-      Util.expectFailure(codec, "", `"" did not satisfy refinement({"minLength":1})`)
-      Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
-    })
-
-    it("startsWith", () => {
-      const codec = C.string.startsWith("a")
-      Util.expectSuccess(codec, "a")
-      Util.expectSuccess(codec, "ab")
-
-      Util.expectFailure(codec, "", `"" did not satisfy refinement({"startsWith":"a"})`)
-      Util.expectFailure(codec, "b", `"b" did not satisfy refinement({"startsWith":"a"})`)
-    })
-
-    it("endsWith", () => {
-      const codec = C.string.endsWith("a")
-      Util.expectSuccess(codec, "a")
-      Util.expectSuccess(codec, "ba")
-
-      Util.expectFailure(codec, "", `"" did not satisfy refinement({"endsWith":"a"})`)
-      Util.expectFailure(codec, "b", `"b" did not satisfy refinement({"endsWith":"a"})`)
-    })
-
-    it("regex", () => {
-      const codec = C.string.regex(/^abb+$/)
-      Util.expectSuccess(codec, "abb")
-      Util.expectSuccess(codec, "abbb")
-
-      Util.expectFailure(codec, "ab", `"ab" did not satisfy refinement({"pattern":"/^abb+$/"})`)
-      Util.expectFailure(codec, "a", `"a" did not satisfy refinement({"pattern":"/^abb+$/"})`)
-    })
-
-    it("filter", () => {
-      const codec = C.string.filter((s): s is string => s.length === 1, { type: "Char" })
-      Util.expectSuccess(codec, "a")
-
-      Util.expectFailure(codec, "", `"" did not satisfy refinement({"type":"Char"})`)
-      Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"type":"Char"})`)
-    })
+    Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
   })
 
-  describe.concurrent("NumberBuilder", () => {
-    it("gt", () => {
-      const codec = C.number.gt(0)
-      Util.expectSuccess(codec, 1)
-    })
+  it("nonEmpty", () => {
+    const codec = pipe(C.string, C.nonEmpty)
+    Util.expectSuccess(codec, "a")
+    Util.expectSuccess(codec, "aa")
 
-    it("gte", () => {
-      const codec = C.number.gte(0)
-      Util.expectSuccess(codec, 0)
-      Util.expectSuccess(codec, 1)
+    Util.expectFailure(codec, "", `"" did not satisfy refinement({"minLength":1})`)
+  })
 
-      Util.expectFailure(codec, -1, `-1 did not satisfy refinement({"minimum":0})`)
-    })
+  it("length", () => {
+    const codec = pipe(C.string, C.length(1))
+    Util.expectSuccess(codec, "a")
 
-    it("lt", () => {
-      const codec = C.number.lt(0)
-      Util.expectSuccess(codec, -1)
+    Util.expectFailure(codec, "", `"" did not satisfy refinement({"minLength":1})`)
+    Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
+  })
 
-      Util.expectFailure(codec, 0, `0 did not satisfy refinement({"exclusiveMaximum":0})`)
-      Util.expectFailure(codec, 1, `1 did not satisfy refinement({"exclusiveMaximum":0})`)
-    })
+  it("startsWith", () => {
+    const codec = pipe(C.string, C.startsWith("a"))
+    Util.expectSuccess(codec, "a")
+    Util.expectSuccess(codec, "ab")
 
-    it("lte", () => {
-      const codec = C.number.lte(0)
-      Util.expectSuccess(codec, -1)
-      Util.expectSuccess(codec, 0)
+    Util.expectFailure(codec, "", `"" did not satisfy refinement({"startsWith":"a"})`)
+    Util.expectFailure(codec, "b", `"b" did not satisfy refinement({"startsWith":"a"})`)
+  })
 
-      Util.expectFailure(codec, 1, `1 did not satisfy refinement({"maximum":0})`)
-    })
+  it("endsWith", () => {
+    const codec = pipe(C.string, C.endsWith("a"))
+    Util.expectSuccess(codec, "a")
+    Util.expectSuccess(codec, "ba")
 
-    it("int", () => {
-      const codec = C.number.int()
-      Util.expectSuccess(codec, 0)
-      Util.expectSuccess(codec, 1)
+    Util.expectFailure(codec, "", `"" did not satisfy refinement({"endsWith":"a"})`)
+    Util.expectFailure(codec, "b", `"b" did not satisfy refinement({"endsWith":"a"})`)
+  })
 
-      Util.expectFailure(codec, 1.2, `1.2 did not satisfy refinement({"type":"integer"})`)
-    })
+  it("regex", () => {
+    const codec = pipe(C.string, C.regex(/^abb+$/))
+    Util.expectSuccess(codec, "abb")
+    Util.expectSuccess(codec, "abbb")
 
-    it("filter", () => {
-      const codec = C.number.filter((n): n is number => n % 2 === 0, { type: "Even" })
-      Util.expectSuccess(codec, 0)
-      Util.expectSuccess(codec, 2)
-      Util.expectSuccess(codec, 4)
+    Util.expectFailure(codec, "ab", `"ab" did not satisfy refinement({"pattern":"/^abb+$/"})`)
+    Util.expectFailure(codec, "a", `"a" did not satisfy refinement({"pattern":"/^abb+$/"})`)
+  })
 
-      Util.expectFailure(codec, 1, `1 did not satisfy refinement({"type":"Even"})`)
-      Util.expectFailure(codec, 3, `3 did not satisfy refinement({"type":"Even"})`)
-    })
+  it("filter", () => {
+    const codec = pipe(C.string, C.filter((s): s is string => s.length === 1, { type: "Char" }))
+    Util.expectSuccess(codec, "a")
+
+    Util.expectFailure(codec, "", `"" did not satisfy refinement({"type":"Char"})`)
+    Util.expectFailure(codec, "aa", `"aa" did not satisfy refinement({"type":"Char"})`)
+  })
+
+  it("greaterThan", () => {
+    const codec = pipe(C.number, C.greaterThan(0))
+    Util.expectSuccess(codec, 1)
+  })
+
+  it("greaterThanOrEqualTo", () => {
+    const codec = pipe(C.number, C.greaterThanOrEqualTo(0))
+    Util.expectSuccess(codec, 0)
+    Util.expectSuccess(codec, 1)
+
+    Util.expectFailure(codec, -1, `-1 did not satisfy refinement({"minimum":0})`)
+  })
+
+  it("lessThan", () => {
+    const codec = pipe(C.number, C.lessThan(0))
+    Util.expectSuccess(codec, -1)
+
+    Util.expectFailure(codec, 0, `0 did not satisfy refinement({"exclusiveMaximum":0})`)
+    Util.expectFailure(codec, 1, `1 did not satisfy refinement({"exclusiveMaximum":0})`)
+  })
+
+  it("lessThanOrEqualTo", () => {
+    const codec = pipe(C.number, C.lessThanOrEqualTo(0))
+    Util.expectSuccess(codec, -1)
+    Util.expectSuccess(codec, 0)
+
+    Util.expectFailure(codec, 1, `1 did not satisfy refinement({"maximum":0})`)
+  })
+
+  it("int", () => {
+    const codec = pipe(C.number, C.int)
+    Util.expectSuccess(codec, 0)
+    Util.expectSuccess(codec, 1)
+
+    Util.expectFailure(codec, 1.2, `1.2 did not satisfy refinement({"type":"integer"})`)
   })
 })
