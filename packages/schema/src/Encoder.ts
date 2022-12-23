@@ -3,8 +3,8 @@
  */
 
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
-import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import { getEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -65,12 +65,48 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         return make(I.makeSchema(ast), identity)
       case "ObjectKeyword":
         return make(I.makeSchema(ast), identity)
-      case "Tuple":
-        return _tuple(
-          ast,
-          ast.elements.map((e) => go(e.type)),
-          pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        return make(
+          I.makeSchema(ast),
+          (input: ReadonlyArray<unknown>) => {
+            const output: Array<any> = []
+            let i = 0
+            // ---------------------------------------------
+            // handle elements
+            // ---------------------------------------------
+            for (; i < elements.length; i++) {
+              if (input.length < i + 1) {
+                if (ast.elements[i].isOptional) {
+                  continue
+                }
+              } else {
+                output.push(elements[i].encode(input[i]))
+              }
+            }
+            // ---------------------------------------------
+            // handle rest element
+            // ---------------------------------------------
+            if (O.isSome(rest)) {
+              const head = RA.headNonEmpty(rest.value)
+              const tail = RA.tailNonEmpty(rest.value)
+              for (; i < input.length - tail.length; i++) {
+                output.push(head.encode(input[i]))
+              }
+              // ---------------------------------------------
+              // handle post rest elements
+              // ---------------------------------------------
+              for (let j = 0; j < tail.length; j++) {
+                i += j
+                output.push(tail[j].encode(input[i]))
+              }
+            }
+
+            return output
+          }
         )
+      }
       case "Struct":
         return _struct(
           ast,
@@ -88,46 +124,6 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
 
   return go(schema.ast)
 }
-
-const _tuple = (
-  ast: AST.Tuple,
-  elements: ReadonlyArray<Encoder<any, any>>,
-  oRest: Option<Encoder<any, any>>
-): Encoder<any, any> =>
-  make(
-    I.makeSchema(ast),
-    (input: ReadonlyArray<unknown>) => {
-      const output: Array<any> = []
-      let i = 0
-      // ---------------------------------------------
-      // handle elements
-      // ---------------------------------------------
-      for (; i < elements.length; i++) {
-        // ---------------------------------------------
-        // handle optional elements
-        // ---------------------------------------------
-        if (ast.elements[i].isOptional && input[i] === undefined) {
-          if (i < input.length) {
-            output[i] = undefined
-          }
-        } else {
-          const encoder = elements[i]
-          output[i] = encoder.encode(input[i])
-        }
-      }
-      // ---------------------------------------------
-      // handle rest element
-      // ---------------------------------------------
-      if (O.isSome(oRest)) {
-        const encoder = oRest.value
-        for (; i < input.length; i++) {
-          output[i] = encoder.encode(input[i])
-        }
-      }
-
-      return output
-    }
-  )
 
 const _struct = (
   ast: AST.Struct,

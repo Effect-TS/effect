@@ -84,55 +84,94 @@ describe.concurrent("Encoder", () => {
     })
   })
 
-  describe.concurrent("tuple", () => {
-    it("required element", () => {
-      const schema = S.tuple(S.number)
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode([1])).toStrictEqual([1])
-      const x = [1, "b"] as any
-      expect(encoder.encode(x)).toStrictEqual([1])
-    })
+  it("tuple. empty", () => {
+    const schema = S.tuple()
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([])).toEqual([])
+  })
 
-    it("required element with undefined", () => {
-      const schema = S.tuple(S.union(S.number, S.undefined))
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode([1])).toStrictEqual([1])
-      expect(encoder.encode([undefined])).toStrictEqual([undefined])
-      const x = [1, "b"] as any
-      expect(encoder.encode(x)).toStrictEqual([1])
-    })
+  it("tuple. required element", () => {
+    const schema = S.tuple(NumberFromString)
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    const x = [1, "b"] as any
+    expect(encoder.encode(x)).toStrictEqual(["1"])
+  })
 
-    it("optional element", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.number))
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode([])).toStrictEqual([])
-      expect(encoder.encode([1])).toStrictEqual([1])
-      const x = [1, "b"] as any
-      expect(encoder.encode(x)).toStrictEqual([1])
-    })
+  it("tuple. required element with undefined", () => {
+    const schema = S.tuple(S.union(NumberFromString, S.undefined))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    expect(encoder.encode([undefined])).toStrictEqual([undefined])
+    const x = [1, "b"] as any
+    expect(encoder.encode(x)).toStrictEqual(["1"])
+  })
 
-    it("optional element with undefined", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode([])).toStrictEqual([])
-      expect(encoder.encode([1])).toStrictEqual([1])
-      const x = [1, "b"] as any
-      expect(encoder.encode(x)).toStrictEqual([1])
-      expect(encoder.encode([undefined])).toStrictEqual([undefined])
-    })
+  it("tuple. optional element", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(NumberFromString))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([])).toStrictEqual([])
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    const x = [1, "b"] as any
+    expect(encoder.encode(x)).toStrictEqual(["1"])
+  })
 
-    it("NumberFromString", () => {
-      const schema = S.tuple(S.string, NumberFromString)
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode(["a", 1])).toEqual(["a", "1"])
-    })
+  it("tuple. optional element with undefined", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.union(NumberFromString, S.undefined)))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([])).toStrictEqual([])
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    const x = [1, "b"] as any
+    expect(encoder.encode(x)).toStrictEqual(["1"])
+    expect(encoder.encode([undefined])).toStrictEqual([undefined])
+  })
 
-    it("rest element", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.rest(NumberFromString))
-      const encoder = E.encoderFor(schema)
-      expect(encoder.encode(["a", 1])).toEqual(["a", 1])
-      expect(encoder.encode(["a", 1, 2])).toEqual(["a", 1, "2"])
-    })
+  it("tuple. e + e?", () => {
+    const schema = pipe(S.tuple(S.string), S.optionalElement(NumberFromString))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode(["a"])).toStrictEqual(["a"])
+    expect(encoder.encode(["a", 1])).toStrictEqual(["a", "1"])
+  })
+
+  it("tuple. e + r", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(NumberFromString))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode(["a"])).toStrictEqual(["a"])
+    expect(encoder.encode(["a", 1])).toStrictEqual(["a", "1"])
+    expect(encoder.encode(["a", 1, 2])).toStrictEqual(["a", "1", "2"])
+  })
+
+  it("tuple. e? + r", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(NumberFromString))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([])).toStrictEqual([])
+    expect(encoder.encode(["a"])).toStrictEqual(["a"])
+    expect(encoder.encode(["a", 1])).toStrictEqual(["a", "1"])
+    expect(encoder.encode(["a", 1, 2])).toStrictEqual(["a", "1", "2"])
+  })
+
+  it("tuple. r", () => {
+    const schema = S.array(NumberFromString)
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([])).toStrictEqual([])
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    expect(encoder.encode([1, 2])).toStrictEqual(["1", "2"])
+  })
+
+  it("tuple. r + e", () => {
+    const schema = pipe(S.array(S.string), S.element(NumberFromString))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode([1])).toStrictEqual(["1"])
+    expect(encoder.encode(["a", 1])).toStrictEqual(["a", "1"])
+    expect(encoder.encode(["a", "b", 1])).toStrictEqual(["a", "b", "1"])
+  })
+
+  it("tuple. e + r + e", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(NumberFromString), S.element(S.boolean))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode(["a", true])).toStrictEqual(["a", true])
+    expect(encoder.encode(["a", 1, true])).toStrictEqual(["a", "1", true])
+    expect(encoder.encode(["a", 1, 2, true])).toStrictEqual(["a", "1", "2", true])
   })
 
   describe.concurrent("struct", () => {
