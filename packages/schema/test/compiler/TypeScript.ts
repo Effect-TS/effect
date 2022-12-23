@@ -695,32 +695,32 @@ describe.concurrent("TypeScript", () => {
 }`])
     })
 
-    it("{ readonly [x: string]: unknown }", () => {
-      const schema = S.stringIndexSignature(S.unknown)
+    it("record(string, unknown)", () => {
+      const schema = S.record("string", S.unknown)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: unknown;
 }`])
     })
 
-    it("{ readonly [x: string]: any }", () => {
-      const schema = S.stringIndexSignature(S.any)
+    it("record(string, any)", () => {
+      const schema = S.record("string", S.any)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: any;
 }`])
     })
 
-    it("stringIndexSignature", () => {
-      const schema = S.stringIndexSignature(S.string)
+    it("record(string, string)", () => {
+      const schema = S.record("string", S.string)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: string;
 }`])
     })
 
-    it("symbolIndexSignature", () => {
-      const schema = S.symbolIndexSignature(S.string)
+    it("record(symbol, string)", () => {
+      const schema = S.record("symbol", S.string)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: symbol]: string;
@@ -736,7 +736,8 @@ describe.concurrent("TypeScript", () => {
           c: S.number
         }),
         S.extend(
-          S.stringIndexSignature(
+          S.record(
+            "string",
             pipe(
               S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d")),
               tsIdentifier("d")

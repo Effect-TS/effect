@@ -357,14 +357,11 @@ export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.par
 /**
  * @since 1.0.0
  */
-export const stringIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [x: string]: A }> =>
-  codecFor(S.stringIndexSignature(value))
-
-/**
- * @since 1.0.0
- */
-export const symbolIndexSignature = <A>(value: Schema<A>): Codec<{ readonly [x: symbol]: A }> =>
-  codecFor(S.symbolIndexSignature(value))
+export const record = <K extends "string" | "symbol", A>(
+  key: K,
+  value: Schema<A>
+): Codec<K extends "string" ? { readonly [x: string]: A } : { readonly [x: symbol]: A }> =>
+  codecFor(S.record(key, value))
 
 /**
  * @since 1.0.0

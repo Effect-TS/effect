@@ -208,13 +208,13 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
-  it("stringIndexSignature", () => {
-    const schema = S.stringIndexSignature(S.string)
+  it("record(string, string)", () => {
+    const schema = S.record("string", S.string)
     property(schema)
   })
 
-  it("symbolIndexSignature", () => {
-    const schema = S.symbolIndexSignature(S.string)
+  it("record(symbol, string)", () => {
+    const schema = S.record("symbol", S.string)
     property(schema)
   })
 

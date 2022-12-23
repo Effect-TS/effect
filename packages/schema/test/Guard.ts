@@ -356,9 +356,9 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: "a" })).toEqual(false)
     })
 
-    it("stringIndexSignature", () => {
+    it("record(string, string)", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
-      const schema = S.stringIndexSignature(S.string)
+      const schema = S.record("string", S.string)
       const guard = G.guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({})).toEqual(true)
@@ -370,10 +370,10 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ [a]: 1, b: "b" })).toEqual(true)
     })
 
-    it("symbolIndexSignature", () => {
+    it("record(symbol, string)", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
       const b = Symbol.for("@fp-ts/schema/test/b")
-      const schema = S.symbolIndexSignature(S.string)
+      const schema = S.record("symbol", S.string)
       const guard = G.guardFor(schema)
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({})).toEqual(true)
@@ -579,10 +579,10 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: "a" })).toEqual(false)
     })
 
-    it("stringIndexSignature", () => {
+    it("record(string, string)", () => {
       const schema = pipe(
         S.struct({ a: S.string }),
-        S.extend(S.stringIndexSignature(S.string))
+        S.extend(S.record("string", S.string))
       )
       const guard = guardFor(schema)
       expect(guard.is({ a: "a" })).toEqual(true)

@@ -44,8 +44,7 @@ describe.concurrent("Codec", () => {
     expect(C.pick).exist
     expect(C.omit).exist
     expect(C.partial).exist
-    expect(C.stringIndexSignature).exist
-    expect(C.symbolIndexSignature).exist
+    expect(C.record).exist
     expect(C.extend).exist
     expect(C.lazy).exist
     expect(C.filter).exist
@@ -482,8 +481,8 @@ describe.concurrent("Codec", () => {
       )
     })
 
-    it("stringIndexSignature", () => {
-      const codec = C.stringIndexSignature(C.struct({ a: C.number }))
+    it("record(string, { a: number })", () => {
+      const codec = C.record("string", C.struct({ a: C.number }))
       Util.expectSuccess(codec, {})
       Util.expectSuccess(codec, { a: { a: 1 } })
 
@@ -500,9 +499,9 @@ describe.concurrent("Codec", () => {
       })
     })
 
-    it("symbolIndexSignature", () => {
+    it("record(symbol, { a: number })", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
-      const codec = C.symbolIndexSignature(C.struct({ a: C.number }))
+      const codec = C.record("symbol", C.struct({ a: C.number }))
       Util.expectSuccess(codec, {})
       Util.expectSuccess(codec, { [a]: { a: 1 } })
 
@@ -535,10 +534,10 @@ describe.concurrent("Codec", () => {
       Util.expectSuccess(codec, {})
     })
 
-    it("extend stringIndexSignature", () => {
+    it("extend record(string, string)", () => {
       const codec = pipe(
         C.struct({ a: C.string }),
-        C.extend(C.stringIndexSignature(C.string))
+        C.extend(C.record("string", C.string))
       )
       Util.expectSuccess(codec, { a: "a" })
       Util.expectSuccess(codec, { a: "a", b: "b" })

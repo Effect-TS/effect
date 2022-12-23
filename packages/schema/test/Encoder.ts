@@ -172,21 +172,21 @@ describe.concurrent("Encoder", () => {
       expect(encoder.encode({ a: undefined })).toStrictEqual({ a: undefined })
     })
 
-    it("extend stringIndexSignature", () => {
+    it("extend record(string, NumberFromString)", () => {
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.extend(S.stringIndexSignature(NumberFromString))
+        S.extend(S.record("string", NumberFromString))
       )
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
       expect(encoder.encode({ a: 1, b: 1 })).toEqual({ a: 1, b: "1" })
     })
 
-    it("extend symbolIndexSignature", () => {
+    it("extend record(symbol, NumberFromString)", () => {
       const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.extend(S.symbolIndexSignature(NumberFromString))
+        S.extend(S.record("symbol", NumberFromString))
       )
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })

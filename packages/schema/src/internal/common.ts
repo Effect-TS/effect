@@ -301,11 +301,14 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
   makeSchema(AST.tuple([], O.some([item.ast]), true, []))
 
 /** @internal */
-export const stringIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x: string]: A }> =>
+export const record = <K extends "string" | "symbol", A>(
+  key: K,
+  value: Schema<A>
+): Schema<K extends "string" ? { readonly [x: string]: A } : { readonly [x: symbol]: A }> =>
   makeSchema(
     AST.struct(
       [],
-      [AST.indexSignature("string", value.ast, true, [])],
+      [AST.indexSignature(key, value.ast, true, [])],
       []
     )
   )

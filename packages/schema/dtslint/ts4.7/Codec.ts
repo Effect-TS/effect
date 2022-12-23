@@ -187,18 +187,14 @@ pipe(C.struct({ a: C.string,  b: C.number }), C.omit('a'));
 C.partial(C.struct({ a: C.string,  b: C.number }));
 
 //
-// String index signature
+// Records
 //
 
 // $ExpectType Codec<{ readonly [x: string]: string; }>
-C.stringIndexSignature(C.string)
-
-//
-// Symbol index signature
-//
+C.record('string', C.string)
 
 // $ExpectType Codec<{ readonly [x: symbol]: string; }>
-C.symbolIndexSignature(C.string)
+C.record('symbol', C.string)
 
 //
 // Extend
@@ -208,7 +204,7 @@ C.symbolIndexSignature(C.string)
 pipe(
   C.struct({ a: C.string, b: C.string }),
   C.extend(C.struct({ c: C.boolean })), // <= you can add more fields
-  C.extend(C.stringIndexSignature(C.string)) // <= you can add more index signatures
+  C.extend(C.record('string', C.string)) // <= you can add more index signatures
 );
 
 //

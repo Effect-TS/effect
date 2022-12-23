@@ -353,8 +353,8 @@ describe("jsonSchemaFor", () => {
     })
   })
 
-  it("stringIndexSignature", () => {
-    const schema = S.stringIndexSignature(S.string)
+  it("record(string)", () => {
+    const schema = S.record("string", S.string)
     assertFalse(schema, null)
     assertTrue(schema, {})
     assertTrue(schema, { a: "a" })

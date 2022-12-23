@@ -314,20 +314,11 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 /**
  * @since 1.0.0
  */
-export const stringIndexSignature: <A>(value: Schema<A>) => Schema<{ readonly [x: string]: A }> =
-  I.stringIndexSignature
-
-/**
- * @since 1.0.0
- */
-export const symbolIndexSignature = <A>(value: Schema<A>): Schema<{ readonly [x: symbol]: A }> =>
-  make(
-    AST.struct(
-      [],
-      [AST.indexSignature("symbol", value.ast, true, [])],
-      []
-    )
-  )
+export const record: <K extends "string" | "symbol", A>(
+  key: K,
+  value: Schema<A>
+) => Schema<K extends "string" ? { readonly [x: string]: A } : { readonly [x: symbol]: A }> =
+  I.record
 
 /**
  * @since 1.0.0
