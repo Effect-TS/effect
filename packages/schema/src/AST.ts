@@ -300,6 +300,7 @@ export interface Tuple extends Annotated {
   readonly elements: ReadonlyArray<Element>
   readonly rest: Option<RA.NonEmptyReadonlyArray<AST>>
   readonly isReadonly: boolean
+  readonly allowUnexpected: boolean
 }
 
 /**
@@ -309,8 +310,9 @@ export const tuple = (
   elements: ReadonlyArray<Element>,
   rest: Option<RA.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
-  annotations: Annotated["annotations"] = {}
-): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations })
+  annotations: Annotated["annotations"] = {},
+  allowUnexpected = false
+): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations, allowUnexpected })
 
 /**
  * @since 1.0.0

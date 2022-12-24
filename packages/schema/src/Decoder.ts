@@ -227,10 +227,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               }
             } else {
               // ---------------------------------------------
-              // handle unxpected indexes
+              // handle unexpected indexes
               // ---------------------------------------------
               for (; i < input.length; i++) {
-                return failures(I.mutableAppend(es, DE.unexpectedIndex(i)))
+                if (ast.allowUnexpected) {
+                  es.push(DE.unexpectedIndex(i))
+                } else {
+                  return failures(I.mutableAppend(es, DE.unexpectedIndex(i)))
+                }
               }
             }
 
@@ -251,7 +255,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               return failure(DE.type("{ readonly [x: string]: unknown }", input))
             }
             const output: any = {}
-            const processedKeys: any = {}
+            const expectedKeys: any = {}
             const es: Array<DE.DecodeError> = []
             // ---------------------------------------------
             // handle fields
@@ -259,7 +263,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             for (let i = 0; i < fields.length; i++) {
               const field = ast.fields[i]
               const key = field.key
-              processedKeys[key] = null
+              expectedKeys[key] = null
               if (!Object.prototype.hasOwnProperty.call(input, key)) {
                 if (field.isOptional) {
                   continue
@@ -302,7 +306,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // handle unexpected keys
               // ---------------------------------------------
               for (const key of I.ownKeys(input)) {
-                if (!(Object.prototype.hasOwnProperty.call(processedKeys, key))) {
+                if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
                   if (ast.allowUnexpected) {
                     es.push(DE.unexpectedKey(key))
                   } else {

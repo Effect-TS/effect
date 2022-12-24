@@ -134,14 +134,14 @@ const _struct = (
     I.makeSchema(ast),
     (input: { readonly [x: string | symbol]: unknown }) => {
       const output: any = {}
-      const processedKeys: any = {}
+      const expectedKeys: any = {}
       // ---------------------------------------------
       // handle fields
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
         const key = field.key
-        processedKeys[key] = null
+        expectedKeys[key] = null
         if (!Object.prototype.hasOwnProperty.call(input, key) && field.isOptional) {
           continue
         }
@@ -158,7 +158,7 @@ const _struct = (
           const encoder = indexSignatures[i]
           const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
           for (const key of ks) {
-            if (!(key in processedKeys)) {
+            if (!(key in expectedKeys)) {
               output[key] = encoder.encode(input[key])
             }
           }

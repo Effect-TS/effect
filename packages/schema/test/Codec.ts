@@ -387,10 +387,30 @@ describe.concurrent("Codec", () => {
     Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
   })
 
+  it("tuple. allowUnexpected = true", () => {
+    const codec = C.allowUnexpected(C.tuple(C.number))
+    Util.expectSuccess(codec, [1])
+    Util.expectWarning(codec, [1, "b"], `/1 index is unexpected`, [1])
+  })
+
+  it("tuple. allowUnexpected = true + r", () => {
+    const codec = C.allowUnexpected(pipe(C.tuple(C.number), C.rest(C.string)))
+    Util.expectSuccess(codec, [1])
+    Util.expectSuccess(codec, [1, "b"])
+  })
+
   it("struct. allowUnexpected = true", () => {
     const codec = C.allowUnexpected(C.struct({ a: C.number }))
     Util.expectSuccess(codec, { a: 1 })
     Util.expectWarning(codec, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
+  })
+
+  it("struct. allowUnexpected = true + index signature", () => {
+    const codec = C.allowUnexpected(
+      pipe(C.struct({ a: C.number }), C.extend(C.record("string", C.unknown)))
+    )
+    Util.expectSuccess(codec, { a: 1 })
+    Util.expectSuccess(codec, { a: 1, b: "b" })
   })
 
   it("struct. key warnings", () => {

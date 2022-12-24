@@ -178,7 +178,7 @@ export const instanceOf: <A extends typeof Class>(
  * @since 1.0.0
  */
 export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
-  AST.isStruct(self.ast) ?
+  AST.isStruct(self.ast) || AST.isTuple(self.ast) ?
     make({ ...self.ast, allowUnexpected: true }) :
     self
 
