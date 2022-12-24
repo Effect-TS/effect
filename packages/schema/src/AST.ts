@@ -521,7 +521,7 @@ export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
   readonly refinement: Predicate<any>
-  readonly declaration: unknown
+  readonly meta: unknown
 }
 
 /**
@@ -530,9 +530,9 @@ export interface Refinement extends Annotated {
 export const refinement = (
   from: AST,
   refinement: Predicate<any>,
-  declaration: unknown,
+  meta: unknown,
   annotations: Annotated["annotations"] = {}
-): Refinement => ({ _tag: "Refinement", from, refinement, declaration, annotations })
+): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
 
 /**
  * @since 1.0.0

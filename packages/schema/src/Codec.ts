@@ -392,9 +392,9 @@ export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
  */
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
-  declaration: unknown,
+  meta: unknown,
   annotations: Annotated["annotations"] = {}
-) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, declaration, annotations)(self))
+) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, meta, annotations)(self))
 
 /**
  * @since 1.0.0

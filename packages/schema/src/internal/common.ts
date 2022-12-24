@@ -151,9 +151,9 @@ export const typeAlias = (
 export const refinement = <A, B extends A>(
   from: Schema<A>,
   refinement: Refinement<A, B>,
-  declaration: unknown,
+  meta: unknown,
   annotations: AST.Annotated["annotations"] = {}
-): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, declaration, annotations))
+): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, meta, annotations))
 
 const makeLiteral = <Literal extends AST.Literal>(
   value: Literal,
