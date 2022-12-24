@@ -7,23 +7,23 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("NonNaN", () => {
   it("property tests", () => {
-    Util.property(_.schema(S.number))
+    Util.property(_.nonNaN(S.number))
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.schema(S.number))
+    const guard = G.guardFor(_.nonNaN(S.number))
     expect(guard.is(1)).toEqual(true)
     expect(guard.is(NaN)).toEqual(false)
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.schema(S.number))
+    const decoder = D.decoderFor(_.nonNaN(S.number))
     Util.expectSuccess(decoder, 1)
     Util.expectFailure(decoder, NaN, `NaN did not satisfy refinement({"type":"NonNaN"})`)
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.schema(S.number))
+    const pretty = P.prettyFor(_.nonNaN(S.number))
     expect(pretty.pretty(1)).toEqual("1")
     expect(pretty.pretty(NaN)).toEqual("NaN")
   })

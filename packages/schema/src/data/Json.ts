@@ -29,7 +29,7 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
 /**
  * @since 1.0.0
  */
-export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, {
+export const json: S.Schema<Json> = I.typeAlias([], JsonSchema, {
   [DecoderAnnotationId]: decoderAnnotation(() => Decoder),
   [GuardAnnotationId]: guardAnnotation(() => Guard),
   [EncoderAnnotationId]: encoderAnnotation(() => Encoder),
@@ -37,12 +37,12 @@ export const Schema: S.Schema<Json> = I.typeAlias([], JsonSchema, {
   [ArbitraryAnnotationId]: arbitraryAnnotation(() => Arbitrary)
 })
 
-const Guard = I.makeGuard<Json>(Schema, I.isJson)
+const Guard = I.makeGuard<Json>(json, I.isJson)
 
-const Decoder = I.fromRefinement<Json>(Schema, I.isJson, (u) => DE.type("Json", u))
+const Decoder = I.fromRefinement<Json>(json, I.isJson, (u) => DE.type("Json", u))
 
-const Encoder = I.makeEncoder<unknown, Json>(Schema, identity)
+const Encoder = I.makeEncoder<unknown, Json>(json, identity)
 
-const Arbitrary = I.makeArbitrary<Json>(Schema, (fc) => fc.jsonValue().map((json) => json as Json))
+const Arbitrary = I.makeArbitrary<Json>(json, (fc) => fc.jsonValue().map((json) => json as Json))
 
-const Pretty = I.makePretty<Json>(Schema, (json) => JSON.stringify(json))
+const Pretty = I.makePretty<Json>(json, (json) => JSON.stringify(json))

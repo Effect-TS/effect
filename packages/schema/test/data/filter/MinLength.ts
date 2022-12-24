@@ -7,25 +7,25 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("MinLength", () => {
   it("property tests", () => {
-    Util.property(_.schema(0)(S.string))
+    Util.property(_.minLength(0)(S.string))
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.schema(1)(S.string))
+    const guard = G.guardFor(_.minLength(1)(S.string))
     expect(guard.is("")).toEqual(false)
     expect(guard.is("a")).toEqual(true)
     expect(guard.is("aa")).toEqual(true)
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.schema(1)(S.string))
+    const decoder = D.decoderFor(_.minLength(1)(S.string))
     Util.expectSuccess(decoder, "a")
     Util.expectSuccess(decoder, "aa")
     Util.expectFailure(decoder, "", `"" did not satisfy refinement({"minLength":1})`)
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.schema(0)(S.string))
+    const pretty = P.prettyFor(_.minLength(0)(S.string))
     expect(pretty.pretty("a")).toEqual(`"a"`)
   })
 })

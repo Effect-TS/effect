@@ -12,7 +12,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const schema = (
+export const regex = (
   regex: RegExp
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>

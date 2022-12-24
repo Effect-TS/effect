@@ -358,7 +358,7 @@ describe.concurrent("Guard", () => {
       const schema: S.Schema<Category> = S.lazy<Category>(() =>
         S.struct({
           name: S.string,
-          categories: DataReadonlySet.schema(schema)
+          categories: DataReadonlySet.readonlySet(schema)
         })
       )
       const guard = G.guardFor(schema)
@@ -387,13 +387,13 @@ describe.concurrent("Guard", () => {
       const schemaA: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          bs: DataReadonlySet.schema(schemaB)
+          bs: DataReadonlySet.readonlySet(schemaB)
         })
       )
       const schemaB: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
-          as: DataReadonlySet.schema(schemaA)
+          as: DataReadonlySet.readonlySet(schemaA)
         })
       )
       const A = G.guardFor(schemaA)
@@ -418,7 +418,7 @@ describe.concurrent("Guard", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: DataReadonlySet.schema(A)
+          as: DataReadonlySet.readonlySet(A)
         })
       )
       const schemaB = pipe(A, S.pick("as"))
@@ -436,7 +436,7 @@ describe.concurrent("Guard", () => {
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: DataReadonlySet.schema(A)
+          as: DataReadonlySet.readonlySet(A)
         })
       )
       const schemaB = pipe(A, S.omit("a"))
@@ -537,7 +537,7 @@ describe.concurrent("Guard", () => {
 
   describe.concurrent("partial", () => {
     it("type alias", () => {
-      const schema = S.partial(DataOption.schema(S.number))
+      const schema = S.partial(DataOption.option(S.number))
       const guard = guardFor(schema)
       expect(guard.is(O.none)).toEqual(true)
       expect(guard.is(O.some(1))).toEqual(true)

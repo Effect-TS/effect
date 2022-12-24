@@ -9,11 +9,11 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Chunk", () => {
   it("property tests", () => {
-    Util.property(_.schema(S.number))
+    Util.property(_.chunk(S.number))
   })
 
   it("guard", () => {
-    const schema = _.schema(S.string)
+    const schema = _.chunk(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(C.empty())).toEqual(true)
     expect(guard.is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
@@ -23,7 +23,7 @@ describe.concurrent("Chunk", () => {
   })
 
   it("decoder", () => {
-    const schema = _.schema(S.number)
+    const schema = _.chunk(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty()))
     expect(decoder.decode([1, 2, 3])).toEqual(
@@ -35,7 +35,7 @@ describe.concurrent("Chunk", () => {
   })
 
   it("encoder", () => {
-    const schema = _.schema(S.number)
+    const schema = _.chunk(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(C.empty())).toEqual([])
     expect(encoder.encode(C.fromIterable([1, 2, 3]))).toEqual(
@@ -44,7 +44,7 @@ describe.concurrent("Chunk", () => {
   })
 
   it("pretty", () => {
-    const schema = _.schema(S.string)
+    const schema = _.chunk(S.string)
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(C.empty())).toEqual("Chunk()")
     expect(pretty.pretty(C.fromIterable(["a", "b"]))).toEqual(

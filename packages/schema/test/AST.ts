@@ -233,12 +233,12 @@ describe.concurrent("AST", () => {
   describe.concurrent("keyof", () => {
     it("TypeAliasDeclaration", () => {
       // type Test = keyof Chunk<number> // id
-      expect(AST.keyof(DataChunk.schema(S.number).ast)).toEqual(["_id"])
+      expect(AST.keyof(DataChunk.chunk(S.number).ast)).toEqual(["_id"])
     })
 
     it("TypeAliasDeclaration", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(AST.keyof(DataOption.schema(S.number).ast)).toEqual(["_tag"])
+      expect(AST.keyof(DataOption.option(S.number).ast)).toEqual(["_tag"])
     })
 
     it("tuple", () => {
@@ -292,7 +292,7 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("getFields", () => {
     it("type alias", () => {
-      const schema = DataOption.schema(S.number)
+      const schema = DataOption.option(S.number)
       expect(AST.getFields(schema.ast)).toEqual([
         AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true)
       ])

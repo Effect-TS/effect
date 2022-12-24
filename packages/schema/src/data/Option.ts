@@ -24,17 +24,17 @@ const decoder = <A>(
 ): Decoder<unknown, Option<A>> => {
   const decoder = D.decoderFor(I.union(I.literal(null), value))
   return I.makeDecoder(
-    schema(value),
+    option(value),
     (i) => pipe(decoder.decode(i), T.map(O.fromNullable))
   )
 }
 
 const encoder = <A>(value: Encoder<unknown, A>): Encoder<unknown, Option<A>> =>
-  I.makeEncoder(schema(value), (oa) => pipe(oa, O.map(value.encode), O.getOrNull))
+  I.makeEncoder(option(value), (oa) => pipe(oa, O.map(value.encode), O.getOrNull))
 
 const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
   P.make(
-    schema(value),
+    option(value),
     O.match(
       () => "none",
       (a) => `some(${value.pretty(a)})`
@@ -44,7 +44,7 @@ const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
 /**
  * @since 1.0.0
  */
-export const schema = <A>(value: Schema<A>): Schema<Option<A>> =>
+export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
   I.typeAlias(
     [value],
     I.union(

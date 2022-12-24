@@ -22,32 +22,32 @@ import type { Schema } from "@fp-ts/schema/Schema"
 
 const guard = <A>(item: Guard<A>): Guard<ReadonlySet<A>> =>
   I.makeGuard(
-    schema(item),
+    readonlySet(item),
     (u): u is Set<A> => u instanceof Set && Array.from(u.values()).every(item.is)
   )
 
 const decoder = <A>(item: Decoder<unknown, A>): Decoder<unknown, ReadonlySet<A>> =>
   I.makeDecoder(
-    schema(item),
+    readonlySet(item),
     (i) => pipe(D.decoderFor(I.array(item)).decode(i), T.map((as) => new Set(as)))
   )
 
 const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, ReadonlySet<A>> =>
-  I.makeEncoder(schema(item), (set) => Array.from(set).map(item.encode))
+  I.makeEncoder(readonlySet(item), (set) => Array.from(set).map(item.encode))
 
 const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
-  I.makeArbitrary(schema(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
+  I.makeArbitrary(readonlySet(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
 const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
   I.makePretty(
-    schema(item),
+    readonlySet(item),
     (set) => `new Set([${Array.from(set.values()).map((a) => item.pretty(a)).join(", ")}])`
   )
 
 /**
  * @since 1.0.0
  */
-export const schema = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
+export const readonlySet = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
   I.typeAlias(
     [item],
     I.struct({}),

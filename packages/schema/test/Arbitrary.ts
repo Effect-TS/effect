@@ -27,7 +27,7 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("type alias", () => {
-    const schema = readonlySet.schema(S.string)
+    const schema = readonlySet.readonlySet(S.string)
     property(schema)
   })
 

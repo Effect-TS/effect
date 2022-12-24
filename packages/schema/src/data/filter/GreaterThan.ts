@@ -12,7 +12,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const schema = (min: number) =>
+export const greaterThan = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
     I.refinement(self, (a): a is A => a > min, { exclusiveMinimum: min }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMinimum: min })

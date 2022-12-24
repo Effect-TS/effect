@@ -812,7 +812,7 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("integer", () => {
-    const schema = DataInt.schema(S.number)
+    const schema = DataInt.int(S.number)
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`number`])
   })

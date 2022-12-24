@@ -285,7 +285,7 @@ describe("jsonSchemaFor", () => {
   })
 
   it("integer", () => {
-    const schema = DataInt.schema(S.number)
+    const schema = DataInt.int(S.number)
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "integer" })
   })

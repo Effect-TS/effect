@@ -16,7 +16,7 @@ export abstract class Class {
 /**
  * @since 1.0.0
  */
-export const schema = <A extends typeof Class>(constructor: A) =>
+export const instanceOf = <A extends typeof Class>(constructor: A) =>
   (self: Schema<object>): Schema<InstanceType<A>> =>
     I.refinement(self, (a): a is InstanceType<A> => a instanceof constructor, {
       instanceof: constructor
