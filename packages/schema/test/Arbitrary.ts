@@ -1,6 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as readonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
@@ -16,37 +15,44 @@ describe.concurrent("Arbitrary", () => {
     expect(A.make).exist
   })
 
+  it("never", () => {
+    expect(() => A.arbitraryFor(S.never).arbitrary(fc)).toThrowError(
+      new Error("cannot build an Arbitrary for `never`")
+    )
+  })
+
+  it("string", () => {
+    property(S.string)
+  })
+
+  it("number", () => {
+    property(S.number)
+  })
+
+  it("boolean", () => {
+    property(S.boolean)
+  })
+
+  it("bigint", () => {
+    property(S.bigint)
+  })
+
+  it("symbol", () => {
+    property(S.symbol)
+  })
+
   it("object", () => {
-    const schema = S.object
+    property(S.object)
+  })
+
+  it("literal 1 member", () => {
+    const schema = S.literal(1)
     property(schema)
   })
 
-  it("void", () => {
-    const schema = S.void
+  it("literal 2 members", () => {
+    const schema = S.literal(1, "a")
     property(schema)
-  })
-
-  it("type alias", () => {
-    const schema = readonlySet.readonlySet(S.string)
-    property(schema)
-  })
-
-  it("lazy", () => {
-    type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.literal(null))))
-    property(schema)
-  })
-
-  describe.concurrent("literal", () => {
-    it("1 member", () => {
-      const schema = S.literal(1)
-      property(schema)
-    })
-
-    it("2 members", () => {
-      const schema = S.literal(1, "a")
-      property(schema)
-    })
   })
 
   it("uniqueSymbol", () => {
@@ -55,125 +61,94 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
-  describe.concurrent("enums", () => {
-    it("Numeric enums", () => {
-      enum Fruits {
-        Apple,
-        Banana
-      }
-      const schema = S.enums(Fruits)
-      property(schema)
-    })
-
-    it("String enums", () => {
-      enum Fruits {
-        Apple = "apple",
-        Banana = "banana",
-        Cantaloupe = 0
-      }
-      const schema = S.enums(Fruits)
-      property(schema)
-    })
-
-    it("Const enums", () => {
-      const Fruits = {
-        Apple: "apple",
-        Banana: "banana",
-        Cantaloupe: 3
-      } as const
-      const schema = S.enums(Fruits)
-      property(schema)
-    })
-  })
-
-  it("tuple", () => {
-    const schema = S.tuple(S.string, S.number)
+  it("Numeric enums", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    const schema = S.enums(Fruits)
     property(schema)
   })
 
-  describe.concurrent("tuple", () => {
-    it("required element", () => {
-      const schema = S.tuple(S.number)
-      property(schema)
-    })
+  it("String enums", () => {
+    enum Fruits {
+      Apple = "apple",
+      Banana = "banana",
+      Cantaloupe = 0
+    }
+    const schema = S.enums(Fruits)
+    property(schema)
+  })
 
-    it("required element with undefined", () => {
-      const schema = S.tuple(S.union(S.number, S.undefined))
-      property(schema)
-    })
+  it("Const enums", () => {
+    const Fruits = {
+      Apple: "apple",
+      Banana: "banana",
+      Cantaloupe: 3
+    } as const
+    const schema = S.enums(Fruits)
+    property(schema)
+  })
 
-    it("optional element", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.number))
-      property(schema)
-    })
+  it("tuple. empty", () => {
+    const schema = S.tuple()
+    property(schema)
+  })
 
-    it("optional element with undefined", () => {
-      const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
-      property(schema)
-    })
+  it("tuple. required element", () => {
+    const schema = S.tuple(S.number)
+    property(schema)
+  })
 
-    it("baseline", () => {
-      const schema = S.tuple(S.string, S.number)
-      property(schema)
-    })
+  it("tuple. required element with undefined", () => {
+    const schema = S.tuple(S.union(S.number, S.undefined))
+    property(schema)
+  })
 
-    it("empty tuple", () => {
-      const schema = S.tuple()
-      property(schema)
-    })
+  it("tuple. optional element", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.number))
+    property(schema)
+  })
 
-    it("optional elements", () => {
-      const schema = S.partial(S.tuple(S.string, S.number))
-      property(schema)
-    })
+  it("tuple. optional element with undefined", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+    property(schema)
+  })
 
-    it("array", () => {
-      const schema = S.array(S.string)
-      property(schema)
-    })
+  it("tuple. e + e?", () => {
+    const schema = pipe(S.tuple(S.string), S.optionalElement(S.number))
+    property(schema)
+  })
 
-    it("post rest element", () => {
-      const schema = pipe(S.array(S.number), S.element(S.boolean))
-      property(schema)
-    })
+  it("tuple. e + r", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number))
+    property(schema)
+  })
 
-    it("post rest elements", () => {
-      const schema = pipe(
-        S.array(S.number),
-        S.element(S.boolean),
-        S.element(S.union(S.string, S.undefined))
-      )
-      property(schema)
-    })
+  it("tuple. e? + r", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(S.number))
+    property(schema)
+  })
 
-    it("post rest elements when rest is unknown", () => {
-      const schema = pipe(S.array(S.unknown), S.element(S.boolean))
-      property(schema)
-    })
+  it("tuple. r", () => {
+    const schema = S.array(S.number)
+    property(schema)
+  })
 
-    it("all", () => {
-      const schema = pipe(
-        S.tuple(S.string),
-        S.rest(S.number),
-        S.element(S.boolean)
-      )
-      property(schema)
-    })
+  it("tuple. r + e", () => {
+    const schema = pipe(S.array(S.string), S.element(S.number))
+    property(schema)
+  })
 
-    it("nonEmptyArray", () => {
-      const schema = S.nonEmptyArray(S.number)
-      property(schema)
-    })
+  it("tuple. e + r + e", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
+    property(schema)
+  })
 
-    it("ReadonlyArray<unknown>", () => {
-      const schema = S.array(S.unknown)
-      property(schema)
-    })
-
-    it("ReadonlyArray<any>", () => {
-      const schema = S.array(S.any)
-      property(schema)
-    })
+  it("lazy", () => {
+    type A = readonly [number, A | null]
+    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.literal(null))))
+    property(schema)
   })
 
   describe.concurrent("struct", () => {
