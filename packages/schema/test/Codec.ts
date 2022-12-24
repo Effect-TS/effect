@@ -641,6 +641,12 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, { _tag: "a" }, `/_tag "a" did not satisfy is(number)`)
   })
 
+  it("record(s.startsWith, number)", () => {
+    const codec = C.record(pipe(S.string, S.startsWith("a")), S.number)
+    Util.expectSuccess(codec, { a: 1 })
+    Util.expectSuccess(codec, { b: 1 })
+  })
+
   it("union. choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = C.allowUnexpected(C.struct({ a: C.optional(C.number) }))
     const b = C.allowUnexpected(C.struct({ a: C.optional(C.number), b: C.optional(C.string) }))

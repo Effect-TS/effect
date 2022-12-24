@@ -708,6 +708,9 @@ export const record = (key: AST, value: AST, isReadonly: boolean): AST => {
       case "Union":
         key.members.forEach(go)
         break
+      case "Refinement":
+        go(key.from)
+        break
       default:
         throw new Error(
           `Type '${key._tag}' does not satisfy the constraint 'string | number | symbol'. ts(2344)`
