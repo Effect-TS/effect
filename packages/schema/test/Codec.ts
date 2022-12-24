@@ -407,7 +407,7 @@ describe.concurrent("Codec", () => {
 
   it("struct. allowUnexpected = true + index signature", () => {
     const codec = C.allowUnexpected(
-      pipe(C.struct({ a: C.number }), C.extend(C.record("string", C.unknown)))
+      pipe(C.struct({ a: C.number }), C.extend(C.record(S.string, C.unknown)))
     )
     Util.expectSuccess(codec, { a: 1 })
     Util.expectSuccess(codec, { a: 1, b: "b" })
@@ -420,9 +420,18 @@ describe.concurrent("Codec", () => {
   })
 
   it("struct. index signature warnings", () => {
-    const codec = C.record("string", C.allowUnexpected(C.struct({ b: C.number })))
+    const codec = C.record(S.string, C.allowUnexpected(C.struct({ b: C.number })))
     Util.expectSuccess(codec, { a: { b: 1 } })
     Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c key is unexpected`, { a: { b: 1 } })
+  })
+
+  it("struct. empty", () => {
+    const codec = C.struct({})
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { a: 1 })
+    Util.expectSuccess(codec, [])
+
+    Util.expectFailure(codec, null, `null did not satisfy is({})`)
   })
 
   describe.concurrent("struct", () => {
@@ -493,33 +502,6 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1, b: "b" }, "/b key is unexpected")
     })
 
-    it("record(string, number)", () => {
-      const codec = C.record("string", C.number)
-      Util.expectSuccess(codec, {})
-      Util.expectSuccess(codec, { a: 1 })
-
-      Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
-      Util.expectFailure(
-        codec,
-        { a: "a" },
-        `/a "a" did not satisfy is(number)`
-      )
-    })
-
-    it("record(symbol, number)", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const codec = C.record("symbol", C.number)
-      Util.expectSuccess(codec, {})
-      Util.expectSuccess(codec, { [a]: 1 })
-
-      Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
-      Util.expectFailure(
-        codec,
-        { [a]: "a" },
-        `/Symbol(@fp-ts/schema/test/a) "a" did not satisfy is(number)`
-      )
-    })
-
     it("should not add optional keys", () => {
       const codec = C.partial(C.struct({ a: C.string, b: C.number }))
       Util.expectSuccess(codec, {})
@@ -528,7 +510,7 @@ describe.concurrent("Codec", () => {
     it("extend record(string, string)", () => {
       const codec = pipe(
         C.struct({ a: C.string }),
-        C.extend(C.record("string", C.string))
+        C.extend(C.record(S.string, C.string))
       )
       Util.expectSuccess(codec, { a: "a" })
       Util.expectSuccess(codec, { a: "a", b: "b" })
@@ -538,6 +520,125 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1 }, "/a 1 did not satisfy is(string)")
       Util.expectFailure(codec, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
     })
+  })
+
+  it("record(string, number)", () => {
+    const codec = C.record(S.string, C.number)
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { a: 1 })
+
+    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
+    Util.expectFailure(
+      codec,
+      { a: "a" },
+      `/a "a" did not satisfy is(number)`
+    )
+  })
+
+  it("record(number, string)", () => {
+    const codec = C.record(S.number, S.string)
+    Util.expectSuccess(codec, { 1: "a" })
+
+    Util.expectFailure(codec, { 1: 1 }, `/1 1 did not satisfy is(string)`)
+  })
+
+  it("record(symbol, number)", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const codec = C.record(S.symbol, C.number)
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { [a]: 1 })
+
+    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
+    Util.expectFailure(
+      codec,
+      { [a]: "a" },
+      `/Symbol(@fp-ts/schema/test/a) "a" did not satisfy is(number)`
+    )
+  })
+
+  it("record(never, number)", () => {
+    const codec = C.record(S.never, S.number)
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { a: 1 })
+  })
+
+  it("record('a' | 'b', number)", () => {
+    const codec = C.record(C.union(C.literal("a"), C.literal("b")), C.number)
+    Util.expectSuccess(codec, { a: 1, b: 2 })
+
+    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
+    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+  })
+
+  it("record(keyof struct({ a, b }), number)", () => {
+    const codec = C.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
+    Util.expectSuccess(codec, { a: 1, b: 2 })
+
+    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
+    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
+  })
+
+  it("record(keyof struct({ a, b } & Record<string, string>), number)", () => {
+    const codec = C.record(
+      S.keyof(pipe(S.struct({ a: S.string, b: S.string }), S.extend(S.record(S.string, S.string)))),
+      S.number
+    )
+    Util.expectSuccess(codec, { a: 1, b: 2 })
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { a: 1 })
+    Util.expectSuccess(codec, { b: 2 })
+
+    Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
+  })
+
+  it("record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
+    const codec = C.record(
+      S.keyof(pipe(S.struct({ a: S.string, b: S.string }), S.extend(S.record(S.symbol, S.string)))),
+      S.number
+    )
+    Util.expectSuccess(codec, { a: 1, b: 2 })
+    const c = Symbol.for("@fp-ts/schema/test/c")
+    Util.expectSuccess(codec, { a: 1, b: 2, [c]: 3 })
+
+    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
+    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
+    Util.expectFailure(
+      codec,
+      { a: 1, b: 2, [c]: "c" },
+      `/Symbol(@fp-ts/schema/test/c) "c" did not satisfy is(number)`
+    )
+  })
+
+  it("record(Symbol('a') | Symbol('b'), number)", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const b = Symbol.for("@fp-ts/schema/test/b")
+    const codec = C.record(C.union(C.uniqueSymbol(a), C.uniqueSymbol(b)), C.number)
+    Util.expectSuccess(codec, { [a]: 1, [b]: 2 })
+
+    Util.expectFailure(codec, {}, `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`)
+    Util.expectFailure(
+      codec,
+      { [a]: 1 },
+      `/Symbol(@fp-ts/schema/test/b) did not satisfy is(required)`
+    )
+    Util.expectFailure(
+      codec,
+      { [b]: 2 },
+      `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`
+    )
+  })
+
+  it("record(keyof Option<number>, number)", () => {
+    const codec = C.record(S.keyof(S.option(S.number)), S.number)
+    Util.expectSuccess(codec, { _tag: 1 })
+
+    Util.expectFailure(codec, {}, `/_tag did not satisfy is(required)`)
+    Util.expectFailure(codec, { _tag: "a" }, `/_tag "a" did not satisfy is(number)`)
   })
 
   it("union. choose the output with less warnings related to unexpected keys / indexes", () => {

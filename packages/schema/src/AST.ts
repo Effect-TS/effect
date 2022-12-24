@@ -5,10 +5,12 @@
 import * as Order from "@fp-ts/core/typeclass/Order"
 import { pipe } from "@fp-ts/data/Function"
 import * as Number from "@fp-ts/data/Number"
+import { isNumber } from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
+import { isString } from "@fp-ts/data/String"
 
 /**
  * @since 1.0.0
@@ -344,7 +346,7 @@ export const field = (
  * @since 1.0.0
  */
 export interface IndexSignature extends Annotated {
-  readonly key: "string" | "symbol"
+  readonly key: "string" | "number" | "symbol"
   readonly value: AST
   readonly isReadonly: boolean
 }
@@ -353,7 +355,7 @@ export interface IndexSignature extends Annotated {
  * @since 1.0.0
  */
 export const indexSignature = (
-  key: "string" | "symbol",
+  key: IndexSignature["key"],
   value: AST,
   isReadonly: boolean,
   annotations: Annotated["annotations"] = {}
@@ -585,16 +587,80 @@ export const appendElement = (
 /**
  * @since 1.0.0
  */
-export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
+export const string = stringKeyword()
+
+/**
+ * @since 1.0.0
+ */
+export const number = numberKeyword()
+
+/**
+ * @since 1.0.0
+ */
+export const symbol = symbolKeyword()
+
+/**
+ * @since 1.0.0
+ */
+export const never = neverKeyword()
+
+const getPropertyKeyAST = (key: PropertyKey): AST =>
+  typeof key === "symbol" ? uniqueSymbol(key) : literalType(key)
+
+const getIndexSignaturesKeys = (
+  indexSignatures: ReadonlyArray<IndexSignature>
+): Record<IndexSignature["key"], boolean> => {
+  const out = { string: false, number: false, symbol: false }
+  for (const is of indexSignatures) {
+    if (is.key === "symbol") {
+      // keyof { [x: symbol]: ... } is symbol
+      out.symbol = true
+    } else if (is.key === "number") {
+      // keyof { [x: string]: ... } is number
+      out.number = true
+    } else {
+      // keyof { [x: string]: ... } is string | number
+      out.string = true
+      out.number = true
+    }
+  }
+  return out
+}
+
+const getIndexSignatureAST = (is: IndexSignature): AST =>
+  is.key === "symbol" ? symbol : is.key === "number" ? number : union([string, number])
+
+/**
+ * @since 1.0.0
+ */
+export const keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAliasDeclaration":
       return keyof(ast.type)
-    case "Tuple":
-      return ast.elements.map((_, i) => String(i))
-    case "Struct":
-      return ast.fields.map((field) => field.key)
+    case "NeverKeyword":
+    case "AnyKeyword":
+      return [string, number, symbol]
+    case "UnknownKeyword":
+    case "NumberKeyword":
+    case "BooleanKeyword":
+    case "BigIntKeyword":
+    case "SymbolKeyword":
+    case "UndefinedKeyword":
+    case "UniqueSymbol":
+    case "VoidKeyword":
+    case "ObjectKeyword":
+    case "Enums":
+      return [never]
+    case "Struct": {
+      const keys = getIndexSignaturesKeys(ast.indexSignatures)
+      // unify field keys and index signatures keys
+      const fields = ast.fields.filter((f) => keys[typeof f.key] === false).map((
+        f
+      ) => getPropertyKeyAST(f.key))
+      return [...fields, ...ast.indexSignatures.map(getIndexSignatureAST)]
+    }
     case "Union": {
-      let out: ReadonlyArray<PropertyKey> = keyof(ast.members[0])
+      let out: ReadonlyArray<AST> = keyof(ast.members[0])
       for (let i = 1; i < ast.members.length; i++) {
         out = RA.intersection(keyof(ast.members[i]))(out)
       }
@@ -602,6 +668,76 @@ export const keyof = (ast: AST): ReadonlyArray<PropertyKey> => {
     }
     case "Lazy":
       return keyof(ast.f())
+    case "Refinement":
+      return keyof(ast.from)
+    default:
+      throw new Error("cannot `keyof` on this AST")
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const record = (key: AST, value: AST, isReadonly: boolean): AST => {
+  const fields: Array<Field> = []
+  const indexSignatures: Array<IndexSignature> = []
+  const go = (key: AST): void => {
+    switch (key._tag) {
+      case "NeverKeyword":
+        break
+      case "StringKeyword": {
+        indexSignatures.push(indexSignature("string", value, isReadonly))
+        break
+      }
+      case "NumberKeyword": {
+        indexSignatures.push(indexSignature("number", value, isReadonly))
+        break
+      }
+      case "SymbolKeyword": {
+        indexSignatures.push(indexSignature("symbol", value, isReadonly))
+        break
+      }
+      case "LiteralType":
+        if (isString(key.literal) || isNumber(key.literal)) {
+          fields.push(field(key.literal, value, false, true))
+        }
+        break
+      case "UniqueSymbol":
+        fields.push(field(key.symbol, value, false, true))
+        break
+      case "Union":
+        key.members.forEach(go)
+        break
+      default:
+        throw new Error(
+          `Type '${key._tag}' does not satisfy the constraint 'string | number | symbol'. ts(2344)`
+        )
+    }
+  }
+  go(key)
+  return struct(fields, indexSignatures)
+}
+
+/**
+ * @since 1.0.0
+ */
+export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
+  switch (ast._tag) {
+    case "TypeAliasDeclaration":
+      return propertyKeys(ast.type)
+    case "Tuple":
+      return ast.elements.map((_, i) => String(i))
+    case "Struct":
+      return ast.fields.map((field) => field.key)
+    case "Union": {
+      let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.members[0])
+      for (let i = 1; i < ast.members.length; i++) {
+        out = RA.intersection(propertyKeys(ast.members[i]))(out)
+      }
+      return out
+    }
+    case "Lazy":
+      return propertyKeys(ast.f())
     default:
       return []
   }
@@ -638,7 +774,7 @@ export const getFields = (
       return ast.fields
     case "Union": {
       const fields = pipe(ast.members, RA.flatMap(getFields))
-      return keyof(ast).map((key) => {
+      return propertyKeys(ast).map((key) => {
         let isOptional = false
         let isReadonly = false
         const type = union(
@@ -657,6 +793,8 @@ export const getFields = (
     }
     case "Lazy":
       return getFields(ast.f())
+    case "Refinement":
+      return getFields(ast.from)
     default:
       return []
   }
@@ -687,6 +825,8 @@ export const partial = (ast: AST): AST => {
       return union(ast.members.map((member) => partial(member)))
     case "Lazy":
       return lazy(() => partial(ast.f()))
+    case "Refinement":
+      return partial(ast.from)
     default:
       return ast
   }

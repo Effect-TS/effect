@@ -214,7 +214,7 @@ describe.concurrent("Encoder", () => {
     it("extend record(string, NumberFromString)", () => {
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.extend(S.record("string", NumberFromString))
+        S.extend(S.record(S.string, NumberFromString))
       )
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })
@@ -225,7 +225,7 @@ describe.concurrent("Encoder", () => {
       const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
         S.struct({ a: S.number }),
-        S.extend(S.record("symbol", NumberFromString))
+        S.extend(S.record(S.symbol, NumberFromString))
       )
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toEqual({ a: 1 })

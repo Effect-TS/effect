@@ -248,6 +248,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
       case "Struct": {
         const fields = ast.fields.map((f) => go(f.value))
         const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        if (fields.length === 0 && indexSignatures.length === 0) {
+          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => DE.type("{}", u))
+        }
         return make(
           I.makeSchema(ast),
           (input: unknown) => {

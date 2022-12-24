@@ -184,12 +184,12 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("record(string, string)", () => {
-    const schema = S.record("string", S.string)
+    const schema = S.record(S.string, S.string)
     property(schema)
   })
 
   it("record(symbol, string)", () => {
-    const schema = S.record("symbol", S.string)
+    const schema = S.record(S.symbol, S.string)
     property(schema)
   })
 

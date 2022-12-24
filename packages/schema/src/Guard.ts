@@ -127,6 +127,9 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       case "Struct": {
         const fields = ast.fields.map((f) => go(f.value))
         const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        if (fields.length === 0 && indexSignatures.length === 0) {
+          return make(I.makeSchema(ast), I.isNotNull)
+        }
         return make(
           I.makeSchema(ast),
           (input: unknown): input is any => {

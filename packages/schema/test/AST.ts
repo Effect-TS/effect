@@ -57,14 +57,6 @@ describe.concurrent("AST", () => {
   })
 
   describe.concurrent("appendRestElement", () => {
-    /*
-    type Rest<A extends ReadonlyArray<any>, R> = readonly [...A, ...Array<R>]
-    type Test1 = Rest<readonly [string], number>
-    type Test2 = Rest<Test1, boolean>
-    type Test3 = Rest<readonly [string, ...Array<number>, string], boolean>
-    type Test4 = Rest<readonly [string, ...Array<number>, boolean], bigint>
-    */
-
     it("non existing rest element", () => {
       const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
       const actual = AST.appendRestElement(tuple, numberKeyword)
@@ -230,39 +222,39 @@ describe.concurrent("AST", () => {
     })
   })
 
-  describe.concurrent("keyof", () => {
+  describe.concurrent("propertyKeys", () => {
     it("TypeAliasDeclaration", () => {
       // type Test = keyof Chunk<number> // id
-      expect(AST.keyof(DataChunk.chunk(S.number).ast)).toEqual(["_id"])
+      expect(AST.propertyKeys(DataChunk.chunk(S.number).ast)).toEqual(["_id"])
     })
 
     it("TypeAliasDeclaration", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(AST.keyof(DataOption.option(S.number).ast)).toEqual(["_tag"])
+      expect(AST.propertyKeys(DataOption.option(S.number).ast)).toEqual(["_tag"])
     })
 
     it("tuple", () => {
       // type Test = keyof [] // never
-      expect(AST.keyof(S.tuple().ast)).toEqual([])
+      expect(AST.propertyKeys(S.tuple().ast)).toEqual([])
       // type Test = keyof [string, number] // '0' | '1'
-      expect(AST.keyof(S.tuple(S.string, S.number).ast)).toEqual(["0", "1"])
+      expect(AST.propertyKeys(S.tuple(S.string, S.number).ast)).toEqual(["0", "1"])
     })
 
     it("struct", () => {
       // type Test = keyof {} // never
-      expect(AST.keyof(S.struct({}).ast)).toEqual([])
+      expect(AST.propertyKeys(S.struct({}).ast)).toEqual([])
       // type Test = keyof { a: string, b: number } // 'a' | 'b'
-      expect(AST.keyof(S.struct({ a: S.string, b: S.number }).ast)).toEqual(["a", "b"])
+      expect(AST.propertyKeys(S.struct({ a: S.string, b: S.number }).ast)).toEqual(["a", "b"])
 
       const a = Symbol.for("@fp-ts/schema/test/a")
       // type Test = keyof { [a]: string } // typeof A
-      expect(AST.keyof(S.struct({ [a]: S.string }).ast)).toEqual([a])
+      expect(AST.propertyKeys(S.struct({ [a]: S.string }).ast)).toEqual([a])
     })
 
     describe.concurrent("union", () => {
       it("empty union", () => {
         const schema = S.union()
-        expect(AST.keyof(schema.ast)).toEqual(AST.keyof(neverKeyword))
+        expect(AST.propertyKeys(schema.ast)).toEqual(AST.propertyKeys(neverKeyword))
       })
 
       it("discriminated unions", () => {
@@ -270,7 +262,7 @@ describe.concurrent("AST", () => {
           S.struct({ _tag: S.literal("A"), a: S.string }),
           S.struct({ _tag: S.literal("B"), b: S.number })
         )
-        expect(AST.keyof(schema.ast)).toEqual(["_tag"])
+        expect(AST.propertyKeys(schema.ast)).toEqual(["_tag"])
       })
     })
 
@@ -286,7 +278,7 @@ describe.concurrent("AST", () => {
           as: S.array(schema)
         })
       )
-      expect(AST.keyof(schema.ast)).toEqual(["a", "as"])
+      expect(AST.propertyKeys(schema.ast)).toEqual(["a", "as"])
     })
   })
 

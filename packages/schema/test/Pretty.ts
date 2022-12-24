@@ -34,7 +34,7 @@ describe.concurrent("Pretty", () => {
     })
 
     it("record(string, string)", () => {
-      const schema = S.record("string", S.string)
+      const schema = S.record(S.string, S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: "a", b: "b" })).toEqual(
         `{ "a": "a", "b": "b" }`
@@ -43,7 +43,7 @@ describe.concurrent("Pretty", () => {
 
     it("record(symbol, string)", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
-      const schema = S.record("symbol", S.string)
+      const schema = S.record(S.symbol, S.string)
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ [a]: "a" })).toEqual(
         `{ Symbol(@fp-ts/schema/test/a): "a" }`

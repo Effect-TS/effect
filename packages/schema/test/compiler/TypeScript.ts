@@ -712,7 +712,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("record(string, unknown)", () => {
-      const schema = S.record("string", S.unknown)
+      const schema = S.record(S.string, S.unknown)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: unknown;
@@ -720,7 +720,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("record(string, any)", () => {
-      const schema = S.record("string", S.any)
+      const schema = S.record(S.string, S.any)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: any;
@@ -728,7 +728,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("record(string, string)", () => {
-      const schema = S.record("string", S.string)
+      const schema = S.record(S.string, S.string)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: string]: string;
@@ -736,7 +736,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("record(symbol, string)", () => {
-      const schema = S.record("symbol", S.string)
+      const schema = S.record(S.symbol, S.string)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: symbol]: string;
@@ -753,7 +753,7 @@ describe.concurrent("TypeScript", () => {
         }),
         S.extend(
           S.record(
-            "string",
+            S.string,
             pipe(
               S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d")),
               tsIdentifier("d")

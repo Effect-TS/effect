@@ -346,7 +346,7 @@ describe("jsonSchemaFor", () => {
   })
 
   it("record(string)", () => {
-    const schema = S.record("string", S.string)
+    const schema = S.record(S.string, S.string)
     assertFalse(schema, null)
     assertTrue(schema, {})
     assertTrue(schema, { a: "a" })

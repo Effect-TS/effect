@@ -1,4 +1,3 @@
-import * as AST from "@fp-ts/schema/AST"
 import * as _ from "@fp-ts/schema/data/Json"
 import * as P from "@fp-ts/schema/Pretty"
 import * as Util from "@fp-ts/schema/test/util"
@@ -8,10 +7,6 @@ describe.concurrent("Json", () => {
 
   it("property tests", () => {
     Util.property(schema)
-  })
-
-  it("keyof", () => {
-    expect(AST.keyof(schema.ast)).toEqual([])
   })
 
   it("Pretty", () => {

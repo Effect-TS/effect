@@ -22,7 +22,7 @@ const JsonSchema: S.Schema<Json> = I.lazy(() =>
     I.number,
     I.boolean,
     I.array(JsonSchema),
-    I.record("string", JsonSchema)
+    I.record(I.string, JsonSchema)
   )
 )
 

@@ -262,6 +262,16 @@ describe.concurrent("Guard", () => {
     expect(guard.is([1, true])).toEqual(false)
   })
 
+  it("struct. empty", () => {
+    const schema = S.struct({})
+    const guard = G.guardFor(schema)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ a: 1 })).toEqual(true)
+    expect(guard.is([])).toEqual(true)
+
+    expect(guard.is(null)).toEqual(false)
+  })
+
   describe.concurrent("struct", () => {
     it("required field", () => {
       const schema = S.struct({ a: S.number })
@@ -310,35 +320,122 @@ describe.concurrent("Guard", () => {
       expect(guard.is(null)).toEqual(false)
       expect(guard.is({ a: "a" })).toEqual(false)
     })
+  })
 
-    it("record(string, string)", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const schema = S.record("string", S.string)
-      const guard = G.guardFor(schema)
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is({})).toEqual(true)
-      expect(guard.is({ a: "a" })).toEqual(true)
-      expect(guard.is({ a: 1 })).toEqual(false)
-      expect(guard.is({ [a]: 1 })).toEqual(true)
-      expect(guard.is({ a: "a", b: "b" })).toEqual(true)
-      expect(guard.is({ a: "a", b: 1 })).toEqual(false)
-      expect(guard.is({ [a]: 1, b: "b" })).toEqual(true)
-    })
+  it("record(string, string)", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.record(S.string, S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ a: "a" })).toEqual(true)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ [a]: 1 })).toEqual(true)
+    expect(guard.is({ a: "a", b: "b" })).toEqual(true)
+    expect(guard.is({ a: "a", b: 1 })).toEqual(false)
+    expect(guard.is({ [a]: 1, b: "b" })).toEqual(true)
+  })
 
-    it("record(symbol, string)", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const b = Symbol.for("@fp-ts/schema/test/b")
-      const schema = S.record("symbol", S.string)
-      const guard = G.guardFor(schema)
-      expect(guard.is(null)).toEqual(false)
-      expect(guard.is({})).toEqual(true)
-      expect(guard.is({ [a]: "a" })).toEqual(true)
-      expect(guard.is({ [a]: 1 })).toEqual(false)
-      expect(guard.is({ a: 1 })).toEqual(true)
-      expect(guard.is({ [a]: "a", [b]: "b" })).toEqual(true)
-      expect(guard.is({ [a]: "a", [b]: 1 })).toEqual(false)
-      expect(guard.is({ a: 1, [b]: "b" })).toEqual(true)
-    })
+  it("record(number, string)", () => {
+    const schema = S.record(S.number, S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is({ 1: "a" })).toEqual(true)
+    expect(guard.is({ 1: 1 })).toEqual(false)
+  })
+
+  it("record(symbol, string)", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const b = Symbol.for("@fp-ts/schema/test/b")
+    const schema = S.record(S.symbol, S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is(null)).toEqual(false)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ [a]: "a" })).toEqual(true)
+    expect(guard.is({ [a]: 1 })).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(true)
+    expect(guard.is({ [a]: "a", [b]: "b" })).toEqual(true)
+    expect(guard.is({ [a]: "a", [b]: 1 })).toEqual(false)
+    expect(guard.is({ a: 1, [b]: "b" })).toEqual(true)
+  })
+
+  it("record(never, number)", () => {
+    const schema = S.record(S.never, S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ a: 1 })).toEqual(true)
+  })
+
+  it("record('a' | 'b', number)", () => {
+    const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({ a: 1, b: 2 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ b: 2 })).toEqual(false)
+  })
+
+  it("record(keyof struct({ a, b }), number)", () => {
+    const schema = S.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({ a: 1, b: 2 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ b: 2 })).toEqual(false)
+    expect(guard.is({ a: "a" })).toEqual(false)
+  })
+
+  it("record(keyof struct({ a, b } & Record<string, string>), number)", () => {
+    const schema = S.record(
+      S.keyof(pipe(S.struct({ a: S.string, b: S.string }), S.extend(S.record(S.string, S.string)))),
+      S.number
+    )
+    const guard = G.guardFor(schema)
+    expect(guard.is({ a: 1, b: 2 })).toEqual(true)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ a: 1 })).toEqual(true)
+    expect(guard.is({ b: 2 })).toEqual(true)
+
+    expect(guard.is({ a: "a" })).toEqual(false)
+  })
+
+  it("record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
+    const schema = S.record(
+      S.keyof(pipe(S.struct({ a: S.string, b: S.string }), S.extend(S.record(S.symbol, S.string)))),
+      S.number
+    )
+    const guard = G.guardFor(schema)
+    expect(guard.is({ a: 1, b: 2 })).toEqual(true)
+    const c = Symbol.for("@fp-ts/schema/test/c")
+    expect(guard.is({ a: 1, b: 2, [c]: 3 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ b: 2 })).toEqual(false)
+    expect(guard.is({ a: "a" })).toEqual(false)
+    expect(guard.is({ a: 1, b: 2, [c]: "c" })).toEqual(false)
+  })
+
+  it("record(Symbol('a') | Symbol('b'), number)", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const b = Symbol.for("@fp-ts/schema/test/b")
+    const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({ [a]: 1, [b]: 2 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ a: 1 })).toEqual(false)
+    expect(guard.is({ b: 2 })).toEqual(false)
+  })
+
+  it("record(keyof Option<number>, number)", () => {
+    const schema = S.record(S.keyof(S.option(S.number)), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({ _tag: 1 })).toEqual(true)
+
+    expect(guard.is({})).toEqual(false)
+    expect(guard.is({ _tag: "a" })).toEqual(false)
   })
 
   it("union", () => {
@@ -522,7 +619,7 @@ describe.concurrent("Guard", () => {
     it("record(string, string)", () => {
       const schema = pipe(
         S.struct({ a: S.string }),
-        S.extend(S.record("string", S.string))
+        S.extend(S.record(S.string, S.string))
       )
       const guard = guardFor(schema)
       expect(guard.is({ a: "a" })).toEqual(true)

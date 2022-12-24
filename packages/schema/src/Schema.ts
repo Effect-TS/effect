@@ -206,13 +206,7 @@ export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, li
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  make(
-    AST.union(
-      AST.keyof(schema.ast).map((key) =>
-        typeof key === "symbol" ? AST.uniqueSymbol(key) : AST.literalType(key)
-      )
-    )
-  )
+  make(AST.union(AST.keyof(schema.ast)))
 
 /**
  * @since 1.0.0
@@ -333,11 +327,10 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 /**
  * @since 1.0.0
  */
-export const record: <K extends "string" | "symbol", A>(
-  key: K,
+export const record: <K extends PropertyKey, A>(
+  key: Schema<K>,
   value: Schema<A>
-) => Schema<K extends "string" ? { readonly [x: string]: A } : { readonly [x: symbol]: A }> =
-  I.record
+) => Schema<Readonly<Record<K, A>>> = I.record
 
 /**
  * @since 1.0.0
