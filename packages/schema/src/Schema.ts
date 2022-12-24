@@ -387,7 +387,13 @@ const _undefined: Schema<undefined> = I._undefined
 
 const _void: Schema<void> = I._void
 
+const _null: Schema<null> = I._null
+
 export {
+  /**
+   * @since 1.0.0
+   */
+  _null as null,
   /**
    * @since 1.0.0
    */

@@ -40,7 +40,7 @@ C.object;
 //
 
 // $ExpectType Codec<null>
-C.literal(null);
+C.null;
 
 // $ExpectType Codec<never>
 C.literal();
@@ -190,21 +190,21 @@ C.partial(C.struct({ a: C.string,  b: C.number }));
 // Records
 //
 
-// $ExpectType Codec<{ readonly [x: string]: string; }>
-C.record('string', C.string)
+// $ExpectType Codec<Readonly<Record<string, string>>>
+C.record(C.string, C.string)
 
-// $ExpectType Codec<{ readonly [x: symbol]: string; }>
-C.record('symbol', C.string)
+// $ExpectType Codec<Readonly<Record<symbol, string>>>
+C.record(C.symbol, C.string)
 
 //
 // Extend
 //
 
-// $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly c: boolean; } & { readonly [x: string]: string; }>
+// $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly c: boolean; } & Readonly<Record<string, string>>>
 pipe(
   C.struct({ a: C.string, b: C.string }),
   C.extend(C.struct({ c: C.boolean })), // <= you can add more fields
-  C.extend(C.record('string', C.string)) // <= you can add more index signatures
+  C.extend(C.record(C.string, C.string)) // <= you can add more index signatures
 );
 
 //

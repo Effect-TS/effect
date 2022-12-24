@@ -221,6 +221,9 @@ export const isObject = (u: unknown): u is object => typeof u === "object" && u 
 export const isNotNull = (u: unknown): u is {} => u !== null
 
 /** @internal */
+export const _null: Schema<null> = makeSchema(AST.literalType(null))
+
+/** @internal */
 export const _void: Schema<void> = makeSchema(AST.voidKeyword())
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
