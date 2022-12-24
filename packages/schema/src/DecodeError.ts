@@ -193,16 +193,19 @@ export const missing: Missing = { _tag: "Missing" }
 export interface UnexpectedKey {
   readonly _tag: "UnexpectedKey"
   readonly key: PropertyKey
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
 export const unexpectedKey = (
-  key: PropertyKey
+  key: PropertyKey,
+  actual: unknown
 ): UnexpectedKey => ({
   _tag: "UnexpectedKey",
-  key
+  key,
+  actual
 })
 
 /**
@@ -211,16 +214,19 @@ export const unexpectedKey = (
 export interface UnexpectedIndex {
   readonly _tag: "UnexpectedIndex"
   readonly index: number
+  readonly actual: unknown
 }
 
 /**
  * @since 1.0.0
  */
 export const unexpectedIndex = (
-  index: number
+  index: number,
+  actual: unknown
 ): UnexpectedIndex => ({
   _tag: "UnexpectedIndex",
-  index
+  index,
+  actual
 })
 
 /**
