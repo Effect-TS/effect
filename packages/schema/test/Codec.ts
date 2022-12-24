@@ -369,6 +369,42 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [1, true], `/0 1 did not satisfy is(string)`)
   })
 
+  it("tuple. element warnings", () => {
+    const codec = C.tuple(C.allowUnexpected(C.struct({ b: C.number })))
+    Util.expectSuccess(codec, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+  })
+
+  it("tuple. rest element warnings", () => {
+    const codec = C.array(C.allowUnexpected(C.struct({ b: C.number })))
+    Util.expectSuccess(codec, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+  })
+
+  it("tuple. post rest elements warnings", () => {
+    const codec = pipe(C.array(C.string), C.element(C.allowUnexpected(C.struct({ b: C.number }))))
+    Util.expectSuccess(codec, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+  })
+
+  it("struct. allowUnexpected = true", () => {
+    const codec = C.allowUnexpected(C.struct({ a: C.number }))
+    Util.expectSuccess(codec, { a: 1 })
+    Util.expectWarning(codec, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
+  })
+
+  it("struct. key warnings", () => {
+    const codec = C.struct({ a: C.allowUnexpected(C.struct({ b: C.number })) })
+    Util.expectSuccess(codec, { a: { b: 1 } })
+    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c key is unexpected`, { a: { b: 1 } })
+  })
+
+  it("struct. index signature warnings", () => {
+    const codec = C.record("string", C.allowUnexpected(C.struct({ b: C.number })))
+    Util.expectSuccess(codec, { a: { b: 1 } })
+    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c key is unexpected`, { a: { b: 1 } })
+  })
+
   describe.concurrent("struct", () => {
     it("required field", () => {
       const codec = C.struct({ a: C.number })
@@ -482,6 +518,13 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1 }, "/a 1 did not satisfy is(string)")
       Util.expectFailure(codec, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
     })
+  })
+
+  it("union. choose the output with less warnings related to unexpected keys / indexes", () => {
+    const a = C.allowUnexpected(C.struct({ a: C.optional(C.number) }))
+    const b = C.allowUnexpected(C.struct({ a: C.optional(C.number), b: C.optional(C.string) }))
+    const codec = C.union(a, b)
+    Util.expectWarning(codec, { a: 1, b: "b", c: true }, `/c key is unexpected`, { a: 1, b: "b" })
   })
 
   describe.concurrent("union", () => {
