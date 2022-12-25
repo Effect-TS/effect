@@ -154,7 +154,7 @@ const getPropertyName = (ast: AST.Field): ts.PropertyName =>
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
           getIdentifier(ast),
           O.match(

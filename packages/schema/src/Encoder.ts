@@ -5,7 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getEncoderAnnotation } from "@fp-ts/schema/annotation/EncoderAnnotation"
+import { getTypeAliasHook } from "@fp-ts/schema/annotation/EncoderHooks"
 import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
@@ -31,9 +31,9 @@ export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) =>
 export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
-          getEncoderAnnotation(ast),
+          getTypeAliasHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))
@@ -140,12 +140,13 @@ const _struct = (
       // ---------------------------------------------
       for (let i = 0; i < fields.length; i++) {
         const field = ast.fields[i]
+        const encoder = fields[i]
         const key = field.key
         expectedKeys[key] = null
+        // TODO: handle custom encoding logic here
         if (!Object.prototype.hasOwnProperty.call(input, key) && field.isOptional) {
           continue
         }
-        const encoder = fields[i]
         output[key] = encoder.encode(input[key])
       }
       // ---------------------------------------------

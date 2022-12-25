@@ -16,7 +16,7 @@ import { isString } from "@fp-ts/data/String"
  * @since 1.0.0
  */
 export type AST =
-  | TypeAliasDeclaration
+  | TypeAlias
   | LiteralType
   | UniqueSymbol
   | UndefinedKeyword
@@ -47,8 +47,8 @@ export interface Annotated {
 /**
  * @since 1.0.0
  */
-export interface TypeAliasDeclaration extends Annotated {
-  readonly _tag: "TypeAliasDeclaration"
+export interface TypeAlias extends Annotated {
+  readonly _tag: "TypeAlias"
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
 }
@@ -56,17 +56,16 @@ export interface TypeAliasDeclaration extends Annotated {
 /**
  * @since 1.0.0
  */
-export const typeAliasDeclaration = (
+export const typeAlias = (
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: Annotated["annotations"] = {}
-): TypeAliasDeclaration => ({ _tag: "TypeAliasDeclaration", typeParameters, type, annotations })
+): TypeAlias => ({ _tag: "TypeAlias", typeParameters, type, annotations })
 
 /**
  * @since 1.0.0
  */
-export const isTypeAliasDeclaration = (ast: AST): ast is TypeAliasDeclaration =>
-  ast._tag === "TypeAliasDeclaration"
+export const isTypeAlias = (ast: AST): ast is TypeAlias => ast._tag === "TypeAlias"
 
 /**
  * @since 1.0.0
@@ -373,7 +372,7 @@ export interface Struct extends Annotated {
 
 const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
@@ -431,7 +430,7 @@ export interface Union extends Annotated {
 
 const getWeight = (ast: AST): number => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return getWeight(ast.type)
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? 1 : 0)
@@ -635,7 +634,7 @@ const getIndexSignatureAST = (is: IndexSignature): AST =>
  */
 export const keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return keyof(ast.type)
     case "NeverKeyword":
     case "AnyKeyword":
@@ -726,7 +725,7 @@ export const record = (key: AST, value: AST, isReadonly: boolean): AST => {
  */
 export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return propertyKeys(ast.type)
     case "Tuple":
       return ast.elements.map((_, i) => String(i))
@@ -767,7 +766,7 @@ export const getFields = (
   ast: AST
 ): ReadonlyArray<Field> => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return getFields(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
@@ -808,7 +807,7 @@ export const getFields = (
  */
 export const partial = (ast: AST): AST => {
   switch (ast._tag) {
-    case "TypeAliasDeclaration":
+    case "TypeAlias":
       return partial(ast.type)
     case "Tuple":
       return tuple(

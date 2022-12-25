@@ -141,7 +141,7 @@ export const typeAlias = (
   type: Schema<any>,
   annotations: AST.Annotated["annotations"] = {}
 ): Schema<any> =>
-  makeSchema(AST.typeAliasDeclaration(
+  makeSchema(AST.typeAlias(
     typeParameters.map((tp) => tp.ast),
     type.ast,
     annotations

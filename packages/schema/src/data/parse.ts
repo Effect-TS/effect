@@ -2,14 +2,11 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
-import {
-  arbitraryAnnotation,
-  ArbitraryAnnotationId
-} from "@fp-ts/schema/annotation/ArbitraryAnnotation"
-import { decoderAnnotation, DecoderAnnotationId } from "@fp-ts/schema/annotation/DecoderAnnotation"
-import { encoderAnnotation, EncoderAnnotationId } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import { guardAnnotation, GuardAnnotationId } from "@fp-ts/schema/annotation/GuardAnnotation"
-import { prettyAnnotation, PrettyAnnotationId } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import * as AH from "@fp-ts/schema/annotation/ArbitraryHooks"
+import * as DH from "@fp-ts/schema/annotation/DecoderHooks"
+import * as EH from "@fp-ts/schema/annotation/EncoderHooks"
+import * as GH from "@fp-ts/schema/annotation/GuardHooks"
+import * as PH from "@fp-ts/schema/annotation/PrettyHooks"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -42,11 +39,11 @@ export const parse = <A, B>(
 
   const schema = (self: Schema<A>): Schema<B> =>
     I.typeAlias([self], self, {
-      [DecoderAnnotationId]: decoderAnnotation(decoder),
-      [GuardAnnotationId]: guardAnnotation(guard),
-      [EncoderAnnotationId]: encoderAnnotation(encoder),
-      [PrettyAnnotationId]: prettyAnnotation(_pretty),
-      [ArbitraryAnnotationId]: arbitraryAnnotation(_arbitrary)
+      [DH.TypeAliasHookId]: DH.typeAliasHook(decoder),
+      [GH.TypeAliasHookId]: GH.typeAliasHook(guard),
+      [EH.TypeAliasHookId]: EH.typeAliasHook(encoder),
+      [PH.TypeAliasHookId]: PH.typeAliasHook(_pretty),
+      [AH.TypeAliasHookId]: AH.typeAliasHook(_arbitrary)
     })
 
   return schema

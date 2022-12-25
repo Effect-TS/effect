@@ -5,13 +5,10 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as T from "@fp-ts/data/These"
-import { decoderAnnotation, DecoderAnnotationId } from "@fp-ts/schema/annotation/DecoderAnnotation"
-import { encoderAnnotation, EncoderAnnotationId } from "@fp-ts/schema/annotation/EncoderAnnotation"
-import {
-  identifierAnnotation,
-  IdentifierAnnotationId
-} from "@fp-ts/schema/annotation/IdentifierAnnotation"
-import { prettyAnnotation, PrettyAnnotationId } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import * as DH from "@fp-ts/schema/annotation/DecoderHooks"
+import * as EH from "@fp-ts/schema/annotation/EncoderHooks"
+import * as TH from "@fp-ts/schema/annotation/IdentifierAnnotation"
+import * as PH from "@fp-ts/schema/annotation/PrettyHooks"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -52,9 +49,9 @@ export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
       I.struct({ _tag: I.literal("Some"), value })
     ),
     {
-      [DecoderAnnotationId]: decoderAnnotation(decoder),
-      [EncoderAnnotationId]: encoderAnnotation(encoder),
-      [PrettyAnnotationId]: prettyAnnotation(pretty),
-      [IdentifierAnnotationId]: identifierAnnotation("Option")
+      [DH.TypeAliasHookId]: DH.typeAliasHook(decoder),
+      [EH.TypeAliasHookId]: EH.typeAliasHook(encoder),
+      [PH.TypeAliasHookId]: PH.typeAliasHook(pretty),
+      [TH.IdentifierAnnotationId]: TH.identifierAnnotation("Option")
     }
   )

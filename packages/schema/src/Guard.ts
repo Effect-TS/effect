@@ -8,7 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import { getGuardAnnotation } from "@fp-ts/schema/annotation/GuardAnnotation"
+import { getTypeAliasHook } from "@fp-ts/schema/annotation/GuardHooks"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -31,9 +31,9 @@ export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.ma
 export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const go = (ast: AST.AST): Guard<any> => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
-          getGuardAnnotation(ast),
+          getTypeAliasHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))

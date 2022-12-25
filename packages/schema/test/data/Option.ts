@@ -11,7 +11,7 @@ describe.concurrent("Option", () => {
     Util.property(_.option(S.number))
   })
 
-  it("Decoder", () => {
+  it("Decoder. direct", () => {
     const schema = _.option(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode(null)).toEqual(D.success(O.none))
@@ -26,6 +26,14 @@ describe.concurrent("Option", () => {
 └─ union member
    └─ {} did not satisfy is(number)`
     )
+  })
+
+  // TODO
+  it.skip("Decoder. struct", () => {
+    const schema = S.struct({ a: S.string, b: _.option(S.number) })
+    const decoder = D.decoderFor(schema)
+    expect(decoder.decode({ a: "a" })).toEqual(D.success({ a: "a", b: O.none }))
+    expect(decoder.decode({ a: "a", b: 1 })).toEqual(D.success({ a: "a", b: O.some(1) }))
   })
 
   it("Encoder", () => {

@@ -5,7 +5,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getPrettyAnnotation } from "@fp-ts/schema/annotation/PrettyAnnotation"
+import { getTypeAliasHook } from "@fp-ts/schema/annotation/PrettyHooks"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -30,9 +30,9 @@ export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty
 export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
   const go = (ast: AST.AST): Pretty<any> => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
-          getPrettyAnnotation(ast),
+          getTypeAliasHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))

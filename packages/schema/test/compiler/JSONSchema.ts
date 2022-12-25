@@ -64,7 +64,7 @@ type JSONSchema =
 const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
   const go = (ast: AST.AST): JSONSchema => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
           getJSONSchemaAnnotation(ast),
           O.match(

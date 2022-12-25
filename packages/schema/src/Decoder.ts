@@ -10,7 +10,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import { getDecoderAnnotation } from "@fp-ts/schema/annotation/DecoderAnnotation"
+import { getTypeAliasHook } from "@fp-ts/schema/annotation/DecoderHooks"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -81,9 +81,9 @@ export const isWarning = I.isWarning
 export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<unknown, any> => {
     switch (ast._tag) {
-      case "TypeAliasDeclaration":
+      case "TypeAlias":
         return pipe(
-          getDecoderAnnotation(ast),
+          getTypeAliasHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))
@@ -265,15 +265,16 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             // ---------------------------------------------
             for (let i = 0; i < fields.length; i++) {
               const field = ast.fields[i]
+              const decoder = fields[i]
               const key = field.key
               expectedKeys[key] = null
+              // TODO: handle custom decoding logic here
               if (!Object.prototype.hasOwnProperty.call(input, key)) {
                 if (field.isOptional) {
                   continue
                 }
                 return failure(DE.key(key, [DE.missing]))
               }
-              const decoder = fields[i]
               const t = decoder.decode(input[key])
               if (isFailure(t)) {
                 // the input key is present but is not valid, bail out

@@ -11,19 +11,14 @@ export const JSONSchemaAnnotationId = "@fp-ts/schema/annotation/JSONSchemaAnnota
 /**
  * @since 1.0.0
  */
-export type JSONSchema = {}
-
-/**
- * @since 1.0.0
- */
 export interface JSONSchemaAnnotation {
-  readonly schema: JSONSchema
+  readonly schema: object
 }
 
 /**
  * @since 1.0.0
  */
-export const jsonSchemaAnnotation = (schema: JSONSchema): JSONSchemaAnnotation => ({
+export const jsonSchemaAnnotation = (schema: object): JSONSchemaAnnotation => ({
   schema
 })
 

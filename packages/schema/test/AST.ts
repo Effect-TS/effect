@@ -223,12 +223,12 @@ describe.concurrent("AST", () => {
   })
 
   describe.concurrent("propertyKeys", () => {
-    it("TypeAliasDeclaration", () => {
+    it("TypeAlias", () => {
       // type Test = keyof Chunk<number> // id
       expect(AST.propertyKeys(DataChunk.chunk(S.number).ast)).toEqual(["_id"])
     })
 
-    it("TypeAliasDeclaration", () => {
+    it("TypeAlias", () => {
       // type Test = keyof O.Option<number> // "_tag"
       expect(AST.propertyKeys(DataOption.option(S.number).ast)).toEqual(["_tag"])
     })
