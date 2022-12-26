@@ -15,7 +15,7 @@ import {
   IdentifierAnnotationId
 } from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataInt from "@fp-ts/schema/data/filter/Int"
+import * as R from "@fp-ts/schema/data/refinement"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 
@@ -811,8 +811,8 @@ describe.concurrent("TypeScript", () => {
 }`])
   })
 
-  it("integer", () => {
-    const schema = DataInt.int(S.number)
+  it("int", () => {
+    const schema = R.int(S.number)
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`number`])
   })

@@ -1,11 +1,11 @@
-import * as _ from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
+import * as _ from "@fp-ts/schema/data/refinement"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe.concurrent("LessThanOrEqualTo", () => {
+describe.concurrent("lessThanOrEqualTo", () => {
   it("property tests", () => {
     Util.property(_.lessThanOrEqualTo(0)(S.number))
   })

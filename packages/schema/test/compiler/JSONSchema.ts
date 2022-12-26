@@ -3,7 +3,7 @@ import * as O from "@fp-ts/data/Option"
 import { getJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataInt from "@fp-ts/schema/data/filter/Int"
+import * as R from "@fp-ts/schema/data/refinement"
 import * as G from "@fp-ts/schema/Guard"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -284,8 +284,8 @@ describe("jsonSchemaFor", () => {
     assertFalse(schema, "a")
   })
 
-  it("integer", () => {
-    const schema = DataInt.int(S.number)
+  it("int", () => {
+    const schema = R.int(S.number)
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "integer" })
   })

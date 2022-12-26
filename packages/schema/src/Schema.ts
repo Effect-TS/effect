@@ -8,23 +8,10 @@ import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataEndsWith from "@fp-ts/schema/data/filter/EndsWith"
-import * as DataFinite from "@fp-ts/schema/data/filter/Finite"
-import * as DataGreaterThan from "@fp-ts/schema/data/filter/GreaterThan"
-import * as DataGreaterThanOrEqualTo from "@fp-ts/schema/data/filter/GreaterThanOrEqualTo"
-import * as DataInstanceOf from "@fp-ts/schema/data/filter/InstanceOf"
-import type { Class } from "@fp-ts/schema/data/filter/InstanceOf"
-import * as DataInt from "@fp-ts/schema/data/filter/Int"
-import * as DataLessThan from "@fp-ts/schema/data/filter/LessThan"
-import * as DataLessThanOrEqualTo from "@fp-ts/schema/data/filter/LessThanOrEqualTo"
-import * as DataMaxLength from "@fp-ts/schema/data/filter/MaxLength"
-import * as DataMinLength from "@fp-ts/schema/data/filter/MinLength"
-import * as DataNonNaN from "@fp-ts/schema/data/filter/NonNaN"
-import * as DataRegex from "@fp-ts/schema/data/filter/Regex"
-import * as DataStartsWith from "@fp-ts/schema/data/filter/StartsWith"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DataParse from "@fp-ts/schema/data/parse"
+import * as R from "@fp-ts/schema/data/refinement"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
@@ -84,13 +71,13 @@ export const enums = <A extends { [x: string]: string | number }>(enums: A): Sch
  * @since 1.0.0
  */
 export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  DataMinLength.minLength
+  R.minLength
 
 /**
  * @since 1.0.0
  */
 export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  DataMaxLength.maxLength
+  R.maxLength
 
 /**
  * @since 1.0.0
@@ -107,68 +94,66 @@ export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLen
  * @since 1.0.0
  */
 export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  DataStartsWith.startsWith
+  R.startsWith
 
 /**
  * @since 1.0.0
  */
 export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  DataEndsWith.endsWith
+  R.endsWith
 
 /**
  * @since 1.0.0
  */
-export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> =
-  DataRegex.regex
+export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> = R.regex
 
 /**
  * @since 1.0.0
  */
 export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  DataLessThan.lessThan
+  R.lessThan
 
 /**
  * @since 1.0.0
  */
 export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  DataLessThanOrEqualTo.lessThanOrEqualTo
+  R.lessThanOrEqualTo
 
 /**
  * @since 1.0.0
  */
 export const greaterThan: (
   min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = DataGreaterThan.greaterThan
+) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThan
 
 /**
  * @since 1.0.0
  */
 export const greaterThanOrEqualTo: (
   min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> =
-  DataGreaterThanOrEqualTo.greaterThanOrEqualTo
+) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThanOrEqualTo
 
 /**
  * @since 1.0.0
  */
-export const int: <A extends number>(self: Schema<A>) => Schema<A> = DataInt.int
+export const int: <A extends number>(self: Schema<A>) => Schema<A> = R.int
 
 /**
  * @since 1.0.0
  */
-export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = DataNonNaN.nonNaN
+export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = R.nonNaN
 
 /**
  * @since 1.0.0
  */
-export const finite: <A extends number>(self: Schema<A>) => Schema<A> = DataFinite.finite
+export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
 
 /**
  * @since 1.0.0
  */
-export const instanceOf: <A extends typeof Class>(
+export const instanceOf: <A extends typeof R.Class>(
   constructor: A
-) => (self: Schema<object>) => Schema<InstanceType<A>> = DataInstanceOf.instanceOf
+) => (self: Schema<object>) => Schema<InstanceType<A>> = R.instanceOf
 
 // ---------------------------------------------
 // combinators
