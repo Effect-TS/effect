@@ -399,17 +399,10 @@ export const filter = <A, B extends A>(
  * @since 1.0.0
  */
 export const parse = <A, B>(
+  to: Schema<B>,
   decode: Decoder<A, B>["decode"],
-  encode: Encoder<A, B>["encode"],
-  is: (u: unknown) => u is B,
-  arbitrary: Arbitrary<B>["arbitrary"],
-  pretty: Pretty<B>["pretty"],
-  annotations: Annotated["annotations"]
-) =>
-  (self: Schema<A>): Codec<B> =>
-    codecFor(
-      S.parse(decode, encode, is, arbitrary, pretty, annotations)(self)
-    )
+  encode: Encoder<A, B>["encode"]
+) => (self: Schema<A>): Codec<B> => codecFor(S.parse(to, decode, encode)(self))
 
 /**
  * @since 1.0.0

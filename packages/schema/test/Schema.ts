@@ -4,24 +4,9 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Schema", () => {
-  it("exist", () => {
-    expect(S.make).exist
-    expect(S.filter).exist
-    expect(S.string).exist
-    expect(S.number).exist
-    expect(S.boolean).exist
-    expect(S.bigint).exist
-    expect(S.unknown).exist
-    expect(S.any).exist
-    expect(S.never).exist
-    expect(S.json).exist
-  })
-
-  describe.concurrent("optional", () => {
-    it("should flatten optional calls", () => {
-      const schema = S.optional(S.optional(S.string))
-      expect(schema).toEqual(S.optional(S.string))
-    })
+  it("optional. should flatten optional calls", () => {
+    const schema = S.optional(S.optional(S.string))
+    expect(schema).toEqual(S.optional(S.string))
   })
 
   describe.concurrent("literal", () => {

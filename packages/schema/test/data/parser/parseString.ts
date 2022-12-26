@@ -1,12 +1,12 @@
-import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
+import * as P from "@fp-ts/schema/data/parser"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe.concurrent("parseFloat", () => {
-  const schema = parseFloat.schema(S.string)
+describe.concurrent("parseString", () => {
+  const schema = P.parseString(S.string)
 
   it("property tests", () => {
     Util.property(schema)

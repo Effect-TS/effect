@@ -1,9 +1,9 @@
 import { pipe } from "@fp-ts/data/Function"
-import * as parseFloat from "@fp-ts/schema/data/parser/parseFloat"
+import * as P from "@fp-ts/schema/data/parser"
 import * as E from "@fp-ts/schema/Encoder"
 import * as S from "@fp-ts/schema/Schema"
 
-const NumberFromString = pipe(S.string, parseFloat.schema)
+const NumberFromString = pipe(S.string, P.parseString)
 
 describe.concurrent("Encoder", () => {
   it("string", () => {

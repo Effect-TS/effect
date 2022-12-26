@@ -6,16 +6,14 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
-import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DataParse from "@fp-ts/schema/data/parse"
+import * as DataParse from "@fp-ts/schema/data/parser"
 import * as R from "@fp-ts/schema/data/refinement"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Pretty } from "@fp-ts/schema/Pretty"
 
 /**
  * @since 1.0.0
@@ -349,12 +347,9 @@ export const filter = <A, B extends A>(
  * @since 1.0.0
  */
 export const parse: <A, B>(
+  to: Schema<B>,
   decode: Decoder<A, B>["decode"],
-  encode: Encoder<A, B>["encode"],
-  is: (u: unknown) => u is B,
-  arbitrary: Arbitrary<B>["arbitrary"],
-  pretty: Pretty<B>["pretty"],
-  annotations: AST.Annotated["annotations"]
+  encode: Encoder<A, B>["encode"]
 ) => (self: Schema<A>) => Schema<B> = DataParse.parse
 
 /**
