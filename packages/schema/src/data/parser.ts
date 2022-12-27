@@ -39,6 +39,15 @@ export const parse = <A, B>(
 export const parseString: (self: Schema<string>) => Schema<number> = parse(
   I.number,
   (s: string) => {
+    if (s === "NaN") {
+      return I.success(NaN)
+    }
+    if (s === "Infinity") {
+      return I.success(Infinity)
+    }
+    if (s === "-Infinity") {
+      return I.success(-Infinity)
+    }
     const n = parseFloat(s)
     return isNaN(n) ?
       I.failure(DE.parse("string", "number", s)) :

@@ -460,6 +460,7 @@ export const union = (
     candidates,
     RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
   ))
+  // TODO: unify 'a' | string -> string
   switch (uniq.length) {
     case 0:
       return neverKeyword(annotations)
@@ -677,7 +678,7 @@ export const keyof = (ast: AST): ReadonlyArray<AST> => {
 /**
  * @since 1.0.0
  */
-export const record = (key: AST, value: AST, isReadonly: boolean): AST => {
+export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
   const fields: Array<Field> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
@@ -698,17 +699,17 @@ export const record = (key: AST, value: AST, isReadonly: boolean): AST => {
       }
       case "LiteralType":
         if (isString(key.literal) || isNumber(key.literal)) {
-          fields.push(field(key.literal, value, false, true))
+          fields.push(field(key.literal, value, false, isReadonly))
         }
         break
       case "UniqueSymbol":
-        fields.push(field(key.symbol, value, false, true))
+        fields.push(field(key.symbol, value, false, isReadonly))
         break
       case "Union":
         key.members.forEach(go)
         break
       case "Refinement":
-        go(key.from)
+        throw new Error("cannot handle refinements in `record`")
         break
       default:
         throw new Error(

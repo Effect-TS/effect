@@ -438,13 +438,6 @@ describe.concurrent("Guard", () => {
     expect(guard.is({ _tag: "a" })).toEqual(false)
   })
 
-  it("record(s.startsWith, number)", () => {
-    const schema = S.record(pipe(S.string, S.startsWith("a")), S.number)
-    const guard = G.guardFor(schema)
-    expect(guard.is({ a: 1 })).toEqual(true)
-    expect(guard.is({ b: 1 })).toEqual(true)
-  })
-
   it("union", () => {
     const schema = S.union(S.string, S.number)
     const guard = G.guardFor(schema)
