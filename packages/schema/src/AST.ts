@@ -644,6 +644,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
  * @since 1.0.0
  */
 export const keyof = (ast: AST): AST => union(_keyof(ast))
+
 /**
  * @since 1.0.0
  */

@@ -24,6 +24,19 @@ export interface Arbitrary<A> extends Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
+const record = <K extends PropertyKey, A>(
+  fc: typeof FastCheck,
+  key: FastCheck.Arbitrary<K>,
+  value: FastCheck.Arbitrary<A>
+): FastCheck.Arbitrary<Record<K, A>> =>
+  fc.array(fc.tuple(key, value), { maxLength: 10 }).map((tuples) => {
+    const out: Record<K, A> = {} as any
+    for (const [k, v] of tuples) {
+      out[k] = v
+    }
+    return out
+  })
+
 /**
  * @since 1.0.0
  */
@@ -134,31 +147,13 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             for (let i = 0; i < indexSignatures.length; i++) {
               const key = ast.indexSignatures[i].key
               const value = indexSignatures[i].arbitrary(fc)
+              const akey: FastCheck.Arbitrary<PropertyKey> = key === "string" ?
+                fc.string() :
+                key === "number" ?
+                fc.integer() :
+                fc.string().map((s) => Symbol.for(s))
               output = output.chain((o) => {
-                if (key === "string") {
-                  return fc.dictionary(fc.string(), value, { maxKeys: 10 }).map((d) => ({
-                    ...o,
-                    ...d
-                  }))
-                } else if (key === "symbol") {
-                  return fc.dictionary(fc.string(), value, { maxKeys: 10 }).map((d) => {
-                    const sd = {}
-                    for (const s in d) {
-                      sd[Symbol(s)] = d[s]
-                    }
-                    return ({ ...o, ...sd })
-                  })
-                } else {
-                  return fc.dictionary(fc.integer().map(String), value, { maxKeys: 10 }).map(
-                    (d) => {
-                      const nd = {}
-                      for (const s in d) {
-                        nd[Number(s)] = d[s]
-                      }
-                      return ({ ...o, ...nd })
-                    }
-                  )
-                }
+                return record(fc, akey, value).map((d) => ({ ...o, ...d }))
               })
             }
 
