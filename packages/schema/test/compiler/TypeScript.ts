@@ -833,7 +833,7 @@ describe.concurrent("TypeScript", () => {
     it("fields", () => {
       const schema = S.make(AST.struct(
         [
-          AST.field("a", AST.stringKeyword(), false, true, {
+          AST.field("a", AST.stringKeyword, false, true, {
             [DocumentationAnnotationId]: documentationAnnotation("description")
           })
         ],

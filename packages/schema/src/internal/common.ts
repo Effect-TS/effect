@@ -170,61 +170,61 @@ export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> =>
   makeSchema(AST.uniqueSymbol(symbol))
 
 /** @internal */
-export const isUndefined = (u: unknown): u is undefined => u === undefined
-
-/** @internal */
-export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword())
-
-/** @internal */
 export const isNever = (_u: unknown): _u is never => false
 
 /** @internal */
-export const never: Schema<never> = makeSchema(AST.never)
+export const never: Schema<never> = makeSchema(AST.neverKeyword)
+
+/** @internal */
+export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword)
+
+/** @internal */
+export const any: Schema<any> = makeSchema(AST.anyKeyword)
+
+/** @internal */
+export const isUndefined = (u: unknown): u is undefined => u === undefined
+
+/** @internal */
+export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
+
+/** @internal */
+export const _null: Schema<null> = makeSchema(AST.literalType(null))
+
+/** @internal */
+export const _void: Schema<void> = makeSchema(AST.voidKeyword)
 
 /** @internal */
 export const isUnknown = (_u: unknown): _u is unknown => true
 
 /** @internal */
-export const unknown: Schema<unknown> = makeSchema(AST.unknownKeyword())
+export const string: Schema<string> = makeSchema(AST.stringKeyword)
 
 /** @internal */
-export const any: Schema<any> = makeSchema(AST.anyKeyword())
+export const number: Schema<number> = makeSchema(AST.numberKeyword)
 
 /** @internal */
-export const string: Schema<string> = makeSchema(AST.string)
-
-/** @internal */
-export const number: Schema<number> = makeSchema(AST.number)
-
-/** @internal */
-export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword())
+export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword)
 
 /** @internal */
 export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
 
 /** @internal */
-export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword())
+export const bigint: Schema<bigint> = makeSchema(AST.bigIntKeyword)
 
 /** @internal */
 export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
 
 /** @internal */
-export const symbol: Schema<symbol> = makeSchema(AST.symbol)
+export const symbol: Schema<symbol> = makeSchema(AST.symbolKeyword)
 
 /** @internal */
-export const object: Schema<object> = makeSchema(AST.objectKeyword())
+export const object: Schema<object> = makeSchema(AST.objectKeyword)
 
 /** @internal */
 export const isObject = (u: unknown): u is object => typeof u === "object" && u !== null
 
 /** @internal */
 export const isNotNull = (u: unknown): u is {} => u !== null
-
-/** @internal */
-export const _null: Schema<null> = makeSchema(AST.literalType(null))
-
-/** @internal */
-export const _void: Schema<void> = makeSchema(AST.voidKeyword())
 
 type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 
@@ -233,18 +233,17 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
-/** @internal */
-export const FieldSchemaId: symbol = Symbol.for("@fp-ts/schema/Schema/Field")
+const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
 
 const isOptionalSchema = <A>(schema: Schema<A>): schema is OptionalSchema<A, boolean> =>
-  schema["_id"] === FieldSchemaId
+  schema["_id"] === OptionalSchemaId
 
 const isOptional = <A>(schema: Schema<A>): boolean => isOptionalSchema(schema)
 
 /** @internal */
 export const optional = <A>(schema: Schema<A>): OptionalSchema<A, true> => {
   const out: any = makeSchema(schema.ast)
-  out["_id"] = FieldSchemaId
+  out["_id"] = OptionalSchemaId
   return out
 }
 
@@ -263,6 +262,14 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
       []
     )
   )
+
+/** @internal */
+export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
+  key: Key,
+  value: Schema<A>,
+  isOptional: isOptional
+): Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
+  makeSchema(AST.struct([AST.field(key, value.ast, isOptional, true)], []))
 
 /** @internal */
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(

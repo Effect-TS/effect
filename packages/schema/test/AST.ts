@@ -1,183 +1,58 @@
+import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
-const stringKeyword = AST.stringKeyword()
-const numberKeyword = AST.numberKeyword()
-const booleanKeyword = AST.booleanKeyword()
-const undefinedKeyword = AST.undefinedKeyword()
-const neverKeyword = AST.neverKeyword()
-
 describe.concurrent("AST", () => {
-  describe.concurrent("partial", () => {
-    describe.concurrent("tuple", () => {
-      it("elements only", () => {
-        // type A = [string]
-        // type B = Partial<A>
-        const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
-        expect(AST.partial(tuple)).toEqual(
-          AST.tuple([AST.element(stringKeyword, true)], O.none, true)
-        )
-      })
-
-      it("elements and rest", () => {
-        // type A = readonly [string, ...Array<number>]
-        // type B = Partial<A>
-        const tuple = AST.tuple(
-          [AST.element(stringKeyword, false)],
-          O.some([numberKeyword]),
-          true
-        )
-        expect(AST.partial(tuple)).toEqual(
-          AST.tuple(
-            [AST.element(stringKeyword, true)],
-            O.some([AST.union([numberKeyword, undefinedKeyword])]),
-            true
-          )
-        )
-      })
-
-      it("elements and rest elements", () => {
-        const tuple = AST.tuple(
-          [AST.element(stringKeyword, false)],
-          O.some([numberKeyword, booleanKeyword]),
-          true
-        )
-        expect(AST.partial(tuple)).toEqual(
-          AST.tuple(
-            [AST.element(stringKeyword, true)],
-            O.some([AST.union([numberKeyword, booleanKeyword, undefinedKeyword])]),
-            true
-          )
-        )
-      })
-    })
+  it("union. should remove duplicated members", () => {
+    const a = S.literal("a")
+    expect(S.union(a, a).ast).toEqual(a.ast)
+    expect(S.union(S.string, S.string).ast).toEqual(S.string.ast)
   })
 
-  describe.concurrent("appendRestElement", () => {
-    it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
-      const actual = AST.appendRestElement(tuple, numberKeyword)
-      expect(actual).toEqual(
-        AST.tuple([AST.element(stringKeyword, false)], O.some([numberKeyword]), true)
-      )
-    })
-
-    it("multiple `rest` calls must throw", () => {
-      expect(() =>
-        AST.appendRestElement(
-          AST.appendRestElement(
-            AST.tuple([AST.element(stringKeyword, false)], O.none, true),
-            numberKeyword
-          ),
-          booleanKeyword
-        )
-      ).toThrowError(new Error("A rest element cannot follow another rest element. ts(1265)"))
-    })
+  it("union. should unify string literals with string", () => {
+    expect(S.union(S.literal("a"), S.string).ast).toEqual(S.string.ast)
   })
 
-  describe.concurrent("appendElement", () => {
-    it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, false)], O.none, true)
-      expect(AST.appendElement(tuple, AST.element(numberKeyword, false))).toEqual(
-        AST.tuple(
-          [AST.element(stringKeyword, false), AST.element(numberKeyword, false)],
-          O.none,
-          true
-        )
-      )
-    })
-
-    it("existing rest element", () => {
-      const tuple = AST.tuple(
-        [AST.element(stringKeyword, false)],
-        O.some([numberKeyword]),
-        true
-      )
-      expect(AST.appendElement(tuple, AST.element(booleanKeyword, false))).toEqual(
-        AST.tuple(
-          [AST.element(stringKeyword, false)],
-          O.some([numberKeyword, booleanKeyword]),
-          true
-        )
-      )
-    })
-
-    it("A required element cannot follow an optional element", () => {
-      const tuple = AST.tuple([AST.element(stringKeyword, true)], O.none, true)
-      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, false)))
-        .toThrowError(
-          new Error("A required element cannot follow an optional element. ts(1257)")
-        )
-    })
-
-    it("An optional element cannot follow a rest element", () => {
-      const tuple = AST.tuple([], O.some([stringKeyword]), true)
-      expect(() => AST.appendElement(tuple, AST.element(numberKeyword, true))).toThrowError(
-        new Error("An optional element cannot follow a rest element. ts(1266)")
-      )
-    })
+  it("union. should unify number literals with number", () => {
+    expect(S.union(S.literal(1), S.number).ast).toEqual(S.number.ast)
   })
 
-  describe.concurrent("struct", () => {
-    describe.concurrent("should give precedence to fields / index signatures containing less inhabitants", () => {
-      it("literal vs string", () => {
-        const schema = S.struct({ a: S.string, b: S.literal("b") })
-        expect(schema.ast).toEqual({
-          _tag: "Struct",
-          fields: [
-            AST.field("b", AST.literalType("b"), false, true),
-            AST.field("a", stringKeyword, false, true)
-          ],
-          indexSignatures: [],
-          annotations: {},
-          allowUnexpected: false
-        })
-      })
+  it("union. should unify symbol literals with symbol", () => {
+    expect(S.union(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")), S.symbol).ast).toEqual(
+      S.symbol.ast
+    )
+  })
 
-      it("undefined vs string", () => {
-        const schema = S.struct({ a: S.string, b: S.undefined })
-        expect(schema.ast).toEqual({
-          _tag: "Struct",
-          fields: [
-            AST.field("b", undefinedKeyword, false, true),
-            AST.field("a", stringKeyword, false, true)
-          ],
-          indexSignatures: [],
-          annotations: {},
-          allowUnexpected: false
-        })
-      })
+  it("keyof. should unify string literals with string", () => {
+    // type A = { a: string } & Record<string, string>
+    // type K = keyof A
+    expect(AST.keyof(
+      pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string))).ast
+    )).toEqual(S.string.ast)
+  })
 
-      it("boolean vs string", () => {
-        const schema = S.struct({ a: S.string, b: S.boolean })
-        expect(schema.ast).toEqual({
-          _tag: "Struct",
-          fields: [
-            AST.field("b", booleanKeyword, false, true),
-            AST.field("a", stringKeyword, false, true)
-          ],
-          indexSignatures: [],
-          annotations: {},
-          allowUnexpected: false
-        })
-      })
+  it("keyof. should unify number literals with number", () => {
+    expect(AST.keyof(
+      pipe(S.field(0, S.string, false), S.extend(S.record(S.number, S.string))).ast
+    )).toEqual(S.number.ast)
+  })
 
-      it("literal vs boolean", () => {
-        const schema = S.struct({ a: S.boolean, b: S.literal(null) })
-        expect(schema.ast).toEqual({
-          _tag: "Struct",
-          fields: [
-            AST.field("b", AST.literalType(null), false, true),
-            AST.field("a", booleanKeyword, false, true)
-          ],
-          indexSignatures: [],
-          annotations: {},
-          allowUnexpected: false
-        })
-      })
+  it("keyof. should unify symbol literals with symbol", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    expect(AST.keyof(
+      pipe(S.struct({ [a]: S.string }), S.extend(S.record(S.symbol, S.string))).ast
+    )).toEqual(S.symbol.ast)
+  })
+
+  describe.concurrent("should remove duplicated ASTs", () => {
+    it("nested", () => {
+      const a = S.literal("a")
+      const b = S.literal("b")
+      const schema = S.union(a, b, S.union(a, b))
+      expect(schema.ast).toEqual(S.union(a, b).ast)
     })
   })
 
@@ -205,19 +80,172 @@ describe.concurrent("AST", () => {
         })
       })
     })
+  })
 
-    describe.concurrent("should remove duplicated ASTs", () => {
-      it("plain", () => {
-        const a = S.literal("a")
-        const schema = S.union(a, a)
-        expect(schema.ast).toEqual(a.ast)
+  it("partial. tuple. e", () => {
+    // type A = [string]
+    // type B = Partial<A>
+    const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+    expect(AST.partial(tuple)).toEqual(
+      AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
+    )
+  })
+
+  it("partial. tuple. e + r", () => {
+    // type A = readonly [string, ...Array<number>]
+    // type B = Partial<A>
+    const tuple = AST.tuple(
+      [AST.element(AST.stringKeyword, false)],
+      O.some([AST.numberKeyword]),
+      true
+    )
+    expect(AST.partial(tuple)).toEqual(
+      AST.tuple(
+        [AST.element(AST.stringKeyword, true)],
+        O.some([AST.union([AST.numberKeyword, AST.undefinedKeyword])]),
+        true
+      )
+    )
+  })
+
+  it("partial. tuple. e + r + e", () => {
+    // type A = readonly [string, ...Array<number>, boolean]
+    // type B = Partial<A>
+    const tuple = AST.tuple(
+      [AST.element(AST.stringKeyword, false)],
+      O.some([AST.numberKeyword, AST.booleanKeyword]),
+      true
+    )
+    expect(AST.partial(tuple)).toEqual(
+      AST.tuple(
+        [AST.element(AST.stringKeyword, true)],
+        O.some([AST.union([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])]),
+        true
+      )
+    )
+  })
+
+  describe.concurrent("appendRestElement", () => {
+    it("non existing rest element", () => {
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+      const actual = AST.appendRestElement(tuple, AST.numberKeyword)
+      expect(actual).toEqual(
+        AST.tuple([AST.element(AST.stringKeyword, false)], O.some([AST.numberKeyword]), true)
+      )
+    })
+
+    it("multiple `rest` calls must throw", () => {
+      expect(() =>
+        AST.appendRestElement(
+          AST.appendRestElement(
+            AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true),
+            AST.numberKeyword
+          ),
+          AST.booleanKeyword
+        )
+      ).toThrowError(new Error("A rest element cannot follow another rest element. ts(1265)"))
+    })
+  })
+
+  describe.concurrent("appendElement", () => {
+    it("non existing rest element", () => {
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+      expect(AST.appendElement(tuple, AST.element(AST.numberKeyword, false))).toEqual(
+        AST.tuple(
+          [AST.element(AST.stringKeyword, false), AST.element(AST.numberKeyword, false)],
+          O.none,
+          true
+        )
+      )
+    })
+
+    it("existing rest element", () => {
+      const tuple = AST.tuple(
+        [AST.element(AST.stringKeyword, false)],
+        O.some([AST.numberKeyword]),
+        true
+      )
+      expect(AST.appendElement(tuple, AST.element(AST.booleanKeyword, false))).toEqual(
+        AST.tuple(
+          [AST.element(AST.stringKeyword, false)],
+          O.some([AST.numberKeyword, AST.booleanKeyword]),
+          true
+        )
+      )
+    })
+
+    it("A required element cannot follow an optional element", () => {
+      const tuple = AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
+      expect(() => AST.appendElement(tuple, AST.element(AST.numberKeyword, false)))
+        .toThrowError(
+          new Error("A required element cannot follow an optional element. ts(1257)")
+        )
+    })
+
+    it("An optional element cannot follow a rest element", () => {
+      const tuple = AST.tuple([], O.some([AST.stringKeyword]), true)
+      expect(() => AST.appendElement(tuple, AST.element(AST.numberKeyword, true))).toThrowError(
+        new Error("An optional element cannot follow a rest element. ts(1266)")
+      )
+    })
+  })
+
+  describe.concurrent("struct", () => {
+    describe.concurrent("should give precedence to fields / index signatures containing less inhabitants", () => {
+      it("literal vs string", () => {
+        const schema = S.struct({ a: S.string, b: S.literal("b") })
+        expect(schema.ast).toEqual({
+          _tag: "Struct",
+          fields: [
+            AST.field("b", AST.literalType("b"), false, true),
+            AST.field("a", AST.stringKeyword, false, true)
+          ],
+          indexSignatures: [],
+          annotations: {},
+          allowUnexpected: false
+        })
       })
 
-      it("nested", () => {
-        const a = S.literal("a")
-        const b = S.literal("b")
-        const schema = S.union(a, b, S.union(a, b))
-        expect(schema.ast).toEqual(S.union(a, b).ast)
+      it("undefined vs string", () => {
+        const schema = S.struct({ a: S.string, b: S.undefined })
+        expect(schema.ast).toEqual({
+          _tag: "Struct",
+          fields: [
+            AST.field("b", AST.undefinedKeyword, false, true),
+            AST.field("a", AST.stringKeyword, false, true)
+          ],
+          indexSignatures: [],
+          annotations: {},
+          allowUnexpected: false
+        })
+      })
+
+      it("boolean vs string", () => {
+        const schema = S.struct({ a: S.string, b: S.boolean })
+        expect(schema.ast).toEqual({
+          _tag: "Struct",
+          fields: [
+            AST.field("b", AST.booleanKeyword, false, true),
+            AST.field("a", AST.stringKeyword, false, true)
+          ],
+          indexSignatures: [],
+          annotations: {},
+          allowUnexpected: false
+        })
+      })
+
+      it("literal vs boolean", () => {
+        const schema = S.struct({ a: S.boolean, b: S.literal(null) })
+        expect(schema.ast).toEqual({
+          _tag: "Struct",
+          fields: [
+            AST.field("b", AST.literalType(null), false, true),
+            AST.field("a", AST.booleanKeyword, false, true)
+          ],
+          indexSignatures: [],
+          annotations: {},
+          allowUnexpected: false
+        })
       })
     })
   })
@@ -254,7 +282,7 @@ describe.concurrent("AST", () => {
     describe.concurrent("union", () => {
       it("empty union", () => {
         const schema = S.union()
-        expect(AST.propertyKeys(schema.ast)).toEqual(AST.propertyKeys(neverKeyword))
+        expect(AST.propertyKeys(schema.ast)).toEqual(AST.propertyKeys(AST.neverKeyword))
       })
 
       it("discriminated unions", () => {

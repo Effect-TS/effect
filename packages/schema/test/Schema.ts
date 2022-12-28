@@ -11,7 +11,7 @@ describe.concurrent("Schema", () => {
 
   describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
-      expect(S.literal().ast).toEqual(AST.neverKeyword())
+      expect(S.literal().ast).toEqual(AST.neverKeyword)
     })
 
     it("should return an unwrapped AST with exactly one literal", () => {

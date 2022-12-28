@@ -112,6 +112,11 @@ export const uniqueSymbol = (
 /**
  * @since 1.0.0
  */
+export const isUniqueSymbol = (ast: AST): ast is UniqueSymbol => ast._tag === "UniqueSymbol"
+
+/**
+ * @since 1.0.0
+ */
 export interface UndefinedKeyword extends Annotated {
   readonly _tag: "UndefinedKeyword"
 }
@@ -119,12 +124,7 @@ export interface UndefinedKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const undefinedKeyword = (
-  annotations: Annotated["annotations"] = {}
-): UndefinedKeyword => ({
-  _tag: "UndefinedKeyword",
-  annotations
-})
+export const undefinedKeyword: UndefinedKeyword = { _tag: "UndefinedKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -136,10 +136,7 @@ export interface VoidKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const voidKeyword = (annotations: Annotated["annotations"] = {}): VoidKeyword => ({
-  _tag: "VoidKeyword",
-  annotations
-})
+export const voidKeyword: VoidKeyword = { _tag: "VoidKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -151,10 +148,7 @@ export interface NeverKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const neverKeyword = (annotations: Annotated["annotations"] = {}): NeverKeyword => ({
-  _tag: "NeverKeyword",
-  annotations
-})
+export const neverKeyword: NeverKeyword = { _tag: "NeverKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -166,10 +160,7 @@ export interface UnknownKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const unknownKeyword = (annotations: Annotated["annotations"] = {}): UnknownKeyword => ({
-  _tag: "UnknownKeyword",
-  annotations
-})
+export const unknownKeyword: UnknownKeyword = { _tag: "UnknownKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -181,10 +172,7 @@ export interface AnyKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const anyKeyword = (annotations: Annotated["annotations"] = {}): AnyKeyword => ({
-  _tag: "AnyKeyword",
-  annotations
-})
+export const anyKeyword: AnyKeyword = { _tag: "AnyKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -196,10 +184,12 @@ export interface StringKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const stringKeyword = (annotations: Annotated["annotations"] = {}): StringKeyword => ({
-  _tag: "StringKeyword",
-  annotations
-})
+export const stringKeyword: StringKeyword = { _tag: "StringKeyword", annotations: {} }
+
+/**
+ * @since 1.0.0
+ */
+export const isStringKeyword = (ast: AST): ast is StringKeyword => ast._tag === "StringKeyword"
 
 /**
  * @since 1.0.0
@@ -211,10 +201,12 @@ export interface NumberKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const numberKeyword = (annotations: Annotated["annotations"] = {}): NumberKeyword => ({
-  _tag: "NumberKeyword",
-  annotations
-})
+export const numberKeyword: NumberKeyword = { _tag: "NumberKeyword", annotations: {} }
+
+/**
+ * @since 1.0.0
+ */
+export const isNumberKeyword = (ast: AST): ast is NumberKeyword => ast._tag === "NumberKeyword"
 
 /**
  * @since 1.0.0
@@ -226,10 +218,7 @@ export interface BooleanKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const booleanKeyword = (annotations: Annotated["annotations"] = {}): BooleanKeyword => ({
-  _tag: "BooleanKeyword",
-  annotations
-})
+export const booleanKeyword: BooleanKeyword = { _tag: "BooleanKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -241,10 +230,7 @@ export interface BigIntKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const bigIntKeyword = (annotations: Annotated["annotations"] = {}): BigIntKeyword => ({
-  _tag: "BigIntKeyword",
-  annotations
-})
+export const bigIntKeyword: BigIntKeyword = { _tag: "BigIntKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -256,10 +242,12 @@ export interface SymbolKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const symbolKeyword = (annotations: Annotated["annotations"] = {}): SymbolKeyword => ({
-  _tag: "SymbolKeyword",
-  annotations
-})
+export const symbolKeyword: SymbolKeyword = { _tag: "SymbolKeyword", annotations: {} }
+
+/**
+ * @since 1.0.0
+ */
+export const isSymbolKeyword = (ast: AST): ast is SymbolKeyword => ast._tag === "SymbolKeyword"
 
 /**
  * @since 1.0.0
@@ -271,10 +259,7 @@ export interface ObjectKeyword extends Annotated {
 /**
  * @since 1.0.0
  */
-export const objectKeyword = (annotations: Annotated["annotations"] = {}): ObjectKeyword => ({
-  _tag: "ObjectKeyword",
-  annotations
-})
+export const objectKeyword: ObjectKeyword = { _tag: "ObjectKeyword", annotations: {} }
 
 /**
  * @since 1.0.0
@@ -348,6 +333,9 @@ export interface IndexSignature extends Annotated {
   readonly key: "string" | "number" | "symbol"
   readonly value: AST
   readonly isReadonly: boolean
+  // keyof is different if computed from an index signature or from a Record
+  // so we need to track the origin
+  readonly isRecord: boolean
 }
 
 /**
@@ -357,8 +345,9 @@ export const indexSignature = (
   key: IndexSignature["key"],
   value: AST,
   isReadonly: boolean,
+  isRecord: boolean,
   annotations: Annotated["annotations"] = {}
-): IndexSignature => ({ key, value, isReadonly, annotations })
+): IndexSignature => ({ key, value, isReadonly, isRecord, annotations })
 
 /**
  * @since 1.0.0
@@ -449,6 +438,24 @@ const sortByWeightDesc = RA.sort(
   Order.reverse(pipe(Number.Order, Order.contramap(getWeight)))
 )
 
+const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
+  const flattened = pipe(
+    candidates,
+    RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+  )
+  let unique = RA.uniq(flattened)
+  if (unique.some(isStringKeyword)) {
+    unique = unique.filter((m) => !(isLiteralType(m) && typeof m.literal === "string"))
+  }
+  if (unique.some(isNumberKeyword)) {
+    unique = unique.filter((m) => !(isLiteralType(m) && typeof m.literal === "number"))
+  }
+  if (unique.some(isSymbolKeyword)) {
+    unique = unique.filter((m) => !isUniqueSymbol(m))
+  }
+  return unique
+}
+
 /**
  * @since 1.0.0
  */
@@ -456,19 +463,15 @@ export const union = (
   candidates: ReadonlyArray<AST>,
   annotations: Annotated["annotations"] = {}
 ): AST => {
-  const uniq = RA.uniq(pipe(
-    candidates,
-    RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
-  ))
-  // TODO: unify 'a' | string -> string
-  switch (uniq.length) {
+  const members = unify(candidates)
+  switch (members.length) {
     case 0:
-      return neverKeyword(annotations)
+      return neverKeyword
     case 1:
-      return uniq[0]
+      return members[0]
     default: {
       // @ts-expect-error (TypeScript doesn't know that `members` has >= 2 elements after sorting)
-      return { _tag: "Union", members: sortByWeightDesc(uniq), annotations }
+      return { _tag: "Union", members: sortByWeightDesc(members), annotations }
     }
   }
 }
@@ -584,97 +587,63 @@ export const appendElement = (
   )
 }
 
-/**
- * @since 1.0.0
- */
-export const string = stringKeyword()
-
-/**
- * @since 1.0.0
- */
-export const number = numberKeyword()
-
-/**
- * @since 1.0.0
- */
-export const symbol = symbolKeyword()
-
-/**
- * @since 1.0.0
- */
-export const never = neverKeyword()
-
-const getPropertyKeyAST = (key: PropertyKey): AST =>
+const getPropertyKeyKeyof = (key: PropertyKey): AST =>
   typeof key === "symbol" ? uniqueSymbol(key) : literalType(key)
 
-const getIndexSignaturesKeys = (
-  indexSignatures: ReadonlyArray<IndexSignature>
-): Record<IndexSignature["key"], boolean> => {
-  const out = { string: false, number: false, symbol: false }
-  for (const is of indexSignatures) {
-    if (is.key === "symbol") {
-      // keyof { [x: symbol]: ... } is symbol
-      out.symbol = true
-    } else if (is.key === "number") {
-      // keyof { [x: string]: ... } is number
-      out.number = true
-    } else {
-      // keyof { [x: string]: ... } is string | number
-      out.string = true
-      out.number = true
-    }
+const getIndexSignatureKeyof = (is: IndexSignature): AST => {
+  if (is.key === "symbol") {
+    return symbolKeyword
+  } else if (is.key === "number") {
+    return numberKeyword
+  } else if (is.isRecord) {
+    // type A = Record<string, string>
+    // type K = keyof A // string
+    return stringKeyword
   }
-  return out
+  // type A = { [x: string]: string }
+  // type K = keyof A // string | number
+  return union([stringKeyword, numberKeyword])
 }
 
-const getIndexSignatureAST = (is: IndexSignature): AST =>
-  is.key === "symbol" ? symbol : is.key === "number" ? number : union([string, number])
-
-/**
- * @since 1.0.0
- */
-export const keyof = (ast: AST): ReadonlyArray<AST> => {
+const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAlias":
-      return keyof(ast.type)
+      return _keyof(ast.type)
     case "NeverKeyword":
     case "AnyKeyword":
-      return [string, number, symbol]
-    case "UnknownKeyword":
-    case "NumberKeyword":
-    case "BooleanKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-    case "UndefinedKeyword":
-    case "UniqueSymbol":
-    case "VoidKeyword":
-    case "ObjectKeyword":
-    case "Enums":
-      return [never]
+      return [stringKeyword, numberKeyword, symbolKeyword]
     case "Struct": {
-      const keys = getIndexSignaturesKeys(ast.indexSignatures)
-      // unify field keys and index signatures keys
-      const fields = ast.fields.filter((f) => keys[typeof f.key] === false).map((
-        f
-      ) => getPropertyKeyAST(f.key))
-      return [...fields, ...ast.indexSignatures.map(getIndexSignatureAST)]
+      return [
+        ...ast.fields.map((
+          f
+        ) => getPropertyKeyKeyof(f.key)),
+        ...ast.indexSignatures.map(getIndexSignatureKeyof)
+      ]
     }
     case "Union": {
-      let out: ReadonlyArray<AST> = keyof(ast.members[0])
+      let out: ReadonlyArray<AST> = _keyof(ast.members[0])
       for (let i = 1; i < ast.members.length; i++) {
-        out = RA.intersection(keyof(ast.members[i]))(out)
+        out = RA.intersection(_keyof(ast.members[i]))(out)
       }
       return out
     }
     case "Lazy":
-      return keyof(ast.f())
+      return _keyof(ast.f())
     case "Refinement":
-      return keyof(ast.from)
+      return _keyof(ast.from)
+    case "LiteralType":
+    case "StringKeyword":
+    case "Tuple":
+      throw new Error("cannot compute `keyof` on this AST")
     default:
-      throw new Error("cannot `keyof` on this AST")
+      return [neverKeyword]
   }
 }
 
+/**
+ * @since 1.0.0
+ */
+export const keyof = (ast: AST): AST => union(_keyof(ast))
 /**
  * @since 1.0.0
  */
@@ -686,15 +655,15 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
       case "NeverKeyword":
         break
       case "StringKeyword": {
-        indexSignatures.push(indexSignature("string", value, isReadonly))
+        indexSignatures.push(indexSignature("string", value, isReadonly, true))
         break
       }
       case "NumberKeyword": {
-        indexSignatures.push(indexSignature("number", value, isReadonly))
+        indexSignatures.push(indexSignature("number", value, isReadonly, true))
         break
       }
       case "SymbolKeyword": {
-        indexSignatures.push(indexSignature("symbol", value, isReadonly))
+        indexSignatures.push(indexSignature("symbol", value, isReadonly, true))
         break
       }
       case "LiteralType":
@@ -710,7 +679,6 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
         break
       case "Refinement":
         throw new Error("cannot handle refinements in `record`")
-        break
       default:
         throw new Error(
           `Type '${key._tag}' does not satisfy the constraint 'string | number | symbol'. ts(2344)`
@@ -815,7 +783,7 @@ export const partial = (ast: AST): AST => {
         ast.elements.map((e) => element(e.type, true)),
         pipe(
           ast.rest,
-          O.map((rest) => [union([...rest, undefinedKeyword()])])
+          O.map((rest) => [union([...rest, undefinedKeyword])])
         ),
         ast.isReadonly
       )

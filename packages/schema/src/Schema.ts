@@ -188,8 +188,7 @@ export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, li
 /**
  * @since 1.0.0
  */
-export const keyof = <A>(schema: Schema<A>): Schema<keyof A> =>
-  make(AST.union(AST.keyof(schema.ast)))
+export const keyof = <A>(schema: Schema<A>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
  * @since 1.0.0
@@ -254,13 +253,19 @@ export type Spread<A> = {
  * @since 1.0.0
  * @category symbol
  */
-export type FieldSchemaId = typeof I.FieldSchemaId
+export const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type OptionalSchemaId = typeof OptionalSchemaId
 
 /**
  * @since 1.0.0
  */
 export interface OptionalSchema<A, isOptional extends boolean> extends Schema<A>, AST.Annotated {
-  readonly _id: FieldSchemaId
+  readonly _id: OptionalSchemaId
   readonly isOptional: isOptional
 }
 
@@ -287,6 +292,16 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
     & { readonly [K in OptionalKeys<Fields>]?: Infer<Fields[K]> }
   >
 > = I.struct
+
+/**
+ * @since 1.0.0
+ */
+export const field: <Key extends PropertyKey, A, isOptional extends boolean>(
+  key: Key,
+  value: Schema<A>,
+  isOptional: isOptional
+) => Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =
+  I.field
 
 /**
  * @since 1.0.0
