@@ -1,5 +1,33 @@
 # @fp-ts/schema
 
+## 0.0.7
+
+### Patch Changes
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`bd8e00c`](https://github.com/fp-ts/schema/commit/bd8e00c2a9c2a82b84b093506a33f6e4c62aaada) Thanks [@gcanti](https://github.com/gcanti)! - add NonNaN filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`9179bfb`](https://github.com/fp-ts/schema/commit/9179bfb4b9aea27992ac5712decc411d414633cb) Thanks [@gcanti](https://github.com/gcanti)! - remove arbitrary and pretty from Codec
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`d7edabc`](https://github.com/fp-ts/schema/commit/d7edabc848424f3cd10ea637b22802b4d997c39c) Thanks [@gcanti](https://github.com/gcanti)! - add Regex filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`6cb83d8`](https://github.com/fp-ts/schema/commit/6cb83d88d5fb2b7461af99e718c4e78396f5194e) Thanks [@gcanti](https://github.com/gcanti)! - DecodeError: renaming and add Parse
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`3b20bf5`](https://github.com/fp-ts/schema/commit/3b20bf5ae1643ffad94f5df9f1b09d6fab151e75) Thanks [@gcanti](https://github.com/gcanti)! - add InstanceOf filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`dfa50b3`](https://github.com/fp-ts/schema/commit/dfa50b36a9ca97c6fd0dfced61fba1b010efa529) Thanks [@gcanti](https://github.com/gcanti)! - add StartsWith filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`a118fb8`](https://github.com/fp-ts/schema/commit/a118fb845c5cc267cb1edfa0c53c6675aaf1c02b) Thanks [@gcanti](https://github.com/gcanti)! - add NumberBuilder
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`88d6c1c`](https://github.com/fp-ts/schema/commit/88d6c1ca6758b2041dbb4edfb097f4043999df4e) Thanks [@gcanti](https://github.com/gcanti)! - merge stringIndexSignature, symbolIndexSignature into record
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`3245918`](https://github.com/fp-ts/schema/commit/3245918d5a8d0b22b1063397f149d800caaf2f3f) Thanks [@gcanti](https://github.com/gcanti)! - bug fix: adding a post rest element makes all optional elements required but also adds `undefined` to their type
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`bc6744b`](https://github.com/fp-ts/schema/commit/bc6744bd9e7a0e63cbf38cf90a4496ad0b5e2dfe) Thanks [@gcanti](https://github.com/gcanti)! - add EndsWith filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`48f5c7f`](https://github.com/fp-ts/schema/commit/48f5c7ff479da3e136e57f514d10944c60631bfe) Thanks [@gcanti](https://github.com/gcanti)! - add Finite filter
+
+- [#28](https://github.com/fp-ts/schema/pull/28) [`5e348f7`](https://github.com/fp-ts/schema/commit/5e348f7a3156b17dfe27d59652aaecbd07da6a74) Thanks [@gcanti](https://github.com/gcanti)! - AST: refactor Refinement
+
 ## 0.0.6
 
 ### Patch Changes
