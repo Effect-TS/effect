@@ -19,7 +19,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 const decoder = <A>(
   value: Decoder<unknown, A>
 ): Decoder<unknown, Option<A>> => {
-  const decoder = D.decoderFor(I.union(I.literal(null), value))
+  const decoder = D.decoderFor(I.union(I._undefined, I._null, value))
   return I.makeDecoder(
     option(value),
     (i) => pipe(decoder.decode(i), T.map(O.fromNullable))
