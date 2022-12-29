@@ -299,90 +299,59 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
             map((members) => ts.factory.createUnionTypeNode(members))
           )
         )
-      case "Struct": {
-        const fields = pipe(
-          ast.fields,
-          traverse(
-            (field) =>
-              pipe(
-                go(field.value).nodes,
-                map((value) =>
-                  ts.factory.createPropertySignature(
-                    field.isReadonly ?
-                      [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                      undefined,
-                    getPropertyName(field),
-                    field.isOptional ?
-                      ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
-                      undefined,
-                    value
-                  )
-                ),
-                map(addDocumentationOf(field))
-              )
-          ),
-          map((members) => ts.factory.createTypeLiteralNode(members)),
-          map(addDocumentationOf(ast))
-        )
-        const indexSignatures = pipe(
-          ast.indexSignatures,
-          traverse((indexSignature) =>
-            pipe(
-              go(indexSignature.value).nodes,
-              map((value) => {
-                const parameter = indexSignature.key === "string" ?
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
-                  indexSignature.key === "number" ?
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.NumberKeyword) :
-                  ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
-                if (indexSignature.isRecord) {
-                  return ts.factory.createTypeReferenceNode("Readonly", [
-                    ts.factory.createTypeReferenceNode("Record", [
-                      parameter,
+      case "Struct":
+        return make(
+          ast,
+          pipe(
+            ast.fields,
+            traverse(
+              (field) =>
+                pipe(
+                  go(field.value).nodes,
+                  map((value) =>
+                    ts.factory.createPropertySignature(
+                      field.isReadonly ?
+                        [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                        undefined,
+                      getPropertyName(field),
+                      field.isOptional ?
+                        ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
+                        undefined,
                       value
-                    ])
-                  ])
-                }
-                return ts.factory.createTypeLiteralNode([ts.factory.createIndexSignature(
-                  indexSignature.isReadonly ?
-                    [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
-                    undefined,
-                  [ts.factory.createParameterDeclaration(
-                    undefined,
-                    undefined,
-                    "x",
-                    undefined,
-                    parameter
-                  )],
-                  value
-                )])
-              })
-            )
+                    )
+                  ),
+                  map(addDocumentationOf(field))
+                )
+            ),
+            appendAll(pipe(
+              ast.indexSignatures,
+              traverse((indexSignature) =>
+                pipe(
+                  go(indexSignature.value).nodes,
+                  map((value) =>
+                    ts.factory.createIndexSignature(
+                      indexSignature.isReadonly ?
+                        [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
+                        undefined,
+                      [ts.factory.createParameterDeclaration(
+                        undefined,
+                        undefined,
+                        "x",
+                        undefined,
+                        indexSignature.key === "string" ?
+                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
+                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
+                      )],
+                      value
+                    )
+                  )
+                )
+              )
+            )),
+            map((members) => ts.factory.createTypeLiteralNode(members)),
+            map(addDocumentationOf(ast))
           )
         )
-        if (ast.fields.length === 0 && ast.indexSignatures.length === 0) {
-          return make(ast, of(ts.factory.createTypeLiteralNode([])))
-        } else if (ast.fields.length > 0) {
-          return make(
-            ast,
-            pipe(
-              fields,
-              Applicative.product(indexSignatures),
-              map(([fields, indexSignatures]) =>
-                ts.factory.createIntersectionTypeNode([fields, ...indexSignatures])
-              )
-            )
-          )
-        } else {
-          return make(
-            ast,
-            pipe(
-              indexSignatures,
-              map((indexSignatures) => ts.factory.createIntersectionTypeNode(indexSignatures))
-            )
-          )
-        }
-      }
       case "Lazy":
         throw new Error("Unhandled schema: TODO")
       case "Enums": {
@@ -745,31 +714,33 @@ describe.concurrent("TypeScript", () => {
     it("record(string, unknown)", () => {
       const schema = S.record(S.string, S.unknown)
       const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`Readonly<Record<string, unknown>>`])
+      expect(printNodes(ts.nodes)).toEqual([`{
+    readonly [x: string]: unknown;
+}`])
     })
 
     it("record(string, any)", () => {
       const schema = S.record(S.string, S.any)
       const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`Readonly<Record<string, any>>`])
+      expect(printNodes(ts.nodes)).toEqual([`{
+    readonly [x: string]: any;
+}`])
     })
 
     it("record(string, string)", () => {
       const schema = S.record(S.string, S.string)
       const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`Readonly<Record<string, string>>`])
-    })
-
-    it("record(number, string)", () => {
-      const schema = S.record(S.number, S.string)
-      const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`Readonly<Record<number, string>>`])
+      expect(printNodes(ts.nodes)).toEqual([`{
+    readonly [x: string]: string;
+}`])
     })
 
     it("record(symbol, string)", () => {
       const schema = S.record(S.symbol, S.string)
       const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`Readonly<Record<symbol, string>>`])
+      expect(printNodes(ts.nodes)).toEqual([`{
+    readonly [x: symbol]: string;
+}`])
     })
 
     it("all with symbols", () => {
@@ -797,7 +768,8 @@ describe.concurrent("TypeScript", () => {
         `{
     readonly [Symbol.for("@fp-ts/schema/test/a")]: typeof b;
     readonly c: number;
-} & Readonly<Record<string, typeof d>>`
+    readonly [x: string]: typeof d;
+}`
       ])
     })
   })

@@ -328,13 +328,13 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 export const record: <K extends PropertyKey, A>(
   key: Schema<K>,
   value: Schema<A>
-) => Schema<Readonly<Record<K, A>>> = I.record
+) => Schema<{ readonly [k in K]: A }> = I.record
 
 /**
  * @since 1.0.0
  */
 export const extend = <B>(that: Schema<B>) =>
-  <A>(self: Schema<A>): Schema<A & B> => {
+  <A>(self: Schema<A>): Schema<Spread<A & B>> => {
     if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
       return make(AST.struct(
         self.ast.fields.concat(that.ast.fields),

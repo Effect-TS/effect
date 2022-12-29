@@ -333,9 +333,6 @@ export interface IndexSignature extends Annotated {
   readonly key: "string" | "number" | "symbol"
   readonly value: AST
   readonly isReadonly: boolean
-  // keyof is different if computed from an index signature or from a Record
-  // so we need to track the origin
-  readonly isRecord: boolean
 }
 
 /**
@@ -345,9 +342,8 @@ export const indexSignature = (
   key: IndexSignature["key"],
   value: AST,
   isReadonly: boolean,
-  isRecord: boolean,
   annotations: Annotated["annotations"] = {}
-): IndexSignature => ({ key, value, isReadonly, isRecord, annotations })
+): IndexSignature => ({ key, value, isReadonly, annotations })
 
 /**
  * @since 1.0.0
@@ -388,6 +384,28 @@ const sortByCardinalityAsc = RA.sort(
   pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getCardinality(value)))
 )
 
+const uniqueFields = (fields: ReadonlyArray<Field>): ReadonlyArray<Field> => {
+  const keys = fields.map((f) => f.key)
+  for (let i = 0; i < keys.length; i++) {
+    if (keys.indexOf(keys[i], i + 1) !== -1) {
+      throw new Error(`Duplicate identifier ${String(keys[i])}. ts(2300)`)
+    }
+  }
+  return fields
+}
+
+const uniqueIndexSignatures = (
+  indexSignatures: ReadonlyArray<IndexSignature>
+): ReadonlyArray<IndexSignature> => {
+  const keys = indexSignatures.map((is) => is.key)
+  for (let i = 0; i < keys.length; i++) {
+    if (keys.indexOf(keys[i], i + 1) !== -1) {
+      throw new Error(`Duplicate index signature for type '${keys[i]}'. ts(2374)`)
+    }
+  }
+  return indexSignatures
+}
+
 /**
  * @since 1.0.0
  */
@@ -398,8 +416,8 @@ export const struct = (
   allowUnexpected = false
 ): Struct => ({
   _tag: "Struct",
-  fields: sortByCardinalityAsc(fields),
-  indexSignatures: sortByCardinalityAsc(indexSignatures),
+  fields: sortByCardinalityAsc(uniqueFields(fields)),
+  indexSignatures: sortByCardinalityAsc(uniqueIndexSignatures(indexSignatures)),
   annotations,
   allowUnexpected
 })
@@ -439,21 +457,20 @@ const sortByWeightDesc = RA.sort(
 )
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
-  const flattened = pipe(
+  let out = RA.uniq(pipe(
     candidates,
     RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
-  )
-  let unique = RA.uniq(flattened)
-  if (unique.some(isStringKeyword)) {
-    unique = unique.filter((m) => !(isLiteralType(m) && typeof m.literal === "string"))
+  ))
+  if (out.some(isStringKeyword)) {
+    out = out.filter((m) => !(isLiteralType(m) && typeof m.literal === "string"))
   }
-  if (unique.some(isNumberKeyword)) {
-    unique = unique.filter((m) => !(isLiteralType(m) && typeof m.literal === "number"))
+  if (out.some(isNumberKeyword)) {
+    out = out.filter((m) => !(isLiteralType(m) && typeof m.literal === "number"))
   }
-  if (unique.some(isSymbolKeyword)) {
-    unique = unique.filter((m) => !isUniqueSymbol(m))
+  if (out.some(isSymbolKeyword)) {
+    out = out.filter((m) => !isUniqueSymbol(m))
   }
-  return unique
+  return out
 }
 
 /**
@@ -595,10 +612,6 @@ const getIndexSignatureKeyof = (is: IndexSignature): AST => {
     return symbolKeyword
   } else if (is.key === "number") {
     return numberKeyword
-  } else if (is.isRecord) {
-    // type A = Record<string, string>
-    // type K = keyof A // string
-    return stringKeyword
   }
   // type A = { [x: string]: string }
   // type K = keyof A // string | number
@@ -656,15 +669,15 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
       case "NeverKeyword":
         break
       case "StringKeyword": {
-        indexSignatures.push(indexSignature("string", value, isReadonly, true))
+        indexSignatures.push(indexSignature("string", value, isReadonly))
         break
       }
       case "NumberKeyword": {
-        indexSignatures.push(indexSignature("number", value, isReadonly, true))
+        indexSignatures.push(indexSignature("number", value, isReadonly))
         break
       }
       case "SymbolKeyword": {
-        indexSignatures.push(indexSignature("symbol", value, isReadonly, true))
+        indexSignatures.push(indexSignature("symbol", value, isReadonly))
         break
       }
       case "LiteralType":

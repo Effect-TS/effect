@@ -288,7 +288,7 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
 export const record = <K extends PropertyKey, A>(
   key: Schema<K>,
   value: Schema<A>
-): Schema<Readonly<Record<K, A>>> => makeSchema(AST.record(key.ast, value.ast, true))
+): Schema<{ readonly [k in K]: A }> => makeSchema(AST.record(key.ast, value.ast, true))
 
 /** @internal */
 export const annotations = (

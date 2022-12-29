@@ -190,23 +190,23 @@ C.partial(C.struct({ a: C.string,  b: C.number }));
 // Records
 //
 
-// $ExpectType Codec<Readonly<Record<string, string>>>
+// $ExpectType Codec<{ readonly [x: string]: string; }>
 C.record(C.string, C.string)
 
-// $ExpectType Codec<Readonly<Record<number, string>>>
+// $ExpectType Codec<{ readonly [x: number]: string; }>
 C.record(C.number, C.string)
 
-// $ExpectType Codec<Readonly<Record<symbol, string>>>
+// $ExpectType Codec<{ readonly [x: symbol]: string; }>
 C.record(C.symbol, C.string)
 
-// $ExpectType Codec<Readonly<Record<"a" | "b", string>>>
+// $ExpectType Codec<{ readonly a: string; readonly b: string; }>
 C.record(C.union(C.literal('a'), C.literal('b')), C.string)
 
 //
 // Extend
 //
 
-// $ExpectType Codec<{ readonly a: string; readonly b: string; } & { readonly c: boolean; } & Readonly<Record<string, string>>>
+// $ExpectType Codec<{ [x: string]: string; readonly a: string; readonly b: string; readonly c: boolean; }>
 pipe(
   C.struct({ a: C.string, b: C.string }),
   C.extend(C.struct({ c: C.boolean })), // <= you can add more fields
