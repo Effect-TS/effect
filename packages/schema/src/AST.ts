@@ -363,6 +363,7 @@ const getCardinality = (ast: AST): number => {
       return 0
     case "LiteralType":
     case "UndefinedKeyword":
+    case "VoidKeyword":
     case "UniqueSymbol":
       return 1
     case "BooleanKeyword":
@@ -372,9 +373,13 @@ const getCardinality = (ast: AST): number => {
     case "BigIntKeyword":
     case "SymbolKeyword":
       return 3
+    case "ObjectKeyword":
+      return 4
     case "UnknownKeyword":
     case "AnyKeyword":
-      return 4
+      return 6
+    case "Refinement":
+      return getCardinality(ast.from)
     default:
       return 5
   }
@@ -383,28 +388,6 @@ const getCardinality = (ast: AST): number => {
 const sortByCardinalityAsc = RA.sort(
   pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getCardinality(value)))
 )
-
-const uniqueFields = (fields: ReadonlyArray<Field>): ReadonlyArray<Field> => {
-  const keys = fields.map((f) => f.key)
-  for (let i = 0; i < keys.length; i++) {
-    if (keys.indexOf(keys[i], i + 1) !== -1) {
-      throw new Error(`Duplicate identifier ${String(keys[i])}. ts(2300)`)
-    }
-  }
-  return fields
-}
-
-const uniqueIndexSignatures = (
-  indexSignatures: ReadonlyArray<IndexSignature>
-): ReadonlyArray<IndexSignature> => {
-  const keys = indexSignatures.map((is) => is.key)
-  for (let i = 0; i < keys.length; i++) {
-    if (keys.indexOf(keys[i], i + 1) !== -1) {
-      throw new Error(`Duplicate index signature for type '${keys[i]}'. ts(2374)`)
-    }
-  }
-  return indexSignatures
-}
 
 /**
  * @since 1.0.0
@@ -416,8 +399,8 @@ export const struct = (
   allowUnexpected = false
 ): Struct => ({
   _tag: "Struct",
-  fields: sortByCardinalityAsc(uniqueFields(fields)),
-  indexSignatures: sortByCardinalityAsc(uniqueIndexSignatures(indexSignatures)),
+  fields: sortByCardinalityAsc(fields),
+  indexSignatures: sortByCardinalityAsc(indexSignatures),
   annotations,
   allowUnexpected
 })

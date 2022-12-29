@@ -6,26 +6,6 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("AST", () => {
-  it("struct. should throw on duplicate keys", () => {
-    expect(() =>
-      AST.struct([
-        AST.field("a", AST.stringKeyword, false, true),
-        AST.field("a", AST.stringKeyword, false, true)
-      ], [])
-    ).toThrowError(new Error("Duplicate identifier a. ts(2300)"))
-  })
-
-  it("struct. should throw on duplicate index signatures", () => {
-    expect(() =>
-      AST.struct([], [
-        AST.indexSignature("string", AST.stringKeyword, true),
-        AST.indexSignature("string", AST.stringKeyword, true)
-      ])
-    ).toThrowError(
-      new Error("Duplicate index signature for type 'string'. ts(2374)")
-    )
-  })
-
   it("union. should remove duplicated members", () => {
     const a = S.literal("a")
     expect(S.union(a, a).ast).toEqual(a.ast)

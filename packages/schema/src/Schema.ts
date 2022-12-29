@@ -325,10 +325,10 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
 /**
  * @since 1.0.0
  */
-export const record: <K extends PropertyKey, A>(
+export const record: <K extends PropertyKey, V>(
   key: Schema<K>,
-  value: Schema<A>
-) => Schema<{ readonly [k in K]: A }> = I.record
+  value: Schema<V>
+) => Schema<{ readonly [k in K]: V }> = I.record
 
 /**
  * @since 1.0.0

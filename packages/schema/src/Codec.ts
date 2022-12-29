@@ -369,10 +369,10 @@ export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.par
 /**
  * @since 1.0.0
  */
-export const record = <K extends PropertyKey, A>(
+export const record = <K extends PropertyKey, V>(
   key: Schema<K>,
-  value: Schema<A>
-): Codec<{ readonly [k in K]: A }> => codecFor(S.record(key, value))
+  value: Schema<V>
+): Codec<{ readonly [k in K]: V }> => codecFor(S.record(key, value))
 
 /**
  * @since 1.0.0
