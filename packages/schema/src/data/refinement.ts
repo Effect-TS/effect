@@ -117,10 +117,12 @@ export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
 export const regex = (
   regex: RegExp
 ) =>
-  <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => regex.test(a), { pattern: regex.toString() }, {
-      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: regex.toString() })
+  <A extends string>(self: Schema<A>): Schema<A> => {
+    const pattern = regex.source
+    return I.refinement(self, (a): a is A => regex.test(a), { pattern }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern })
     })
+  }
 
 /**
  * @since 1.0.0

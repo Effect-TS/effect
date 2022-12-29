@@ -838,8 +838,8 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, "abb")
     Util.expectSuccess(codec, "abbb")
 
-    Util.expectFailure(codec, "ab", `"ab" did not satisfy refinement({"pattern":"/^abb+$/"})`)
-    Util.expectFailure(codec, "a", `"a" did not satisfy refinement({"pattern":"/^abb+$/"})`)
+    Util.expectFailure(codec, "ab", `"ab" did not satisfy refinement({"pattern":"^abb+$"})`)
+    Util.expectFailure(codec, "a", `"a" did not satisfy refinement({"pattern":"^abb+$"})`)
   })
 
   it("filter", () => {

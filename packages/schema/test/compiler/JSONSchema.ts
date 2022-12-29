@@ -1,9 +1,9 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import { getJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
-import * as R from "@fp-ts/schema/data/refinement"
+import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -11,58 +11,76 @@ import * as S from "@fp-ts/schema/Schema"
 import Ajv from "ajv"
 import * as fc from "fast-check"
 
-type StringJSONSchema = {
+export type JsonSchema7AnyType = {}
+
+export type JsonSchema7NullType = {
+  type: "null"
+}
+
+export type JsonSchema7StringType = {
   type: "string"
   minLength?: number
   maxLength?: number
 }
 
-type NumberJSONSchema = {
-  type: "number"
-  exclusiveMaximum?: number
+export type JsonSchema7NumberType = {
+  type: "number" | "integer"
+  minimum?: number
   exclusiveMinimum?: number
   maximum?: number
-  minimum?: number
+  exclusiveMaximum?: number
 }
 
-type BooleanJSONSchema = {
+export type JsonSchema7BooleanType = {
   type: "boolean"
 }
 
-type ArrayJSONSchema = {
+export type JsonSchema7ConstType = {
+  const: string | number | boolean
+}
+
+export type JsonSchema7ArrayType = {
   type: "array"
-  items?: JSONSchema | Array<JSONSchema>
+  items?: JsonSchema7Type | Array<JsonSchema7Type>
   minItems?: number
   maxItems?: number
-  additionalItems?: JSONSchema
+  additionalItems?: JsonSchema7Type
 }
 
-type EnumJSONSchema = {
-  "enum": Array<string | number | boolean | null>
+export type JsonSchema7EnumType = {
+  "enum": Array<string | number>
 }
 
-type OneOfJSONSchema = {
-  "oneOf": ReadonlyArray<JSONSchema>
+export type JsonSchema7AnyOfType = {
+  anyOf: ReadonlyArray<JsonSchema7Type>
 }
 
-type ObjectJSONSchema = {
+export type JsonSchema7AllOfType = {
+  allOf: Array<JsonSchema7Type>
+}
+
+export type JsonSchema7ObjectType = {
   type: "object"
   required: Array<string>
-  properties: { [x: string]: JSONSchema }
-  additionalProperties?: JSONSchema
+  properties: { [x: string]: JsonSchema7Type }
+  additionalProperties: boolean | JsonSchema7Type
 }
 
-type JSONSchema =
-  | StringJSONSchema
-  | NumberJSONSchema
-  | BooleanJSONSchema
-  | ArrayJSONSchema
-  | EnumJSONSchema
-  | OneOfJSONSchema
-  | ObjectJSONSchema
+export type JsonSchema7Type =
+  | JsonSchema7AnyType
+  | JsonSchema7NullType
+  | JsonSchema7StringType
+  | JsonSchema7NumberType
+  | JsonSchema7BooleanType
+  | JsonSchema7ConstType
+  | JsonSchema7ArrayType
+  | JsonSchema7EnumType
+  | JsonSchema7AnyOfType
+  | JsonSchema7AllOfType
+  | JsonSchema7ObjectType
 
-const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
-  const go = (ast: AST.AST): JSONSchema => {
+const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
+  const go = (ast: AST.AST): JsonSchema7Type => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
@@ -72,35 +90,130 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
             ({ schema }) => ({ ...go(ast.type), ...schema })
           )
         )
-      case "LiteralType":
-        return _of(ast.literal)
+      case "LiteralType": {
+        if (typeof ast.literal === "bigint") {
+          return {} as any
+        } else if (ast.literal === null) {
+          return { type: "null" }
+        }
+        return { const: ast.literal }
+      }
+      case "UniqueSymbol":
+        throw new Error("cannot convert a unique symbol to JSON Schema")
       case "UndefinedKeyword":
-        throw new Error("cannot build JSON Schema for `undefined`")
+        throw new Error("cannot convert `undefined` to JSON Schema")
+      case "VoidKeyword":
+        throw new Error("cannot convert `void` to JSON Schema")
+      case "NeverKeyword":
+        throw new Error("cannot convert `never` to JSON Schema")
+      case "UnknownKeyword":
+      case "AnyKeyword":
+        return {}
       case "StringKeyword":
         return { type: "string" }
       case "NumberKeyword":
         return { type: "number" }
       case "BooleanKeyword":
         return { type: "boolean" }
-      case "Tuple":
-        return _tuple(
-          ast,
-          ast.elements.map((e) => go(e.type)),
-          pipe(ast.rest, O.map(([head]) => go(head))) // TODO: handle tail
-        )
-      case "Struct": {
-        const indexSignatures = ast.indexSignatures.filter((is) => is.key === "string")
-        if (AST.indexSignature.length < ast.indexSignatures.length) {
-          throw new Error("unsupported index signatures")
+      case "BigIntKeyword":
+        throw new Error("cannot convert `bigint` to JSON Schema")
+      case "SymbolKeyword":
+        throw new Error("cannot convert `symbol` to JSON Schema")
+      case "ObjectKeyword":
+        return {}
+      case "Tuple": {
+        const elements = ast.elements.map((e) => go(e.type))
+        const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+        const output: JsonSchema7ArrayType = { type: "array" }
+        let i = 0
+        // ---------------------------------------------
+        // handle elements
+        // ---------------------------------------------
+        for (; i < ast.elements.length; i++) {
+          if (output.minItems === undefined) {
+            output.minItems = 0
+          }
+          if (output.maxItems === undefined) {
+            output.maxItems = 0
+          }
+          // ---------------------------------------------
+          // handle optional elements
+          // ---------------------------------------------
+          if (!ast.elements[i].isOptional) {
+            output.minItems = output.minItems + 1
+            output.maxItems = output.maxItems + 1
+          }
+          if (output.items === undefined) {
+            output.items = []
+          }
+          if (Array.isArray(output.items)) {
+            output.items.push(elements[i])
+          }
         }
-        return _struct(
-          ast,
-          ast.fields.map((f) => go(f.value)),
-          indexSignatures.map((is) => go(is.value))
-        )
+        // ---------------------------------------------
+        // handle rest element
+        // ---------------------------------------------
+        if (O.isSome(rest)) {
+          const head = RA.headNonEmpty(rest.value)
+          if (output.items !== undefined) {
+            delete output.maxItems
+            output.additionalItems = head
+          } else {
+            output.items = head
+          }
+          // ---------------------------------------------
+          // handle post rest elements
+          // ---------------------------------------------
+          // const tail = RA.tailNonEmpty(rest.value) // TODO
+        }
+
+        return output
+      }
+      case "Struct": {
+        if (
+          ast.indexSignatures.length <
+            ast.indexSignatures.filter((is) => is.key === "string").length
+        ) {
+          throw new Error(`Cannot encode some index signature to JSON Schema`)
+        }
+        const fields = ast.fields.map((f) => go(f.value))
+        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        const output: JsonSchema7ObjectType = {
+          type: "object",
+          required: [],
+          properties: {},
+          additionalProperties: false
+        }
+        // ---------------------------------------------
+        // handle fields
+        // ---------------------------------------------
+        for (let i = 0; i < fields.length; i++) {
+          const key = ast.fields[i].key
+          if (typeof key === "string") {
+            output.properties[key] = fields[i]
+            // ---------------------------------------------
+            // handle optional fields
+            // ---------------------------------------------
+            if (!ast.fields[i].isOptional) {
+              output.required.push(key)
+            }
+          } else {
+            throw new Error(`Cannot encode ${String(key)} key to JSON Schema`)
+          }
+        }
+        // ---------------------------------------------
+        // handle index signatures
+        // ---------------------------------------------
+        if (indexSignatures.length > 0) {
+          output.additionalProperties = { allOf: indexSignatures }
+        }
+
+        return output
       }
       case "Union":
-        return _union(ast.members.map(go))
+        return { "anyOf": ast.members.map(go) }
+      case "Enums":
+        return { anyOf: ast.enums.map(([_, value]) => ({ const: value })) }
       case "Refinement": {
         const annotation = getJSONSchemaAnnotation(ast)
         if (O.isSome(annotation)) {
@@ -110,268 +223,230 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JSONSchema => {
         return go(ast.from)
       }
     }
-    throw new Error(`Unhandled ${ast._tag}`)
+    throw new Error(`TODO: unhandled ${ast._tag}`)
   }
 
   return go(schema.ast)
 }
 
-export const _of = (
-  value: unknown
-): JSONSchema => {
-  if (
-    typeof value === "string" || typeof value === "number" || typeof value === "boolean" ||
-    value === null
-  ) {
-    return { enum: [value] }
-  }
-  throw new Error(`Cannot encode ${value} to a JSON schema`)
-}
-
-const _tuple = (
-  ast: AST.Tuple,
-  elements: ReadonlyArray<JSONSchema>,
-  oRest: O.Option<JSONSchema>
-): JSONSchema => {
-  const output: ArrayJSONSchema = { type: "array" }
-  let i = 0
-  // ---------------------------------------------
-  // handle elements
-  // ---------------------------------------------
-  for (; i < elements.length; i++) {
-    if (output.minItems === undefined) {
-      output.minItems = 0
-    }
-    if (output.maxItems === undefined) {
-      output.maxItems = 0
-    }
-    // ---------------------------------------------
-    // handle optional elements
-    // ---------------------------------------------
-    if (!ast.elements[i].isOptional) {
-      output.minItems = output.minItems + 1
-      output.maxItems = output.maxItems + 1
-    }
-    if (output.items === undefined) {
-      output.items = []
-      output.items.push(elements[i])
-    } else if (Array.isArray(output.items)) {
-      output.items.push(elements[i])
-    }
-  }
-  // ---------------------------------------------
-  // handle rest element
-  // ---------------------------------------------
-  if (O.isSome(oRest)) {
-    if (output.items) {
-      output.additionalItems = oRest.value
-    } else {
-      output.items = oRest.value
-    }
-  }
-
-  return output
-}
-
-const _struct = (
-  ast: AST.Struct,
-  fields: ReadonlyArray<JSONSchema>,
-  indexSignatures: ReadonlyArray<JSONSchema>
-): JSONSchema => {
-  const output: ObjectJSONSchema = { type: "object", required: [], properties: {} }
-  // ---------------------------------------------
-  // handle fields
-  // ---------------------------------------------
-  for (let i = 0; i < fields.length; i++) {
-    const key = ast.fields[i].key
-    if (typeof key === "string") {
-      output.properties[key] = fields[i]
-      // ---------------------------------------------
-      // handle optional fields
-      // ---------------------------------------------
-      if (!ast.fields[i].isOptional) {
-        output.required.push(key)
-      }
-    } else {
-      throw new Error(`Cannot encode ${String(key)} to a JSON schema`)
-    }
-  }
-  // ---------------------------------------------
-  // handle index signatures
-  // ---------------------------------------------
-  if (indexSignatures.length > 0) {
-    output.additionalProperties = { oneOf: indexSignatures }
-  }
-
-  return output
-}
-
-const _union = (
-  members: Array<JSONSchema>
-): JSONSchema => {
-  return { "oneOf": members }
-}
-
 const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
   const guard = G.guardFor(schema)
-  const validate = new Ajv().compile(jsonSchemaFor(schema))
-  fc.assert(fc.property(arbitrary.arbitrary(fc).filter(isJson), (a) => {
+  const validate = new Ajv({ strict: false }).compile(jsonSchemaFor(schema))
+  const arb = arbitrary.arbitrary(fc).filter(isJson)
+  // console.log(fc.sample(arb, 2))
+  fc.assert(fc.property(arb, (a) => {
     return guard.is(a) && validate(a)
   }))
 }
 
-const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
+export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
   const guard = G.guardFor(schema)
   const jsonschema = jsonSchemaFor(schema)
-  const validate = new Ajv().compile(jsonschema)
+  const validate = new Ajv({ strict: false }).compile(jsonschema)
   expect(guard.is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(true)
 }
 
-const assertFalse = <A>(schema: Schema<A>, input: unknown) => {
+export const assertFalse = <A>(schema: Schema<A>, input: unknown) => {
   const guard = G.guardFor(schema)
   const jsonschema = jsonSchemaFor(schema)
-  const validate = new Ajv().compile(jsonschema)
+  const validate = new Ajv({ strict: false }).compile(jsonschema)
   expect(guard.is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(false)
 }
 
 describe("jsonSchemaFor", () => {
-  describe("string", () => {
-    it("property tests", () => {
-      const schema = S.string
-      property(schema)
-    })
-
-    it("manual", () => {
-      const schema = S.string
-      assertTrue(schema, "a")
-      assertFalse(schema, 1)
-    })
+  it("any", () => {
+    property(S.any)
   })
 
-  describe("number", () => {
-    it("property tests", () => {
-      const schema = S.number
-      property(schema)
-    })
-
-    it("manual", () => {
-      const schema = S.number
-      assertTrue(schema, 1)
-      assertFalse(schema, "a")
-    })
+  it("unknown", () => {
+    property(S.unknown)
   })
 
-  describe("boolean", () => {
-    it("property tests", () => {
-      const schema = S.boolean
-      property(schema)
-    })
-
-    it("manual", () => {
-      const schema = S.boolean
-      assertTrue(schema, true)
-      assertTrue(schema, false)
-      assertFalse(schema, "a")
-    })
+  it("object", () => {
+    property(S.object)
   })
 
-  it("literal", () => {
-    const schema = S.literal(1)
-    assertTrue(schema, 1)
-    assertFalse(schema, "a")
+  it("string", () => {
+    property(S.string)
   })
 
-  it("int", () => {
-    const schema = R.int(S.number)
-    const jsonSchema = jsonSchemaFor(schema)
-    expect(jsonSchema).toEqual({ type: "integer" })
+  it("number", () => {
+    property(S.number)
+  })
+
+  it("boolean", () => {
+    property(S.boolean)
+  })
+
+  it("literal. null", () => {
+    property(S.null)
+  })
+
+  it("literal. string", () => {
+    property(S.literal("a"))
+  })
+
+  it("literal. number", () => {
+    property(S.literal(1))
+  })
+
+  it("literal. boolean", () => {
+    property(S.literal(true))
+    property(S.literal(false))
+  })
+
+  it("literals", () => {
+    property(S.literal(1, "a"))
+  })
+
+  it("Numeric enums", () => {
+    enum Fruits {
+      Apple,
+      Banana
+    }
+    property(S.enums(Fruits))
+  })
+
+  it("String enums", () => {
+    enum Fruits {
+      Apple = "apple",
+      Banana = "banana",
+      Cantaloupe = 0
+    }
+    property(S.enums(Fruits))
+  })
+
+  it("Const enums", () => {
+    const Fruits = {
+      Apple: "apple",
+      Banana: "banana",
+      Cantaloupe: 3
+    } as const
+    property(S.enums(Fruits))
   })
 
   it("union", () => {
-    const schema = S.union(S.string, S.number)
-    assertTrue(schema, 1)
-    assertTrue(schema, "a")
-    assertFalse(schema, null)
+    property(S.union(S.string, S.number))
   })
 
-  describe("array", () => {
-    it("property tests", () => {
-      const schema = S.array(S.number)
-      property(schema)
-    })
-
-    it("manual", () => {
-      const schema = S.array(S.number)
-      assertTrue(schema, [])
-      assertTrue(schema, [1])
-      assertFalse(schema, ["a"])
-    })
+  it("tuple. empty", () => {
+    property(S.tuple())
   })
 
-  describe("tuple", () => {
-    it("property tests", () => {
-      const schema = S.tuple(S.string, S.number)
-      property(schema)
-    })
-
-    it("manual", () => {
-      const schema = S.tuple(S.string, S.number)
-      assertTrue(schema, ["a", 1])
-      assertFalse(schema, ["a"])
-      assertFalse(schema, ["a", "b"])
-    })
+  it("tuple. required element", () => {
+    const schema = S.tuple(S.number)
+    property(schema)
   })
 
-  describe("struct", () => {
-    it("baseline", () => {
-      const schema = S.struct({ a: S.string, b: S.number })
-      assertTrue(schema, { a: "a", b: 1 })
-      assertFalse(schema, null)
-      assertFalse(schema, { a: "a" })
-      assertFalse(schema, { b: 1 })
-      assertFalse(schema, { a: 1, b: 1 })
-    })
-
-    it("optional fields", () => {
-      const schema = S.partial(S.struct({ a: S.string, b: S.number }))
-      assertTrue(schema, {})
-      assertTrue(schema, { a: "a" })
-      assertTrue(schema, { b: 1 })
-      assertFalse(schema, null)
-      assertFalse(schema, { a: 1, b: 1 })
-    })
+  it("tuple. optional element", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.number))
+    property(schema)
   })
 
-  it("record(string)", () => {
-    const schema = S.record(S.string, S.string)
-    assertFalse(schema, null)
-    assertTrue(schema, {})
-    assertTrue(schema, { a: "a" })
-    assertFalse(schema, { a: 1 })
-    assertTrue(schema, { a: "a", b: "b" })
-    assertFalse(schema, { a: "a", b: 1 })
+  it("tuple. e + e?", () => {
+    const schema = pipe(S.tuple(S.string), S.optionalElement(S.number))
+    property(schema)
+  })
+
+  it("tuple. e + r", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number))
+    property(schema)
+  })
+
+  it("tuple. e? + r", () => {
+    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(S.number))
+    property(schema)
+  })
+
+  it("tuple. r", () => {
+    const schema = S.array(S.number)
+    property(schema)
+  })
+
+  it.skip("tuple. r + e", () => {
+    const schema = pipe(S.array(S.string), S.element(S.number))
+    property(schema)
+  })
+
+  it.skip("tuple. e + r + e", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
+    property(schema)
+  })
+
+  it("struct. empty", () => {
+    const schema = S.struct({})
+    property(schema)
+  })
+
+  it("struct", () => {
+    property(S.struct({ a: S.string, b: S.number }))
+  })
+
+  it("struct. optional field", () => {
+    property(S.struct({ a: S.string, b: S.optional(S.number) }))
+  })
+
+  it("record(string, string)", () => {
+    property(S.record(S.string, S.string))
+  })
+
+  it("record('a' | 'b', number)", () => {
+    const schema = S.record(S.union(S.literal("a"), S.literal("b")), S.number)
+    property(schema)
   })
 
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
+    property(schema)
   })
 
   it("maxLength", () => {
     const schema = pipe(S.string, S.maxLength(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", maxLength: 1 })
+    property(schema)
   })
 
-  it("min/max", () => {
-    const schema = pipe(S.number, S.greaterThan(0), S.lessThanOrEqualTo(10))
+  it("greaterThan", () => {
+    const schema = pipe(S.number, S.greaterThan(1))
     const jsonSchema = jsonSchemaFor(schema)
-    expect(jsonSchema).toEqual({ type: "number", exclusiveMinimum: 0, maximum: 10 })
+    expect(jsonSchema).toEqual({ type: "number", exclusiveMinimum: 1 })
+    property(schema)
+  })
+
+  it("greaterThanOrEqualTo", () => {
+    const schema = pipe(S.number, S.greaterThanOrEqualTo(1))
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "number", minimum: 1 })
+    property(schema)
+  })
+
+  it("lessThan", () => {
+    const schema = pipe(S.number, S.lessThan(1))
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "number", exclusiveMaximum: 1 })
+    property(schema)
+  })
+
+  it("lessThanOrEqualTo", () => {
+    const schema = pipe(S.number, S.lessThanOrEqualTo(1))
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ type: "number", maximum: 1 })
+    property(schema)
+  })
+
+  it("regex", () => {
+    const schema = pipe(S.string, S.regex(/^abb+$/))
+    const jsonSchema = jsonSchemaFor(schema)
+    expect(jsonSchema).toEqual({ "pattern": "^abb+$", "type": "string" })
+  })
+
+  it("integer", () => {
+    property(S.int(S.number))
   })
 })
-
-type A = keyof any
