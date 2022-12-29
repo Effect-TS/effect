@@ -1,10 +1,11 @@
-// import * as A from "@fp-ts/schema/Arbitrary"
 import * as O from "@fp-ts/data/Option"
+import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as C from "@fp-ts/schema/Codec"
 import * as DE from "@fp-ts/schema/DecodeError"
+import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
-// import * as fc from "fast-check"
+import * as fc from "fast-check"
 // import { pipe } from "@fp-ts/data/Function"
 
 describe.concurrent("examples", () => {
@@ -58,12 +59,14 @@ describe.concurrent("examples", () => {
       expect(Person.is(null)).toEqual(false)
 
       // pretty print
-      expect(Person.pretty({ name: "name", age: 18 })).toEqual(
+      const PersonPretty = P.prettyFor(Person)
+      expect(PersonPretty.pretty({ name: "name", age: 18 })).toEqual(
         `{ "name": "name", "age": 18 }`
       )
 
       // arbitrary
-      // console.log(fc.sample(Person.arbitrary(fc), 2))
+      const PersonArbitrary = A.arbitraryFor(Person)
+      expect(fc.sample(PersonArbitrary.arbitrary(fc), 2).length).toEqual(2)
     })
 
     it("custom schema combinator", () => {

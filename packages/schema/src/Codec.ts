@@ -10,8 +10,6 @@ import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
-import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import { arbitraryFor } from "@fp-ts/schema/Arbitrary"
 import type { Annotated, AST, Literal } from "@fp-ts/schema/AST"
 import type { Class } from "@fp-ts/schema/data/refinement"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
@@ -22,25 +20,19 @@ import { encoderFor } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
 import { guardFor } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Pretty } from "@fp-ts/schema/Pretty"
-import { prettyFor } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
 /**
  * @since 1.0.0
  */
-export class Codec<A>
-  implements Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A>, Arbitrary<A>, Pretty<A>
-{
+export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {
   readonly A!: (_: A) => A
   readonly I!: (_: unknown) => void
   readonly ast: AST
   readonly decode: Decoder<unknown, A>["decode"]
   readonly encode: Encoder<unknown, A>["encode"]
   readonly is: Guard<A>["is"]
-  readonly arbitrary: Arbitrary<A>["arbitrary"]
-  readonly pretty: Pretty<A>["pretty"]
 
   constructor(
     schema: Schema<A>
@@ -49,8 +41,6 @@ export class Codec<A>
     this.decode = decoderFor(schema).decode
     this.encode = encoderFor(schema).encode
     this.is = guardFor(schema).is
-    this.arbitrary = arbitraryFor(schema).arbitrary
-    this.pretty = prettyFor(schema).pretty
     this.parseOrThrow.bind(this)
     this.stringify.bind(this)
   }
