@@ -16,6 +16,7 @@ import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Schema<A> {
@@ -33,11 +34,13 @@ export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 // ---------------------------------------------
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
@@ -45,11 +48,13 @@ export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
 ) => Schema<Literals[number]> = I.literal
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.uniqueSymbol
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
@@ -61,92 +66,8 @@ export const enums = <A extends { [x: string]: string | number }>(enums: A): Sch
     )
   )
 
-// ---------------------------------------------
-// filters
-// ---------------------------------------------
-
 /**
- * @since 1.0.0
- */
-export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.minLength
-
-/**
- * @since 1.0.0
- */
-export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.maxLength
-
-/**
- * @since 1.0.0
- */
-export const length = (length: number) =>
-  <A extends string>(self: Schema<A>): Schema<A> => minLength(length)(maxLength(length)(self))
-
-/**
- * @since 1.0.0
- */
-export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLength(1)
-
-/**
- * @since 1.0.0
- */
-export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.startsWith
-
-/**
- * @since 1.0.0
- */
-export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.endsWith
-
-/**
- * @since 1.0.0
- */
-export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> = R.regex
-
-/**
- * @since 1.0.0
- */
-export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  R.lessThan
-
-/**
- * @since 1.0.0
- */
-export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  R.lessThanOrEqualTo
-
-/**
- * @since 1.0.0
- */
-export const greaterThan: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThan
-
-/**
- * @since 1.0.0
- */
-export const greaterThanOrEqualTo: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThanOrEqualTo
-
-/**
- * @since 1.0.0
- */
-export const int: <A extends number>(self: Schema<A>) => Schema<A> = R.int
-
-/**
- * @since 1.0.0
- */
-export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = R.nonNaN
-
-/**
- * @since 1.0.0
- */
-export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
-
-/**
+ * @category constructors
  * @since 1.0.0
  */
 export const instanceOf: <A extends typeof R.Class>(
@@ -154,10 +75,110 @@ export const instanceOf: <A extends typeof R.Class>(
 ) => (self: Schema<object>) => Schema<InstanceType<A>> = R.instanceOf
 
 // ---------------------------------------------
+// filters
+// ---------------------------------------------
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
+  R.minLength
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
+  R.maxLength
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const length = (length: number) =>
+  <A extends string>(self: Schema<A>): Schema<A> => minLength(length)(maxLength(length)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLength(1)
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
+  R.startsWith
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
+  R.endsWith
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> = R.regex
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
+  R.lessThan
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
+  R.lessThanOrEqualTo
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThan: (
+  min: number
+) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThan
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo: (
+  min: number
+) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThanOrEqualTo
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const int: <A extends number>(self: Schema<A>) => Schema<A> = R.int
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = R.nonNaN
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
+
+// ---------------------------------------------
 // combinators
 // ---------------------------------------------
 
 /**
+ * @category unexpected keys / indexes
  * @since 1.0.0
  */
 export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
@@ -166,6 +187,7 @@ export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
     self
 
 /**
+ * @category unexpected keys / indexes
  * @since 1.0.0
  */
 export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
@@ -174,6 +196,7 @@ export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
     self
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const union: <Members extends ReadonlyArray<Schema<any>>>(
@@ -181,16 +204,19 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
 ) => Schema<Infer<Members[number]>> = I.union
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, literal(null))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
@@ -198,6 +224,7 @@ export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
 ) => Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> = I.tuple
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const rest = <R>(rest: Schema<R>) =>
@@ -209,6 +236,7 @@ export const rest = <R>(rest: Schema<R>) =>
   }
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const element = <E>(element: Schema<E>) =>
@@ -220,6 +248,7 @@ export const element = <E>(element: Schema<E>) =>
   }
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const optionalElement = <E>(element: Schema<E>) =>
@@ -231,11 +260,13 @@ export const optionalElement = <E>(element: Schema<E>) =>
   }
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const nonEmptyArray = <A>(
@@ -250,14 +281,14 @@ export type Spread<A> = {
 } extends infer B ? B : never
 
 /**
- * @since 1.0.0
  * @category symbol
+ * @since 1.0.0
  */
 export const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
 
 /**
- * @since 1.0.0
  * @category symbol
+ * @since 1.0.0
  */
 export type OptionalSchemaId = typeof OptionalSchemaId
 
@@ -270,6 +301,7 @@ export interface OptionalSchema<A, isOptional extends boolean> extends Schema<A>
 }
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const optional: <A>(schema: Schema<A>) => OptionalSchema<A, true> = I.optional
@@ -282,6 +314,7 @@ export type OptionalKeys<T> = {
 }[keyof T]
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
@@ -294,6 +327,7 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
 > = I.struct
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const field: <Key extends PropertyKey, A, isOptional extends boolean>(
@@ -304,6 +338,7 @@ export const field: <Key extends PropertyKey, A, isOptional extends boolean>(
   I.field
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -311,6 +346,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     make(AST.pick(self.ast, keys))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -318,11 +354,13 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     make(AST.omit(self.ast, keys))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const record: <K extends PropertyKey, V>(
@@ -331,6 +369,7 @@ export const record: <K extends PropertyKey, V>(
 ) => Schema<{ readonly [k in K]: V }> = I.record
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const extend = <B>(that: Schema<B>) =>
@@ -345,11 +384,13 @@ export const extend = <B>(that: Schema<B>) =>
   }
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const filter = <A, B extends A>(
@@ -359,6 +400,7 @@ export const filter = <A, B extends A>(
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, meta, annotations)
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const parse: <A, B>(
@@ -368,6 +410,7 @@ export const parse: <A, B>(
 ) => (self: Schema<A>) => Schema<B> = DataParse.parse
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const annotations: (
@@ -386,70 +429,84 @@ const _null: Schema<null> = I._null
 
 export {
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _null as null,
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _undefined as undefined,
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _void as void
 }
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const never: Schema<never> = I.never
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const unknown: Schema<unknown> = I.unknown
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const any: Schema<any> = I.any
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const string: Schema<string> = I.string
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const number: Schema<number> = I.number
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const boolean: Schema<boolean> = I.boolean
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const bigint: Schema<bigint> = I.bigint
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const symbol: Schema<symbol> = I.symbol
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const object: Schema<object> = I.object
 
 /**
+ * @category data
  * @since 1.0.0
  */
 export const json: Schema<Json> = DataJson.json
 
 /**
+ * @category data
  * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.option

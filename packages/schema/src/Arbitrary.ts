@@ -12,6 +12,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Arbitrary<A> extends Schema<A> {
@@ -19,6 +20,7 @@ export interface Arbitrary<A> extends Schema<A> {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =

@@ -13,6 +13,7 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Encoder<S, A> extends Schema<A> {
@@ -20,6 +21,7 @@ export interface Encoder<S, A> extends Schema<A> {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =

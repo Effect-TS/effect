@@ -24,14 +24,33 @@ import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {
+  /**
+   * @since 1.0.0
+   */
   readonly A!: (_: A) => A
+  /**
+   * @since 1.0.0
+   */
   readonly I!: (_: unknown) => void
+  /**
+   * @since 1.0.0
+   */
   readonly ast: AST
+  /**
+   * @since 1.0.0
+   */
   readonly decode: Decoder<unknown, A>["decode"]
+  /**
+   * @since 1.0.0
+   */
   readonly encode: Encoder<unknown, A>["encode"]
+  /**
+   * @since 1.0.0
+   */
   readonly is: Guard<A>["is"]
 
   constructor(
@@ -44,6 +63,9 @@ export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown
     this.parseOrThrow.bind(this)
     this.stringify.bind(this)
   }
+  /**
+   * @since 1.0.0
+   */
   parseOrThrow(
     text: string,
     format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
@@ -60,6 +82,9 @@ export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown
       (format ? `, errors: ${format(result.left)}` : ``)
     throw new Error(message)
   }
+  /**
+   * @since 1.0.0
+   */
   stringify(value: A): string {
     const json = Json.stringify(this.encode(value))
     if (E.isLeft(json)) {
@@ -67,6 +92,9 @@ export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown
     }
     return json.right
   }
+  /**
+   * @since 1.0.0
+   */
   of(value: A): A {
     return value
   }
@@ -82,11 +110,13 @@ export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 // ---------------------------------------------
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const success: <A>(a: A) => These<never, A> = I.success
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const failure: (
@@ -94,6 +124,7 @@ export const failure: (
 ) => These<NonEmptyReadonlyArray<DecodeError>, never> = I.failure
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const failures: (
@@ -101,6 +132,7 @@ export const failures: (
 ) => These<NonEmptyReadonlyArray<DecodeError>, never> = I.failures
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const warning: <A>(
@@ -109,6 +141,7 @@ export const warning: <A>(
 ) => These<NonEmptyReadonlyArray<DecodeError>, A> = I.warning
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const warnings: <A>(
@@ -117,16 +150,19 @@ export const warnings: <A>(
 ) => These<NonEmptyReadonlyArray<DecodeError>, A> = I.warnings
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isSuccess: <E, A>(self: These<E, A>) => self is Right<A> = I.isSuccess
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isFailure: <E, A>(self: These<E, A>) => self is Left<E> = I.isFailure
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWarning
@@ -137,6 +173,7 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
 export const codecFor = <A>(schema: Schema<A>): Codec<A> => new Codec(schema)
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const literal = <A extends ReadonlyArray<Literal>>(
@@ -144,103 +181,22 @@ export const literal = <A extends ReadonlyArray<Literal>>(
 ): Codec<A[number]> => codecFor(S.literal(...a))
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const uniqueSymbol = <S extends symbol>(symbol: S): Codec<S> =>
   codecFor(S.uniqueSymbol(symbol))
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(
   nativeEnum: A
 ): Codec<A[keyof A]> => codecFor(S.enums(nativeEnum))
 
-// ---------------------------------------------
-// filters
-// ---------------------------------------------
-
 /**
- * @since 1.0.0
- */
-export const minLength = (minLength: number) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.minLength(minLength)(self))
-
-/**
- * @since 1.0.0
- */
-export const maxLength = (maxLength: number) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.maxLength(maxLength)(self))
-
-/**
- * @since 1.0.0
- */
-export const length = (length: number) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.length(length)(self))
-
-/**
- * @since 1.0.0
- */
-export const nonEmpty = <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.nonEmpty(self))
-
-/**
- * @since 1.0.0
- */
-export const startsWith = (startsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.startsWith(startsWith)(self))
-
-/**
- * @since 1.0.0
- */
-export const endsWith = (endsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.endsWith(endsWith)(self))
-
-/**
- * @since 1.0.0
- */
-export const regex = (regex: RegExp) =>
-  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.regex(regex)(self))
-
-/**
- * @since 1.0.0
- */
-export const lessThan = (min: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
-
-/**
- * @since 1.0.0
- */
-export const lessThanOrEqualTo = (min: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThanOrEqualTo(min)(self))
-
-/**
- * @since 1.0.0
- */
-export const greaterThan = (max: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThan(max)(self))
-
-/**
- * @since 1.0.0
- */
-export const greaterThanOrEqualTo = (max: number) =>
-  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
-
-/**
- * @since 1.0.0
- */
-export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.int(self))
-
-/**
- * @since 1.0.0
- */
-export const nonNaN = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.nonNaN(self))
-
-/**
- * @since 1.0.0
- */
-export const finite = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.finite(self))
-
-/**
+ * @category constructors
  * @since 1.0.0
  */
 export const instanceOf = <A extends typeof Class>(
@@ -248,21 +204,122 @@ export const instanceOf = <A extends typeof Class>(
 ) => (self: Schema<object>): Codec<InstanceType<A>> => codecFor(S.instanceOf(constructor)(self))
 
 // ---------------------------------------------
+// filters
+// ---------------------------------------------
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const minLength = (minLength: number) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.minLength(minLength)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const maxLength = (maxLength: number) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.maxLength(maxLength)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const length = (length: number) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.length(length)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonEmpty = <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.nonEmpty(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const startsWith = (startsWith: string) =>
+  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.startsWith(startsWith)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const endsWith = (endsWith: string) =>
+  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.endsWith(endsWith)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const regex = (regex: RegExp) =>
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.regex(regex)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThan = (min: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThan(min)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualTo = (min: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.lessThanOrEqualTo(min)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThan = (max: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThan(max)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo = (max: number) =>
+  <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.greaterThanOrEqualTo(max)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const int = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.int(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNaN = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.nonNaN(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const finite = <A extends number>(self: Schema<A>): Codec<A> => codecFor(S.finite(self))
+
+// ---------------------------------------------
 // combinators
 // ---------------------------------------------
 
 /**
+ * @category unexpected keys / indexes
  * @since 1.0.0
  */
 export const allowUnexpected = <A>(self: Schema<A>): Codec<A> => codecFor(S.allowUnexpected(self))
 
 /**
+ * @category unexpected keys / indexes
  * @since 1.0.0
  */
 export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
   codecFor(S.disallowUnexpected(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
@@ -270,16 +327,19 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
 ): Codec<Infer<Members[number]>> => codecFor(S.union(...members))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const nullable = <A>(self: Schema<A>): Codec<A | null> => codecFor(S.nullable(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const keyof = <A>(schema: Schema<A>): Codec<keyof A> => codecFor(S.keyof(schema))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
@@ -288,6 +348,7 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   codecFor(S.tuple<Elements>(...elements))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const rest = <R>(rest: Schema<R>) =>
@@ -295,6 +356,7 @@ export const rest = <R>(rest: Schema<R>) =>
     codecFor(S.rest(rest)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const element = <E>(element: Schema<E>) =>
@@ -302,6 +364,7 @@ export const element = <E>(element: Schema<E>) =>
     codecFor(S.element(element)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const optionalElement = <E>(element: Schema<E>) =>
@@ -309,11 +372,13 @@ export const optionalElement = <E>(element: Schema<E>) =>
     codecFor(S.optionalElement(element)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const array = <A>(item: Schema<A>): Codec<ReadonlyArray<A>> => codecFor(S.array(item))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const nonEmptyArray = <A>(
@@ -321,11 +386,13 @@ export const nonEmptyArray = <A>(
 ): Codec<readonly [A, ...Array<A>]> => codecFor(S.nonEmptyArray(item))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const optional: <A>(schema: Schema<A>) => S.OptionalSchema<A, true> = I.optional
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
@@ -338,6 +405,18 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 > => codecFor(S.struct(fields))
 
 /**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
+  key: Key,
+  value: Schema<A>,
+  isOptional: isOptional
+): Codec<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
+  codecFor(S.field(key, value, isOptional))
+
+/**
+ * @category combinators
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -345,6 +424,7 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     codecFor(pipe(self, S.pick(...keys)))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
@@ -352,11 +432,13 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     codecFor(pipe(self, S.omit(...keys)))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.partial(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const record = <K extends PropertyKey, V>(
@@ -365,6 +447,7 @@ export const record = <K extends PropertyKey, V>(
 ): Codec<{ readonly [k in K]: V }> => codecFor(S.record(key, value))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const extend = <B>(
@@ -372,11 +455,13 @@ export const extend = <B>(
 ) => <A>(self: Schema<A>): Codec<S.Spread<A & B>> => codecFor(S.extend(that)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const lazy = <A>(f: () => Schema<A>): Codec<A> => codecFor(S.lazy(f))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const filter = <A, B extends A>(
@@ -386,6 +471,7 @@ export const filter = <A, B extends A>(
 ) => (self: Schema<A>): Codec<B> => codecFor(S.filter(refinement, meta, annotations)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const parse = <A, B>(
@@ -395,6 +481,7 @@ export const parse = <A, B>(
 ) => (self: Schema<A>): Codec<B> => codecFor(S.parse(to, decode, encode)(self))
 
 /**
+ * @category combinators
  * @since 1.0.0
  */
 export const annotations = (
@@ -413,70 +500,84 @@ const _null: Codec<null> = codecFor(S.null)
 
 export {
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _null as null,
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _undefined as undefined,
   /**
+   * @category primitives
    * @since 1.0.0
    */
   _void as void
 }
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const string: Codec<string> = codecFor(S.string)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const number: Codec<number> = codecFor(S.number)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const boolean: Codec<boolean> = codecFor(S.boolean)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const bigint: Codec<bigint> = codecFor(S.bigint)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const symbol: Codec<symbol> = codecFor(S.symbol)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const object: Codec<object> = codecFor(S.object)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const unknown: Codec<unknown> = codecFor(S.unknown)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const any: Codec<any> = codecFor(S.any)
 
 /**
+ * @category primitives
  * @since 1.0.0
  */
 export const never: Codec<never> = codecFor(S.never)
 
 /**
+ * @category data
  * @since 1.0.0
  */
 export const json: Codec<Json.Json> = codecFor(S.json)
 
 /**
+ * @category data
  * @since 1.0.0
  */
 export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(S.option(value))

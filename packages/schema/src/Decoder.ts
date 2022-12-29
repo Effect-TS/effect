@@ -22,6 +22,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 export type DecodeResult<A> = Validated<DE.DecodeError, A>
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Decoder<I, A> extends Schema<A> {
@@ -30,47 +31,56 @@ export interface Decoder<I, A> extends Schema<A> {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const make: <S, A>(schema: Schema<A>, decode: Decoder<S, A>["decode"]) => Decoder<S, A> =
   I.makeDecoder
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const success = I.success
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const failure = I.failure
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const failures = I.failures
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const warning = I.warning
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const warnings = I.warnings
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isSuccess = I.isSuccess
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isFailure = I.isFailure
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isWarning = I.isWarning

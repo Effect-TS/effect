@@ -14,6 +14,7 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Guard<A> extends Schema<A> {
@@ -21,6 +22,7 @@ export interface Guard<A> extends Schema<A> {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard

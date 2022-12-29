@@ -13,6 +13,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export type AST =
@@ -45,6 +46,7 @@ export interface Annotated {
 }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface TypeAlias extends Annotated {
@@ -54,6 +56,7 @@ export interface TypeAlias extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const typeAlias = (
@@ -63,6 +66,7 @@ export const typeAlias = (
 ): TypeAlias => ({ _tag: "TypeAlias", typeParameters, type, annotations })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isTypeAlias = (ast: AST): ast is TypeAlias => ast._tag === "TypeAlias"
@@ -73,6 +77,7 @@ export const isTypeAlias = (ast: AST): ast is TypeAlias => ast._tag === "TypeAli
 export type Literal = string | number | boolean | null | bigint
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface LiteralType extends Annotated {
@@ -81,6 +86,7 @@ export interface LiteralType extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const literalType = (
@@ -89,11 +95,13 @@ export const literalType = (
 ): LiteralType => ({ _tag: "LiteralType", literal, annotations })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isLiteralType = (ast: AST): ast is LiteralType => ast._tag === "LiteralType"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface UniqueSymbol extends Annotated {
@@ -102,6 +110,7 @@ export interface UniqueSymbol extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const uniqueSymbol = (
@@ -110,11 +119,13 @@ export const uniqueSymbol = (
 ): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isUniqueSymbol = (ast: AST): ast is UniqueSymbol => ast._tag === "UniqueSymbol"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface UndefinedKeyword extends Annotated {
@@ -122,11 +133,13 @@ export interface UndefinedKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const undefinedKeyword: UndefinedKeyword = { _tag: "UndefinedKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface VoidKeyword extends Annotated {
@@ -134,11 +147,13 @@ export interface VoidKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const voidKeyword: VoidKeyword = { _tag: "VoidKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface NeverKeyword extends Annotated {
@@ -146,11 +161,13 @@ export interface NeverKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const neverKeyword: NeverKeyword = { _tag: "NeverKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface UnknownKeyword extends Annotated {
@@ -158,11 +175,13 @@ export interface UnknownKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const unknownKeyword: UnknownKeyword = { _tag: "UnknownKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface AnyKeyword extends Annotated {
@@ -170,11 +189,13 @@ export interface AnyKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const anyKeyword: AnyKeyword = { _tag: "AnyKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface StringKeyword extends Annotated {
@@ -182,16 +203,19 @@ export interface StringKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const stringKeyword: StringKeyword = { _tag: "StringKeyword", annotations: {} }
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isStringKeyword = (ast: AST): ast is StringKeyword => ast._tag === "StringKeyword"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface NumberKeyword extends Annotated {
@@ -199,16 +223,19 @@ export interface NumberKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const numberKeyword: NumberKeyword = { _tag: "NumberKeyword", annotations: {} }
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isNumberKeyword = (ast: AST): ast is NumberKeyword => ast._tag === "NumberKeyword"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface BooleanKeyword extends Annotated {
@@ -216,11 +243,13 @@ export interface BooleanKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const booleanKeyword: BooleanKeyword = { _tag: "BooleanKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface BigIntKeyword extends Annotated {
@@ -228,11 +257,13 @@ export interface BigIntKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const bigIntKeyword: BigIntKeyword = { _tag: "BigIntKeyword", annotations: {} }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface SymbolKeyword extends Annotated {
@@ -240,16 +271,19 @@ export interface SymbolKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const symbolKeyword: SymbolKeyword = { _tag: "SymbolKeyword", annotations: {} }
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isSymbolKeyword = (ast: AST): ast is SymbolKeyword => ast._tag === "SymbolKeyword"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface ObjectKeyword extends Annotated {
@@ -257,6 +291,7 @@ export interface ObjectKeyword extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const objectKeyword: ObjectKeyword = { _tag: "ObjectKeyword", annotations: {} }
@@ -279,6 +314,7 @@ export const element = (
 ): Element => ({ type, isOptional, annotations })
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Tuple extends Annotated {
@@ -290,6 +326,7 @@ export interface Tuple extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const tuple = (
@@ -301,6 +338,7 @@ export const tuple = (
 ): Tuple => ({ _tag: "Tuple", elements, rest, isReadonly, annotations, allowUnexpected })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
@@ -346,6 +384,7 @@ export const indexSignature = (
 ): IndexSignature => ({ key, value, isReadonly, annotations })
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Struct extends Annotated {
@@ -390,6 +429,7 @@ const sortByCardinalityAsc = RA.sort(
 )
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const struct = (
@@ -406,11 +446,13 @@ export const struct = (
 })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Union extends Annotated {
@@ -457,6 +499,7 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const union = (
@@ -477,11 +520,13 @@ export const union = (
 }
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Lazy extends Annotated {
@@ -490,6 +535,7 @@ export interface Lazy extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const lazy = (f: () => AST, annotations: Annotated["annotations"] = {}): Lazy => ({
@@ -499,11 +545,13 @@ export const lazy = (f: () => AST, annotations: Annotated["annotations"] = {}): 
 })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Enums extends Annotated {
@@ -512,6 +560,7 @@ export interface Enums extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const enums = (
@@ -520,6 +569,7 @@ export const enums = (
 ): Enums => ({ _tag: "Enums", enums, annotations })
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Refinement extends Annotated {
@@ -530,6 +580,7 @@ export interface Refinement extends Annotated {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const refinement = (
