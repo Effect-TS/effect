@@ -238,8 +238,6 @@ const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
 const isOptionalSchema = <A>(schema: Schema<A>): schema is OptionalSchema<A, boolean> =>
   schema["_id"] === OptionalSchemaId
 
-const isOptional = <A>(schema: Schema<A>): boolean => isOptionalSchema(schema)
-
 /** @internal */
 export const optional = <A>(schema: Schema<A>): OptionalSchema<A, true> => {
   const out: any = makeSchema(schema.ast)
@@ -258,7 +256,9 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 > =>
   makeSchema(
     AST.struct(
-      ownKeys(fields).map((key) => AST.field(key, fields[key].ast, isOptional(fields[key]), true)),
+      ownKeys(fields).map((key) =>
+        AST.field(key, fields[key].ast, isOptionalSchema(fields[key]), true)
+      ),
       []
     )
   )
