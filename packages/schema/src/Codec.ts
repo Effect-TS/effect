@@ -4,13 +4,13 @@
 
 import type { Left, Right } from "@fp-ts/data/Either"
 import * as E from "@fp-ts/data/Either"
-import { pipe } from "@fp-ts/data/Function"
+import { identity, pipe } from "@fp-ts/data/Function"
 import * as Json from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
-import type { Annotated, AST, Literal } from "@fp-ts/schema/AST"
+import type { Annotated, Literal } from "@fp-ts/schema/AST"
 import type { Class } from "@fp-ts/schema/data/refinement"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -27,54 +27,27 @@ import * as S from "@fp-ts/schema/Schema"
  * @category model
  * @since 1.0.0
  */
-export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {
-  /**
-   * @since 1.0.0
-   */
-  readonly A!: (_: A) => A
-  /**
-   * @since 1.0.0
-   */
-  readonly I!: (_: unknown) => void
-  /**
-   * @since 1.0.0
-   */
-  readonly ast: AST
-  /**
-   * @since 1.0.0
-   */
-  readonly decode: Decoder<unknown, A>["decode"]
-  /**
-   * @since 1.0.0
-   */
-  readonly encode: Encoder<unknown, A>["encode"]
-  /**
-   * @since 1.0.0
-   */
-  readonly is: Guard<A>["is"]
-
-  constructor(
-    schema: Schema<A>
-  ) {
-    this.ast = schema.ast
-    this.decode = decoderFor(schema).decode
-    this.encode = encoderFor(schema).encode
-    this.is = guardFor(schema).is
-    this.parseOrThrow.bind(this)
-    this.stringify.bind(this)
-  }
-  /**
-   * @since 1.0.0
-   */
-  parseOrThrow(
+export interface Codec<A> extends Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {
+  readonly parseOrThrow: (
     text: string,
     format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
-  ): A {
+  ) => A
+  readonly stringify: (value: A) => string
+  readonly of: (value: A) => A
+}
+
+const make = <A>(schema: Schema<A>): Codec<A> => {
+  const decode = decoderFor(schema).decode
+  const encode = encoderFor(schema).encode
+  const parseOrThrow = (
+    text: string,
+    format?: (errors: NonEmptyReadonlyArray<DecodeError>) => string
+  ): A => {
     const json = Json.parse(text)
     if (E.isLeft(json)) {
       throw new Error(`Cannot parse JSON from: ${text}`)
     }
-    const result = this.decode(json.right)
+    const result = decode(json.right)
     if (!I.isFailure(result)) {
       return result.right
     }
@@ -82,22 +55,24 @@ export class Codec<A> implements Schema<A>, Decoder<unknown, A>, Encoder<unknown
       (format ? `, errors: ${format(result.left)}` : ``)
     throw new Error(message)
   }
-  /**
-   * @since 1.0.0
-   */
-  stringify(value: A): string {
-    const json = Json.stringify(this.encode(value))
+  const stringify = (value: A): string => {
+    const json = Json.stringify(encode(value))
     if (E.isLeft(json)) {
       throw new Error(`Cannot encode JSON, error: ${String(json.left)}`)
     }
     return json.right
   }
-  /**
-   * @since 1.0.0
-   */
-  of(value: A): A {
-    return value
+  const out = {
+    ast: schema.ast,
+    decode,
+    encode,
+    is: guardFor(schema).is,
+    parseOrThrow,
+    stringify,
+    of: identity
   }
+  // @ts-expect-error
+  return out
 }
 
 /**
@@ -170,7 +145,7 @@ export const isWarning: <E, A>(self: These<E, A>) => self is Both<E, A> = I.isWa
 /**
  * @since 1.0.0
  */
-export const codecFor = <A>(schema: Schema<A>): Codec<A> => new Codec(schema)
+export const codecFor = <A>(schema: Schema<A>): Codec<A> => make(schema)
 
 /**
  * @category constructors
@@ -239,14 +214,14 @@ export const nonEmpty = <A extends string>(self: Schema<A>): Codec<A> => codecFo
  * @since 1.0.0
  */
 export const startsWith = (startsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.startsWith(startsWith)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.startsWith(startsWith)(self))
 
 /**
  * @category filters
  * @since 1.0.0
  */
 export const endsWith = (endsWith: string) =>
-  <A extends string>(self: Schema<A>): Codec<A> => new Codec(S.endsWith(endsWith)(self))
+  <A extends string>(self: Schema<A>): Codec<A> => codecFor(S.endsWith(endsWith)(self))
 
 /**
  * @category filters
