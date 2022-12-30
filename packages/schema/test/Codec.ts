@@ -65,22 +65,6 @@ describe.concurrent("Codec", () => {
     expect(C.option).exist
   })
 
-  it("parseOrThrow", () => {
-    const Person = C.struct({
-      firstName: C.string,
-      lastName: C.string,
-      age: C.optional(C.number)
-    })
-
-    Util.expectSuccess(Person, { firstName: "Michael", lastName: "Arnaldi" })
-
-    const person = Person.of({ firstName: "Michael", lastName: "Arnaldi" })
-    const string = Person.stringify(person)
-
-    expect(string).toEqual(`{"firstName":"Michael","lastName":"Arnaldi"}`)
-    expect(Person.parseOrThrow(string)).toEqual(person)
-  })
-
   it("never", () => {
     const codec = C.never
     Util.expectFailure(codec, 1, "1 did not satisfy is(never)")
