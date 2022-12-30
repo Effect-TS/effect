@@ -5,11 +5,7 @@ import type { Chunk } from "@fp-ts/data/Chunk"
 import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
-import * as AH from "@fp-ts/schema/annotation/ArbitraryHooks"
-import * as DH from "@fp-ts/schema/annotation/DecoderHooks"
-import * as EH from "@fp-ts/schema/annotation/EncoderHooks"
-import * as GH from "@fp-ts/schema/annotation/GuardHooks"
-import * as PH from "@fp-ts/schema/annotation/PrettyHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as D from "@fp-ts/schema/Decoder"
@@ -53,10 +49,10 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     [item],
     I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
     {
-      [DH.TypeAliasHookId]: DH.typeAliasHook(decoder),
-      [GH.TypeAliasHookId]: GH.typeAliasHook(guard),
-      [EH.TypeAliasHookId]: EH.typeAliasHook(encoder),
-      [PH.TypeAliasHookId]: PH.typeAliasHook(pretty),
-      [AH.TypeAliasHookId]: AH.typeAliasHook(arbitrary)
+      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+      [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
+      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
+      [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
+      [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)
     }
   )

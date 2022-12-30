@@ -5,7 +5,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getTypeAliasHook } from "@fp-ts/schema/annotation/PrettyHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -25,6 +25,10 @@ export interface Pretty<A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
+
+const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Pretty<any>>>(
+  H.PrettyTypeAliasHookId
+)
 
 /**
  * @since 1.0.0

@@ -3,11 +3,7 @@
  */
 import { pipe } from "@fp-ts/data/Function"
 import * as T from "@fp-ts/data/These"
-import * as AH from "@fp-ts/schema/annotation/ArbitraryHooks"
-import * as DH from "@fp-ts/schema/annotation/DecoderHooks"
-import * as EH from "@fp-ts/schema/annotation/EncoderHooks"
-import * as GH from "@fp-ts/schema/annotation/GuardHooks"
-import * as PH from "@fp-ts/schema/annotation/PrettyHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as D from "@fp-ts/schema/Decoder"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -71,10 +67,10 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
     [key, value],
     I.struct({}),
     {
-      [DH.TypeAliasHookId]: DH.typeAliasHook(decoder),
-      [GH.TypeAliasHookId]: GH.typeAliasHook(guard),
-      [EH.TypeAliasHookId]: EH.typeAliasHook(encoder),
-      [PH.TypeAliasHookId]: PH.typeAliasHook(pretty),
-      [AH.TypeAliasHookId]: AH.typeAliasHook(arbitrary)
+      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+      [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
+      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
+      [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
+      [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)
     }
   )

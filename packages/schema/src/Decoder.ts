@@ -10,7 +10,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
-import { getTypeAliasHook } from "@fp-ts/schema/annotation/DecoderHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
@@ -84,6 +84,10 @@ export const isFailure = I.isFailure
  * @since 1.0.0
  */
 export const isWarning = I.isWarning
+
+const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Decoder<unknown, any>>>(
+  H.DecoderTypeAliasHookId
+)
 
 /**
  * @since 1.0.0

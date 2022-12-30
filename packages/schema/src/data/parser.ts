@@ -2,8 +2,7 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
-import * as DH from "@fp-ts/schema/annotation/DecoderHooks"
-import * as EH from "@fp-ts/schema/annotation/EncoderHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
@@ -26,8 +25,8 @@ export const parse = <A, B>(
 
   const schema = (from: Schema<A>): Schema<B> =>
     I.typeAlias([from], to, {
-      [DH.TypeAliasHookId]: DH.typeAliasHook(decoder),
-      [EH.TypeAliasHookId]: EH.typeAliasHook(encoder)
+      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder)
     })
 
   return schema

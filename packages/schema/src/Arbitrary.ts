@@ -5,7 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getTypeAliasHook } from "@fp-ts/schema/annotation/ArbitraryHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -38,6 +38,10 @@ const record = <K extends PropertyKey, A>(
     }
     return out
   })
+
+const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Arbitrary<any>>>(
+  H.ArbitraryTypeAliasHookId
+)
 
 /**
  * @since 1.0.0

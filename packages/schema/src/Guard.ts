@@ -8,7 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import { getTypeAliasHook } from "@fp-ts/schema/annotation/GuardHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -26,6 +26,10 @@ export interface Guard<A> extends Schema<A> {
  * @since 1.0.0
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
+
+const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Guard<any>>>(
+  H.GuardTypeAliasHookId
+)
 
 /**
  * @since 1.0.0

@@ -5,7 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getTypeAliasHook } from "@fp-ts/schema/annotation/EncoderHooks"
+import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as G from "@fp-ts/schema/Guard"
@@ -26,6 +26,10 @@ export interface Encoder<S, A> extends Schema<A> {
  */
 export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
   I.makeEncoder
+
+const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Encoder<unknown, any>>>(
+  H.EncoderTypeAliasHookId
+)
 
 /**
  * @since 1.0.0

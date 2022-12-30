@@ -296,9 +296,7 @@ export const annotations = (
 ) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.annotations(self.ast, annotations))
 
 /** @internal */
-export const getAnnotation = <A>(
-  key: string | symbol
-) =>
+export const getAnnotation = <A>(key: PropertyKey) =>
   (annotated: AST.Annotated): O.Option<A> =>
     Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
       O.some(annotated.annotations[key] as any) :
