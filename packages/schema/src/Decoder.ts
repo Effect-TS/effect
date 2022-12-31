@@ -245,9 +245,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // ---------------------------------------------
               for (; i < input.length; i++) {
                 if (ast.allowUnexpected) {
-                  es.push(DE.unexpectedIndex(i, input[i]))
+                  es.push(DE.index(i, [DE.unexpected(input[i])]))
                 } else {
-                  return failures(I.mutableAppend(es, DE.unexpectedIndex(i, input[i])))
+                  return failures(I.mutableAppend(es, DE.index(i, [DE.unexpected(input[i])])))
                 }
               }
             }
@@ -326,9 +326,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
                   if (ast.allowUnexpected) {
-                    es.push(DE.unexpectedKey(key, input[key]))
+                    es.push(DE.key(key, [DE.unexpected(input[key])]))
                   } else {
-                    return failures(I.mutableAppend(es, DE.unexpectedKey(key, input[key])))
+                    return failures(I.mutableAppend(es, DE.key(key, [DE.unexpected(input[key])])))
                   }
                 }
               }
@@ -359,8 +359,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // choose the output with less warnings related to unexpected keys / indexes
               if (
                 !output ||
-                output.left.filter(isUnexpectedError).length >
-                  t.left.filter(isUnexpectedError).length
+                output.left.filter(hasUnexpectedError).length >
+                  t.left.filter(hasUnexpectedError).length
               ) {
                 output = t
               }
@@ -418,5 +418,6 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   return go(schema.ast)
 }
 
-const isUnexpectedError = (e: DE.DecodeError) =>
-  e._tag === "UnexpectedIndex" || e._tag === "UnexpectedKey"
+const hasUnexpectedError = (e: DE.DecodeError) =>
+  (e._tag === "Key" && e.errors.some((e) => e._tag === "Unexpected")) ||
+  (e._tag === "Index" && e.errors.some((e) => e._tag === "Unexpected"))

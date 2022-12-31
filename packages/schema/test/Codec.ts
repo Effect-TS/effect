@@ -309,8 +309,8 @@ describe.concurrent("Codec", () => {
 
     Util.expectFailure(codec, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
     Util.expectFailure(codec, {}, `{} did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectFailure(codec, [undefined], `/0 index is unexpected`)
-    Util.expectFailure(codec, [1], `/0 index is unexpected`)
+    Util.expectFailure(codec, [undefined], `/0 is unexpected`)
+    Util.expectFailure(codec, [1], `/0 is unexpected`)
   })
 
   it("tuple. required element", () => {
@@ -321,7 +321,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
     Util.expectFailure(codec, [undefined], `/0 undefined did not satisfy is(number)`)
     Util.expectFailure(codec, ["a"], `/0 "a" did not satisfy is(number)`)
-    Util.expectFailure(codec, [1, "b"], `/1 index is unexpected`)
+    Util.expectFailure(codec, [1, "b"], `/1 is unexpected`)
   })
 
   it("tuple. required element with undefined", () => {
@@ -336,7 +336,7 @@ describe.concurrent("Codec", () => {
       ["a"],
       `/0 member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
     )
-    Util.expectFailure(codec, [1, "b"], `/1 index is unexpected`)
+    Util.expectFailure(codec, [1, "b"], `/1 is unexpected`)
   })
 
   it("tuple. optional element", () => {
@@ -350,7 +350,7 @@ describe.concurrent("Codec", () => {
       ["a"],
       `/0 "a" did not satisfy is(number)`
     )
-    Util.expectFailure(codec, [1, "b"], `/1 index is unexpected`)
+    Util.expectFailure(codec, [1, "b"], `/1 is unexpected`)
   })
 
   it("tuple. optional element with undefined", () => {
@@ -365,7 +365,7 @@ describe.concurrent("Codec", () => {
       ["a"],
       `/0 member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
     )
-    Util.expectFailure(codec, [1, "b"], `/1 index is unexpected`)
+    Util.expectFailure(codec, [1, "b"], `/1 is unexpected`)
   })
 
   it("tuple. e e?", () => {
@@ -439,25 +439,25 @@ describe.concurrent("Codec", () => {
   it("tuple. element warnings", () => {
     const codec = C.tuple(C.allowUnexpected(C.struct({ b: C.number })))
     Util.expectSuccess(codec, [{ b: 1 }])
-    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c is unexpected`, [{ b: 1 }])
   })
 
   it("tuple. rest element warnings", () => {
     const codec = C.array(C.allowUnexpected(C.struct({ b: C.number })))
     Util.expectSuccess(codec, [{ b: 1 }])
-    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c is unexpected`, [{ b: 1 }])
   })
 
   it("tuple. post rest elements warnings", () => {
     const codec = pipe(C.array(C.string), C.element(C.allowUnexpected(C.struct({ b: C.number }))))
     Util.expectSuccess(codec, [{ b: 1 }])
-    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c key is unexpected`, [{ b: 1 }])
+    Util.expectWarning(codec, [{ b: 1, c: "c" }], `/0 /c is unexpected`, [{ b: 1 }])
   })
 
   it("tuple. allowUnexpected = true", () => {
     const codec = C.allowUnexpected(C.tuple(C.number))
     Util.expectSuccess(codec, [1])
-    Util.expectWarning(codec, [1, "b"], `/1 index is unexpected`, [1])
+    Util.expectWarning(codec, [1, "b"], `/1 is unexpected`, [1])
   })
 
   it("tuple. allowUnexpected = true r", () => {
@@ -469,7 +469,7 @@ describe.concurrent("Codec", () => {
   it("struct. allowUnexpected = true", () => {
     const codec = C.allowUnexpected(C.struct({ a: C.number }))
     Util.expectSuccess(codec, { a: 1 })
-    Util.expectWarning(codec, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
+    Util.expectWarning(codec, { a: 1, b: "b" }, `/b is unexpected`, { a: 1 })
   })
 
   it("struct. allowUnexpected = true index signature", () => {
@@ -483,13 +483,13 @@ describe.concurrent("Codec", () => {
   it("struct. key warnings", () => {
     const codec = C.struct({ a: C.allowUnexpected(C.struct({ b: C.number })) })
     Util.expectSuccess(codec, { a: { b: 1 } })
-    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c key is unexpected`, { a: { b: 1 } })
+    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c is unexpected`, { a: { b: 1 } })
   })
 
   it("struct. index signature warnings", () => {
     const codec = C.record(S.string, C.allowUnexpected(C.struct({ b: C.number })))
     Util.expectSuccess(codec, { a: { b: 1 } })
-    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c key is unexpected`, { a: { b: 1 } })
+    Util.expectWarning(codec, { a: { b: 1, c: "c" } }, `/a /c is unexpected`, { a: { b: 1 } })
   })
 
   it("struct. empty", () => {
@@ -513,7 +513,7 @@ describe.concurrent("Codec", () => {
       )
       Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
       Util.expectFailure(codec, { a: undefined }, "/a undefined did not satisfy is(number)")
-      Util.expectFailure(codec, { a: 1, b: "b" }, "/b key is unexpected")
+      Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
     it("required field with undefined", () => {
@@ -532,7 +532,7 @@ describe.concurrent("Codec", () => {
         { a: "a" },
         `/a member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
       )
-      Util.expectFailure(codec, { a: 1, b: "b" }, "/b key is unexpected")
+      Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
     it("optional field", () => {
@@ -547,7 +547,7 @@ describe.concurrent("Codec", () => {
       )
       Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
       Util.expectFailure(codec, { a: undefined }, `/a undefined did not satisfy is(number)`)
-      Util.expectFailure(codec, { a: 1, b: "b" }, "/b key is unexpected")
+      Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
     it("optional field with undefined", () => {
@@ -566,7 +566,7 @@ describe.concurrent("Codec", () => {
         { a: "a" },
         `/a member: "a" did not satisfy is(number), member: "a" did not satisfy is(undefined)`
       )
-      Util.expectFailure(codec, { a: 1, b: "b" }, "/b key is unexpected")
+      Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
     it("should not add optional keys", () => {
@@ -712,7 +712,7 @@ describe.concurrent("Codec", () => {
     const a = C.allowUnexpected(C.struct({ a: C.optional(C.number) }))
     const b = C.allowUnexpected(C.struct({ a: C.optional(C.number), b: C.optional(C.string) }))
     const codec = C.union(a, b)
-    Util.expectWarning(codec, { a: 1, b: "b", c: true }, `/c key is unexpected`, { a: 1, b: "b" })
+    Util.expectWarning(codec, { a: 1, b: "b", c: true }, `/c is unexpected`, { a: 1, b: "b" })
   })
 
   describe.concurrent("union", () => {

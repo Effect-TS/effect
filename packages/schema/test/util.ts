@@ -76,10 +76,8 @@ const format = (e: DE.DecodeError): string => {
       return `/${String(e.key)} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
     case "Missing":
       return `did not satisfy is(required)`
-    case "UnexpectedKey":
-      return `/${String(e.key)} key is unexpected`
-    case "UnexpectedIndex":
-      return `/${String(e.index)} index is unexpected`
+    case "Unexpected":
+      return `is unexpected`
     case "Member":
       return `member: ${pipe(e.errors, RA.map(format), RA.join(", "))}`
   }
@@ -146,14 +144,12 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(`${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
-    case "UnexpectedIndex":
-      return make(`${String(e.index)} index is unexpected`)
+    case "Unexpected":
+      return make(`is unexpected`)
     case "Key":
       return make(`key ${String(e.key)}`, e.errors.map(go))
     case "Missing":
       return make(`did not satisfy not(isNaN)`)
-    case "UnexpectedKey":
-      return make(`${String(e.key)} key is unexpected`)
     case "Member":
       return make(`union member`, e.errors.map(go))
   }
