@@ -229,4 +229,18 @@ class Test {
 }
 
 // $ExpectType Codec<Test>
-const TestSchema = pipe(C.object, C.instanceOf(Test));
+pipe(C.object, C.instanceOf(Test));
+
+//
+// Template literals
+//
+
+// $ExpectType Codec<`a${string}`>
+C.templateLiteral(C.literal('a'), C.string)
+
+// example from https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html
+const EmailLocaleIDs = C.literal("welcome_email", "email_heading")
+const FooterLocaleIDs = C.literal("footer_title", "footer_sendoff")
+
+// $ExpectType Codec<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
+C.templateLiteral(C.union(EmailLocaleIDs, FooterLocaleIDs), C.literal("_id"))

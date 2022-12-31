@@ -37,6 +37,7 @@ export type AST =
   | Lazy
   | Enums
   | Refinement
+  | TemplateLiteral
 
 /**
  * @since 1.0.0
@@ -589,6 +590,35 @@ export const refinement = (
   meta: unknown,
   annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
+
+/**
+ * @since 1.0.0
+ */
+export interface TemplateLiteralSpan {
+  readonly type: StringKeyword
+  readonly literal: string
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface TemplateLiteral extends Annotated {
+  readonly _tag: "TemplateLiteral"
+  readonly head: string
+  readonly spans: RA.NonEmptyReadonlyArray<TemplateLiteralSpan>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const templateLiteral = (
+  head: string,
+  spans: ReadonlyArray<TemplateLiteralSpan>,
+  annotations: Annotated["annotations"] = {}
+): TemplateLiteral | LiteralType =>
+  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans, annotations } : literalType(head)
 
 /**
  * @since 1.0.0

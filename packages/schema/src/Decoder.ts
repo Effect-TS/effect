@@ -139,14 +139,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
       case "StringKeyword":
         return I.fromRefinement(I.makeSchema(ast), isString, (u) => DE.type("string", u))
       case "NumberKeyword":
-        return I.makeDecoder(
+        return make(
           I.makeSchema(ast),
           (u) => isNumber(u) ? I.success(u) : I.failure(DE.type("number", u))
         )
       case "BooleanKeyword":
         return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => DE.type("boolean", u))
       case "BigIntKeyword":
-        return I.makeDecoder<unknown, bigint>(
+        return make(
           I.makeSchema(ast),
           (u) => {
             if (I.isBigInt(u)) {
@@ -382,7 +382,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       }
       case "Enums":
-        return I.makeDecoder(
+        return make(
           I.makeSchema(ast),
           (u) =>
             ast.enums.some(([_, value]) => value === u) ?
@@ -400,6 +400,16 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                 ast.refinement(a) ? I.success(a) : I.failure(DE.refinement(ast.meta, a))
               )
             )
+        )
+      }
+      case "TemplateLiteral": {
+        const regex = I.getTemplateLiteralRegex(ast)
+        return make(
+          I.makeSchema(ast),
+          (u) =>
+            isString(u) ?
+              regex.test(u) ? I.success(u) : I.failure(DE.type(regex.source, u)) :
+              I.failure(DE.type("string", u))
         )
       }
     }

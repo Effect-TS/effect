@@ -392,6 +392,24 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               )
           )
         )
+      case "TemplateLiteral": {
+        const spans: Array<ts.TemplateLiteralTypeSpan> = []
+        for (let i = 0; i < ast.spans.length; i++) {
+          spans.push(ts.factory.createTemplateLiteralTypeSpan(
+            ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),
+            i < ast.spans.length - 1 ?
+              ts.factory.createTemplateMiddle(ast.spans[i].literal) :
+              ts.factory.createTemplateTail(ast.spans[i].literal)
+          ))
+        }
+        return make(
+          ast,
+          of(ts.factory.createTemplateLiteralType(
+            ts.factory.createTemplateHead(ast.head),
+            spans
+          ))
+        )
+      }
     }
   }
 
@@ -399,6 +417,46 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
 }
 
 describe.concurrent("TypeScript", () => {
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual([`"a"`])
+  })
+
+  it("templateLiteral. a b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual([`"a b"`])
+  })
+
+  it("templateLiteral. a${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string)
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual(["`a${string}`"])
+  })
+
+  it("templateLiteral. ${string}", () => {
+    const schema = S.templateLiteral(S.string)
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual(["`${string}`"])
+  })
+
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual(["`a${string}b`"])
+  })
+
+  it("templateLiteral. https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", () => {
+    const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
+    const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
+    const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
+    const ts = typeScriptFor(schema)
+    expect(printNodes(ts.nodes)).toEqual([
+      `"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id"`
+    ])
+  })
+
   it("never", () => {
     const schema = S.never
     const ts = typeScriptFor(schema)

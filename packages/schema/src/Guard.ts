@@ -207,6 +207,13 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
           (u): u is any => type.is(u) && ast.refinement(u)
         )
       }
+      case "TemplateLiteral": {
+        const regex = I.getTemplateLiteralRegex(ast)
+        return make(
+          I.makeSchema(ast),
+          (u): u is any => isString(u) && regex.test(u)
+        )
+      }
     }
   }
 

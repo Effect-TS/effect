@@ -6,6 +6,12 @@ import * as S from "@fp-ts/schema/Schema"
 const NumberFromString = pipe(S.string, P.parseString)
 
 describe.concurrent("Encoder", () => {
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    const encoder = E.encoderFor(schema)
+    expect(encoder.encode("acb")).toEqual("acb")
+  })
+
   it("string", () => {
     const encoder = E.encoderFor(S.string)
     expect(encoder.encode("a")).toEqual("a")

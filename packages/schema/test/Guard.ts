@@ -13,6 +13,78 @@ describe.concurrent("Guard", () => {
     expect(G.guardFor).exist
   })
 
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+
+    expect(guard.is("ab")).toEqual(false)
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is(null)).toEqual(false)
+  })
+
+  it("templateLiteral. a b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
+    const guard = G.guardFor(schema)
+    expect(guard.is("a b")).toEqual(true)
+
+    expect(guard.is("a  b")).toEqual(false)
+  })
+
+  it("templateLiteral. a${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is("ab")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+  })
+
+  it("templateLiteral. ${string}", () => {
+    const schema = S.templateLiteral(S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is("a")).toEqual(true)
+    expect(guard.is("ab")).toEqual(true)
+    expect(guard.is("")).toEqual(true)
+  })
+
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    const guard = G.guardFor(schema)
+    expect(guard.is("ab")).toEqual(true)
+    expect(guard.is("acb")).toEqual(true)
+    expect(guard.is("abb")).toEqual(true)
+    expect(guard.is("a b")).toEqual(true)
+
+    expect(guard.is("")).toEqual(false)
+    expect(guard.is("a")).toEqual(false)
+    expect(guard.is("b")).toEqual(false)
+  })
+
+  it("templateLiteral. a${string}b${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"), S.string)
+    const guard = G.guardFor(schema)
+    expect(guard.is("ab")).toEqual(true)
+    expect(guard.is("acb")).toEqual(true)
+    expect(guard.is("acbd")).toEqual(true)
+
+    expect(guard.is("a")).toEqual(false)
+    expect(guard.is("b")).toEqual(false)
+  })
+
+  it("templateLiteral. https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", () => {
+    const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
+    const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
+    const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
+    const guard = G.guardFor(schema)
+    expect(guard.is("welcome_email_id")).toEqual(true)
+    expect(guard.is("email_heading_id")).toEqual(true)
+    expect(guard.is("footer_title_id")).toEqual(true)
+    expect(guard.is("footer_sendoff_id")).toEqual(true)
+
+    expect(guard.is("_id")).toEqual(false)
+  })
+
   it("never", () => {
     const guard = G.guardFor(S.never)
     expect(guard.is(1)).toEqual(false)

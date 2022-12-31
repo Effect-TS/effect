@@ -202,6 +202,19 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           (fc) => type.arbitrary(fc).filter(ast.refinement)
         )
       }
+      case "TemplateLiteral": {
+        return make(
+          I.makeSchema(ast),
+          (fc) => {
+            const components = [fc.constant(ast.head)]
+            for (const span of ast.spans) {
+              components.push(fc.string({ maxLength: 5 }))
+              components.push(fc.constant(span.literal))
+            }
+            return fc.tuple(...components).map((spans) => spans.join(""))
+          }
+        )
+      }
     }
   }
 

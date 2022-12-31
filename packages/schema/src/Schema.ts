@@ -6,6 +6,7 @@ import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
+import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
@@ -73,6 +74,74 @@ export const enums = <A extends { [x: string]: string | number }>(enums: A): Sch
 export const instanceOf: <A extends typeof R.Class>(
   constructor: A
 ) => (self: Schema<object>) => Schema<InstanceType<A>> = R.instanceOf
+
+/**
+ * @since 1.0.0
+ */
+export type Join<T> = T extends [infer Head, ...infer Tail]
+  ? `${Head & (string | number | bigint | boolean | null | undefined)}${Tail extends [] ? ""
+    : Join<Tail>}`
+  : never
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
+  ...[head, ...tail]: T
+): Schema<Join<{ [K in keyof T]: Infer<T[K]> }>> => {
+  let members: ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> = getTemplateLiterals(head.ast)
+  for (const span of tail) {
+    members = pipe(
+      members,
+      RA.flatMap((a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b)))
+    )
+  }
+  return make(AST.union(members))
+}
+
+const combineTemplateLiterals = (
+  a: AST.TemplateLiteral | AST.LiteralType,
+  b: AST.TemplateLiteral | AST.LiteralType
+): AST.TemplateLiteral | AST.LiteralType => {
+  if (AST.isLiteralType(a)) {
+    return AST.isLiteralType(b) ?
+      AST.literalType(String(a.literal) + String(b.literal)) :
+      AST.templateLiteral(String(a.literal) + b.head, b.spans)
+  }
+  if (AST.isLiteralType(b)) {
+    return AST.templateLiteral(
+      a.head,
+      pipe(
+        a.spans,
+        RA.modifyNonEmptyLast((span) => ({ ...span, literal: span.literal + String(b.literal) }))
+      )
+    )
+  }
+  return AST.templateLiteral(
+    a.head,
+    pipe(
+      a.spans,
+      RA.modifyNonEmptyLast((span) => ({ ...span, literal: span.literal + String(b.head) })),
+      RA.appendAll(b.spans)
+    )
+  )
+}
+
+const getTemplateLiterals = (
+  ast: AST.AST
+): ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> => {
+  switch (ast._tag) {
+    case "LiteralType":
+      return [ast]
+    case "StringKeyword":
+      return [AST.templateLiteral("", [{ type: ast, literal: "" }])]
+    case "Union":
+      return pipe(ast.members, RA.flatMap(getTemplateLiterals))
+    default:
+      throw new Error(`Unsupported template literal span ${ast._tag}`)
+  }
+}
 
 // ---------------------------------------------
 // filters

@@ -65,6 +65,89 @@ describe.concurrent("Codec", () => {
     expect(C.option).exist
   })
 
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "a")
+
+    Util.expectFailure(codec, "ab", `"ab" did not satisfy isEqual(a)`)
+    Util.expectFailure(codec, "", `"" did not satisfy isEqual(a)`)
+    Util.expectFailure(codec, null, `null did not satisfy isEqual(a)`)
+  })
+
+  it("templateLiteral. a b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "a b")
+
+    Util.expectFailure(codec, "a  b", `"a  b" did not satisfy isEqual(a b)`)
+  })
+
+  it("templateLiteral. a${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string)
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "a")
+    Util.expectSuccess(codec, "ab")
+
+    Util.expectFailure(codec, "", `"" did not satisfy is(^a.*$)`)
+    Util.expectFailure(codec, null, `null did not satisfy is(string)`)
+  })
+
+  it("templateLiteral. ${string}", () => {
+    const schema = S.templateLiteral(S.string)
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "a")
+    Util.expectSuccess(codec, "ab")
+    Util.expectSuccess(codec, "")
+  })
+
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "ab")
+    Util.expectSuccess(codec, "acb")
+    Util.expectSuccess(codec, "abb")
+    Util.expectFailure(codec, "", `"" did not satisfy is(^a.*b$)`)
+    Util.expectFailure(codec, "a", `"a" did not satisfy is(^a.*b$)`)
+    Util.expectFailure(codec, "b", `"b" did not satisfy is(^a.*b$)`)
+  })
+
+  it("templateLiteral. a${string}b${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"), S.string)
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "ab")
+    Util.expectSuccess(codec, "acb")
+    Util.expectSuccess(codec, "acbd")
+
+    Util.expectFailure(codec, "a", `"a" did not satisfy is(^a.*b.*$)`)
+    Util.expectFailure(codec, "b", `"b" did not satisfy is(^a.*b.*$)`)
+  })
+
+  it("templateLiteral. https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", () => {
+    const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
+    const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
+    const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, "welcome_email_id")
+    Util.expectSuccess(codec, "email_heading_id")
+    Util.expectSuccess(codec, "footer_title_id")
+    Util.expectSuccess(codec, "footer_sendoff_id")
+
+    Util.expectFailureTree(
+      codec,
+      "_id",
+      `4 error(s) found
+├─ union member
+│  └─ "_id" did not satisfy isEqual("welcome_email_id")
+├─ union member
+│  └─ "_id" did not satisfy isEqual("email_heading_id")
+├─ union member
+│  └─ "_id" did not satisfy isEqual("footer_title_id")
+└─ union member
+   └─ "_id" did not satisfy isEqual("footer_sendoff_id")`
+    )
+  })
+
   it("never", () => {
     const codec = C.never
     Util.expectFailure(codec, 1, "1 did not satisfy is(never)")
@@ -285,7 +368,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [1, "b"], `/1 index is unexpected`)
   })
 
-  it("tuple. e + e?", () => {
+  it("tuple. e e?", () => {
     const schema = pipe(S.tuple(S.string), S.optionalElement(S.number))
     const codec = C.codecFor(schema)
     Util.expectSuccess(codec, ["a"])
@@ -295,7 +378,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, ["a", "b"], `/1 "b" did not satisfy is(number)`)
   })
 
-  it("tuple. e + r", () => {
+  it("tuple. e r", () => {
     const schema = pipe(S.tuple(S.string), S.rest(S.number))
     const codec = C.codecFor(schema)
     Util.expectSuccess(codec, ["a"])
@@ -305,7 +388,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
   })
 
-  it("tuple. e? + r", () => {
+  it("tuple. e? r", () => {
     const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(S.number))
     const codec = C.codecFor(schema)
     Util.expectSuccess(codec, [])
@@ -327,7 +410,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
-  it("tuple. r + e", () => {
+  it("tuple. r e", () => {
     const schema = pipe(S.array(S.string), S.element(S.number))
     const codec = C.codecFor(schema)
     Util.expectSuccess(codec, [1])
@@ -339,7 +422,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, [1, 2], `/0 1 did not satisfy is(string)`)
   })
 
-  it("tuple. e + r + e", () => {
+  it("tuple. e r e", () => {
     const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
     const codec = C.codecFor(schema)
     Util.expectSuccess(codec, ["a", true])
@@ -377,7 +460,7 @@ describe.concurrent("Codec", () => {
     Util.expectWarning(codec, [1, "b"], `/1 index is unexpected`, [1])
   })
 
-  it("tuple. allowUnexpected = true + r", () => {
+  it("tuple. allowUnexpected = true r", () => {
     const codec = C.allowUnexpected(pipe(C.tuple(C.number), C.rest(C.string)))
     Util.expectSuccess(codec, [1])
     Util.expectSuccess(codec, [1, "b"])
@@ -389,7 +472,7 @@ describe.concurrent("Codec", () => {
     Util.expectWarning(codec, { a: 1, b: "b" }, `/b key is unexpected`, { a: 1 })
   })
 
-  it("struct. allowUnexpected = true + index signature", () => {
+  it("struct. allowUnexpected = true index signature", () => {
     const codec = C.allowUnexpected(
       pipe(C.struct({ a: C.number }), C.extend(C.record(S.string, C.unknown)))
     )

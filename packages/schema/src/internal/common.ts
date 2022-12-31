@@ -302,6 +302,17 @@ export const getAnnotation = <A>(key: PropertyKey) =>
       O.some(annotated.annotations[key] as any) :
       O.none
 
+/** @internal */
+export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
+  let pattern = `^${ast.head}`
+  for (const span of ast.spans) {
+    pattern += ".*"
+    pattern += span.literal
+  }
+  pattern += "$"
+  return new RegExp(pattern)
+}
+
 // ---------------------------------------------
 // general helpers
 // ---------------------------------------------

@@ -15,6 +15,36 @@ describe.concurrent("Arbitrary", () => {
     expect(A.make).exist
   })
 
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    property(schema)
+  })
+
+  it("templateLiteral. a b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
+    property(schema)
+  })
+
+  it("templateLiteral. a${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string)
+    property(schema)
+  })
+
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    property(schema)
+  })
+
+  it("templateLiteral. ${string}", () => {
+    const schema = S.templateLiteral(S.string)
+    property(schema)
+  })
+
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    property(schema)
+  })
+
   it("never", () => {
     expect(() => A.arbitraryFor(S.never).arbitrary(fc)).toThrowError(
       new Error("cannot build an Arbitrary for `never`")

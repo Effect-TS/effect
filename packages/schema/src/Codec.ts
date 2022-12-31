@@ -142,6 +142,14 @@ export const instanceOf = <A extends typeof Class>(
   constructor: A
 ) => (self: Schema<object>): Codec<InstanceType<A>> => codecFor(S.instanceOf(constructor)(self))
 
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
+  ...spans: T
+): Codec<S.Join<{ [K in keyof T]: Infer<T[K]> }>> => codecFor(S.templateLiteral(...spans))
+
 // ---------------------------------------------
 // filters
 // ---------------------------------------------

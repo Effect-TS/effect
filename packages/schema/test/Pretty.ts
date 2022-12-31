@@ -7,6 +7,12 @@ describe.concurrent("Pretty", () => {
     expect(P.make).exist
   })
 
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty("acb")).toEqual("acb")
+  })
+
   it("number", () => {
     const schema = S.number
     const pretty = P.prettyFor(schema)

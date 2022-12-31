@@ -4,6 +4,63 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Schema", () => {
+  it("templateLiteral. a", () => {
+    const schema = S.templateLiteral(S.literal("a"))
+    expect(schema.ast).toEqual(AST.literalType("a"))
+  })
+
+  it("templateLiteral. a b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
+    expect(schema.ast).toEqual(
+      AST.literalType("a b")
+    )
+  })
+
+  it("templateLiteral. (a | b) c", () => {
+    const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
+    expect(schema.ast).toEqual(
+      AST.union([AST.literalType("ac"), AST.literalType("bc")])
+    )
+  })
+
+  it("templateLiteral. (a | b) c (d | e)", () => {
+    const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
+    expect(schema.ast).toEqual(
+      AST.union([
+        AST.literalType("acd"),
+        AST.literalType("ace"),
+        AST.literalType("bcd"),
+        AST.literalType("bce")
+      ])
+    )
+  })
+
+  it("templateLiteral. (a | b) string (d | e)", () => {
+    const schema = S.templateLiteral(S.literal("a", "b"), S.string, S.literal("d", "e"))
+    expect(schema.ast).toEqual(
+      AST.union([
+        AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "d" }]),
+        AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "e" }]),
+        AST.templateLiteral("b", [{ type: AST.stringKeyword, literal: "d" }]),
+        AST.templateLiteral("b", [{ type: AST.stringKeyword, literal: "e" }])
+      ])
+    )
+  })
+
+  it("templateLiteral. a${string}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string)
+    expect(schema.ast).toEqual(
+      AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
+    )
+  })
+
+  it("templateLiteral. a${string}b", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
+    expect(schema.ast).toEqual(
+      AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
+    )
+  })
+
   it("optional. should flatten optional calls", () => {
     const schema = S.optional(S.optional(S.string))
     expect(schema).toEqual(S.optional(S.string))
