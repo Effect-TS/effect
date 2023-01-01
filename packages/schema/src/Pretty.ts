@@ -172,7 +172,7 @@ const _struct = (
         const symbols = Object.getOwnPropertySymbols(input)
         for (let i = 0; i < indexSignatures.length; i++) {
           const pretty = indexSignatures[i]
-          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          const ks = ast.indexSignatures[i].key._tag === "SymbolKeyword" ? symbols : keys
           for (const key of ks) {
             output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
           }

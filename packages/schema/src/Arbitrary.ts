@@ -132,7 +132,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       }
       case "Struct": {
         const fields = ast.fields.map((f) => go(f.value))
-        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        const indexSignatures = ast.indexSignatures.map((is) => [go(is.key), go(is.value)] as const)
         return make(
           I.makeSchema(ast),
           (fc) => {
@@ -154,15 +154,10 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             // handle index signatures
             // ---------------------------------------------
             for (let i = 0; i < indexSignatures.length; i++) {
-              const key = ast.indexSignatures[i].key
-              const value = indexSignatures[i].arbitrary(fc)
-              const akey: FastCheck.Arbitrary<PropertyKey> = key === "string" ?
-                fc.string() :
-                key === "number" ?
-                fc.integer() :
-                fc.string().map((s) => Symbol.for(s))
+              const key = indexSignatures[i][0].arbitrary(fc)
+              const value = indexSignatures[i][1].arbitrary(fc)
               output = output.chain((o) => {
-                return record(fc, akey, value).map((d) => ({ ...o, ...d }))
+                return record(fc, key, value).map((d) => ({ ...o, ...d }))
               })
             }
 

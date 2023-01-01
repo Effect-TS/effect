@@ -172,7 +172,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
       case "Struct": {
         if (
           ast.indexSignatures.length <
-            ast.indexSignatures.filter((is) => is.key === "string").length
+            ast.indexSignatures.filter((is) => is.key._tag === "StringKeyword").length
         ) {
           throw new Error(`Cannot encode some index signature to JSON Schema`)
         }

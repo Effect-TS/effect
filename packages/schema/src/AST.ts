@@ -369,7 +369,7 @@ export const field = (
  * @since 1.0.0
  */
 export interface IndexSignature extends Annotated {
-  readonly key: "string" | "number" | "symbol"
+  readonly key: AST
   readonly value: AST
   readonly isReadonly: boolean
 }
@@ -378,7 +378,7 @@ export interface IndexSignature extends Annotated {
  * @since 1.0.0
  */
 export const indexSignature = (
-  key: IndexSignature["key"],
+  key: AST,
   value: AST,
   isReadonly: boolean,
   annotations: Annotated["annotations"] = {}
@@ -668,20 +668,6 @@ export const appendElement = (
   )
 }
 
-const getPropertyKeyKeyof = (key: PropertyKey): AST =>
-  typeof key === "symbol" ? uniqueSymbol(key) : literalType(key)
-
-const getIndexSignatureKeyof = (is: IndexSignature): AST => {
-  if (is.key === "symbol") {
-    return symbolKeyword
-  } else if (is.key === "number") {
-    return numberKeyword
-  }
-  // type A = { [x: string]: string }
-  // type K = keyof A // string | number
-  return union([stringKeyword, numberKeyword])
-}
-
 const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAlias":
@@ -689,14 +675,14 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
-    case "Struct": {
-      return [
-        ...ast.fields.map((
-          f
-        ) => getPropertyKeyKeyof(f.key)),
-        ...ast.indexSignatures.map(getIndexSignatureKeyof)
-      ]
-    }
+    case "Struct":
+      return ast.fields.map((f): AST =>
+        typeof f.key === "symbol" ? uniqueSymbol(f.key) : literalType(f.key)
+      ).concat(
+        ast.indexSignatures.map((is) =>
+          is.key._tag === "StringKeyword" ? union([is.key, numberKeyword]) : is.key
+        )
+      )
     case "Union": {
       let out: ReadonlyArray<AST> = _keyof(ast.members[0])
       for (let i = 1; i < ast.members.length; i++) {
@@ -733,15 +719,15 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
       case "NeverKeyword":
         break
       case "StringKeyword": {
-        indexSignatures.push(indexSignature("string", value, isReadonly))
+        indexSignatures.push(indexSignature(stringKeyword, value, isReadonly))
         break
       }
       case "NumberKeyword": {
-        indexSignatures.push(indexSignature("number", value, isReadonly))
+        indexSignatures.push(indexSignature(numberKeyword, value, isReadonly))
         break
       }
       case "SymbolKeyword": {
-        indexSignatures.push(indexSignature("symbol", value, isReadonly))
+        indexSignatures.push(indexSignature(symbolKeyword, value, isReadonly))
         break
       }
       case "LiteralType":

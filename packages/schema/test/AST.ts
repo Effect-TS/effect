@@ -27,8 +27,6 @@ describe.concurrent("AST", () => {
   })
 
   it("keyof. should unify string literals with string", () => {
-    // type A = { a: string } & { [x: string]: string }
-    // type K = keyof A
     expect(AST.keyof(
       pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string))).ast
     )).toEqual(S.union(S.string, S.number).ast)

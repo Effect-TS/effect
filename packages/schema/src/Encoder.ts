@@ -155,7 +155,7 @@ const _struct = (
         const symbols = Object.getOwnPropertySymbols(input)
         for (let i = 0; i < indexSignatures.length; i++) {
           const encoder = indexSignatures[i]
-          const ks = ast.indexSignatures[i].key === "symbol" ? symbols : keys
+          const ks = ast.indexSignatures[i].key._tag === "SymbolKeyword" ? symbols : keys
           for (const key of ks) {
             if (!(key in expectedKeys)) {
               output[key] = encoder.encode(input[key])

@@ -327,8 +327,9 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               ast.indexSignatures,
               traverse((indexSignature) =>
                 pipe(
-                  go(indexSignature.value).nodes,
-                  map((value) =>
+                  go(indexSignature.key).nodes,
+                  Applicative.product(go(indexSignature.value).nodes),
+                  map(([key, value]) =>
                     ts.factory.createIndexSignature(
                       indexSignature.isReadonly ?
                         [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
@@ -338,9 +339,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
                         undefined,
                         "x",
                         undefined,
-                        indexSignature.key === "string" ?
-                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword) :
-                          ts.factory.createKeywordTypeNode(ts.SyntaxKind.SymbolKeyword)
+                        key
                       )],
                       value
                     )
