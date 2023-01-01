@@ -11,7 +11,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -306,7 +306,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               const symbols = Object.getOwnPropertySymbols(input)
               for (let i = 0; i < indexSignatures.length; i++) {
                 const decoder = indexSignatures[i]
-                const ks = ast.indexSignatures[i].key._tag === "SymbolKeyword" ? symbols : keys
+                const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
                 for (const key of ks) {
                   const t = decoder.decode(input[key])
                   if (isFailure(t)) {
@@ -419,5 +419,5 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
 }
 
 const hasUnexpectedError = (e: DE.DecodeError) =>
-  (e._tag === "Key" && e.errors.some((e) => e._tag === "Unexpected")) ||
-  (e._tag === "Index" && e.errors.some((e) => e._tag === "Unexpected"))
+  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
+  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))

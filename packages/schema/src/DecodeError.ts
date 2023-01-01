@@ -197,6 +197,11 @@ export const index = (
 })
 
 /**
+ * @since 1.0.0
+ */
+export const isIndex = (e: DecodeError): e is Index => e._tag === "Index"
+
+/**
  * The `Key` variant of the `DecodeError` type represents an error that occurs when a key in an object is invalid.
  * This error typically occurs when the `actual` value is not a valid key type (e.g. a string or number)
  * or when the key is not present in the object being decoded. In either case, the `key` field of the error will contain
@@ -222,6 +227,11 @@ export const key = (
   key,
   errors
 })
+
+/**
+ * @since 1.0.0
+ */
+export const isKey = (e: DecodeError): e is Key => e._tag === "Key"
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -256,6 +266,11 @@ export const unexpected = (
   _tag: "Unexpected",
   actual
 })
+
+/**
+ * @since 1.0.0
+ */
+export const isUnexpected = (e: DecodeError): e is Unexpected => e._tag === "Unexpected"
 
 /**
  * Error that occurs when a member in a union has an error.

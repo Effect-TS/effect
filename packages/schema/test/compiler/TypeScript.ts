@@ -88,24 +88,6 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const tsIdentifier = (identifier: string) =>
-  <A>(self: S.Schema<A>): S.Schema<A> =>
-    pipe(
-      self,
-      S.annotations({
-        [IdentifierAnnotationId]: identifierAnnotation(identifier)
-      })
-    )
-
-const jsDoc = (text: string) =>
-  <A>(self: S.Schema<A>): S.Schema<A> =>
-    pipe(
-      self,
-      S.annotations({
-        [DocumentationAnnotationId]: documentationAnnotation(text)
-      })
-    )
-
 const getIdentifier = (annotated: AST.Annotated): O.Option<ts.Identifier> =>
   pipe(
     getIdentifierAnnotation(annotated),
@@ -347,8 +329,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
                 )
               )
             )),
-            map((members) => ts.factory.createTypeLiteralNode(members)),
-            map(addDocumentationOf(ast))
+            map((members) => ts.factory.createTypeLiteralNode(members))
           )
         )
       case "Lazy":
@@ -377,20 +358,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         )
       }
       case "Refinement":
-        return pipe(
-          getIdentifier(ast),
-          O.match(
-            () => go(ast.from),
-            (id) =>
-              make(
-                ast,
-                pipe(
-                  go(ast.from).nodes,
-                  map((typeParameter) => ts.factory.createTypeReferenceNode(id, [typeParameter]))
-                )
-              )
-          )
-        )
+        return go(ast.from)
       case "TemplateLiteral": {
         const spans: Array<ts.TemplateLiteralTypeSpan> = []
         for (let i = 0; i < ast.spans.length; i++) {
@@ -549,10 +517,9 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("uniqueSymbol", () => {
-    const schema = pipe(
-      S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-      tsIdentifier("a")
-    )
+    const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+      [IdentifierAnnotationId]: identifierAnnotation("a")
+    })
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
   })
@@ -562,7 +529,9 @@ describe.concurrent("TypeScript", () => {
       Apple,
       Banana
     }
-    const schema = pipe(S.enums(Fruits), tsIdentifier("Fruits"))
+    const schema = S.enums(Fruits, {
+      [IdentifierAnnotationId]: identifierAnnotation("Fruits")
+    })
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([
       `enum Fruits {
@@ -686,19 +655,16 @@ describe.concurrent("TypeScript", () => {
     it("all with symbols", () => {
       const schema = pipe(
         S.tuple(
-          pipe(
-            S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-            tsIdentifier("a")
-          )
+          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+            [IdentifierAnnotationId]: identifierAnnotation("a")
+          })
         ),
-        S.rest(pipe(
-          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b")),
-          tsIdentifier("b")
-        )),
-        S.element(pipe(
-          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c")),
-          tsIdentifier("c")
-        ))
+        S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"), {
+          [IdentifierAnnotationId]: identifierAnnotation("b")
+        })),
+        S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"), {
+          [IdentifierAnnotationId]: identifierAnnotation("c")
+        }))
       )
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([
@@ -805,16 +771,17 @@ describe.concurrent("TypeScript", () => {
       const b = Symbol.for("@fp-ts/schema/test/b")
       const schema = pipe(
         S.struct({
-          [a]: pipe(S.uniqueSymbol(b), tsIdentifier("b")),
+          [a]: S.uniqueSymbol(b, {
+            [IdentifierAnnotationId]: identifierAnnotation("b")
+          }),
           c: S.number
         }),
         S.extend(
           S.record(
             S.string,
-            pipe(
-              S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d")),
-              tsIdentifier("d")
-            )
+            S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d"), {
+              [IdentifierAnnotationId]: identifierAnnotation("d")
+            })
           )
         )
       )
@@ -835,10 +802,9 @@ describe.concurrent("TypeScript", () => {
     const schema = S.union(
       S.string,
       S.number,
-      pipe(
-        S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")),
-        tsIdentifier("a")
-      )
+      S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+        [IdentifierAnnotationId]: identifierAnnotation("a")
+      })
     )
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([
@@ -875,18 +841,6 @@ describe.concurrent("TypeScript", () => {
   })
 
   describe.concurrent("jsDoc", () => {
-    it("struct", () => {
-      const schema = pipe(
-        S.struct({ a: S.number }),
-        jsDoc("description")
-      )
-      const ts = typeScriptFor(schema)
-      expect(printNodes(ts.nodes)).toEqual([`/** description */
-{
-    readonly a: number;
-}`])
-    })
-
     it("fields", () => {
       const schema = S.make(AST.struct(
         [

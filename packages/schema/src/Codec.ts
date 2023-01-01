@@ -123,16 +123,19 @@ export const literal = <A extends ReadonlyArray<Literal>>(
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol = <S extends symbol>(symbol: S): Codec<S> =>
-  codecFor(S.uniqueSymbol(symbol))
+export const uniqueSymbol = <S extends symbol>(
+  symbol: S,
+  annotations?: Annotated["annotations"]
+): Codec<S> => codecFor(S.uniqueSymbol(symbol, annotations))
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(
-  nativeEnum: A
-): Codec<A[keyof A]> => codecFor(S.enums(nativeEnum))
+  nativeEnum: A,
+  annotations?: Annotated["annotations"]
+): Codec<A[keyof A]> => codecFor(S.enums(nativeEnum, annotations))
 
 /**
  * @category constructors
@@ -358,9 +361,10 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
   key: Key,
   value: Schema<A>,
-  isOptional: isOptional
+  isOptional: isOptional,
+  annotations?: Annotated["annotations"]
 ): Codec<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
-  codecFor(S.field(key, value, isOptional))
+  codecFor(S.field(key, value, isOptional, annotations))
 
 /**
  * @category combinators
@@ -426,14 +430,6 @@ export const parse = <A, B>(
   decode: Decoder<A, B>["decode"],
   encode: Encoder<A, B>["encode"]
 ) => (self: Schema<A>): Codec<B> => codecFor(S.parse(to, decode, encode)(self))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const annotations = (
-  annotations: Annotated["annotations"]
-) => <A>(schema: Schema<A>): Codec<A> => codecFor(S.annotations(annotations)(schema))
 
 // ---------------------------------------------
 // data

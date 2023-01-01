@@ -62,8 +62,7 @@ describe.concurrent("AST", () => {
         const schema = S.union(a, ab)
         expect(schema.ast).toEqual({
           _tag: "Union",
-          members: [ab.ast, a.ast],
-          annotations: {}
+          members: [ab.ast, a.ast]
         })
       })
 
@@ -73,8 +72,7 @@ describe.concurrent("AST", () => {
         const schema = S.union(a, ab)
         expect(schema.ast).toEqual({
           _tag: "Union",
-          members: [ab.ast, a.ast],
-          annotations: {}
+          members: [ab.ast, a.ast]
         })
       })
     })
@@ -199,7 +197,6 @@ describe.concurrent("AST", () => {
             AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {},
           allowUnexpected: false
         })
       })
@@ -213,7 +210,6 @@ describe.concurrent("AST", () => {
             AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {},
           allowUnexpected: false
         })
       })
@@ -227,7 +223,6 @@ describe.concurrent("AST", () => {
             AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {},
           allowUnexpected: false
         })
       })
@@ -241,7 +236,6 @@ describe.concurrent("AST", () => {
             AST.field("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: [],
-          annotations: {},
           allowUnexpected: false
         })
       })

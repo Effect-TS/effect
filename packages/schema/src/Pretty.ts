@@ -6,7 +6,7 @@ import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -172,7 +172,7 @@ const _struct = (
         const symbols = Object.getOwnPropertySymbols(input)
         for (let i = 0; i < indexSignatures.length; i++) {
           const pretty = indexSignatures[i]
-          const ks = ast.indexSignatures[i].key._tag === "SymbolKeyword" ? symbols : keys
+          const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
           for (const key of ks) {
             output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
           }

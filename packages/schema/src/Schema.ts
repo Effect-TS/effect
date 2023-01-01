@@ -52,18 +52,25 @@ export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol: <S extends symbol>(symbol: S) => Schema<S> = I.uniqueSymbol
+export const uniqueSymbol: <S extends symbol>(
+  symbol: S,
+  annotations?: AST.Annotated["annotations"]
+) => Schema<S> = I.uniqueSymbol
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const enums = <A extends { [x: string]: string | number }>(enums: A): Schema<A[keyof A]> =>
+export const enums = <A extends { [x: string]: string | number }>(
+  enums: A,
+  annotations: AST.Annotated["annotations"] = {}
+): Schema<A[keyof A]> =>
   make(
     AST.enums(
       Object.keys(enums).filter(
         (key) => typeof enums[enums[key]] !== "number"
-      ).map((key) => [key, enums[key]])
+      ).map((key) => [key, enums[key]]),
+      annotations
     )
   )
 
@@ -402,7 +409,8 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
 export const field: <Key extends PropertyKey, A, isOptional extends boolean>(
   key: Key,
   value: Schema<A>,
-  isOptional: isOptional
+  isOptional: isOptional,
+  annotations?: AST.Annotated["annotations"]
 ) => Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =
   I.field
 
@@ -477,14 +485,6 @@ export const parse: <A, B>(
   decode: Decoder<A, B>["decode"],
   encode: Encoder<A, B>["encode"]
 ) => (self: Schema<A>) => Schema<B> = DataParse.parse
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const annotations: (
-  annotations: AST.Annotated["annotations"]
-) => <A>(self: Schema<A>) => Schema<A> = I.annotations
 
 // ---------------------------------------------
 // data

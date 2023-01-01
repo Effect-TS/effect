@@ -9,7 +9,7 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -166,7 +166,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
               const symbols = Object.getOwnPropertySymbols(input)
               for (let i = 0; i < indexSignatures.length; i++) {
                 const guard = indexSignatures[i]
-                const ks = ast.indexSignatures[i].key._tag === "SymbolKeyword" ? symbols : keys
+                const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
                 for (const key of ks) {
                   if (!guard.is(input[key])) {
                     return false

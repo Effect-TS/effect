@@ -153,12 +153,11 @@ export const refinement = <A, B extends A>(
   refinement: Refinement<A, B>,
   meta: unknown,
   annotations: AST.Annotated["annotations"] = {}
-): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, meta, annotations))
+): Schema<B> =>
+  makeSchema(AST.typeAlias([], AST.refinement(from.ast, refinement, meta), annotations))
 
-const makeLiteral = <Literal extends AST.Literal>(
-  value: Literal,
-  annotations: AST.Annotated["annotations"] = {}
-): Schema<Literal> => makeSchema(AST.literalType(value, annotations))
+const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
+  makeSchema(AST.literalType(value))
 
 /** @internal */
 export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
@@ -166,8 +165,10 @@ export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
 ): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
 
 /** @internal */
-export const uniqueSymbol = <S extends symbol>(symbol: S): Schema<S> =>
-  makeSchema(AST.uniqueSymbol(symbol))
+export const uniqueSymbol = <S extends symbol>(
+  symbol: S,
+  annotations: AST.Annotated["annotations"] = {}
+): Schema<S> => makeSchema(AST.uniqueSymbol(symbol, annotations))
 
 /** @internal */
 export const isNever = (_u: unknown): _u is never => false
@@ -267,9 +268,10 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
   key: Key,
   value: Schema<A>,
-  isOptional: isOptional
+  isOptional: isOptional,
+  annotations: AST.Annotated["annotations"] = {}
 ): Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
-  makeSchema(AST.struct([AST.field(key, value.ast, isOptional, true)], []))
+  makeSchema(AST.struct([AST.field(key, value.ast, isOptional, true, annotations)], []))
 
 /** @internal */
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
@@ -289,11 +291,6 @@ export const record = <K extends PropertyKey, V>(
   key: Schema<K>,
   value: Schema<V>
 ): Schema<{ readonly [k in K]: V }> => makeSchema(AST.record(key.ast, value.ast, true))
-
-/** @internal */
-export const annotations = (
-  annotations: AST.Annotated["annotations"]
-) => <A>(self: Schema<A>): Schema<A> => makeSchema(AST.annotations(self.ast, annotations))
 
 /** @internal */
 export const getAnnotation = <A>(key: PropertyKey) =>
