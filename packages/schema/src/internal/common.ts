@@ -295,7 +295,7 @@ export const record = <K extends string | symbol, V>(
 /** @internal */
 export const getKeysForIndexSignature = (
   input: { readonly [x: PropertyKey]: unknown },
-  parameter: AST.IndexSignature["parameter"]
+  parameter: AST.AST
 ): ReadonlyArray<string> | ReadonlyArray<symbol> => {
   switch (parameter._tag) {
     case "StringKeyword":
@@ -303,6 +303,10 @@ export const getKeysForIndexSignature = (
       return Object.keys(input)
     case "SymbolKeyword":
       return Object.getOwnPropertySymbols(input)
+    case "Refinement":
+      return getKeysForIndexSignature(input, parameter.from)
+    default:
+      return []
   }
 }
 

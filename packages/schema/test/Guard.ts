@@ -516,6 +516,17 @@ describe.concurrent("Guard", () => {
     expect(guard.is({ "-": "a" })).toEqual(false)
   })
 
+  it("record(minLength(1), number)", () => {
+    const schema = S.record(pipe(S.string, S.minLength(2)), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ "aa": 1 })).toEqual(true)
+    expect(guard.is({ "aaa": 1 })).toEqual(true)
+
+    expect(guard.is({ "": 1 })).toEqual(false)
+    expect(guard.is({ "a": 1 })).toEqual(false)
+  })
+
   it("union", () => {
     const schema = S.union(S.string, S.number)
     const guard = G.guardFor(schema)

@@ -713,6 +713,17 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, { "-": "a" }, `/- "a" did not satisfy is(number)`)
   })
 
+  it("record(minLength(1), number)", () => {
+    const schema = S.record(pipe(S.string, S.minLength(2)), S.number)
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { "aa": 1 })
+    Util.expectSuccess(codec, { "aaa": 1 })
+
+    Util.expectFailure(codec, { "": 1 }, `/ "" did not satisfy refinement({"minLength":2})`)
+    Util.expectFailure(codec, { "a": 1 }, `/a "a" did not satisfy refinement({"minLength":2})`)
+  })
+
   it("union. choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = C.allowUnexpected(C.struct({ a: C.optional(C.number) }))
     const b = C.allowUnexpected(C.struct({ a: C.optional(C.number), b: C.optional(C.string) }))

@@ -366,7 +366,7 @@ export const field = (
  * @since 1.0.0
  */
 export interface IndexSignature {
-  readonly parameter: StringKeyword | SymbolKeyword | TemplateLiteral
+  readonly parameter: StringKeyword | SymbolKeyword | TemplateLiteral | Refinement
   readonly type: AST
   readonly isReadonly: boolean
 }
@@ -375,7 +375,7 @@ export interface IndexSignature {
  * @since 1.0.0
  */
 export const indexSignature = (
-  parameter: StringKeyword | SymbolKeyword | TemplateLiteral,
+  parameter: StringKeyword | SymbolKeyword | TemplateLiteral | Refinement,
   type: AST,
   isReadonly: boolean
 ): IndexSignature => ({ parameter, type, isReadonly })
@@ -697,14 +697,16 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
     switch (key._tag) {
+      case "TypeAlias":
+        go(key.type)
+        break
       case "NeverKeyword":
         break
       case "StringKeyword":
       case "SymbolKeyword":
-      case "TemplateLiteral": {
+      case "TemplateLiteral":
         indexSignatures.push(indexSignature(key, value, isReadonly))
         break
-      }
       case "LiteralType":
         if (isString(key.literal) || isNumber(key.literal)) {
           fields.push(field(key.literal, value, false, isReadonly))
@@ -717,11 +719,10 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
         key.types.forEach(go)
         break
       case "Refinement":
-        throw new Error("cannot handle refinements in `record`")
+        indexSignatures.push(indexSignature(key, value, isReadonly))
+        break
       default:
-        throw new Error(
-          `key does not satisfy the constraint 'string | symbol'`
-        )
+        throw new Error("cannot compute `record`")
     }
   }
   go(key)
