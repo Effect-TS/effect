@@ -6,9 +6,8 @@ import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
-import type { Guard } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -45,7 +44,15 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
           )
         )
       case "LiteralType":
-        return make(I.makeSchema(ast), _literalType)
+        return make(
+          I.makeSchema(ast),
+          (literal: AST.Literal): string =>
+            typeof literal === "bigint" ?
+              `${literal.toString()}n` :
+              typeof literal === "symbol" ?
+              String(literal) :
+              JSON.stringify(literal)
+        )
       case "SymbolKeyword":
       case "BooleanKeyword":
       case "UniqueSymbol":
@@ -114,16 +121,57 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
           }
         )
       }
-      case "Struct":
-        return _struct(
-          ast,
-          ast.fields.map((f) => go(f.value)),
-          ast.indexSignatures.map((is) => go(is.value))
+      case "Struct": {
+        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
+        return make(
+          I.makeSchema(ast),
+          (input: { readonly [x: PropertyKey]: unknown }) => {
+            const output: Array<string> = []
+            // ---------------------------------------------
+            // handle fields
+            // ---------------------------------------------
+            for (let i = 0; i < fieldTypes.length; i++) {
+              const field = ast.fields[i]
+              const name = field.name
+              if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, name)) {
+                continue
+              }
+              output.push(`${prettyName(name)}: ${fieldTypes[i].pretty(input[name])}`)
+            }
+            // ---------------------------------------------
+            // handle index signatures
+            // ---------------------------------------------
+            if (indexSignatureTypes.length > 0) {
+              for (let i = 0; i < indexSignatureTypes.length; i++) {
+                const type = indexSignatureTypes[i]
+                const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+                for (const key of keys) {
+                  output.push(`${prettyName(key)}: ${type.pretty(input[key])}`)
+                }
+              }
+            }
+
+            return isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
+          }
         )
-      case "Union":
-        return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      }
+      case "Union": {
+        const types = ast.types.map((m) => [G.guardFor(I.makeSchema(m)), go(m)] as const)
+        return make(I.makeSchema(ast), (a) => {
+          const index = types.findIndex(([guard]) => guard.is(a))
+          return types[index][1].pretty(a)
+        })
+      }
+      case "Lazy": {
+        const f = () => go(ast.f())
+        const get = I.memoize<void, Pretty<A>>(f)
+        const schema = I.lazy(f)
+        return make(
+          schema,
+          (a) => get().pretty(a)
+        )
+      }
       case "Enums":
         return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
       case "Refinement":
@@ -134,71 +182,5 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
   return go(schema.ast)
 }
 
-const _literalType = (literal: AST.Literal): string =>
-  typeof literal === "bigint" ?
-    `${literal.toString()}n` :
-    typeof literal === "symbol" ?
-    String(literal) :
-    JSON.stringify(literal)
-
-const _propertyKey = (key: PropertyKey): string =>
-  typeof key === "string" ? JSON.stringify(key) : String(key)
-
-const _struct = (
-  ast: AST.Struct,
-  fields: ReadonlyArray<Pretty<any>>,
-  indexSignatures: ReadonlyArray<Pretty<any>>
-): Pretty<any> =>
-  make(
-    I.makeSchema(ast),
-    (input: { readonly [x: string | symbol]: unknown }) => {
-      const output: Array<string> = []
-      // ---------------------------------------------
-      // handle fields
-      // ---------------------------------------------
-      for (let i = 0; i < fields.length; i++) {
-        const field = ast.fields[i]
-        const key = field.key
-        if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, key)) {
-          continue
-        }
-        output.push(`${_propertyKey(key)}: ${fields[i].pretty(input[key])}`)
-      }
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (indexSignatures.length > 0) {
-        const keys = Object.keys(input)
-        const symbols = Object.getOwnPropertySymbols(input)
-        for (let i = 0; i < indexSignatures.length; i++) {
-          const pretty = indexSignatures[i]
-          const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
-          for (const key of ks) {
-            output.push(`${_propertyKey(key)}: ${pretty.pretty(input[key])}`)
-          }
-        }
-      }
-
-      return isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
-    }
-  )
-
-const _union = (
-  ast: AST.Union,
-  members: ReadonlyArray<readonly [Guard<any>, Pretty<any>]>
-): Pretty<any> =>
-  make(I.makeSchema(ast), (a) => {
-    const index = members.findIndex(([guard]) => guard.is(a))
-    return members[index][1].pretty(a)
-  })
-
-const _lazy = <A>(
-  f: () => Pretty<A>
-): Pretty<A> => {
-  const get = I.memoize<void, Pretty<A>>(f)
-  const schema = I.lazy(f)
-  return make(
-    schema,
-    (a) => get().pretty(a)
-  )
-}
+const prettyName = (name: PropertyKey): string =>
+  typeof name === "string" ? JSON.stringify(name) : String(name)

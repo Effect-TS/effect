@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 
-import type { Predicate } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 
 /**
  * `DecodeError` is a type that represents the different types of errors that can occur when decoding a value.
  *
+ * @category model
  * @since 1.0.0
  */
 export type DecodeError =
@@ -29,6 +29,7 @@ export type DecodeError =
  * For example, you might use the `meta` field to include information about the expected type or shape of the value being decoded,
  * or to include a custom error message.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Meta {
@@ -38,6 +39,7 @@ export interface Meta {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const meta = (
@@ -56,6 +58,7 @@ export const meta = (
  * and the actual value is not of that type. For example, if you are using a codec to decode a string value and the actual value
  * is a number, a `Type` decode error would be returned.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Type {
@@ -65,6 +68,7 @@ export interface Type {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const type = (expected: string, actual: unknown): Type => ({
@@ -79,6 +83,7 @@ export const type = (expected: string, actual: unknown): Type => ({
  * string literal. The `expected` field of the `Equal` error contains the expected value, and the `actual` field contains the value
  * that was actually encountered during decoding.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Equal {
@@ -88,6 +93,7 @@ export interface Equal {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const equal = (
@@ -104,6 +110,7 @@ export const equal = (
  * This error is often used in combination with the `S.enums` schema constructor,
  * which allows users to specify a set of allowed enum values for a decoded value.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Enums {
@@ -113,6 +120,7 @@ export interface Enums {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const enums = (
@@ -126,6 +134,7 @@ export const enums = (
  * The `meta` field can be used to include additional information about the refinement,
  * such as the expected type or shape of the value, or a custom error message.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Refinement {
@@ -135,6 +144,7 @@ export interface Refinement {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const refinement = (meta: unknown, actual: unknown): Refinement => ({
@@ -151,6 +161,7 @@ export const refinement = (meta: unknown, actual: unknown): Refinement => ({
  * This error is typically used in conjunction with the `parse` function from the `@fp-ts/schema/data/parser` module,
  * which allows users to define custom parsers for specific types or formats.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Parse {
@@ -161,6 +172,7 @@ export interface Parse {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const parse = (from: string, to: string, actual: unknown): Parse => ({
@@ -176,6 +188,7 @@ export const parse = (from: string, to: string, actual: unknown): Parse => ({
  * with a schema that has constraints on the elements. For example, you might use an `Index` decode error to indicate
  * that a specific element in an array did not match the expected type or value.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Index {
@@ -185,6 +198,7 @@ export interface Index {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const index = (
@@ -197,6 +211,7 @@ export const index = (
 })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isIndex = (e: DecodeError): e is Index => e._tag === "Index"
@@ -208,6 +223,7 @@ export const isIndex = (e: DecodeError): e is Index => e._tag === "Index"
  * the invalid key value. This error is typically used in combination with the `Unexpected` error,
  * which indicates that an unexpected key was found in the object being decoded.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Key {
@@ -217,6 +233,7 @@ export interface Key {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const key = (
@@ -229,6 +246,7 @@ export const key = (
 })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isKey = (e: DecodeError): e is Key => e._tag === "Key"
@@ -236,6 +254,7 @@ export const isKey = (e: DecodeError): e is Key => e._tag === "Key"
 /**
  * Error that occurs when a required key or index is missing.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Missing {
@@ -243,6 +262,7 @@ export interface Missing {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const missing: Missing = { _tag: "Missing" }
@@ -250,6 +270,7 @@ export const missing: Missing = { _tag: "Missing" }
 /**
  * Error that occurs when an unexpected key or index is present.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Unexpected {
@@ -258,6 +279,7 @@ export interface Unexpected {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const unexpected = (
@@ -268,6 +290,7 @@ export const unexpected = (
 })
 
 /**
+ * @category guards
  * @since 1.0.0
  */
 export const isUnexpected = (e: DecodeError): e is Unexpected => e._tag === "Unexpected"
@@ -275,6 +298,7 @@ export const isUnexpected = (e: DecodeError): e is Unexpected => e._tag === "Une
 /**
  * Error that occurs when a member in a union has an error.
  *
+ * @category model
  * @since 1.0.0
  */
 export interface Member {
@@ -283,6 +307,7 @@ export interface Member {
 }
 
 /**
+ * @category constructors
  * @since 1.0.0
  */
 export const member = (
@@ -291,25 +316,3 @@ export const member = (
   _tag: "Member",
   errors
 })
-
-/**
- * @since 1.0.0
- */
-export const some = (
-  predicate: Predicate<DecodeError>
-): (errors: NonEmptyReadonlyArray<DecodeError>) => boolean => {
-  const go = (e: DecodeError): boolean => {
-    switch (e._tag) {
-      case "Index":
-      case "Key":
-      case "Member":
-        return gos(e.errors)
-      default:
-        return predicate(e)
-    }
-  }
-  const gos = (errors: NonEmptyReadonlyArray<DecodeError>): boolean => {
-    return errors.some(go)
-  }
-  return gos
-}

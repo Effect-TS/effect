@@ -26,13 +26,13 @@ export interface Arbitrary<A> extends Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
-const record = <K extends PropertyKey, A>(
+const record = <K extends PropertyKey, V>(
   fc: typeof FastCheck,
   key: FastCheck.Arbitrary<K>,
-  value: FastCheck.Arbitrary<A>
-): FastCheck.Arbitrary<Record<K, A>> =>
+  value: FastCheck.Arbitrary<V>
+): FastCheck.Arbitrary<{ readonly [k in K]: V }> =>
   fc.array(fc.tuple(key, value), { maxLength: 10 }).map((tuples) => {
-    const out: Record<K, A> = {} as any
+    const out: { [k in K]: V } = {} as any
     for (const [k, v] of tuples) {
       out[k] = v
     }
@@ -131,8 +131,10 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         )
       }
       case "Struct": {
-        const fields = ast.fields.map((f) => go(f.value))
-        const indexSignatures = ast.indexSignatures.map((is) => [go(is.key), go(is.value)] as const)
+        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const indexSignatures = ast.indexSignatures.map((is) =>
+          [go(is.parameter), go(is.type)] as const
+        )
         return make(
           I.makeSchema(ast),
           (fc) => {
@@ -141,23 +143,23 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             // ---------------------------------------------
             // handle fields
             // ---------------------------------------------
-            for (let i = 0; i < fields.length; i++) {
+            for (let i = 0; i < fieldTypes.length; i++) {
               const field = ast.fields[i]
-              const key = field.key
+              const name = field.name
               if (!field.isOptional) {
-                requiredKeys.push(key)
+                requiredKeys.push(name)
               }
-              arbs[key] = fields[i].arbitrary(fc)
+              arbs[name] = fieldTypes[i].arbitrary(fc)
             }
             let output = fc.record<any, any>(arbs, { requiredKeys })
             // ---------------------------------------------
             // handle index signatures
             // ---------------------------------------------
             for (let i = 0; i < indexSignatures.length; i++) {
-              const key = indexSignatures[i][0].arbitrary(fc)
-              const value = indexSignatures[i][1].arbitrary(fc)
+              const parameter = indexSignatures[i][0].arbitrary(fc)
+              const type = indexSignatures[i][1].arbitrary(fc)
               output = output.chain((o) => {
-                return record(fc, key, value).map((d) => ({ ...o, ...d }))
+                return record(fc, parameter, type).map((d) => ({ ...o, ...d }))
               })
             }
 
@@ -166,10 +168,10 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         )
       }
       case "Union": {
-        const members = ast.members.map(go)
+        const types = ast.types.map(go)
         return make(
           I.makeSchema(ast),
-          (fc) => fc.oneof(...members.map((c) => c.arbitrary(fc)))
+          (fc) => fc.oneof(...types.map((c) => c.arbitrary(fc)))
         )
       }
       case "Lazy": {

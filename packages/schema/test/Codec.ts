@@ -508,7 +508,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        `null did not satisfy is({ readonly [x: string]: unknown })`
+        `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
       Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
       Util.expectFailure(codec, { a: undefined }, "/a undefined did not satisfy is(number)")
@@ -523,7 +523,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        `null did not satisfy is({ readonly [x: string]: unknown })`
+        `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
       Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
       Util.expectFailure(
@@ -542,7 +542,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        `null did not satisfy is({ readonly [x: string]: unknown })`
+        `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
       Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
       Util.expectFailure(codec, { a: undefined }, `/a undefined did not satisfy is(number)`)
@@ -558,7 +558,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        `null did not satisfy is({ readonly [x: string]: unknown })`
+        `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
       Util.expectFailure(
         codec,
@@ -593,19 +593,12 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, {})
     Util.expectSuccess(codec, { a: 1 })
 
-    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
+    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: PropertyKey]: unknown })")
     Util.expectFailure(
       codec,
       { a: "a" },
       `/a "a" did not satisfy is(number)`
     )
-  })
-
-  it("record(number, string)", () => {
-    const codec = C.record(S.number, S.string)
-    Util.expectSuccess(codec, { 1: "a" })
-
-    Util.expectFailure(codec, { 1: 1 }, `/1 1 did not satisfy is(string)`)
   })
 
   it("record(symbol, number)", () => {
@@ -614,7 +607,7 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, {})
     Util.expectSuccess(codec, { [a]: 1 })
 
-    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: string]: unknown })")
+    Util.expectFailure(codec, [], "[] did not satisfy is({ readonly [x: PropertyKey]: unknown })")
     Util.expectFailure(
       codec,
       { [a]: "a" },
@@ -707,6 +700,19 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(codec, { _tag: "a" }, `/_tag "a" did not satisfy is(number)`)
   })
 
+  it("record(${string}-${string}, number)", () => {
+    const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number)
+    const codec = C.codecFor(schema)
+    Util.expectSuccess(codec, {})
+    Util.expectSuccess(codec, { "-": 1 })
+    Util.expectSuccess(codec, { "a-": 1 })
+    Util.expectSuccess(codec, { "-b": 1 })
+    Util.expectSuccess(codec, { "a-b": 1 })
+
+    Util.expectFailure(codec, { "": 1 }, `/ "" did not satisfy is(^.*-.*$)`)
+    Util.expectFailure(codec, { "-": "a" }, `/- "a" did not satisfy is(number)`)
+  })
+
   it("union. choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = C.allowUnexpected(C.struct({ a: C.optional(C.number) }))
     const b = C.allowUnexpected(C.struct({ a: C.optional(C.number), b: C.optional(C.string) }))
@@ -761,7 +767,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(
       codec,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 did not satisfy is({ readonly [x: string]: unknown })"
+      "/as /0 /as /0 1 did not satisfy is({ readonly [x: PropertyKey]: unknown })"
     )
   })
 
@@ -831,7 +837,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        "null did not satisfy is({ readonly [x: string]: unknown })"
+        "null did not satisfy is({ readonly [x: PropertyKey]: unknown })"
       )
       Util.expectFailure(codec, { a: "a" }, `/b did not satisfy is(required)`)
       Util.expectFailure(codec, { b: 1 }, "/a did not satisfy is(required)")
@@ -846,7 +852,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(
         codec,
         null,
-        "null did not satisfy is({ readonly [x: string]: unknown })"
+        "null did not satisfy is({ readonly [x: PropertyKey]: unknown })"
       )
       Util.expectFailure(codec, { [a]: "a" }, `/b did not satisfy is(required)`)
       Util.expectFailure(

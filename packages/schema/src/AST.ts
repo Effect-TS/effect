@@ -345,8 +345,8 @@ export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
  * @since 1.0.0
  */
 export interface Field extends Annotated {
-  readonly key: PropertyKey
-  readonly value: AST
+  readonly name: PropertyKey
+  readonly type: AST
   readonly isOptional: boolean
   readonly isReadonly: boolean
 }
@@ -355,19 +355,19 @@ export interface Field extends Annotated {
  * @since 1.0.0
  */
 export const field = (
-  key: PropertyKey,
-  value: AST,
+  name: PropertyKey,
+  type: AST,
   isOptional: boolean,
   isReadonly: boolean,
   annotations: Annotated["annotations"] = {}
-): Field => ({ key, value, isOptional, isReadonly, annotations })
+): Field => ({ name, type, isOptional, isReadonly, annotations })
 
 /**
  * @since 1.0.0
  */
 export interface IndexSignature {
-  readonly key: AST
-  readonly value: AST
+  readonly parameter: StringKeyword | SymbolKeyword | TemplateLiteral
+  readonly type: AST
   readonly isReadonly: boolean
 }
 
@@ -375,10 +375,10 @@ export interface IndexSignature {
  * @since 1.0.0
  */
 export const indexSignature = (
-  key: AST,
-  value: AST,
+  parameter: StringKeyword | SymbolKeyword | TemplateLiteral,
+  type: AST,
   isReadonly: boolean
-): IndexSignature => ({ key, value, isReadonly })
+): IndexSignature => ({ parameter, type, isReadonly })
 
 /**
  * @category model
@@ -422,7 +422,7 @@ const getCardinality = (ast: AST): number => {
 }
 
 const sortByCardinalityAsc = RA.sort(
-  pipe(Number.Order, Order.contramap(({ value }: { readonly value: AST }) => getCardinality(value)))
+  pipe(Number.Order, Order.contramap(({ type }: { readonly type: AST }) => getCardinality(type)))
 )
 
 /**
@@ -452,7 +452,7 @@ export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
  */
 export interface Union {
   readonly _tag: "Union"
-  readonly members: readonly [AST, AST, ...Array<AST>]
+  readonly types: readonly [AST, AST, ...Array<AST>]
 }
 
 const getWeight = (ast: AST): number => {
@@ -464,7 +464,7 @@ const getWeight = (ast: AST): number => {
     case "Struct":
       return ast.fields.length + ast.indexSignatures.length
     case "Union":
-      return ast.members.reduce((n, member) => n + getWeight(member), 0)
+      return ast.types.reduce((n, member) => n + getWeight(member), 0)
     case "Lazy":
       return 10
     default:
@@ -479,7 +479,7 @@ const sortByWeightDesc = RA.sort(
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   let out = RA.uniq(pipe(
     candidates,
-    RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.members : [ast])
+    RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.types : [ast])
   ))
   if (out.some(isStringKeyword)) {
     out = out.filter((m) => !(isLiteralType(m) && typeof m.literal === "string"))
@@ -500,15 +500,15 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
 export const union = (
   candidates: ReadonlyArray<AST>
 ): AST => {
-  const members = unify(candidates)
-  switch (members.length) {
+  const types = unify(candidates)
+  switch (types.length) {
     case 0:
       return neverKeyword
     case 1:
-      return members[0]
+      return types[0]
     default: {
-      // @ts-expect-error (TypeScript doesn't know that `members` has >= 2 elements after sorting)
-      return { _tag: "Union", members: sortByWeightDesc(members) }
+      // @ts-expect-error (TypeScript doesn't know that `types` has >= 2 elements after sorting)
+      return { _tag: "Union", types: sortByWeightDesc(types) }
     }
   }
 }
@@ -608,6 +608,13 @@ export const templateLiteral = (
   RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literalType(head)
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral =>
+  ast._tag === "TemplateLiteral"
+
+/**
  * @since 1.0.0
  */
 export const appendRestElement = (
@@ -654,16 +661,12 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return [stringKeyword, numberKeyword, symbolKeyword]
     case "Struct":
       return ast.fields.map((f): AST =>
-        typeof f.key === "symbol" ? uniqueSymbol(f.key) : literalType(f.key)
-      ).concat(
-        ast.indexSignatures.map((is) =>
-          isStringKeyword(is.key) ? union([is.key, numberKeyword]) : is.key
-        )
-      )
+        typeof f.name === "symbol" ? uniqueSymbol(f.name) : literalType(f.name)
+      ).concat(ast.indexSignatures.map((is) => is.parameter))
     case "Union": {
-      let out: ReadonlyArray<AST> = _keyof(ast.members[0])
-      for (let i = 1; i < ast.members.length; i++) {
-        out = RA.intersection(_keyof(ast.members[i]))(out)
+      let out: ReadonlyArray<AST> = _keyof(ast.types[0])
+      for (let i = 1; i < ast.types.length; i++) {
+        out = RA.intersection(_keyof(ast.types[i]))(out)
       }
       return out
     }
@@ -673,8 +676,9 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return _keyof(ast.from)
     case "LiteralType":
     case "StringKeyword":
+    case "TemplateLiteral":
     case "Tuple":
-      throw new Error("cannot compute `keyof` on this AST")
+      throw new Error("cannot compute `keyof`")
     default:
       return [neverKeyword]
   }
@@ -695,16 +699,10 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
     switch (key._tag) {
       case "NeverKeyword":
         break
-      case "StringKeyword": {
-        indexSignatures.push(indexSignature(stringKeyword, value, isReadonly))
-        break
-      }
-      case "NumberKeyword": {
-        indexSignatures.push(indexSignature(numberKeyword, value, isReadonly))
-        break
-      }
-      case "SymbolKeyword": {
-        indexSignatures.push(indexSignature(symbolKeyword, value, isReadonly))
+      case "StringKeyword":
+      case "SymbolKeyword":
+      case "TemplateLiteral": {
+        indexSignatures.push(indexSignature(key, value, isReadonly))
         break
       }
       case "LiteralType":
@@ -716,13 +714,13 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
         fields.push(field(key.symbol, value, false, isReadonly))
         break
       case "Union":
-        key.members.forEach(go)
+        key.types.forEach(go)
         break
       case "Refinement":
         throw new Error("cannot handle refinements in `record`")
       default:
         throw new Error(
-          `Type '${key._tag}' does not satisfy the constraint 'string | number | symbol'. ts(2344)`
+          `key does not satisfy the constraint 'string | symbol'`
         )
     }
   }
@@ -733,6 +731,18 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
 /**
  * @since 1.0.0
  */
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(getFields(ast).filter((field) => keys.includes(field.name)), [])
+}
+
+/**
+ * @since 1.0.0
+ */
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
+  return struct(getFields(ast).filter((field) => !keys.includes(field.name)), [])
+}
+
+/** @internal */
 export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
   switch (ast._tag) {
     case "TypeAlias":
@@ -740,33 +750,21 @@ export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
     case "Tuple":
       return ast.elements.map((_, i) => String(i))
     case "Struct":
-      return ast.fields.map((field) => field.key)
+      return ast.fields.map((field) => field.name)
     case "Union": {
-      let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.members[0])
-      for (let i = 1; i < ast.members.length; i++) {
-        out = RA.intersection(propertyKeys(ast.members[i]))(out)
+      let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.types[0])
+      for (let i = 1; i < ast.types.length; i++) {
+        out = RA.intersection(propertyKeys(ast.types[i]))(out)
       }
       return out
     }
     case "Lazy":
       return propertyKeys(ast.f())
+    case "Refinement":
+      return propertyKeys(ast.from)
     default:
       return []
   }
-}
-
-/**
- * @since 1.0.0
- */
-export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
-  return struct(getFields(ast).filter((field) => keys.includes(field.key)), [])
-}
-
-/**
- * @since 1.0.0
- */
-export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
-  return struct(getFields(ast).filter((field) => !keys.includes(field.key)), [])
 }
 
 /**
@@ -780,24 +778,24 @@ export const getFields = (
       return getFields(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
-        field(i, element.type, element.isOptional, ast.isReadonly)
+        field(String(i), element.type, element.isOptional, ast.isReadonly)
       )
     case "Struct":
       return ast.fields
     case "Union": {
-      const fields = pipe(ast.members, RA.flatMap(getFields))
+      const fields = pipe(ast.types, RA.flatMap(getFields))
       return propertyKeys(ast).map((key) => {
         let isOptional = false
         let isReadonly = false
         const type = union(
-          fields.filter((field) => field.key === key).map((field) => {
+          fields.filter((field) => field.name === key).map((field) => {
             if (field.isReadonly) {
               isReadonly = true
             }
             if (field.isOptional) {
               isOptional = true
             }
-            return field.value
+            return field.type
           })
         )
         return field(key, type, isOptional, isReadonly)
@@ -830,11 +828,11 @@ export const partial = (ast: AST): AST => {
       )
     case "Struct":
       return struct(
-        ast.fields.map((f) => field(f.key, f.value, true, f.isReadonly, f.annotations)),
+        ast.fields.map((f) => field(f.name, f.type, true, f.isReadonly, f.annotations)),
         ast.indexSignatures
       )
     case "Union":
-      return union(ast.members.map((member) => partial(member)))
+      return union(ast.types.map((member) => partial(member)))
     case "Lazy":
       return lazy(() => partial(ast.f()))
     case "Refinement":

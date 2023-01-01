@@ -193,9 +193,6 @@ C.partial(C.struct({ a: C.string,  b: C.number }));
 // $ExpectType Codec<{ readonly [x: string]: string; }>
 C.record(C.string, C.string)
 
-// $ExpectType Codec<{ readonly [x: number]: string; }>
-C.record(C.number, C.string)
-
 // $ExpectType Codec<{ readonly [x: symbol]: string; }>
 C.record(C.symbol, C.string)
 

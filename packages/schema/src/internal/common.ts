@@ -287,10 +287,24 @@ export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
   makeSchema(AST.tuple([], O.some([item.ast]), true))
 
 /** @internal */
-export const record = <K extends PropertyKey, V>(
+export const record = <K extends string | symbol, V>(
   key: Schema<K>,
   value: Schema<V>
 ): Schema<{ readonly [k in K]: V }> => makeSchema(AST.record(key.ast, value.ast, true))
+
+/** @internal */
+export const getKeysForIndexSignature = (
+  input: { readonly [x: PropertyKey]: unknown },
+  parameter: AST.IndexSignature["parameter"]
+): ReadonlyArray<string> | ReadonlyArray<symbol> => {
+  switch (parameter._tag) {
+    case "StringKeyword":
+    case "TemplateLiteral":
+      return Object.keys(input)
+    case "SymbolKeyword":
+      return Object.getOwnPropertySymbols(input)
+  }
+}
 
 /** @internal */
 export const getAnnotation = <A>(key: PropertyKey) =>

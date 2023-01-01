@@ -11,7 +11,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both, Validated } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -260,16 +260,18 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       }
       case "Struct": {
-        const fields = ast.fields.map((f) => go(f.value))
-        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
-        if (fields.length === 0 && indexSignatures.length === 0) {
+        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const indexSignatures = ast.indexSignatures.map((is) =>
+          [go(is.parameter), go(is.type)] as const
+        )
+        if (fieldTypes.length === 0 && indexSignatures.length === 0) {
           return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => DE.type("{}", u))
         }
         return make(
           I.makeSchema(ast),
           (input: unknown) => {
             if (!I.isUnknownObject(input)) {
-              return failure(DE.type("{ readonly [x: string]: unknown }", input))
+              return failure(DE.type("{ readonly [x: PropertyKey]: unknown }", input))
             }
             const output: any = {}
             const expectedKeys: any = {}
@@ -277,38 +279,49 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             // ---------------------------------------------
             // handle fields
             // ---------------------------------------------
-            for (let i = 0; i < fields.length; i++) {
+            for (let i = 0; i < fieldTypes.length; i++) {
               const field = ast.fields[i]
-              const decoder = fields[i]
-              const key = field.key
-              expectedKeys[key] = null
+              const decoder = fieldTypes[i]
+              const name = field.name
+              expectedKeys[name] = null
               // TODO: handle custom decoding logic here
-              if (!Object.prototype.hasOwnProperty.call(input, key)) {
+              if (!Object.prototype.hasOwnProperty.call(input, name)) {
                 if (field.isOptional) {
                   continue
                 }
-                return failure(DE.key(key, [DE.missing]))
+                return failure(DE.key(name, [DE.missing]))
               }
-              const t = decoder.decode(input[key])
+              const t = decoder.decode(input[name])
               if (isFailure(t)) {
                 // the input key is present but is not valid, bail out
-                return failures(I.mutableAppend(es, DE.key(key, t.left)))
+                return failures(I.mutableAppend(es, DE.key(name, t.left)))
               } else if (isWarning(t)) {
-                es.push(DE.key(key, t.left))
+                es.push(DE.key(name, t.left))
               }
-              output[key] = t.right
+              output[name] = t.right
             }
             // ---------------------------------------------
             // handle index signatures
             // ---------------------------------------------
             if (indexSignatures.length > 0) {
-              const keys = Object.keys(input)
-              const symbols = Object.getOwnPropertySymbols(input)
               for (let i = 0; i < indexSignatures.length; i++) {
-                const decoder = indexSignatures[i]
-                const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
-                for (const key of ks) {
-                  const t = decoder.decode(input[key])
+                const parameter = indexSignatures[i][0]
+                const type = indexSignatures[i][1]
+                const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+                for (const key of keys) {
+                  // ---------------------------------------------
+                  // handle keys
+                  // ---------------------------------------------
+                  let t = parameter.decode(key)
+                  if (isFailure(t)) {
+                    return failures(I.mutableAppend(es, DE.key(key, t.left)))
+                  } else if (isWarning(t)) {
+                    es.push(DE.key(key, t.left))
+                  }
+                  // ---------------------------------------------
+                  // handle values
+                  // ---------------------------------------------
+                  t = type.decode(input[key])
                   if (isFailure(t)) {
                     return failures(I.mutableAppend(es, DE.key(key, t.left)))
                   } else {
@@ -342,7 +355,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       }
       case "Union": {
-        const members = ast.members.map(go)
+        const types = ast.types.map(go)
         return make(I.makeSchema(ast), (u) => {
           const es: Array<DE.DecodeError> = []
           let output: Both<NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
@@ -350,8 +363,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           // ---------------------------------------------
           // compute best output
           // ---------------------------------------------
-          for (let i = 0; i < members.length; i++) {
-            const t = members[i].decode(u)
+          for (let i = 0; i < types.length; i++) {
+            const t = types[i].decode(u)
             if (isSuccess(t)) {
               // if there are no warnings this is the best output
               return t

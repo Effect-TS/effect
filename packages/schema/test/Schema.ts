@@ -154,10 +154,10 @@ describe.concurrent("Schema", () => {
         (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
           if (AST.isStruct(schema.ast)) {
             const fields = schema.ast.fields.slice()
-            const i = fields.findIndex((field) => field.key === from)
+            const i = fields.findIndex((field) => field.name === from)
             fields[i] = AST.field(
               to,
-              fields[i].value,
+              fields[i].type,
               fields[i].isOptional,
               fields[i].isReadonly
             )

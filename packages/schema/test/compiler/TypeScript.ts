@@ -129,9 +129,9 @@ const createSymbol = (description: string | undefined) =>
   )
 
 const getPropertyName = (ast: AST.Field): ts.PropertyName =>
-  typeof ast.key === "symbol" ?
-    ts.factory.createComputedPropertyName(createSymbol(ast.key.description)) :
-    ts.factory.createIdentifier(String(ast.key))
+  typeof ast.name === "symbol" ?
+    ts.factory.createComputedPropertyName(createSymbol(ast.name.description)) :
+    ts.factory.createIdentifier(String(ast.name))
 
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
@@ -276,7 +276,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         return make(
           ast,
           pipe(
-            ast.members,
+            ast.types,
             traverse((ast) => go(ast).nodes),
             map((members) => ts.factory.createUnionTypeNode(members))
           )
@@ -289,8 +289,8 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
             traverse(
               (field) =>
                 pipe(
-                  go(field.value).nodes,
-                  map((value) =>
+                  go(field.type).nodes,
+                  map((type) =>
                     ts.factory.createPropertySignature(
                       field.isReadonly ?
                         [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
@@ -299,7 +299,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
                       field.isOptional ?
                         ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
                         undefined,
-                      value
+                      type
                     )
                   ),
                   map(addDocumentationOf(field))
@@ -309,8 +309,8 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               ast.indexSignatures,
               traverse((indexSignature) =>
                 pipe(
-                  go(indexSignature.key).nodes,
-                  Applicative.product(go(indexSignature.value).nodes),
+                  go(indexSignature.parameter).nodes,
+                  Applicative.product(go(indexSignature.type).nodes),
                   map(([key, value]) =>
                     ts.factory.createIndexSignature(
                       indexSignature.isReadonly ?

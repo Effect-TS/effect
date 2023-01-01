@@ -408,13 +408,6 @@ describe.concurrent("Guard", () => {
     expect(guard.is({ [a]: 1, b: "b" })).toEqual(true)
   })
 
-  it("record(number, string)", () => {
-    const schema = S.record(S.number, S.string)
-    const guard = G.guardFor(schema)
-    expect(guard.is({ 1: "a" })).toEqual(true)
-    expect(guard.is({ 1: 1 })).toEqual(false)
-  })
-
   it("record(symbol, string)", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const b = Symbol.for("@fp-ts/schema/test/b")
@@ -508,6 +501,19 @@ describe.concurrent("Guard", () => {
 
     expect(guard.is({})).toEqual(false)
     expect(guard.is({ _tag: "a" })).toEqual(false)
+  })
+
+  it("record(${string}-${string}, number)", () => {
+    const schema = S.record(S.templateLiteral(S.string, S.literal("-"), S.string), S.number)
+    const guard = G.guardFor(schema)
+    expect(guard.is({})).toEqual(true)
+    expect(guard.is({ "-": 1 })).toEqual(true)
+    expect(guard.is({ "a-": 1 })).toEqual(true)
+    expect(guard.is({ "-b": 1 })).toEqual(true)
+    expect(guard.is({ "a-b": 1 })).toEqual(true)
+
+    expect(guard.is({ "": 1 })).toEqual(false)
+    expect(guard.is({ "-": "a" })).toEqual(false)
   })
 
   it("union", () => {

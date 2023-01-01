@@ -9,7 +9,7 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -131,9 +131,11 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         )
       }
       case "Struct": {
-        const fields = ast.fields.map((f) => go(f.value))
-        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
-        if (fields.length === 0 && indexSignatures.length === 0) {
+        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const indexSignatures = ast.indexSignatures.map((is) =>
+          [go(is.parameter), go(is.type)] as const
+        )
+        if (fieldTypes.length === 0 && indexSignatures.length === 0) {
           return make(I.makeSchema(ast), I.isNotNull)
         }
         return make(
@@ -145,16 +147,16 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
             // ---------------------------------------------
             // handle fields
             // ---------------------------------------------
-            for (let i = 0; i < fields.length; i++) {
+            for (let i = 0; i < ast.fields.length; i++) {
               const field = ast.fields[i]
-              const key = field.key
-              if (!Object.prototype.hasOwnProperty.call(input, key)) {
+              const name = field.name
+              if (!Object.prototype.hasOwnProperty.call(input, name)) {
                 if (field.isOptional) {
                   continue
                 }
                 return false
               }
-              if (!fields[i].is(input[key])) {
+              if (!fieldTypes[i].is(input[name])) {
                 return false
               }
             }
@@ -162,13 +164,12 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
             // handle index signatures
             // ---------------------------------------------
             if (indexSignatures.length > 0) {
-              const keys = Object.keys(input)
-              const symbols = Object.getOwnPropertySymbols(input)
               for (let i = 0; i < indexSignatures.length; i++) {
-                const guard = indexSignatures[i]
-                const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
-                for (const key of ks) {
-                  if (!guard.is(input[key])) {
+                const parameter = indexSignatures[i][0]
+                const type = indexSignatures[i][1]
+                const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+                for (const key of keys) {
+                  if (!parameter.is(key) || !type.is(input[key])) {
                     return false
                   }
                 }
@@ -180,10 +181,10 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         )
       }
       case "Union": {
-        const members = ast.members.map(go)
+        const types = ast.types.map(go)
         return make(
           I.makeSchema(ast),
-          (a): a is any => members.some((guard) => guard.is(a))
+          (a): a is any => types.some((guard) => guard.is(a))
         )
       }
       case "Lazy": {

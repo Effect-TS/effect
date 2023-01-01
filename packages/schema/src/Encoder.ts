@@ -6,8 +6,7 @@ import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
-import * as AST from "@fp-ts/schema/AST"
-import type { Guard } from "@fp-ts/schema/Guard"
+import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -105,16 +104,92 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
           }
         )
       }
-      case "Struct":
-        return _struct(
-          ast,
-          ast.fields.map((f) => go(f.value)),
-          ast.indexSignatures.map((is) => go(is.value))
+      case "Struct": {
+        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
+        return make(
+          I.makeSchema(ast),
+          (input: { readonly [x: PropertyKey]: unknown }) => {
+            const output: any = {}
+            const expectedKeys: any = {}
+            // ---------------------------------------------
+            // handle fields
+            // ---------------------------------------------
+            for (let i = 0; i < fieldTypes.length; i++) {
+              const field = ast.fields[i]
+              const encoder = fieldTypes[i]
+              const name = field.name
+              expectedKeys[name] = null
+              if (!Object.prototype.hasOwnProperty.call(input, name) && field.isOptional) {
+                continue
+              }
+              output[name] = encoder.encode(input[name])
+            }
+            // ---------------------------------------------
+            // handle index signatures
+            // ---------------------------------------------
+            if (indexSignatureTypes.length > 0) {
+              for (let i = 0; i < indexSignatureTypes.length; i++) {
+                const type = indexSignatureTypes[i]
+                const parameterAST = ast.indexSignatures[i].parameter
+                const keys = I.getKeysForIndexSignature(input, parameterAST)
+                for (const key of keys) {
+                  if (!(key in expectedKeys)) {
+                    output[key] = type.encode(input[key])
+                  }
+                }
+              }
+            }
+
+            return output
+          }
         )
-      case "Union":
-        return _union(ast, ast.members.map((m) => [G.guardFor(I.makeSchema(m)), go(m)]))
-      case "Lazy":
-        return _lazy(() => go(ast.f()))
+      }
+      case "Union": {
+        const types = ast.types.map((m) => [G.guardFor(I.makeSchema(m)), go(m)] as const)
+        return make(I.makeSchema(ast), (input) => {
+          // ---------------------------------------------
+          // compute encoder candidates
+          // ---------------------------------------------
+          const encoders: Array<Encoder<unknown, any>> = []
+          for (let i = 0; i < types.length; i++) {
+            if (types[i][0].is(input)) {
+              encoders.push(types[i][1])
+            } else if (encoders.length > 0) {
+              break
+            }
+          }
+
+          let output = encoders[0].encode(input)
+
+          // ---------------------------------------------
+          // compute best output
+          // ---------------------------------------------
+          let weight: number | null = null
+          for (let i = 1; i < encoders.length; i++) {
+            const o = encoders[i].encode(input)
+            const w = getWeight(o)
+            if (weight === null) {
+              weight = getWeight(output)
+            }
+            if (w > weight) {
+              output = o
+              weight = w
+            }
+          }
+
+          return output
+        })
+      }
+      case "Lazy": {
+        const f = () => go(ast.f())
+        const get = I.memoize<void, Encoder<unknown, any>>(f)
+        const schema = I.lazy(f)
+        return make(
+          schema,
+          (a) => get().encode(a)
+        )
+      }
       case "Refinement":
         return go(ast.from)
     }
@@ -123,51 +198,6 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
   return go(schema.ast)
 }
 
-const _struct = (
-  ast: AST.Struct,
-  fields: ReadonlyArray<Encoder<any, any>>,
-  indexSignatures: ReadonlyArray<Encoder<any, any>>
-): Encoder<any, any> =>
-  make(
-    I.makeSchema(ast),
-    (input: { readonly [x: string | symbol]: unknown }) => {
-      const output: any = {}
-      const expectedKeys: any = {}
-      // ---------------------------------------------
-      // handle fields
-      // ---------------------------------------------
-      for (let i = 0; i < fields.length; i++) {
-        const field = ast.fields[i]
-        const encoder = fields[i]
-        const key = field.key
-        expectedKeys[key] = null
-        // TODO: handle custom encoding logic here
-        if (!Object.prototype.hasOwnProperty.call(input, key) && field.isOptional) {
-          continue
-        }
-        output[key] = encoder.encode(input[key])
-      }
-      // ---------------------------------------------
-      // handle index signatures
-      // ---------------------------------------------
-      if (indexSignatures.length > 0) {
-        const keys = Object.keys(input)
-        const symbols = Object.getOwnPropertySymbols(input)
-        for (let i = 0; i < indexSignatures.length; i++) {
-          const encoder = indexSignatures[i]
-          const ks = AST.isSymbolKeyword(ast.indexSignatures[i].key) ? symbols : keys
-          for (const key of ks) {
-            if (!(key in expectedKeys)) {
-              output[key] = encoder.encode(input[key])
-            }
-          }
-        }
-      }
-
-      return output
-    }
-  )
-
 const getWeight = (u: unknown): number => {
   if (Array.isArray(u)) {
     return u.length
@@ -175,53 +205,4 @@ const getWeight = (u: unknown): number => {
     return I.ownKeys(u).length
   }
   return 0
-}
-
-const _union = (
-  ast: AST.Union,
-  members: ReadonlyArray<readonly [Guard<any>, Encoder<any, any>]>
-): Encoder<any, any> =>
-  make(I.makeSchema(ast), (input) => {
-    // ---------------------------------------------
-    // compute encoder candidates
-    // ---------------------------------------------
-    const encoders: Array<Encoder<any, any>> = []
-    for (let i = 0; i < members.length; i++) {
-      if (members[i][0].is(input)) {
-        encoders.push(members[i][1])
-      } else if (encoders.length > 0) {
-        break
-      }
-    }
-
-    let output = encoders[0].encode(input)
-
-    // ---------------------------------------------
-    // compute best output
-    // ---------------------------------------------
-    let weight: number | null = null
-    for (let i = 1; i < encoders.length; i++) {
-      const o = encoders[i].encode(input)
-      const w = getWeight(o)
-      if (weight === null) {
-        weight = getWeight(output)
-      }
-      if (w > weight) {
-        output = o
-        weight = w
-      }
-    }
-
-    return output
-  })
-
-const _lazy = <S, A>(
-  f: () => Encoder<S, A>
-): Encoder<S, A> => {
-  const get = I.memoize<void, Encoder<S, A>>(f)
-  const schema = I.lazy(f)
-  return make(
-    schema,
-    (a) => get().encode(a)
-  )
 }

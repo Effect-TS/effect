@@ -392,7 +392,7 @@ export const partial = <A>(self: Schema<A>): Codec<Partial<A>> => codecFor(S.par
  * @category combinators
  * @since 1.0.0
  */
-export const record = <K extends PropertyKey, V>(
+export const record = <K extends string | symbol, V>(
   key: Schema<K>,
   value: Schema<V>
 ): Codec<{ readonly [k in K]: V }> => codecFor(S.record(key, value))

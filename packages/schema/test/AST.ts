@@ -29,13 +29,7 @@ describe.concurrent("AST", () => {
   it("keyof. should unify string literals with string", () => {
     expect(AST.keyof(
       pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string))).ast
-    )).toEqual(S.union(S.string, S.number).ast)
-  })
-
-  it("keyof. should unify number literals with number", () => {
-    expect(AST.keyof(
-      pipe(S.field(0, S.string, false), S.extend(S.record(S.number, S.string))).ast
-    )).toEqual(S.number.ast)
+    )).toEqual(S.string.ast)
   })
 
   it("keyof. should unify symbol literals with symbol", () => {
@@ -62,7 +56,7 @@ describe.concurrent("AST", () => {
         const schema = S.union(a, ab)
         expect(schema.ast).toEqual({
           _tag: "Union",
-          members: [ab.ast, a.ast]
+          types: [ab.ast, a.ast]
         })
       })
 
@@ -72,7 +66,7 @@ describe.concurrent("AST", () => {
         const schema = S.union(a, ab)
         expect(schema.ast).toEqual({
           _tag: "Union",
-          members: [ab.ast, a.ast]
+          types: [ab.ast, a.ast]
         })
       })
     })
@@ -313,8 +307,8 @@ describe.concurrent("AST", () => {
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       expect(AST.getFields(schema.ast)).toEqual([
-        AST.field(0, S.string.ast, false, true),
-        AST.field(1, S.number.ast, false, true)
+        AST.field("0", S.string.ast, false, true),
+        AST.field("1", S.number.ast, false, true)
       ])
     })
 

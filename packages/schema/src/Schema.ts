@@ -97,14 +97,14 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
 export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Infer<T[K]> }>> => {
-  let members: ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> = getTemplateLiterals(head.ast)
+  let types: ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> = getTemplateLiterals(head.ast)
   for (const span of tail) {
-    members = pipe(
-      members,
+    types = pipe(
+      types,
       RA.flatMap((a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b)))
     )
   }
-  return make(AST.union(members))
+  return make(AST.union(types))
 }
 
 const combineTemplateLiterals = (
@@ -144,7 +144,7 @@ const getTemplateLiterals = (
     case "StringKeyword":
       return [AST.templateLiteral("", [{ type: ast, literal: "" }])]
     case "Union":
-      return pipe(ast.members, RA.flatMap(getTemplateLiterals))
+      return pipe(ast.types, RA.flatMap(getTemplateLiterals))
     default:
       throw new Error(`Unsupported template literal span ${ast._tag}`)
   }
@@ -440,7 +440,7 @@ export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.part
  * @category combinators
  * @since 1.0.0
  */
-export const record: <K extends PropertyKey, V>(
+export const record: <K extends string | symbol, V>(
   key: Schema<K>,
   value: Schema<V>
 ) => Schema<{ readonly [k in K]: V }> = I.record

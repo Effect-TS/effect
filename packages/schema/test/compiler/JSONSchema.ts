@@ -172,12 +172,12 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
       case "Struct": {
         if (
           ast.indexSignatures.length <
-            ast.indexSignatures.filter((is) => is.key._tag === "StringKeyword").length
+            ast.indexSignatures.filter((is) => is.parameter._tag === "StringKeyword").length
         ) {
           throw new Error(`Cannot encode some index signature to JSON Schema`)
         }
-        const fields = ast.fields.map((f) => go(f.value))
-        const indexSignatures = ast.indexSignatures.map((is) => go(is.value))
+        const fields = ast.fields.map((f) => go(f.type))
+        const indexSignatures = ast.indexSignatures.map((is) => go(is.type))
         const output: JsonSchema7ObjectType = {
           type: "object",
           required: [],
@@ -188,30 +188,31 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         // handle fields
         // ---------------------------------------------
         for (let i = 0; i < fields.length; i++) {
-          const key = ast.fields[i].key
-          if (typeof key === "string") {
-            output.properties[key] = fields[i]
+          const name = ast.fields[i].name
+          if (typeof name === "string") {
+            output.properties[name] = fields[i]
             // ---------------------------------------------
             // handle optional fields
             // ---------------------------------------------
             if (!ast.fields[i].isOptional) {
-              output.required.push(key)
+              output.required.push(name)
             }
           } else {
-            throw new Error(`Cannot encode ${String(key)} key to JSON Schema`)
+            throw new Error(`Cannot encode ${String(name)} key to JSON Schema`)
           }
         }
         // ---------------------------------------------
         // handle index signatures
         // ---------------------------------------------
         if (indexSignatures.length > 0) {
+          // TODO: handle key validation
           output.additionalProperties = { allOf: indexSignatures }
         }
 
         return output
       }
       case "Union":
-        return { "anyOf": ast.members.map(go) }
+        return { "anyOf": ast.types.map(go) }
       case "Enums":
         return { anyOf: ast.enums.map(([_, value]) => ({ const: value })) }
       case "Refinement":
