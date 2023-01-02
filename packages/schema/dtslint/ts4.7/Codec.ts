@@ -160,10 +160,16 @@ C.nonEmptyArray(C.number);
 //
 
 // $ExpectType Codec<{ readonly a: string; readonly b: number; }>
-C.struct({ a: C.string,  b: C.number });
+const MyModel = C.struct({ a: C.string,  b: C.number });
 
 // $ExpectType Codec<{ readonly a: string; readonly b: number; readonly c?: boolean; }>
 C.struct({ a: C.string, b: C.number, c: C.optional(C.boolean) });
+
+// $ExpectType { readonly a: string; readonly b: number; }
+export type MyModel = C.Infer<typeof MyModel>
+
+// $ExpectType MyModel2
+export interface MyModel2 extends C.Infer<typeof MyModel> {}
 
 //
 // Pick
