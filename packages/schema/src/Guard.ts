@@ -130,7 +130,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
           }
         )
       }
-      case "Struct": {
+      case "TypeLiteral": {
         const fieldTypes = ast.fields.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const

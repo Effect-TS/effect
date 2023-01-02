@@ -185,7 +185,7 @@ describe.concurrent("AST", () => {
       it("literal vs string", () => {
         const schema = S.struct({ a: S.string, b: S.literal("b") })
         expect(schema.ast).toEqual({
-          _tag: "Struct",
+          _tag: "TypeLiteral",
           fields: [
             AST.field("b", AST.literal("b"), false, true),
             AST.field("a", AST.stringKeyword, false, true)
@@ -198,7 +198,7 @@ describe.concurrent("AST", () => {
       it("undefined vs string", () => {
         const schema = S.struct({ a: S.string, b: S.undefined })
         expect(schema.ast).toEqual({
-          _tag: "Struct",
+          _tag: "TypeLiteral",
           fields: [
             AST.field("b", AST.undefinedKeyword, false, true),
             AST.field("a", AST.stringKeyword, false, true)
@@ -211,7 +211,7 @@ describe.concurrent("AST", () => {
       it("boolean vs string", () => {
         const schema = S.struct({ a: S.string, b: S.boolean })
         expect(schema.ast).toEqual({
-          _tag: "Struct",
+          _tag: "TypeLiteral",
           fields: [
             AST.field("b", AST.booleanKeyword, false, true),
             AST.field("a", AST.stringKeyword, false, true)
@@ -224,7 +224,7 @@ describe.concurrent("AST", () => {
       it("literal vs boolean", () => {
         const schema = S.struct({ a: S.boolean, b: S.literal(null) })
         expect(schema.ast).toEqual({
-          _tag: "Struct",
+          _tag: "TypeLiteral",
           fields: [
             AST.field("b", AST.literal(null), false, true),
             AST.field("a", AST.booleanKeyword, false, true)

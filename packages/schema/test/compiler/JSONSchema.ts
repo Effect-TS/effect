@@ -169,7 +169,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
 
         return output
       }
-      case "Struct": {
+      case "TypeLiteral": {
         if (
           ast.indexSignatures.length <
             ast.indexSignatures.filter((is) => is.parameter._tag === "StringKeyword").length

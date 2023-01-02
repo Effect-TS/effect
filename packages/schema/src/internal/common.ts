@@ -256,7 +256,7 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   >
 > =>
   makeSchema(
-    AST.struct(
+    AST.typeLiteral(
       ownKeys(fields).map((key) =>
         AST.field(key, fields[key].ast, isOptionalSchema(fields[key]), true)
       ),
@@ -271,7 +271,7 @@ export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
   isOptional: isOptional,
   annotations: AST.Annotated["annotations"] = {}
 ): Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
-  makeSchema(AST.struct([AST.field(key, value.ast, isOptional, true, annotations)], []))
+  makeSchema(AST.typeLiteral([AST.field(key, value.ast, isOptional, true, annotations)], []))
 
 /** @internal */
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(

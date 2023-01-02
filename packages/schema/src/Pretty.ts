@@ -121,7 +121,7 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
           }
         )
       }
-      case "Struct": {
+      case "TypeLiteral": {
         const fieldTypes = ast.fields.map((f) => go(f.type))
         const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
         return make(

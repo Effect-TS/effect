@@ -281,7 +281,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
             map((members) => ts.factory.createUnionTypeNode(members))
           )
         )
-      case "Struct":
+      case "TypeLiteral":
         return make(
           ast,
           pipe(
@@ -842,7 +842,7 @@ describe.concurrent("TypeScript", () => {
 
   describe.concurrent("jsDoc", () => {
     it("fields", () => {
-      const schema = S.make(AST.struct(
+      const schema = S.make(AST.typeLiteral(
         [
           AST.field("a", AST.stringKeyword, false, true, {
             [DocumentationAnnotationId]: documentationAnnotation("description")

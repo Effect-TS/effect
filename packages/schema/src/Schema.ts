@@ -258,7 +258,7 @@ export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
  * @since 1.0.0
  */
 export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
-  AST.isStruct(self.ast) || AST.isTuple(self.ast) ?
+  AST.isTypeLiteral(self.ast) || AST.isTuple(self.ast) ?
     make({ ...self.ast, allowUnexpected: true }) :
     self
 
@@ -267,7 +267,7 @@ export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
  * @since 1.0.0
  */
 export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
-  AST.isStruct(self.ast) ?
+  AST.isTypeLiteral(self.ast) ?
     make({ ...self.ast, allowUnexpected: false }) :
     self
 
@@ -451,8 +451,8 @@ export const record: <K extends string | symbol, V>(
  */
 export const extend = <B>(that: Schema<B>) =>
   <A>(self: Schema<A>): Schema<Spread<A & B>> => {
-    if (AST.isStruct(self.ast) && AST.isStruct(that.ast)) {
-      return make(AST.struct(
+    if (AST.isTypeLiteral(self.ast) && AST.isTypeLiteral(that.ast)) {
+      return make(AST.typeLiteral(
         self.ast.fields.concat(that.ast.fields),
         self.ast.indexSignatures.concat(that.ast.indexSignatures)
       ))

@@ -152,7 +152,7 @@ describe.concurrent("Schema", () => {
         to: To
       ) =>
         (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
-          if (AST.isStruct(schema.ast)) {
+          if (AST.isTypeLiteral(schema.ast)) {
             const fields = schema.ast.fields.slice()
             const i = fields.findIndex((field) => field.name === from)
             fields[i] = AST.field(
@@ -162,7 +162,7 @@ describe.concurrent("Schema", () => {
               fields[i].isReadonly
             )
             return S.make(
-              AST.struct(fields, schema.ast.indexSignatures)
+              AST.typeLiteral(fields, schema.ast.indexSignatures)
             )
           }
           throw new Error("cannot rename")
@@ -202,7 +202,7 @@ describe.concurrent("Schema", () => {
         >
       > =>
         S.make(
-          AST.struct(
+          AST.typeLiteral(
             Object.keys(fields).map((key) => {
               const isOptional = key.endsWith("?")
               return AST.field(

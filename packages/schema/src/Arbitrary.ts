@@ -130,7 +130,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           }
         )
       }
-      case "Struct": {
+      case "TypeLiteral": {
         const fieldTypes = ast.fields.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const

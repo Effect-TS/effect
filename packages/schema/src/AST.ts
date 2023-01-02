@@ -32,7 +32,7 @@ export type AST =
   | SymbolKeyword
   | ObjectKeyword
   | Tuple
-  | Struct
+  | TypeLiteral
   | Union
   | Lazy
   | Enums
@@ -384,8 +384,8 @@ export const indexSignature = (
  * @category model
  * @since 1.0.0
  */
-export interface Struct {
-  readonly _tag: "Struct"
+export interface TypeLiteral {
+  readonly _tag: "TypeLiteral"
   readonly fields: ReadonlyArray<Field>
   readonly indexSignatures: ReadonlyArray<IndexSignature>
   readonly allowUnexpected: boolean
@@ -429,12 +429,12 @@ const sortByCardinalityAsc = RA.sort(
  * @category constructors
  * @since 1.0.0
  */
-export const struct = (
+export const typeLiteral = (
   fields: ReadonlyArray<Field>,
   indexSignatures: ReadonlyArray<IndexSignature>,
   allowUnexpected = false
-): Struct => ({
-  _tag: "Struct",
+): TypeLiteral => ({
+  _tag: "TypeLiteral",
   fields: sortByCardinalityAsc(fields),
   indexSignatures: sortByCardinalityAsc(indexSignatures),
   allowUnexpected
@@ -444,7 +444,7 @@ export const struct = (
  * @category guards
  * @since 1.0.0
  */
-export const isStruct = (ast: AST): ast is Struct => ast._tag === "Struct"
+export const isTypeLiteral = (ast: AST): ast is TypeLiteral => ast._tag === "TypeLiteral"
 
 /**
  * @category model
@@ -461,7 +461,7 @@ const getWeight = (ast: AST): number => {
       return getWeight(ast.type)
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? 1 : 0)
-    case "Struct":
+    case "TypeLiteral":
       return ast.fields.length + ast.indexSignatures.length
     case "Union":
       return ast.types.reduce((n, member) => n + getWeight(member), 0)
@@ -659,7 +659,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
-    case "Struct":
+    case "TypeLiteral":
       return ast.fields.map((f): AST =>
         typeof f.name === "symbol" ? uniqueSymbol(f.name) : literal(f.name)
       ).concat(ast.indexSignatures.map((is) => is.parameter))
@@ -692,7 +692,7 @@ export const keyof = (ast: AST): AST => union(_keyof(ast))
 /**
  * @since 1.0.0
  */
-export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
+export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral => {
   const fields: Array<Field> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
@@ -726,21 +726,21 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
     }
   }
   go(key)
-  return struct(fields, indexSignatures)
+  return typeLiteral(fields, indexSignatures)
 }
 
 /**
  * @since 1.0.0
  */
-export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
-  return struct(getFields(ast).filter((field) => keys.includes(field.name)), [])
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
+  return typeLiteral(getFields(ast).filter((field) => keys.includes(field.name)), [])
 }
 
 /**
  * @since 1.0.0
  */
-export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): Struct => {
-  return struct(getFields(ast).filter((field) => !keys.includes(field.name)), [])
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
+  return typeLiteral(getFields(ast).filter((field) => !keys.includes(field.name)), [])
 }
 
 /** @internal */
@@ -750,7 +750,7 @@ export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
       return propertyKeys(ast.type)
     case "Tuple":
       return ast.elements.map((_, i) => String(i))
-    case "Struct":
+    case "TypeLiteral":
       return ast.fields.map((field) => field.name)
     case "Union": {
       let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.types[0])
@@ -781,7 +781,7 @@ export const getFields = (
       return ast.elements.map((element, i) =>
         field(String(i), element.type, element.isOptional, ast.isReadonly)
       )
-    case "Struct":
+    case "TypeLiteral":
       return ast.fields
     case "Union": {
       const fields = pipe(ast.types, RA.flatMap(getFields))
@@ -827,8 +827,8 @@ export const partial = (ast: AST): AST => {
         ),
         ast.isReadonly
       )
-    case "Struct":
-      return struct(
+    case "TypeLiteral":
+      return typeLiteral(
         ast.fields.map((f) => field(f.name, f.type, true, f.isReadonly, f.annotations)),
         ast.indexSignatures
       )
