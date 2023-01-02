@@ -6,6 +6,7 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import type * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as UE from "@fp-ts/schema/Encoder"
+import { format } from "@fp-ts/schema/formatter/Tree"
 import * as G from "@fp-ts/schema/Guard"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
@@ -46,7 +47,7 @@ export const expectWarning = <I, A>(decoder: D.Decoder<I, A>, i: I, message: str
 }
 
 const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
-  return pipe(errors, RA.map(format), RA.join(", "))
+  return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
 const stringify = (actual: unknown): string => {
@@ -56,7 +57,7 @@ const stringify = (actual: unknown): string => {
   return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
 }
 
-const format = (e: DE.DecodeError): string => {
+const formatDecodeError = (e: DE.DecodeError): string => {
   switch (e._tag) {
     case "Meta":
       return `${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`
@@ -71,102 +72,26 @@ const format = (e: DE.DecodeError): string => {
     case "Enums":
       return `${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`
     case "Index":
-      return `/${e.index} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
+      return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":
-      return `/${String(e.key)} ${pipe(e.errors, RA.map(format), RA.join(", "))}`
+      return `/${String(e.key)} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Missing":
-      return `did not satisfy is(required)`
+      return `is missing`
     case "Unexpected":
       return `is unexpected`
     case "Member":
-      return `member: ${pipe(e.errors, RA.map(format), RA.join(", "))}`
+      return `member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
   }
-}
-
-type Forest<A> = Array<Tree<A>>
-
-export interface Tree<A> {
-  value: A
-  forest: Forest<A>
-}
-
-function make<A>(value: A, forest: Forest<A> = []): Tree<A> {
-  return {
-    value,
-    forest
-  }
-}
-
-const draw = (indentation: string, forest: Forest<string>): string => {
-  let r = ""
-  const len = forest.length
-  let tree: Tree<string>
-  for (let i = 0; i < len; i++) {
-    tree = forest[i]
-    const isLast = i === len - 1
-    r += indentation + (isLast ? "└" : "├") + "─ " + tree.value
-    r += draw(indentation + (len > 1 && !isLast ? "│  " : "   "), tree.forest)
-  }
-  return r
-}
-
-function drawForest(forest: Forest<string>): string {
-  return draw("\n", forest)
-}
-
-function drawTree(tree: Tree<string>): string {
-  return tree.value + drawForest(tree.forest)
-}
-
-const toTree = (errors: NonEmptyReadonlyArray<DE.DecodeError>): Tree<string> => {
-  return make(`${errors.length} error(s) found`, errors.map(go))
-}
-
-const go = (e: DE.DecodeError): Tree<string> => {
-  switch (e._tag) {
-    case "Meta":
-      return make(`${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`)
-    case "Type":
-      return make(`${stringify(e.actual)} did not satisfy is(${e.expected})`)
-    case "Refinement":
-      return make(
-        `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
-      )
-    case "Parse":
-      return make(
-        `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
-      )
-    case "Equal":
-      return make(
-        `${stringify(e.actual)} did not satisfy isEqual(${stringify(e.expected)})`
-      )
-    case "Enums":
-      return make(`${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`)
-    case "Index":
-      return make(`index ${e.index}`, e.errors.map(go))
-    case "Unexpected":
-      return make(`is unexpected`)
-    case "Key":
-      return make(`key ${String(e.key)}`, e.errors.map(go))
-    case "Missing":
-      return make(`did not satisfy not(isNaN)`)
-    case "Member":
-      return make(`union member`, e.errors.map(go))
-  }
-}
-
-const formatTree = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
-  return drawTree(toTree(errors))
 }
 
 export const expectFailureTree = <I, A>(decoder: D.Decoder<I, A>, i: I, message: string) => {
-  const t = pipe(decoder.decode(i), T.mapLeft(formatTree))
+  const t = pipe(decoder.decode(i), T.mapLeft(format))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
 
 export const expectWarningTree = <I, A>(decoder: D.Decoder<I, A>, i: I, message: string, a: A) => {
-  const t = pipe(decoder.decode(i), T.mapLeft(formatTree))
+  const t = pipe(decoder.decode(i), T.mapLeft(format))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }

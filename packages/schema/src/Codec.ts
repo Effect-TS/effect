@@ -16,6 +16,7 @@ import type { Decoder } from "@fp-ts/schema/Decoder"
 import { decoderFor } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import { encoderFor } from "@fp-ts/schema/Encoder"
+import { format } from "@fp-ts/schema/formatter/Tree"
 import type { Guard } from "@fp-ts/schema/Guard"
 import { guardFor } from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
@@ -26,12 +27,23 @@ import * as S from "@fp-ts/schema/Schema"
  * @category model
  * @since 1.0.0
  */
-export interface Codec<A> extends Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {}
+export interface Codec<A> extends Schema<A>, Decoder<unknown, A>, Encoder<unknown, A>, Guard<A> {
+  readonly decodeOrThrow: (u: unknown) => A
+}
 
 const make = <A>(schema: Schema<A>): Codec<A> => {
+  const decode = decoderFor(schema).decode
+  const decodeOrThrow: Codec<A>["decodeOrThrow"] = (u) => {
+    const t = decode(u)
+    if (I.isFailure(t)) {
+      throw new Error(format(t.left))
+    }
+    return t.right
+  }
   const out = {
     ast: schema.ast,
-    decode: decoderFor(schema).decode,
+    decode,
+    decodeOrThrow,
     encode: encoderFor(schema).encode,
     is: guardFor(schema).is
   }

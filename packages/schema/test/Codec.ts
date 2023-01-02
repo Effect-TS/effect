@@ -64,6 +64,18 @@ describe.concurrent("Codec", () => {
     expect(C.option).exist
   })
 
+  it("decodeOrThrow", () => {
+    const Person = C.struct({
+      name: C.string,
+      age: C.number
+    })
+    expect(() => Person.decodeOrThrow({})).toThrowError(
+      new Error(`1 error(s) found
+└─ key "name"
+   └─ is missing`)
+    )
+  })
+
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
     const codec = C.codecFor(schema)
@@ -317,7 +329,7 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, [1])
 
     Util.expectFailure(codec, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
+    Util.expectFailure(codec, [], `/0 is missing`)
     Util.expectFailure(codec, [undefined], `/0 undefined did not satisfy is(number)`)
     Util.expectFailure(codec, ["a"], `/0 "a" did not satisfy is(number)`)
     Util.expectFailure(codec, [1, "b"], `/1 is unexpected`)
@@ -329,7 +341,7 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, [undefined])
 
     Util.expectFailure(codec, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
+    Util.expectFailure(codec, [], `/0 is missing`)
     Util.expectFailure(
       codec,
       ["a"],
@@ -384,7 +396,7 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, ["a", 1])
     Util.expectSuccess(codec, ["a", 1, 2])
 
-    Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
+    Util.expectFailure(codec, [], `/0 is missing`)
   })
 
   it("tuple. e? r", () => {
@@ -416,7 +428,7 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, ["a", 1])
     Util.expectSuccess(codec, ["a", "b", 1])
 
-    Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
+    Util.expectFailure(codec, [], `/0 is missing`)
     Util.expectFailure(codec, ["a"], `/0 "a" did not satisfy is(number)`)
     Util.expectFailure(codec, [1, 2], `/0 1 did not satisfy is(string)`)
   })
@@ -428,8 +440,8 @@ describe.concurrent("Codec", () => {
     Util.expectSuccess(codec, ["a", 1, true])
     Util.expectSuccess(codec, ["a", 1, 2, true])
 
-    Util.expectFailure(codec, [], `/0 did not satisfy is(required)`)
-    Util.expectFailure(codec, ["a"], `/1 did not satisfy is(required)`)
+    Util.expectFailure(codec, [], `/0 is missing`)
+    Util.expectFailure(codec, ["a"], `/1 is missing`)
     Util.expectFailure(codec, [true], `/0 true did not satisfy is(string)`)
     Util.expectFailure(codec, ["a", 1], `/1 1 did not satisfy is(boolean)`)
     Util.expectFailure(codec, [1, true], `/0 1 did not satisfy is(string)`)
@@ -510,7 +522,7 @@ describe.concurrent("Codec", () => {
         null,
         `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
-      Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
+      Util.expectFailure(codec, {}, "/a is missing")
       Util.expectFailure(codec, { a: undefined }, "/a undefined did not satisfy is(number)")
       Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
@@ -525,7 +537,7 @@ describe.concurrent("Codec", () => {
         null,
         `null did not satisfy is({ readonly [x: PropertyKey]: unknown })`
       )
-      Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
+      Util.expectFailure(codec, {}, "/a is missing")
       Util.expectFailure(
         codec,
         { a: "a" },
@@ -581,8 +593,8 @@ describe.concurrent("Codec", () => {
       Util.expectSuccess(codec, { a: "a" })
       Util.expectSuccess(codec, { a: "a", b: "b" })
 
-      Util.expectFailure(codec, {}, "/a did not satisfy is(required)")
-      Util.expectFailure(codec, { b: "b" }, "/a did not satisfy is(required)")
+      Util.expectFailure(codec, {}, "/a is missing")
+      Util.expectFailure(codec, { b: "b" }, "/a is missing")
       Util.expectFailure(codec, { a: 1 }, "/a 1 did not satisfy is(string)")
       Util.expectFailure(codec, { a: "a", b: 1 }, "/b 1 did not satisfy is(string)")
     })
@@ -625,18 +637,18 @@ describe.concurrent("Codec", () => {
     const codec = C.record(C.union(C.literal("a"), C.literal("b")), C.number)
     Util.expectSuccess(codec, { a: 1, b: 2 })
 
-    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
-    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
-    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, {}, `/a is missing`)
+    Util.expectFailure(codec, { a: 1 }, `/b is missing`)
+    Util.expectFailure(codec, { b: 2 }, `/a is missing`)
   })
 
   it("record(keyof struct({ a, b }), number)", () => {
     const codec = C.record(S.keyof(S.struct({ a: S.string, b: S.string })), S.number)
     Util.expectSuccess(codec, { a: 1, b: 2 })
 
-    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
-    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
-    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, {}, `/a is missing`)
+    Util.expectFailure(codec, { a: 1 }, `/b is missing`)
+    Util.expectFailure(codec, { b: 2 }, `/a is missing`)
     Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
   })
 
@@ -662,9 +674,9 @@ describe.concurrent("Codec", () => {
     const c = Symbol.for("@fp-ts/schema/test/c")
     Util.expectSuccess(codec, { a: 1, b: 2, [c]: 3 })
 
-    Util.expectFailure(codec, {}, `/a did not satisfy is(required)`)
-    Util.expectFailure(codec, { a: 1 }, `/b did not satisfy is(required)`)
-    Util.expectFailure(codec, { b: 2 }, `/a did not satisfy is(required)`)
+    Util.expectFailure(codec, {}, `/a is missing`)
+    Util.expectFailure(codec, { a: 1 }, `/b is missing`)
+    Util.expectFailure(codec, { b: 2 }, `/a is missing`)
     Util.expectFailure(codec, { a: "a" }, `/a "a" did not satisfy is(number)`)
     Util.expectFailure(
       codec,
@@ -679,16 +691,16 @@ describe.concurrent("Codec", () => {
     const codec = C.record(C.union(C.uniqueSymbol(a), C.uniqueSymbol(b)), C.number)
     Util.expectSuccess(codec, { [a]: 1, [b]: 2 })
 
-    Util.expectFailure(codec, {}, `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`)
+    Util.expectFailure(codec, {}, `/Symbol(@fp-ts/schema/test/a) is missing`)
     Util.expectFailure(
       codec,
       { [a]: 1 },
-      `/Symbol(@fp-ts/schema/test/b) did not satisfy is(required)`
+      `/Symbol(@fp-ts/schema/test/b) is missing`
     )
     Util.expectFailure(
       codec,
       { [b]: 2 },
-      `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`
+      `/Symbol(@fp-ts/schema/test/a) is missing`
     )
   })
 
@@ -696,7 +708,7 @@ describe.concurrent("Codec", () => {
     const codec = C.record(S.keyof(S.option(S.number)), S.number)
     Util.expectSuccess(codec, { _tag: 1 })
 
-    Util.expectFailure(codec, {}, `/_tag did not satisfy is(required)`)
+    Util.expectFailure(codec, {}, `/_tag is missing`)
     Util.expectFailure(codec, { _tag: "a" }, `/_tag "a" did not satisfy is(number)`)
   })
 
@@ -772,7 +784,7 @@ describe.concurrent("Codec", () => {
     Util.expectFailure(
       codec,
       { a: "a1" },
-      `/as did not satisfy is(required)`
+      `/as is missing`
     )
 
     Util.expectFailure(
@@ -850,8 +862,8 @@ describe.concurrent("Codec", () => {
         null,
         "null did not satisfy is({ readonly [x: PropertyKey]: unknown })"
       )
-      Util.expectFailure(codec, { a: "a" }, `/b did not satisfy is(required)`)
-      Util.expectFailure(codec, { b: 1 }, "/a did not satisfy is(required)")
+      Util.expectFailure(codec, { a: "a" }, `/b is missing`)
+      Util.expectFailure(codec, { b: 1 }, "/a is missing")
     })
 
     it("involving a symbol", () => {
@@ -865,11 +877,11 @@ describe.concurrent("Codec", () => {
         null,
         "null did not satisfy is({ readonly [x: PropertyKey]: unknown })"
       )
-      Util.expectFailure(codec, { [a]: "a" }, `/b did not satisfy is(required)`)
+      Util.expectFailure(codec, { [a]: "a" }, `/b is missing`)
       Util.expectFailure(
         codec,
         { b: 1 },
-        `/Symbol(@fp-ts/schema/test/a) did not satisfy is(required)`
+        `/Symbol(@fp-ts/schema/test/a) is missing`
       )
     })
   })
