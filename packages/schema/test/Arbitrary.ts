@@ -182,22 +182,22 @@ describe.concurrent("Arbitrary", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required field", () => {
+    it("required property signature", () => {
       const schema = S.struct({ a: S.number })
       property(schema)
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       property(schema)
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       property(schema)
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       property(schema)
     })

@@ -345,7 +345,7 @@ describe.concurrent("Guard", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required field", () => {
+    it("required property signature", () => {
       const schema = S.struct({ a: S.number })
       const guard = G.guardFor(schema)
       expect(guard.is({ a: 1 })).toEqual(true)
@@ -357,7 +357,7 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: "a" })).toEqual(false)
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const guard = G.guardFor(schema)
       expect(guard.is({ a: 1 })).toEqual(true)
@@ -369,7 +369,7 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: "a" })).toEqual(false)
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const guard = G.guardFor(schema)
       expect(guard.is({})).toEqual(true)
@@ -381,7 +381,7 @@ describe.concurrent("Guard", () => {
       expect(guard.is({ a: undefined })).toEqual(false)
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const guard = G.guardFor(schema)
       expect(guard.is({})).toEqual(true)

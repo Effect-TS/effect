@@ -181,7 +181,7 @@ describe.concurrent("Encoder", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required field", () => {
+    it("required property signature", () => {
       const schema = S.struct({ a: S.number })
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
@@ -189,7 +189,7 @@ describe.concurrent("Encoder", () => {
       expect(encoder.encode(x)).toStrictEqual({ a: 1 })
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({ a: 1 })).toStrictEqual({ a: 1 })
@@ -198,7 +198,7 @@ describe.concurrent("Encoder", () => {
       expect(encoder.encode(x)).toStrictEqual({ a: 1 })
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({})).toStrictEqual({})
@@ -207,7 +207,7 @@ describe.concurrent("Encoder", () => {
       expect(encoder.encode(x)).toStrictEqual({ a: 1 })
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const encoder = E.encoderFor(schema)
       expect(encoder.encode({})).toStrictEqual({})
@@ -255,7 +255,7 @@ describe.concurrent("Encoder", () => {
     })
 
     describe.concurrent("should give precedence to schemas containing more infos", () => {
-      it("more required fields", () => {
+      it("more required property signatures", () => {
         const a = S.struct({ a: S.string })
         const ab = S.struct({ a: S.string, b: S.number })
         const schema = S.union(a, ab)
@@ -263,7 +263,7 @@ describe.concurrent("Encoder", () => {
         expect(encoder.encode({ a: "a", b: 1 })).toEqual({ a: "a", b: 1 })
       })
 
-      it("optional fields", () => {
+      it("optional property signatures", () => {
         const ab = S.struct({ a: S.string, b: S.optional(S.number) })
         const ac = S.struct({ a: S.string, c: S.optional(S.number) })
         const schema = S.union(ab, ac)

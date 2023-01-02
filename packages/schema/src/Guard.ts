@@ -131,11 +131,11 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         )
       }
       case "TypeLiteral": {
-        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const
         )
-        if (fieldTypes.length === 0 && indexSignatures.length === 0) {
+        if (propertySignaturesTypes.length === 0 && indexSignatures.length === 0) {
           return make(I.makeSchema(ast), I.isNotNull)
         }
         return make(
@@ -145,18 +145,18 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
               return false
             }
             // ---------------------------------------------
-            // handle fields
+            // handle property signatures
             // ---------------------------------------------
-            for (let i = 0; i < ast.fields.length; i++) {
-              const field = ast.fields[i]
-              const name = field.name
+            for (let i = 0; i < ast.propertySignatures.length; i++) {
+              const ps = ast.propertySignatures[i]
+              const name = ps.name
               if (!Object.prototype.hasOwnProperty.call(input, name)) {
-                if (field.isOptional) {
+                if (ps.isOptional) {
                   continue
                 }
                 return false
               }
-              if (!fieldTypes[i].is(input[name])) {
+              if (!propertySignaturesTypes[i].is(input[name])) {
                 return false
               }
             }

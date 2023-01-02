@@ -176,7 +176,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         ) {
           throw new Error(`Cannot encode some index signature to JSON Schema`)
         }
-        const fields = ast.fields.map((f) => go(f.type))
+        const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type))
         const indexSignatures = ast.indexSignatures.map((is) => go(is.type))
         const output: JsonSchema7ObjectType = {
           type: "object",
@@ -185,16 +185,16 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
           additionalProperties: false
         }
         // ---------------------------------------------
-        // handle fields
+        // handle property signatures
         // ---------------------------------------------
-        for (let i = 0; i < fields.length; i++) {
-          const name = ast.fields[i].name
+        for (let i = 0; i < propertySignatures.length; i++) {
+          const name = ast.propertySignatures[i].name
           if (typeof name === "string") {
-            output.properties[name] = fields[i]
+            output.properties[name] = propertySignatures[i]
             // ---------------------------------------------
-            // handle optional fields
+            // handle optional property signatures
             // ---------------------------------------------
-            if (!ast.fields[i].isOptional) {
+            if (!ast.propertySignatures[i].isOptional) {
               output.required.push(name)
             }
           } else {
@@ -380,7 +380,7 @@ describe("jsonSchemaFor", () => {
     property(S.struct({ a: S.string, b: S.number }))
   })
 
-  it("struct. optional field", () => {
+  it("struct. optional property signature", () => {
     property(S.struct({ a: S.string, b: S.optional(S.number) }))
   })
 

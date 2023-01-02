@@ -153,16 +153,16 @@ describe.concurrent("Schema", () => {
       ) =>
         (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
           if (AST.isTypeLiteral(schema.ast)) {
-            const fields = schema.ast.fields.slice()
-            const i = fields.findIndex((field) => field.name === from)
-            fields[i] = AST.field(
+            const propertySignatures = schema.ast.propertySignatures.slice()
+            const i = propertySignatures.findIndex((ps) => ps.name === from)
+            propertySignatures[i] = AST.propertySignature(
               to,
-              fields[i].type,
-              fields[i].isOptional,
-              fields[i].isReadonly
+              propertySignatures[i].type,
+              propertySignatures[i].isOptional,
+              propertySignatures[i].isReadonly
             )
             return S.make(
-              AST.typeLiteral(fields, schema.ast.indexSignatures)
+              AST.typeLiteral(propertySignatures, schema.ast.indexSignatures)
             )
           }
           throw new Error("cannot rename")
@@ -205,7 +205,7 @@ describe.concurrent("Schema", () => {
           AST.typeLiteral(
             Object.keys(fields).map((key) => {
               const isOptional = key.endsWith("?")
-              return AST.field(
+              return AST.propertySignature(
                 isOptional ? key.substring(0, key.length - 1) : key,
                 fields[key].ast,
                 isOptional,

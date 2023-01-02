@@ -128,7 +128,7 @@ const createSymbol = (description: string | undefined) =>
     description === undefined ? [] : [ts.factory.createStringLiteral(description)]
   )
 
-const getPropertyName = (ast: AST.Field): ts.PropertyName =>
+const getPropertyName = (ast: AST.PropertySignature): ts.PropertyName =>
   typeof ast.name === "symbol" ?
     ts.factory.createComputedPropertyName(createSymbol(ast.name.description)) :
     ts.factory.createIdentifier(String(ast.name))
@@ -285,24 +285,24 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         return make(
           ast,
           pipe(
-            ast.fields,
+            ast.propertySignatures,
             traverse(
-              (field) =>
+              (ps) =>
                 pipe(
-                  go(field.type).nodes,
+                  go(ps.type).nodes,
                   map((type) =>
                     ts.factory.createPropertySignature(
-                      field.isReadonly ?
+                      ps.isReadonly ?
                         [ts.factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] :
                         undefined,
-                      getPropertyName(field),
-                      field.isOptional ?
+                      getPropertyName(ps),
+                      ps.isOptional ?
                         ts.factory.createToken(ts.SyntaxKind.QuestionToken) :
                         undefined,
                       type
                     )
                   ),
-                  map(addDocumentationOf(field))
+                  map(addDocumentationOf(ps))
                 )
             ),
             appendAll(pipe(
@@ -702,7 +702,7 @@ describe.concurrent("TypeScript", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required field", () => {
+    it("required property signature", () => {
       const schema = S.struct({ a: S.number })
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
@@ -710,7 +710,7 @@ describe.concurrent("TypeScript", () => {
 }`])
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
@@ -718,7 +718,7 @@ describe.concurrent("TypeScript", () => {
 }`])
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
@@ -726,7 +726,7 @@ describe.concurrent("TypeScript", () => {
 }`])
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
@@ -841,10 +841,10 @@ describe.concurrent("TypeScript", () => {
   })
 
   describe.concurrent("jsDoc", () => {
-    it("fields", () => {
+    it("property signatures", () => {
       const schema = S.make(AST.typeLiteral(
         [
-          AST.field("a", AST.stringKeyword, false, true, {
+          AST.propertySignature("a", AST.stringKeyword, false, true, {
             [DocumentationAnnotationId]: documentationAnnotation("description")
           })
         ],

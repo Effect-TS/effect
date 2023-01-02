@@ -56,7 +56,7 @@ describe.concurrent("Pretty", () => {
       )
     })
 
-    it("should not output optional fields", () => {
+    it("should not output optional property signatures", () => {
       const schema = S.partial(S.struct({ a: S.number }))
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual("{}")
@@ -295,7 +295,7 @@ describe.concurrent("Pretty", () => {
       expect(pretty.pretty({ "-": 1 })).toEqual(`{ "-": 1 }`)
     })
 
-    it("required field", () => {
+    it("required property signature", () => {
       const schema = S.struct({ a: S.number })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -303,7 +303,7 @@ describe.concurrent("Pretty", () => {
       expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -312,7 +312,7 @@ describe.concurrent("Pretty", () => {
       expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual(`{}`)
@@ -321,7 +321,7 @@ describe.concurrent("Pretty", () => {
       expect(pretty.pretty(x)).toEqual(`{ "a": 1 }`)
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
       const pretty = P.prettyFor(schema)
       expect(pretty.pretty({})).toEqual(`{}`)

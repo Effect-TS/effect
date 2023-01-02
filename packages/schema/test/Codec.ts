@@ -501,7 +501,7 @@ describe.concurrent("Codec", () => {
   })
 
   describe.concurrent("struct", () => {
-    it("required field", () => {
+    it("required property signature", () => {
       const codec = C.struct({ a: C.number })
       Util.expectSuccess(codec, { a: 1 })
 
@@ -515,7 +515,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
-    it("required field with undefined", () => {
+    it("required property signature with undefined", () => {
       const codec = C.struct({ a: C.union(C.number, C.undefined) })
       Util.expectSuccess(codec, { a: 1 })
       Util.expectSuccess(codec, { a: undefined })
@@ -534,7 +534,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
-    it("optional field", () => {
+    it("optional property signature", () => {
       const codec = C.struct({ a: C.optional(C.number) })
       Util.expectSuccess(codec, {})
       Util.expectSuccess(codec, { a: 1 })
@@ -549,7 +549,7 @@ describe.concurrent("Codec", () => {
       Util.expectFailure(codec, { a: 1, b: "b" }, "/b is unexpected")
     })
 
-    it("optional field with undefined", () => {
+    it("optional property signature with undefined", () => {
       const codec = C.struct({ a: C.optional(C.union(C.number, C.undefined)) })
       Util.expectSuccess(codec, {})
       Util.expectSuccess(codec, { a: 1 })
@@ -738,14 +738,14 @@ describe.concurrent("Codec", () => {
     })
 
     describe.concurrent("should give precedence to schemas containing more infos", () => {
-      it("more required fields", () => {
+      it("more required property signatures", () => {
         const a = C.struct({ a: C.string })
         const ab = C.struct({ a: C.string, b: C.number })
         const codec = C.union(a, ab)
         Util.expectSuccess(codec, { a: "a", b: 1 })
       })
 
-      it("optional fields", () => {
+      it("optional property signatures", () => {
         const ab = C.struct({ a: C.string, b: C.optional(C.number) })
         const ac = C.struct({ a: C.string, c: C.optional(C.number) })
         const codec = C.union(ab, ac)

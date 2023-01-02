@@ -453,7 +453,7 @@ export const extend = <B>(that: Schema<B>) =>
   <A>(self: Schema<A>): Schema<Spread<A & B>> => {
     if (AST.isTypeLiteral(self.ast) && AST.isTypeLiteral(that.ast)) {
       return make(AST.typeLiteral(
-        self.ast.fields.concat(that.ast.fields),
+        self.ast.propertySignatures.concat(that.ast.propertySignatures),
         self.ast.indexSignatures.concat(that.ast.indexSignatures)
       ))
     }

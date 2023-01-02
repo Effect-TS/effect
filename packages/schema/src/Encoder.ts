@@ -105,7 +105,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         )
       }
       case "TypeLiteral": {
-        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
         return make(
           I.makeSchema(ast),
@@ -113,14 +113,14 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             const output: any = {}
             const expectedKeys: any = {}
             // ---------------------------------------------
-            // handle fields
+            // handle property signatures
             // ---------------------------------------------
-            for (let i = 0; i < fieldTypes.length; i++) {
-              const field = ast.fields[i]
-              const encoder = fieldTypes[i]
-              const name = field.name
+            for (let i = 0; i < propertySignaturesTypes.length; i++) {
+              const ps = ast.propertySignatures[i]
+              const encoder = propertySignaturesTypes[i]
+              const name = ps.name
               expectedKeys[name] = null
-              if (!Object.prototype.hasOwnProperty.call(input, name) && field.isOptional) {
+              if (!Object.prototype.hasOwnProperty.call(input, name) && ps.isOptional) {
                 continue
               }
               output[name] = encoder.encode(input[name])

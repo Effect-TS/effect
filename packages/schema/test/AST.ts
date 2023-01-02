@@ -181,14 +181,14 @@ describe.concurrent("AST", () => {
   })
 
   describe.concurrent("struct", () => {
-    describe.concurrent("should give precedence to fields / index signatures containing less inhabitants", () => {
+    describe.concurrent("should give precedence to property signatures / index signatures containing less inhabitants", () => {
       it("literal vs string", () => {
         const schema = S.struct({ a: S.string, b: S.literal("b") })
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
-          fields: [
-            AST.field("b", AST.literal("b"), false, true),
-            AST.field("a", AST.stringKeyword, false, true)
+          propertySignatures: [
+            AST.propertySignature("b", AST.literal("b"), false, true),
+            AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           allowUnexpected: false
@@ -199,9 +199,9 @@ describe.concurrent("AST", () => {
         const schema = S.struct({ a: S.string, b: S.undefined })
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
-          fields: [
-            AST.field("b", AST.undefinedKeyword, false, true),
-            AST.field("a", AST.stringKeyword, false, true)
+          propertySignatures: [
+            AST.propertySignature("b", AST.undefinedKeyword, false, true),
+            AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           allowUnexpected: false
@@ -212,9 +212,9 @@ describe.concurrent("AST", () => {
         const schema = S.struct({ a: S.string, b: S.boolean })
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
-          fields: [
-            AST.field("b", AST.booleanKeyword, false, true),
-            AST.field("a", AST.stringKeyword, false, true)
+          propertySignatures: [
+            AST.propertySignature("b", AST.booleanKeyword, false, true),
+            AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           allowUnexpected: false
@@ -225,9 +225,9 @@ describe.concurrent("AST", () => {
         const schema = S.struct({ a: S.boolean, b: S.literal(null) })
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
-          fields: [
-            AST.field("b", AST.literal(null), false, true),
-            AST.field("a", AST.booleanKeyword, false, true)
+          propertySignatures: [
+            AST.propertySignature("b", AST.literal(null), false, true),
+            AST.propertySignature("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: [],
           allowUnexpected: false
@@ -296,28 +296,33 @@ describe.concurrent("AST", () => {
     })
   })
 
-  describe.concurrent("getFields", () => {
+  describe.concurrent("getPropertySignatures", () => {
     it("type alias", () => {
       const schema = DataOption.option(S.number)
-      expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("_tag", S.union(S.literal("Some"), S.literal("None")).ast, false, true)
+      expect(AST.getPropertySignatures(schema.ast)).toEqual([
+        AST.propertySignature(
+          "_tag",
+          S.union(S.literal("Some"), S.literal("None")).ast,
+          false,
+          true
+        )
       ])
     })
 
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
-      expect(AST.getFields(schema.ast)).toEqual([
-        AST.field("0", S.string.ast, false, true),
-        AST.field("1", S.number.ast, false, true)
+      expect(AST.getPropertySignatures(schema.ast)).toEqual([
+        AST.propertySignature("0", S.string.ast, false, true),
+        AST.propertySignature("1", S.number.ast, false, true)
       ])
     })
 
-    describe.concurrent("getFields. struct", () => {
+    describe.concurrent("getPropertySignatures. struct", () => {
       it("string keys", () => {
         const schema = S.struct({ a: S.string, b: S.number })
-        expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", S.string.ast, false, true),
-          AST.field("b", S.number.ast, false, true)
+        expect(AST.getPropertySignatures(schema.ast)).toEqual([
+          AST.propertySignature("a", S.string.ast, false, true),
+          AST.propertySignature("b", S.number.ast, false, true)
         ])
       })
 
@@ -325,31 +330,31 @@ describe.concurrent("AST", () => {
         const a = Symbol.for("@fp-ts/schema/test/a")
         const b = Symbol.for("@fp-ts/schema/test/b")
         const schema = S.struct({ [a]: S.string, [b]: S.number })
-        expect(AST.getFields(schema.ast)).toEqual([
-          AST.field(a, S.string.ast, false, true),
-          AST.field(b, S.number.ast, false, true)
+        expect(AST.getPropertySignatures(schema.ast)).toEqual([
+          AST.propertySignature(a, S.string.ast, false, true),
+          AST.propertySignature(b, S.number.ast, false, true)
         ])
       })
     })
 
     describe.concurrent("union", () => {
-      it("required fields", () => {
+      it("required property signatures", () => {
         const schema = S.union(
           S.struct({ a: S.string, b: S.number }),
           S.struct({ a: S.boolean, c: S.boolean })
         )
-        expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), false, true)
+        expect(AST.getPropertySignatures(schema.ast)).toEqual([
+          AST.propertySignature("a", AST.union([S.string.ast, S.boolean.ast]), false, true)
         ])
       })
 
-      it("optional fields", () => {
+      it("optional property signatures", () => {
         const schema = S.union(
           S.struct({ a: S.string, b: S.number }),
           S.struct({ c: S.boolean, a: S.optional(S.boolean) })
         )
-        expect(AST.getFields(schema.ast)).toEqual([
-          AST.field("a", AST.union([S.string.ast, S.boolean.ast]), true, true)
+        expect(AST.getPropertySignatures(schema.ast)).toEqual([
+          AST.propertySignature("a", AST.union([S.string.ast, S.boolean.ast]), true, true)
         ])
       })
     })
@@ -366,9 +371,14 @@ describe.concurrent("AST", () => {
             categories: S.array(Category)
           })
       )
-      expect(AST.getFields(Category.ast)).toEqual([
-        AST.field("name", S.string.ast, false, true),
-        AST.field("categories", AST.tuple([], O.some([Category.ast]), true), false, true)
+      expect(AST.getPropertySignatures(Category.ast)).toEqual([
+        AST.propertySignature("name", S.string.ast, false, true),
+        AST.propertySignature(
+          "categories",
+          AST.tuple([], O.some([Category.ast]), true),
+          false,
+          true
+        )
       ])
     })
   })

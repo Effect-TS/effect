@@ -344,7 +344,7 @@ export const isTuple = (ast: AST): ast is Tuple => ast._tag === "Tuple"
 /**
  * @since 1.0.0
  */
-export interface Field extends Annotated {
+export interface PropertySignature extends Annotated {
   readonly name: PropertyKey
   readonly type: AST
   readonly isOptional: boolean
@@ -354,13 +354,13 @@ export interface Field extends Annotated {
 /**
  * @since 1.0.0
  */
-export const field = (
+export const propertySignature = (
   name: PropertyKey,
   type: AST,
   isOptional: boolean,
   isReadonly: boolean,
   annotations: Annotated["annotations"] = {}
-): Field => ({ name, type, isOptional, isReadonly, annotations })
+): PropertySignature => ({ name, type, isOptional, isReadonly, annotations })
 
 /**
  * @since 1.0.0
@@ -386,7 +386,7 @@ export const indexSignature = (
  */
 export interface TypeLiteral {
   readonly _tag: "TypeLiteral"
-  readonly fields: ReadonlyArray<Field>
+  readonly propertySignatures: ReadonlyArray<PropertySignature>
   readonly indexSignatures: ReadonlyArray<IndexSignature>
   readonly allowUnexpected: boolean
 }
@@ -430,12 +430,12 @@ const sortByCardinalityAsc = RA.sort(
  * @since 1.0.0
  */
 export const typeLiteral = (
-  fields: ReadonlyArray<Field>,
+  propertySignatures: ReadonlyArray<PropertySignature>,
   indexSignatures: ReadonlyArray<IndexSignature>,
   allowUnexpected = false
 ): TypeLiteral => ({
   _tag: "TypeLiteral",
-  fields: sortByCardinalityAsc(fields),
+  propertySignatures: sortByCardinalityAsc(propertySignatures),
   indexSignatures: sortByCardinalityAsc(indexSignatures),
   allowUnexpected
 })
@@ -462,7 +462,7 @@ const getWeight = (ast: AST): number => {
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? 1 : 0)
     case "TypeLiteral":
-      return ast.fields.length + ast.indexSignatures.length
+      return ast.propertySignatures.length + ast.indexSignatures.length
     case "Union":
       return ast.types.reduce((n, member) => n + getWeight(member), 0)
     case "Lazy":
@@ -660,7 +660,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
     case "TypeLiteral":
-      return ast.fields.map((f): AST =>
+      return ast.propertySignatures.map((f): AST =>
         typeof f.name === "symbol" ? uniqueSymbol(f.name) : literal(f.name)
       ).concat(ast.indexSignatures.map((is) => is.parameter))
     case "Union": {
@@ -693,7 +693,7 @@ export const keyof = (ast: AST): AST => union(_keyof(ast))
  * @since 1.0.0
  */
 export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral => {
-  const fields: Array<Field> = []
+  const propertySignatures: Array<PropertySignature> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
     switch (key._tag) {
@@ -709,11 +709,11 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
         break
       case "Literal":
         if (isString(key.literal) || isNumber(key.literal)) {
-          fields.push(field(key.literal, value, false, isReadonly))
+          propertySignatures.push(propertySignature(key.literal, value, false, isReadonly))
         }
         break
       case "UniqueSymbol":
-        fields.push(field(key.symbol, value, false, isReadonly))
+        propertySignatures.push(propertySignature(key.symbol, value, false, isReadonly))
         break
       case "Union":
         key.types.forEach(go)
@@ -726,21 +726,21 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
     }
   }
   go(key)
-  return typeLiteral(fields, indexSignatures)
+  return typeLiteral(propertySignatures, indexSignatures)
 }
 
 /**
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return typeLiteral(getFields(ast).filter((field) => keys.includes(field.name)), [])
+  return typeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
 }
 
 /**
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return typeLiteral(getFields(ast).filter((field) => !keys.includes(field.name)), [])
+  return typeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
 }
 
 /** @internal */
@@ -751,7 +751,7 @@ export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
     case "Tuple":
       return ast.elements.map((_, i) => String(i))
     case "TypeLiteral":
-      return ast.fields.map((field) => field.name)
+      return ast.propertySignatures.map((ps) => ps.name)
     case "Union": {
       let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.types[0])
       for (let i = 1; i < ast.types.length; i++) {
@@ -771,41 +771,41 @@ export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
 /**
  * @since 1.0.0
  */
-export const getFields = (
+export const getPropertySignatures = (
   ast: AST
-): ReadonlyArray<Field> => {
+): ReadonlyArray<PropertySignature> => {
   switch (ast._tag) {
     case "TypeAlias":
-      return getFields(ast.type)
+      return getPropertySignatures(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
-        field(String(i), element.type, element.isOptional, ast.isReadonly)
+        propertySignature(String(i), element.type, element.isOptional, ast.isReadonly)
       )
     case "TypeLiteral":
-      return ast.fields
+      return ast.propertySignatures
     case "Union": {
-      const fields = pipe(ast.types, RA.flatMap(getFields))
+      const propertySignatures = pipe(ast.types, RA.flatMap(getPropertySignatures))
       return propertyKeys(ast).map((key) => {
         let isOptional = false
         let isReadonly = false
         const type = union(
-          fields.filter((field) => field.name === key).map((field) => {
-            if (field.isReadonly) {
+          propertySignatures.filter((ps) => ps.name === key).map((ps) => {
+            if (ps.isReadonly) {
               isReadonly = true
             }
-            if (field.isOptional) {
+            if (ps.isOptional) {
               isOptional = true
             }
-            return field.type
+            return ps.type
           })
         )
-        return field(key, type, isOptional, isReadonly)
+        return propertySignature(key, type, isOptional, isReadonly)
       })
     }
     case "Lazy":
-      return getFields(ast.f())
+      return getPropertySignatures(ast.f())
     case "Refinement":
-      return getFields(ast.from)
+      return getPropertySignatures(ast.from)
     default:
       return []
   }
@@ -829,7 +829,9 @@ export const partial = (ast: AST): AST => {
       )
     case "TypeLiteral":
       return typeLiteral(
-        ast.fields.map((f) => field(f.name, f.type, true, f.isReadonly, f.annotations)),
+        ast.propertySignatures.map((f) =>
+          propertySignature(f.name, f.type, true, f.isReadonly, f.annotations)
+        ),
         ast.indexSignatures
       )
     case "Union":

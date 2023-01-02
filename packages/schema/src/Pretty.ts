@@ -122,22 +122,22 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         )
       }
       case "TypeLiteral": {
-        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
         return make(
           I.makeSchema(ast),
           (input: { readonly [x: PropertyKey]: unknown }) => {
             const output: Array<string> = []
             // ---------------------------------------------
-            // handle fields
+            // handle property signatures
             // ---------------------------------------------
-            for (let i = 0; i < fieldTypes.length; i++) {
-              const field = ast.fields[i]
-              const name = field.name
-              if (field.isOptional && !Object.prototype.hasOwnProperty.call(input, name)) {
+            for (let i = 0; i < propertySignaturesTypes.length; i++) {
+              const ps = ast.propertySignatures[i]
+              const name = ps.name
+              if (ps.isOptional && !Object.prototype.hasOwnProperty.call(input, name)) {
                 continue
               }
-              output.push(`${prettyName(name)}: ${fieldTypes[i].pretty(input[name])}`)
+              output.push(`${prettyName(name)}: ${propertySignaturesTypes[i].pretty(input[name])}`)
             }
             // ---------------------------------------------
             // handle index signatures

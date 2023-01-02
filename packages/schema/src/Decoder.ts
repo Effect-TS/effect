@@ -260,11 +260,11 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       }
       case "TypeLiteral": {
-        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const
         )
-        if (fieldTypes.length === 0 && indexSignatures.length === 0) {
+        if (propertySignaturesTypes.length === 0 && indexSignatures.length === 0) {
           return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => DE.type("{}", u))
         }
         return make(
@@ -277,16 +277,15 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             const expectedKeys: any = {}
             const es: Array<DE.DecodeError> = []
             // ---------------------------------------------
-            // handle fields
+            // handle property signatures
             // ---------------------------------------------
-            for (let i = 0; i < fieldTypes.length; i++) {
-              const field = ast.fields[i]
-              const decoder = fieldTypes[i]
-              const name = field.name
+            for (let i = 0; i < propertySignaturesTypes.length; i++) {
+              const ps = ast.propertySignatures[i]
+              const decoder = propertySignaturesTypes[i]
+              const name = ps.name
               expectedKeys[name] = null
-              // TODO: handle custom decoding logic here
               if (!Object.prototype.hasOwnProperty.call(input, name)) {
-                if (field.isOptional) {
+                if (ps.isOptional) {
                   continue
                 }
                 return failure(DE.key(name, [DE.missing]))

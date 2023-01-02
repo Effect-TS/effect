@@ -131,7 +131,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         )
       }
       case "TypeLiteral": {
-        const fieldTypes = ast.fields.map((f) => go(f.type))
+        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const
         )
@@ -141,15 +141,15 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             const arbs: any = {}
             const requiredKeys: Array<PropertyKey> = []
             // ---------------------------------------------
-            // handle fields
+            // handle property signatures
             // ---------------------------------------------
-            for (let i = 0; i < fieldTypes.length; i++) {
-              const field = ast.fields[i]
-              const name = field.name
-              if (!field.isOptional) {
+            for (let i = 0; i < propertySignaturesTypes.length; i++) {
+              const ps = ast.propertySignatures[i]
+              const name = ps.name
+              if (!ps.isOptional) {
                 requiredKeys.push(name)
               }
-              arbs[name] = fieldTypes[i].arbitrary(fc)
+              arbs[name] = propertySignaturesTypes[i].arbitrary(fc)
             }
             let output = fc.record<any, any>(arbs, { requiredKeys })
             // ---------------------------------------------
