@@ -9,7 +9,7 @@ import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Both, These } from "@fp-ts/data/These"
-import type { Annotated, Literal } from "@fp-ts/schema/AST"
+import type { Annotated, LiteralValue } from "@fp-ts/schema/AST"
 import type { Class } from "@fp-ts/schema/data/refinement"
 import type { DecodeError } from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -115,7 +115,7 @@ export const codecFor = <A>(schema: Schema<A>): Codec<A> => make(schema)
  * @category constructors
  * @since 1.0.0
  */
-export const literal = <A extends ReadonlyArray<Literal>>(
+export const literal = <A extends ReadonlyArray<LiteralValue>>(
   ...a: A
 ): Codec<A[number]> => codecFor(S.literal(...a))
 

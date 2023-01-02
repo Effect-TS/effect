@@ -57,7 +57,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             ({ handler }) => handler(...ast.typeParameters.map(go))
           )
         )
-      case "LiteralType":
+      case "Literal":
         return make(I.makeSchema(ast), (fc) => fc.constant(ast.literal))
       case "UniqueSymbol":
         return make(I.makeSchema(ast), (fc) => fc.constant(ast.symbol))

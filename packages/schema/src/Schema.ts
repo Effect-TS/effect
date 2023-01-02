@@ -44,7 +44,7 @@ export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
  * @category constructors
  * @since 1.0.0
  */
-export const literal: <Literals extends ReadonlyArray<AST.Literal>>(
+export const literal: <Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ) => Schema<Literals[number]> = I.literal
 
@@ -97,7 +97,7 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
 export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
   ...[head, ...tail]: T
 ): Schema<Join<{ [K in keyof T]: Infer<T[K]> }>> => {
-  let types: ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> = getTemplateLiterals(head.ast)
+  let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
   for (const span of tail) {
     types = pipe(
       types,
@@ -108,15 +108,15 @@ export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
 }
 
 const combineTemplateLiterals = (
-  a: AST.TemplateLiteral | AST.LiteralType,
-  b: AST.TemplateLiteral | AST.LiteralType
-): AST.TemplateLiteral | AST.LiteralType => {
-  if (AST.isLiteralType(a)) {
-    return AST.isLiteralType(b) ?
-      AST.literalType(String(a.literal) + String(b.literal)) :
+  a: AST.TemplateLiteral | AST.Literal,
+  b: AST.TemplateLiteral | AST.Literal
+): AST.TemplateLiteral | AST.Literal => {
+  if (AST.isLiteral(a)) {
+    return AST.isLiteral(b) ?
+      AST.literal(String(a.literal) + String(b.literal)) :
       AST.templateLiteral(String(a.literal) + b.head, b.spans)
   }
-  if (AST.isLiteralType(b)) {
+  if (AST.isLiteral(b)) {
     return AST.templateLiteral(
       a.head,
       pipe(
@@ -137,9 +137,9 @@ const combineTemplateLiterals = (
 
 const getTemplateLiterals = (
   ast: AST.AST
-): ReadonlyArray<AST.TemplateLiteral | AST.LiteralType> => {
+): ReadonlyArray<AST.TemplateLiteral | AST.Literal> => {
   switch (ast._tag) {
-    case "LiteralType":
+    case "Literal":
       return [ast]
     case "StringKeyword":
       return [AST.templateLiteral("", [{ type: ast, literal: "" }])]

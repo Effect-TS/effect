@@ -156,11 +156,11 @@ export const refinement = <A, B extends A>(
 ): Schema<B> =>
   makeSchema(AST.typeAlias([], AST.refinement(from.ast, refinement, meta), annotations))
 
-const makeLiteral = <Literal extends AST.Literal>(value: Literal): Schema<Literal> =>
-  makeSchema(AST.literalType(value))
+const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
+  makeSchema(AST.literal(value))
 
 /** @internal */
-export const literal = <Literals extends ReadonlyArray<AST.Literal>>(
+export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
 ): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
 
@@ -189,7 +189,7 @@ export const isUndefined = (u: unknown): u is undefined => u === undefined
 export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
 
 /** @internal */
-export const _null: Schema<null> = makeSchema(AST.literalType(null))
+export const _null: Schema<null> = makeSchema(AST.literal(null))
 
 /** @internal */
 export const _void: Schema<void> = makeSchema(AST.voidKeyword)

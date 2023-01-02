@@ -45,7 +45,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
             ({ handler }) => handler(...ast.typeParameters.map(go))
           )
         )
-      case "LiteralType":
+      case "Literal":
         return make(I.makeSchema(ast), (u): u is typeof ast.literal => u === ast.literal)
       case "UniqueSymbol":
         return make(I.makeSchema(ast), (u): u is typeof ast.symbol => u === ast.symbol)

@@ -90,7 +90,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
             ({ schema }) => ({ ...go(ast.type), ...schema })
           )
         )
-      case "LiteralType": {
+      case "Literal": {
         if (typeof ast.literal === "bigint") {
           return {} as any
         } else if (ast.literal === null) {

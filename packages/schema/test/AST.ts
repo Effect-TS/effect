@@ -187,7 +187,7 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType("b"), false, true),
+            AST.field("b", AST.literal("b"), false, true),
             AST.field("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
@@ -226,7 +226,7 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "Struct",
           fields: [
-            AST.field("b", AST.literalType(null), false, true),
+            AST.field("b", AST.literal(null), false, true),
             AST.field("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: [],

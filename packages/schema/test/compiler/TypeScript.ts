@@ -152,7 +152,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               )
           )
         )
-      case "LiteralType": {
+      case "Literal": {
         const literal = ast.literal
         if (typeof literal === "string") {
           return make(

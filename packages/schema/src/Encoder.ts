@@ -44,7 +44,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             ({ handler }) => handler(...ast.typeParameters.map(go))
           )
         )
-      case "LiteralType":
+      case "Literal":
       case "UniqueSymbol":
       case "Enums":
       case "UndefinedKeyword":

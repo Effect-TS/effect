@@ -18,7 +18,7 @@ import { isString } from "@fp-ts/data/String"
  */
 export type AST =
   | TypeAlias
-  | LiteralType
+  | Literal
   | UniqueSymbol
   | UndefinedKeyword
   | VoidKeyword
@@ -75,30 +75,30 @@ export const isTypeAlias = (ast: AST): ast is TypeAlias => ast._tag === "TypeAli
 /**
  * @since 1.0.0
  */
-export type Literal = string | number | boolean | null | bigint
+export type LiteralValue = string | number | boolean | null | bigint
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface LiteralType {
-  readonly _tag: "LiteralType"
-  readonly literal: Literal
+export interface Literal {
+  readonly _tag: "Literal"
+  readonly literal: LiteralValue
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const literalType = (
-  literal: Literal
-): LiteralType => ({ _tag: "LiteralType", literal })
+export const literal = (
+  literal: LiteralValue
+): Literal => ({ _tag: "Literal", literal })
 
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isLiteralType = (ast: AST): ast is LiteralType => ast._tag === "LiteralType"
+export const isLiteral = (ast: AST): ast is Literal => ast._tag === "Literal"
 
 /**
  * @category model
@@ -397,7 +397,7 @@ const getCardinality = (ast: AST): number => {
       return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
-    case "LiteralType":
+    case "Literal":
     case "UndefinedKeyword":
     case "VoidKeyword":
     case "UniqueSymbol":
@@ -482,10 +482,10 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
     RA.flatMap((ast: AST): ReadonlyArray<AST> => isUnion(ast) ? ast.types : [ast])
   ))
   if (out.some(isStringKeyword)) {
-    out = out.filter((m) => !(isLiteralType(m) && typeof m.literal === "string"))
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "string"))
   }
   if (out.some(isNumberKeyword)) {
-    out = out.filter((m) => !(isLiteralType(m) && typeof m.literal === "number"))
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "number"))
   }
   if (out.some(isSymbolKeyword)) {
     out = out.filter((m) => !isUniqueSymbol(m))
@@ -604,8 +604,8 @@ export interface TemplateLiteral {
 export const templateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>
-): TemplateLiteral | LiteralType =>
-  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literalType(head)
+): TemplateLiteral | Literal =>
+  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literal(head)
 
 /**
  * @category guards
@@ -661,7 +661,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return [stringKeyword, numberKeyword, symbolKeyword]
     case "Struct":
       return ast.fields.map((f): AST =>
-        typeof f.name === "symbol" ? uniqueSymbol(f.name) : literalType(f.name)
+        typeof f.name === "symbol" ? uniqueSymbol(f.name) : literal(f.name)
       ).concat(ast.indexSignatures.map((is) => is.parameter))
     case "Union": {
       let out: ReadonlyArray<AST> = _keyof(ast.types[0])
@@ -674,7 +674,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return _keyof(ast.f())
     case "Refinement":
       return _keyof(ast.from)
-    case "LiteralType":
+    case "Literal":
     case "StringKeyword":
     case "TemplateLiteral":
     case "Tuple":
@@ -707,7 +707,7 @@ export const record = (key: AST, value: AST, isReadonly: boolean): Struct => {
       case "TemplateLiteral":
         indexSignatures.push(indexSignature(key, value, isReadonly))
         break
-      case "LiteralType":
+      case "Literal":
         if (isString(key.literal) || isNumber(key.literal)) {
           fields.push(field(key.literal, value, false, isReadonly))
         }

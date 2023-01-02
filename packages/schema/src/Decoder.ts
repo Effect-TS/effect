@@ -103,7 +103,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             ({ handler }) => handler(...ast.typeParameters.map(go))
           )
         )
-      case "LiteralType":
+      case "Literal":
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.literal => u === ast.literal,

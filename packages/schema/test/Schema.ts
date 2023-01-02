@@ -6,20 +6,20 @@ import * as S from "@fp-ts/schema/Schema"
 describe.concurrent("Schema", () => {
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
-    expect(schema.ast).toEqual(AST.literalType("a"))
+    expect(schema.ast).toEqual(AST.literal("a"))
   })
 
   it("templateLiteral. a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
     expect(schema.ast).toEqual(
-      AST.literalType("a b")
+      AST.literal("a b")
     )
   })
 
   it("templateLiteral. (a | b) c", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
     expect(schema.ast).toEqual(
-      AST.union([AST.literalType("ac"), AST.literalType("bc")])
+      AST.union([AST.literal("ac"), AST.literal("bc")])
     )
   })
 
@@ -27,10 +27,10 @@ describe.concurrent("Schema", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
     expect(schema.ast).toEqual(
       AST.union([
-        AST.literalType("acd"),
-        AST.literalType("ace"),
-        AST.literalType("bcd"),
-        AST.literalType("bce")
+        AST.literal("acd"),
+        AST.literal("ace"),
+        AST.literal("bcd"),
+        AST.literal("bce")
       ])
     )
   })
@@ -72,12 +72,12 @@ describe.concurrent("Schema", () => {
     })
 
     it("should return an unwrapped AST with exactly one literal", () => {
-      expect(S.literal(1).ast).toEqual(AST.literalType(1))
+      expect(S.literal(1).ast).toEqual(AST.literal(1))
     })
 
     it("should return a union with more than one literal", () => {
       expect(S.literal(1, 2).ast).toEqual(
-        AST.union([AST.literalType(1), AST.literalType(2)])
+        AST.union([AST.literal(1), AST.literal(2)])
       )
     })
   })

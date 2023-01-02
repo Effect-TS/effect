@@ -43,10 +43,10 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
             ({ handler }) => handler(...ast.typeParameters.map(go))
           )
         )
-      case "LiteralType":
+      case "Literal":
         return make(
           I.makeSchema(ast),
-          (literal: AST.Literal): string =>
+          (literal: AST.LiteralValue): string =>
             typeof literal === "bigint" ?
               `${literal.toString()}n` :
               typeof literal === "symbol" ?
