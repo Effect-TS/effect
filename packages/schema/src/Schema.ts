@@ -253,23 +253,23 @@ export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
 // combinators
 // ---------------------------------------------
 
-/**
- * @category unexpected keys / indexes
- * @since 1.0.0
- */
-export const allowUnexpected = <A>(self: Schema<A>): Schema<A> =>
-  AST.isTypeLiteral(self.ast) || AST.isTuple(self.ast) ?
-    make({ ...self.ast, allowUnexpected: true }) :
-    self
+const handleUnexpected = (b: boolean) =>
+  <A>(self: Schema<A>): Schema<A> =>
+    AST.isTypeLiteral(self.ast) || AST.isTuple(self.ast) ?
+      make({ ...self.ast, isUnexpectedAllowed: b }) :
+      self
 
 /**
  * @category unexpected keys / indexes
  * @since 1.0.0
  */
-export const disallowUnexpected = <A>(self: Schema<A>): Schema<A> =>
-  AST.isTypeLiteral(self.ast) ?
-    make({ ...self.ast, allowUnexpected: false }) :
-    self
+export const allowUnexpected: <A>(self: Schema<A>) => Schema<A> = handleUnexpected(true)
+
+/**
+ * @category unexpected keys / indexes
+ * @since 1.0.0
+ */
+export const disallowUnexpected: <A>(self: Schema<A>) => Schema<A> = handleUnexpected(false)
 
 /**
  * @category combinators

@@ -191,7 +191,8 @@ describe.concurrent("AST", () => {
             AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          allowUnexpected: false
+          isUnexpectedAllowed: false,
+          annotations: {}
         })
       })
 
@@ -204,7 +205,8 @@ describe.concurrent("AST", () => {
             AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          allowUnexpected: false
+          isUnexpectedAllowed: false,
+          annotations: {}
         })
       })
 
@@ -217,7 +219,8 @@ describe.concurrent("AST", () => {
             AST.propertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
-          allowUnexpected: false
+          isUnexpectedAllowed: false,
+          annotations: {}
         })
       })
 
@@ -230,7 +233,8 @@ describe.concurrent("AST", () => {
             AST.propertySignature("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: [],
-          allowUnexpected: false
+          isUnexpectedAllowed: false,
+          annotations: {}
         })
       })
     })

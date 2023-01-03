@@ -244,7 +244,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // handle unexpected indexes
               // ---------------------------------------------
               for (; i < input.length; i++) {
-                if (ast.allowUnexpected) {
+                if (ast.isUnexpectedAllowed) {
                   es.push(DE.index(i, [DE.unexpected(input[i])]))
                 } else {
                   return failures(I.mutableAppend(es, DE.index(i, [DE.unexpected(input[i])])))
@@ -337,7 +337,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // ---------------------------------------------
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-                  if (ast.allowUnexpected) {
+                  if (ast.isUnexpectedAllowed) {
                     es.push(DE.key(key, [DE.unexpected(input[key])]))
                   } else {
                     return failures(I.mutableAppend(es, DE.key(key, [DE.unexpected(input[key])])))
