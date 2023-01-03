@@ -10,10 +10,8 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DataParse from "@fp-ts/schema/data/parser"
 import * as R from "@fp-ts/schema/data/refinement"
 import type { Decoder } from "@fp-ts/schema/Decoder"
-import type { Encoder } from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 
 /**
@@ -283,7 +281,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @category combinators
  * @since 1.0.0
  */
-export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, literal(null))
+export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, _null)
 
 /**
  * @category combinators
@@ -480,11 +478,21 @@ export const filter = <A, B extends A>(
  * @category combinators
  * @since 1.0.0
  */
-export const parse: <A, B>(
+export const transformOrFail: <A, B>(
   to: Schema<B>,
-  decode: Decoder<A, B>["decode"],
-  encode: Encoder<A, B>["encode"]
-) => (self: Schema<A>) => Schema<B> = DataParse.parse
+  f: Decoder<A, B>["decode"],
+  g: Decoder<B, A>["decode"]
+) => (self: Schema<A>) => Schema<B> = I.transformOrFail
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const transform: <A, B>(
+  to: Schema<B>,
+  f: (a: A) => B,
+  g: (b: B) => A
+) => (self: Schema<A>) => Schema<B> = I.transform
 
 // ---------------------------------------------
 // data
@@ -578,4 +586,16 @@ export const json: Schema<Json> = DataJson.json
  * @category data
  * @since 1.0.0
  */
-export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.option
+export const option = <A>(
+  value: Schema<A>,
+  kind: "plain" | "fromNullable" | "inline" = "fromNullable"
+): Schema<Option<A>> => {
+  switch (kind) {
+    case "plain":
+      return DataOption.plain(value)
+    case "fromNullable":
+      return DataOption.fromNullable(value)
+    case "inline":
+      return DataOption.inline(value)
+  }
+}

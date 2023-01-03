@@ -67,7 +67,7 @@ const go = (e: DE.DecodeError): Tree<string> => {
       return make(
         `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
       )
-    case "Parse":
+    case "Transform":
       return make(
         `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
       )

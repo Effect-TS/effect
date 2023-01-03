@@ -19,17 +19,17 @@ const decoder = <A>(
 ): Decoder<unknown, Option<A>> => {
   const decoder = D.decoderFor(I.union(I._undefined, I._null, value))
   return I.makeDecoder(
-    option(value),
+    fromNullable(value),
     (i) => pipe(decoder.decode(i), T.map(O.fromNullable))
   )
 }
 
 const encoder = <A>(value: Encoder<unknown, A>): Encoder<unknown, Option<A>> =>
-  I.makeEncoder(option(value), (oa) => pipe(oa, O.map(value.encode), O.getOrNull))
+  I.makeEncoder(fromNullable(value), (oa) => pipe(oa, O.map(value.encode), O.getOrNull))
 
 const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
   P.make(
-    option(value),
+    fromNullable(value),
     O.match(
       () => "none",
       (a) => `some(${value.pretty(a)})`
@@ -39,17 +39,28 @@ const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
 /**
  * @since 1.0.0
  */
-export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
-  I.typeAlias(
-    [value],
-    I.union(
-      I.struct({ _tag: I.literal("None") }),
-      I.struct({ _tag: I.literal("Some"), value })
-    ),
-    {
-      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
-      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
-      [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
-      [TH.IdentifierAnnotationId]: TH.identifierAnnotation("Option")
-    }
+export const inline = <A>(value: Schema<A>): Schema<Option<A>> =>
+  I.union(
+    I.struct({ _tag: I.literal("None") }),
+    I.struct({ _tag: I.literal("Some"), value })
   )
+
+/**
+ * @since 1.0.0
+ */
+export const plain = <A>(value: Schema<A>): Schema<Option<A>> =>
+  I.typeAlias([value], inline(value), {
+    [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
+    [TH.IdentifierAnnotationId]: TH.identifierAnnotation("Option")
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const fromNullable = <A>(value: Schema<A>): Schema<Option<A>> =>
+  I.typeAlias([value], inline(value), {
+    [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+    [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
+    [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
+    [TH.IdentifierAnnotationId]: TH.identifierAnnotation("Option")
+  })

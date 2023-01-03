@@ -93,7 +93,7 @@ const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Decoder<unknown, any
  * @since 1.0.0
  */
 export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
-  const go = (ast: AST.AST): Decoder<unknown, any> => {
+  const go = (ast: AST.AST): Decoder<any, any> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
@@ -156,7 +156,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               try {
                 return I.success(BigInt(u))
               } catch (_e) {
-                return I.failure(DE.parse("string | number | boolean", "bigint", u))
+                return I.failure(DE.transform("string | number | boolean", "bigint", u))
               }
             }
             return I.failure(DE.type("string | number | boolean", u))
@@ -386,7 +386,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
       }
       case "Lazy": {
         const f = () => go(ast.f())
-        const get = I.memoize<void, Decoder<unknown, any>>(f)
+        const get = I.memoize<void, Decoder<any, any>>(f)
         const schema = I.lazy(f)
         return make(
           schema,
@@ -422,6 +422,13 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             isString(u) ?
               regex.test(u) ? I.success(u) : I.failure(DE.type(regex.source, u)) :
               I.failure(DE.type("string", u))
+        )
+      }
+      case "Transform": {
+        const from = go(ast.from)
+        return make(
+          I.makeSchema(ast),
+          (u) => pipe(from.decode(u), I.flatMap(ast.f))
         )
       }
     }

@@ -1,4 +1,5 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import * as C from "@fp-ts/schema/Codec"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -48,7 +49,7 @@ describe.concurrent("Codec", () => {
     expect(C.extend).exist
     expect(C.lazy).exist
     expect(C.filter).exist
-    expect(C.parse).exist
+    expect(C.transformOrFail).exist
 
     expect(C.undefined).exist
     expect(C.void).exist
@@ -74,6 +75,51 @@ describe.concurrent("Codec", () => {
 └─ key "name"
    └─ is missing`)
     )
+  })
+
+  it(`transform. { a: 'a' } -> { a: 'a', b: none }`, () => {
+    const from = S.struct({
+      a: S.string,
+      b: S.optional(S.union(S.nullable(S.number), S.undefined))
+    })
+
+    const to = S.struct({
+      a: S.string,
+      b: S.option(S.number, "plain")
+    })
+
+    const schema = pipe(
+      from,
+      pipe(S.transform(to, (o) => ({ ...o, b: O.fromNullable(o.b) }), (o) => {
+        const { b: b, ...rest } = o
+        if (O.isSome(b)) {
+          rest["b"] = b.value
+        }
+        return rest
+      }))
+    )
+
+    const codec = C.codecFor(schema)
+    expect(codec.decode({ a: "a" })).toEqual(C.success({ a: "a", b: O.none }))
+    expect(codec.decode({ a: "a", b: undefined })).toEqual(C.success({ a: "a", b: O.none }))
+    expect(codec.decode({ a: "a", b: null })).toEqual(C.success({ a: "a", b: O.none }))
+    expect(codec.decode({ a: "a", b: 1 })).toEqual(C.success({ a: "a", b: O.some(1) }))
+
+    Util.expectFailureTree(
+      codec,
+      { a: "a", b: "b" },
+      `1 error(s) found
+└─ key "b"
+   ├─ union member
+   │  └─ "b" did not satisfy is(number)
+   ├─ union member
+   │  └─ "b" did not satisfy isEqual(null)
+   └─ union member
+      └─ "b" did not satisfy is(undefined)`
+    )
+
+    expect(codec.encode({ a: "a", b: O.none })).toStrictEqual({ a: "a" })
+    expect(codec.encode({ a: "a", b: O.some(1) })).toStrictEqual({ a: "a", b: 1 })
   })
 
   it("templateLiteral. a", () => {

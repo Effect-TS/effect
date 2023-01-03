@@ -723,7 +723,7 @@ describe.concurrent("Guard", () => {
 
   describe.concurrent("partial", () => {
     it("type alias", () => {
-      const schema = S.partial(DataOption.option(S.number))
+      const schema = S.partial(DataOption.fromNullable(S.number))
       const guard = guardFor(schema)
       expect(guard.is(O.none)).toEqual(true)
       expect(guard.is(O.some(1))).toEqual(true)

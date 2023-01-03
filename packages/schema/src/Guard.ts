@@ -182,10 +182,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
       }
       case "Union": {
         const types = ast.types.map(go)
-        return make(
-          I.makeSchema(ast),
-          (a): a is any => types.some((guard) => guard.is(a))
-        )
+        return make(I.makeSchema(ast), (a): a is any => types.some((guard) => guard.is(a)))
       }
       case "Lazy": {
         const f = () => go(ast.f())
@@ -197,24 +194,17 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
         )
       }
       case "Enums":
-        return make(
-          I.makeSchema(ast),
-          (a): a is any => ast.enums.some(([_, value]) => value === a)
-        )
+        return make(I.makeSchema(ast), (a): a is any => ast.enums.some(([_, value]) => value === a))
       case "Refinement": {
         const type = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (u): u is any => type.is(u) && ast.refinement(u)
-        )
+        return make(I.makeSchema(ast), (u): u is any => type.is(u) && ast.refinement(u))
       }
       case "TemplateLiteral": {
         const regex = I.getTemplateLiteralRegex(ast)
-        return make(
-          I.makeSchema(ast),
-          (u): u is any => isString(u) && regex.test(u)
-        )
+        return make(I.makeSchema(ast), (u): u is any => isString(u) && regex.test(u))
       }
+      case "Transform":
+        return go(ast.to)
     }
   }
 

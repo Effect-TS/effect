@@ -437,11 +437,18 @@ export const filter = <A, B extends A>(
  * @category combinators
  * @since 1.0.0
  */
-export const parse = <A, B>(
+export const transformOrFail = <A, B>(
   to: Schema<B>,
-  decode: Decoder<A, B>["decode"],
-  encode: Encoder<A, B>["encode"]
-) => (self: Schema<A>): Codec<B> => codecFor(S.parse(to, decode, encode)(self))
+  f: Decoder<A, B>["decode"],
+  g: Decoder<B, A>["decode"]
+) => (self: Schema<A>): Codec<B> => codecFor(S.transformOrFail(to, f, g)(self))
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
+  (self: Schema<A>): Codec<B> => codecFor(S.transform(to, f, g)(self))
 
 // ---------------------------------------------
 // data
@@ -535,4 +542,7 @@ export const json: Codec<Json.Json> = codecFor(S.json)
  * @category data
  * @since 1.0.0
  */
-export const option = <A>(value: Schema<A>): Codec<Option<A>> => codecFor(S.option(value))
+export const option = <A>(
+  value: Schema<A>,
+  kind: "plain" | "fromNullable" | "inline" = "fromNullable"
+): Codec<Option<A>> => codecFor(S.option(value, kind))

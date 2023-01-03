@@ -377,6 +377,26 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
           ))
         )
       }
+      case "Transform": {
+        return make(
+          ast,
+          pipe(
+            go(ast.from).nodes,
+            Applicative.product(go(ast.to).nodes),
+            map(([from, to]) =>
+              ts.factory.createFunctionTypeNode([], [
+                ts.factory.createParameterDeclaration(
+                  [],
+                  undefined,
+                  "from",
+                  undefined,
+                  from
+                )
+              ], to)
+            )
+          )
+        )
+      }
     }
   }
 

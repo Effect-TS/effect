@@ -47,7 +47,7 @@ describe.concurrent("parseString", () => {
 
     // failure cases
     expect(codec.decode("a")).toEqual(
-      C.failure(DE.parse("string", "number", "a"))
+      C.failure(DE.transform("string", "number", "a"))
     )
   })
 })

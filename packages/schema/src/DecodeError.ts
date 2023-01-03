@@ -16,7 +16,7 @@ export type DecodeError =
   | Equal
   | Enums
   | Refinement
-  | Parse
+  | Transform
   | Index
   | Key
   | Missing
@@ -154,18 +154,18 @@ export const refinement = (meta: unknown, actual: unknown): Refinement => ({
 })
 
 /**
- * The `Parse` variant of the `DecodeError` type represents an error that occurs when a value cannot be parsed
+ * The `Transform` variant of the `DecodeError` type represents an error that occurs when a value cannot be transformed
  * from one format to another. For example, this error might occur when attempting to parse a string as a number.
- * The `from` field specifies the format that the value is being parsed from, and the `to` field specifies the format
- * that the value is being parsed to. The `actual` field contains the value that caused the error.
+ * The `from` field specifies the format that the value is being transformed from, and the `to` field specifies the format
+ * that the value is being transformed to. The `actual` field contains the value that caused the error.
  * This error is typically used in conjunction with the `parse` function from the `@fp-ts/schema/data/parser` module,
  * which allows users to define custom parsers for specific types or formats.
  *
  * @category model
  * @since 1.0.0
  */
-export interface Parse {
-  readonly _tag: "Parse"
+export interface Transform {
+  readonly _tag: "Transform"
   readonly from: string
   readonly to: string
   readonly actual: unknown
@@ -175,8 +175,8 @@ export interface Parse {
  * @category constructors
  * @since 1.0.0
  */
-export const parse = (from: string, to: string, actual: unknown): Parse => ({
-  _tag: "Parse",
+export const transform = (from: string, to: string, actual: unknown): Transform => ({
+  _tag: "Transform",
   from,
   to,
   actual

@@ -65,7 +65,7 @@ const formatDecodeError = (e: DE.DecodeError): string => {
       return `${stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
       return `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
-    case "Parse":
+    case "Transform":
       return `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
       return `${stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`

@@ -248,7 +248,7 @@ describe.concurrent("AST", () => {
 
     it("TypeAlias", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(AST.propertyKeys(DataOption.option(S.number).ast)).toEqual(["_tag"])
+      expect(AST.propertyKeys(DataOption.fromNullable(S.number).ast)).toEqual(["_tag"])
     })
 
     it("tuple", () => {
@@ -302,7 +302,7 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("getPropertySignatures", () => {
     it("type alias", () => {
-      const schema = DataOption.option(S.number)
+      const schema = DataOption.fromNullable(S.number)
       expect(AST.getPropertySignatures(schema.ast)).toEqual([
         AST.propertySignature(
           "_tag",

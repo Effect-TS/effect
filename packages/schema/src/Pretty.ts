@@ -167,15 +167,14 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         const f = () => go(ast.f())
         const get = I.memoize<void, Pretty<A>>(f)
         const schema = I.lazy(f)
-        return make(
-          schema,
-          (a) => get().pretty(a)
-        )
+        return make(schema, (a) => get().pretty(a))
       }
       case "Enums":
         return make(I.makeSchema(ast), (sn) => JSON.stringify(sn))
       case "Refinement":
         return go(ast.from)
+      case "Transform":
+        return go(ast.to)
     }
   }
 

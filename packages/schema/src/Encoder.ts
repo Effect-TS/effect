@@ -5,6 +5,7 @@
 import { absurd, identity, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
+import * as T from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as G from "@fp-ts/schema/Guard"
@@ -185,13 +186,25 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         const f = () => go(ast.f())
         const get = I.memoize<void, Encoder<unknown, any>>(f)
         const schema = I.lazy(f)
-        return make(
-          schema,
-          (a) => get().encode(a)
-        )
+        return make(schema, (a) => get().encode(a))
       }
       case "Refinement":
         return go(ast.from)
+      case "Transform": {
+        const to = go(ast.to)
+        const from = go(ast.from)
+        // TODO: remove getOrThrow once encoders are allowed to possibly fail
+        return make(
+          I.makeSchema(ast),
+          (a) =>
+            pipe(
+              to.encode(a),
+              ast.g,
+              T.getOrThrow(() => new Error(`cannot encode ${a}`)),
+              from.encode
+            )
+        )
+      }
     }
   }
 

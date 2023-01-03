@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
@@ -155,6 +156,18 @@ export const refinement = <A, B extends A>(
   annotations: AST.Annotated["annotations"] = {}
 ): Schema<B> =>
   makeSchema(AST.typeAlias([], AST.refinement(from.ast, refinement, meta), annotations))
+
+/** @internal */
+export const transformOrFail = <A, B>(
+  to: Schema<B>,
+  f: Decoder<A, B>["decode"],
+  g: Decoder<B, A>["decode"]
+) => (self: Schema<A>): Schema<B> => makeSchema(AST.transformOrFail(self.ast, to.ast, f, g))
+
+/** @internal */
+export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
+  (self: Schema<A>): Schema<B> =>
+    pipe(self, transformOrFail(to, (a) => success(f(a)), (b) => success(g(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))

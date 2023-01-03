@@ -11,6 +11,7 @@ import * as O from "@fp-ts/data/Option"
 import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
+import type { Decoder } from "@fp-ts/schema/Decoder"
 
 /**
  * @category model
@@ -38,6 +39,7 @@ export type AST =
   | Enums
   | Refinement
   | TemplateLiteral
+  | Transform
 
 /**
  * @since 1.0.0
@@ -623,6 +625,33 @@ export const templateLiteral = (
  */
 export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral =>
   ast._tag === "TemplateLiteral"
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Transform {
+  readonly _tag: "Transform"
+  readonly from: AST
+  readonly to: AST
+  readonly f: Decoder<any, any>["decode"]
+  readonly g: Decoder<any, any>["decode"]
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const transformOrFail = (
+  from: AST,
+  to: AST,
+  f: Transform["f"],
+  g: Transform["g"]
+): Transform => ({ _tag: "Transform", from, to, f, g })
+
+// ---------------------------------------------
+// API
+// ---------------------------------------------
 
 /**
  * @since 1.0.0
