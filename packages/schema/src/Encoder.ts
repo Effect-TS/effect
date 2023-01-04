@@ -58,11 +58,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "SymbolKeyword":
       case "ObjectKeyword":
       case "TemplateLiteral":
+      case "BigIntKeyword":
         return make(I.makeSchema(ast), identity)
       case "NeverKeyword":
         return make<unknown, never>(I.makeSchema(ast), absurd) as any
-      case "BigIntKeyword":
-        return make(I.makeSchema(ast), (n) => n.toString())
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))

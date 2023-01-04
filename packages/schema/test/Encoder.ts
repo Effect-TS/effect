@@ -30,7 +30,7 @@ describe.concurrent("Encoder", () => {
 
   it("bigint", () => {
     const encoder = E.encoderFor(S.bigint)
-    expect(encoder.encode(1n)).toEqual("1")
+    expect(encoder.encode(1n)).toEqual(1n)
   })
 
   it("symbol", () => {

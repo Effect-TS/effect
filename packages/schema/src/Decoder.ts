@@ -26,7 +26,6 @@ export type DecodeResult<A> = Validated<DE.DecodeError, A>
  * @since 1.0.0
  */
 export interface Decoder<I, A> extends Schema<A> {
-  readonly I: (_: I) => void
   readonly decode: (i: I) => DecodeResult<A>
 }
 
@@ -116,22 +115,11 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
           (u) => DE.equal(ast.symbol, u)
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(
-          I.makeSchema(ast),
-          I.isUndefined,
-          (u) => DE.type("undefined", u)
-        )
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => DE.type("undefined", u))
       case "VoidKeyword":
-        return I.fromRefinement(
-          I.makeSchema(ast),
-          I.isUndefined,
-          (u) => DE.type("void", u)
-        )
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => DE.type("void", u))
       case "NeverKeyword":
-        return make(
-          I.makeSchema(ast),
-          (u) => I.failure(DE.type("never", u))
-        ) as any
+        return make(I.makeSchema(ast), (u) => I.failure(DE.type("never", u))) as any
       case "UnknownKeyword":
         return make(I.makeSchema(ast), I.success)
       case "AnyKeyword":
