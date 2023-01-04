@@ -3,7 +3,7 @@ import * as P from "@fp-ts/schema/data/parser"
 import * as E from "@fp-ts/schema/Encoder"
 import * as S from "@fp-ts/schema/Schema"
 
-const NumberFromString = pipe(S.string, P.parseString)
+const NumberFromString = pipe(S.string, P.parseNumber)
 
 describe.concurrent("Encoder", () => {
   it("templateLiteral. a${string}b", () => {

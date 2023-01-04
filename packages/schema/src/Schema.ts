@@ -475,8 +475,10 @@ export const filter = <A, B extends A>(
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, meta, annotations)
 
 /**
- * @category combinators
- * @since 1.0.0
+  Combinator that creates a new Schema by transforming the input and output of an existing Schema using the provided decoding functions.
+
+  @category combinators
+  @since 1.0.0
  */
 export const transformOrFail: <A, B>(
   to: Schema<B>,
@@ -485,9 +487,11 @@ export const transformOrFail: <A, B>(
 ) => (self: Schema<A>) => Schema<B> = I.transformOrFail
 
 /**
- * @category combinators
- * @since 1.0.0
- */
+  Creates a new schema that transforms values from one type to another using the provided functions.
+
+  @category combinators
+  @since 1.0.0
+*/
 export const transform: <A, B>(
   to: Schema<B>,
   f: (a: A) => B,
@@ -583,8 +587,17 @@ export const object: Schema<object> = I.object
 export const json: Schema<Json> = DataJson.json
 
 /**
- * @category data
- * @since 1.0.0
+  Creates a `Schema` for an `Option` of `A`.
+
+  @param kind The representation of the `Option` schema. Can be one of:
+
+    - "plain": A plain `Option` that uses a type alias with the `struct` combinator.
+    - "fromNullable": A `Option` that uses a type alias with the `typeAlias` combinator and allows decoding `null` and `undefined`.
+    - "inline": An `Option` that is represented as an inline union of `struct`s.
+
+    Default: "fromNullable".
+  @category data
+  @since 1.0.0
  */
 export const option = <A>(
   value: Schema<A>,

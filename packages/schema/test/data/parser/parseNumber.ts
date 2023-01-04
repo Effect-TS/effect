@@ -1,5 +1,5 @@
 import * as C from "@fp-ts/schema/Codec"
-import { parseString } from "@fp-ts/schema/data/parser"
+import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
@@ -7,8 +7,8 @@ import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-describe.concurrent("parseString", () => {
-  const schema = parseString(S.string)
+describe.concurrent("parseNumber", () => {
+  const schema = parseNumber(S.string)
 
   it("property tests", () => {
     Util.property(schema)
@@ -34,7 +34,7 @@ describe.concurrent("parseString", () => {
   })
 
   it("example", () => {
-    const schema = parseString(S.string) // converts string schema to number schema
+    const schema = parseNumber(S.string) // converts string schema to number schema
     const codec = C.codecFor(schema)
 
     // success cases
