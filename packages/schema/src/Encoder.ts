@@ -191,18 +191,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "Refinement":
         return go(ast.from)
       case "Transform": {
-        const to = go(ast.to)
         const from = go(ast.from)
-        // TODO: remove getOrThrow once encoders are allowed to possibly fail
         return make(
           I.makeSchema(ast),
-          (a) =>
-            pipe(
-              to.encode(a),
-              ast.g,
-              T.getOrThrow(() => new Error(`cannot encode ${a}`)),
-              from.encode
-            )
+          (a) => pipe(ast.g(a), T.getOrThrow(() => new Error(`cannot encode ${a}`)), from.encode)
         )
       }
     }

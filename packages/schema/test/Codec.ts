@@ -85,7 +85,7 @@ describe.concurrent("Codec", () => {
 
     const to = S.struct({
       a: S.string,
-      b: S.option(S.number, "plain")
+      b: S.option(S.number)
     })
 
     const schema = pipe(
