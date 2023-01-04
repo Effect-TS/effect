@@ -7,11 +7,11 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("ReadonlySet", () => {
-  it("property tests", () => {
-    Util.property(_.readonlySet(S.number))
+  it("fromArray. property tests", () => {
+    Util.property(_.fromArray(S.number))
   })
 
-  it("guard", () => {
+  it("readonlySet. guard", () => {
     const schema = _.readonlySet(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(new Set())).toEqual(true)
@@ -20,8 +20,8 @@ describe.concurrent("ReadonlySet", () => {
     expect(guard.is(new Set(["a", "b", 1]))).toEqual(false)
   })
 
-  it("decoder", () => {
-    const schema = _.readonlySet(S.number)
+  it("fromArray. decoder", () => {
+    const schema = _.fromArray(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(new Set([])))
     expect(decoder.decode([1, 2, 3])).toEqual(
@@ -32,8 +32,8 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
-  it("encoder", () => {
-    const schema = _.readonlySet(S.number)
+  it("fromArray. encoder", () => {
+    const schema = _.fromArray(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(new Set())).toEqual([])
     expect(encoder.encode(new Set([1, 2, 3]))).toEqual(
@@ -41,7 +41,7 @@ describe.concurrent("ReadonlySet", () => {
     )
   })
 
-  it("pretty", () => {
+  it("readonlySet. pretty", () => {
     const schema = _.readonlySet(S.string)
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(new Set())).toEqual("new Set([])")

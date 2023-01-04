@@ -1,7 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DataReadonlySet from "@fp-ts/schema/data/ReadonlySet"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -539,59 +538,59 @@ describe.concurrent("Guard", () => {
     it("baseline", () => {
       interface Category {
         readonly name: string
-        readonly categories: ReadonlySet<Category>
+        readonly categories: ReadonlyArray<Category>
       }
       const schema: S.Schema<Category> = S.lazy<Category>(() =>
         S.struct({
           name: S.string,
-          categories: DataReadonlySet.readonlySet(schema)
+          categories: S.array(schema)
         })
       )
       const guard = G.guardFor(schema)
-      expect(guard.is({ name: "a", categories: new Set([]) })).toEqual(true)
+      expect(guard.is({ name: "a", categories: [] })).toEqual(true)
       expect(
         guard.is({
           name: "a",
-          categories: new Set([{
+          categories: [{
             name: "b",
-            categories: new Set([{ name: "c", categories: new Set([]) }])
-          }])
+            categories: [{ name: "c", categories: [] }]
+          }]
         })
       ).toEqual(true)
-      expect(guard.is({ name: "a", categories: new Set([1]) })).toEqual(false)
+      expect(guard.is({ name: "a", categories: [1] })).toEqual(false)
     })
 
     it("mutually recursive", () => {
       interface A {
         readonly a: string
-        readonly bs: ReadonlySet<B>
+        readonly bs: ReadonlyArray<B>
       }
       interface B {
         readonly b: number
-        readonly as: ReadonlySet<A>
+        readonly as: ReadonlyArray<A>
       }
       const schemaA: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          bs: DataReadonlySet.readonlySet(schemaB)
+          bs: S.array(schemaB)
         })
       )
       const schemaB: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
-          as: DataReadonlySet.readonlySet(schemaA)
+          as: S.array(schemaA)
         })
       )
       const A = G.guardFor(schemaA)
       const B = G.guardFor(schemaB)
-      expect(A.is({ a: "a1", bs: new Set([]) })).toEqual(true)
-      expect(A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([]) }]) })).toEqual(true)
+      expect(A.is({ a: "a1", bs: [] })).toEqual(true)
+      expect(A.is({ a: "a1", bs: [{ b: 1, as: [] }] })).toEqual(true)
       expect(
-        A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([]) }]) }]) })
+        A.is({ a: "a1", bs: [{ b: 1, as: [{ a: "a2", bs: [] }] }] })
       )
         .toEqual(true)
       expect(
-        A.is({ a: "a1", bs: new Set([{ b: 1, as: new Set([{ a: "a2", bs: new Set([null]) }]) }]) })
+        A.is({ a: "a1", bs: [{ b: 1, as: [{ a: "a2", bs: [null] }] }] })
       )
         .toEqual(false)
     })
@@ -599,37 +598,37 @@ describe.concurrent("Guard", () => {
     it("pick recursive", () => {
       interface A {
         readonly a: string
-        readonly as: ReadonlySet<A>
+        readonly as: ReadonlyArray<A>
       }
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: DataReadonlySet.readonlySet(A)
+          as: S.array(A)
         })
       )
       const schemaB = pipe(A, S.pick("as"))
       const B = G.guardFor(schemaB)
-      expect(B.is({ as: new Set([]) })).toEqual(true)
-      expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
-      expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
+      expect(B.is({ as: [] })).toEqual(true)
+      expect(B.is({ as: [{ a: "a", as: [] }] })).toEqual(true)
+      expect(B.is({ as: [{ as: [] }] })).toEqual(false)
     })
 
     it("omit recursive", () => {
       interface A {
         readonly a: string
-        readonly as: ReadonlySet<A>
+        readonly as: ReadonlyArray<A>
       }
       const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
-          as: DataReadonlySet.readonlySet(A)
+          as: S.array(A)
         })
       )
       const schemaB = pipe(A, S.omit("a"))
       const B = G.guardFor(schemaB)
-      expect(B.is({ as: new Set([]) })).toEqual(true)
-      expect(B.is({ as: new Set([{ a: "a", as: new Set() }]) })).toEqual(true)
-      expect(B.is({ as: new Set([{ as: new Set() }]) })).toEqual(false)
+      expect(B.is({ as: [] })).toEqual(true)
+      expect(B.is({ as: [{ a: "a", as: [] }] })).toEqual(true)
+      expect(B.is({ as: [{ as: [] }] })).toEqual(false)
     })
   })
 
@@ -723,7 +722,7 @@ describe.concurrent("Guard", () => {
 
   describe.concurrent("partial", () => {
     it("type alias", () => {
-      const schema = S.partial(DataOption.fromNullable(S.number))
+      const schema = S.partial(DataOption.option(S.number))
       const guard = guardFor(schema)
       expect(guard.is(O.none)).toEqual(true)
       expect(guard.is(O.some(1))).toEqual(true)

@@ -281,7 +281,7 @@ export const union: <Members extends ReadonlyArray<Schema<any>>>(
  * @category combinators
  * @since 1.0.0
  */
-export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(self, _null)
+export const nullable: <A>(self: Schema<A>) => Schema<A | null> = I.nullable
 
 /**
  * @category combinators
@@ -605,7 +605,7 @@ export const option = <A>(
 ): Schema<Option<A>> => {
   switch (kind) {
     case "plain":
-      return DataOption.plain(value)
+      return DataOption.option(value)
     case "fromNullable":
       return DataOption.fromNullable(value)
     case "inline":

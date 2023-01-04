@@ -426,6 +426,8 @@ const getCardinality = (ast: AST): number => {
       return 6
     case "Refinement":
       return getCardinality(ast.from)
+    case "Transform":
+      return getCardinality(ast.to)
     default:
       return 5
   }
@@ -713,6 +715,8 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return _keyof(ast.f())
     case "Refinement":
       return _keyof(ast.from)
+    case "Transform":
+      return _keyof(ast.to)
     case "Literal":
     case "StringKeyword":
     case "TemplateLiteral":
@@ -802,6 +806,8 @@ export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
       return propertyKeys(ast.f())
     case "Refinement":
       return propertyKeys(ast.from)
+    case "Transform":
+      return propertyKeys(ast.to)
     default:
       return []
   }
@@ -845,6 +851,8 @@ export const getPropertySignatures = (
       return getPropertySignatures(ast.f())
     case "Refinement":
       return getPropertySignatures(ast.from)
+    case "Transform":
+      return getPropertySignatures(ast.to)
     default:
       return []
   }
@@ -879,6 +887,8 @@ export const partial = (ast: AST): AST => {
       return lazy(() => partial(ast.f()))
     case "Refinement":
       return partial(ast.from)
+    case "Transform":
+      return partial(ast.to)
     default:
       return ast
   }

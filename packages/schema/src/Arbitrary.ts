@@ -5,7 +5,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as T from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
@@ -43,12 +42,6 @@ const record = <K extends PropertyKey, V>(
 const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Arbitrary<any>>>(
   H.ArbitraryTypeAliasHookId
 )
-
-const getOrThrow = O.getOrThrow(() => null)
-
-const filterMap = <A, B>(f: (a: A) => O.Option<B>) =>
-  (self: FastCheck.Arbitrary<A>): FastCheck.Arbitrary<B> =>
-    self.filter((a) => O.isSome(f(a))).map((a) => getOrThrow(f(a)))
 
 /**
  * @since 1.0.0
@@ -219,19 +212,8 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           }
         )
       }
-      case "Transform": {
-        const from = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (fc) =>
-            pipe(
-              from.arbitrary(fc),
-              filterMap((a) =>
-                pipe(ast.f(a), T.match(() => O.none, (a) => O.some(a), (_, a) => O.some(a)))
-              )
-            )
-        )
-      }
+      case "Transform":
+        return go(ast.to)
     }
   }
 

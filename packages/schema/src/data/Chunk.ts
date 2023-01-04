@@ -4,12 +4,8 @@
 import type { Chunk } from "@fp-ts/data/Chunk"
 import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
-import * as T from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import * as A from "@fp-ts/schema/Arbitrary"
-import type { Decoder } from "@fp-ts/schema/Decoder"
-import * as D from "@fp-ts/schema/Decoder"
-import type { Encoder } from "@fp-ts/schema/Encoder"
 import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
@@ -20,17 +16,6 @@ const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
     chunk(item),
     (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
   )
-
-const decoder = <A>(
-  item: Decoder<unknown, A>
-): Decoder<unknown, Chunk<A>> =>
-  I.makeDecoder(
-    chunk(item),
-    (u) => pipe(D.decoderFor(I.array(item)).decode(u), T.map(C.fromIterable))
-  )
-
-const encoder = <A>(item: Encoder<unknown, A>): Encoder<unknown, Chunk<A>> =>
-  I.makeEncoder(chunk(item), (chunk) => C.toReadonlyArray(chunk).map(item.encode))
 
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(chunk(item), (fc) => fc.array(item.arbitrary(fc)).map(C.fromIterable))
@@ -49,10 +34,14 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     [item],
     I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
     {
-      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
       [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
-      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
       [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
       [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)
     }
   )
+
+/**
+ * @since 1.0.0
+ */
+export const fromArray = <A>(item: Schema<A>): Schema<Chunk<A>> =>
+  pipe(I.array(item), I.transform(chunk(item), C.fromIterable, C.toReadonlyArray))

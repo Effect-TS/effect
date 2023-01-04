@@ -8,11 +8,11 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Chunk", () => {
-  it("property tests", () => {
-    Util.property(_.chunk(S.number))
+  it("fromArray. property tests", () => {
+    Util.property(_.fromArray(S.number))
   })
 
-  it("guard", () => {
+  it("chunk. guard", () => {
     const schema = _.chunk(S.string)
     const guard = G.guardFor(schema)
     expect(guard.is(C.empty())).toEqual(true)
@@ -22,8 +22,8 @@ describe.concurrent("Chunk", () => {
     expect(guard.is({ _id: Symbol.for("@fp-ts/schema/test/FakeChunk") })).toEqual(false)
   })
 
-  it("decoder", () => {
-    const schema = _.chunk(S.number)
+  it("fromArray. decoder", () => {
+    const schema = _.fromArray(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(D.success(C.empty()))
     expect(decoder.decode([1, 2, 3])).toEqual(
@@ -34,8 +34,8 @@ describe.concurrent("Chunk", () => {
     Util.expectFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
-  it("encoder", () => {
-    const schema = _.chunk(S.number)
+  it("fromArray. encoder", () => {
+    const schema = _.fromArray(S.number)
     const encoder = E.encoderFor(schema)
     expect(encoder.encode(C.empty())).toEqual([])
     expect(encoder.encode(C.fromIterable([1, 2, 3]))).toEqual(
@@ -43,7 +43,7 @@ describe.concurrent("Chunk", () => {
     )
   })
 
-  it("pretty", () => {
+  it("chunk. pretty", () => {
     const schema = _.chunk(S.string)
     const pretty = P.prettyFor(schema)
     expect(pretty.pretty(C.empty())).toEqual("Chunk()")

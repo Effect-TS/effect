@@ -80,7 +80,7 @@ describe.concurrent("Codec", () => {
   it(`transform. { a: 'a' } -> { a: 'a', b: none }`, () => {
     const from = S.struct({
       a: S.string,
-      b: S.optional(S.union(S.nullable(S.number), S.undefined))
+      b: S.optional(S.union(S.undefined, S.nullable(S.number)))
     })
 
     const to = S.struct({
@@ -111,11 +111,11 @@ describe.concurrent("Codec", () => {
       `1 error(s) found
 └─ key "b"
    ├─ union member
-   │  └─ "b" did not satisfy is(number)
+   │  └─ "b" did not satisfy is(undefined)
    ├─ union member
    │  └─ "b" did not satisfy isEqual(null)
    └─ union member
-      └─ "b" did not satisfy is(undefined)`
+      └─ "b" did not satisfy is(number)`
     )
 
     expect(codec.encode({ a: "a", b: O.none })).toStrictEqual({ a: "a" })

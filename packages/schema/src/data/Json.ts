@@ -8,21 +8,24 @@ import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type * as S from "@fp-ts/schema/Schema"
 
-const JsonSchema: S.Schema<Json> = I.lazy(() =>
+/**
+ * @since 1.0.0
+ */
+export const inline: S.Schema<Json> = I.lazy(() =>
   I.union(
     I.literal(null),
     I.string,
     I.number,
     I.boolean,
-    I.array(JsonSchema),
-    I.record(I.string, JsonSchema)
+    I.array(inline),
+    I.record(I.string, inline)
   )
 )
 
 /**
  * @since 1.0.0
  */
-export const json: S.Schema<Json> = I.typeAlias([], JsonSchema, {
+export const json: S.Schema<Json> = I.typeAlias([], inline, {
   [H.DecoderTypeAliasHookId]: H.typeAliasHook(() => Decoder),
   [H.GuardTypeAliasHookId]: H.typeAliasHook(() => Guard),
   [H.EncoderTypeAliasHookId]: H.typeAliasHook(() => Encoder),

@@ -247,6 +247,9 @@ export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
 ): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
 
+/** @internal */
+export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(_null, self)
+
 const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
 
 const isOptionalSchema = <A>(schema: Schema<A>): schema is OptionalSchema<A, boolean> =>
