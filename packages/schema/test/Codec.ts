@@ -840,6 +840,64 @@ describe.concurrent("Codec", () => {
     )
   })
 
+  it("mutually recursive", () => {
+    interface Expression {
+      readonly type: "expression"
+      readonly value: number | Operation
+    }
+
+    interface Operation {
+      readonly type: "operation"
+      readonly operator: "+" | "-"
+      readonly left: Expression
+      readonly right: Expression
+    }
+
+    const Expression: S.Schema<Expression> = S.lazy(() =>
+      S.struct({
+        type: S.literal("expression"),
+        value: S.union(S.number, Operation)
+      })
+    )
+
+    const Operation: S.Schema<Operation> = S.lazy(() =>
+      S.struct({
+        type: S.literal("operation"),
+        operator: S.union(S.literal("+"), S.literal("-")),
+        left: Expression,
+        right: Expression
+      })
+    )
+
+    const input = {
+      type: "operation",
+      operator: "+",
+      left: {
+        type: "expression",
+        value: {
+          type: "operation",
+          operator: "-",
+          left: {
+            type: "expression",
+            value: 2
+          },
+          right: {
+            type: "expression",
+            value: 3
+          }
+        }
+      },
+      right: {
+        type: "expression",
+        value: 1
+      }
+    }
+
+    const codec = C.codecFor(Operation)
+
+    Util.expectSuccess(codec, input)
+  })
+
   describe.concurrent("partial", () => {
     it("struct", () => {
       const codec = C.partial(C.struct({ a: C.number }))
