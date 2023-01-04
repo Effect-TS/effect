@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import { identity } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import * as DE from "@fp-ts/schema/DecodeError"
@@ -37,7 +36,7 @@ const Guard = I.makeGuard<Json>(json, I.isJson)
 
 const Decoder = I.fromRefinement<Json>(json, I.isJson, (u) => DE.type("Json", u))
 
-const Encoder = I.makeEncoder<unknown, Json>(json, identity)
+const Encoder = I.makeEncoder<unknown, Json>(json, I.success)
 
 const Arbitrary = I.makeArbitrary<Json>(json, (fc) => fc.jsonValue().map((json) => json as Json))
 

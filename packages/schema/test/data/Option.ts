@@ -43,7 +43,7 @@ describe.concurrent("Option", () => {
   it("fromNullable. encoder", () => {
     const schema = _.fromNullable(S.number)
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(O.none)).toEqual(null)
+    Util.expectEncodingSuccess(encoder, O.none, null)
   })
 
   it("option. Pretty", () => {

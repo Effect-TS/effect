@@ -44,10 +44,11 @@ describe.concurrent("ReadonlyMap", () => {
   it("fromEntries. encoder", () => {
     const schema = _.fromEntries(S.number, S.string)
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(new Map())).toEqual([])
-    expect(encoder.encode(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(
-      [[1, "a"], [2, "b"], [3, "c"]]
-    )
+    Util.expectEncodingSuccess(encoder, new Map(), [])
+    Util.expectEncodingSuccess(encoder, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
+      2,
+      "b"
+    ], [3, "c"]])
   })
 
   it("readonlyMap. pretty", () => {

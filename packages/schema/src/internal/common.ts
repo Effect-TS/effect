@@ -11,7 +11,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import type * as DE from "@fp-ts/schema/DecodeError"
+import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Guard } from "@fp-ts/schema/Guard"
@@ -353,6 +353,11 @@ export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
 /** @internal */
 export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
+
+/** @internal */
+export const hasUnexpectedError = (e: DE.DecodeError) =>
+  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
+  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {

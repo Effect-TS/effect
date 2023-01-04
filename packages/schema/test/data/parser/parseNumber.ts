@@ -30,7 +30,7 @@ describe.concurrent("parseNumber", () => {
 
   it("Encoder", () => {
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(1)).toEqual("1")
+    Util.expectEncodingSuccess(encoder, 1, "1")
   })
 
   it("example", () => {

@@ -35,10 +35,8 @@ describe.concurrent("ReadonlySet", () => {
   it("fromArray. encoder", () => {
     const schema = _.fromArray(S.number)
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(new Set())).toEqual([])
-    expect(encoder.encode(new Set([1, 2, 3]))).toEqual(
-      [1, 2, 3]
-    )
+    Util.expectEncodingSuccess(encoder, new Set(), [])
+    Util.expectEncodingSuccess(encoder, new Set([1, 2, 3]), [1, 2, 3])
   })
 
   it("readonlySet. pretty", () => {

@@ -118,8 +118,8 @@ describe.concurrent("Codec", () => {
       └─ "b" did not satisfy is(number)`
     )
 
-    expect(codec.encode({ a: "a", b: O.none })).toStrictEqual({ a: "a" })
-    expect(codec.encode({ a: "a", b: O.some(1) })).toStrictEqual({ a: "a", b: 1 })
+    Util.expectEncodingSuccess(codec, { a: "a", b: O.none }, { a: "a" })
+    Util.expectEncodingSuccess(codec, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
   })
 
   it("templateLiteral. a", () => {

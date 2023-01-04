@@ -5,9 +5,10 @@ import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as UE from "@fp-ts/schema/Encoder"
+import * as E from "@fp-ts/schema/Encoder"
 import { format } from "@fp-ts/schema/formatter/Tree"
 import * as G from "@fp-ts/schema/Guard"
+import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
@@ -15,12 +16,12 @@ export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
   const guard = G.guardFor(schema)
   const decoder = D.decoderFor(schema)
-  const encoder = UE.encoderFor(schema)
+  const encoder = E.encoderFor(schema)
   fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
     if (!guard.is(a)) {
       return false
     }
-    const roundtrip = decoder.decode(encoder.encode(a))
+    const roundtrip = pipe(a, encoder.encode, I.flatMap(decoder.decode))
     if (D.isFailure(roundtrip)) {
       return false
     }
@@ -44,6 +45,29 @@ export const expectWarning = <I, A>(decoder: D.Decoder<I, A>, i: I, message: str
   const t = pipe(decoder.decode(i), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
+}
+
+export const expectEncodingSuccess = <I, A>(encoder: E.Encoder<I, A>, a: A, i: I) => {
+  const t = encoder.encode(a)
+  expect(T.isRight(t)).toEqual(true)
+  expect(t).toStrictEqual(T.right(i))
+}
+
+export const expectEncodingFailure = <I, A>(encoder: E.Encoder<I, A>, a: A, message: string) => {
+  const t = pipe(encoder.encode(a), T.mapLeft(formatAll))
+  expect(T.isLeft(t)).toEqual(true)
+  expect(t).toEqual(T.left(message))
+}
+
+export const expectEncodingWarning = <I, A>(
+  encoder: E.Encoder<I, A>,
+  a: A,
+  i: I,
+  message: string
+) => {
+  const t = pipe(encoder.encode(a), T.mapLeft(formatAll))
+  expect(T.isBoth(t)).toEqual(true)
+  expect(t).toEqual(T.both(message, i))
 }
 
 const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {

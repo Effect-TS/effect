@@ -2,12 +2,14 @@
  * @since 1.0.0
  */
 
-import { absurd, identity, pipe } from "@fp-ts/data/Function"
+import { absurd, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as T from "@fp-ts/data/These"
+import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
+import * as DE from "@fp-ts/schema/DecodeError"
+import type { DecodeResult } from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -16,15 +18,15 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @category model
  * @since 1.0.0
  */
-export interface Encoder<S, A> extends Schema<A> {
-  readonly encode: (value: A) => S
+export interface Encoder<O, A> extends Schema<A> {
+  readonly encode: (value: A) => DecodeResult<O>
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <S, A>(schema: Schema<A>, encode: Encoder<S, A>["encode"]) => Encoder<S, A> =
+export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
   I.makeEncoder
 
 const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Encoder<unknown, any>>>(
@@ -59,7 +61,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "ObjectKeyword":
       case "TemplateLiteral":
       case "BigIntKeyword":
-        return make(I.makeSchema(ast), identity)
+        return make(I.makeSchema(ast), I.success)
       case "NeverKeyword":
         return make<unknown, never>(I.makeSchema(ast), absurd) as any
       case "Tuple": {
@@ -69,6 +71,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
           I.makeSchema(ast),
           (input: ReadonlyArray<unknown>) => {
             const output: Array<any> = []
+            const es: Array<DE.DecodeError> = []
             let i = 0
             // ---------------------------------------------
             // handle elements
@@ -79,7 +82,15 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                   continue
                 }
               } else {
-                output.push(elements[i].encode(input[i]))
+                const encoder = elements[i]
+                const t = encoder.encode(input[i])
+                if (I.isFailure(t)) {
+                  // the input element is present but is not valid, bail out
+                  return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                } else if (I.isWarning(t)) {
+                  es.push(DE.index(i, t.left))
+                }
+                output.push(t.right)
               }
             }
             // ---------------------------------------------
@@ -89,29 +100,62 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               const head = RA.headNonEmpty(rest.value)
               const tail = RA.tailNonEmpty(rest.value)
               for (; i < input.length - tail.length; i++) {
-                output.push(head.encode(input[i]))
+                const t = head.encode(input[i])
+                if (I.isFailure(t)) {
+                  return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                } else {
+                  if (I.isWarning(t)) {
+                    es.push(DE.index(i, t.left))
+                  }
+                  output.push(t.right)
+                }
               }
               // ---------------------------------------------
               // handle post rest elements
               // ---------------------------------------------
               for (let j = 0; j < tail.length; j++) {
                 i += j
-                output.push(tail[j].encode(input[i]))
+                if (input.length < i + 1) {
+                  // the input element is missing and the element is required, bail out
+                  return I.failure(DE.index(i, [DE.missing]))
+                } else {
+                  const t = tail[j].encode(input[i])
+                  if (I.isFailure(t)) {
+                    // the input element is present but is not valid, bail out
+                    return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  } else if (I.isWarning(t)) {
+                    es.push(DE.index(i, t.left))
+                  }
+                  output.push(t.right)
+                }
+              }
+            } else {
+              // ---------------------------------------------
+              // handle unexpected indexes
+              // ---------------------------------------------
+              for (; i < input.length; i++) {
+                es.push(DE.index(i, [DE.unexpected(input[i])]))
               }
             }
 
-            return output
+            // ---------------------------------------------
+            // compute output
+            // ---------------------------------------------
+            return I.isNonEmpty(es) ? I.warnings(es, output) : I.success(output)
           }
         )
       }
       case "TypeLiteral": {
         const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
-        const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
+        const indexSignatures = ast.indexSignatures.map((is) =>
+          [go(is.parameter), go(is.type)] as const
+        )
         return make(
           I.makeSchema(ast),
           (input: { readonly [x: PropertyKey]: unknown }) => {
             const output: any = {}
             const expectedKeys: any = {}
+            const es: Array<DE.DecodeError> = []
             // ---------------------------------------------
             // handle property signatures
             // ---------------------------------------------
@@ -123,25 +167,62 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               if (!Object.prototype.hasOwnProperty.call(input, name) && ps.isOptional) {
                 continue
               }
-              output[name] = encoder.encode(input[name])
+              const t = encoder.encode(input[name])
+              if (I.isFailure(t)) {
+                // the input key is present but is not valid, bail out
+                return I.failures(I.mutableAppend(es, DE.key(name, t.left)))
+              } else if (I.isWarning(t)) {
+                es.push(DE.key(name, t.left))
+              }
+              output[name] = t.right
             }
             // ---------------------------------------------
             // handle index signatures
             // ---------------------------------------------
-            if (indexSignatureTypes.length > 0) {
-              for (let i = 0; i < indexSignatureTypes.length; i++) {
-                const type = indexSignatureTypes[i]
-                const parameterAST = ast.indexSignatures[i].parameter
-                const keys = I.getKeysForIndexSignature(input, parameterAST)
+            if (indexSignatures.length > 0) {
+              for (let i = 0; i < indexSignatures.length; i++) {
+                const parameter = indexSignatures[i][0]
+                const type = indexSignatures[i][1]
+                const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
                 for (const key of keys) {
-                  if (!(key in expectedKeys)) {
-                    output[key] = type.encode(input[key])
+                  // ---------------------------------------------
+                  // handle keys
+                  // ---------------------------------------------
+                  let t = parameter.encode(key)
+                  if (I.isFailure(t)) {
+                    return I.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                  } else if (I.isWarning(t)) {
+                    es.push(DE.key(key, t.left))
                   }
+                  // ---------------------------------------------
+                  // handle values
+                  // ---------------------------------------------
+                  t = type.encode(input[key])
+                  if (I.isFailure(t)) {
+                    return I.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                  } else {
+                    if (I.isWarning(t)) {
+                      es.push(DE.key(key, t.left))
+                    }
+                    output[key] = t.right
+                  }
+                }
+              }
+            } else {
+              // ---------------------------------------------
+              // handle unexpected keys
+              // ---------------------------------------------
+              for (const key of I.ownKeys(input)) {
+                if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
+                  es.push(DE.key(key, [DE.unexpected(input[key])]))
                 }
               }
             }
 
-            return output
+            // ---------------------------------------------
+            // compute output
+            // ---------------------------------------------
+            return I.isNonEmpty(es) ? I.warnings(es, output) : I.success(output)
           }
         )
       }
@@ -160,25 +241,39 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             }
           }
 
-          let output = encoders[0].encode(input)
+          const es: Array<DE.DecodeError> = []
+          let output: Both<RA.NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
 
           // ---------------------------------------------
           // compute best output
           // ---------------------------------------------
-          let weight: number | null = null
-          for (let i = 1; i < encoders.length; i++) {
-            const o = encoders[i].encode(input)
-            const w = getWeight(o)
-            if (weight === null) {
-              weight = getWeight(output)
-            }
-            if (w > weight) {
-              output = o
-              weight = w
+          for (let i = 0; i < encoders.length; i++) {
+            const t = encoders[i].encode(input)
+            if (I.isSuccess(t)) {
+              // if there are no warnings this is the best output
+              return t
+            } else if (I.isWarning(t)) {
+              // choose the output with less warnings related to unexpected keys / indexes
+              if (
+                !output ||
+                output.left.filter(I.hasUnexpectedError).length >
+                  t.left.filter(I.hasUnexpectedError).length
+              ) {
+                output = t
+              }
+            } else {
+              es.push(DE.member(t.left))
             }
           }
 
-          return output
+          // ---------------------------------------------
+          // compute output
+          // ---------------------------------------------
+          return output ?
+            output :
+            I.isNonEmpty(es) ?
+            I.failures(es) :
+            I.failure(DE.type("never", input))
         })
       }
       case "Lazy": {
@@ -191,22 +286,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         return go(ast.from)
       case "Transform": {
         const from = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (a) => pipe(ast.g(a), T.getOrThrow(() => new Error(`cannot encode ${a}`)), from.encode)
-        )
+        return make(I.makeSchema(ast), (a) => pipe(ast.g(a), I.flatMap(from.encode)))
       }
     }
   }
 
   return go(schema.ast)
-}
-
-const getWeight = (u: unknown): number => {
-  if (Array.isArray(u)) {
-    return u.length
-  } else if (typeof u === "object" && u !== null) {
-    return I.ownKeys(u).length
-  }
-  return 0
 }

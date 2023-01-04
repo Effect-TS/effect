@@ -37,10 +37,8 @@ describe.concurrent("Chunk", () => {
   it("fromArray. encoder", () => {
     const schema = _.fromArray(S.number)
     const encoder = E.encoderFor(schema)
-    expect(encoder.encode(C.empty())).toEqual([])
-    expect(encoder.encode(C.fromIterable([1, 2, 3]))).toEqual(
-      [1, 2, 3]
-    )
+    Util.expectEncodingSuccess(encoder, C.empty(), [])
+    Util.expectEncodingSuccess(encoder, C.fromIterable([1, 2, 3]), [1, 2, 3])
   })
 
   it("chunk. pretty", () => {

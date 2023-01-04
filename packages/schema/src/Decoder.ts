@@ -33,7 +33,7 @@ export interface Decoder<I, A> extends Schema<A> {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <S, A>(schema: Schema<A>, decode: Decoder<S, A>["decode"]) => Decoder<S, A> =
+export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) => Decoder<I, A> =
   I.makeDecoder
 
 /**
@@ -359,8 +359,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // choose the output with less warnings related to unexpected keys / indexes
               if (
                 !output ||
-                output.left.filter(hasUnexpectedError).length >
-                  t.left.filter(hasUnexpectedError).length
+                output.left.filter(I.hasUnexpectedError).length >
+                  t.left.filter(I.hasUnexpectedError).length
               ) {
                 output = t
               }
@@ -369,6 +369,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             }
           }
 
+          // ---------------------------------------------
+          // compute output
+          // ---------------------------------------------
           return output ? output : I.isNonEmpty(es) ? failures(es) : failure(DE.type("never", u))
         })
       }
@@ -376,10 +379,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         const f = () => go(ast.f())
         const get = I.memoize<void, Decoder<any, any>>(f)
         const schema = I.lazy(f)
-        return make(
-          schema,
-          (a) => get().decode(a)
-        )
+        return make(schema, (a) => get().decode(a))
       }
       case "Enums":
         return make(
@@ -414,17 +414,10 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
       }
       case "Transform": {
         const from = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (u) => pipe(from.decode(u), I.flatMap(ast.f))
-        )
+        return make(I.makeSchema(ast), (u) => pipe(from.decode(u), I.flatMap(ast.f)))
       }
     }
   }
 
   return go(schema.ast)
 }
-
-const hasUnexpectedError = (e: DE.DecodeError) =>
-  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
-  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))
