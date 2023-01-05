@@ -15,7 +15,7 @@ import {
   IdentifierAnnotationId
 } from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import * as AST from "@fp-ts/schema/AST"
-import * as R from "@fp-ts/schema/data/refinement"
+import * as R from "@fp-ts/schema/data/filter"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 

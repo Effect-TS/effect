@@ -1,4 +1,4 @@
-import * as _ from "@fp-ts/schema/data/refinement"
+import * as _ from "@fp-ts/schema/data/filter"
 import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"

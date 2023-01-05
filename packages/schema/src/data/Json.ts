@@ -12,7 +12,7 @@ import type * as S from "@fp-ts/schema/Schema"
  */
 export const inline: S.Schema<Json> = I.lazy(() =>
   I.union(
-    I.literal(null),
+    I._null,
     I.string,
     I.number,
     I.boolean,

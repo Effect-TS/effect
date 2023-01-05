@@ -12,13 +12,6 @@ import type { Schema } from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const endsWith = (endsWith: string) =>
-  <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.endsWith(endsWith), { endsWith })
-
-/**
- * @since 1.0.0
- */
 export const finite = <A extends number>(self: Schema<A>): Schema<A> =>
   I.refinement(self, (a): a is A => Number.isFinite(a), { type: "Finite" })
 
@@ -129,4 +122,24 @@ export const regex = (
  */
 export const startsWith = (startsWith: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.startsWith(startsWith), { startsWith })
+    I.refinement(self, (a): a is A => a.startsWith(startsWith), { startsWith }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^${startsWith}` })
+    })
+
+/**
+ * @since 1.0.0
+ */
+export const endsWith = (endsWith: string) =>
+  <A extends string>(self: Schema<A>): Schema<A> =>
+    I.refinement(self, (a): a is A => a.endsWith(endsWith), { endsWith }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^.*${endsWith}$` })
+    })
+
+/**
+ * @since 1.0.0
+ */
+export const includes = (searchString: string) =>
+  <A extends string>(self: Schema<A>): Schema<A> =>
+    I.refinement(self, (a): a is A => a.includes(searchString), { includes: searchString }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `.*${searchString}.*` })
+    })

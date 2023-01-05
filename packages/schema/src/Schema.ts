@@ -8,9 +8,9 @@ import type { Option } from "@fp-ts/data/Option"
 import type { Refinement } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as AST from "@fp-ts/schema/AST"
+import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as R from "@fp-ts/schema/data/refinement"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
 
@@ -76,9 +76,9 @@ export const enums = <A extends { [x: string]: string | number }>(
  * @category constructors
  * @since 1.0.0
  */
-export const instanceOf: <A extends typeof R.Class>(
+export const instanceOf: <A extends typeof F.Class>(
   constructor: A
-) => (self: Schema<object>) => Schema<InstanceType<A>> = R.instanceOf
+) => (self: Schema<object>) => Schema<InstanceType<A>> = F.instanceOf
 
 /**
  * @since 1.0.0
@@ -167,14 +167,14 @@ export const typeAlias: (
  * @since 1.0.0
  */
 export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.minLength
+  F.minLength
 
 /**
  * @category filters
  * @since 1.0.0
  */
 export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.maxLength
+  F.maxLength
 
 /**
  * @category filters
@@ -194,34 +194,41 @@ export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLen
  * @since 1.0.0
  */
 export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.startsWith
+  F.startsWith
 
 /**
  * @category filters
  * @since 1.0.0
  */
 export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  R.endsWith
+  F.endsWith
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> = R.regex
+export const includes: (searchString: string) => <A extends string>(self: Schema<A>) => Schema<A> =
+  F.includes
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const regex: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> = F.regex
 
 /**
  * @category filters
  * @since 1.0.0
  */
 export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  R.lessThan
+  F.lessThan
 
 /**
  * @category filters
  * @since 1.0.0
  */
 export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  R.lessThanOrEqualTo
+  F.lessThanOrEqualTo
 
 /**
  * @category filters
@@ -229,7 +236,7 @@ export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema
  */
 export const greaterThan: (
   min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThan
+) => <A extends number>(self: Schema<A>) => Schema<A> = F.greaterThan
 
 /**
  * @category filters
@@ -237,25 +244,25 @@ export const greaterThan: (
  */
 export const greaterThanOrEqualTo: (
   min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = R.greaterThanOrEqualTo
+) => <A extends number>(self: Schema<A>) => Schema<A> = F.greaterThanOrEqualTo
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const int: <A extends number>(self: Schema<A>) => Schema<A> = R.int
+export const int: <A extends number>(self: Schema<A>) => Schema<A> = F.int
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = R.nonNaN
+export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = F.nonNaN
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const finite: <A extends number>(self: Schema<A>) => Schema<A> = R.finite
+export const finite: <A extends number>(self: Schema<A>) => Schema<A> = F.finite
 
 // ---------------------------------------------
 // combinators

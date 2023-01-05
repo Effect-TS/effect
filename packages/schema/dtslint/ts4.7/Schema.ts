@@ -82,6 +82,9 @@ pipe(S.string, S.startsWith('a'));
 // $ExpectType Schema<string>
 pipe(S.string, S.endsWith('a'));
 
+// $ExpectType Schema<string>
+pipe(S.string, S.includes('a'));
+
 // $ExpectType Schema<number>
 pipe(S.number, S.greaterThan(5));
 
