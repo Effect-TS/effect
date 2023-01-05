@@ -19,9 +19,13 @@ describe.concurrent("finite", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.finite(S.number))
-    Util.expectSuccess(decoder, 1)
-    Util.expectFailure(decoder, Infinity, `Infinity did not satisfy refinement({"type":"Finite"})`)
-    Util.expectFailure(
+    Util.expectDecodingSuccess(decoder, 1)
+    Util.expectDecodingFailure(
+      decoder,
+      Infinity,
+      `Infinity did not satisfy refinement({"type":"Finite"})`
+    )
+    Util.expectDecodingFailure(
       decoder,
       -Infinity,
       `-Infinity did not satisfy refinement({"type":"Finite"})`

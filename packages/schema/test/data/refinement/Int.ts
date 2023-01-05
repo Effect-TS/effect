@@ -19,9 +19,9 @@ describe.concurrent("int", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.int(S.number))
-    Util.expectSuccess(decoder, 0)
-    Util.expectSuccess(decoder, 1)
-    Util.expectFailure(decoder, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
+    Util.expectDecodingSuccess(decoder, 0)
+    Util.expectDecodingSuccess(decoder, 1)
+    Util.expectDecodingFailure(decoder, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
   })
 
   it("Pretty", () => {

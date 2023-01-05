@@ -1,4 +1,5 @@
 import * as _ from "@fp-ts/schema/data/ReadonlySet"
+import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
@@ -23,13 +24,13 @@ describe.concurrent("ReadonlySet", () => {
   it("fromArray. decoder", () => {
     const schema = _.fromArray(S.number)
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode([])).toEqual(D.success(new Set([])))
+    expect(decoder.decode([])).toEqual(DE.success(new Set([])))
     expect(decoder.decode([1, 2, 3])).toEqual(
-      D.success(new Set([1, 2, 3]))
+      DE.success(new Set([1, 2, 3]))
     )
 
-    Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
+    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+    Util.expectDecodingFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
   it("fromArray. encoder", () => {

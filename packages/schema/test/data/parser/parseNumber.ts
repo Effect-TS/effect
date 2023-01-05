@@ -1,4 +1,3 @@
-import * as C from "@fp-ts/schema/Codec"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
@@ -22,10 +21,18 @@ describe.concurrent("parseNumber", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode("1")).toEqual(D.success(1))
-    expect(decoder.decode("1a")).toEqual(D.success(1))
-    Util.expectFailure(decoder, "a", `"a" did not satisfy parsing from (string) to (number)`)
-    Util.expectFailure(decoder, "a1", `"a1" did not satisfy parsing from (string) to (number)`)
+    expect(decoder.decode("1")).toEqual(DE.success(1))
+    expect(decoder.decode("1a")).toEqual(DE.success(1))
+    Util.expectDecodingFailure(
+      decoder,
+      "a",
+      `"a" did not satisfy parsing from (string) to (number)`
+    )
+    Util.expectDecodingFailure(
+      decoder,
+      "a1",
+      `"a1" did not satisfy parsing from (string) to (number)`
+    )
   })
 
   it("Encoder", () => {
@@ -35,19 +42,19 @@ describe.concurrent("parseNumber", () => {
 
   it("example", () => {
     const schema = parseNumber(S.string) // converts string schema to number schema
-    const codec = C.codecFor(schema)
+    const decoder = D.decoderFor(schema)
 
     // success cases
-    expect(codec.decode("1")).toEqual(C.success(1))
-    expect(codec.decode("-1")).toEqual(C.success(-1))
-    expect(codec.decode("1.5")).toEqual(C.success(1.5))
-    expect(codec.decode("NaN")).toEqual(C.success(NaN))
-    expect(codec.decode("Infinity")).toEqual(C.success(Infinity))
-    expect(codec.decode("-Infinity")).toEqual(C.success(-Infinity))
+    expect(decoder.decode("1")).toEqual(DE.success(1))
+    expect(decoder.decode("-1")).toEqual(DE.success(-1))
+    expect(decoder.decode("1.5")).toEqual(DE.success(1.5))
+    expect(decoder.decode("NaN")).toEqual(DE.success(NaN))
+    expect(decoder.decode("Infinity")).toEqual(DE.success(Infinity))
+    expect(decoder.decode("-Infinity")).toEqual(DE.success(-Infinity))
 
     // failure cases
-    expect(codec.decode("a")).toEqual(
-      C.failure(DE.transform("string", "number", "a"))
+    expect(decoder.decode("a")).toEqual(
+      DE.failure(DE.transform("string", "number", "a"))
     )
   })
 })

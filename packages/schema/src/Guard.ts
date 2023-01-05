@@ -27,6 +27,24 @@ export interface Guard<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, is: Guard<A>["is"]) => Guard<A> = I.makeGuard
 
+/**
+ * @category assertions
+ * @since 1.0.0
+ */
+export const is = <A>(schema: Schema<A>) =>
+  (input: unknown): input is A => guardFor(schema).is(input)
+
+/**
+ * @category assertions
+ * @since 1.0.0
+ */
+export const asserts = <A>(schema: Schema<A>, message = "Assertion failed") =>
+  (input: unknown): asserts input is A => {
+    if (!guardFor(schema).is(input)) {
+      throw new Error(message)
+    }
+  }
+
 const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Guard<any>>>(
   H.GuardTypeAliasHookId
 )

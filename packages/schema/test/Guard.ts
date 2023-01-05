@@ -12,6 +12,13 @@ describe.concurrent("Guard", () => {
     expect(G.guardFor).exist
   })
 
+  it("asserts", () => {
+    const schema = S.string
+    expect(G.asserts(schema)("a")).toEqual(undefined)
+    expect(() => G.asserts(schema)(1)).toThrowError(new Error("Assertion failed"))
+    expect(() => G.asserts(schema, "not a string")(1)).toThrowError(new Error("not a string"))
+  })
+
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
     const guard = G.guardFor(schema)

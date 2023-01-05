@@ -18,8 +18,8 @@ describe.concurrent("nonNaN", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.nonNaN(S.number))
-    Util.expectSuccess(decoder, 1)
-    Util.expectFailure(decoder, NaN, `NaN did not satisfy refinement({"type":"NonNaN"})`)
+    Util.expectDecodingSuccess(decoder, 1)
+    Util.expectDecodingFailure(decoder, NaN, `NaN did not satisfy refinement({"type":"NonNaN"})`)
   })
 
   it("Pretty", () => {

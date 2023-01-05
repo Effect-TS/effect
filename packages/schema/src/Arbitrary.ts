@@ -26,6 +26,13 @@ export interface Arbitrary<A> extends Schema<A> {
 export const make: <A>(schema: Schema<A>, arbitrary: Arbitrary<A>["arbitrary"]) => Arbitrary<A> =
   I.makeArbitrary
 
+/**
+ * @category arbitrary
+ * @since 1.0.0
+ */
+export const arbitrary = <A>(schema: Schema<A>) =>
+  (fc: typeof FastCheck): FastCheck.Arbitrary<A> => arbitraryFor(schema).arbitrary(fc)
+
 const record = <K extends PropertyKey, V>(
   fc: typeof FastCheck,
   key: FastCheck.Arbitrary<K>,

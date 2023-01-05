@@ -2,7 +2,15 @@
  * @since 1.0.0
  */
 
+import type { Left, Right } from "@fp-ts/data/Either"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import type { Validated } from "@fp-ts/data/These"
+import * as T from "@fp-ts/data/These"
+
+/**
+ * @since 1.0.0
+ */
+export type DecodeResult<A> = Validated<DecodeError, A>
 
 /**
  * `DecodeError` is a type that represents the different types of errors that can occur when decoding a value.
@@ -316,3 +324,60 @@ export const member = (
   _tag: "Member",
   errors
 })
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const success: <A>(a: A) => DecodeResult<A> = T.right
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const failure = (e: DecodeError): DecodeResult<never> => T.left([e])
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const failures = (
+  es: NonEmptyReadonlyArray<DecodeError>
+): DecodeResult<never> => T.left(es)
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const warning = <A>(e: DecodeError, a: A): DecodeResult<A> => T.both([e], a)
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const warnings = <A>(
+  es: NonEmptyReadonlyArray<DecodeError>,
+  a: A
+): DecodeResult<A> => T.both(es, a)
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isSuccess: <A>(self: DecodeResult<A>) => self is Right<A> = T.isRight
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isFailure: <A>(
+  self: DecodeResult<A>
+) => self is Left<NonEmptyReadonlyArray<DecodeError>> = T.isLeft
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const hasWarnings: <A>(
+  self: DecodeResult<A>
+) => self is T.Both<NonEmptyReadonlyArray<DecodeError>, A> = T.isBoth

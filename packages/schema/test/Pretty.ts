@@ -5,6 +5,8 @@ import * as S from "@fp-ts/schema/Schema"
 describe.concurrent("Pretty", () => {
   it("exports", () => {
     expect(P.make).exist
+    expect(P.pretty).exist
+    expect(P.prettyFor).exist
   })
 
   it("templateLiteral. a${string}b", () => {

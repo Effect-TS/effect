@@ -9,7 +9,7 @@ import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
-import type { DecodeResult } from "@fp-ts/schema/Decoder"
+import { format } from "@fp-ts/schema/formatter/Tree"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -19,7 +19,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export interface Encoder<O, A> extends Schema<A> {
-  readonly encode: (value: A) => DecodeResult<O>
+  readonly encode: (value: A) => DE.DecodeResult<O>
 }
 
 /**
@@ -28,6 +28,26 @@ export interface Encoder<O, A> extends Schema<A> {
  */
 export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
   I.makeEncoder
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encode = <A>(schema: Schema<A>) =>
+  (a: A): DE.DecodeResult<unknown> => encoderFor(schema).encode(a)
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeOrThrow = <A>(schema: Schema<A>) =>
+  (a: A): unknown => {
+    const t = encoderFor(schema).encode(a)
+    if (DE.isFailure(t)) {
+      throw new Error(format(t.left))
+    }
+    return t.right
+  }
 
 const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Encoder<unknown, any>>>(
   H.EncoderTypeAliasHookId
@@ -61,7 +81,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "ObjectKeyword":
       case "TemplateLiteral":
       case "BigIntKeyword":
-        return make(I.makeSchema(ast), I.success)
+        return make(I.makeSchema(ast), DE.success)
       case "NeverKeyword":
         return make<unknown, never>(I.makeSchema(ast), absurd) as any
       case "Tuple": {
@@ -84,10 +104,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               } else {
                 const encoder = elements[i]
                 const t = encoder.encode(input[i])
-                if (I.isFailure(t)) {
+                if (DE.isFailure(t)) {
                   // the input element is present but is not valid, bail out
-                  return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
-                } else if (I.isWarning(t)) {
+                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                } else if (DE.hasWarnings(t)) {
                   es.push(DE.index(i, t.left))
                 }
                 output.push(t.right)
@@ -101,10 +121,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               const tail = RA.tailNonEmpty(rest.value)
               for (; i < input.length - tail.length; i++) {
                 const t = head.encode(input[i])
-                if (I.isFailure(t)) {
-                  return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                if (DE.isFailure(t)) {
+                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
                 } else {
-                  if (I.isWarning(t)) {
+                  if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
                   }
                   output.push(t.right)
@@ -117,13 +137,13 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                 i += j
                 if (input.length < i + 1) {
                   // the input element is missing and the element is required, bail out
-                  return I.failure(DE.index(i, [DE.missing]))
+                  return DE.failure(DE.index(i, [DE.missing]))
                 } else {
                   const t = tail[j].encode(input[i])
-                  if (I.isFailure(t)) {
+                  if (DE.isFailure(t)) {
                     // the input element is present but is not valid, bail out
-                    return I.failures(I.mutableAppend(es, DE.index(i, t.left)))
-                  } else if (I.isWarning(t)) {
+                    return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  } else if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
                   }
                   output.push(t.right)
@@ -141,7 +161,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? I.warnings(es, output) : I.success(output)
+            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
           }
         )
       }
@@ -168,10 +188,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                 continue
               }
               const t = encoder.encode(input[name])
-              if (I.isFailure(t)) {
+              if (DE.isFailure(t)) {
                 // the input key is present but is not valid, bail out
-                return I.failures(I.mutableAppend(es, DE.key(name, t.left)))
-              } else if (I.isWarning(t)) {
+                return DE.failures(I.mutableAppend(es, DE.key(name, t.left)))
+              } else if (DE.hasWarnings(t)) {
                 es.push(DE.key(name, t.left))
               }
               output[name] = t.right
@@ -189,19 +209,19 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                   // handle keys
                   // ---------------------------------------------
                   let t = parameter.encode(key)
-                  if (I.isFailure(t)) {
-                    return I.failures(I.mutableAppend(es, DE.key(key, t.left)))
-                  } else if (I.isWarning(t)) {
+                  if (DE.isFailure(t)) {
+                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                  } else if (DE.hasWarnings(t)) {
                     es.push(DE.key(key, t.left))
                   }
                   // ---------------------------------------------
                   // handle values
                   // ---------------------------------------------
                   t = type.encode(input[key])
-                  if (I.isFailure(t)) {
-                    return I.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                  if (DE.isFailure(t)) {
+                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
                   } else {
-                    if (I.isWarning(t)) {
+                    if (DE.hasWarnings(t)) {
                       es.push(DE.key(key, t.left))
                     }
                     output[key] = t.right
@@ -222,7 +242,7 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? I.warnings(es, output) : I.success(output)
+            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
           }
         )
       }
@@ -249,10 +269,10 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
           // ---------------------------------------------
           for (let i = 0; i < encoders.length; i++) {
             const t = encoders[i].encode(input)
-            if (I.isSuccess(t)) {
+            if (DE.isSuccess(t)) {
               // if there are no warnings this is the best output
               return t
-            } else if (I.isWarning(t)) {
+            } else if (DE.hasWarnings(t)) {
               // choose the output with less warnings related to unexpected keys / indexes
               if (
                 !output ||
@@ -272,8 +292,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
           return output ?
             output :
             I.isNonEmpty(es) ?
-            I.failures(es) :
-            I.failure(DE.type("never", input))
+            DE.failures(es) :
+            DE.failure(DE.type("never", input))
         })
       }
       case "Lazy": {

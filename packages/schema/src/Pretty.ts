@@ -25,6 +25,12 @@ export interface Pretty<A> extends Schema<A> {
  */
 export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty<A> = I.makePretty
 
+/**
+ * @category prettify
+ * @since 1.0.0
+ */
+export const pretty = <A>(schema: Schema<A>) => (a: A): string => prettyFor(schema).pretty(a)
+
 const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Pretty<any>>>(
   H.PrettyTypeAliasHookId
 )

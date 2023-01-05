@@ -15,9 +15,9 @@ describe.concurrent("instanceOf", () => {
 
   it("Decoder", () => {
     const decoder = D.decoderFor(_.instanceOf(Set)(S.object))
-    Util.expectSuccess(decoder, new Set())
-    Util.expectFailure(decoder, 1, `1 did not satisfy is(object)`)
-    Util.expectFailure(decoder, {}, `{} did not satisfy refinement({"instanceof":"Set"})`)
+    Util.expectDecodingSuccess(decoder, new Set())
+    Util.expectDecodingFailure(decoder, 1, `1 did not satisfy is(object)`)
+    Util.expectDecodingFailure(decoder, {}, `{} did not satisfy refinement({"instanceof":"Set"})`)
   })
 
   it("Pretty", () => {

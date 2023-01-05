@@ -7,6 +7,13 @@ import * as Util from "@fp-ts/schema/test/util"
 const NumberFromString = pipe(S.string, P.parseNumber)
 
 describe.concurrent("Encoder", () => {
+  it("exports", () => {
+    expect(E.make).exist
+    expect(E.encode).exist
+    expect(E.encodeOrThrow).exist
+    expect(E.encoderFor).exist
+  })
+
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
     const encoder = E.encoderFor(schema)

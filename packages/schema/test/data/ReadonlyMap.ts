@@ -1,4 +1,5 @@
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
+import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
@@ -28,13 +29,13 @@ describe.concurrent("ReadonlyMap", () => {
   it("fromEntries. decoder", () => {
     const schema = _.fromEntries(S.number, S.string)
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode([])).toEqual(D.success(new Map()))
+    expect(decoder.decode([])).toEqual(DE.success(new Map()))
     expect(decoder.decode([[1, "a"], [2, "b"], [3, "c"]])).toEqual(
-      D.success(new Map([[1, "a"], [2, "b"], [3, "c"]]))
+      DE.success(new Map([[1, "a"], [2, "b"], [3, "c"]]))
     )
 
-    Util.expectFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectFailure(
+    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+    Util.expectDecodingFailure(
       decoder,
       [[1, "a"], [2, 1]],
       `/1 /1 1 did not satisfy is(string)`

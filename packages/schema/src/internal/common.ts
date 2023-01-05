@@ -18,45 +18,8 @@ import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
-// ---------------------------------------------
-// Decoder APIs
-// ---------------------------------------------
-
-/** @internal */
-export const success: <A>(a: A) => T.These<never, A> = T.right
-
-/** @internal */
-export const failure = (e: DE.DecodeError): T.Validated<DE.DecodeError, never> => T.left([e])
-
-/** @internal */
-export const failures = (
-  es: NonEmptyReadonlyArray<DE.DecodeError>
-): T.Validated<DE.DecodeError, never> => T.left(es)
-
-/** @internal */
-export const warning = <A>(e: DE.DecodeError, a: A): T.Validated<DE.DecodeError, A> =>
-  T.both([e], a)
-
-/** @internal */
-export const warnings = <A>(
-  es: NonEmptyReadonlyArray<DE.DecodeError>,
-  a: A
-): T.Validated<DE.DecodeError, A> => T.both(es, a)
-
-/** @internal */
-export const isSuccess = T.isRight
-
-/** @internal */
-export const isFailure = T.isLeft
-
-/** @internal */
-export const isWarning = T.isBoth
-
 /** @internal */
 export const flatMap = T.flatMap
-
-/** @internal */
-export const mapLeft = T.mapLeft
 
 /** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
@@ -115,7 +78,7 @@ export const fromRefinement = <A>(
   refinement: (u: unknown) => u is A,
   onFalse: (u: unknown) => DE.DecodeError
 ): Decoder<unknown, A> =>
-  makeDecoder(schema, (u) => refinement(u) ? success(u) : failure(onFalse(u)))
+  makeDecoder(schema, (u) => refinement(u) ? DE.success(u) : DE.failure(onFalse(u)))
 
 /** @internal */
 export const makeEncoder = <O, A>(
@@ -167,7 +130,7 @@ export const transformOrFail = <A, B>(
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(self, transformOrFail(to, (a) => success(f(a)), (b) => success(g(b))))
+    pipe(self, transformOrFail(to, (a) => DE.success(f(a)), (b) => DE.success(g(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))

@@ -1,5 +1,6 @@
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/data/Option"
+import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
@@ -23,9 +24,9 @@ describe.concurrent("Option", () => {
   it("fromNullable. decoder", () => {
     const schema = _.fromNullable(S.number)
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode(undefined)).toEqual(D.success(O.none))
-    expect(decoder.decode(null)).toEqual(D.success(O.none))
-    expect(decoder.decode(1)).toEqual(D.success(O.some(1)))
+    expect(decoder.decode(undefined)).toEqual(DE.success(O.none))
+    expect(decoder.decode(null)).toEqual(DE.success(O.none))
+    expect(decoder.decode(1)).toEqual(DE.success(O.some(1)))
 
     Util.expectFailureTree(
       decoder,

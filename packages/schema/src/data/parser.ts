@@ -18,18 +18,18 @@ export const parseNumber: (self: Schema<string>) => Schema<number> = I.transform
   I.number,
   (s: string) => {
     if (s === "NaN") {
-      return I.success(NaN)
+      return DE.success(NaN)
     }
     if (s === "Infinity") {
-      return I.success(Infinity)
+      return DE.success(Infinity)
     }
     if (s === "-Infinity") {
-      return I.success(-Infinity)
+      return DE.success(-Infinity)
     }
     const n = parseFloat(s)
     return isNaN(n) ?
-      I.failure(DE.transform("string", "number", s)) :
-      I.success(n)
+      DE.failure(DE.transform("string", "number", s)) :
+      DE.success(n)
   },
-  (n) => I.success(String(n))
+  (n) => DE.success(String(n))
 )
