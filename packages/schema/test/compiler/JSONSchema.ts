@@ -215,8 +215,16 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         return { "anyOf": ast.types.map(go) }
       case "Enums":
         return { anyOf: ast.enums.map(([_, value]) => ({ const: value })) }
-      case "Refinement":
-        return go(ast.from)
+      case "Refinement": {
+        const from = go(ast.from)
+        return pipe(
+          getJSONSchemaAnnotation(ast),
+          O.match(
+            () => from,
+            ({ schema }) => ({ ...from, ...schema })
+          )
+        )
+      }
     }
     throw new Error(`TODO: unhandled ${ast._tag}`)
   }

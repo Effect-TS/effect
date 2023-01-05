@@ -5,7 +5,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as RH from "@fp-ts/schema/annotation/RefinementHook"
+import * as TAH from "@fp-ts/schema/annotation/TypeAliasHook"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -46,8 +47,12 @@ const record = <K extends PropertyKey, V>(
     return out
   })
 
-const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Arbitrary<any>>>(
-  H.ArbitraryTypeAliasHookId
+const getTypeAliasHook = TAH.getTypeAliasHook<TAH.TypeAliasHook<Arbitrary<any>>>(
+  TAH.ArbitraryTypeAliasHookId
+)
+
+const getRefinementHook = RH.getRefinementHook<RH.RefinementHook<Arbitrary<any>>>(
+  RH.ArbitraryRefinementHookId
 )
 
 /**
@@ -200,10 +205,13 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         )
       }
       case "Refinement": {
-        const type = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (fc) => type.arbitrary(fc).filter(ast.refinement)
+        const from = go(ast.from)
+        return pipe(
+          getRefinementHook(ast),
+          O.match(
+            () => make(I.makeSchema(ast), (fc) => from.arbitrary(fc).filter(ast.refinement)),
+            ({ handler }) => handler(from)
+          )
         )
       }
       case "TemplateLiteral": {

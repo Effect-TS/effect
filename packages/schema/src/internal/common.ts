@@ -117,8 +117,7 @@ export const refinement = <A, B extends A>(
   refinement: Refinement<A, B>,
   meta: unknown,
   annotations: AST.Annotated["annotations"] = {}
-): Schema<B> =>
-  makeSchema(AST.typeAlias([], AST.refinement(from.ast, refinement, meta), annotations))
+): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, meta, annotations))
 
 /** @internal */
 export const transformOrFail = <A, B>(

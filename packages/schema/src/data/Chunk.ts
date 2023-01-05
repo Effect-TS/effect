@@ -32,7 +32,7 @@ const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
 export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
   I.typeAlias(
     [item],
-    I.struct({ _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")) }),
+    I.struct({}),
     {
       [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
       [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),

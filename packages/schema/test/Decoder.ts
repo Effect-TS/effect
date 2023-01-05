@@ -28,7 +28,8 @@ describe.concurrent("Decoder", () => {
     )
     const result = D.decode(schema)({})
     if (DE.isFailure(result)) {
-      console.log(format(result.left))
+      // console.log(format(result.left))
+      format(result.left)
     }
   })
 

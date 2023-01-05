@@ -148,6 +148,16 @@ const getTemplateLiterals = (
   }
 }
 
+/**
+  @category combinators
+  @since 1.0.0
+*/
+export const typeAlias: (
+  typeParameters: ReadonlyArray<Schema<any>>,
+  type: Schema<any>,
+  annotations?: AST.Annotated["annotations"]
+) => Schema<any> = I.typeAlias
+
 // ---------------------------------------------
 // filters
 // ---------------------------------------------

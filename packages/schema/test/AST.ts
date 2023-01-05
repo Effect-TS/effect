@@ -1,7 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as AST from "@fp-ts/schema/AST"
-import * as DataChunk from "@fp-ts/schema/data/Chunk"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -241,11 +240,6 @@ describe.concurrent("AST", () => {
   })
 
   describe.concurrent("propertyKeys", () => {
-    it("TypeAlias", () => {
-      // type Test = keyof Chunk<number> // id
-      expect(AST.propertyKeys(DataChunk.chunk(S.number).ast)).toEqual(["_id"])
-    })
-
     it("TypeAlias", () => {
       // type Test = keyof O.Option<number> // "_tag"
       expect(AST.propertyKeys(DataOption.fromNullable(S.number).ast)).toEqual(["_tag"])

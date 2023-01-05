@@ -576,7 +576,7 @@ export const enums = (
  * @category model
  * @since 1.0.0
  */
-export interface Refinement {
+export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
   readonly refinement: Predicate<any>
@@ -590,8 +590,9 @@ export interface Refinement {
 export const refinement = (
   from: AST,
   refinement: Predicate<any>,
-  meta: unknown
-): Refinement => ({ _tag: "Refinement", from, refinement, meta })
+  meta: unknown,
+  annotations: Annotated["annotations"] = {}
+): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
 
 /**
  * @since 1.0.0
