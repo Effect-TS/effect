@@ -3,6 +3,7 @@ import * as O from "@fp-ts/data/Option"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
+import { format } from "@fp-ts/schema/formatter/Tree"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -25,6 +26,10 @@ describe.concurrent("Decoder", () => {
 └─ key "name"
    └─ is missing`)
     )
+    const result = D.decode(schema)({})
+    if (DE.isFailure(result)) {
+      console.log(format(result.left))
+    }
   })
 
   it(`transform. { a: 'a' } -> { a: 'a', b: none }`, () => {
