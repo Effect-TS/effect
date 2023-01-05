@@ -202,13 +202,14 @@ export const anyKeyword: AnyKeyword = { _tag: "AnyKeyword" }
  */
 export interface StringKeyword {
   readonly _tag: "StringKeyword"
+  readonly isSensitive: boolean
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const stringKeyword: StringKeyword = { _tag: "StringKeyword" }
+export const stringKeyword: StringKeyword = { _tag: "StringKeyword", isSensitive: false }
 
 /**
  * @category guards
@@ -655,6 +656,34 @@ export const transformOrFail = (
 // ---------------------------------------------
 // API
 // ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const sensitive = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "StringKeyword":
+      return { ...ast, isSensitive: true }
+    case "Refinement":
+      return { ...ast, from: sensitive(ast.from) }
+    default:
+      return ast
+  }
+}
+
+/**
+ * @since 1.0.0
+ */
+export const isSensitive = (ast: AST): boolean => {
+  switch (ast._tag) {
+    case "StringKeyword":
+      return ast.isSensitive
+    case "Refinement":
+      return isSensitive(ast.from)
+    default:
+      return false
+  }
+}
 
 /**
  * @since 1.0.0

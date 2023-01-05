@@ -371,7 +371,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             pipe(
               type.decode(u),
               I.flatMap((a) =>
-                ast.refinement(a) ? DE.success(a) : DE.failure(DE.refinement(ast.meta, a))
+                ast.refinement(a) ?
+                  DE.success(a) :
+                  DE.failure(DE.refinement(ast.meta, I.handleSensitive(ast, a)))
               )
             )
         )

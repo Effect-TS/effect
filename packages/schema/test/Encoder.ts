@@ -14,6 +14,16 @@ describe.concurrent("Encoder", () => {
     expect(E.encoderFor).exist
   })
 
+  it("sensitive", () => {
+    const schema = S.struct({ password: S.sensitive(pipe(S.string, S.minLength(8))) })
+    const encoder = E.encoderFor(schema)
+    Util.expectEncodingFailure(
+      encoder,
+      { password: "pwd123" },
+      `/password "**********" did not satisfy refinement({"minLength":8})`
+    )
+  })
+
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
     const encoder = E.encoderFor(schema)

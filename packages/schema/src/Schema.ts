@@ -287,6 +287,11 @@ export const allowUnexpected: <A>(self: Schema<A>) => Schema<A> = handleUnexpect
 export const disallowUnexpected: <A>(self: Schema<A>) => Schema<A> = handleUnexpected(false)
 
 /**
+ * @since 1.0.0
+ */
+export const sensitive = <A>(self: Schema<A>): Schema<A> => make(AST.sensitive(self.ast))
+
+/**
  * @category combinators
  * @since 1.0.0
  */

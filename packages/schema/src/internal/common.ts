@@ -335,3 +335,7 @@ export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
     return cache.get(a)
   }
 }
+
+/** @internal */
+export const handleSensitive = (ast: AST.AST, actual: unknown): unknown =>
+  AST.isSensitive(ast) && typeof actual === "string" ? "**********" : actual

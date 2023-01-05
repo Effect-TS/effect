@@ -74,7 +74,6 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "VoidKeyword":
       case "UnknownKeyword":
       case "AnyKeyword":
-      case "StringKeyword":
       case "NumberKeyword":
       case "BooleanKeyword":
       case "SymbolKeyword":
@@ -82,6 +81,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       case "TemplateLiteral":
       case "BigIntKeyword":
         return make(I.makeSchema(ast), DE.success)
+      case "StringKeyword":
+        return make(I.makeSchema(ast), (a) => DE.success(I.handleSensitive(ast, a)))
       case "NeverKeyword":
         return make<unknown, never>(I.makeSchema(ast), absurd) as any
       case "Tuple": {
@@ -302,8 +303,16 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
         const schema = I.lazy(f)
         return make(schema, (a) => get().encode(a))
       }
-      case "Refinement":
-        return go(ast.from)
+      case "Refinement": {
+        const type = go(ast.from)
+        return make(
+          I.makeSchema(ast),
+          (a) =>
+            ast.refinement(a) ?
+              type.encode(a) :
+              DE.failure(DE.refinement(ast.meta, I.handleSensitive(ast, a)))
+        )
+      }
       case "Transform": {
         const from = go(ast.from)
         return make(I.makeSchema(ast), (a) => pipe(ast.g(a), I.flatMap(from.encode)))
