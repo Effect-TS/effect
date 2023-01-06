@@ -30,7 +30,9 @@ const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
 export const readonlySet = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
   I.typeAlias(
     [item],
-    I.struct({}),
+    I.struct({
+      size: I.number
+    }),
     {
       [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
       [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),

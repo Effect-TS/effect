@@ -8,8 +8,8 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("ReadonlySet", () => {
-  it("fromArray. property tests", () => {
-    Util.property(_.fromArray(S.number))
+  it("readonlySet. keyof", () => {
+    expect(S.keyof(_.readonlySet(S.string))).toEqual(S.literal("size"))
   })
 
   it("readonlySet. guard", () => {
@@ -19,6 +19,19 @@ describe.concurrent("ReadonlySet", () => {
     expect(guard.is(new Set(["a", "b", "c"]))).toEqual(true)
 
     expect(guard.is(new Set(["a", "b", 1]))).toEqual(false)
+  })
+
+  it("readonlySet. pretty", () => {
+    const schema = _.readonlySet(S.string)
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty(new Set())).toEqual("new Set([])")
+    expect(pretty.pretty(new Set(["a", "b"]))).toEqual(
+      `new Set(["a", "b"])`
+    )
+  })
+
+  it("fromArray. property tests", () => {
+    Util.property(_.fromArray(S.number))
   })
 
   it("fromArray. decoder", () => {
@@ -38,14 +51,5 @@ describe.concurrent("ReadonlySet", () => {
     const encoder = E.encoderFor(schema)
     Util.expectEncodingSuccess(encoder, new Set(), [])
     Util.expectEncodingSuccess(encoder, new Set([1, 2, 3]), [1, 2, 3])
-  })
-
-  it("readonlySet. pretty", () => {
-    const schema = _.readonlySet(S.string)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(new Set())).toEqual("new Set([])")
-    expect(pretty.pretty(new Set(["a", "b"]))).toEqual(
-      `new Set(["a", "b"])`
-    )
   })
 })

@@ -730,6 +730,8 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
+    case "StringKeyword":
+      return [literal("length")]
     case "TypeLiteral":
       return ast.propertySignatures.map((f): AST =>
         typeof f.name === "symbol" ? uniqueSymbol(f.name) : literal(f.name)
@@ -748,7 +750,6 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "Transform":
       return _keyof(ast.to)
     case "Literal":
-    case "StringKeyword":
     case "TemplateLiteral":
     case "Tuple":
       throw new Error("cannot compute `keyof`")

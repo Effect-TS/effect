@@ -25,6 +25,10 @@ describe.concurrent("AST", () => {
     )
   })
 
+  it("keyof. string", () => {
+    expect(AST.keyof(S.string.ast)).toEqual(S.literal("length").ast)
+  })
+
   it("keyof. should unify string literals with string", () => {
     expect(AST.keyof(
       pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string))).ast

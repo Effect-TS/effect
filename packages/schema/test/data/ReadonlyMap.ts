@@ -8,8 +8,8 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("ReadonlyMap", () => {
-  it("fromEntries. property tests", () => {
-    Util.property(_.fromEntries(S.number, S.string))
+  it("readonlySet. keyof", () => {
+    expect(S.keyof(_.readonlyMap(S.number, S.string))).toEqual(S.literal("size"))
   })
 
   it("readonlyMap. guard", () => {
@@ -24,6 +24,19 @@ describe.concurrent("ReadonlyMap", () => {
     expect(guard.is(new Map([[1, 1], [2, 2]]))).toEqual(false)
     expect(guard.is(new Map<string | number, number>([["a", 1], ["b", 2], [3, 1]]))).toEqual(false)
     expect(guard.is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
+  })
+
+  it("readonlyMap. pretty", () => {
+    const schema = _.readonlyMap(S.number, S.string)
+    const pretty = P.prettyFor(schema)
+    expect(pretty.pretty(new Map())).toEqual("new Map([])")
+    expect(pretty.pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
+      `new Map([[1, "a"], [2, "b"]])`
+    )
+  })
+
+  it("fromEntries. property tests", () => {
+    Util.property(_.fromEntries(S.number, S.string))
   })
 
   it("fromEntries. decoder", () => {
@@ -50,14 +63,5 @@ describe.concurrent("ReadonlyMap", () => {
       2,
       "b"
     ], [3, "c"]])
-  })
-
-  it("readonlyMap. pretty", () => {
-    const schema = _.readonlyMap(S.number, S.string)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(new Map())).toEqual("new Map([])")
-    expect(pretty.pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
-      `new Map([[1, "a"], [2, "b"]])`
-    )
   })
 })
