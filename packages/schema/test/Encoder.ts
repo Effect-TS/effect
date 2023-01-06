@@ -16,9 +16,8 @@ describe.concurrent("Encoder", () => {
 
   it("sensitive", () => {
     const schema = S.struct({ password: S.sensitive(pipe(S.string, S.minLength(8))) })
-    const encoder = E.encoderFor(schema)
     Util.expectEncodingFailure(
-      encoder,
+      schema,
       { password: "pwd123" },
       `/password "**********" did not satisfy refinement({"minLength":8})`
     )
@@ -26,47 +25,46 @@ describe.concurrent("Encoder", () => {
 
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, "acb", "acb")
+    Util.expectEncodingSuccess(schema, "acb", "acb")
   })
 
   it("string", () => {
-    const encoder = E.encoderFor(S.string)
-    Util.expectEncodingSuccess(encoder, "a", "a")
+    const schema = S.string
+    Util.expectEncodingSuccess(schema, "a", "a")
   })
 
   it("number", () => {
-    const encoder = E.encoderFor(S.number)
-    Util.expectEncodingSuccess(encoder, 1, 1)
+    const schema = S.number
+    Util.expectEncodingSuccess(schema, 1, 1)
   })
 
   it("boolean", () => {
-    const encoder = E.encoderFor(S.boolean)
-    Util.expectEncodingSuccess(encoder, true, true)
-    Util.expectEncodingSuccess(encoder, false, false)
+    const schema = S.boolean
+    Util.expectEncodingSuccess(schema, true, true)
+    Util.expectEncodingSuccess(schema, false, false)
   })
 
   it("bigint", () => {
-    const encoder = E.encoderFor(S.bigint)
-    Util.expectEncodingSuccess(encoder, 1n, 1n)
+    const schema = S.bigint
+    Util.expectEncodingSuccess(schema, 1n, 1n)
   })
 
   it("symbol", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
-    const encoder = E.encoderFor(S.symbol)
-    Util.expectEncodingSuccess(encoder, a, a)
+    const schema = S.symbol
+    Util.expectEncodingSuccess(schema, a, a)
   })
 
   it("object", () => {
-    const encoder = E.encoderFor(S.object)
-    Util.expectEncodingSuccess(encoder, {}, {})
-    Util.expectEncodingSuccess(encoder, [], [])
-    Util.expectEncodingSuccess(encoder, [1, 2, 3], [1, 2, 3])
+    const schema = S.object
+    Util.expectEncodingSuccess(schema, {}, {})
+    Util.expectEncodingSuccess(schema, [], [])
+    Util.expectEncodingSuccess(schema, [1, 2, 3], [1, 2, 3])
   })
 
   it("literal", () => {
-    const encoder = E.encoderFor(S.literal(null))
-    Util.expectEncodingSuccess(encoder, null, null)
+    const schema = S.literal(null)
+    Util.expectEncodingSuccess(schema, null, null)
   })
 
   describe.concurrent("enums", () => {
@@ -76,9 +74,8 @@ describe.concurrent("Encoder", () => {
         Banana
       }
       const schema = S.enums(Fruits)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, Fruits.Apple, 0)
-      Util.expectEncodingSuccess(encoder, Fruits.Banana, 1)
+      Util.expectEncodingSuccess(schema, Fruits.Apple, 0)
+      Util.expectEncodingSuccess(schema, Fruits.Banana, 1)
     })
 
     it("String enums", () => {
@@ -88,10 +85,9 @@ describe.concurrent("Encoder", () => {
         Cantaloupe = 0
       }
       const schema = S.enums(Fruits)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, Fruits.Apple, "apple")
-      Util.expectEncodingSuccess(encoder, Fruits.Banana, "banana")
-      Util.expectEncodingSuccess(encoder, Fruits.Cantaloupe, 0)
+      Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
+      Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
+      Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 0)
     })
 
     it("Const enums", () => {
@@ -101,138 +97,122 @@ describe.concurrent("Encoder", () => {
         Cantaloupe: 3
       } as const
       const schema = S.enums(Fruits)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, Fruits.Apple, "apple")
-      Util.expectEncodingSuccess(encoder, Fruits.Banana, "banana")
-      Util.expectEncodingSuccess(encoder, Fruits.Cantaloupe, 3)
+      Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
+      Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
+      Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 3)
     })
   })
 
   it("tuple. empty", () => {
     const schema = S.tuple()
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [], [])
+    Util.expectEncodingSuccess(schema, [], [])
   })
 
   it("tuple. required element", () => {
     const schema = S.tuple(NumberFromString)
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
     const x = [1, "b"] as any
-    Util.expectEncodingWarning(encoder, x, ["1"], `/1 is unexpected`)
+    Util.expectEncodingWarning(schema, x, ["1"], `/1 is unexpected`)
   })
 
   it("tuple. required element with undefined", () => {
     const schema = S.tuple(S.union(NumberFromString, S.undefined))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
-    Util.expectEncodingSuccess(encoder, [undefined], [undefined])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
+    Util.expectEncodingSuccess(schema, [undefined], [undefined])
     const x = [1, "b"] as any
-    Util.expectEncodingWarning(encoder, x, ["1"], `/1 is unexpected`)
+    Util.expectEncodingWarning(schema, x, ["1"], `/1 is unexpected`)
   })
 
   it("tuple. optional element", () => {
     const schema = pipe(S.tuple(), S.optionalElement(NumberFromString))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [], [])
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
+    Util.expectEncodingSuccess(schema, [], [])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
     const x = [1, "b"] as any
-    Util.expectEncodingWarning(encoder, x, ["1"], `/1 is unexpected`)
+    Util.expectEncodingWarning(schema, x, ["1"], `/1 is unexpected`)
   })
 
   it("tuple. optional element with undefined", () => {
     const schema = pipe(S.tuple(), S.optionalElement(S.union(NumberFromString, S.undefined)))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [], [])
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
+    Util.expectEncodingSuccess(schema, [], [])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
     const x = [1, "b"] as any
-    Util.expectEncodingWarning(encoder, x, ["1"], `/1 is unexpected`)
-    Util.expectEncodingSuccess(encoder, [undefined], [undefined])
+    Util.expectEncodingWarning(schema, x, ["1"], `/1 is unexpected`)
+    Util.expectEncodingSuccess(schema, [undefined], [undefined])
   })
 
   it("tuple. e + e?", () => {
     const schema = pipe(S.tuple(S.string), S.optionalElement(NumberFromString))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, ["a"], ["a"])
-    Util.expectEncodingSuccess(encoder, ["a", 1], ["a", "1"])
+    Util.expectEncodingSuccess(schema, ["a"], ["a"])
+    Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
   })
 
   it("tuple. e + r", () => {
     const schema = pipe(S.tuple(S.string), S.rest(NumberFromString))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, ["a"], ["a"])
-    Util.expectEncodingSuccess(encoder, ["a", 1], ["a", "1"])
-    Util.expectEncodingSuccess(encoder, ["a", 1, 2], ["a", "1", "2"])
+    Util.expectEncodingSuccess(schema, ["a"], ["a"])
+    Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
+    Util.expectEncodingSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
   })
 
   it("tuple. e? + r", () => {
     const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(NumberFromString))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [], [])
-    Util.expectEncodingSuccess(encoder, ["a"], ["a"])
-    Util.expectEncodingSuccess(encoder, ["a", 1], ["a", "1"])
-    Util.expectEncodingSuccess(encoder, ["a", 1, 2], ["a", "1", "2"])
+    Util.expectEncodingSuccess(schema, [], [])
+    Util.expectEncodingSuccess(schema, ["a"], ["a"])
+    Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
+    Util.expectEncodingSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
   })
 
   it("tuple. r", () => {
     const schema = S.array(NumberFromString)
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [], [])
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
-    Util.expectEncodingSuccess(encoder, [1, 2], ["1", "2"])
+    Util.expectEncodingSuccess(schema, [], [])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
+    Util.expectEncodingSuccess(schema, [1, 2], ["1", "2"])
   })
 
   it("tuple. r + e", () => {
     const schema = pipe(S.array(S.string), S.element(NumberFromString))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, [1], ["1"])
-    Util.expectEncodingSuccess(encoder, ["a", 1], ["a", "1"])
-    Util.expectEncodingSuccess(encoder, ["a", "b", 1], ["a", "b", "1"])
+    Util.expectEncodingSuccess(schema, [1], ["1"])
+    Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
+    Util.expectEncodingSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
   })
 
   it("tuple. e + r + e", () => {
     const schema = pipe(S.tuple(S.string), S.rest(NumberFromString), S.element(S.boolean))
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, ["a", true], ["a", true])
-    Util.expectEncodingSuccess(encoder, ["a", 1, true], ["a", "1", true])
-    Util.expectEncodingSuccess(encoder, ["a", 1, 2, true], ["a", "1", "2", true])
+    Util.expectEncodingSuccess(schema, ["a", true], ["a", true])
+    Util.expectEncodingSuccess(schema, ["a", 1, true], ["a", "1", true])
+    Util.expectEncodingSuccess(schema, ["a", 1, 2, true], ["a", "1", "2", true])
   })
 
   describe.concurrent("struct", () => {
     it("required property signature", () => {
       const schema = S.struct({ a: S.number })
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
       const x = { a: 1, b: "b" }
-      Util.expectEncodingWarning(encoder, x, { a: 1 }, `/b is unexpected`)
+      Util.expectEncodingWarning(schema, x, { a: 1 }, `/b is unexpected`)
     })
 
     it("required property signature with undefined", () => {
       const schema = S.struct({ a: S.union(S.number, S.undefined) })
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
-      Util.expectEncodingSuccess(encoder, { a: undefined }, { a: undefined })
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
       const x = { a: 1, b: "b" }
-      Util.expectEncodingWarning(encoder, x, { a: 1 }, `/b is unexpected`)
+      Util.expectEncodingWarning(schema, x, { a: 1 }, `/b is unexpected`)
     })
 
     it("optional property signature", () => {
       const schema = S.struct({ a: S.optional(S.number) })
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, {}, {})
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, {}, {})
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
       const x = { a: 1, b: "b" }
-      Util.expectEncodingWarning(encoder, x, { a: 1 }, `/b is unexpected`)
+      Util.expectEncodingWarning(schema, x, { a: 1 }, `/b is unexpected`)
     })
 
     it("optional property signature with undefined", () => {
       const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, {}, {})
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, {}, {})
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
       const x = { a: 1, b: "b" }
-      Util.expectEncodingWarning(encoder, x, { a: 1 }, `/b is unexpected`)
-      Util.expectEncodingSuccess(encoder, { a: undefined }, { a: undefined })
+      Util.expectEncodingWarning(schema, x, { a: 1 }, `/b is unexpected`)
+      Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
     })
 
     it("extend record(string, NumberFromString)", () => {
@@ -240,9 +220,8 @@ describe.concurrent("Encoder", () => {
         S.struct({ a: S.number }),
         S.extend(S.record(S.string, NumberFromString))
       )
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: "1" })
-      Util.expectEncodingSuccess(encoder, { a: 1, b: 1 }, { a: "1", b: "1" })
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: "1" })
+      Util.expectEncodingSuccess(schema, { a: 1, b: 1 }, { a: "1", b: "1" })
     })
 
     it("extend record(symbol, NumberFromString)", () => {
@@ -251,25 +230,22 @@ describe.concurrent("Encoder", () => {
         S.struct({ a: S.number }),
         S.extend(S.record(S.symbol, NumberFromString))
       )
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
-      Util.expectEncodingSuccess(encoder, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
     })
 
     it("should handle symbols as keys", () => {
       const a = Symbol.for("@fp-ts/schema/test/a")
       const schema = S.struct({ [a]: S.string })
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, { [a]: "a" }, { [a]: "a" })
+      Util.expectEncodingSuccess(schema, { [a]: "a" }, { [a]: "a" })
     })
   })
 
   describe.concurrent("union", () => {
     it("union", () => {
       const schema = S.union(S.string, NumberFromString)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, "a", "a")
-      Util.expectEncodingSuccess(encoder, 1, "1")
+      Util.expectEncodingSuccess(schema, "a", "a")
+      Util.expectEncodingSuccess(schema, 1, "1")
     })
 
     describe.concurrent("should give precedence to schemas containing more infos", () => {
@@ -277,16 +253,14 @@ describe.concurrent("Encoder", () => {
         const a = S.struct({ a: S.string })
         const ab = S.struct({ a: S.string, b: S.number })
         const schema = S.union(a, ab)
-        const encoder = E.encoderFor(schema)
-        Util.expectEncodingSuccess(encoder, { a: "a", b: 1 }, { a: "a", b: 1 })
+        Util.expectEncodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: 1 })
       })
 
       it("optional property signatures", () => {
         const ab = S.struct({ a: S.string, b: S.optional(S.number) })
         const ac = S.struct({ a: S.string, c: S.optional(S.number) })
         const schema = S.union(ab, ac)
-        const encoder = E.encoderFor(schema)
-        Util.expectEncodingSuccess(encoder, { a: "a", c: 1 }, { a: "a", c: 1 })
+        Util.expectEncodingSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1 })
       })
     })
   })
@@ -294,34 +268,30 @@ describe.concurrent("Encoder", () => {
   describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, {}, {})
-      Util.expectEncodingSuccess(encoder, { a: 1 }, { a: 1 })
+      Util.expectEncodingSuccess(schema, {}, {})
+      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
     })
 
     it("tuple", () => {
       const schema = pipe(S.tuple(S.string, S.number), S.partial)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, [], [])
-      Util.expectEncodingSuccess(encoder, ["a"], ["a"])
-      Util.expectEncodingSuccess(encoder, ["a", 1], ["a", 1])
+      Util.expectEncodingSuccess(schema, [], [])
+      Util.expectEncodingSuccess(schema, ["a"], ["a"])
+      Util.expectEncodingSuccess(schema, ["a", 1], ["a", 1])
     })
 
     it("array", () => {
       const schema = pipe(S.array(S.number), S.partial)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, [], [])
-      Util.expectEncodingSuccess(encoder, [1], [1])
-      Util.expectEncodingSuccess(encoder, [undefined], [undefined])
+      Util.expectEncodingSuccess(schema, [], [])
+      Util.expectEncodingSuccess(schema, [1], [1])
+      Util.expectEncodingSuccess(schema, [undefined], [undefined])
     })
 
     it("union", () => {
       const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
-      const encoder = E.encoderFor(schema)
-      Util.expectEncodingSuccess(encoder, "a", "a")
-      Util.expectEncodingSuccess(encoder, [], [])
-      Util.expectEncodingSuccess(encoder, [1], [1])
-      Util.expectEncodingSuccess(encoder, [undefined], [undefined])
+      Util.expectEncodingSuccess(schema, "a", "a")
+      Util.expectEncodingSuccess(schema, [], [])
+      Util.expectEncodingSuccess(schema, [1], [1])
+      Util.expectEncodingSuccess(schema, [undefined], [undefined])
     })
   })
 
@@ -336,9 +306,8 @@ describe.concurrent("Encoder", () => {
         as: S.array(schema)
       })
     )
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, { a: 1, as: [] }, { a: "1", as: [] })
-    Util.expectEncodingSuccess(encoder, { a: 1, as: [{ a: 2, as: [] }] }, {
+    Util.expectEncodingSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
+    Util.expectEncodingSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {
       a: "1",
       as: [{ a: "2", as: [] }]
     })

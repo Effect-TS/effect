@@ -47,27 +47,27 @@ export const expectDecodingWarning = <A>(schema: Schema<A>, u: unknown, message:
   expect(t).toEqual(T.both(message, a))
 }
 
-export const expectEncodingSuccess = <I, A>(encoder: E.Encoder<I, A>, a: A, i: I) => {
-  const t = encoder.encode(a)
+export const expectEncodingSuccess = <A>(schema: Schema<A>, a: A, o: unknown) => {
+  const t = E.encode(schema)(a)
   expect(T.isRight(t)).toEqual(true)
-  expect(t).toStrictEqual(T.right(i))
+  expect(t).toStrictEqual(T.right(o))
 }
 
-export const expectEncodingFailure = <I, A>(encoder: E.Encoder<I, A>, a: A, message: string) => {
-  const t = pipe(encoder.encode(a), T.mapLeft(formatAll))
+export const expectEncodingFailure = <A>(schema: Schema<A>, a: A, message: string) => {
+  const t = pipe(E.encode(schema)(a), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
 
-export const expectEncodingWarning = <I, A>(
-  encoder: E.Encoder<I, A>,
+export const expectEncodingWarning = <A>(
+  schema: Schema<A>,
   a: A,
-  i: I,
+  o: unknown,
   message: string
 ) => {
-  const t = pipe(encoder.encode(a), T.mapLeft(formatAll))
+  const t = pipe(E.encode(schema)(a), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
-  expect(t).toEqual(T.both(message, i))
+  expect(t).toEqual(T.both(message, o))
 }
 
 const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
