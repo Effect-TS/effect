@@ -41,8 +41,14 @@ export const expectDecodingFailure = <A>(schema: Schema<A>, u: unknown, message:
   expect(t).toEqual(T.left(message))
 }
 
-export const expectDecodingWarning = <A>(schema: Schema<A>, u: unknown, message: string, a: A) => {
-  const t = pipe(D.decode(schema, options)(u), T.mapLeft(formatAll))
+export const expectDecodingWarning = <A>(
+  schema: Schema<A>,
+  u: unknown,
+  message: string,
+  a: A,
+  optionalOptions?: D.DecodeOptions
+) => {
+  const t = pipe(D.decode(schema, optionalOptions)(u), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }

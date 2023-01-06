@@ -324,7 +324,6 @@ export interface Tuple extends Annotated {
   readonly elements: ReadonlyArray<Element>
   readonly rest: Option<RA.NonEmptyReadonlyArray<AST>>
   readonly isReadonly: boolean
-  readonly isUnexpectedAllowed: boolean
 }
 
 /**
@@ -335,14 +334,12 @@ export const tuple = (
   elements: ReadonlyArray<Element>,
   rest: Option<RA.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
-  isUnexpectedAllowed = false,
   annotations: Annotated["annotations"] = {}
 ): Tuple => ({
   _tag: "Tuple",
   elements,
   rest,
   isReadonly,
-  isUnexpectedAllowed,
   annotations
 })
 
@@ -399,7 +396,6 @@ export interface TypeLiteral extends Annotated {
   readonly _tag: "TypeLiteral"
   readonly propertySignatures: ReadonlyArray<PropertySignature>
   readonly indexSignatures: ReadonlyArray<IndexSignature>
-  readonly isUnexpectedAllowed: boolean
 }
 
 const getCardinality = (ast: AST): number => {
@@ -445,13 +441,11 @@ const sortByCardinalityAsc = RA.sort(
 export const typeLiteral = (
   propertySignatures: ReadonlyArray<PropertySignature>,
   indexSignatures: ReadonlyArray<IndexSignature>,
-  isUnexpectedAllowed = false,
   annotations: Annotated["annotations"] = {}
 ): TypeLiteral => ({
   _tag: "TypeLiteral",
   propertySignatures: sortByCardinalityAsc(propertySignatures),
   indexSignatures: sortByCardinalityAsc(indexSignatures),
-  isUnexpectedAllowed,
   annotations
 })
 

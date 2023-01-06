@@ -30,7 +30,7 @@ export interface DecodeOptions {
  * @since 1.0.0
  */
 export interface Decoder<I, A> extends Schema<A> {
-  readonly decode: (i: I, options: DecodeOptions) => DE.DecodeResult<A>
+  readonly decode: (i: I, options?: DecodeOptions) => DE.DecodeResult<A>
 }
 
 /**
@@ -44,14 +44,14 @@ export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) =>
  * @category decoding
  * @since 1.0.0
  */
-export const decode = <A>(schema: Schema<A>, options: DecodeOptions) =>
+export const decode = <A>(schema: Schema<A>, options?: DecodeOptions) =>
   (u: unknown): DE.DecodeResult<A> => decoderFor(schema).decode(u, options)
 
 /**
  * @category decoding
  * @since 1.0.0
  */
-export const decodeOrThrow = <A>(schema: Schema<A>, options: DecodeOptions) =>
+export const decodeOrThrow = <A>(schema: Schema<A>, options?: DecodeOptions) =>
   (u: unknown): A => {
     const t = decoderFor(schema).decode(u, options)
     if (DE.isFailure(t)) {
@@ -207,8 +207,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // ---------------------------------------------
               // handle unexpected indexes
               // ---------------------------------------------
+              const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
-                if (ast.isUnexpectedAllowed) {
+                if (isUnexpectedAllowed) {
                   es.push(DE.index(i, [DE.unexpected(input[i])]))
                 } else {
                   return DE.failures(I.mutableAppend(es, DE.index(i, [DE.unexpected(input[i])])))
@@ -299,9 +300,10 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // ---------------------------------------------
               // handle unexpected keys
               // ---------------------------------------------
+              const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-                  if (ast.isUnexpectedAllowed) {
+                  if (isUnexpectedAllowed) {
                     es.push(DE.key(key, [DE.unexpected(input[key])]))
                   } else {
                     return DE.failures(

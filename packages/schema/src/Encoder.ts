@@ -20,7 +20,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export interface Encoder<O, A> extends Schema<A> {
-  readonly encode: (value: A, options: DecodeOptions) => DE.DecodeResult<O>
+  readonly encode: (value: A, options?: DecodeOptions) => DE.DecodeResult<O>
 }
 
 /**
@@ -34,14 +34,14 @@ export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) =>
  * @category encoding
  * @since 1.0.0
  */
-export const encode = <A>(schema: Schema<A>, options: DecodeOptions) =>
+export const encode = <A>(schema: Schema<A>, options?: DecodeOptions) =>
   (a: A): DE.DecodeResult<unknown> => encoderFor(schema).encode(a, options)
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeOrThrow = <A>(schema: Schema<A>, options: DecodeOptions) =>
+export const encodeOrThrow = <A>(schema: Schema<A>, options?: DecodeOptions) =>
   (a: A): unknown => {
     const t = encoderFor(schema).encode(a, options)
     if (DE.isFailure(t)) {
