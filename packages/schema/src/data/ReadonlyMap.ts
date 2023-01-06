@@ -22,15 +22,14 @@ const decoder = <K, V>(
   const items = I.array(I.tuple(key, value))
   return I.makeDecoder(
     readonlyMap(key, value),
-    (options) =>
-      (u) =>
-        !isMap(u) ?
-          DE.failure(DE.type("Map<unknown, unknown>", u)) :
-          pipe(
-            Array.from(u.entries()),
-            D.decode(items, options),
-            I.map((as) => new Map(as))
-          )
+    (u, options) =>
+      !isMap(u) ?
+        DE.failure(DE.type("Map<unknown, unknown>", u)) :
+        pipe(
+          Array.from(u.entries()),
+          D.decode(items, options),
+          I.map((as) => new Map(as))
+        )
   )
 }
 
@@ -41,9 +40,8 @@ const encoder = <K, V>(
   const items = I.array(I.tuple(key, value))
   return I.makeEncoder(
     readonlyMap(key, value),
-    (options) =>
-      (map) =>
-        pipe(Array.from(map.entries()), E.encode(items, options), I.map((bs: any) => new Map(bs)))
+    (map, options) =>
+      pipe(Array.from(map.entries()), E.encode(items, options), I.map((bs: any) => new Map(bs)))
   )
 }
 

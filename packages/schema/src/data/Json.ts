@@ -36,7 +36,7 @@ const Guard = I.makeGuard<Json>(json, I.isJson)
 
 const Decoder = I.fromRefinement<Json>(json, I.isJson, (u) => DE.type("Json", u))
 
-const Encoder = I.makeEncoder<unknown, Json>(json, () => DE.success)
+const Encoder = I.makeEncoder<unknown, Json>(json, DE.success)
 
 const Arbitrary = I.makeArbitrary<Json>(json, (fc) => fc.jsonValue().map((json) => json as Json))
 

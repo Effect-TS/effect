@@ -81,7 +81,7 @@ export const fromRefinement = <A>(
   refinement: (u: unknown) => u is A,
   onFalse: (u: unknown) => DE.DecodeError
 ): Decoder<unknown, A> =>
-  makeDecoder(schema, () => (u) => refinement(u) ? DE.success(u) : DE.failure(onFalse(u)))
+  makeDecoder(schema, (u) => refinement(u) ? DE.success(u) : DE.failure(onFalse(u)))
 
 /** @internal */
 export const makeEncoder = <O, A>(
@@ -132,7 +132,7 @@ export const transformOrFail = <A, B>(
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(self, transformOrFail(to, () => (a) => DE.success(f(a)), () => (b) => DE.success(g(b))))
+    pipe(self, transformOrFail(to, (a) => DE.success(f(a)), (b) => DE.success(g(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))

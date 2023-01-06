@@ -18,11 +18,10 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
   const items = I.array(item)
   return I.makeDecoder(
     chunk(item),
-    (options) =>
-      (u) =>
-        !C.isChunk(u) ?
-          DE.failure(DE.type("Chunk<unknown>", u)) :
-          pipe(C.toReadonlyArray(u), D.decode(items, options), I.map(C.fromIterable))
+    (u, options) =>
+      !C.isChunk(u) ?
+        DE.failure(DE.type("Chunk<unknown>", u)) :
+        pipe(C.toReadonlyArray(u), D.decode(items, options), I.map(C.fromIterable))
   )
 }
 
@@ -30,9 +29,8 @@ const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> =
   const items = I.array(item)
   return I.makeEncoder(
     chunk(item),
-    (options) =>
-      (chunk) =>
-        pipe(chunk, C.toReadonlyArray, E.encode(items, options), I.map(C.fromIterable as any))
+    (chunk, options) =>
+      pipe(chunk, C.toReadonlyArray, E.encode(items, options), I.map(C.fromIterable as any))
   )
 }
 

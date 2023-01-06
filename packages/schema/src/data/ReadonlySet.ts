@@ -21,15 +21,14 @@ const decoder = <A>(
   const items = I.array(item)
   return I.makeDecoder(
     readonlySet(item),
-    (options) =>
-      (u) =>
-        !isSet(u) ?
-          DE.failure(DE.type("Set<unknown>", u)) :
-          pipe(
-            Array.from(u.values()),
-            D.decode(items, options),
-            I.map((as) => new Set(as))
-          )
+    (u, options) =>
+      !isSet(u) ?
+        DE.failure(DE.type("Set<unknown>", u)) :
+        pipe(
+          Array.from(u.values()),
+          D.decode(items, options),
+          I.map((as) => new Set(as))
+        )
   )
 }
 
@@ -39,9 +38,8 @@ const encoder = <A>(
   const items = I.array(item)
   return I.makeEncoder(
     readonlySet(item),
-    (options) =>
-      (map) =>
-        pipe(Array.from(map.values()), E.encode(items, options), I.map((bs: any) => new Set(bs)))
+    (map, options) =>
+      pipe(Array.from(map.values()), E.encode(items, options), I.map((bs: any) => new Set(bs)))
   )
 }
 
