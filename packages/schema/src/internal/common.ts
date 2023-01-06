@@ -22,6 +22,9 @@ import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema
 export const flatMap = T.flatMap
 
 /** @internal */
+export const map = T.map
+
+/** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {
   self.push(a)
   return self as any

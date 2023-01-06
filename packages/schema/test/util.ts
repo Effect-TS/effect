@@ -6,7 +6,7 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
-import { format } from "@fp-ts/schema/formatter/Tree"
+import { format, stringify } from "@fp-ts/schema/formatter/Tree"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -72,13 +72,6 @@ export const expectEncodingWarning = <A>(
 
 const formatAll = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
-}
-
-const stringify = (actual: unknown): string => {
-  if (typeof actual === "number") {
-    return Number.isNaN(actual) ? "NaN" : String(actual)
-  }
-  return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
 }
 
 const formatDecodeError = (e: DE.DecodeError): string => {

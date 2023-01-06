@@ -6,10 +6,33 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import * as A from "@fp-ts/schema/Arbitrary"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
 import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
+
+const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> => {
+  const items = D.decoderFor(I.array(item))
+  return I.makeDecoder(
+    chunk(item),
+    (u) =>
+      !C.isChunk(u) ?
+        DE.failure(DE.type("Chunk<unknown>", u)) :
+        pipe(C.toReadonlyArray(u), items.decode, I.map(C.fromIterable))
+  )
+}
+
+const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> => {
+  const items = E.encoderFor(I.array(item))
+  return I.makeEncoder(
+    chunk(item),
+    (chunk) =>
+      pipe(chunk, C.toReadonlyArray, (as) => items.encode(as), I.map(C.fromIterable as any))
+  )
+}
 
 const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
   I.makeGuard(
@@ -37,6 +60,8 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
       length: I.number
     }),
     {
+      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
       [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
       [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
       [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)
@@ -46,5 +71,5 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
 /**
  * @since 1.0.0
  */
-export const fromArray = <A>(item: Schema<A>): Schema<Chunk<A>> =>
+export const fromValues = <A>(item: Schema<A>): Schema<Chunk<A>> =>
   pipe(I.array(item), I.transform(chunk(item), C.fromIterable, C.toReadonlyArray))

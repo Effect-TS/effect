@@ -47,14 +47,33 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-const stringify = (actual: unknown): string => {
+/**
+ * @since 1.0.0
+ */
+export const stringify = (actual: unknown): string => {
   if (typeof actual === "number") {
     return Number.isNaN(actual) ? "NaN" : String(actual)
   }
   if (typeof actual === "symbol") {
     return String(actual)
   }
-  return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
+  if (actual === undefined) {
+    return "undefined"
+  }
+  if (actual === null) {
+    return "null"
+  }
+  if (actual instanceof Set) {
+    return `Set([${stringify(Array.from(actual.values()))}])`
+  }
+  if (actual instanceof Map) {
+    return `Map([${stringify(Array.from(actual.entries()))}])`
+  }
+  try {
+    return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
+  } catch (e) {
+    return String(actual)
+  }
 }
 
 const go = (e: DE.DecodeError): Tree<string> => {

@@ -4,12 +4,44 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import type { Guard } from "@fp-ts/schema/Guard"
+import * as DE from "@fp-ts/schema/DecodeError"
+import * as D from "@fp-ts/schema/Decoder"
+import * as E from "@fp-ts/schema/Encoder"
+import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-const guard = <K, V>(key: Guard<K>, value: Guard<V>): Guard<ReadonlyMap<K, V>> =>
+const isMap = (u: unknown): u is Map<unknown, unknown> =>
+  typeof u === "object" && typeof u !== null && u instanceof Map
+
+const decoder = <K, V>(
+  key: D.Decoder<unknown, K>,
+  value: D.Decoder<unknown, V>
+): D.Decoder<unknown, ReadonlyMap<K, V>> => {
+  const items = D.decoderFor(I.array(I.tuple(key, value)))
+  return I.makeDecoder(
+    readonlyMap(key, value),
+    (u) =>
+      !isMap(u) ?
+        DE.failure(DE.type("Map<unknown, unknown>", u)) :
+        pipe(Array.from(u.entries()), items.decode, I.map((as) => new Map(as)))
+  )
+}
+
+const encoder = <K, V>(
+  key: E.Encoder<unknown, K>,
+  value: E.Encoder<unknown, V>
+): E.Encoder<unknown, ReadonlyMap<K, V>> => {
+  const items = E.encoderFor(I.array(I.tuple(key, value)))
+  return I.makeEncoder(
+    readonlyMap(key, value),
+    (map) =>
+      pipe(Array.from(map.entries()), (as) => items.encode(as), I.map((bs: any) => new Map(bs)))
+  )
+}
+
+const guard = <K, V>(key: G.Guard<K>, value: G.Guard<V>): G.Guard<ReadonlyMap<K, V>> =>
   I.makeGuard(
     fromEntries(key, value),
     (u): u is ReadonlyMap<K, V> =>
@@ -43,6 +75,8 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
       size: I.number
     }),
     {
+      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
+      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
       [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
       [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
       [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)

@@ -1,3 +1,5 @@
+import { pipe } from "@fp-ts/data/Function"
+import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
@@ -7,9 +9,41 @@ import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
+const NumberFromString = pipe(S.string, parseNumber)
+
 describe.concurrent("ReadonlyMap", () => {
   it("readonlySet. keyof", () => {
     expect(S.keyof(_.readonlyMap(S.number, S.string))).toEqual(S.literal("size"))
+  })
+
+  it("readonlyMap. property tests", () => {
+    Util.property(_.readonlyMap(S.number, S.string))
+  })
+
+  it("readonlyMap. decoder", () => {
+    const schema = _.readonlyMap(NumberFromString, S.string)
+    const decoder = D.decoderFor(schema)
+    expect(decoder.decode(new Map())).toEqual(DE.success(new Map()))
+    expect(decoder.decode(new Map([["1", "a"], ["2", "b"], ["3", "c"]]))).toEqual(
+      DE.success(new Map([[1, "a"], [2, "b"], [3, "c"]]))
+    )
+
+    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(Map<unknown, unknown>)`)
+    Util.expectDecodingFailure(
+      decoder,
+      new Map([["1", "a"], ["a", "b"]]),
+      `/1 /0 "a" did not satisfy parsing from (string) to (number)`
+    )
+  })
+
+  it("readonlyMap. encoder", () => {
+    const schema = _.readonlyMap(NumberFromString, S.string)
+    Util.expectEncodingSuccess(schema, new Map(), new Map())
+    Util.expectEncodingSuccess(
+      schema,
+      new Map([[1, "a"], [2, "b"], [3, "c"]]),
+      new Map([["1", "a"], ["2", "b"], ["3", "c"]])
+    )
   })
 
   it("readonlyMap. guard", () => {

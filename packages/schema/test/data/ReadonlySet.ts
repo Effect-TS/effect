@@ -1,3 +1,5 @@
+import { pipe } from "@fp-ts/data/Function"
+import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlySet"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
@@ -7,9 +9,35 @@ import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
+const NumberFromString = pipe(S.string, parseNumber)
+
 describe.concurrent("ReadonlySet", () => {
   it("readonlySet. keyof", () => {
-    expect(S.keyof(_.readonlySet(S.string))).toEqual(S.literal("size"))
+    expect(S.keyof(_.readonlySet(S.number))).toEqual(S.literal("size"))
+  })
+
+  it("readonlySet. property tests", () => {
+    Util.property(_.readonlySet(S.number))
+  })
+
+  it("readonlySet. decoder", () => {
+    const schema = _.readonlySet(NumberFromString)
+    const decoder = D.decoderFor(schema)
+    expect(decoder.decode(new Set())).toEqual(DE.success(new Set()))
+    expect(decoder.decode(new Set(["1", "2", "3"]))).toEqual(DE.success(new Set([1, 2, 3])))
+
+    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(Set<unknown>)`)
+    Util.expectDecodingFailure(
+      decoder,
+      new Set(["1", "a", "3"]),
+      `/1 "a" did not satisfy parsing from (string) to (number)`
+    )
+  })
+
+  it("readonlySet. encoder", () => {
+    const schema = _.readonlySet(NumberFromString)
+    Util.expectEncodingSuccess(schema, new Set(), new Set())
+    Util.expectEncodingSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
   })
 
   it("readonlySet. guard", () => {
@@ -30,12 +58,12 @@ describe.concurrent("ReadonlySet", () => {
     )
   })
 
-  it("fromArray. property tests", () => {
-    Util.property(_.fromArray(S.number))
+  it("fromValues. property tests", () => {
+    Util.property(_.fromValues(S.number))
   })
 
-  it("fromArray. decoder", () => {
-    const schema = _.fromArray(S.number)
+  it("fromValues. decoder", () => {
+    const schema = _.fromValues(S.number)
     const decoder = D.decoderFor(schema)
     expect(decoder.decode([])).toEqual(DE.success(new Set([])))
     expect(decoder.decode([1, 2, 3])).toEqual(
@@ -46,8 +74,8 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(decoder, [1, "a"], `/1 "a" did not satisfy is(number)`)
   })
 
-  it("fromArray. encoder", () => {
-    const schema = _.fromArray(S.number)
+  it("fromValues. encoder", () => {
+    const schema = _.fromValues(S.number)
     const encoder = E.encoderFor(schema)
     Util.expectEncodingSuccess(encoder, new Set(), [])
     Util.expectEncodingSuccess(encoder, new Set([1, 2, 3]), [1, 2, 3])
