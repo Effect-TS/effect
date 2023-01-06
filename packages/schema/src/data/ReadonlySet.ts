@@ -36,11 +36,12 @@ const decoder = <A>(
 const encoder = <A>(
   item: E.Encoder<unknown, A>
 ): E.Encoder<unknown, ReadonlySet<A>> => {
-  const items = E.encoderFor(I.array(item))
+  const items = I.array(item)
   return I.makeEncoder(
     readonlySet(item),
-    (map) =>
-      pipe(Array.from(map.values()), (as) => items.encode(as), I.map((bs: any) => new Set(bs)))
+    (options) =>
+      (map) =>
+        pipe(Array.from(map.values()), E.encode(items, options), I.map((bs: any) => new Set(bs)))
   )
 }
 

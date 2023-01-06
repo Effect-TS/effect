@@ -27,11 +27,12 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
 }
 
 const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> => {
-  const items = E.encoderFor(I.array(item))
+  const items = I.array(item)
   return I.makeEncoder(
     chunk(item),
-    (chunk) =>
-      pipe(chunk, C.toReadonlyArray, (as) => items.encode(as), I.map(C.fromIterable as any))
+    (options) =>
+      (chunk) =>
+        pipe(chunk, C.toReadonlyArray, E.encode(items, options), I.map(C.fromIterable as any))
   )
 }
 

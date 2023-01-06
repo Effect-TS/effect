@@ -21,7 +21,7 @@ export const property = <A>(schema: Schema<A>) => {
     if (!guard.is(a)) {
       return false
     }
-    const roundtrip = pipe(a, E.encode(schema), I.flatMap(D.decode(schema, options)))
+    const roundtrip = pipe(a, E.encode(schema, options), I.flatMap(D.decode(schema, options)))
     if (DE.isFailure(roundtrip)) {
       return false
     }
@@ -48,13 +48,13 @@ export const expectDecodingWarning = <A>(schema: Schema<A>, u: unknown, message:
 }
 
 export const expectEncodingSuccess = <A>(schema: Schema<A>, a: A, o: unknown) => {
-  const t = E.encode(schema)(a)
+  const t = E.encode(schema, options)(a)
   expect(T.isRight(t)).toEqual(true)
   expect(t).toStrictEqual(T.right(o))
 }
 
 export const expectEncodingFailure = <A>(schema: Schema<A>, a: A, message: string) => {
-  const t = pipe(E.encode(schema)(a), T.mapLeft(formatAll))
+  const t = pipe(E.encode(schema, options)(a), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
@@ -65,7 +65,7 @@ export const expectEncodingWarning = <A>(
   o: unknown,
   message: string
 ) => {
-  const t = pipe(E.encode(schema)(a), T.mapLeft(formatAll))
+  const t = pipe(E.encode(schema, options)(a), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, o))
 }
