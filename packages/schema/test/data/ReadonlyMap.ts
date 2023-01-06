@@ -1,7 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
@@ -23,9 +22,11 @@ describe.concurrent("ReadonlyMap", () => {
   it("readonlyMap. decoder", () => {
     const schema = _.readonlyMap(NumberFromString, S.string)
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode(new Map())).toEqual(DE.success(new Map()))
-    expect(decoder.decode(new Map([["1", "a"], ["2", "b"], ["3", "c"]]))).toEqual(
-      DE.success(new Map([[1, "a"], [2, "b"], [3, "c"]]))
+    Util.expectDecodingSuccess(schema, new Map(), new Map())
+    Util.expectDecodingSuccess(
+      schema,
+      new Map([["1", "a"], ["2", "b"], ["3", "c"]]),
+      new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
     Util.expectDecodingFailure(decoder, null, `null did not satisfy is(Map<unknown, unknown>)`)
@@ -75,15 +76,16 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("fromEntries. decoder", () => {
     const schema = _.fromEntries(S.number, S.string)
-    const decoder = D.decoderFor(schema)
-    expect(decoder.decode([])).toEqual(DE.success(new Map()))
-    expect(decoder.decode([[1, "a"], [2, "b"], [3, "c"]])).toEqual(
-      DE.success(new Map([[1, "a"], [2, "b"], [3, "c"]]))
+    Util.expectDecodingSuccess(schema, [], new Map())
+    Util.expectDecodingSuccess(
+      schema,
+      [[1, "a"], [2, "b"], [3, "c"]],
+      new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+    Util.expectDecodingFailure(schema, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
     Util.expectDecodingFailure(
-      decoder,
+      schema,
       [[1, "a"], [2, 1]],
       `/1 /1 1 did not satisfy is(string)`
     )

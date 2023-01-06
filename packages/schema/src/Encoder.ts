@@ -315,7 +315,11 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
       }
       case "Transform": {
         const from = go(ast.from)
-        return make(I.makeSchema(ast), (a) => pipe(ast.g(a), I.flatMap(from.encode)))
+        return make(
+          I.makeSchema(ast),
+          // TODO -----------------v
+          (a) => pipe(ast.g({ isUnexpectedAllowed: false })(a), I.flatMap((a) => from.encode(a)))
+        )
       }
     }
   }

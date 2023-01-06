@@ -7,6 +7,8 @@ import { format } from "@fp-ts/schema/formatter/Tree"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
+const options: D.DecodeOptions = { isUnexpectedAllowed: false }
+
 describe.concurrent("Decoder", () => {
   it("exports", () => {
     expect(D.make).exist
@@ -20,13 +22,16 @@ describe.concurrent("Decoder", () => {
       name: S.string,
       age: S.number
     })
-    expect(D.decodeOrThrow(schema)({ name: "Alice", age: 30 })).toEqual({ name: "Alice", age: 30 })
-    expect(() => D.decodeOrThrow(schema)({})).toThrowError(
+    expect(D.decodeOrThrow(schema, options)({ name: "Alice", age: 30 })).toEqual({
+      name: "Alice",
+      age: 30
+    })
+    expect(() => D.decodeOrThrow(schema, options)({})).toThrowError(
       new Error(`1 error(s) found
 └─ key "name"
    └─ is missing`)
     )
-    const result = D.decode(schema)({})
+    const result = D.decode(schema, options)({})
     if (DE.isFailure(result)) {
       // console.log(format(result.left))
       format(result.left)
@@ -65,10 +70,10 @@ describe.concurrent("Decoder", () => {
     )
 
     const decoder = D.decoderFor(schema)
-    expect(decoder.decode({ a: "a" })).toEqual(DE.success({ a: "a", b: O.none }))
-    expect(decoder.decode({ a: "a", b: undefined })).toEqual(DE.success({ a: "a", b: O.none }))
-    expect(decoder.decode({ a: "a", b: null })).toEqual(DE.success({ a: "a", b: O.none }))
-    expect(decoder.decode({ a: "a", b: 1 })).toEqual(DE.success({ a: "a", b: O.some(1) }))
+    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none })
+    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none })
+    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none })
+    Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
     Util.expectFailureTree(
       decoder,
@@ -90,7 +95,7 @@ describe.concurrent("Decoder", () => {
 
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
-    Util.expectDecodingSuccess(schema, "a")
+    Util.expectDecodingSuccess(schema, "a", "a")
 
     Util.expectDecodingFailure(schema, "ab", `"ab" did not satisfy isEqual(a)`)
     Util.expectDecodingFailure(schema, "", `"" did not satisfy isEqual(a)`)
@@ -99,15 +104,15 @@ describe.concurrent("Decoder", () => {
 
   it("templateLiteral. a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
-    Util.expectDecodingSuccess(schema, "a b")
+    Util.expectDecodingSuccess(schema, "a b", "a b")
 
     Util.expectDecodingFailure(schema, "a  b", `"a  b" did not satisfy isEqual(a b)`)
   })
 
   it("templateLiteral. a${string}", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string)
-    Util.expectDecodingSuccess(schema, "a")
-    Util.expectDecodingSuccess(schema, "ab")
+    Util.expectDecodingSuccess(schema, "a", "a")
+    Util.expectDecodingSuccess(schema, "ab", "ab")
 
     Util.expectDecodingFailure(schema, "", `"" did not satisfy is(^a.*$)`)
     Util.expectDecodingFailure(schema, null, `null did not satisfy is(string)`)
@@ -115,16 +120,16 @@ describe.concurrent("Decoder", () => {
 
   it("templateLiteral. ${string}", () => {
     const schema = S.templateLiteral(S.string)
-    Util.expectDecodingSuccess(schema, "a")
-    Util.expectDecodingSuccess(schema, "ab")
-    Util.expectDecodingSuccess(schema, "")
+    Util.expectDecodingSuccess(schema, "a", "a")
+    Util.expectDecodingSuccess(schema, "ab", "ab")
+    Util.expectDecodingSuccess(schema, "", "")
   })
 
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-    Util.expectDecodingSuccess(schema, "ab")
-    Util.expectDecodingSuccess(schema, "acb")
-    Util.expectDecodingSuccess(schema, "abb")
+    Util.expectDecodingSuccess(schema, "ab", "ab")
+    Util.expectDecodingSuccess(schema, "acb", "acb")
+    Util.expectDecodingSuccess(schema, "abb", "abb")
     Util.expectDecodingFailure(schema, "", `"" did not satisfy is(^a.*b$)`)
     Util.expectDecodingFailure(schema, "a", `"a" did not satisfy is(^a.*b$)`)
     Util.expectDecodingFailure(schema, "b", `"b" did not satisfy is(^a.*b$)`)
@@ -132,9 +137,9 @@ describe.concurrent("Decoder", () => {
 
   it("templateLiteral. a${string}b${string}", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"), S.string)
-    Util.expectDecodingSuccess(schema, "ab")
-    Util.expectDecodingSuccess(schema, "acb")
-    Util.expectDecodingSuccess(schema, "acbd")
+    Util.expectDecodingSuccess(schema, "ab", "ab")
+    Util.expectDecodingSuccess(schema, "acb", "acb")
+    Util.expectDecodingSuccess(schema, "acbd", "acbd")
 
     Util.expectDecodingFailure(schema, "a", `"a" did not satisfy is(^a.*b.*$)`)
     Util.expectDecodingFailure(schema, "b", `"b" did not satisfy is(^a.*b.*$)`)
@@ -144,10 +149,10 @@ describe.concurrent("Decoder", () => {
     const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
     const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
     const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
-    Util.expectDecodingSuccess(schema, "welcome_email_id")
-    Util.expectDecodingSuccess(schema, "email_heading_id")
-    Util.expectDecodingSuccess(schema, "footer_title_id")
-    Util.expectDecodingSuccess(schema, "footer_sendoff_id")
+    Util.expectDecodingSuccess(schema, "welcome_email_id", "welcome_email_id")
+    Util.expectDecodingSuccess(schema, "email_heading_id", "email_heading_id")
+    Util.expectDecodingSuccess(schema, "footer_title_id", "footer_title_id")
+    Util.expectDecodingSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
 
     Util.expectFailureTree(
       schema,
@@ -171,32 +176,32 @@ describe.concurrent("Decoder", () => {
 
   it("string", () => {
     const schema = S.string
-    Util.expectDecodingSuccess(schema, "a")
+    Util.expectDecodingSuccess(schema, "a", "a")
     Util.expectDecodingFailure(schema, 1, "1 did not satisfy is(string)")
   })
 
   it("number", () => {
     const schema = S.number
-    Util.expectDecodingSuccess(schema, 1)
-    Util.expectDecodingSuccess(schema, NaN)
-    Util.expectDecodingSuccess(schema, Infinity)
-    Util.expectDecodingSuccess(schema, -Infinity)
+    Util.expectDecodingSuccess(schema, 1, 1)
+    Util.expectDecodingSuccess(schema, NaN, NaN)
+    Util.expectDecodingSuccess(schema, Infinity, Infinity)
+    Util.expectDecodingSuccess(schema, -Infinity, -Infinity)
     Util.expectDecodingFailure(schema, "a", `"a" did not satisfy is(number)`)
   })
 
   it("boolean", () => {
     const schema = S.boolean
-    Util.expectDecodingSuccess(schema, true)
-    Util.expectDecodingSuccess(schema, false)
+    Util.expectDecodingSuccess(schema, true, true)
+    Util.expectDecodingSuccess(schema, false, false)
     Util.expectDecodingFailure(schema, 1, `1 did not satisfy is(boolean)`)
   })
 
   it("bigint", () => {
     const schema = S.bigint
-    Util.expectDecodingSuccess(schema, 0n)
-    Util.expectDecodingSuccess(schema, 1n)
-    Util.expectDecodingSuccess(schema, BigInt("1"))
-    expect(D.decode(schema)("1")).toEqual(DE.success(1n))
+    Util.expectDecodingSuccess(schema, 0n, 0n)
+    Util.expectDecodingSuccess(schema, 1n, 1n)
+    Util.expectDecodingSuccess(schema, BigInt("1"), BigInt("1"))
+    Util.expectDecodingSuccess(schema, "1", 1n)
 
     Util.expectDecodingFailure(schema, null, "null did not satisfy is(string | number | boolean)")
     Util.expectDecodingFailure(

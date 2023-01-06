@@ -12,16 +12,16 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
+const options: D.DecodeOptions = { isUnexpectedAllowed: false }
+
 export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
   const guard = G.guardFor(schema)
-  const decoder = D.decoderFor(schema)
-  const encoder = E.encoderFor(schema)
   fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
     if (!guard.is(a)) {
       return false
     }
-    const roundtrip = pipe(a, encoder.encode, I.flatMap(decoder.decode))
+    const roundtrip = pipe(a, E.encode(schema), I.flatMap(D.decode(schema, options)))
     if (DE.isFailure(roundtrip)) {
       return false
     }
@@ -29,20 +29,20 @@ export const property = <A>(schema: Schema<A>) => {
   }))
 }
 
-export const expectDecodingSuccess = <A>(schema: Schema<A>, u: unknown) => {
-  const t = D.decode(schema)(u)
+export const expectDecodingSuccess = <A>(schema: Schema<A>, u: unknown, a: A = u as any) => {
+  const t = D.decode(schema, options)(u)
   expect(T.isRight(t)).toEqual(true)
-  expect(t).toEqual(T.right(u))
+  expect(t).toEqual(T.right(a))
 }
 
 export const expectDecodingFailure = <A>(schema: Schema<A>, u: unknown, message: string) => {
-  const t = pipe(D.decode(schema)(u), T.mapLeft(formatAll))
+  const t = pipe(D.decode(schema, options)(u), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
 
 export const expectDecodingWarning = <A>(schema: Schema<A>, u: unknown, message: string, a: A) => {
-  const t = pipe(D.decode(schema)(u), T.mapLeft(formatAll))
+  const t = pipe(D.decode(schema, options)(u), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }
@@ -102,13 +102,13 @@ const formatDecodeError = (e: DE.DecodeError): string => {
 }
 
 export const expectFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
-  const t = pipe(D.decode(schema)(u), T.mapLeft(format))
+  const t = pipe(D.decode(schema, options)(u), T.mapLeft(format))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
 
 export const expectWarningTree = <A>(schema: Schema<A>, u: unknown, message: string, a: A) => {
-  const t = pipe(D.decode(schema)(u), T.mapLeft(format))
+  const t = pipe(D.decode(schema, options)(u), T.mapLeft(format))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }

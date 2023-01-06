@@ -19,13 +19,18 @@ const decoder = <K, V>(
   key: D.Decoder<unknown, K>,
   value: D.Decoder<unknown, V>
 ): D.Decoder<unknown, ReadonlyMap<K, V>> => {
-  const items = D.decoderFor(I.array(I.tuple(key, value)))
+  const items = I.array(I.tuple(key, value))
   return I.makeDecoder(
     readonlyMap(key, value),
-    (u) =>
-      !isMap(u) ?
-        DE.failure(DE.type("Map<unknown, unknown>", u)) :
-        pipe(Array.from(u.entries()), items.decode, I.map((as) => new Map(as)))
+    (options) =>
+      (u) =>
+        !isMap(u) ?
+          DE.failure(DE.type("Map<unknown, unknown>", u)) :
+          pipe(
+            Array.from(u.entries()),
+            D.decode(items, options),
+            I.map((as) => new Map(as))
+          )
   )
 }
 

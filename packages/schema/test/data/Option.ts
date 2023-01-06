@@ -1,7 +1,5 @@
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/data/Option"
-import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
@@ -23,13 +21,12 @@ describe.concurrent("Option", () => {
 
   it("fromNullable. decoder", () => {
     const schema = _.fromNullable(S.number)
-    const decoder = D.decoderFor(schema)
-    expect(decoder.decode(undefined)).toEqual(DE.success(O.none))
-    expect(decoder.decode(null)).toEqual(DE.success(O.none))
-    expect(decoder.decode(1)).toEqual(DE.success(O.some(1)))
+    Util.expectDecodingSuccess(schema, undefined, O.none)
+    Util.expectDecodingSuccess(schema, null, O.none)
+    Util.expectDecodingSuccess(schema, 1, O.some(1))
 
     Util.expectFailureTree(
-      decoder,
+      schema,
       {},
       `3 error(s) found
 ├─ union member
