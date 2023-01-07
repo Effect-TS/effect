@@ -1,10 +1,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
-import { format } from "@fp-ts/schema/formatter/Tree"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -30,11 +28,6 @@ describe.concurrent("Decoder", () => {
 └─ key "name"
    └─ is missing`)
     )
-    const result = D.decode(schema)({})
-    if (DE.isFailure(result)) {
-      // console.log(format(result.left))
-      format(result.left)
-    }
   })
 
   it("sensitive", () => {
@@ -1065,7 +1058,7 @@ describe.concurrent("Decoder", () => {
     isUnexpectedAllowed: true
   }
 
-  it("isUnexpectedAllowed. union. choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed/union choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = S.struct({ a: S.optional(S.number) })
     const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
     const schema = S.union(a, b)

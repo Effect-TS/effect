@@ -1,11 +1,28 @@
 import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
+import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
+import * as DE from "@fp-ts/schema/DecodeError"
 import type { DecodeOptions } from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
+// raises an error while encoding from a number if the string is not a char
 const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
+
+// raises a warning while encoding if the string is not a char
+const PreferChar = pipe(
+  S.string,
+  S.transformOrFail(
+    S.string,
+    DE.success,
+    (s) => s.length === 1 ? DE.success(s) : DE.warning(DE.refinement({ type: "Char" }, s), s)
+  )
+)
+
+// raises an error while encoding if the string is not a char
+const MustChar = pipe(S.string, S.maxLength(1))
 
 describe.concurrent("Encoder", () => {
   it("exports", () => {
@@ -15,12 +32,40 @@ describe.concurrent("Encoder", () => {
     expect(E.encoderFor).exist
   })
 
+  it("encodeOrThrow", () => {
+    const schema = NumberFromString
+    expect(E.encodeOrThrow(schema)(1)).toEqual("1")
+    expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
+      new Error(`1 error(s) found
+└─ "10" did not satisfy refinement({"maxLength":1})`)
+    )
+  })
+
   it("sensitive", () => {
     const schema = S.struct({ password: S.sensitive(pipe(S.string, S.minLength(8))) })
     Util.expectEncodingFailure(
       schema,
       { password: "pwd123" },
       `/password "**********" did not satisfy refinement({"minLength":8})`
+    )
+  })
+
+  it("never", () => {
+    const schema = S.never
+    expect(() => E.encode(schema)(null as any as never)).toThrowError(
+      new Error("Called `absurd` function which should be uncallable")
+    )
+  })
+
+  it("type alias without annotations", () => {
+    const schema = DataOption.option(NumberFromString)
+    Util.expectEncodingSuccess(schema, O.none, O.none)
+    Util.expectEncodingSuccess(schema, O.some(1), O.some("1"))
+
+    Util.expectEncodingFailure(
+      schema,
+      O.some(10),
+      `member: /value "10" did not satisfy refinement({"maxLength":1})`
     )
   })
 
@@ -104,26 +149,36 @@ describe.concurrent("Encoder", () => {
     })
   })
 
-  it("tuple. empty", () => {
+  it("tuple/empty", () => {
     const schema = S.tuple()
     Util.expectEncodingSuccess(schema, [], [])
   })
 
-  it("tuple. required element", () => {
+  it("tuple/e", () => {
     const schema = S.tuple(NumberFromString)
     Util.expectEncodingSuccess(schema, [1], ["1"])
     Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
-  it("tuple. required element with undefined", () => {
+  it("tuple/e: warnings", () => {
+    const schema = S.tuple(PreferChar, PreferChar)
+    Util.expectEncodingWarning(
+      schema,
+      ["aa", "bb"],
+      ["aa", "bb"],
+      `/0 "aa" did not satisfy refinement({"type":"Char"}), /1 "bb" did not satisfy refinement({"type":"Char"})`
+    )
+  })
+
+  it("tuple/e with undefined", () => {
     const schema = S.tuple(S.union(NumberFromString, S.undefined))
     Util.expectEncodingSuccess(schema, [1], ["1"])
     Util.expectEncodingSuccess(schema, [undefined], [undefined])
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
-  it("tuple. optional element", () => {
+  it("tuple/e?", () => {
     const schema = pipe(S.tuple(), S.optionalElement(NumberFromString))
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, [1], ["1"])
@@ -131,7 +186,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
-  it("tuple. optional element with undefined", () => {
+  it("tuple/e? with undefined", () => {
     const schema = pipe(S.tuple(), S.optionalElement(S.union(NumberFromString, S.undefined)))
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, [1], ["1"])
@@ -139,20 +194,20 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
-  it("tuple. e + e?", () => {
+  it("tuple/e + e?", () => {
     const schema = pipe(S.tuple(S.string), S.optionalElement(NumberFromString))
     Util.expectEncodingSuccess(schema, ["a"], ["a"])
     Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
   })
 
-  it("tuple. e + r", () => {
+  it("tuple/e + r", () => {
     const schema = pipe(S.tuple(S.string), S.rest(NumberFromString))
     Util.expectEncodingSuccess(schema, ["a"], ["a"])
     Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
     Util.expectEncodingSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
   })
 
-  it("tuple. e? + r", () => {
+  it("tuple/e? + r", () => {
     const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(NumberFromString))
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, ["a"], ["a"])
@@ -160,7 +215,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, ["a", 1, 2], ["a", "1", "2"])
   })
 
-  it("tuple. r", () => {
+  it("tuple/r", () => {
     const schema = S.array(NumberFromString)
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, [1], ["1"])
@@ -168,7 +223,17 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
   })
 
-  it("tuple. r + e", () => {
+  it("tuple/r warnings", () => {
+    const schema = S.array(PreferChar)
+    Util.expectEncodingWarning(
+      schema,
+      ["aa", "bb"],
+      ["aa", "bb"],
+      `/0 "aa" did not satisfy refinement({"type":"Char"}), /1 "bb" did not satisfy refinement({"type":"Char"})`
+    )
+  })
+
+  it("tuple/r + e", () => {
     const schema = pipe(S.array(S.string), S.element(NumberFromString))
     Util.expectEncodingSuccess(schema, [1], ["1"])
     Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
@@ -177,66 +242,112 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
   })
 
-  it("tuple. e + r + e", () => {
+  it("tuple/r + e warnings", () => {
+    const schema = pipe(S.array(S.number), S.element(PreferChar), S.element(PreferChar))
+    Util.expectEncodingWarning(
+      schema,
+      [1, 2, "aa", "bb"],
+      [1, 2, "aa", "bb"],
+      `/2 "aa" did not satisfy refinement({"type":"Char"}), /3 "bb" did not satisfy refinement({"type":"Char"})`
+    )
+  })
+
+  it("tuple/e + r + e", () => {
     const schema = pipe(S.tuple(S.string), S.rest(NumberFromString), S.element(S.boolean))
     Util.expectEncodingSuccess(schema, ["a", true], ["a", true])
     Util.expectEncodingSuccess(schema, ["a", 1, true], ["a", "1", true])
     Util.expectEncodingSuccess(schema, ["a", 1, 2, true], ["a", "1", "2", true])
   })
 
-  describe.concurrent("struct", () => {
-    it("required property signature", () => {
-      const schema = S.struct({ a: S.number })
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
-      Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
-    })
+  it("struct/ required property signature", () => {
+    const schema = S.struct({ a: S.number })
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
+  })
 
-    it("required property signature with undefined", () => {
-      const schema = S.struct({ a: S.union(S.number, S.undefined) })
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
-      Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
-      Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
-    })
+  it("struct/ required property signature with undefined", () => {
+    const schema = S.struct({ a: S.union(S.number, S.undefined) })
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
+    Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
+  })
 
-    it("optional property signature", () => {
-      const schema = S.struct({ a: S.optional(S.number) })
-      Util.expectEncodingSuccess(schema, {}, {})
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
-      Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
-    })
+  it("struct/ optional property signature", () => {
+    const schema = S.struct({ a: S.optional(S.number) })
+    Util.expectEncodingSuccess(schema, {}, {})
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
+  })
 
-    it("optional property signature with undefined", () => {
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
-      Util.expectEncodingSuccess(schema, {}, {})
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
-      Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
-      Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
-    })
+  it("struct/ optional property signature with undefined", () => {
+    const schema = S.struct({ a: S.optional(S.union(S.number, S.undefined)) })
+    Util.expectEncodingSuccess(schema, {}, {})
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingSuccess(schema, { a: undefined }, { a: undefined })
+    Util.expectEncodingFailure(schema, { a: 1, b: "b" } as any, `/b is unexpected`)
+  })
 
-    it("extend record(string, NumberFromString)", () => {
-      const schema = pipe(
-        S.struct({ a: S.number }),
-        S.extend(S.record(S.string, NumberFromString))
-      )
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: "1" })
-      Util.expectEncodingSuccess(schema, { a: 1, b: 1 }, { a: "1", b: "1" })
-    })
+  it("struct/ should handle symbols as keys", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    const schema = S.struct({ [a]: S.string })
+    Util.expectEncodingSuccess(schema, { [a]: "a" }, { [a]: "a" })
+  })
 
-    it("extend record(symbol, NumberFromString)", () => {
-      const b = Symbol.for("@fp-ts/schema/test/b")
-      const schema = pipe(
-        S.struct({ a: S.number }),
-        S.extend(S.record(S.symbol, NumberFromString))
-      )
-      Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
-      Util.expectEncodingSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
-    })
+  it("struct/ property signature warnings", () => {
+    const schema = S.struct({ a: PreferChar, b: PreferChar })
+    Util.expectEncodingWarning(
+      schema,
+      { a: "aa", b: "bb" },
+      { a: "aa", b: "bb" },
+      `/a "aa" did not satisfy refinement({"type":"Char"}), /b "bb" did not satisfy refinement({"type":"Char"})`
+    )
+  })
 
-    it("should handle symbols as keys", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const schema = S.struct({ [a]: S.string })
-      Util.expectEncodingSuccess(schema, { [a]: "a" }, { [a]: "a" })
-    })
+  it("record/ key error", () => {
+    const schema = S.record(MustChar, S.string)
+    Util.expectEncodingFailure(
+      schema,
+      { aa: "a" },
+      `/aa "aa" did not satisfy refinement({"maxLength":1})`
+    )
+  })
+
+  it("record/ value error", () => {
+    const schema = S.record(S.string, MustChar)
+    Util.expectEncodingFailure(
+      schema,
+      { a: "aa" },
+      `/a "aa" did not satisfy refinement({"maxLength":1})`
+    )
+  })
+
+  it("record/ value warnings", () => {
+    const schema = S.record(S.string, PreferChar)
+    Util.expectEncodingWarning(
+      schema,
+      { a: "aa", b: "bb" },
+      { a: "aa", b: "bb" },
+      `/a "aa" did not satisfy refinement({"type":"Char"}), /b "bb" did not satisfy refinement({"type":"Char"})`
+    )
+  })
+
+  it("extend/record/ record(string, NumberFromString)", () => {
+    const schema = pipe(
+      S.struct({ a: S.number }),
+      S.extend(S.record(S.string, NumberFromString))
+    )
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: "1" })
+    Util.expectEncodingSuccess(schema, { a: 1, b: 1 }, { a: "1", b: "1" })
+  })
+
+  it("extend/record/ record(symbol, NumberFromString)", () => {
+    const b = Symbol.for("@fp-ts/schema/test/b")
+    const schema = pipe(
+      S.struct({ a: S.number }),
+      S.extend(S.record(S.symbol, NumberFromString))
+    )
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
   })
 
   describe.concurrent("union", () => {
@@ -319,6 +430,22 @@ describe.concurrent("Encoder", () => {
     isUnexpectedAllowed: true
   }
 
+  it("isUnexpectedAllowed/union choose the output with less warnings related to unexpected keys / indexes", () => {
+    const a = S.struct({ a: S.optional(S.number) })
+    const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
+    const schema = S.union(a, b)
+    Util.expectEncodingWarning(
+      schema,
+      { a: 1, b: "b", c: true } as any,
+      {
+        a: 1,
+        b: "b"
+      },
+      `/c is unexpected`,
+      isUnexpectedAllowed
+    )
+  })
+
   it("isUnexpectedAllowed/tuple unexpected indexes", () => {
     const schema = S.tuple(S.string)
     Util.expectEncodingWarning(
@@ -385,6 +512,36 @@ describe.concurrent("Encoder", () => {
       schema,
       [10, 10],
       `/0 "10" did not satisfy refinement({"maxLength":1}), /1 "10" did not satisfy refinement({"maxLength":1})`,
+      allErrors
+    )
+  })
+
+  it("allErrors/struct: wrong type for values", () => {
+    const schema = S.struct({ a: NumberFromString, b: NumberFromString })
+    Util.expectEncodingFailure(
+      schema,
+      { a: 10, b: 10 },
+      `/a "10" did not satisfy refinement({"maxLength":1}), /b "10" did not satisfy refinement({"maxLength":1})`,
+      allErrors
+    )
+  })
+
+  it("allErrors/record/ all key errors", () => {
+    const schema = S.record(MustChar, S.string)
+    Util.expectEncodingFailure(
+      schema,
+      { aa: "a", bb: "bb" },
+      `/aa "aa" did not satisfy refinement({"maxLength":1}), /bb "bb" did not satisfy refinement({"maxLength":1})`,
+      allErrors
+    )
+  })
+
+  it("allErrors/record/ all value errors", () => {
+    const schema = S.record(S.string, MustChar)
+    Util.expectEncodingFailure(
+      schema,
+      { a: "aa", b: "bb" },
+      `/a "aa" did not satisfy refinement({"maxLength":1}), /b "bb" did not satisfy refinement({"maxLength":1})`,
       allErrors
     )
   })
