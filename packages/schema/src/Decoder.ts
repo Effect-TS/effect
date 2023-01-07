@@ -22,7 +22,8 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export interface DecodeOptions {
-  readonly isUnexpectedAllowed: boolean
+  readonly isUnexpectedAllowed?: boolean
+  readonly allErrors?: boolean
 }
 
 /**
@@ -44,8 +45,10 @@ export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) =>
  * @category decoding
  * @since 1.0.0
  */
-export const decode = <A>(schema: Schema<A>, options?: DecodeOptions) =>
-  (u: unknown): DE.DecodeResult<A> => decoderFor(schema).decode(u, options)
+export const decode = <A>(schema: Schema<A>, options?: DecodeOptions) => {
+  const decoder = decoderFor(schema)
+  return (u: unknown): DE.DecodeResult<A> => decoder.decode(u, options)
+}
 
 /**
  * @category decoding
@@ -141,6 +144,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             }
             const output: Array<any> = []
             const es: Array<DE.DecodeError> = []
+            const allErrors = options?.allErrors
+            let isLeft = false
             let i = 0
             // ---------------------------------------------
             // handle elements
@@ -152,15 +157,29 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                   // ...but the element is optional, go on
                   continue
                 } else {
-                  // ...but the element is required, bail out
-                  return DE.failure(DE.index(i, [DE.missing]))
+                  // ...but the element is required
+                  const e = DE.index(i, [DE.missing])
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failure(e)
+                  }
                 }
               } else {
                 const decoder = elements[i]
                 const t = decoder.decode(input[i], options)
                 if (DE.isFailure(t)) {
-                  // the input element is present but is not valid, bail out
-                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  // the input element is present but is not valid
+                  const e = DE.index(i, t.left)
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 } else if (DE.hasWarnings(t)) {
                   es.push(DE.index(i, t.left))
                 }
@@ -176,7 +195,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               for (; i < input.length - tail.length; i++) {
                 const t = head.decode(input[i], options)
                 if (DE.isFailure(t)) {
-                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  const e = DE.index(i, t.left)
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 } else {
                   if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
@@ -191,12 +217,19 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                 i += j
                 if (input.length < i + 1) {
                   // the input element is missing and the element is required, bail out
-                  return DE.failure(DE.index(i, [DE.missing]))
+                  return DE.failures(I.mutableAppend(es, DE.index(i, [DE.missing])))
                 } else {
                   const t = tail[j].decode(input[i], options)
                   if (DE.isFailure(t)) {
-                    // the input element is present but is not valid, bail out
-                    return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                    // the input element is present but is not valid
+                    const e = DE.index(i, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
                   }
@@ -209,10 +242,17 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               // ---------------------------------------------
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
+                const e = DE.index(i, [DE.unexpected(input[i])])
                 if (isUnexpectedAllowed) {
-                  es.push(DE.index(i, [DE.unexpected(input[i])]))
+                  es.push(e)
                 } else {
-                  return DE.failures(I.mutableAppend(es, DE.index(i, [DE.unexpected(input[i])])))
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 }
               }
             }
@@ -220,7 +260,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
+            return I.isNonEmpty(es) ?
+              isLeft ? DE.failures(es) : DE.warnings(es, output) :
+              DE.success(output)
           }
         )
       }
@@ -241,6 +283,8 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             const output: any = {}
             const expectedKeys: any = {}
             const es: Array<DE.DecodeError> = []
+            const allErrors = options?.allErrors
+            let isLeft = false
             // ---------------------------------------------
             // handle property signatures
             // ---------------------------------------------
@@ -253,12 +297,26 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                 if (ps.isOptional) {
                   continue
                 }
-                return DE.failure(DE.key(name, [DE.missing]))
+                const e = DE.key(name, [DE.missing])
+                if (allErrors) {
+                  es.push(e)
+                  isLeft = true
+                  continue
+                } else {
+                  return DE.failure(e)
+                }
               }
               const t = decoder.decode(input[name], options)
               if (DE.isFailure(t)) {
-                // the input key is present but is not valid, bail out
-                return DE.failures(I.mutableAppend(es, DE.key(name, t.left)))
+                // the input key is present but is not valid
+                const e = DE.key(name, t.left)
+                if (allErrors) {
+                  es.push(e)
+                  isLeft = true
+                  continue
+                } else {
+                  return DE.failures(I.mutableAppend(es, e))
+                }
               } else if (DE.hasWarnings(t)) {
                 es.push(DE.key(name, t.left))
               }
@@ -278,7 +336,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                   // ---------------------------------------------
                   let t = parameter.decode(key, options)
                   if (DE.isFailure(t)) {
-                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                    const e = DE.key(key, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else if (DE.hasWarnings(t)) {
                     es.push(DE.key(key, t.left))
                   }
@@ -287,7 +352,14 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
                   // ---------------------------------------------
                   t = type.decode(input[key], options)
                   if (DE.isFailure(t)) {
-                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                    const e = DE.key(key, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else {
                     if (DE.hasWarnings(t)) {
                       es.push(DE.key(key, t.left))
@@ -303,12 +375,17 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
+                  const e = DE.key(key, [DE.unexpected(input[key])])
                   if (isUnexpectedAllowed) {
-                    es.push(DE.key(key, [DE.unexpected(input[key])]))
+                    es.push(e)
                   } else {
-                    return DE.failures(
-                      I.mutableAppend(es, DE.key(key, [DE.unexpected(input[key])]))
-                    )
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   }
                 }
               }
@@ -317,7 +394,9 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
+            return I.isNonEmpty(es) ?
+              isLeft ? DE.failures(es) : DE.warnings(es, output) :
+              DE.success(output)
           }
         )
       }

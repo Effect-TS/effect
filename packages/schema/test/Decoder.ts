@@ -7,7 +7,7 @@ import { format } from "@fp-ts/schema/formatter/Tree"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const options: D.DecodeOptions = { isUnexpectedAllowed: false }
+const options: D.DecodeOptions = { isUnexpectedAllowed: false, allErrors: false }
 
 describe.concurrent("Decoder", () => {
   it("exports", () => {
@@ -1013,79 +1013,190 @@ describe.concurrent("Decoder", () => {
   // isUnexpectedAllowed option
   // ---------------------------------------------
 
-  const isUnexpectedAllowed: D.DecodeOptions = { isUnexpectedAllowed: true }
+  const isUnexpectedAllowed: D.DecodeOptions = {
+    isUnexpectedAllowed: true
+  }
 
-  it("union. choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed. union. choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = S.struct({ a: S.optional(S.number) })
     const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
     const schema = S.union(a, b)
-    Util.expectDecodingWarning(schema, { a: 1, b: "b", c: true }, `/c is unexpected`, {
-      a: 1,
-      b: "b"
-    }, isUnexpectedAllowed)
+    Util.expectDecodingWarning(
+      schema,
+      { a: 1, b: "b", c: true },
+      {
+        a: 1,
+        b: "b"
+      },
+      `/c is unexpected`,
+      isUnexpectedAllowed
+    )
   })
 
-  it("tuple. element warnings", () => {
+  it("isUnexpectedAllowed/tuple unexpected indexes", () => {
     const schema = S.tuple(S.struct({ b: S.number }))
     Util.expectDecodingWarning(
       schema,
       [{ b: 1, c: "c" }],
-      `/0 /c is unexpected`,
       [{ b: 1 }],
+      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("tuple. rest element warnings", () => {
+  it("isUnexpectedAllowed. tuple. rest element warnings", () => {
     const schema = S.array(S.struct({ b: S.number }))
     Util.expectDecodingWarning(
       schema,
       [{ b: 1, c: "c" }],
-      `/0 /c is unexpected`,
       [{ b: 1 }],
+      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("tuple. post rest elements warnings", () => {
+  it("isUnexpectedAllowed. tuple. post rest elements warnings", () => {
     const schema = pipe(S.array(S.string), S.element(S.struct({ b: S.number })))
     Util.expectDecodingSuccess(schema, [{ b: 1 }])
     Util.expectDecodingWarning(
       schema,
       [{ b: 1, c: "c" }],
-      `/0 /c is unexpected`,
       [{ b: 1 }],
+      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("tuple. allowUnexpected = true", () => {
+  it("isUnexpectedAllowed. tuple. allowUnexpected = true", () => {
     const schema = S.tuple(S.number)
-    Util.expectDecodingWarning(schema, [1, "b"], `/1 is unexpected`, [1], isUnexpectedAllowed)
+    Util.expectDecodingWarning(schema, [1, "b"], [1], `/1 is unexpected`, isUnexpectedAllowed)
   })
 
-  it("struct. allowUnexpected = true", () => {
+  it("isUnexpectedAllowed. struct. allowUnexpected = true", () => {
     const schema = S.struct({ a: S.number })
     Util.expectDecodingWarning(
       schema,
       { a: 1, b: "b" },
-      `/b is unexpected`,
       { a: 1 },
+      `/b is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("struct. key warnings", () => {
+  it("isUnexpectedAllowed. struct. key warnings", () => {
     const schema = S.struct({ a: S.struct({ b: S.number }) })
-    Util.expectDecodingWarning(schema, { a: { b: 1, c: "c" } }, `/a /c is unexpected`, {
-      a: { b: 1 }
-    }, isUnexpectedAllowed)
+    Util.expectDecodingWarning(
+      schema,
+      { a: { b: 1, c: "c" } },
+      {
+        a: { b: 1 }
+      },
+      `/a /c is unexpected`,
+      isUnexpectedAllowed
+    )
   })
 
-  it("struct. index signature warnings", () => {
+  it("isUnexpectedAllowed. struct. index signature warnings", () => {
     const schema = S.record(S.string, S.struct({ b: S.number }))
-    Util.expectDecodingWarning(schema, { a: { b: 1, c: "c" } }, `/a /c is unexpected`, {
-      a: { b: 1 }
-    }, isUnexpectedAllowed)
+    Util.expectDecodingWarning(
+      schema,
+      { a: { b: 1, c: "c" } },
+      { a: { b: 1 } },
+      `/a /c is unexpected`,
+      isUnexpectedAllowed
+    )
+  })
+
+  // ---------------------------------------------
+  // allErrors option
+  // ---------------------------------------------
+
+  const allErrors: D.DecodeOptions = {
+    allErrors: true
+  }
+
+  it("allErrors/tuple: missing element", () => {
+    const schema = S.tuple(S.string, S.number)
+    Util.expectDecodingFailure(schema, [], `/0 is missing, /1 is missing`, allErrors)
+  })
+
+  it("allErrors/tuple: wrong type for values", () => {
+    const schema = S.tuple(S.string, S.number)
+    Util.expectDecodingFailure(
+      schema,
+      [1, "b"],
+      `/0 1 did not satisfy is(string), /1 "b" did not satisfy is(number)`,
+      allErrors
+    )
+  })
+
+  it("allErrors/tuple: unexpected indexes", () => {
+    const schema = S.tuple()
+    Util.expectDecodingFailure(schema, ["a", "b"], `/0 is unexpected, /1 is unexpected`, allErrors)
+  })
+
+  it("allErrors/tuple/rest: wrong type for values", () => {
+    const schema = pipe(S.tuple(S.string), S.rest(S.number))
+    Util.expectDecodingFailure(
+      schema,
+      ["a", "b", "c"],
+      `/1 "b" did not satisfy is(number), /2 "c" did not satisfy is(number)`,
+      allErrors
+    )
+  })
+
+  it("allErrors/tuple/post rest elements: wrong type for values", () => {
+    const schema = pipe(S.array(S.boolean), S.element(S.number), S.element(S.number))
+    Util.expectDecodingFailure(
+      schema,
+      ["a", "b"],
+      `/0 "a" did not satisfy is(number), /1 "b" did not satisfy is(number)`,
+      allErrors
+    )
+  })
+
+  it("allErrors/struct: missing keys", () => {
+    const schema = S.struct({ a: S.string, b: S.number })
+    Util.expectDecodingFailure(schema, {}, `/a is missing, /b is missing`, allErrors)
+  })
+
+  it("allErrors/struct: wrong type for values", () => {
+    const schema = S.struct({ a: S.string, b: S.number })
+    Util.expectDecodingFailure(
+      schema,
+      { a: 1, b: "b" },
+      `/a 1 did not satisfy is(string), /b "b" did not satisfy is(number)`,
+      allErrors
+    )
+  })
+
+  it("allErrors/struct: unexpected keys", () => {
+    const schema = S.struct({ a: S.number })
+    Util.expectDecodingFailure(
+      schema,
+      { a: 1, b: "b", c: "c" },
+      `/b is unexpected, /c is unexpected`,
+      allErrors
+    )
+  })
+
+  it("allErrors/record: wrong type for keys", () => {
+    const schema = S.record(pipe(S.string, S.minLength(2)), S.number)
+    Util.expectDecodingFailure(
+      schema,
+      { a: 1, b: 2 },
+      `/a "a" did not satisfy refinement({"minLength":2}), /b "b" did not satisfy refinement({"minLength":2})`,
+      allErrors
+    )
+  })
+
+  it("allErrors/record: wrong type for values", () => {
+    const schema = S.record(S.string, S.number)
+    Util.expectDecodingFailure(
+      schema,
+      { a: "a", b: "b" },
+      `/a "a" did not satisfy is(number), /b "b" did not satisfy is(number)`,
+      allErrors
+    )
   })
 })

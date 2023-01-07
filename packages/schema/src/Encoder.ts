@@ -94,21 +94,32 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
           (input: ReadonlyArray<unknown>, options) => {
             const output: Array<any> = []
             const es: Array<DE.DecodeError> = []
+            const allErrors = options?.allErrors
+            let isLeft = false
             let i = 0
             // ---------------------------------------------
             // handle elements
             // ---------------------------------------------
             for (; i < elements.length; i++) {
               if (input.length < i + 1) {
+                // the input element is missing...
                 if (ast.elements[i].isOptional) {
+                  // ...but the element is optional, go on
                   continue
                 }
               } else {
                 const encoder = elements[i]
                 const t = encoder.encode(input[i], options)
                 if (DE.isFailure(t)) {
-                  // the input element is present but is not valid, bail out
-                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  // the input element is present but is not valid
+                  const e = DE.index(i, t.left)
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 } else if (DE.hasWarnings(t)) {
                   es.push(DE.index(i, t.left))
                 }
@@ -124,7 +135,14 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               for (; i < input.length - tail.length; i++) {
                 const t = head.encode(input[i], options)
                 if (DE.isFailure(t)) {
-                  return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                  const e = DE.index(i, t.left)
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 } else {
                   if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
@@ -139,12 +157,19 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                 i += j
                 if (input.length < i + 1) {
                   // the input element is missing and the element is required, bail out
-                  return DE.failure(DE.index(i, [DE.missing]))
+                  return DE.failures(I.mutableAppend(es, DE.index(i, [DE.missing])))
                 } else {
                   const t = tail[j].encode(input[i], options)
                   if (DE.isFailure(t)) {
-                    // the input element is present but is not valid, bail out
-                    return DE.failures(I.mutableAppend(es, DE.index(i, t.left)))
+                    // the input element is present but is not valid
+                    const e = DE.index(i, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else if (DE.hasWarnings(t)) {
                     es.push(DE.index(i, t.left))
                   }
@@ -155,15 +180,29 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               // ---------------------------------------------
               // handle unexpected indexes
               // ---------------------------------------------
+              const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
-                es.push(DE.index(i, [DE.unexpected(input[i])]))
+                const e = DE.index(i, [DE.unexpected(input[i])])
+                if (isUnexpectedAllowed) {
+                  es.push(e)
+                } else {
+                  if (allErrors) {
+                    es.push(e)
+                    isLeft = true
+                    continue
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
+                }
               }
             }
 
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
+            return I.isNonEmpty(es) ?
+              isLeft ? DE.failures(es) : DE.warnings(es, output) :
+              DE.success(output)
           }
         )
       }
@@ -178,6 +217,8 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             const output: any = {}
             const expectedKeys: any = {}
             const es: Array<DE.DecodeError> = []
+            const allErrors = options?.allErrors
+            let isLeft = false
             // ---------------------------------------------
             // handle property signatures
             // ---------------------------------------------
@@ -191,8 +232,15 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               }
               const t = encoder.encode(input[name], options)
               if (DE.isFailure(t)) {
-                // the input key is present but is not valid, bail out
-                return DE.failures(I.mutableAppend(es, DE.key(name, t.left)))
+                // the input key is present but is not valid
+                const e = DE.key(name, t.left)
+                if (allErrors) {
+                  es.push(e)
+                  isLeft = true
+                  continue
+                } else {
+                  return DE.failures(I.mutableAppend(es, e))
+                }
               } else if (DE.hasWarnings(t)) {
                 es.push(DE.key(name, t.left))
               }
@@ -212,7 +260,14 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                   // ---------------------------------------------
                   let t = parameter.encode(key, options)
                   if (DE.isFailure(t)) {
-                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                    const e = DE.key(key, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else if (DE.hasWarnings(t)) {
                     es.push(DE.key(key, t.left))
                   }
@@ -221,7 +276,14 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
                   // ---------------------------------------------
                   t = type.encode(input[key], options)
                   if (DE.isFailure(t)) {
-                    return DE.failures(I.mutableAppend(es, DE.key(key, t.left)))
+                    const e = DE.key(key, t.left)
+                    if (allErrors) {
+                      es.push(e)
+                      isLeft = true
+                      continue
+                    } else {
+                      return DE.failures(I.mutableAppend(es, e))
+                    }
                   } else {
                     if (DE.hasWarnings(t)) {
                       es.push(DE.key(key, t.left))
@@ -234,9 +296,15 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
               // ---------------------------------------------
               // handle unexpected keys
               // ---------------------------------------------
+              const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-                  es.push(DE.key(key, [DE.unexpected(input[key])]))
+                  const e = DE.key(key, [DE.unexpected(input[key])])
+                  if (isUnexpectedAllowed) {
+                    es.push(e)
+                  } else {
+                    return DE.failures(I.mutableAppend(es, e))
+                  }
                 }
               }
             }
@@ -244,7 +312,9 @@ export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ? DE.warnings(es, output) : DE.success(output)
+            return I.isNonEmpty(es) ?
+              isLeft ? DE.failures(es) : DE.warnings(es, output) :
+              DE.success(output)
           }
         )
       }

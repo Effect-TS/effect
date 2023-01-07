@@ -12,7 +12,7 @@ import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
-const options: D.DecodeOptions = { isUnexpectedAllowed: false }
+const options: D.DecodeOptions = { isUnexpectedAllowed: false, allErrors: false }
 
 export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
@@ -35,7 +35,12 @@ export const expectDecodingSuccess = <A>(schema: Schema<A>, u: unknown, a: A = u
   expect(t).toEqual(T.right(a))
 }
 
-export const expectDecodingFailure = <A>(schema: Schema<A>, u: unknown, message: string) => {
+export const expectDecodingFailure = <A>(
+  schema: Schema<A>,
+  u: unknown,
+  message: string,
+  options?: D.DecodeOptions
+) => {
   const t = pipe(D.decode(schema, options)(u), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
@@ -44,11 +49,11 @@ export const expectDecodingFailure = <A>(schema: Schema<A>, u: unknown, message:
 export const expectDecodingWarning = <A>(
   schema: Schema<A>,
   u: unknown,
-  message: string,
   a: A,
-  optionalOptions?: D.DecodeOptions
+  message: string,
+  options?: D.DecodeOptions
 ) => {
-  const t = pipe(D.decode(schema, optionalOptions)(u), T.mapLeft(formatAll))
+  const t = pipe(D.decode(schema, options)(u), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }
@@ -59,7 +64,12 @@ export const expectEncodingSuccess = <A>(schema: Schema<A>, a: A, o: unknown) =>
   expect(t).toStrictEqual(T.right(o))
 }
 
-export const expectEncodingFailure = <A>(schema: Schema<A>, a: A, message: string) => {
+export const expectEncodingFailure = <A>(
+  schema: Schema<A>,
+  a: A,
+  message: string,
+  options?: D.DecodeOptions
+) => {
   const t = pipe(E.encode(schema, options)(a), T.mapLeft(formatAll))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
@@ -69,7 +79,8 @@ export const expectEncodingWarning = <A>(
   schema: Schema<A>,
   a: A,
   o: unknown,
-  message: string
+  message: string,
+  options?: D.DecodeOptions
 ) => {
   const t = pipe(E.encode(schema, options)(a), T.mapLeft(formatAll))
   expect(T.isBoth(t)).toEqual(true)
