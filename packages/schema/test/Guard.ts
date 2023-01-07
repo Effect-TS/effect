@@ -819,8 +819,8 @@ describe.concurrent("Guard", () => {
     expect(guard.is("b")).toEqual(false)
   })
 
-  it("regex", () => {
-    const schema = pipe(S.string, S.regex(/^abb+$/))
+  it("pattern", () => {
+    const schema = pipe(S.string, S.pattern(/^abb+$/))
     const guard = G.guardFor(schema)
     expect(guard.is("abb")).toEqual(true)
     expect(guard.is("abbb")).toEqual(true)

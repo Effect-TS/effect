@@ -992,8 +992,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, "b", `"b" did not satisfy refinement({"endsWith":"a"})`)
   })
 
-  it("regex", () => {
-    const schema = pipe(S.string, S.regex(/^abb+$/))
+  it("pattern", () => {
+    const schema = pipe(S.string, S.pattern(/^abb+$/))
     Util.expectDecodingSuccess(schema, "abb")
     Util.expectDecodingSuccess(schema, "abbb")
 

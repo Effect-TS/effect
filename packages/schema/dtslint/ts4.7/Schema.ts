@@ -74,7 +74,7 @@ pipe(S.string, S.minLength(5));
 pipe(S.string, S.length(5));
 
 // $ExpectType Schema<string>
-pipe(S.string, S.regex(/a/));
+pipe(S.string, S.pattern(/a/));
 
 // $ExpectType Schema<string>
 pipe(S.string, S.startsWith('a'));

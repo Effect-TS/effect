@@ -443,8 +443,8 @@ describe("jsonSchemaFor", () => {
     property(schema)
   })
 
-  it("regex", () => {
-    const schema = pipe(S.string, S.regex(/^abb+$/))
+  it("pattern", () => {
+    const schema = pipe(S.string, S.pattern(/^abb+$/))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ "pattern": "^abb+$", "type": "string" })
   })

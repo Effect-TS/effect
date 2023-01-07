@@ -107,7 +107,7 @@ export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
 /**
  * @since 1.0.0
  */
-export const regex = (
+export const pattern = (
   regex: RegExp
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> => {
