@@ -118,6 +118,15 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, null, `null did not satisfy is(string)`)
   })
 
+  it("templateLiteral. a${number}", () => {
+    const schema = S.templateLiteral(S.literal("a"), S.number)
+    Util.expectDecodingSuccess(schema, "a1", "a1")
+    Util.expectDecodingSuccess(schema, "a1.2", "a1.2")
+
+    Util.expectDecodingFailure(schema, "", `"" did not satisfy is(^a-?\\d+(\\.\\d+)?$)`)
+    Util.expectDecodingFailure(schema, "aa", `"aa" did not satisfy is(^a-?\\d+(\\.\\d+)?$)`)
+  })
+
   it("templateLiteral. ${string}", () => {
     const schema = S.templateLiteral(S.string)
     Util.expectDecodingSuccess(schema, "a", "a")

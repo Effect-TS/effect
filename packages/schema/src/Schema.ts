@@ -139,6 +139,7 @@ const getTemplateLiterals = (
   switch (ast._tag) {
     case "Literal":
       return [ast]
+    case "NumberKeyword":
     case "StringKeyword":
       return [AST.templateLiteral("", [{ type: ast, literal: "" }])]
     case "Union":

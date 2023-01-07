@@ -593,7 +593,7 @@ export const refinement = (
  * @since 1.0.0
  */
 export interface TemplateLiteralSpan {
-  readonly type: StringKeyword
+  readonly type: StringKeyword | NumberKeyword
   readonly literal: string
 }
 

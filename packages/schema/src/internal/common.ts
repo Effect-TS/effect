@@ -304,7 +304,11 @@ export const getAnnotation = <A>(key: PropertyKey) =>
 export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
   let pattern = `^${ast.head}`
   for (const span of ast.spans) {
-    pattern += ".*"
+    if (AST.isStringKeyword(span.type)) {
+      pattern += ".*"
+    } else if (AST.isNumberKeyword(span.type)) {
+      pattern += "-?\\d+(\\.\\d+)?"
+    }
     pattern += span.literal
   }
   pattern += "$"
