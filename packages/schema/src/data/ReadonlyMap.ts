@@ -19,7 +19,7 @@ const decoder = <K, V>(
   key: D.Decoder<unknown, K>,
   value: D.Decoder<unknown, V>
 ): D.Decoder<unknown, ReadonlyMap<K, V>> => {
-  const items = I.array(I.tuple(key, value))
+  const items = D.decoderFor(I.array(I.tuple(key, value)))
   return I.makeDecoder(
     readonlyMap(key, value),
     (u, options) =>
@@ -27,7 +27,7 @@ const decoder = <K, V>(
         DE.failure(DE.type("Map<unknown, unknown>", u)) :
         pipe(
           Array.from(u.entries()),
-          D.decode(items, options),
+          (us) => items.decode(us, options),
           I.map((as) => new Map(as))
         )
   )
@@ -37,11 +37,15 @@ const encoder = <K, V>(
   key: E.Encoder<unknown, K>,
   value: E.Encoder<unknown, V>
 ): E.Encoder<unknown, ReadonlyMap<K, V>> => {
-  const items = I.array(I.tuple(key, value))
+  const items = E.encoderFor(I.array(I.tuple(key, value)))
   return I.makeEncoder(
     readonlyMap(key, value),
     (map, options) =>
-      pipe(Array.from(map.entries()), E.encode(items, options), I.map((bs: any) => new Map(bs)))
+      pipe(
+        Array.from(map.entries()),
+        (entries) => items.encode(entries, options),
+        I.map((bs: any) => new Map(bs))
+      )
   )
 }
 

@@ -8,8 +8,6 @@ import { format } from "@fp-ts/schema/formatter/Tree"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const options: D.DecodeOptions = { isUnexpectedAllowed: false, allErrors: false }
-
 describe.concurrent("Decoder", () => {
   it("exports", () => {
     expect(D.make).exist
@@ -23,16 +21,16 @@ describe.concurrent("Decoder", () => {
       name: S.string,
       age: S.number
     })
-    expect(D.decodeOrThrow(schema, options)({ name: "Alice", age: 30 })).toEqual({
+    expect(D.decodeOrThrow(schema)({ name: "Alice", age: 30 })).toEqual({
       name: "Alice",
       age: 30
     })
-    expect(() => D.decodeOrThrow(schema, options)({})).toThrowError(
+    expect(() => D.decodeOrThrow(schema)({})).toThrowError(
       new Error(`1 error(s) found
 └─ key "name"
    └─ is missing`)
     )
-    const result = D.decode(schema, options)({})
+    const result = D.decode(schema)({})
     if (DE.isFailure(result)) {
       // console.log(format(result.left))
       format(result.left)

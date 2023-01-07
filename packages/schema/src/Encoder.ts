@@ -34,15 +34,16 @@ export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) =>
  * @category encoding
  * @since 1.0.0
  */
-export const encode = <A>(schema: Schema<A>, options?: DecodeOptions) =>
-  (a: A): DE.DecodeResult<unknown> => encoderFor(schema).encode(a, options)
+export const encode = <A>(
+  schema: Schema<A>
+): (a: A, options?: DecodeOptions) => DE.DecodeResult<unknown> => encoderFor(schema).encode
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeOrThrow = <A>(schema: Schema<A>, options?: DecodeOptions) =>
-  (a: A): unknown => {
+export const encodeOrThrow = <A>(schema: Schema<A>) =>
+  (a: A, options?: DecodeOptions): unknown => {
     const t = encoderFor(schema).encode(a, options)
     if (DE.isFailure(t)) {
       throw new Error(format(t.left))

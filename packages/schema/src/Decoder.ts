@@ -45,17 +45,16 @@ export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) =>
  * @category decoding
  * @since 1.0.0
  */
-export const decode = <A>(schema: Schema<A>, options?: DecodeOptions) => {
-  const decoder = decoderFor(schema)
-  return (u: unknown): DE.DecodeResult<A> => decoder.decode(u, options)
-}
+export const decode = <A>(
+  schema: Schema<A>
+): (i: unknown, options?: DecodeOptions) => DE.DecodeResult<A> => decoderFor(schema).decode
 
 /**
  * @category decoding
  * @since 1.0.0
  */
-export const decodeOrThrow = <A>(schema: Schema<A>, options?: DecodeOptions) =>
-  (u: unknown): A => {
+export const decodeOrThrow = <A>(schema: Schema<A>) =>
+  (u: unknown, options?: DecodeOptions): A => {
     const t = decoderFor(schema).decode(u, options)
     if (DE.isFailure(t)) {
       throw new Error(format(t.left))

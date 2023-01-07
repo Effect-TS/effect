@@ -15,22 +15,27 @@ import * as P from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> => {
-  const items = I.array(item)
+  const items = D.decoderFor(I.array(item))
   return I.makeDecoder(
     chunk(item),
     (u, options) =>
       !C.isChunk(u) ?
         DE.failure(DE.type("Chunk<unknown>", u)) :
-        pipe(C.toReadonlyArray(u), D.decode(items, options), I.map(C.fromIterable))
+        pipe(C.toReadonlyArray(u), (us) => items.decode(us, options), I.map(C.fromIterable))
   )
 }
 
 const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> => {
-  const items = I.array(item)
+  const items = E.encoderFor(I.array(item))
   return I.makeEncoder(
     chunk(item),
     (chunk, options) =>
-      pipe(chunk, C.toReadonlyArray, E.encode(items, options), I.map(C.fromIterable as any))
+      pipe(
+        chunk,
+        C.toReadonlyArray,
+        (as) => items.encode(as, options),
+        I.map(C.fromIterable as any)
+      )
   )
 }
 
