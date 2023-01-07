@@ -773,6 +773,7 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
       case "StringKeyword":
       case "SymbolKeyword":
       case "TemplateLiteral":
+      case "Refinement":
         indexSignatures.push(indexSignature(key, value, isReadonly))
         break
       case "Literal":
@@ -785,9 +786,6 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
         break
       case "Union":
         key.types.forEach(go)
-        break
-      case "Refinement":
-        indexSignatures.push(indexSignature(key, value, isReadonly))
         break
       default:
         throw new Error("cannot compute `record`")

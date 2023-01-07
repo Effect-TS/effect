@@ -476,7 +476,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
 export const filter = <A, B extends A>(
   refinement: Refinement<A, B>,
   meta: unknown,
-  annotations: AST.Annotated["annotations"] = {}
+  annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, meta, annotations)
 
 /**

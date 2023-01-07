@@ -1,5 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
+import * as DataOption from "@fp-ts/schema/data/Option"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
@@ -91,6 +92,46 @@ describe.concurrent("Decoder", () => {
     const encoder = E.encoderFor(schema)
     Util.expectEncodingSuccess(encoder, { a: "a", b: O.none }, { a: "a" })
     Util.expectEncodingSuccess(encoder, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
+  })
+
+  it("type alias without annotations", () => {
+    const schema = DataOption.option(S.string)
+    Util.expectDecodingSuccess(schema, O.none, O.none)
+    Util.expectDecodingSuccess(schema, O.some("a"), O.some("a"))
+
+    Util.expectDecodingFailure(
+      schema,
+      O.some(1),
+      `member: /value 1 did not satisfy is(string), member: /_tag "Some" did not satisfy isEqual(None)`
+    )
+  })
+
+  it("void", () => {
+    const schema = S.void
+    Util.expectDecodingSuccess(schema, undefined, undefined)
+    Util.expectDecodingFailure(schema, 1, `1 did not satisfy is(void)`)
+  })
+
+  it("any", () => {
+    const schema = S.any
+    Util.expectDecodingSuccess(schema, undefined, undefined)
+    Util.expectDecodingSuccess(schema, null, null)
+    Util.expectDecodingSuccess(schema, "a", "a")
+    Util.expectDecodingSuccess(schema, 1, 1)
+    Util.expectDecodingSuccess(schema, true, true)
+    Util.expectDecodingSuccess(schema, [], [])
+    Util.expectDecodingSuccess(schema, {}, {})
+  })
+
+  it("unknown", () => {
+    const schema = S.unknown
+    Util.expectDecodingSuccess(schema, undefined, undefined)
+    Util.expectDecodingSuccess(schema, null, null)
+    Util.expectDecodingSuccess(schema, "a", "a")
+    Util.expectDecodingSuccess(schema, 1, 1)
+    Util.expectDecodingSuccess(schema, true, true)
+    Util.expectDecodingSuccess(schema, [], [])
+    Util.expectDecodingSuccess(schema, {}, {})
   })
 
   it("templateLiteral. a", () => {
