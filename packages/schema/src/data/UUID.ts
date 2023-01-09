@@ -1,3 +1,7 @@
+/**
+ * @since 1.0.0
+ */
+
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import { make } from "@fp-ts/schema/Arbitrary"
