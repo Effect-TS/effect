@@ -215,8 +215,11 @@ export const includes: (searchString: string) => <A extends string>(self: Schema
  * @category filters
  * @since 1.0.0
  */
-export const pattern: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.pattern
+export const pattern: (
+  regex: RegExp,
+  meta?: object,
+  annotations?: AST.Annotated["annotations"]
+) => <A extends string>(self: Schema<A>) => Schema<A> = F.pattern
 
 /**
  * @category filters
@@ -593,28 +596,7 @@ export const object: Schema<object> = I.object
 export const json: Schema<Json> = DataJson.json
 
 /**
-  Creates a `Schema` for an `Option` of `A`.
-
-  @param kind The representation of the `Option` schema. Can be one of:
-
-    - "plain": A plain `Option` that uses a type alias with the `struct` combinator.
-    - "fromNullable": A `Option` that uses a type alias with the `typeAlias` combinator and allows decoding `null` and `undefined`.
-    - "inline": An `Option` that is represented as an inline union of `struct`s.
-
-    Default: "fromNullable".
   @category data
   @since 1.0.0
  */
-export const option = <A>(
-  value: Schema<A>,
-  kind: "plain" | "fromNullable" | "inline" = "fromNullable"
-): Schema<Option<A>> => {
-  switch (kind) {
-    case "plain":
-      return DataOption.option(value)
-    case "fromNullable":
-      return DataOption.fromNullable(value)
-    case "inline":
-      return DataOption.inline(value)
-  }
-}
+export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.fromNullable

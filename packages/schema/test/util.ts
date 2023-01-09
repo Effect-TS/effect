@@ -116,13 +116,18 @@ const formatDecodeError = (e: DE.DecodeError): string => {
   }
 }
 
-export const expectFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
+export const expectDecodingFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
   const t = pipe(D.decode(schema)(u), T.mapLeft(format))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
 
-export const expectWarningTree = <A>(schema: Schema<A>, u: unknown, message: string, a: A) => {
+export const expectDecodingWarningTree = <A>(
+  schema: Schema<A>,
+  u: unknown,
+  message: string,
+  a: A
+) => {
   const t = pipe(D.decode(schema)(u), T.mapLeft(format))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))

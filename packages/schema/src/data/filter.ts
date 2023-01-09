@@ -6,6 +6,7 @@ import {
   jsonSchemaAnnotation,
   JSONSchemaAnnotationId
 } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import type { Annotated } from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -108,12 +109,15 @@ export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
  * @since 1.0.0
  */
 export const pattern = (
-  regex: RegExp
+  regex: RegExp,
+  meta?: object,
+  annotations?: Annotated["annotations"]
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> => {
     const pattern = regex.source
-    return I.refinement(self, (a): a is A => regex.test(a), { pattern }, {
-      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern })
+    return I.refinement(self, (a): a is A => regex.test(a), { pattern, ...meta }, {
+      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern }),
+      ...annotations
     })
   }
 

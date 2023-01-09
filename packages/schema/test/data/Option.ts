@@ -25,7 +25,7 @@ describe.concurrent("Option", () => {
     Util.expectDecodingSuccess(schema, null, O.none)
     Util.expectDecodingSuccess(schema, 1, O.some(1))
 
-    Util.expectFailureTree(
+    Util.expectDecodingFailureTree(
       schema,
       {},
       `3 error(s) found

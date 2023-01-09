@@ -67,7 +67,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none })
     Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
-    Util.expectFailureTree(
+    Util.expectDecodingFailureTree(
       decoder,
       { a: "a", b: "b" },
       `1 error(s) found
@@ -195,7 +195,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, "footer_title_id", "footer_title_id")
     Util.expectDecodingSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
 
-    Util.expectFailureTree(
+    Util.expectDecodingFailureTree(
       schema,
       "_id",
       `4 error(s) found
@@ -286,7 +286,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, 1)
     Util.expectDecodingSuccess(schema, "a")
 
-    Util.expectFailureTree(
+    Util.expectDecodingFailureTree(
       schema,
       null,
       `2 error(s) found
@@ -880,7 +880,7 @@ describe.concurrent("Decoder", () => {
       Util.expectDecodingSuccess(schema, [1])
       Util.expectDecodingSuccess(schema, [undefined])
 
-      Util.expectFailureTree(
+      Util.expectDecodingFailureTree(
         schema,
         ["a"],
         `1 error(s) found
@@ -899,7 +899,7 @@ describe.concurrent("Decoder", () => {
       Util.expectDecodingSuccess(schema, [1])
       Util.expectDecodingSuccess(schema, [undefined])
 
-      Util.expectFailureTree(
+      Util.expectDecodingFailureTree(
         schema,
         ["a"],
         `2 error(s) found
