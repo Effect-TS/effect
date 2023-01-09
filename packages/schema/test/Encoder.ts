@@ -4,7 +4,7 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { DecodeOptions } from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
+import * as E from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -51,9 +51,7 @@ describe.concurrent("Encoder", () => {
 
   it("never", () => {
     const schema = S.never
-    expect(() => E.encode(schema)(null as any as never)).toThrowError(
-      new Error("Called `absurd` function which should be uncallable")
-    )
+    Util.expectEncodingFailure(schema, 1 as any as never, "1 did not satisfy is(never)")
   })
 
   it("type alias without annotations", () => {
@@ -64,7 +62,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       O.some(10),
-      `member: /value "10" did not satisfy refinement({"maxLength":1})`
+      `member: /value "10" did not satisfy refinement({"maxLength":1}), member: /_tag "Some" did not satisfy isEqual(None)`
     )
   })
 
@@ -456,15 +454,13 @@ describe.concurrent("Encoder", () => {
     )
   })
 
-  it("isUnexpectedAllowed/struct unexpected keys", () => {
+  it("struct/empty", () => {
     const schema = S.struct({})
-    Util.expectEncodingWarning(
-      schema,
-      { a: 1, b: 2 } as any,
-      {},
-      `/a is unexpected, /b is unexpected`,
-      isUnexpectedAllowed
-    )
+    Util.expectEncodingSuccess(schema, {}, {})
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingSuccess(schema, [], [])
+
+    Util.expectEncodingFailure(schema, null as any, `null did not satisfy is({})`)
   })
 
   // ---------------------------------------------

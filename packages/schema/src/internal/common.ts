@@ -13,7 +13,6 @@ import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
-import type { Encoder } from "@fp-ts/schema/Encoder"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
@@ -77,12 +76,6 @@ export const fromRefinement = <A>(
   onFalse: (u: unknown) => DE.DecodeError
 ): Decoder<unknown, A> =>
   makeDecoder(schema, (u) => refinement(u) ? DE.success(u) : DE.failure(onFalse(u)))
-
-/** @internal */
-export const makeEncoder = <O, A>(
-  schema: Schema<A>,
-  encode: Encoder<O, A>["encode"]
-): Encoder<O, A> => ({ ast: schema.ast, encode }) as any
 
 /** @internal */
 export const makePretty = <A>(

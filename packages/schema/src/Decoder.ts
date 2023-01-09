@@ -11,7 +11,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import { format } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
@@ -74,7 +74,7 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
  */
 export const is = <A>(schema: Schema<A>) =>
   (input: unknown): input is A =>
-    !DE.isFailure(decoderFor(schema, true).decode(input, { isUnexpectedAllowed: true }))
+    !DE.isFailure(decoderFor(schema, "guard").decode(input, { isUnexpectedAllowed: true }))
 
 /**
  * @category assertions
@@ -82,17 +82,42 @@ export const is = <A>(schema: Schema<A>) =>
  */
 export const asserts = <A>(schema: Schema<A>) =>
   (input: unknown): asserts input is A => {
-    const t = decoderFor(schema, true).decode(input, { isUnexpectedAllowed: true })
+    const t = decoderFor(schema, "guard").decode(input, { isUnexpectedAllowed: true })
     if (DE.isFailure(t)) {
       throw new Error(format(t.left))
     }
+  }
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encode = <A>(
+  schema: Schema<A>
+): (a: A, options?: DecodeOptions) => DE.DecodeResult<unknown> =>
+  decoderFor(schema, "encoder").decode
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
+export const encodeOrThrow = <A>(schema: Schema<A>) =>
+  (a: A, options?: DecodeOptions): unknown => {
+    const t = decoderFor(schema, "encoder").decode(a, options)
+    if (DE.isFailure(t)) {
+      throw new Error(format(t.left))
+    }
+    return t.right
   }
 
 const getHook = H.getHook<H.Hook<Decoder<unknown, any>>>(
   H.DecoderHookId
 )
 
-const decoderFor = <A>(schema: Schema<A>, isGuard = false): Decoder<unknown, A> => {
+const decoderFor = <A>(
+  schema: Schema<A>,
+  as: "decoder" | "guard" | "encoder" = "decoder"
+): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<any, any> => {
     switch (ast._tag) {
       case "TypeAlias":
@@ -500,14 +525,24 @@ const decoderFor = <A>(schema: Schema<A>, isGuard = false): Decoder<unknown, A> 
         )
       }
       case "Transform": {
-        if (isGuard) {
-          return go(ast.to)
+        switch (as) {
+          case "decoder": {
+            const from = go(ast.from)
+            return make(
+              I.makeSchema(ast),
+              (u, options) => pipe(from.decode(u, options), I.flatMap((a) => ast.f(a, options)))
+            )
+          }
+          case "guard":
+            return go(ast.to)
+          case "encoder": {
+            const from = go(ast.from)
+            return make(
+              I.makeSchema(AST.transformOrFail(ast.to, ast.from, ast.g, ast.f)),
+              (a, options) => pipe(ast.g(a, options), I.flatMap((a) => from.decode(a, options)))
+            )
+          }
         }
-        const from = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (u, options) => pipe(from.decode(u, options), I.flatMap((a) => ast.f(a, options)))
-        )
       }
     }
   }

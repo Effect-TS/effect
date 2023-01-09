@@ -8,7 +8,6 @@ import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -21,20 +20,6 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
       !C.isChunk(u) ?
         DE.failure(DE.type("Chunk<unknown>", u)) :
         pipe(C.toReadonlyArray(u), (us) => items(us, options), I.map(C.fromIterable))
-  )
-}
-
-const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> => {
-  const items = E.array(item)
-  return I.makeEncoder(
-    chunk(item),
-    (chunk, options) =>
-      pipe(
-        chunk,
-        C.toReadonlyArray,
-        (as) => items.encode(as, options),
-        I.map(C.fromIterable)
-      )
   )
 }
 
@@ -59,7 +44,6 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     }),
     {
       [H.DecoderHookId]: H.hook(decoder),
-      [H.EncoderHookId]: H.hook(encoder),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

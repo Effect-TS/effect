@@ -6,7 +6,6 @@ import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -29,22 +28,6 @@ const decoder = <K, V>(
           (us) => items(us, options),
           I.map((as) => new Map(as))
         )
-  )
-}
-
-const encoder = <K, V>(
-  key: E.Encoder<unknown, K>,
-  value: E.Encoder<unknown, V>
-): E.Encoder<unknown, ReadonlyMap<K, V>> => {
-  const items = E.array(E.tuple(key, value))
-  return I.makeEncoder(
-    readonlyMap(key, value),
-    (map, options) =>
-      pipe(
-        Array.from(map.entries()),
-        (entries) => items.encode(entries, options),
-        I.map((bs) => new Map(bs))
-      )
   )
 }
 
@@ -76,7 +59,6 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
     }),
     {
       [H.DecoderHookId]: H.hook(decoder),
-      [H.EncoderHookId]: H.hook(encoder),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

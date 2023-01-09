@@ -497,7 +497,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, [1, true], `/0 1 did not satisfy is(string)`)
   })
 
-  it("struct. empty", () => {
+  it("struct/empty", () => {
     const schema = S.struct({})
     Util.expectDecodingSuccess(schema, {})
     Util.expectDecodingSuccess(schema, { a: 1 })

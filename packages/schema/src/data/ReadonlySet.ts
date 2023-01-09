@@ -6,7 +6,6 @@ import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -31,21 +30,6 @@ const decoder = <A>(
   )
 }
 
-const encoder = <A>(
-  item: E.Encoder<unknown, A>
-): E.Encoder<unknown, ReadonlySet<A>> => {
-  const items = E.array(item)
-  return I.makeEncoder(
-    readonlySet(item),
-    (map, options) =>
-      pipe(
-        Array.from(map.values()),
-        (values) => items.encode(values, options),
-        I.map((bs) => new Set(bs))
-      )
-  )
-}
-
 const arbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
   I.makeArbitrary(readonlySet(item), (fc) => fc.array(item.arbitrary(fc)).map((as) => new Set(as)))
 
@@ -66,7 +50,6 @@ export const readonlySet = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
     }),
     {
       [H.DecoderHookId]: H.hook(decoder),
-      [H.EncoderHookId]: H.hook(encoder),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }
