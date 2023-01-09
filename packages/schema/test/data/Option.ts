@@ -1,6 +1,5 @@
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/data/Option"
-import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -40,8 +39,7 @@ describe.concurrent("Option", () => {
 
   it("fromNullable. encoder", () => {
     const schema = _.fromNullable(S.number)
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, O.none, null)
+    Util.expectEncodingSuccess(schema, O.none, null)
   })
 
   it("option. Pretty", () => {

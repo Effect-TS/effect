@@ -73,10 +73,7 @@ export const tuple = <Elements extends ReadonlyArray<Encoder<any, any>>>(
   { readonly [K in keyof Elements]: S.Infer<Elements[K]> }
 > => encoderFor(I.tuple(...elements)) as any
 
-/**
- * @since 1.0.0
- */
-export const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
+const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
     switch (ast._tag) {
       case "TypeAlias":

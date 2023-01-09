@@ -29,7 +29,6 @@ describe.concurrent("Encoder", () => {
     expect(E.make).exist
     expect(E.encode).exist
     expect(E.encodeOrThrow).exist
-    expect(E.encoderFor).exist
   })
 
   it("encodeOrThrow", () => {

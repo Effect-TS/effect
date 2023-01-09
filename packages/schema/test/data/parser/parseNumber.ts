@@ -1,5 +1,4 @@
 import { parseNumber } from "@fp-ts/schema/data/parser"
-import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -33,8 +32,7 @@ describe.concurrent("parseNumber", () => {
   })
 
   it("Encoder", () => {
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, 1, "1")
+    Util.expectEncodingSuccess(schema, 1, "1")
   })
 
   it("example", () => {

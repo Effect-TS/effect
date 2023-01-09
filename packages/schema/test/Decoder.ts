@@ -2,7 +2,6 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as D from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Encoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -78,9 +77,8 @@ describe.concurrent("Decoder", () => {
       └─ "b" did not satisfy is(number)`
     )
 
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, { a: "a", b: O.none }, { a: "a" })
-    Util.expectEncodingSuccess(encoder, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
+    Util.expectEncodingSuccess(schema, { a: "a", b: O.none }, { a: "a" })
+    Util.expectEncodingSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
   })
 
   it("type alias without annotations", () => {

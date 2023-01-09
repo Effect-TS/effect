@@ -1,7 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
-import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -91,9 +90,8 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("fromEntries. encoder", () => {
     const schema = _.fromEntries(S.number, S.string)
-    const encoder = E.encoderFor(schema)
-    Util.expectEncodingSuccess(encoder, new Map(), [])
-    Util.expectEncodingSuccess(encoder, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
+    Util.expectEncodingSuccess(schema, new Map(), [])
+    Util.expectEncodingSuccess(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,
       "b"
     ], [3, "c"]])
