@@ -37,15 +37,7 @@ export const greaterThanOrEqualTo = (min: number) =>
 /**
  * @since 1.0.0
  */
-export abstract class Class {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  constructor(..._: Array<any>) {}
-}
-
-/**
- * @since 1.0.0
- */
-export const instanceOf = <A extends typeof Class>(constructor: A) =>
+export const instanceOf = <A extends abstract new(...args: any) => any>(constructor: A) =>
   (self: Schema<object>): Schema<InstanceType<A>> =>
     I.refinement(self, (a): a is InstanceType<A> => a instanceof constructor, {
       instanceof: constructor

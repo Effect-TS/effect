@@ -76,7 +76,7 @@ export const enums = <A extends { [x: string]: string | number }>(
  * @category constructors
  * @since 1.0.0
  */
-export const instanceOf: <A extends typeof F.Class>(
+export const instanceOf: <A extends abstract new(...args: any) => any>(
   constructor: A
 ) => (self: Schema<object>) => Schema<InstanceType<A>> = F.instanceOf
 
