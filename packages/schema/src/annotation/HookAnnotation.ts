@@ -40,9 +40,4 @@ export const EncoderHookId = "@fp-ts/schema/annotation/EncoderHookId"
 /**
  * @since 1.0.0
  */
-export const GuardHookId = "@fp-ts/schema/annotation/GuardHookId"
-
-/**
- * @since 1.0.0
- */
 export const PrettyHookId = "@fp-ts/schema/annotation/PrettyHookId"

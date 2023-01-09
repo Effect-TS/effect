@@ -10,8 +10,8 @@ import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { DecodeOptions } from "@fp-ts/schema/Decoder"
+import * as D from "@fp-ts/schema/Decoder"
 import { format } from "@fp-ts/schema/formatter/Tree"
-import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type * as S from "@fp-ts/schema/Schema"
 
@@ -335,7 +335,7 @@ const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
         )
       }
       case "Union": {
-        const types = ast.types.map((m) => [G.is(I.makeSchema(m)), go(m)] as const)
+        const types = ast.types.map((m) => [D.is(I.makeSchema(m)), go(m)] as const)
         return make(I.makeSchema(ast), (input, options) => {
           // ---------------------------------------------
           // compute encoder candidates

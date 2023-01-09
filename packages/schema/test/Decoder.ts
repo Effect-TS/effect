@@ -12,6 +12,15 @@ describe.concurrent("Decoder", () => {
     expect(D.decodeOrThrow).exist
   })
 
+  it("asserts", () => {
+    const schema = S.string
+    expect(D.asserts(schema)("a")).toEqual(undefined)
+    expect(() => D.asserts(schema)(1)).toThrowError(
+      new Error(`1 error(s) found
+└─ 1 did not satisfy is(string)`)
+    )
+  })
+
   it("decodeOrThrow", () => {
     const schema = S.struct({
       name: S.string,

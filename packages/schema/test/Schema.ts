@@ -1,6 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as AST from "@fp-ts/schema/AST"
-import * as G from "@fp-ts/schema/Guard"
+import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Schema", () => {
@@ -88,7 +88,7 @@ describe.concurrent("Schema", () => {
       Banana
     }
     const schema = S.enums(Fruits)
-    const is = G.is(schema)
+    const is = D.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Banana)).toEqual(true)
     expect(is(0)).toEqual(true)
@@ -104,7 +104,7 @@ describe.concurrent("Schema", () => {
           b: S.number
         })
         const keyOf = S.keyof(schema)
-        const is = G.is(keyOf)
+        const is = D.is(keyOf)
         expect(is("a")).toEqual(true)
         expect(is("b")).toEqual(true)
         expect(is("c")).toEqual(false)
@@ -118,7 +118,7 @@ describe.concurrent("Schema", () => {
           [b]: S.number
         })
         const keyOf = S.keyof(schema)
-        const is = G.is(keyOf)
+        const is = D.is(keyOf)
         expect(is(a)).toEqual(true)
         expect(is(b)).toEqual(true)
         expect(is("a")).toEqual(false)
@@ -138,7 +138,7 @@ describe.concurrent("Schema", () => {
         })
       )
       const keyOf = S.keyof(schema)
-      const is = G.is(keyOf)
+      const is = D.is(keyOf)
       expect(is("a")).toEqual(true)
       expect(is("b")).toEqual(false)
       expect(is("c")).toEqual(false)
@@ -175,7 +175,7 @@ describe.concurrent("Schema", () => {
         }),
         rename("a", "aa")
       )
-      const is = G.is(schema)
+      const is = D.is(schema)
       expect(is({ a: "foo", b: 1 })).toEqual(false)
       expect(is({ aa: "foo", b: 1 })).toEqual(true)
     })
@@ -229,7 +229,7 @@ describe.concurrent("Schema", () => {
         "c?": S.boolean
       })
 
-      const is = G.is(schema)
+      const is = D.is(schema)
       expect(is({ a: "a", b: 1 })).toBe(true)
       expect(is({ a: "a", b: 1, c: true })).toBe(true)
 

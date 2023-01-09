@@ -1,6 +1,6 @@
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/data/Option"
-import * as G from "@fp-ts/schema/Guard"
+import * as D from "@fp-ts/schema/Decoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -12,7 +12,7 @@ describe.concurrent("Option", () => {
 
   it("option. guard. direct", () => {
     const schema = _.option(S.number)
-    const is = G.is(schema)
+    const is = D.is(schema)
     expect(is(O.none)).toEqual(true)
     expect(is(O.some(1))).toEqual(true)
     expect(is(O.some("a"))).toEqual(false)

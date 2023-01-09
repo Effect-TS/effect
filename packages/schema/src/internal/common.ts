@@ -14,7 +14,6 @@ import * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { Decoder } from "@fp-ts/schema/Decoder"
 import type { Encoder } from "@fp-ts/schema/Encoder"
-import type { Guard } from "@fp-ts/schema/Guard"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
@@ -58,10 +57,6 @@ export const isJson = (u: unknown): u is Json =>
 // ---------------------------------------------
 // artifacts constructors
 // ---------------------------------------------
-
-/** @internal */
-export const makeGuard = <A>(schema: Schema<A>, is: Guard<A>["is"]): Guard<A> =>
-  ({ ast: schema.ast, is }) as any
 
 /** @internal */
 export const makeArbitrary = <A>(

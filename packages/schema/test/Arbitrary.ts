@@ -1,12 +1,12 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as G from "@fp-ts/schema/Guard"
+import * as D from "@fp-ts/schema/Decoder"
 import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
 export const property = <A>(schema: S.Schema<A>) => {
   const arbitrary = A.arbitrary(schema)
-  const is = G.is(schema)
+  const is = D.is(schema)
   fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
 }
 

@@ -4,7 +4,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import { getJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import type * as AST from "@fp-ts/schema/AST"
-import * as G from "@fp-ts/schema/Guard"
+import * as D from "@fp-ts/schema/Decoder"
 import { isJson } from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
@@ -234,7 +234,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
 
 const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitrary(schema)
-  const is = G.is(schema)
+  const is = D.is(schema)
   const validate = new Ajv({ strict: false }).compile(jsonSchemaFor(schema))
   const arb = arbitrary(fc).filter(isJson)
   // console.log(fc.sample(arb, 2))
@@ -244,7 +244,7 @@ const property = <A>(schema: Schema<A>) => {
 }
 
 export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
-  const is = G.is(schema)
+  const is = D.is(schema)
   const jsonschema = jsonSchemaFor(schema)
   const validate = new Ajv({ strict: false }).compile(jsonschema)
   expect(is(input)).toEqual(validate(input))
@@ -252,7 +252,7 @@ export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
 }
 
 export const assertFalse = <A>(schema: Schema<A>, input: unknown) => {
-  const is = G.is(schema)
+  const is = D.is(schema)
   const jsonschema = jsonSchemaFor(schema)
   const validate = new Ajv({ strict: false }).compile(jsonschema)
   expect(is(input)).toEqual(validate(input))

@@ -9,7 +9,6 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
-import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -39,12 +38,6 @@ const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> =
   )
 }
 
-const guard = <A>(item: G.Guard<A>): G.Guard<Chunk<A>> =>
-  I.makeGuard(
-    chunk(item),
-    (u): u is Chunk<A> => C.isChunk(u) && pipe(u, C.every(item.is))
-  )
-
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(chunk(item), (fc) => fc.array(item.arbitrary(fc)).map(C.fromIterable))
 
@@ -67,7 +60,6 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
     {
       [H.DecoderHookId]: H.hook(decoder),
       [H.EncoderHookId]: H.hook(encoder),
-      [H.GuardHookId]: H.hook(guard),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

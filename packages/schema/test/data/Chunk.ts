@@ -2,7 +2,7 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as _ from "@fp-ts/schema/data/Chunk"
 import { parseNumber } from "@fp-ts/schema/data/parser"
-import * as G from "@fp-ts/schema/Guard"
+import * as D from "@fp-ts/schema/Decoder"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -39,7 +39,7 @@ describe.concurrent("Chunk", () => {
 
   it("chunk. guard", () => {
     const schema = _.chunk(S.string)
-    const is = G.is(schema)
+    const is = D.is(schema)
     expect(is(C.empty())).toEqual(true)
     expect(is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
 

@@ -7,7 +7,6 @@ import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
-import type * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -49,13 +48,6 @@ const encoder = <K, V>(
   )
 }
 
-const guard = <K, V>(key: G.Guard<K>, value: G.Guard<V>): G.Guard<ReadonlyMap<K, V>> =>
-  I.makeGuard(
-    fromEntries(key, value),
-    (u): u is ReadonlyMap<K, V> =>
-      u instanceof Map && Array.from(u.entries()).every(([k, v]) => key.is(k) && value.is(v))
-  )
-
 const arbitrary = <K, V>(key: Arbitrary<K>, value: Arbitrary<V>): Arbitrary<ReadonlyMap<K, V>> =>
   I.makeArbitrary(
     fromEntries(key, value),
@@ -85,7 +77,6 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
     {
       [H.DecoderHookId]: H.hook(decoder),
       [H.EncoderHookId]: H.hook(encoder),
-      [H.GuardHookId]: H.hook(guard),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

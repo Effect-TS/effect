@@ -7,14 +7,13 @@ import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import { format, stringify } from "@fp-ts/schema/formatter/Tree"
-import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
 export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitrary(schema)
-  const is = G.is(schema)
+  const is = D.is(schema)
   fc.assert(fc.property(arbitrary(fc), (a) => {
     if (!is(a)) {
       return false

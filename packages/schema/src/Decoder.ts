@@ -68,11 +68,31 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
     return t.right
   }
 
+/**
+ * @category assertions
+ * @since 1.0.0
+ */
+export const is = <A>(schema: Schema<A>) =>
+  (input: unknown): input is A =>
+    !DE.isFailure(decoderFor(schema, true).decode(input, { isUnexpectedAllowed: true }))
+
+/**
+ * @category assertions
+ * @since 1.0.0
+ */
+export const asserts = <A>(schema: Schema<A>) =>
+  (input: unknown): asserts input is A => {
+    const t = decoderFor(schema, true).decode(input, { isUnexpectedAllowed: true })
+    if (DE.isFailure(t)) {
+      throw new Error(format(t.left))
+    }
+  }
+
 const getHook = H.getHook<H.Hook<Decoder<unknown, any>>>(
   H.DecoderHookId
 )
 
-const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
+const decoderFor = <A>(schema: Schema<A>, isGuard = false): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<any, any> => {
     switch (ast._tag) {
       case "TypeAlias":
@@ -480,6 +500,9 @@ const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
         )
       }
       case "Transform": {
+        if (isGuard) {
+          return go(ast.to)
+        }
         const from = go(ast.from)
         return make(
           I.makeSchema(ast),
