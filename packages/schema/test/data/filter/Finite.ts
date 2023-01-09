@@ -32,10 +32,10 @@ describe.concurrent("finite", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.finite(S.number))
-    expect(pretty.pretty(1)).toEqual("1")
-    expect(pretty.pretty(NaN)).toEqual("NaN")
-    expect(pretty.pretty(Infinity)).toEqual("Infinity")
-    expect(pretty.pretty(-Infinity)).toEqual("-Infinity")
+    const pretty = P.pretty(_.finite(S.number))
+    expect(pretty(1)).toEqual("1")
+    expect(pretty(NaN)).toEqual("NaN")
+    expect(pretty(Infinity)).toEqual("Infinity")
+    expect(pretty(-Infinity)).toEqual("-Infinity")
   })
 })

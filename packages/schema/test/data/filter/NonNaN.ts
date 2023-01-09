@@ -22,8 +22,8 @@ describe.concurrent("nonNaN", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.nonNaN(S.number))
-    expect(pretty.pretty(1)).toEqual("1")
-    expect(pretty.pretty(NaN)).toEqual("NaN")
+    const pretty = P.pretty(_.nonNaN(S.number))
+    expect(pretty(1)).toEqual("1")
+    expect(pretty(NaN)).toEqual("NaN")
   })
 })

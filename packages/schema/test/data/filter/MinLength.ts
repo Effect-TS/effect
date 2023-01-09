@@ -24,7 +24,7 @@ describe.concurrent("minLength", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.minLength(0)(S.string))
-    expect(pretty.pretty("a")).toEqual(`"a"`)
+    const pretty = P.pretty(_.minLength(0)(S.string))
+    expect(pretty("a")).toEqual(`"a"`)
   })
 })

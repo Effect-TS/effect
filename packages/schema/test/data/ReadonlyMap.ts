@@ -60,9 +60,9 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("readonlyMap. pretty", () => {
     const schema = _.readonlyMap(S.number, S.string)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(new Map())).toEqual("new Map([])")
-    expect(pretty.pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
+    const pretty = P.pretty(schema)
+    expect(pretty(new Map())).toEqual("new Map([])")
+    expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
       `new Map([[1, "a"], [2, "b"]])`
     )
   })

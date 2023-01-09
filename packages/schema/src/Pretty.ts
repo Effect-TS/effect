@@ -35,10 +35,7 @@ const getHook = H.getHook<H.Hook<Pretty<any>>>(
   H.PrettyHookId
 )
 
-/**
- * @since 1.0.0
- */
-export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
+const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
   const go = (ast: AST.AST): Pretty<any> => {
     switch (ast._tag) {
       case "TypeAlias":

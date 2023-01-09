@@ -24,7 +24,7 @@ describe.concurrent("greaterThanOrEqualTo", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.greaterThanOrEqualTo(0)(S.number))
-    expect(pretty.pretty(1)).toEqual("1")
+    const pretty = P.pretty(_.greaterThanOrEqualTo(0)(S.number))
+    expect(pretty(1)).toEqual("1")
   })
 })

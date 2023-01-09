@@ -20,7 +20,7 @@ describe.concurrent("instanceOf", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.instanceOf(Set)(S.object))
-    expect(pretty.pretty(new Set())).toEqual("{}")
+    const pretty = P.pretty(_.instanceOf(Set)(S.object))
+    expect(pretty(new Set())).toEqual("{}")
   })
 })

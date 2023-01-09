@@ -49,9 +49,9 @@ describe.concurrent("Chunk", () => {
 
   it("chunk. pretty", () => {
     const schema = _.chunk(S.string)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(C.empty())).toEqual("Chunk()")
-    expect(pretty.pretty(C.fromIterable(["a", "b"]))).toEqual(
+    const pretty = P.pretty(schema)
+    expect(pretty(C.empty())).toEqual("Chunk()")
+    expect(pretty(C.fromIterable(["a", "b"]))).toEqual(
       "Chunk(\"a\", \"b\")"
     )
   })

@@ -24,7 +24,7 @@ describe.concurrent("int", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.int(S.number))
-    expect(pretty.pretty(1)).toEqual("1")
+    const pretty = P.pretty(_.int(S.number))
+    expect(pretty(1)).toEqual("1")
   })
 })

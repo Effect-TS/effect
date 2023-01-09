@@ -24,7 +24,7 @@ describe.concurrent("maxLength", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.maxLength(0)(S.string))
-    expect(pretty.pretty("a")).toEqual(`"a"`)
+    const pretty = P.pretty(_.maxLength(0)(S.string))
+    expect(pretty("a")).toEqual(`"a"`)
   })
 })

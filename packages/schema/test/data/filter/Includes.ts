@@ -28,7 +28,7 @@ describe.concurrent("includes", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.includes("a")(S.string))
-    expect(pretty.pretty("a")).toEqual(`"a"`)
+    const pretty = P.pretty(_.includes("a")(S.string))
+    expect(pretty("a")).toEqual(`"a"`)
   })
 })

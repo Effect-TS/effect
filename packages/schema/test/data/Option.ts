@@ -44,8 +44,8 @@ describe.concurrent("Option", () => {
 
   it("option. Pretty", () => {
     const schema = _.option(S.number)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(O.none)).toEqual("none")
-    expect(pretty.pretty(O.some(1))).toEqual("some(1)")
+    const pretty = P.pretty(schema)
+    expect(pretty(O.none)).toEqual("none")
+    expect(pretty(O.some(1))).toEqual("some(1)")
   })
 })

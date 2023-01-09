@@ -47,9 +47,9 @@ describe.concurrent("ReadonlySet", () => {
 
   it("readonlySet. pretty", () => {
     const schema = _.readonlySet(S.string)
-    const pretty = P.prettyFor(schema)
-    expect(pretty.pretty(new Set())).toEqual("new Set([])")
-    expect(pretty.pretty(new Set(["a", "b"]))).toEqual(
+    const pretty = P.pretty(schema)
+    expect(pretty(new Set())).toEqual("new Set([])")
+    expect(pretty(new Set(["a", "b"]))).toEqual(
       `new Set(["a", "b"])`
     )
   })

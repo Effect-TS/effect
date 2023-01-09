@@ -8,7 +8,7 @@ describe.concurrent("Json", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.prettyFor(_.json)
-    expect(pretty.pretty({ a: [1, true] })).toEqual(`{ "a": [1, true] }`)
+    const pretty = P.pretty(_.json)
+    expect(pretty({ a: [1, true] })).toEqual(`{ "a": [1, true] }`)
   })
 })
