@@ -50,10 +50,7 @@ const getHook = TAH.getHook<TAH.Hook<Arbitrary<any>>>(
   TAH.ArbitraryHookId
 )
 
-/**
- * @since 1.0.0
- */
-export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
+const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
   const go = (ast: AST.AST): Arbitrary<any> => {
     switch (ast._tag) {
       case "TypeAlias":

@@ -5,16 +5,15 @@ import * as S from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
 export const property = <A>(schema: S.Schema<A>) => {
-  const arbitrary = A.arbitraryFor(schema)
+  const arbitrary = A.arbitrary(schema)
   const is = G.is(schema)
-  fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => is(a)))
+  fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
 }
 
 describe.concurrent("Arbitrary", () => {
   it("exports", () => {
     expect(A.make).exist
     expect(A.arbitrary).exist
-    expect(A.arbitraryFor).exist
   })
 
   it("templateLiteral. a", () => {
@@ -48,7 +47,7 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("never", () => {
-    expect(() => A.arbitraryFor(S.never).arbitrary(fc)).toThrowError(
+    expect(() => A.arbitrary(S.never)(fc)).toThrowError(
       new Error("cannot build an Arbitrary for `never`")
     )
   })

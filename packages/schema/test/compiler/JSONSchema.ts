@@ -233,10 +233,10 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
 }
 
 const property = <A>(schema: Schema<A>) => {
-  const arbitrary = A.arbitraryFor(schema)
+  const arbitrary = A.arbitrary(schema)
   const is = G.is(schema)
   const validate = new Ajv({ strict: false }).compile(jsonSchemaFor(schema))
-  const arb = arbitrary.arbitrary(fc).filter(isJson)
+  const arb = arbitrary(fc).filter(isJson)
   // console.log(fc.sample(arb, 2))
   fc.assert(fc.property(arb, (a) => {
     return is(a) && validate(a)
