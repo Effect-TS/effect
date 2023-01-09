@@ -26,7 +26,7 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
 }
 
 const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> => {
-  const items = E.encoderFor(I.array(item))
+  const items = E.array(item)
   return I.makeEncoder(
     chunk(item),
     (chunk, options) =>
@@ -34,7 +34,7 @@ const encoder = <A>(item: E.Encoder<unknown, A>): E.Encoder<unknown, Chunk<A>> =
         chunk,
         C.toReadonlyArray,
         (as) => items.encode(as, options),
-        I.map(C.fromIterable as any)
+        I.map(C.fromIterable)
       )
   )
 }

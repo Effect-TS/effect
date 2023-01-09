@@ -31,8 +31,14 @@ export interface DecodeOptions {
  * @since 1.0.0
  */
 export interface Decoder<I, A> extends Schema<A> {
+  readonly I: (i: I) => void
   readonly decode: (i: I, options?: DecodeOptions) => DE.DecodeResult<A>
 }
+
+/**
+ * @since 1.0.0
+ */
+export type InferInput<D extends Decoder<any, any>> = Parameters<D["I"]>[0]
 
 /**
  * @category constructors

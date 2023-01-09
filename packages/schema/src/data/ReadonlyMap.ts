@@ -37,14 +37,14 @@ const encoder = <K, V>(
   key: E.Encoder<unknown, K>,
   value: E.Encoder<unknown, V>
 ): E.Encoder<unknown, ReadonlyMap<K, V>> => {
-  const items = E.encoderFor(I.array(I.tuple(key, value)))
+  const items = E.array(E.tuple(key, value))
   return I.makeEncoder(
     readonlyMap(key, value),
     (map, options) =>
       pipe(
         Array.from(map.entries()),
         (entries) => items.encode(entries, options),
-        I.map((bs: any) => new Map(bs))
+        I.map((bs) => new Map(bs))
       )
   )
 }

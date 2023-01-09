@@ -13,21 +13,27 @@ import type { DecodeOptions } from "@fp-ts/schema/Decoder"
 import { format } from "@fp-ts/schema/formatter/Tree"
 import * as G from "@fp-ts/schema/Guard"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Schema } from "@fp-ts/schema/Schema"
+import type * as S from "@fp-ts/schema/Schema"
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface Encoder<O, A> extends Schema<A> {
+export interface Encoder<O, A> extends S.Schema<A> {
+  readonly O: () => O
   readonly encode: (value: A, options?: DecodeOptions) => DE.DecodeResult<O>
 }
+
+/**
+ * @since 1.0.0
+ */
+export type InferOutput<E extends Encoder<any, any>> = ReturnType<E["O"]>
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
+export const make: <O, A>(schema: S.Schema<A>, encode: Encoder<O, A>["encode"]) => Encoder<O, A> =
   I.makeEncoder
 
 /**
@@ -35,14 +41,14 @@ export const make: <O, A>(schema: Schema<A>, encode: Encoder<O, A>["encode"]) =>
  * @since 1.0.0
  */
 export const encode = <A>(
-  schema: Schema<A>
+  schema: S.Schema<A>
 ): (a: A, options?: DecodeOptions) => DE.DecodeResult<unknown> => encoderFor(schema).encode
 
 /**
  * @category encoding
  * @since 1.0.0
  */
-export const encodeOrThrow = <A>(schema: Schema<A>) =>
+export const encodeOrThrow = <A>(schema: S.Schema<A>) =>
   (a: A, options?: DecodeOptions): unknown => {
     const t = encoderFor(schema).encode(a, options)
     if (DE.isFailure(t)) {
@@ -55,10 +61,22 @@ const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Encoder<unknown, any
   H.EncoderTypeAliasHookId
 )
 
+/** @internal */
+export const array = <O, A>(item: Encoder<O, A>): Encoder<Array<O>, ReadonlyArray<A>> =>
+  encoderFor(I.array(item)) as any
+
+/** @internal */
+export const tuple = <Elements extends ReadonlyArray<Encoder<any, any>>>(
+  ...elements: Elements
+): Encoder<
+  { [K in keyof Elements]: InferOutput<Elements[K]> },
+  { readonly [K in keyof Elements]: S.Infer<Elements[K]> }
+> => encoderFor(I.tuple(...elements)) as any
+
 /**
  * @since 1.0.0
  */
-export const encoderFor = <A>(schema: Schema<A>): Encoder<unknown, A> => {
+export const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
   const go = (ast: AST.AST): Encoder<unknown, any> => {
     switch (ast._tag) {
       case "TypeAlias":
