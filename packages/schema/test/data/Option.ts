@@ -13,10 +13,10 @@ describe.concurrent("Option", () => {
 
   it("option. guard. direct", () => {
     const schema = _.option(S.number)
-    const guard = G.guardFor(schema)
-    expect(guard.is(O.none)).toEqual(true)
-    expect(guard.is(O.some(1))).toEqual(true)
-    expect(guard.is(O.some("a"))).toEqual(false)
+    const is = G.is(schema)
+    expect(is(O.none)).toEqual(true)
+    expect(is(O.some(1))).toEqual(true)
+    expect(is(O.some("a"))).toEqual(false)
   })
 
   it("fromNullable. decoder", () => {

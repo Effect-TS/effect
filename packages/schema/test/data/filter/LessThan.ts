@@ -11,10 +11,10 @@ describe.concurrent("lessThan", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.lessThan(0)(S.number))
-    expect(guard.is(0)).toEqual(false)
-    expect(guard.is(1)).toEqual(false)
-    expect(guard.is(-1)).toEqual(true)
+    const is = G.is(_.lessThan(0)(S.number))
+    expect(is(0)).toEqual(false)
+    expect(is(1)).toEqual(false)
+    expect(is(-1)).toEqual(true)
   })
 
   it("Decoder", () => {

@@ -38,11 +38,11 @@ describe.concurrent("ReadonlySet", () => {
 
   it("readonlySet. guard", () => {
     const schema = _.readonlySet(S.string)
-    const guard = G.guardFor(schema)
-    expect(guard.is(new Set())).toEqual(true)
-    expect(guard.is(new Set(["a", "b", "c"]))).toEqual(true)
+    const is = G.is(schema)
+    expect(is(new Set())).toEqual(true)
+    expect(is(new Set(["a", "b", "c"]))).toEqual(true)
 
-    expect(guard.is(new Set(["a", "b", 1]))).toEqual(false)
+    expect(is(new Set(["a", "b", 1]))).toEqual(false)
   })
 
   it("readonlySet. pretty", () => {

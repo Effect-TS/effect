@@ -39,12 +39,12 @@ describe.concurrent("Chunk", () => {
 
   it("chunk. guard", () => {
     const schema = _.chunk(S.string)
-    const guard = G.guardFor(schema)
-    expect(guard.is(C.empty())).toEqual(true)
-    expect(guard.is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
+    const is = G.is(schema)
+    expect(is(C.empty())).toEqual(true)
+    expect(is(C.fromIterable(["a", "b", "c"]))).toEqual(true)
 
-    expect(guard.is(C.fromIterable(["a", "b", 1]))).toEqual(false)
-    expect(guard.is({ _id: Symbol.for("@fp-ts/schema/test/FakeChunk") })).toEqual(false)
+    expect(is(C.fromIterable(["a", "b", 1]))).toEqual(false)
+    expect(is({ _id: Symbol.for("@fp-ts/schema/test/FakeChunk") })).toEqual(false)
   })
 
   it("chunk. pretty", () => {

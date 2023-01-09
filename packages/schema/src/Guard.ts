@@ -49,10 +49,7 @@ const getHook = H.getHook<H.Hook<Guard<any>>>(
   H.GuardHookId
 )
 
-/**
- * @since 1.0.0
- */
-export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
+const guardFor = <A>(schema: Schema<A>): Guard<A> => {
   const go = (ast: AST.AST): Guard<any> => {
     switch (ast._tag) {
       case "TypeAlias":

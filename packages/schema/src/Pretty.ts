@@ -163,9 +163,9 @@ export const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         )
       }
       case "Union": {
-        const types = ast.types.map((m) => [G.guardFor(I.makeSchema(m)), go(m)] as const)
+        const types = ast.types.map((m) => [G.is(I.makeSchema(m)), go(m)] as const)
         return make(I.makeSchema(ast), (a) => {
-          const index = types.findIndex(([guard]) => guard.is(a))
+          const index = types.findIndex(([is]) => is(a))
           return types[index][1].pretty(a)
         })
       }

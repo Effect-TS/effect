@@ -49,16 +49,16 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("readonlyMap. guard", () => {
     const schema = _.readonlyMap(S.number, S.string)
-    const guard = G.guardFor(schema)
-    expect(guard.is(new Map())).toEqual(true)
-    expect(guard.is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
+    const is = G.is(schema)
+    expect(is(new Map())).toEqual(true)
+    expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
 
-    expect(guard.is(null)).toEqual(false)
-    expect(guard.is(new Map<number, string | number>([[1, "a"], [2, 1]]))).toEqual(false)
-    expect(guard.is(new Map<number, string | number>([[1, 1], [2, "b"]]))).toEqual(false)
-    expect(guard.is(new Map([[1, 1], [2, 2]]))).toEqual(false)
-    expect(guard.is(new Map<string | number, number>([["a", 1], ["b", 2], [3, 1]]))).toEqual(false)
-    expect(guard.is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
+    expect(is(null)).toEqual(false)
+    expect(is(new Map<number, string | number>([[1, "a"], [2, 1]]))).toEqual(false)
+    expect(is(new Map<number, string | number>([[1, 1], [2, "b"]]))).toEqual(false)
+    expect(is(new Map([[1, 1], [2, 2]]))).toEqual(false)
+    expect(is(new Map<string | number, number>([["a", 1], ["b", 2], [3, 1]]))).toEqual(false)
+    expect(is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
   })
 
   it("readonlyMap. pretty", () => {

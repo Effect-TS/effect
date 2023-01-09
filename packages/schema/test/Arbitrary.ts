@@ -6,8 +6,8 @@ import * as fc from "fast-check"
 
 export const property = <A>(schema: S.Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
-  const guard = G.guardFor(schema)
-  fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => guard.is(a)))
+  const is = G.is(schema)
+  fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => is(a)))
 }
 
 describe.concurrent("Arbitrary", () => {

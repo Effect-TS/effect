@@ -88,12 +88,12 @@ describe.concurrent("Schema", () => {
       Banana
     }
     const schema = S.enums(Fruits)
-    const guard = G.guardFor(schema)
-    expect(guard.is(Fruits.Apple)).toEqual(true)
-    expect(guard.is(Fruits.Banana)).toEqual(true)
-    expect(guard.is(0)).toEqual(true)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(3)).toEqual(false)
+    const is = G.is(schema)
+    expect(is(Fruits.Apple)).toEqual(true)
+    expect(is(Fruits.Banana)).toEqual(true)
+    expect(is(0)).toEqual(true)
+    expect(is(1)).toEqual(true)
+    expect(is(3)).toEqual(false)
   })
 
   describe.concurrent("keyof", () => {
@@ -104,10 +104,10 @@ describe.concurrent("Schema", () => {
           b: S.number
         })
         const keyOf = S.keyof(schema)
-        const guard = G.guardFor(keyOf)
-        expect(guard.is("a")).toEqual(true)
-        expect(guard.is("b")).toEqual(true)
-        expect(guard.is("c")).toEqual(false)
+        const is = G.is(keyOf)
+        expect(is("a")).toEqual(true)
+        expect(is("b")).toEqual(true)
+        expect(is("c")).toEqual(false)
       })
 
       it("symbol keys", () => {
@@ -118,11 +118,11 @@ describe.concurrent("Schema", () => {
           [b]: S.number
         })
         const keyOf = S.keyof(schema)
-        const guard = G.guardFor(keyOf)
-        expect(guard.is(a)).toEqual(true)
-        expect(guard.is(b)).toEqual(true)
-        expect(guard.is("a")).toEqual(false)
-        expect(guard.is("b")).toEqual(false)
+        const is = G.is(keyOf)
+        expect(is(a)).toEqual(true)
+        expect(is(b)).toEqual(true)
+        expect(is("a")).toEqual(false)
+        expect(is("b")).toEqual(false)
       })
     })
 
@@ -138,10 +138,10 @@ describe.concurrent("Schema", () => {
         })
       )
       const keyOf = S.keyof(schema)
-      const guard = G.guardFor(keyOf)
-      expect(guard.is("a")).toEqual(true)
-      expect(guard.is("b")).toEqual(false)
-      expect(guard.is("c")).toEqual(false)
+      const is = G.is(keyOf)
+      expect(is("a")).toEqual(true)
+      expect(is("b")).toEqual(false)
+      expect(is("c")).toEqual(false)
     })
   })
 
@@ -175,9 +175,9 @@ describe.concurrent("Schema", () => {
         }),
         rename("a", "aa")
       )
-      const guard = G.guardFor(schema)
-      expect(guard.is({ a: "foo", b: 1 })).toEqual(false)
-      expect(guard.is({ aa: "foo", b: 1 })).toEqual(true)
+      const is = G.is(schema)
+      expect(is({ a: "foo", b: 1 })).toEqual(false)
+      expect(is({ aa: "foo", b: 1 })).toEqual(true)
     })
 
     it("crazy struct", () => {
@@ -229,12 +229,12 @@ describe.concurrent("Schema", () => {
         "c?": S.boolean
       })
 
-      const guard = G.guardFor(schema)
-      expect(guard.is({ a: "a", b: 1 })).toBe(true)
-      expect(guard.is({ a: "a", b: 1, c: true })).toBe(true)
+      const is = G.is(schema)
+      expect(is({ a: "a", b: 1 })).toBe(true)
+      expect(is({ a: "a", b: 1, c: true })).toBe(true)
 
-      expect(guard.is({ a: "a" })).toBe(false)
-      expect(guard.is({ a: "a", b: 1, c: 1 })).toBe(false)
+      expect(is({ a: "a" })).toBe(false)
+      expect(is({ a: "a", b: 1, c: 1 })).toBe(false)
     })
   })
 })

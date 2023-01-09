@@ -11,10 +11,10 @@ describe.concurrent("minLength", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.minLength(1)(S.string))
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("aa")).toEqual(true)
+    const is = G.is(_.minLength(1)(S.string))
+    expect(is("")).toEqual(false)
+    expect(is("a")).toEqual(true)
+    expect(is("aa")).toEqual(true)
   })
 
   it("Decoder", () => {

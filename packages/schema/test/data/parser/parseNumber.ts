@@ -12,9 +12,9 @@ describe.concurrent("parseNumber", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(schema)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is("a")).toEqual(false)
+    const is = G.is(schema)
+    expect(is(1)).toEqual(true)
+    expect(is("a")).toEqual(false)
   })
 
   it("Decoder", () => {

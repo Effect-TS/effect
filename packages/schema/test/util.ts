@@ -14,16 +14,16 @@ import * as fc from "fast-check"
 
 export const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
-  const guard = G.guardFor(schema)
+  const is = G.is(schema)
   fc.assert(fc.property(arbitrary.arbitrary(fc), (a) => {
-    if (!guard.is(a)) {
+    if (!is(a)) {
       return false
     }
     const roundtrip = pipe(a, E.encode(schema), I.flatMap(D.decode(schema)))
     if (DE.isFailure(roundtrip)) {
       return false
     }
-    return guard.is(roundtrip.right)
+    return is(roundtrip.right)
   }))
 }
 

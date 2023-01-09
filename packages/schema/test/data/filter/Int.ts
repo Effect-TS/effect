@@ -11,10 +11,10 @@ describe.concurrent("int", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.int(S.number))
-    expect(guard.is(0)).toEqual(true)
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(0.5)).toEqual(false)
+    const is = G.is(_.int(S.number))
+    expect(is(0)).toEqual(true)
+    expect(is(1)).toEqual(true)
+    expect(is(0.5)).toEqual(false)
   })
 
   it("Decoder", () => {

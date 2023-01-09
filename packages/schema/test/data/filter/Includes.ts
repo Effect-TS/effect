@@ -11,12 +11,12 @@ describe.concurrent("includes", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.includes("a")(S.string))
-    expect(guard.is("")).toEqual(false)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("aa")).toEqual(true)
-    expect(guard.is("bac")).toEqual(true)
-    expect(guard.is("ba")).toEqual(true)
+    const is = G.is(_.includes("a")(S.string))
+    expect(is("")).toEqual(false)
+    expect(is("a")).toEqual(true)
+    expect(is("aa")).toEqual(true)
+    expect(is("bac")).toEqual(true)
+    expect(is("ba")).toEqual(true)
   })
 
   it("Decoder", () => {

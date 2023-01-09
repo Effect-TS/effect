@@ -338,14 +338,14 @@ export const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
         )
       }
       case "Union": {
-        const types = ast.types.map((m) => [G.guardFor(I.makeSchema(m)), go(m)] as const)
+        const types = ast.types.map((m) => [G.is(I.makeSchema(m)), go(m)] as const)
         return make(I.makeSchema(ast), (input, options) => {
           // ---------------------------------------------
           // compute encoder candidates
           // ---------------------------------------------
           const encoders: Array<Encoder<unknown, any>> = []
           for (let i = 0; i < types.length; i++) {
-            if (types[i][0].is(input)) {
+            if (types[i][0](input)) {
               encoders.push(types[i][1])
             } else if (encoders.length > 0) {
               break

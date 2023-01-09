@@ -11,10 +11,10 @@ describe.concurrent("maxLength", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.maxLength(1)(S.string))
-    expect(guard.is("")).toEqual(true)
-    expect(guard.is("a")).toEqual(true)
-    expect(guard.is("aa")).toEqual(false)
+    const is = G.is(_.maxLength(1)(S.string))
+    expect(is("")).toEqual(true)
+    expect(is("a")).toEqual(true)
+    expect(is("aa")).toEqual(false)
   })
 
   it("Decoder", () => {

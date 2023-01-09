@@ -7,10 +7,10 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("instanceOf", () => {
   it("Guard", () => {
-    const guard = G.guardFor(_.instanceOf(Set)(S.object))
-    expect(guard.is(new Set())).toEqual(true)
-    expect(guard.is(1)).toEqual(false)
-    expect(guard.is({})).toEqual(false)
+    const is = G.is(_.instanceOf(Set)(S.object))
+    expect(is(new Set())).toEqual(true)
+    expect(is(1)).toEqual(false)
+    expect(is({})).toEqual(false)
   })
 
   it("Decoder", () => {

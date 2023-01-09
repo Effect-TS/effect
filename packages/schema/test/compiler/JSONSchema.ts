@@ -234,28 +234,28 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
 
 const property = <A>(schema: Schema<A>) => {
   const arbitrary = A.arbitraryFor(schema)
-  const guard = G.guardFor(schema)
+  const is = G.is(schema)
   const validate = new Ajv({ strict: false }).compile(jsonSchemaFor(schema))
   const arb = arbitrary.arbitrary(fc).filter(isJson)
   // console.log(fc.sample(arb, 2))
   fc.assert(fc.property(arb, (a) => {
-    return guard.is(a) && validate(a)
+    return is(a) && validate(a)
   }))
 }
 
 export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
-  const guard = G.guardFor(schema)
+  const is = G.is(schema)
   const jsonschema = jsonSchemaFor(schema)
   const validate = new Ajv({ strict: false }).compile(jsonschema)
-  expect(guard.is(input)).toEqual(validate(input))
+  expect(is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(true)
 }
 
 export const assertFalse = <A>(schema: Schema<A>, input: unknown) => {
-  const guard = G.guardFor(schema)
+  const is = G.is(schema)
   const jsonschema = jsonSchemaFor(schema)
   const validate = new Ajv({ strict: false }).compile(jsonschema)
-  expect(guard.is(input)).toEqual(validate(input))
+  expect(is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(false)
 }
 

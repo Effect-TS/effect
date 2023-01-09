@@ -11,10 +11,10 @@ describe.concurrent("finite", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.finite(S.number))
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(Infinity)).toEqual(false)
-    expect(guard.is(-Infinity)).toEqual(false)
+    const is = G.is(_.finite(S.number))
+    expect(is(1)).toEqual(true)
+    expect(is(Infinity)).toEqual(false)
+    expect(is(-Infinity)).toEqual(false)
   })
 
   it("Decoder", () => {

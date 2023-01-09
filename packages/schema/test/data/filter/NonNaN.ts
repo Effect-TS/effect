@@ -11,9 +11,9 @@ describe.concurrent("nonNaN", () => {
   })
 
   it("Guard", () => {
-    const guard = G.guardFor(_.nonNaN(S.number))
-    expect(guard.is(1)).toEqual(true)
-    expect(guard.is(NaN)).toEqual(false)
+    const is = G.is(_.nonNaN(S.number))
+    expect(is(1)).toEqual(true)
+    expect(is(NaN)).toEqual(false)
   })
 
   it("Decoder", () => {
