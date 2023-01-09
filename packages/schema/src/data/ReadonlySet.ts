@@ -18,7 +18,7 @@ const isSet = (u: unknown): u is Set<unknown> =>
 const decoder = <A>(
   item: D.Decoder<unknown, A>
 ): D.Decoder<unknown, ReadonlySet<A>> => {
-  const items = D.decoderFor(I.array(item))
+  const items = D.decode(I.array(item))
   return I.makeDecoder(
     readonlySet(item),
     (u, options) =>
@@ -26,7 +26,7 @@ const decoder = <A>(
         DE.failure(DE.type("Set<unknown>", u)) :
         pipe(
           Array.from(u.values()),
-          (us) => items.decode(us, options),
+          (us) => items(us, options),
           I.map((as) => new Set(as))
         )
   )

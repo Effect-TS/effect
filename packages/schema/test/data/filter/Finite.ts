@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -18,15 +17,15 @@ describe.concurrent("finite", () => {
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.finite(S.number))
-    Util.expectDecodingSuccess(decoder, 1)
+    const schema = _.finite(S.number)
+    Util.expectDecodingSuccess(schema, 1)
     Util.expectDecodingFailure(
-      decoder,
+      schema,
       Infinity,
       `Infinity did not satisfy refinement({"type":"Finite"})`
     )
     Util.expectDecodingFailure(
-      decoder,
+      schema,
       -Infinity,
       `-Infinity did not satisfy refinement({"type":"Finite"})`
     )

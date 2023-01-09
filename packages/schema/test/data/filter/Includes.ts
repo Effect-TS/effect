@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -20,12 +19,12 @@ describe.concurrent("includes", () => {
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.includes("a")(S.string))
-    Util.expectDecodingSuccess(decoder, "a")
-    Util.expectDecodingSuccess(decoder, "aa")
-    Util.expectDecodingSuccess(decoder, "bac")
-    Util.expectDecodingSuccess(decoder, "ba")
-    Util.expectDecodingFailure(decoder, "", `"" did not satisfy refinement({"includes":"a"})`)
+    const schema = _.includes("a")(S.string)
+    Util.expectDecodingSuccess(schema, "a")
+    Util.expectDecodingSuccess(schema, "aa")
+    Util.expectDecodingSuccess(schema, "bac")
+    Util.expectDecodingSuccess(schema, "ba")
+    Util.expectDecodingFailure(schema, "", `"" did not satisfy refinement({"includes":"a"})`)
   })
 
   it("Pretty", () => {

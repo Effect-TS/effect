@@ -1,7 +1,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
-import * as D from "@fp-ts/schema/Decoder"
 import * as E from "@fp-ts/schema/Encoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
@@ -21,7 +20,6 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("readonlyMap. decoder", () => {
     const schema = _.readonlyMap(NumberFromString, S.string)
-    const decoder = D.decoderFor(schema)
     Util.expectDecodingSuccess(schema, new Map(), new Map())
     Util.expectDecodingSuccess(
       schema,
@@ -29,9 +27,9 @@ describe.concurrent("ReadonlyMap", () => {
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    Util.expectDecodingFailure(decoder, null, `null did not satisfy is(Map<unknown, unknown>)`)
+    Util.expectDecodingFailure(schema, null, `null did not satisfy is(Map<unknown, unknown>)`)
     Util.expectDecodingFailure(
-      decoder,
+      schema,
       new Map([["1", "a"], ["a", "b"]]),
       `/1 /0 "a" did not satisfy parsing from (string) to (number)`
     )

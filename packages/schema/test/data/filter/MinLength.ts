@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -18,10 +17,10 @@ describe.concurrent("minLength", () => {
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.minLength(1)(S.string))
-    Util.expectDecodingSuccess(decoder, "a")
-    Util.expectDecodingSuccess(decoder, "aa")
-    Util.expectDecodingFailure(decoder, "", `"" did not satisfy refinement({"minLength":1})`)
+    const schema = _.minLength(1)(S.string)
+    Util.expectDecodingSuccess(schema, "a")
+    Util.expectDecodingSuccess(schema, "aa")
+    Util.expectDecodingFailure(schema, "", `"" did not satisfy refinement({"minLength":1})`)
   })
 
   it("Pretty", () => {

@@ -72,10 +72,7 @@ const getHook = H.getHook<H.Hook<Decoder<unknown, any>>>(
   H.DecoderHookId
 )
 
-/**
- * @since 1.0.0
- */
-export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
+const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
   const go = (ast: AST.AST): Decoder<any, any> => {
     switch (ast._tag) {
       case "TypeAlias":

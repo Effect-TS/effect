@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -18,10 +17,10 @@ describe.concurrent("greaterThan", () => {
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.greaterThan(0)(S.number))
-    Util.expectDecodingSuccess(decoder, 1)
-    Util.expectDecodingFailure(decoder, 0, `0 did not satisfy refinement({"exclusiveMinimum":0})`)
-    Util.expectDecodingFailure(decoder, -1, `-1 did not satisfy refinement({"exclusiveMinimum":0})`)
+    const schema = _.greaterThan(0)(S.number)
+    Util.expectDecodingSuccess(schema, 1)
+    Util.expectDecodingFailure(schema, 0, `0 did not satisfy refinement({"exclusiveMinimum":0})`)
+    Util.expectDecodingFailure(schema, -1, `-1 did not satisfy refinement({"exclusiveMinimum":0})`)
   })
 
   it("Pretty", () => {

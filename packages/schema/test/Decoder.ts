@@ -11,7 +11,6 @@ describe.concurrent("Decoder", () => {
     expect(D.make).exist
     expect(D.decode).exist
     expect(D.decodeOrThrow).exist
-    expect(D.decoderFor).exist
   })
 
   it("decodeOrThrow", () => {
@@ -61,14 +60,13 @@ describe.concurrent("Decoder", () => {
       }))
     )
 
-    const decoder = D.decoderFor(schema)
     Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none })
     Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none })
     Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none })
     Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
     Util.expectDecodingFailureTree(
-      decoder,
+      schema,
       { a: "a", b: "b" },
       `1 error(s) found
 └─ key "b"

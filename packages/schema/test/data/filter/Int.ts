@@ -1,5 +1,4 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
 import * as G from "@fp-ts/schema/Guard"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -18,10 +17,10 @@ describe.concurrent("int", () => {
   })
 
   it("Decoder", () => {
-    const decoder = D.decoderFor(_.int(S.number))
-    Util.expectDecodingSuccess(decoder, 0)
-    Util.expectDecodingSuccess(decoder, 1)
-    Util.expectDecodingFailure(decoder, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
+    const schema = _.int(S.number)
+    Util.expectDecodingSuccess(schema, 0)
+    Util.expectDecodingSuccess(schema, 1)
+    Util.expectDecodingFailure(schema, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
   })
 
   it("Pretty", () => {
