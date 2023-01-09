@@ -5,8 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as RH from "@fp-ts/schema/annotation/RefinementHook"
-import * as TAH from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as TAH from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -47,12 +46,8 @@ const record = <K extends PropertyKey, V>(
     return out
   })
 
-const getTypeAliasHook = TAH.getTypeAliasHook<TAH.TypeAliasHook<Arbitrary<any>>>(
-  TAH.ArbitraryTypeAliasHookId
-)
-
-const getRefinementHook = RH.getRefinementHook<RH.RefinementHook<Arbitrary<any>>>(
-  RH.ArbitraryRefinementHookId
+const getHook = TAH.getHook<TAH.Hook<Arbitrary<any>>>(
+  TAH.ArbitraryHookId
 )
 
 /**
@@ -63,7 +58,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
-          getTypeAliasHook(ast),
+          getHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))
@@ -186,15 +181,22 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
           (fc) => fc.oneof(...types.map((c) => c.arbitrary(fc)))
         )
       }
-      case "Lazy": {
-        const f = () => go(ast.f())
-        const get = I.memoize<void, Arbitrary<A>>(f)
-        const schema = I.lazy(f)
-        return make(
-          schema,
-          (fc) => fc.constant(null).chain(() => get().arbitrary(fc))
+      case "Lazy":
+        return pipe(
+          getHook(ast),
+          O.match(
+            () => {
+              const f = () => go(ast.f())
+              const get = I.memoize<void, Arbitrary<A>>(f)
+              const schema = I.lazy(f)
+              return make(
+                schema,
+                (fc) => fc.constant(null).chain(() => get().arbitrary(fc))
+              )
+            },
+            ({ handler }) => handler()
+          )
         )
-      }
       case "Enums": {
         if (ast.enums.length === 0) {
           throw new Error("cannot build an Arbitrary for an empty enum")
@@ -207,7 +209,7 @@ export const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
       case "Refinement": {
         const from = go(ast.from)
         return pipe(
-          getRefinementHook(ast),
+          getHook(ast),
           O.match(
             () => make(I.makeSchema(ast), (fc) => from.arbitrary(fc).filter(ast.refinement)),
             ({ handler }) => handler(from)

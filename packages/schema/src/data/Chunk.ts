@@ -4,7 +4,7 @@
 import type { Chunk } from "@fp-ts/data/Chunk"
 import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
-import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as DE from "@fp-ts/schema/DecodeError"
 import * as D from "@fp-ts/schema/Decoder"
@@ -65,11 +65,11 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
       length: I.number
     }),
     {
-      [H.DecoderTypeAliasHookId]: H.typeAliasHook(decoder),
-      [H.EncoderTypeAliasHookId]: H.typeAliasHook(encoder),
-      [H.GuardTypeAliasHookId]: H.typeAliasHook(guard),
-      [H.PrettyTypeAliasHookId]: H.typeAliasHook(pretty),
-      [H.ArbitraryTypeAliasHookId]: H.typeAliasHook(arbitrary)
+      [H.DecoderHookId]: H.hook(decoder),
+      [H.EncoderHookId]: H.hook(encoder),
+      [H.GuardHookId]: H.hook(guard),
+      [H.PrettyHookId]: H.hook(pretty),
+      [H.ArbitraryHookId]: H.hook(arbitrary)
     }
   )
 

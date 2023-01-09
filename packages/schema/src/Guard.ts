@@ -8,7 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -45,8 +45,8 @@ export const asserts = <A>(schema: Schema<A>, message = "Assertion failed") =>
     }
   }
 
-const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Guard<any>>>(
-  H.GuardTypeAliasHookId
+const getHook = H.getHook<H.Hook<Guard<any>>>(
+  H.GuardHookId
 )
 
 /**
@@ -57,7 +57,7 @@ export const guardFor = <A>(schema: Schema<A>): Guard<A> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
-          getTypeAliasHook(ast),
+          getHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))

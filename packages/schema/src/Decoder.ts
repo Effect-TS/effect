@@ -10,7 +10,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Both } from "@fp-ts/data/These"
-import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import { format } from "@fp-ts/schema/formatter/Tree"
@@ -68,8 +68,8 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
     return t.right
   }
 
-const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Decoder<unknown, any>>>(
-  H.DecoderTypeAliasHookId
+const getHook = H.getHook<H.Hook<Decoder<unknown, any>>>(
+  H.DecoderHookId
 )
 
 /**
@@ -80,7 +80,7 @@ export const decoderFor = <A>(schema: Schema<A>): Decoder<unknown, A> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
-          getTypeAliasHook(ast),
+          getHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))

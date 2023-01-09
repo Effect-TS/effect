@@ -6,7 +6,7 @@ import { absurd, pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { Both } from "@fp-ts/data/These"
-import * as H from "@fp-ts/schema/annotation/TypeAliasHook"
+import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as DE from "@fp-ts/schema/DecodeError"
 import type { DecodeOptions } from "@fp-ts/schema/Decoder"
@@ -57,8 +57,8 @@ export const encodeOrThrow = <A>(schema: S.Schema<A>) =>
     return t.right
   }
 
-const getTypeAliasHook = H.getTypeAliasHook<H.TypeAliasHook<Encoder<unknown, any>>>(
-  H.EncoderTypeAliasHookId
+const getHook = H.getHook<H.Hook<Encoder<unknown, any>>>(
+  H.EncoderHookId
 )
 
 /** @internal */
@@ -81,7 +81,7 @@ export const encoderFor = <A>(schema: S.Schema<A>): Encoder<unknown, A> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
-          getTypeAliasHook(ast),
+          getHook(ast),
           O.match(
             () => go(ast.type),
             ({ handler }) => handler(...ast.typeParameters.map(go))

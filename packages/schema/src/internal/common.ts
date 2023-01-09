@@ -106,7 +106,7 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 export const typeAlias = (
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
-  annotations: AST.Annotated["annotations"] = {}
+  annotations?: AST.Annotated["annotations"]
 ): Schema<any> =>
   makeSchema(AST.typeAlias(
     typeParameters.map((tp) => tp.ast),
@@ -119,7 +119,7 @@ export const refinement = <A, B extends A>(
   from: Schema<A>,
   refinement: Refinement<A, B>,
   meta: unknown,
-  annotations: AST.Annotated["annotations"] = {}
+  annotations?: AST.Annotated["annotations"]
 ): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, meta, annotations))
 
 /** @internal */
@@ -145,7 +145,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
 /** @internal */
 export const uniqueSymbol = <S extends symbol>(
   symbol: S,
-  annotations: AST.Annotated["annotations"] = {}
+  annotations?: AST.Annotated["annotations"]
 ): Schema<S> => makeSchema(AST.uniqueSymbol(symbol, annotations))
 
 /** @internal */
@@ -250,7 +250,7 @@ export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
   key: Key,
   value: Schema<A>,
   isOptional: isOptional,
-  annotations: AST.Annotated["annotations"] = {}
+  annotations?: AST.Annotated["annotations"]
 ): Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
   makeSchema(
     AST.typeLiteral([AST.propertySignature(key, value.ast, isOptional, true, annotations)], [])
@@ -263,7 +263,10 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   makeSchema(AST.tuple(elements.map((schema) => AST.element(schema.ast, false)), O.none, true))
 
 /** @internal */
-export const lazy = <A>(f: () => Schema<A>): Schema<A> => makeSchema(AST.lazy(() => f().ast))
+export const lazy = <A>(
+  f: () => Schema<A>,
+  annotations?: AST.Annotated["annotations"]
+): Schema<A> => makeSchema(AST.lazy(() => f().ast, annotations))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>

@@ -532,7 +532,7 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
  * @category model
  * @since 1.0.0
  */
-export interface Lazy {
+export interface Lazy extends Annotated {
   readonly _tag: "Lazy"
   readonly f: () => AST
 }
@@ -541,7 +541,11 @@ export interface Lazy {
  * @category constructors
  * @since 1.0.0
  */
-export const lazy = (f: () => AST): Lazy => ({ _tag: "Lazy", f })
+export const lazy = (f: () => AST, annotations: Annotated["annotations"] = {}): Lazy => ({
+  _tag: "Lazy",
+  f,
+  annotations
+})
 
 /**
  * @category guards
