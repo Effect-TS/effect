@@ -12,16 +12,16 @@ import { isString } from "@fp-ts/data/String"
 import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as AST from "@fp-ts/schema/AST"
-import * as DE from "@fp-ts/schema/DecodeError"
 import { format } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
+import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface DecodeOptions {
+export interface ParseOptions {
   readonly isUnexpectedAllowed?: boolean
   readonly allErrors?: boolean
 }
@@ -30,22 +30,22 @@ export interface DecodeOptions {
  * @category model
  * @since 1.0.0
  */
-export interface Decoder<I, A> extends Schema<A> {
+export interface Parser<I, A> extends Schema<A> {
   readonly I: (i: I) => void
-  readonly decode: (i: I, options?: DecodeOptions) => DE.DecodeResult<A>
+  readonly parse: (i: I, options?: ParseOptions) => PE.ParseResult<A>
 }
 
 /**
  * @since 1.0.0
  */
-export type InferInput<D extends Decoder<any, any>> = Parameters<D["I"]>[0]
+export type InferInput<D extends Parser<any, any>> = Parameters<D["I"]>[0]
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) => Decoder<I, A> =
-  I.makeDecoder
+export const make: <I, A>(schema: Schema<A>, parse: Parser<I, A>["parse"]) => Parser<I, A> =
+  I.makeParser
 
 /**
  * @category decoding
@@ -53,16 +53,16 @@ export const make: <I, A>(schema: Schema<A>, decode: Decoder<I, A>["decode"]) =>
  */
 export const decode = <A>(
   schema: Schema<A>
-): (i: unknown, options?: DecodeOptions) => DE.DecodeResult<A> => decoderFor(schema).decode
+): (i: unknown, options?: ParseOptions) => PE.ParseResult<A> => parserFor(schema).parse
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeOrThrow = <A>(schema: Schema<A>) =>
-  (u: unknown, options?: DecodeOptions): A => {
-    const t = decoderFor(schema).decode(u, options)
-    if (DE.isFailure(t)) {
+  (u: unknown, options?: ParseOptions): A => {
+    const t = parserFor(schema).parse(u, options)
+    if (PE.isFailure(t)) {
       throw new Error(format(t.left))
     }
     return t.right
@@ -74,7 +74,7 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
  */
 export const is = <A>(schema: Schema<A>) =>
   (input: unknown): input is A =>
-    !DE.isFailure(decoderFor(schema, "guard").decode(input, { isUnexpectedAllowed: true }))
+    !PE.isFailure(parserFor(schema, "guard").parse(input, { isUnexpectedAllowed: true }))
 
 /**
  * @category assertions
@@ -82,8 +82,8 @@ export const is = <A>(schema: Schema<A>) =>
  */
 export const asserts = <A>(schema: Schema<A>) =>
   (input: unknown): asserts input is A => {
-    const t = decoderFor(schema, "guard").decode(input, { isUnexpectedAllowed: true })
-    if (DE.isFailure(t)) {
+    const t = parserFor(schema, "guard").parse(input, { isUnexpectedAllowed: true })
+    if (PE.isFailure(t)) {
       throw new Error(format(t.left))
     }
   }
@@ -94,31 +94,30 @@ export const asserts = <A>(schema: Schema<A>) =>
  */
 export const encode = <A>(
   schema: Schema<A>
-): (a: A, options?: DecodeOptions) => DE.DecodeResult<unknown> =>
-  decoderFor(schema, "encoder").decode
+): (a: A, options?: ParseOptions) => PE.ParseResult<unknown> => parserFor(schema, "encoder").parse
 
 /**
  * @category encoding
  * @since 1.0.0
  */
 export const encodeOrThrow = <A>(schema: Schema<A>) =>
-  (a: A, options?: DecodeOptions): unknown => {
-    const t = decoderFor(schema, "encoder").decode(a, options)
-    if (DE.isFailure(t)) {
+  (a: A, options?: ParseOptions): unknown => {
+    const t = parserFor(schema, "encoder").parse(a, options)
+    if (PE.isFailure(t)) {
       throw new Error(format(t.left))
     }
     return t.right
   }
 
-const getHook = H.getHook<H.Hook<Decoder<unknown, any>>>(
-  H.DecoderHookId
+const getHook = H.getHook<H.Hook<Parser<unknown, any>>>(
+  H.ParserHookId
 )
 
-const decoderFor = <A>(
+const parserFor = <A>(
   schema: Schema<A>,
   as: "decoder" | "guard" | "encoder" = "decoder"
-): Decoder<unknown, A> => {
-  const go = (ast: AST.AST): Decoder<any, any> => {
+): Parser<unknown, A> => {
+  const go = (ast: AST.AST): Parser<any, any> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
@@ -132,54 +131,54 @@ const decoderFor = <A>(
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.literal => u === ast.literal,
-          (u) => DE.equal(ast.literal, u)
+          (u) => PE.equal(ast.literal, u)
         )
       case "UniqueSymbol":
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.symbol => u === ast.symbol,
-          (u) => DE.equal(ast.symbol, u)
+          (u) => PE.equal(ast.symbol, u)
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => DE.type("undefined", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type("undefined", u))
       case "VoidKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => DE.type("void", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type("void", u))
       case "NeverKeyword":
-        return make(I.makeSchema(ast), (u) => DE.failure(DE.type("never", u))) as any
+        return make(I.makeSchema(ast), (u) => PE.failure(PE.type("never", u))) as any
       case "UnknownKeyword":
-        return make(I.makeSchema(ast), DE.success)
+        return make(I.makeSchema(ast), PE.success)
       case "AnyKeyword":
-        return make(I.makeSchema(ast), DE.success)
+        return make(I.makeSchema(ast), PE.success)
       case "StringKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isString, (u) => DE.type("string", u))
+        return I.fromRefinement(I.makeSchema(ast), isString, (u) => PE.type("string", u))
       case "NumberKeyword":
         return make(
           I.makeSchema(ast),
-          (u) => isNumber(u) ? DE.success(u) : DE.failure(DE.type("number", u))
+          (u) => isNumber(u) ? PE.success(u) : PE.failure(PE.type("number", u))
         )
       case "BooleanKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => DE.type("boolean", u))
+        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => PE.type("boolean", u))
       case "BigIntKeyword":
         return make(
           I.makeSchema(ast),
           (u) => {
             if (I.isBigInt(u)) {
-              return DE.success(u)
+              return PE.success(u)
             }
             if (isString(u) || isNumber(u) || isBoolean(u)) {
               try {
-                return DE.success(BigInt(u))
+                return PE.success(BigInt(u))
               } catch (_e) {
-                return DE.failure(DE.transform("string | number | boolean", "bigint", u))
+                return PE.failure(PE.transform("string | number | boolean", "bigint", u))
               }
             }
-            return DE.failure(DE.type("string | number | boolean", u))
+            return PE.failure(PE.type("string | number | boolean", u))
           }
         )
       case "SymbolKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => DE.type("symbol", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => PE.type("symbol", u))
       case "ObjectKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => DE.type("object", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => PE.type("object", u))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -187,10 +186,10 @@ const decoderFor = <A>(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!Array.isArray(input)) {
-              return DE.failure(DE.type("ReadonlyArray<unknown>", input))
+              return PE.failure(PE.type("ReadonlyArray<unknown>", input))
             }
             const output: Array<any> = []
-            const es: Array<DE.DecodeError> = []
+            const es: Array<PE.ParseError> = []
             const allErrors = options?.allErrors
             let isLeft = false
             let i = 0
@@ -205,30 +204,30 @@ const decoderFor = <A>(
                   continue
                 } else {
                   // ...but the element is required
-                  const e = DE.index(i, [DE.missing])
+                  const e = PE.index(i, [PE.missing])
                   if (allErrors) {
                     es.push(e)
                     isLeft = true
                     continue
                   } else {
-                    return DE.failure(e)
+                    return PE.failure(e)
                   }
                 }
               } else {
-                const decoder = elements[i]
-                const t = decoder.decode(input[i], options)
-                if (DE.isFailure(t)) {
+                const parser = elements[i]
+                const t = parser.parse(input[i], options)
+                if (PE.isFailure(t)) {
                   // the input element is present but is not valid
-                  const e = DE.index(i, t.left)
+                  const e = PE.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
                     isLeft = true
                     continue
                   } else {
-                    return DE.failures(I.mutableAppend(es, e))
+                    return PE.failures(I.mutableAppend(es, e))
                   }
-                } else if (DE.hasWarnings(t)) {
-                  es.push(DE.index(i, t.left))
+                } else if (PE.hasWarnings(t)) {
+                  es.push(PE.index(i, t.left))
                 }
                 output.push(t.right)
               }
@@ -240,19 +239,19 @@ const decoderFor = <A>(
               const head = RA.headNonEmpty(rest.value)
               const tail = RA.tailNonEmpty(rest.value)
               for (; i < input.length - tail.length; i++) {
-                const t = head.decode(input[i], options)
-                if (DE.isFailure(t)) {
-                  const e = DE.index(i, t.left)
+                const t = head.parse(input[i], options)
+                if (PE.isFailure(t)) {
+                  const e = PE.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
                     isLeft = true
                     continue
                   } else {
-                    return DE.failures(I.mutableAppend(es, e))
+                    return PE.failures(I.mutableAppend(es, e))
                   }
                 } else {
-                  if (DE.hasWarnings(t)) {
-                    es.push(DE.index(i, t.left))
+                  if (PE.hasWarnings(t)) {
+                    es.push(PE.index(i, t.left))
                   }
                   output.push(t.right)
                 }
@@ -264,21 +263,21 @@ const decoderFor = <A>(
                 i += j
                 if (input.length < i + 1) {
                   // the input element is missing and the element is required, bail out
-                  return DE.failures(I.mutableAppend(es, DE.index(i, [DE.missing])))
+                  return PE.failures(I.mutableAppend(es, PE.index(i, [PE.missing])))
                 } else {
-                  const t = tail[j].decode(input[i], options)
-                  if (DE.isFailure(t)) {
+                  const t = tail[j].parse(input[i], options)
+                  if (PE.isFailure(t)) {
                     // the input element is present but is not valid
-                    const e = DE.index(i, t.left)
+                    const e = PE.index(i, t.left)
                     if (allErrors) {
                       es.push(e)
                       isLeft = true
                       continue
                     } else {
-                      return DE.failures(I.mutableAppend(es, e))
+                      return PE.failures(I.mutableAppend(es, e))
                     }
-                  } else if (DE.hasWarnings(t)) {
-                    es.push(DE.index(i, t.left))
+                  } else if (PE.hasWarnings(t)) {
+                    es.push(PE.index(i, t.left))
                   }
                   output.push(t.right)
                 }
@@ -289,7 +288,7 @@ const decoderFor = <A>(
               // ---------------------------------------------
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
-                const e = DE.index(i, [DE.unexpected(input[i])])
+                const e = PE.index(i, [PE.unexpected(input[i])])
                 if (isUnexpectedAllowed) {
                   es.push(e)
                 } else {
@@ -298,7 +297,7 @@ const decoderFor = <A>(
                     isLeft = true
                     continue
                   } else {
-                    return DE.failures(I.mutableAppend(es, e))
+                    return PE.failures(I.mutableAppend(es, e))
                   }
                 }
               }
@@ -308,8 +307,8 @@ const decoderFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              isLeft ? DE.failures(es) : DE.warnings(es, output) :
-              DE.success(output)
+              isLeft ? PE.failures(es) : PE.warnings(es, output) :
+              PE.success(output)
           }
         )
       }
@@ -319,17 +318,17 @@ const decoderFor = <A>(
           [go(is.parameter), go(is.type)] as const
         )
         if (propertySignaturesTypes.length === 0 && indexSignatures.length === 0) {
-          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => DE.type("{}", u))
+          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => PE.type("{}", u))
         }
         return make(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!I.isUnknownObject(input)) {
-              return DE.failure(DE.type("{ readonly [x: PropertyKey]: unknown }", input))
+              return PE.failure(PE.type("{ readonly [x: PropertyKey]: unknown }", input))
             }
             const output: any = {}
             const expectedKeys: any = {}
-            const es: Array<DE.DecodeError> = []
+            const es: Array<PE.ParseError> = []
             const allErrors = options?.allErrors
             let isLeft = false
             // ---------------------------------------------
@@ -337,35 +336,35 @@ const decoderFor = <A>(
             // ---------------------------------------------
             for (let i = 0; i < propertySignaturesTypes.length; i++) {
               const ps = ast.propertySignatures[i]
-              const decoder = propertySignaturesTypes[i]
+              const parser = propertySignaturesTypes[i]
               const name = ps.name
               expectedKeys[name] = null
               if (!Object.prototype.hasOwnProperty.call(input, name)) {
                 if (ps.isOptional) {
                   continue
                 }
-                const e = DE.key(name, [DE.missing])
+                const e = PE.key(name, [PE.missing])
                 if (allErrors) {
                   es.push(e)
                   isLeft = true
                   continue
                 } else {
-                  return DE.failure(e)
+                  return PE.failure(e)
                 }
               }
-              const t = decoder.decode(input[name], options)
-              if (DE.isFailure(t)) {
+              const t = parser.parse(input[name], options)
+              if (PE.isFailure(t)) {
                 // the input key is present but is not valid
-                const e = DE.key(name, t.left)
+                const e = PE.key(name, t.left)
                 if (allErrors) {
                   es.push(e)
                   isLeft = true
                   continue
                 } else {
-                  return DE.failures(I.mutableAppend(es, e))
+                  return PE.failures(I.mutableAppend(es, e))
                 }
-              } else if (DE.hasWarnings(t)) {
-                es.push(DE.key(name, t.left))
+              } else if (PE.hasWarnings(t)) {
+                es.push(PE.key(name, t.left))
               }
               output[name] = t.right
             }
@@ -381,35 +380,35 @@ const decoderFor = <A>(
                   // ---------------------------------------------
                   // handle keys
                   // ---------------------------------------------
-                  let t = parameter.decode(key, options)
-                  if (DE.isFailure(t)) {
-                    const e = DE.key(key, t.left)
+                  let t = parameter.parse(key, options)
+                  if (PE.isFailure(t)) {
+                    const e = PE.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
                       isLeft = true
                       continue
                     } else {
-                      return DE.failures(I.mutableAppend(es, e))
+                      return PE.failures(I.mutableAppend(es, e))
                     }
-                  } else if (DE.hasWarnings(t)) {
-                    es.push(DE.key(key, t.left))
+                  } else if (PE.hasWarnings(t)) {
+                    es.push(PE.key(key, t.left))
                   }
                   // ---------------------------------------------
                   // handle values
                   // ---------------------------------------------
-                  t = type.decode(input[key], options)
-                  if (DE.isFailure(t)) {
-                    const e = DE.key(key, t.left)
+                  t = type.parse(input[key], options)
+                  if (PE.isFailure(t)) {
+                    const e = PE.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
                       isLeft = true
                       continue
                     } else {
-                      return DE.failures(I.mutableAppend(es, e))
+                      return PE.failures(I.mutableAppend(es, e))
                     }
                   } else {
-                    if (DE.hasWarnings(t)) {
-                      es.push(DE.key(key, t.left))
+                    if (PE.hasWarnings(t)) {
+                      es.push(PE.key(key, t.left))
                     }
                     output[key] = t.right
                   }
@@ -422,7 +421,7 @@ const decoderFor = <A>(
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-                  const e = DE.key(key, [DE.unexpected(input[key])])
+                  const e = PE.key(key, [PE.unexpected(input[key])])
                   if (isUnexpectedAllowed) {
                     es.push(e)
                   } else {
@@ -431,7 +430,7 @@ const decoderFor = <A>(
                       isLeft = true
                       continue
                     } else {
-                      return DE.failures(I.mutableAppend(es, e))
+                      return PE.failures(I.mutableAppend(es, e))
                     }
                   }
                 }
@@ -442,26 +441,26 @@ const decoderFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              isLeft ? DE.failures(es) : DE.warnings(es, output) :
-              DE.success(output)
+              isLeft ? PE.failures(es) : PE.warnings(es, output) :
+              PE.success(output)
           }
         )
       }
       case "Union": {
         const types = ast.types.map(go)
         return make(I.makeSchema(ast), (u, options) => {
-          const es: Array<DE.DecodeError> = []
-          let output: Both<NonEmptyReadonlyArray<DE.DecodeError>, any> | null = null
+          const es: Array<PE.ParseError> = []
+          let output: Both<NonEmptyReadonlyArray<PE.ParseError>, any> | null = null
 
           // ---------------------------------------------
           // compute best output
           // ---------------------------------------------
           for (let i = 0; i < types.length; i++) {
-            const t = types[i].decode(u, options)
-            if (DE.isSuccess(t)) {
+            const t = types[i].parse(u, options)
+            if (PE.isSuccess(t)) {
               // if there are no warnings this is the best output
               return t
-            } else if (DE.hasWarnings(t)) {
+            } else if (PE.hasWarnings(t)) {
               // choose the output with less warnings related to unexpected keys / indexes
               if (
                 !output ||
@@ -471,7 +470,7 @@ const decoderFor = <A>(
                 output = t
               }
             } else {
-              es.push(DE.member(t.left))
+              es.push(PE.member(t.left))
             }
           }
 
@@ -481,29 +480,29 @@ const decoderFor = <A>(
           return output ?
             output :
             I.isNonEmpty(es) ?
-            DE.failures(es) :
-            DE.failure(DE.type("never", u))
+            PE.failures(es) :
+            PE.failure(PE.type("never", u))
         })
       }
       case "Lazy": {
         const f = () => go(ast.f())
-        const get = I.memoize<void, Decoder<any, any>>(f)
+        const get = I.memoize<void, Parser<any, any>>(f)
         const schema = I.lazy(f)
-        return make(schema, (a, options) => get().decode(a, options))
+        return make(schema, (a, options) => get().parse(a, options))
       }
       case "Enums":
         return make(
           I.makeSchema(ast),
           (u) =>
             ast.enums.some(([_, value]) => value === u) ?
-              DE.success(u) :
-              DE.failure(DE.enums(ast.enums, u))
+              PE.success(u) :
+              PE.failure(PE.enums(ast.enums, u))
         )
       case "Refinement": {
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
-          (u, options) => pipe(type.decode(u, options), I.flatMap(ast.decode))
+          (u, options) => pipe(type.parse(u, options), I.flatMap(ast.decode))
         )
       }
       case "TemplateLiteral": {
@@ -512,8 +511,8 @@ const decoderFor = <A>(
           I.makeSchema(ast),
           (u) =>
             isString(u) ?
-              regex.test(u) ? DE.success(u) : DE.failure(DE.type(regex.source, u)) :
-              DE.failure(DE.type("string", u))
+              regex.test(u) ? PE.success(u) : PE.failure(PE.type(regex.source, u)) :
+              PE.failure(PE.type("string", u))
         )
       }
       case "Transform": {
@@ -522,8 +521,7 @@ const decoderFor = <A>(
             const from = go(ast.from)
             return make(
               I.makeSchema(ast),
-              (u, options) =>
-                pipe(from.decode(u, options), I.flatMap((a) => ast.decode(a, options)))
+              (u, options) => pipe(from.parse(u, options), I.flatMap((a) => ast.decode(a, options)))
             )
           }
           case "guard":
@@ -532,8 +530,7 @@ const decoderFor = <A>(
             const from = go(ast.from)
             return make(
               I.makeSchema(AST.transform(ast.to, ast.from, ast.encode, ast.decode)),
-              (a, options) =>
-                pipe(ast.encode(a, options), I.flatMap((a) => from.decode(a, options)))
+              (a, options) => pipe(ast.encode(a, options), I.flatMap((a) => from.parse(a, options)))
             )
           }
         }
@@ -544,6 +541,6 @@ const decoderFor = <A>(
   return go(schema.ast)
 }
 
-const hasUnexpectedError = (e: DE.DecodeError): boolean =>
-  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
-  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))
+const hasUnexpectedError = (e: PE.ParseError): boolean =>
+  (PE.isKey(e) && e.errors.some(PE.isUnexpected)) ||
+  (PE.isIndex(e) && e.errors.some(PE.isUnexpected))

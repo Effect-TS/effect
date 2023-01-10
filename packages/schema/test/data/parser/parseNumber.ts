@@ -1,5 +1,5 @@
 import { parseNumber } from "@fp-ts/schema/data/parser"
-import * as D from "@fp-ts/schema/Decoder"
+import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -11,7 +11,7 @@ describe.concurrent("parseNumber", () => {
   })
 
   it("Guard", () => {
-    const is = D.is(schema)
+    const is = P.is(schema)
     expect(is(1)).toEqual(true)
     expect(is("a")).toEqual(false)
   })

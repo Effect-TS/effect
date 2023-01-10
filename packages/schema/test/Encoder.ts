@@ -2,9 +2,9 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
-import * as DE from "@fp-ts/schema/DecodeError"
-import type { DecodeOptions } from "@fp-ts/schema/Decoder"
-import * as E from "@fp-ts/schema/Decoder"
+import * as PE from "@fp-ts/schema/ParseError"
+import type { ParseOptions } from "@fp-ts/schema/Parser"
+import * as E from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -15,7 +15,7 @@ const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
 const PreferChar = pipe(
   S.string,
   S.filterOrFail(
-    (s) => s.length === 1 ? DE.success(s) : DE.warning(DE.refinement({ type: "Char" }, s), s),
+    (s) => s.length === 1 ? PE.success(s) : PE.warning(PE.refinement({ type: "Char" }, s), s),
     { type: "Char" }
   )
 )
@@ -427,7 +427,7 @@ describe.concurrent("Encoder", () => {
   // isUnexpectedAllowed option
   // ---------------------------------------------
 
-  const isUnexpectedAllowed: DecodeOptions = {
+  const isUnexpectedAllowed: ParseOptions = {
     isUnexpectedAllowed: true
   }
 
@@ -484,7 +484,7 @@ describe.concurrent("Encoder", () => {
   // allErrors option
   // ---------------------------------------------
 
-  const allErrors: DecodeOptions = {
+  const allErrors: ParseOptions = {
     allErrors: true
   }
 

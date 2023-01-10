@@ -3,7 +3,7 @@
  */
 
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import type * as DE from "@fp-ts/schema/DecodeError"
+import type * as DE from "@fp-ts/schema/ParseError"
 
 /**
  * @since 1.0.0
@@ -29,7 +29,7 @@ export const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 /**
  * @since 1.0.0
  */
-export const format = (errors: NonEmptyReadonlyArray<DE.DecodeError>): string =>
+export const format = (errors: NonEmptyReadonlyArray<DE.ParseError>): string =>
   drawTree(make(`${errors.length} error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
@@ -76,7 +76,7 @@ export const stringify = (actual: unknown): string => {
   }
 }
 
-const go = (e: DE.DecodeError): Tree<string> => {
+const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Meta":
       return make(`${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`)

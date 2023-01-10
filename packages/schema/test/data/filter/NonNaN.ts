@@ -1,6 +1,6 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -10,7 +10,7 @@ describe.concurrent("nonNaN", () => {
   })
 
   it("Guard", () => {
-    const is = D.is(_.nonNaN(S.number))
+    const is = P.is(_.nonNaN(S.number))
     expect(is(1)).toEqual(true)
     expect(is(NaN)).toEqual(false)
   })
@@ -22,7 +22,7 @@ describe.concurrent("nonNaN", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.pretty(_.nonNaN(S.number))
+    const pretty = Pretty.pretty(_.nonNaN(S.number))
     expect(pretty(1)).toEqual("1")
     expect(pretty(NaN)).toEqual("NaN")
   })

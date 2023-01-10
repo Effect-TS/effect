@@ -30,7 +30,7 @@ export const ArbitraryHookId = "@fp-ts/schema/annotation/ArbitraryHookId"
 /**
  * @since 1.0.0
  */
-export const DecoderHookId = "@fp-ts/schema/annotation/DecoderHookId"
+export const ParserHookId = "@fp-ts/schema/annotation/ParserHookId"
 
 /**
  * @since 1.0.0

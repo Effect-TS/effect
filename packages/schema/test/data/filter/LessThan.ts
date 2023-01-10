@@ -1,6 +1,6 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -10,7 +10,7 @@ describe.concurrent("lessThan", () => {
   })
 
   it("Guard", () => {
-    const is = D.is(_.lessThan(0)(S.number))
+    const is = P.is(_.lessThan(0)(S.number))
     expect(is(0)).toEqual(false)
     expect(is(1)).toEqual(false)
     expect(is(-1)).toEqual(true)
@@ -24,7 +24,7 @@ describe.concurrent("lessThan", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.pretty(_.lessThan(0)(S.number))
+    const pretty = Pretty.pretty(_.lessThan(0)(S.number))
     expect(pretty(1)).toEqual("1")
   })
 })

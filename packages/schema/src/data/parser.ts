@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
+import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -18,18 +18,18 @@ export const parseNumber: (self: Schema<string>) => Schema<number> = I.transform
   I.number,
   (s: string) => {
     if (s === "NaN") {
-      return DE.success(NaN)
+      return PE.success(NaN)
     }
     if (s === "Infinity") {
-      return DE.success(Infinity)
+      return PE.success(Infinity)
     }
     if (s === "-Infinity") {
-      return DE.success(-Infinity)
+      return PE.success(-Infinity)
     }
     const n = parseFloat(s)
     return isNaN(n) ?
-      DE.failure(DE.transform("string", "number", s)) :
-      DE.success(n)
+      PE.failure(PE.transform("string", "number", s)) :
+      PE.success(n)
   },
-  (n) => DE.success(String(n))
+  (n) => PE.success(String(n))
 )

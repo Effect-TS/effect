@@ -1,8 +1,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -46,7 +46,7 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("readonlyMap. guard", () => {
     const schema = _.readonlyMap(S.number, S.string)
-    const is = D.is(schema)
+    const is = P.is(schema)
     expect(is(new Map())).toEqual(true)
     expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
 
@@ -60,7 +60,7 @@ describe.concurrent("ReadonlyMap", () => {
 
   it("readonlyMap. pretty", () => {
     const schema = _.readonlyMap(S.number, S.string)
-    const pretty = P.pretty(schema)
+    const pretty = Pretty.pretty(schema)
     expect(pretty(new Map())).toEqual("new Map([])")
     expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
       `new Map([[1, "a"], [2, "b"]])`

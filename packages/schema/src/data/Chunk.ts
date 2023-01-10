@@ -6,19 +6,19 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
-import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
-import * as P from "@fp-ts/schema/Pretty"
+import * as PE from "@fp-ts/schema/ParseError"
+import * as P from "@fp-ts/schema/Parser"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> => {
-  const items = D.decode(I.array(item))
-  return I.makeDecoder(
+const parser = <A>(item: P.Parser<unknown, A>): P.Parser<unknown, Chunk<A>> => {
+  const items = P.decode(I.array(item))
+  return I.makeParser(
     chunk(item),
     (u, options) =>
       !C.isChunk(u) ?
-        DE.failure(DE.type("Chunk<unknown>", u)) :
+        PE.failure(PE.type("Chunk<unknown>", u)) :
         pipe(C.toReadonlyArray(u), (us) => items(us, options), I.map(C.fromIterable))
   )
 }
@@ -26,8 +26,8 @@ const decoder = <A>(item: D.Decoder<unknown, A>): D.Decoder<unknown, Chunk<A>> =
 const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Chunk<A>> =>
   A.make(chunk(item), (fc) => fc.array(item.arbitrary(fc)).map(C.fromIterable))
 
-const pretty = <A>(item: P.Pretty<A>): P.Pretty<Chunk<A>> =>
-  P.make(
+const pretty = <A>(item: Pretty<A>): Pretty<Chunk<A>> =>
+  I.makePretty(
     chunk(item),
     (c) => `Chunk(${C.toReadonlyArray(c).map(item.pretty).join(", ")})`
   )
@@ -43,7 +43,7 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
       length: I.number
     }),
     {
-      [H.DecoderHookId]: H.hook(decoder),
+      [H.ParserHookId]: H.hook(parser),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

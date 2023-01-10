@@ -1,21 +1,21 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as D from "@fp-ts/schema/Decoder"
+import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Decoder", () => {
   it("exports", () => {
-    expect(D.make).exist
-    expect(D.decode).exist
-    expect(D.decodeOrThrow).exist
+    expect(P.make).exist
+    expect(P.decode).exist
+    expect(P.decodeOrThrow).exist
   })
 
   it("asserts", () => {
     const schema = S.string
-    expect(D.asserts(schema)("a")).toEqual(undefined)
-    expect(() => D.asserts(schema)(1)).toThrowError(
+    expect(P.asserts(schema)("a")).toEqual(undefined)
+    expect(() => P.asserts(schema)(1)).toThrowError(
       new Error(`1 error(s) found
 └─ 1 did not satisfy is(string)`)
     )
@@ -26,11 +26,11 @@ describe.concurrent("Decoder", () => {
       name: S.string,
       age: S.number
     })
-    expect(D.decodeOrThrow(schema)({ name: "Alice", age: 30 })).toEqual({
+    expect(P.decodeOrThrow(schema)({ name: "Alice", age: 30 })).toEqual({
       name: "Alice",
       age: 30
     })
-    expect(() => D.decodeOrThrow(schema)({})).toThrowError(
+    expect(() => P.decodeOrThrow(schema)({})).toThrowError(
       new Error(`1 error(s) found
 └─ key "name"
    └─ is missing`)
@@ -1050,7 +1050,7 @@ describe.concurrent("Decoder", () => {
   // isUnexpectedAllowed option
   // ---------------------------------------------
 
-  const isUnexpectedAllowed: D.DecodeOptions = {
+  const isUnexpectedAllowed: P.ParseOptions = {
     isUnexpectedAllowed: true
   }
 
@@ -1148,7 +1148,7 @@ describe.concurrent("Decoder", () => {
   // allErrors option
   // ---------------------------------------------
 
-  const allErrors: D.DecodeOptions = {
+  const allErrors: P.ParseOptions = {
     allErrors: true
   }
 

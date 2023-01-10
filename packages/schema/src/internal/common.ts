@@ -11,8 +11,8 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as DE from "@fp-ts/schema/DecodeError"
-import type { Decoder } from "@fp-ts/schema/Decoder"
+import * as PE from "@fp-ts/schema/ParseError"
+import type { Parser } from "@fp-ts/schema/Parser"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
@@ -64,18 +64,18 @@ export const makeArbitrary = <A>(
 ): Arbitrary<A> => ({ ast: schema.ast, arbitrary }) as any
 
 /** @internal */
-export const makeDecoder = <I, A>(
+export const makeParser = <I, A>(
   schema: Schema<A>,
-  decode: Decoder<I, A>["decode"]
-): Decoder<I, A> => ({ ast: schema.ast, decode }) as any
+  parse: Parser<I, A>["parse"]
+): Parser<I, A> => ({ ast: schema.ast, parse }) as any
 
 /** @internal */
 export const fromRefinement = <A>(
   schema: Schema<A>,
   refinement: (u: unknown) => u is A,
-  onFalse: (u: unknown) => DE.DecodeError
-): Decoder<unknown, A> =>
-  makeDecoder(schema, (u) => refinement(u) ? DE.success(u) : DE.failure(onFalse(u)))
+  onFalse: (u: unknown) => PE.ParseError
+): Parser<unknown, A> =>
+  makeParser(schema, (u) => refinement(u) ? PE.success(u) : PE.failure(onFalse(u)))
 
 /** @internal */
 export const makePretty = <A>(
@@ -104,7 +104,7 @@ export const typeAlias = (
 
 /** @internal */
 export const filterOrFail = <A, B extends A>(
-  decode: Decoder<A, B>["decode"],
+  decode: Parser<A, B>["parse"],
   meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>): Schema<B> => makeSchema(AST.refinement(self.ast, decode, meta, annotations))
@@ -131,7 +131,7 @@ export function filter<A>(
   return pipe(
     from,
     filterOrFail(
-      (a) => predicate(a) ? DE.success(a) : DE.failure(DE.refinement(meta, a)),
+      (a) => predicate(a) ? PE.success(a) : PE.failure(PE.refinement(meta, a)),
       meta,
       annotations
     )
@@ -141,14 +141,14 @@ export function filter<A>(
 /** @internal */
 export const transformOrFail = <A, B>(
   to: Schema<B>,
-  decode: Decoder<A, B>["decode"],
-  encode: Decoder<B, A>["decode"]
+  decode: Parser<A, B>["parse"],
+  encode: Parser<B, A>["parse"]
 ) => (self: Schema<A>): Schema<B> => makeSchema(AST.transform(self.ast, to.ast, decode, encode))
 
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(self, transformOrFail(to, (a) => DE.success(f(a)), (b) => DE.success(g(b))))
+    pipe(self, transformOrFail(to, (a) => PE.success(f(a)), (b) => PE.success(g(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))

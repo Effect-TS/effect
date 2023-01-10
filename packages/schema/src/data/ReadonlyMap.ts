@@ -4,25 +4,25 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as DE from "@fp-ts/schema/DecodeError"
-import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
+import * as PE from "@fp-ts/schema/ParseError"
+import * as P from "@fp-ts/schema/Parser"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 const isMap = (u: unknown): u is Map<unknown, unknown> =>
   typeof u === "object" && typeof u !== null && u instanceof Map
 
-const decoder = <K, V>(
-  key: D.Decoder<unknown, K>,
-  value: D.Decoder<unknown, V>
-): D.Decoder<unknown, ReadonlyMap<K, V>> => {
-  const items = D.decode(I.array(I.tuple(key, value)))
-  return I.makeDecoder(
+const parser = <K, V>(
+  key: P.Parser<unknown, K>,
+  value: P.Parser<unknown, V>
+): P.Parser<unknown, ReadonlyMap<K, V>> => {
+  const items = P.decode(I.array(I.tuple(key, value)))
+  return I.makeParser(
     readonlyMap(key, value),
     (u, options) =>
       !isMap(u) ?
-        DE.failure(DE.type("Map<unknown, unknown>", u)) :
+        PE.failure(PE.type("Map<unknown, unknown>", u)) :
         pipe(
           Array.from(u.entries()),
           (us) => items(us, options),
@@ -58,7 +58,7 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
       size: I.number
     }),
     {
-      [H.DecoderHookId]: H.hook(decoder),
+      [H.ParserHookId]: H.hook(parser),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)
     }

@@ -1,6 +1,6 @@
 import * as _ from "@fp-ts/schema/data/filter"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -10,7 +10,7 @@ describe.concurrent("minLength", () => {
   })
 
   it("Guard", () => {
-    const is = D.is(_.minLength(1)(S.string))
+    const is = P.is(_.minLength(1)(S.string))
     expect(is("")).toEqual(false)
     expect(is("a")).toEqual(true)
     expect(is("aa")).toEqual(true)
@@ -24,7 +24,7 @@ describe.concurrent("minLength", () => {
   })
 
   it("Pretty", () => {
-    const pretty = P.pretty(_.minLength(0)(S.string))
+    const pretty = Pretty.pretty(_.minLength(0)(S.string))
     expect(pretty("a")).toEqual(`"a"`)
   })
 })

@@ -10,7 +10,7 @@ import * as T from "@fp-ts/data/These"
 /**
  * @since 1.0.0
  */
-export type DecodeResult<A> = Validated<DecodeError, A>
+export type ParseResult<A> = Validated<ParseError, A>
 
 /**
  * `DecodeError` is a type that represents the different types of errors that can occur when decoding a value.
@@ -18,7 +18,7 @@ export type DecodeResult<A> = Validated<DecodeError, A>
  * @category model
  * @since 1.0.0
  */
-export type DecodeError =
+export type ParseError =
   | Meta
   | Type
   | Equal
@@ -202,7 +202,7 @@ export const transform = (from: string, to: string, actual: unknown): Transform 
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly errors: NonEmptyReadonlyArray<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<ParseError>
 }
 
 /**
@@ -211,7 +211,7 @@ export interface Index {
  */
 export const index = (
   index: number,
-  errors: NonEmptyReadonlyArray<DecodeError>
+  errors: NonEmptyReadonlyArray<ParseError>
 ): Index => ({
   _tag: "Index",
   index,
@@ -222,7 +222,7 @@ export const index = (
  * @category guards
  * @since 1.0.0
  */
-export const isIndex = (e: DecodeError): e is Index => e._tag === "Index"
+export const isIndex = (e: ParseError): e is Index => e._tag === "Index"
 
 /**
  * The `Key` variant of the `DecodeError` type represents an error that occurs when a key in an object is invalid.
@@ -237,7 +237,7 @@ export const isIndex = (e: DecodeError): e is Index => e._tag === "Index"
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly errors: NonEmptyReadonlyArray<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<ParseError>
 }
 
 /**
@@ -246,7 +246,7 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  errors: NonEmptyReadonlyArray<DecodeError>
+  errors: NonEmptyReadonlyArray<ParseError>
 ): Key => ({
   _tag: "Key",
   key,
@@ -257,7 +257,7 @@ export const key = (
  * @category guards
  * @since 1.0.0
  */
-export const isKey = (e: DecodeError): e is Key => e._tag === "Key"
+export const isKey = (e: ParseError): e is Key => e._tag === "Key"
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -301,7 +301,7 @@ export const unexpected = (
  * @category guards
  * @since 1.0.0
  */
-export const isUnexpected = (e: DecodeError): e is Unexpected => e._tag === "Unexpected"
+export const isUnexpected = (e: ParseError): e is Unexpected => e._tag === "Unexpected"
 
 /**
  * Error that occurs when a member in a union has an error.
@@ -311,7 +311,7 @@ export const isUnexpected = (e: DecodeError): e is Unexpected => e._tag === "Une
  */
 export interface Member {
   readonly _tag: "Member"
-  readonly errors: NonEmptyReadonlyArray<DecodeError>
+  readonly errors: NonEmptyReadonlyArray<ParseError>
 }
 
 /**
@@ -319,7 +319,7 @@ export interface Member {
  * @since 1.0.0
  */
 export const member = (
-  errors: NonEmptyReadonlyArray<DecodeError>
+  errors: NonEmptyReadonlyArray<ParseError>
 ): Member => ({
   _tag: "Member",
   errors
@@ -329,55 +329,55 @@ export const member = (
  * @category constructors
  * @since 1.0.0
  */
-export const success: <A>(a: A) => DecodeResult<A> = T.right
+export const success: <A>(a: A) => ParseResult<A> = T.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const failure = (e: DecodeError): DecodeResult<never> => T.left([e])
+export const failure = (e: ParseError): ParseResult<never> => T.left([e])
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const failures = (
-  es: NonEmptyReadonlyArray<DecodeError>
-): DecodeResult<never> => T.left(es)
+  es: NonEmptyReadonlyArray<ParseError>
+): ParseResult<never> => T.left(es)
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const warning = <A>(e: DecodeError, a: A): DecodeResult<A> => T.both([e], a)
+export const warning = <A>(e: ParseError, a: A): ParseResult<A> => T.both([e], a)
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const warnings = <A>(
-  es: NonEmptyReadonlyArray<DecodeError>,
+  es: NonEmptyReadonlyArray<ParseError>,
   a: A
-): DecodeResult<A> => T.both(es, a)
+): ParseResult<A> => T.both(es, a)
 
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isSuccess: <A>(self: DecodeResult<A>) => self is Right<A> = T.isRight
+export const isSuccess: <A>(self: ParseResult<A>) => self is Right<A> = T.isRight
 
 /**
  * @category guards
  * @since 1.0.0
  */
 export const isFailure: <A>(
-  self: DecodeResult<A>
-) => self is Left<NonEmptyReadonlyArray<DecodeError>> = T.isLeft
+  self: ParseResult<A>
+) => self is Left<NonEmptyReadonlyArray<ParseError>> = T.isLeft
 
 /**
  * @category guards
  * @since 1.0.0
  */
 export const hasWarnings: <A>(
-  self: DecodeResult<A>
-) => self is T.Both<NonEmptyReadonlyArray<DecodeError>, A> = T.isBoth
+  self: ParseResult<A>
+) => self is T.Both<NonEmptyReadonlyArray<ParseError>, A> = T.isBoth

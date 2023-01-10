@@ -1,7 +1,7 @@
 import * as O from "@fp-ts/data/Option"
 import * as _ from "@fp-ts/schema/data/Option"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -12,7 +12,7 @@ describe.concurrent("Option", () => {
 
   it("option. guard. direct", () => {
     const schema = _.option(S.number)
-    const is = D.is(schema)
+    const is = P.is(schema)
     expect(is(O.none)).toEqual(true)
     expect(is(O.some(1))).toEqual(true)
     expect(is(O.some("a"))).toEqual(false)
@@ -44,7 +44,7 @@ describe.concurrent("Option", () => {
 
   it("option. Pretty", () => {
     const schema = _.option(S.number)
-    const pretty = P.pretty(schema)
+    const pretty = Pretty.pretty(schema)
     expect(pretty(O.none)).toEqual("none")
     expect(pretty(O.some(1))).toEqual("some(1)")
   })

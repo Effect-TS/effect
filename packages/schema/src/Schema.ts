@@ -11,8 +11,8 @@ import * as AST from "@fp-ts/schema/AST"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import type { Decoder } from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
+import type { Parser } from "@fp-ts/schema/Parser"
 
 /**
  * @category model
@@ -473,7 +473,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  * @since 1.0.0
  */
 export const filterOrFail: <A, B extends A>(
-  decode: Decoder<A, B>["decode"],
+  decode: Parser<A, B>["parse"],
   meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>) => Schema<B> = I.filterOrFail
@@ -509,8 +509,8 @@ export function filter<A>(
  */
 export const transformOrFail: <A, B>(
   to: Schema<B>,
-  f: Decoder<A, B>["decode"],
-  g: Decoder<B, A>["decode"]
+  f: Parser<A, B>["parse"],
+  g: Parser<B, A>["parse"]
 ) => (self: Schema<A>) => Schema<B> = I.transformOrFail
 
 /**

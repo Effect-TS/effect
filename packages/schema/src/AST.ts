@@ -10,7 +10,7 @@ import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import type { Decoder } from "@fp-ts/schema/Decoder"
+import type { Parser } from "@fp-ts/schema/Parser"
 
 /**
  * @category model
@@ -576,7 +576,7 @@ export const enums = (
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
-  readonly decode: Decoder<any, any>["decode"]
+  readonly decode: Parser<any, any>["parse"]
   readonly meta: unknown
 }
 
@@ -586,7 +586,7 @@ export interface Refinement extends Annotated {
  */
 export const refinement = (
   from: AST,
-  decode: Decoder<any, any>["decode"],
+  decode: Parser<any, any>["parse"],
   meta: unknown,
   annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
@@ -634,8 +634,8 @@ export interface Transform {
   readonly _tag: "Transform"
   readonly from: AST
   readonly to: AST
-  readonly decode: Decoder<any, any>["decode"]
-  readonly encode: Decoder<any, any>["decode"]
+  readonly decode: Parser<any, any>["parse"]
+  readonly encode: Parser<any, any>["parse"]
 }
 
 /**

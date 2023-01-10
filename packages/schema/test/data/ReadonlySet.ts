@@ -1,8 +1,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as _ from "@fp-ts/schema/data/ReadonlySet"
-import * as D from "@fp-ts/schema/Decoder"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
@@ -38,7 +38,7 @@ describe.concurrent("ReadonlySet", () => {
 
   it("readonlySet. guard", () => {
     const schema = _.readonlySet(S.string)
-    const is = D.is(schema)
+    const is = P.is(schema)
     expect(is(new Set())).toEqual(true)
     expect(is(new Set(["a", "b", "c"]))).toEqual(true)
 
@@ -47,7 +47,7 @@ describe.concurrent("ReadonlySet", () => {
 
   it("readonlySet. pretty", () => {
     const schema = _.readonlySet(S.string)
-    const pretty = P.pretty(schema)
+    const pretty = Pretty.pretty(schema)
     expect(pretty(new Set())).toEqual("new Set([])")
     expect(pretty(new Set(["a", "b"]))).toEqual(
       `new Set(["a", "b"])`

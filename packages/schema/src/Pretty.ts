@@ -7,8 +7,8 @@ import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
-import * as D from "@fp-ts/schema/Decoder"
 import * as I from "@fp-ts/schema/internal/common"
+import * as P from "@fp-ts/schema/Parser"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -160,7 +160,7 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
         )
       }
       case "Union": {
-        const types = ast.types.map((m) => [D.is(I.makeSchema(m)), go(m)] as const)
+        const types = ast.types.map((m) => [P.is(I.makeSchema(m)), go(m)] as const)
         return make(I.makeSchema(ast), (a) => {
           const index = types.findIndex(([is]) => is(a))
           return types[index][1].pretty(a)
