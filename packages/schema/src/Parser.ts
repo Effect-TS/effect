@@ -73,16 +73,16 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
  * @since 1.0.0
  */
 export const is = <A>(schema: Schema<A>) =>
-  (input: unknown): input is A =>
-    !PE.isFailure(parserFor(schema, "guard").parse(input, { isUnexpectedAllowed: true }))
+  (input: unknown, options?: ParseOptions): input is A =>
+    !PE.isFailure(parserFor(schema, "guard").parse(input, options))
 
 /**
  * @category assertions
  * @since 1.0.0
  */
 export const asserts = <A>(schema: Schema<A>) =>
-  (input: unknown): asserts input is A => {
-    const t = parserFor(schema, "guard").parse(input, { isUnexpectedAllowed: true })
+  (input: unknown, options?: ParseOptions): asserts input is A => {
+    const t = parserFor(schema, "guard").parse(input, options)
     if (PE.isFailure(t)) {
       throw new Error(format(t.left))
     }
