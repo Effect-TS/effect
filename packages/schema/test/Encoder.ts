@@ -347,28 +347,32 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })
   })
 
-  describe.concurrent("union", () => {
-    it("union", () => {
-      const schema = S.union(S.string, NumberFromString)
-      Util.expectEncodingSuccess(schema, "a", "a")
-      Util.expectEncodingSuccess(schema, 1, "1")
-    })
+  it("union", () => {
+    const schema = S.union(S.string, NumberFromString)
+    Util.expectEncodingSuccess(schema, "a", "a")
+    Util.expectEncodingSuccess(schema, 1, "1")
+  })
 
-    describe.concurrent("should give precedence to schemas containing more infos", () => {
-      it("more required property signatures", () => {
-        const a = S.struct({ a: S.string })
-        const ab = S.struct({ a: S.string, b: S.number })
-        const schema = S.union(a, ab)
-        Util.expectEncodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: 1 })
-      })
+  it("union/ more required property signatures", () => {
+    const a = S.struct({ a: S.string })
+    const ab = S.struct({ a: S.string, b: S.number })
+    const schema = S.union(a, ab)
+    Util.expectEncodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: 1 })
+  })
 
-      it("optional property signatures", () => {
-        const ab = S.struct({ a: S.string, b: S.optional(S.number) })
-        const ac = S.struct({ a: S.string, c: S.optional(S.number) })
-        const schema = S.union(ab, ac)
-        Util.expectEncodingSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1 })
-      })
+  it("union/ optional property signatures", () => {
+    const ab = S.struct({ a: S.string, b: S.optional(S.number) })
+    const ac = S.struct({ a: S.string, c: S.optional(S.number) })
+    const schema = S.union(ab, ac)
+    Util.expectEncodingSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1 })
+  })
+
+  it("union/ forced empty union", () => {
+    const schema = S.make({
+      _tag: "Union",
+      types: [] as any
     })
+    Util.expectEncodingFailure(schema, "a", `"a" did not satisfy is(never)`)
   })
 
   describe.concurrent("partial", () => {
@@ -427,7 +431,7 @@ describe.concurrent("Encoder", () => {
     isUnexpectedAllowed: true
   }
 
-  it("isUnexpectedAllowed/union choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed/union/struct choose the output with less warnings related to unexpected keys / indexes", () => {
     const a = S.struct({ a: S.optional(S.number) })
     const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
     const schema = S.union(a, b)
@@ -439,6 +443,19 @@ describe.concurrent("Encoder", () => {
         b: "b"
       },
       `/c is unexpected`,
+      isUnexpectedAllowed
+    )
+  })
+
+  it("isUnexpectedAllowed/union/tuple choose the output with less warnings related to unexpected keys / indexes", () => {
+    const a = S.tuple(S.number)
+    const b = pipe(S.tuple(S.number), S.optionalElement(S.string))
+    const schema = S.union(a, b)
+    Util.expectEncodingWarning(
+      schema,
+      [1, "b", true] as any,
+      [1, "b"],
+      `/2 is unexpected`,
       isUnexpectedAllowed
     )
   })
