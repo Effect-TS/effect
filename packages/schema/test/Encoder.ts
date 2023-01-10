@@ -14,10 +14,9 @@ const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
 // raises a warning while encoding if the string is not a char
 const PreferChar = pipe(
   S.string,
-  S.transformOrFail(
-    S.string,
-    DE.success,
-    (s) => s.length === 1 ? DE.success(s) : DE.warning(DE.refinement({ type: "Char" }, s), s)
+  S.filterOrFail(
+    (s) => s.length === 1 ? DE.success(s) : DE.warning(DE.refinement({ type: "Char" }, s), s),
+    { type: "Char" }
   )
 )
 
@@ -37,15 +36,6 @@ describe.concurrent("Encoder", () => {
     expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
       new Error(`1 error(s) found
 └─ "10" did not satisfy refinement({"maxLength":1})`)
-    )
-  })
-
-  it("sensitive", () => {
-    const schema = S.struct({ password: S.sensitive(pipe(S.string, S.minLength(8))) })
-    Util.expectEncodingFailure(
-      schema,
-      { password: "pwd123" },
-      `/password "**********" did not satisfy refinement({"minLength":8})`
     )
   })
 
@@ -315,6 +305,16 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa" },
       `/a "aa" did not satisfy refinement({"maxLength":1})`
+    )
+  })
+
+  it("record/ key warnings", () => {
+    const schema = S.record(PreferChar, S.string)
+    Util.expectEncodingWarning(
+      schema,
+      { aa: "a", bb: "b" },
+      { aa: "a", bb: "b" },
+      `/aa "aa" did not satisfy refinement({"type":"Char"}), /bb "bb" did not satisfy refinement({"type":"Char"})`
     )
   })
 

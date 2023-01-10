@@ -5,7 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
-import type { Refinement } from "@fp-ts/data/Predicate"
+import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
@@ -103,12 +103,40 @@ export const typeAlias = (
   ))
 
 /** @internal */
-export const refinement = <A, B extends A>(
+export const filterOrFail = <A, B extends A>(
+  decode: Decoder<A, B>["decode"],
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+) => (self: Schema<A>): Schema<B> => makeSchema(AST.refinement(self.ast, decode, meta, annotations))
+
+/** @internal */
+export function filter<A, B extends A>(
   from: Schema<A>,
   refinement: Refinement<A, B>,
   meta: unknown,
   annotations?: AST.Annotated["annotations"]
-): Schema<B> => makeSchema(AST.refinement(from.ast, refinement, meta, annotations))
+): Schema<B>
+export function filter<A>(
+  from: Schema<A>,
+  predicate: Predicate<A>,
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+): Schema<A>
+export function filter<A>(
+  from: Schema<A>,
+  predicate: Predicate<A>,
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+): Schema<A> {
+  return pipe(
+    from,
+    filterOrFail(
+      (a) => predicate(a) ? DE.success(a) : DE.failure(DE.refinement(meta, a)),
+      meta,
+      annotations
+    )
+  )
+}
 
 /** @internal */
 export const transformOrFail = <A, B>(
@@ -328,7 +356,3 @@ export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
     return cache.get(a)
   }
 }
-
-/** @internal */
-export const handleSensitive = (ast: AST.AST, actual: unknown): unknown =>
-  AST.isSensitive(ast) && typeof actual === "string" ? "**********" : actual

@@ -14,14 +14,14 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const finite = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.refinement(self, (a): a is A => Number.isFinite(a), { type: "Finite" })
+  I.filter(self, (a): a is A => Number.isFinite(a), { type: "Finite" })
 
 /**
  * @since 1.0.0
  */
 export const greaterThan = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a > min, { exclusiveMinimum: min }, {
+    I.filter(self, (a): a is A => a > min, { exclusiveMinimum: min }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMinimum: min })
     })
 
@@ -30,7 +30,7 @@ export const greaterThan = (min: number) =>
  */
 export const greaterThanOrEqualTo = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a >= min, { minimum: min }, {
+    I.filter(self, (a): a is A => a >= min, { minimum: min }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minimum: min })
     })
 
@@ -39,7 +39,7 @@ export const greaterThanOrEqualTo = (min: number) =>
  */
 export const instanceOf = <A extends abstract new(...args: any) => any>(constructor: A) =>
   (self: Schema<object>): Schema<InstanceType<A>> =>
-    I.refinement(self, (a): a is InstanceType<A> => a instanceof constructor, {
+    I.filter(self, (a): a is InstanceType<A> => a instanceof constructor, {
       instanceof: constructor
     })
 
@@ -47,7 +47,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(construc
  * @since 1.0.0
  */
 export const int = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.refinement(self, (a): a is A => Number.isInteger(a), { type: "integer" }, {
+  I.filter(self, (a): a is A => Number.isInteger(a), { type: "integer" }, {
     [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ type: "integer" })
   })
 
@@ -56,7 +56,7 @@ export const int = <A extends number>(self: Schema<A>): Schema<A> =>
  */
 export const lessThan = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a < max, { exclusiveMaximum: max }, {
+    I.filter(self, (a): a is A => a < max, { exclusiveMaximum: max }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMaximum: max })
     })
 
@@ -65,7 +65,7 @@ export const lessThan = (max: number) =>
  */
 export const lessThanOrEqualTo = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a <= max, { maximum: max }, {
+    I.filter(self, (a): a is A => a <= max, { maximum: max }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maximum: max })
     })
 
@@ -76,7 +76,7 @@ export const maxLength = (
   maxLength: number
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.length <= maxLength, { maxLength }, {
+    I.filter(self, (a): a is A => a.length <= maxLength, { maxLength }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maxLength })
     })
 
@@ -87,7 +87,7 @@ export const minLength = (
   minLength: number
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.length >= minLength, { minLength }, {
+    I.filter(self, (a): a is A => a.length >= minLength, { minLength }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minLength })
     })
 
@@ -95,7 +95,7 @@ export const minLength = (
  * @since 1.0.0
  */
 export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.refinement(self, (a): a is A => !Number.isNaN(a), { type: "NonNaN" })
+  I.filter(self, (a): a is A => !Number.isNaN(a), { type: "NonNaN" })
 
 /**
  * @since 1.0.0
@@ -107,7 +107,7 @@ export const pattern = (
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> => {
     const pattern = regex.source
-    return I.refinement(self, (a): a is A => regex.test(a), { pattern, ...meta }, {
+    return I.filter(self, (a): a is A => regex.test(a), { pattern, ...meta }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern }),
       ...annotations
     })
@@ -118,7 +118,7 @@ export const pattern = (
  */
 export const startsWith = (startsWith: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.startsWith(startsWith), { startsWith }, {
+    I.filter(self, (a): a is A => a.startsWith(startsWith), { startsWith }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^${startsWith}` })
     })
 
@@ -127,7 +127,7 @@ export const startsWith = (startsWith: string) =>
  */
 export const endsWith = (endsWith: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.endsWith(endsWith), { endsWith }, {
+    I.filter(self, (a): a is A => a.endsWith(endsWith), { endsWith }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^.*${endsWith}$` })
     })
 
@@ -136,6 +136,6 @@ export const endsWith = (endsWith: string) =>
  */
 export const includes = (searchString: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.refinement(self, (a): a is A => a.includes(searchString), { includes: searchString }, {
+    I.filter(self, (a): a is A => a.includes(searchString), { includes: searchString }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `.*${searchString}.*` })
     })

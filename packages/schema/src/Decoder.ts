@@ -503,15 +503,7 @@ const decoderFor = <A>(
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
-          (u, options) =>
-            pipe(
-              type.decode(u, options),
-              I.flatMap((a) =>
-                ast.refinement(a) ?
-                  DE.success(a) :
-                  DE.failure(DE.refinement(ast.meta, I.handleSensitive(ast, a)))
-              )
-            )
+          (u, options) => pipe(type.decode(u, options), I.flatMap(ast.decode))
         )
       }
       case "TemplateLiteral": {

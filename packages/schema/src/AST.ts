@@ -8,7 +8,6 @@ import * as Number from "@fp-ts/data/Number"
 import { isNumber } from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Decoder } from "@fp-ts/schema/Decoder"
@@ -202,14 +201,13 @@ export const anyKeyword: AnyKeyword = { _tag: "AnyKeyword" }
  */
 export interface StringKeyword {
   readonly _tag: "StringKeyword"
-  readonly isSensitive: boolean
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const stringKeyword: StringKeyword = { _tag: "StringKeyword", isSensitive: false }
+export const stringKeyword: StringKeyword = { _tag: "StringKeyword" }
 
 /**
  * @category guards
@@ -578,7 +576,7 @@ export const enums = (
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
-  readonly refinement: Predicate<any>
+  readonly decode: Decoder<any, any>["decode"]
   readonly meta: unknown
 }
 
@@ -588,10 +586,10 @@ export interface Refinement extends Annotated {
  */
 export const refinement = (
   from: AST,
-  refinement: Predicate<any>,
+  decode: Decoder<any, any>["decode"],
   meta: unknown,
   annotations: Annotated["annotations"] = {}
-): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
+): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
 
 /**
  * @since 1.0.0
@@ -660,34 +658,6 @@ export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transfo
 // ---------------------------------------------
 // API
 // ---------------------------------------------
-
-/**
- * @since 1.0.0
- */
-export const sensitive = (ast: AST): AST => {
-  switch (ast._tag) {
-    case "StringKeyword":
-      return { ...ast, isSensitive: true }
-    case "Refinement":
-      return { ...ast, from: sensitive(ast.from) }
-    default:
-      return ast
-  }
-}
-
-/**
- * @since 1.0.0
- */
-export const isSensitive = (ast: AST): boolean => {
-  switch (ast._tag) {
-    case "StringKeyword":
-      return ast.isSensitive
-    case "Refinement":
-      return isSensitive(ast.from)
-    default:
-      return false
-  }
-}
 
 /**
  * @since 1.0.0

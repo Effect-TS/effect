@@ -7,6 +7,7 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as TAH from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
+import * as DE from "@fp-ts/schema/DecodeError"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
@@ -208,7 +209,11 @@ const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
         return pipe(
           getHook(ast),
           O.match(
-            () => make(I.makeSchema(ast), (fc) => from.arbitrary(fc).filter(ast.refinement)),
+            () =>
+              make(
+                I.makeSchema(ast),
+                (fc) => from.arbitrary(fc).filter((a) => !DE.isFailure(ast.decode(a)))
+              ),
             ({ handler }) => handler(from)
           )
         )

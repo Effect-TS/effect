@@ -813,7 +813,7 @@ describe.concurrent("is", () => {
   })
 
   it("filter", () => {
-    const schema = pipe(S.string, S.filter((s): s is string => s.length === 1, { type: "Char" }))
+    const schema = pipe(S.string, S.filter((s) => s.length === 1, { type: "Char" }))
     const is = D.is(schema)
     expect(is("a")).toEqual(true)
 

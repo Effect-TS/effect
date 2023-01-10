@@ -5,7 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import type { Refinement } from "@fp-ts/data/Predicate"
+import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as AST from "@fp-ts/schema/AST"
 import * as F from "@fp-ts/schema/data/filter"
@@ -274,11 +274,6 @@ export const finite: <A extends number>(self: Schema<A>) => Schema<A> = F.finite
 // ---------------------------------------------
 
 /**
- * @since 1.0.0
- */
-export const sensitive = <A>(self: Schema<A>): Schema<A> => make(AST.sensitive(self.ast))
-
-/**
  * @category combinators
  * @since 1.0.0
  */
@@ -477,11 +472,33 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  * @category combinators
  * @since 1.0.0
  */
-export const filter = <A, B extends A>(
+export const filterOrFail: <A, B extends A>(
+  decode: Decoder<A, B>["decode"],
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+) => (self: Schema<A>) => Schema<B> = I.filterOrFail
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
   meta: unknown,
   annotations?: AST.Annotated["annotations"]
-) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, meta, annotations)
+): (self: Schema<A>) => Schema<B>
+export function filter<A>(
+  predicate: Predicate<A>,
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+): (self: Schema<A>) => Schema<A>
+export function filter<A>(
+  predicate: Predicate<A>,
+  meta: unknown,
+  annotations?: AST.Annotated["annotations"]
+): (self: Schema<A>) => Schema<A> {
+  return (self) => I.filter(self, predicate, meta, annotations)
+}
 
 /**
   Create a new `Schema` by transforming the input and output of an existing `Schema`

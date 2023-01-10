@@ -37,15 +37,6 @@ describe.concurrent("Decoder", () => {
     )
   })
 
-  it("sensitive", () => {
-    const schema = S.struct({ password: S.sensitive(pipe(S.string, S.minLength(8))) })
-    Util.expectDecodingFailure(
-      schema,
-      { password: "pwd123" },
-      `/password "**********" did not satisfy refinement({"minLength":8})`
-    )
-  })
-
   it(`transform. { a: 'a' } -> { a: 'a', b: none }`, () => {
     const from = S.struct({
       a: S.string,
@@ -1011,7 +1002,7 @@ describe.concurrent("Decoder", () => {
   })
 
   it("filter", () => {
-    const schema = pipe(S.string, S.filter((s): s is string => s.length === 1, { type: "Char" }))
+    const schema = pipe(S.string, S.filter((s) => s.length === 1, { type: "Char" }))
     Util.expectDecodingSuccess(schema, "a")
 
     Util.expectDecodingFailure(schema, "", `"" did not satisfy refinement({"type":"Char"})`)
