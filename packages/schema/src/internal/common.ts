@@ -113,9 +113,9 @@ export const refinement = <A, B extends A>(
 /** @internal */
 export const transformOrFail = <A, B>(
   to: Schema<B>,
-  f: Decoder<A, B>["decode"],
-  g: Decoder<B, A>["decode"]
-) => (self: Schema<A>): Schema<B> => makeSchema(AST.transformOrFail(self.ast, to.ast, f, g))
+  decode: Decoder<A, B>["decode"],
+  encode: Decoder<B, A>["decode"]
+) => (self: Schema<A>): Schema<B> => makeSchema(AST.transform(self.ast, to.ast, decode, encode))
 
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
@@ -313,11 +313,6 @@ export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
 /** @internal */
 export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
-
-/** @internal */
-export const hasUnexpectedError = (e: DE.DecodeError) =>
-  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
-  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {

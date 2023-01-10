@@ -465,8 +465,8 @@ const decoderFor = <A>(
               // choose the output with less warnings related to unexpected keys / indexes
               if (
                 !output ||
-                output.left.filter(I.hasUnexpectedError).length >
-                  t.left.filter(I.hasUnexpectedError).length
+                output.left.filter(hasUnexpectedError).length >
+                  t.left.filter(hasUnexpectedError).length
               ) {
                 output = t
               }
@@ -530,7 +530,8 @@ const decoderFor = <A>(
             const from = go(ast.from)
             return make(
               I.makeSchema(ast),
-              (u, options) => pipe(from.decode(u, options), I.flatMap((a) => ast.f(a, options)))
+              (u, options) =>
+                pipe(from.decode(u, options), I.flatMap((a) => ast.decode(a, options)))
             )
           }
           case "guard":
@@ -538,8 +539,9 @@ const decoderFor = <A>(
           case "encoder": {
             const from = go(ast.from)
             return make(
-              I.makeSchema(AST.transformOrFail(ast.to, ast.from, ast.g, ast.f)),
-              (a, options) => pipe(ast.g(a, options), I.flatMap((a) => from.decode(a, options)))
+              I.makeSchema(AST.transform(ast.to, ast.from, ast.encode, ast.decode)),
+              (a, options) =>
+                pipe(ast.encode(a, options), I.flatMap((a) => from.decode(a, options)))
             )
           }
         }
@@ -549,3 +551,7 @@ const decoderFor = <A>(
 
   return go(schema.ast)
 }
+
+const hasUnexpectedError = (e: DE.DecodeError): boolean =>
+  (DE.isKey(e) && e.errors.some(DE.isUnexpected)) ||
+  (DE.isIndex(e) && e.errors.some(DE.isUnexpected))

@@ -484,7 +484,8 @@ export const filter = <A, B extends A>(
 ) => (self: Schema<A>): Schema<B> => I.refinement(self, refinement, meta, annotations)
 
 /**
-  Combinator that creates a new Schema by transforming the input and output of an existing Schema using the provided decoding functions.
+  Create a new `Schema` by transforming the input and output of an existing `Schema`
+  using the provided decoding functions.
 
   @category combinators
   @since 1.0.0
@@ -496,7 +497,8 @@ export const transformOrFail: <A, B>(
 ) => (self: Schema<A>) => Schema<B> = I.transformOrFail
 
 /**
-  Creates a new schema that transforms values from one type to another using the provided functions.
+  Create a new `Schema` by transforming the input and output of an existing `Schema`
+  using the provided mapping functions.
 
   @category combinators
   @since 1.0.0

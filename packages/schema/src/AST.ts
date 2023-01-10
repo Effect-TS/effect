@@ -636,20 +636,26 @@ export interface Transform {
   readonly _tag: "Transform"
   readonly from: AST
   readonly to: AST
-  readonly f: Decoder<any, any>["decode"]
-  readonly g: Decoder<any, any>["decode"]
+  readonly decode: Decoder<any, any>["decode"]
+  readonly encode: Decoder<any, any>["decode"]
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const transformOrFail = (
+export const transform = (
   from: AST,
   to: AST,
-  f: Transform["f"],
-  g: Transform["g"]
-): Transform => ({ _tag: "Transform", from, to, f, g })
+  decode: Transform["decode"],
+  encode: Transform["encode"]
+): Transform => ({ _tag: "Transform", from, to, decode, encode })
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transform"
 
 // ---------------------------------------------
 // API
