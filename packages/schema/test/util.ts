@@ -89,8 +89,6 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
 
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
-    case "Meta":
-      return `${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`
     case "Type":
       return `${stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":

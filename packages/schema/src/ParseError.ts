@@ -19,7 +19,6 @@ export type ParseResult<A> = Validated<ParseError, A>
  * @since 1.0.0
  */
 export type ParseError =
-  | Meta
   | Type
   | Equal
   | Enums
@@ -30,34 +29,6 @@ export type ParseError =
   | Missing
   | Unexpected
   | Member
-
-/**
- * The `Meta` variant of the `DecodeError` type allows users to attach custom metadata to a decode error.
- * This metadata can be any value, and is typically used to provide additional context or information about the error.
- * For example, you might use the `meta` field to include information about the expected type or shape of the value being decoded,
- * or to include a custom error message.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Meta {
-  readonly _tag: "Meta"
-  readonly meta: unknown
-  readonly actual: unknown
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const meta = (
-  meta: unknown,
-  actual: unknown
-): Meta => ({
-  _tag: "Meta",
-  meta,
-  actual
-})
 
 /**
  * The `Type` variant of the `DecodeError` type represents an error that occurs when the `actual` value is not of the expected type.

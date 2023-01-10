@@ -78,8 +78,6 @@ export const stringify = (actual: unknown): string => {
 
 const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
-    case "Meta":
-      return make(`${stringify(e.actual)} did not satisfy ${stringify(e.meta)}`)
     case "Type":
       return make(`${stringify(e.actual)} did not satisfy is(${e.expected})`)
     case "Refinement":
