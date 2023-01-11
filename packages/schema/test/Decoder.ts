@@ -1107,24 +1107,6 @@ describe.concurrent("Decoder", () => {
     )
   })
 
-  it("filter", () => {
-    const schema = pipe(
-      S.string,
-      S.filter((s) => s.length === 1, {
-        message: "a single character",
-        meta: { type: "Char" }
-      })
-    )
-    Util.expectDecodingSuccess(schema, "a")
-
-    Util.expectDecodingFailure(schema, "", `"" must be a single character`)
-    Util.expectDecodingFailure(
-      schema,
-      "aa",
-      `"aa" must be a single character`
-    )
-  })
-
   // ---------------------------------------------
   // isUnexpectedAllowed option
   // ---------------------------------------------

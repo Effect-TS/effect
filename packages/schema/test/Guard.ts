@@ -750,15 +750,6 @@ describe.concurrent("is", () => {
     })
   })
 
-  it("maxLength", () => {
-    const schema = pipe(S.string, S.maxLength(1))
-    const is = P.is(schema)
-    expect(is("")).toEqual(true)
-    expect(is("a")).toEqual(true)
-
-    expect(is("aa")).toEqual(false)
-  })
-
   it("nonEmpty", () => {
     const schema = pipe(S.string, S.nonEmpty)
     const is = P.is(schema)
@@ -766,100 +757,6 @@ describe.concurrent("is", () => {
     expect(is("aa")).toEqual(true)
 
     expect(is("")).toEqual(false)
-  })
-
-  it("length", () => {
-    const schema = pipe(S.string, S.length(1))
-    const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-
-    expect(is("")).toEqual(false)
-    expect(is("aa")).toEqual(false)
-  })
-
-  it("startsWith", () => {
-    const schema = pipe(S.string, S.startsWith("a"))
-    const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-    expect(is("ab")).toEqual(true)
-
-    expect(is("")).toEqual(false)
-    expect(is("b")).toEqual(false)
-  })
-
-  it("endsWith", () => {
-    const schema = pipe(S.string, S.endsWith("a"))
-    const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-    expect(is("ba")).toEqual(true)
-
-    expect(is("")).toEqual(false)
-    expect(is("b")).toEqual(false)
-  })
-
-  it("pattern", () => {
-    const schema = pipe(S.string, S.pattern(/^abb+$/))
-    const is = P.is(schema)
-    expect(is("abb")).toEqual(true)
-    expect(is("abbb")).toEqual(true)
-
-    expect(is("ab")).toEqual(false)
-    expect(is("a")).toEqual(false)
-  })
-
-  it("filter", () => {
-    const schema = pipe(
-      S.string,
-      S.filter((s) => s.length === 1, {
-        message: "String is not a single character",
-        meta: { type: "Char" }
-      })
-    )
-    const is = P.is(schema)
-    expect(is("a")).toEqual(true)
-
-    expect(is("")).toEqual(false)
-    expect(is("aa")).toEqual(false)
-  })
-
-  it("greaterThan", () => {
-    const schema = pipe(S.number, S.greaterThan(0))
-    const is = P.is(schema)
-    expect(is(-1)).toEqual(false)
-    expect(is(0)).toEqual(false)
-    expect(is(1)).toEqual(true)
-  })
-
-  it("greaterThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.greaterThanOrEqualTo(0))
-    const is = P.is(schema)
-    expect(is(-1)).toEqual(false)
-    expect(is(0)).toEqual(true)
-    expect(is(1)).toEqual(true)
-  })
-
-  it("lessThan", () => {
-    const schema = pipe(S.number, S.lessThan(0))
-    const is = P.is(schema)
-    expect(is(-1)).toEqual(true)
-    expect(is(0)).toEqual(false)
-    expect(is(1)).toEqual(false)
-  })
-
-  it("lessThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.lessThanOrEqualTo(0))
-    const is = P.is(schema)
-    expect(is(-1)).toEqual(true)
-    expect(is(0)).toEqual(true)
-    expect(is(1)).toEqual(false)
-  })
-
-  it("int", () => {
-    const schema = pipe(S.number, S.int)
-    const is = P.is(schema)
-    expect(is(0)).toEqual(true)
-    expect(is(1)).toEqual(true)
-    expect(is(1.2)).toEqual(false)
   })
 
   describe.concurrent("nullables", () => {

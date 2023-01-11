@@ -18,7 +18,7 @@ const PreferChar: S.Schema<string> = pipe(
     (s) => s.length === 1 ? PE.success(s) : PE.warning(PE.type(PreferChar.ast, s), s),
     {
       message: "a single character",
-      meta: { type: "Char" }
+      meta: { type: "char" }
     }
   )
 )

@@ -409,18 +409,6 @@ export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
  * @category combinators
  * @since 1.0.0
  */
-export const field: <Key extends PropertyKey, A, isOptional extends boolean>(
-  key: Key,
-  value: Schema<A>,
-  isOptional: isOptional,
-  annotations?: AST.Annotated["annotations"]
-) => Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =
-  I.field
-
-/**
- * @category combinators
- * @since 1.0.0
- */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
   (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> =>
     make(AST.pick(self.ast, keys))
@@ -514,8 +502,8 @@ export function filter<A>(
  */
 export const transformOrFail: <A, B>(
   to: Schema<B>,
-  f: Parser<A, B>["parse"],
-  g: Parser<B, A>["parse"]
+  decode: Parser<A, B>["parse"],
+  encode: Parser<B, A>["parse"]
 ) => (self: Schema<A>) => Schema<B> = I.transformOrFail
 
 /**

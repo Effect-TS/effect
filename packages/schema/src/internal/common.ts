@@ -167,9 +167,6 @@ export const uniqueSymbol = <S extends symbol>(
 ): Schema<S> => makeSchema(AST.uniqueSymbol(symbol, annotations))
 
 /** @internal */
-export const isNever = (_u: unknown): _u is never => false
-
-/** @internal */
 export const never: Schema<never> = makeSchema(AST.neverKeyword)
 
 /** @internal */
@@ -189,9 +186,6 @@ export const _null: Schema<null> = makeSchema(AST.literal(null))
 
 /** @internal */
 export const _void: Schema<void> = makeSchema(AST.voidKeyword)
-
-/** @internal */
-export const isUnknown = (_u: unknown): _u is unknown => true
 
 /** @internal */
 export const string: Schema<string> = makeSchema(AST.stringKeyword)
@@ -261,17 +255,6 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
       ),
       []
     )
-  )
-
-/** @internal */
-export const field = <Key extends PropertyKey, A, isOptional extends boolean>(
-  key: Key,
-  value: Schema<A>,
-  isOptional: isOptional,
-  annotations?: AST.Annotated["annotations"]
-): Schema<isOptional extends true ? { readonly [K in Key]?: A } : { readonly [K in Key]: A }> =>
-  makeSchema(
-    AST.typeLiteral([AST.propertySignature(key, value.ast, isOptional, true, annotations)], [])
   )
 
 /** @internal */
