@@ -436,12 +436,11 @@ describe.concurrent("Encoder", () => {
       readonly a: number
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>(() =>
+    const schema: S.Schema<A> = S.lazy<A>("A", () =>
       S.struct({
         a: NumberFromString,
         as: S.array(schema)
-      })
-    )
+      }))
     Util.expectEncodingSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
     Util.expectEncodingSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {
       a: "1",

@@ -531,6 +531,7 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
  * @since 1.0.0
  */
 export interface Lazy extends Annotated {
+  readonly identifier: string
   readonly _tag: "Lazy"
   readonly f: () => AST
 }
@@ -539,11 +540,11 @@ export interface Lazy extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const lazy = (f: () => AST, annotations: Annotated["annotations"] = {}): Lazy => ({
-  _tag: "Lazy",
-  f,
-  annotations
-})
+export const lazy = (
+  identifier: string,
+  f: () => AST,
+  annotations: Annotated["annotations"] = {}
+): Lazy => ({ _tag: "Lazy", identifier, f, annotations })
 
 /**
  * @category guards
@@ -897,7 +898,7 @@ export const partial = (ast: AST): AST => {
     case "Union":
       return union(ast.types.map((member) => partial(member)))
     case "Lazy":
-      return lazy(() => partial(ast.f()))
+      return lazy(ast.identifier, () => partial(ast.f()))
     case "Refinement":
       return partial(ast.from)
     case "Transform":

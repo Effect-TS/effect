@@ -186,7 +186,7 @@ const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             () => {
               const f = () => go(ast.f())
               const get = I.memoize<void, Arbitrary<A>>(f)
-              const schema = I.lazy(f)
+              const schema = I.lazy(ast.identifier, f)
               return make(
                 schema,
                 (fc) => fc.constant(null).chain(() => get().arbitrary(fc))

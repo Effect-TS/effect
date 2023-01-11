@@ -146,7 +146,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must conform to the template literal a${string}"
+      "\"\" must be a value conforming to the template literal a${string}"
     )
   })
 
@@ -159,12 +159,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must conform to the template literal a${number}"
+      "\"\" must be a value conforming to the template literal a${number}"
     )
     Util.expectDecodingFailure(
       schema,
       "aa",
-      "\"aa\" must conform to the template literal a${number}"
+      "\"aa\" must be a value conforming to the template literal a${number}"
     )
   })
 
@@ -183,17 +183,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must conform to the template literal a${string}b"
+      "\"\" must be a value conforming to the template literal a${string}b"
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" must conform to the template literal a${string}b"
+      "\"a\" must be a value conforming to the template literal a${string}b"
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" must conform to the template literal a${string}b"
+      "\"b\" must be a value conforming to the template literal a${string}b"
     )
   })
 
@@ -206,12 +206,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" must conform to the template literal a${string}b${string}"
+      "\"a\" must be a value conforming to the template literal a${string}b${string}"
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" must conform to the template literal a${string}b${string}"
+      "\"b\" must be a value conforming to the template literal a${string}b${string}"
     )
   })
 
@@ -276,12 +276,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be a string or must be a number or must be a boolean"
+      "null must be a string or a number or a boolean"
     )
     Util.expectDecodingFailure(
       schema,
       1.2,
-      `1.2 must be parsable from a value that must be a string or must be a number or must be a boolean to a value that must be a bigint`
+      `1.2 must be parsable from a string or a number or a boolean to a bigint`
     )
   })
 
@@ -356,7 +356,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       3,
-      `3 must conform to the enum Fruits`
+      `3 must be a value conforming to the enum Fruits`
     )
   })
 
@@ -376,7 +376,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" must conform to the enum Fruits`
+      `"Cantaloupe" must be a value conforming to the enum Fruits`
     )
   })
 
@@ -394,7 +394,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" must conform to the enum Fruits`
+      `"Cantaloupe" must be a value conforming to the enum Fruits`
     )
   })
 
@@ -799,7 +799,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { "": 1 },
-      "/ \"\" must conform to the template literal ${string}-${string}"
+      "/ \"\" must be a value conforming to the template literal ${string}-${string}"
     )
     Util.expectDecodingFailure(
       schema,
@@ -845,17 +845,16 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, { a: "a", c: 1 })
   })
 
-  it("lazy", () => {
+  it("lazy/ baseline", () => {
     interface A {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>(() =>
+    const schema: S.Schema<A> = S.lazy<A>("A", () =>
       S.struct({
         a: S.string,
         as: S.array(schema)
-      })
-    )
+      }))
 
     Util.expectDecodingSuccess(schema, { a: "a1", as: [] })
     Util.expectDecodingSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
@@ -873,7 +872,7 @@ describe.concurrent("Decoder", () => {
     )
   })
 
-  it("mutually recursive", () => {
+  it("lazy/ mutually recursive", () => {
     interface Expression {
       readonly type: "expression"
       readonly value: number | Operation
@@ -886,21 +885,19 @@ describe.concurrent("Decoder", () => {
       readonly right: Expression
     }
 
-    const Expression: S.Schema<Expression> = S.lazy(() =>
+    const Expression: S.Schema<Expression> = S.lazy("Expression", () =>
       S.struct({
         type: S.literal("expression"),
         value: S.union(S.number, Operation)
-      })
-    )
+      }))
 
-    const Operation: S.Schema<Operation> = S.lazy(() =>
+    const Operation: S.Schema<Operation> = S.lazy("Operation", () =>
       S.struct({
         type: S.literal("operation"),
         operator: S.union(S.literal("+"), S.literal("-")),
         left: Expression,
         right: Expression
-      })
-    )
+      }))
 
     const input = {
       type: "operation",

@@ -178,7 +178,10 @@ describe.concurrent("Arbitrary", () => {
 
   it("lazy", () => {
     type A = readonly [number, A | null]
-    const schema: S.Schema<A> = S.lazy<A>(() => S.tuple(S.number, S.union(schema, S.literal(null))))
+    const schema: S.Schema<A> = S.lazy<A>(
+      "A",
+      () => S.tuple(S.number, S.union(schema, S.literal(null)))
+    )
     property(schema)
   })
 

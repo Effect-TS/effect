@@ -349,12 +349,11 @@ describe.concurrent("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.lazy<A>(() =>
+    const A: S.Schema<A> = S.lazy<A>("A", () =>
       S.struct({
         a: S.string,
         as: S.array(A)
-      })
-    )
+      }))
     const pretty = P.pretty(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
       `{ "a": "a", "as": [] }`

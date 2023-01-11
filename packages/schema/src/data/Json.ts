@@ -9,7 +9,7 @@ import type * as S from "@fp-ts/schema/Schema"
 /**
  * @since 1.0.0
  */
-export const json: S.Schema<Json> = I.lazy(() =>
+export const json: S.Schema<Json> = I.lazy("Json", () =>
   I.union(
     I._null,
     I.string,

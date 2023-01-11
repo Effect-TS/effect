@@ -280,9 +280,10 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
 
 /** @internal */
 export const lazy = <A>(
+  identifier: string,
   f: () => Schema<A>,
   annotations?: AST.Annotated["annotations"]
-): Schema<A> => makeSchema(AST.lazy(() => f().ast, annotations))
+): Schema<A> => makeSchema(AST.lazy(identifier, () => f().ast, annotations))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>

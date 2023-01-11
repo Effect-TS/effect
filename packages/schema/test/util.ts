@@ -90,13 +90,13 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
     case "Type":
-      return `${formatActual(e.actual)} ${formatAST(e.expected)}`
+      return `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
     case "Refinement":
       return `${formatActual(e.actual)} did not satisfy: ${e.meta.message}`
     case "Transform":
-      return `${formatActual(e.actual)} must be parsable from a value that ${
-        formatAST(e.from)
-      } to a value that ${formatAST(e.to)}`
+      return `${formatActual(e.actual)} must be parsable from ${formatAST(e.from)} to ${
+        formatAST(e.to)
+      }`
     case "Equal":
       return `${formatActual(e.actual)} did not satisfy isEqual(${String(e.expected)})`
     case "Index":

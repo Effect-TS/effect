@@ -466,7 +466,11 @@ export const extend = <B>(that: Schema<B>) =>
  * @category combinators
  * @since 1.0.0
  */
-export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
+export const lazy: <A>(
+  identifier: string,
+  f: () => Schema<A>,
+  annotations?: AST.Annotated["annotations"]
+) => Schema<A> = I.lazy
 
 /**
  * @category combinators

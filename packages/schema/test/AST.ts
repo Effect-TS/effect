@@ -284,12 +284,11 @@ describe.concurrent("AST", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const schema: S.Schema<A> = S.lazy<A>(() =>
+      const schema: S.Schema<A> = S.lazy<A>("A", () =>
         S.struct({
           a: S.string,
           as: S.array(schema)
-        })
-      )
+        }))
       expect(AST.propertyKeys(schema.ast)).toEqual(["a", "as"])
     })
   })
@@ -362,13 +361,11 @@ describe.concurrent("AST", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const Category: S.Schema<Category> = S.lazy<Category>(
-        () =>
-          S.struct({
-            name: S.string,
-            categories: S.array(Category)
-          })
-      )
+      const Category: S.Schema<Category> = S.lazy<Category>("Category", () =>
+        S.struct({
+          name: S.string,
+          categories: S.array(Category)
+        }))
       expect(AST.getPropertySignatures(Category.ast)).toEqual([
         AST.propertySignature("name", S.string.ast, false, true),
         AST.propertySignature(
