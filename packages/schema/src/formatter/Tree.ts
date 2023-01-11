@@ -144,7 +144,7 @@ const go = (e: DE.ParseError): Tree<string> => {
       )
     case "Equal":
       return make(
-        `${formatActual(e.actual)} did not satisfy isEqual(${formatActual(e.expected)})`
+        `${formatActual(e.actual)} must be equal to ${formatActual(e.expected)}`
       )
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))

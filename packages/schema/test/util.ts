@@ -98,7 +98,7 @@ const formatDecodeError = (e: PE.ParseError): string => {
         formatAST(e.to)
       }`
     case "Equal":
-      return `${formatActual(e.actual)} did not satisfy isEqual(${String(e.expected)})`
+      return `${formatActual(e.actual)} must be equal to ${formatActual(e.expected)}`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":

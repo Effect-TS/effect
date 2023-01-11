@@ -72,7 +72,7 @@ describe.concurrent("Decoder", () => {
    ├─ union member
    │  └─ "b" must be undefined
    ├─ union member
-   │  └─ "b" did not satisfy isEqual(null)
+   │  └─ "b" must be equal to null
    └─ union member
       └─ "b" must be a number`
     )
@@ -89,7 +89,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       O.some(1),
-      `member: /value 1 must be a string, member: /_tag "Some" did not satisfy isEqual(None)`
+      `member: /value 1 must be a string, member: /_tag "Some" must be equal to "None"`
     )
   })
 
@@ -125,16 +125,16 @@ describe.concurrent("Decoder", () => {
     const schema = S.templateLiteral(S.literal("a"))
     Util.expectDecodingSuccess(schema, "a", "a")
 
-    Util.expectDecodingFailure(schema, "ab", `"ab" did not satisfy isEqual(a)`)
-    Util.expectDecodingFailure(schema, "", `"" did not satisfy isEqual(a)`)
-    Util.expectDecodingFailure(schema, null, `null did not satisfy isEqual(a)`)
+    Util.expectDecodingFailure(schema, "ab", `"ab" must be equal to "a"`)
+    Util.expectDecodingFailure(schema, "", `"" must be equal to "a"`)
+    Util.expectDecodingFailure(schema, null, `null must be equal to "a"`)
   })
 
   it("templateLiteral. a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
     Util.expectDecodingSuccess(schema, "a b", "a b")
 
-    Util.expectDecodingFailure(schema, "a  b", `"a  b" did not satisfy isEqual(a b)`)
+    Util.expectDecodingFailure(schema, "a  b", `"a  b" must be equal to "a b"`)
   })
 
   it("templateLiteral. a${string}", () => {
@@ -229,13 +229,13 @@ describe.concurrent("Decoder", () => {
       "_id",
       `4 error(s) found
 ├─ union member
-│  └─ "_id" did not satisfy isEqual("welcome_email_id")
+│  └─ "_id" must be equal to "welcome_email_id"
 ├─ union member
-│  └─ "_id" did not satisfy isEqual("email_heading_id")
+│  └─ "_id" must be equal to "email_heading_id"
 ├─ union member
-│  └─ "_id" did not satisfy isEqual("footer_title_id")
+│  └─ "_id" must be equal to "footer_title_id"
 └─ union member
-   └─ "_id" did not satisfy isEqual("footer_sendoff_id")`
+   └─ "_id" must be equal to "footer_sendoff_id"`
     )
   })
 
@@ -310,8 +310,8 @@ describe.concurrent("Decoder", () => {
     const schema = S.literal(1)
     Util.expectDecodingSuccess(schema, 1)
 
-    Util.expectDecodingFailure(schema, "a", `"a" did not satisfy isEqual(1)`)
-    Util.expectDecodingFailure(schema, null, `null did not satisfy isEqual(1)`)
+    Util.expectDecodingFailure(schema, "a", `"a" must be equal to 1`)
+    Util.expectDecodingFailure(schema, null, `null must be equal to 1`)
   })
 
   it("literal 2 members", () => {
@@ -324,9 +324,9 @@ describe.concurrent("Decoder", () => {
       null,
       `2 error(s) found
 ├─ union member
-│  └─ null did not satisfy isEqual(1)
+│  └─ null must be equal to 1
 └─ union member
-   └─ null did not satisfy isEqual("a")`
+   └─ null must be equal to "a"`
     )
   })
 
@@ -338,7 +338,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Symbol(@fp-ts/schema/test/a)",
-      `"Symbol(@fp-ts/schema/test/a)" did not satisfy isEqual(Symbol(@fp-ts/schema/test/a))`
+      `"Symbol(@fp-ts/schema/test/a)" must be equal to Symbol(@fp-ts/schema/test/a)`
     )
   })
 
