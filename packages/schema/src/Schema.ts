@@ -474,7 +474,7 @@ export const lazy: <A>(f: () => Schema<A>) => Schema<A> = I.lazy
  */
 export const filterOrFail: <A, B extends A>(
   decode: Parser<A, B>["parse"],
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>) => Schema<B> = I.filterOrFail
 
@@ -484,17 +484,17 @@ export const filterOrFail: <A, B extends A>(
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A> {
   return (self) => I.filter(self, predicate, meta, annotations)

@@ -12,7 +12,7 @@ describe.concurrent("UUID", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" did not satisfy refinement({"pattern":"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$","type":"UUID"})`
+      `"" did not satisfy: String must match the pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
     )
   })
 })

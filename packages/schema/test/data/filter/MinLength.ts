@@ -20,7 +20,11 @@ describe.concurrent("minLength", () => {
     const schema = _.minLength(1)(S.string)
     Util.expectDecodingSuccess(schema, "a")
     Util.expectDecodingSuccess(schema, "aa")
-    Util.expectDecodingFailure(schema, "", `"" did not satisfy refinement({"minLength":1})`)
+    Util.expectDecodingFailure(
+      schema,
+      "",
+      `"" did not satisfy: String must be at least 1 characters long`
+    )
   })
 
   it("Pretty", () => {

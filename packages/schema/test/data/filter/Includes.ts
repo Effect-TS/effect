@@ -24,7 +24,11 @@ describe.concurrent("includes", () => {
     Util.expectDecodingSuccess(schema, "aa")
     Util.expectDecodingSuccess(schema, "bac")
     Util.expectDecodingSuccess(schema, "ba")
-    Util.expectDecodingFailure(schema, "", `"" did not satisfy refinement({"includes":"a"})`)
+    Util.expectDecodingFailure(
+      schema,
+      "",
+      `"" did not satisfy: String does not include the specified value "a"`
+    )
   })
 
   it("Pretty", () => {

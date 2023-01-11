@@ -92,7 +92,7 @@ const formatDecodeError = (e: PE.ParseError): string => {
     case "Type":
       return `${stringify(e.actual)} did not satisfy is(${e.expected})`
     case "Refinement":
-      return `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
+      return `${stringify(e.actual)} did not satisfy: ${e.meta.message}`
     case "Transform":
       return `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":

@@ -105,7 +105,7 @@ export const typeAlias = (
 /** @internal */
 export const filterOrFail = <A, B extends A>(
   decode: Parser<A, B>["parse"],
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>): Schema<B> => makeSchema(AST.refinement(self.ast, decode, meta, annotations))
 
@@ -113,19 +113,19 @@ export const filterOrFail = <A, B extends A>(
 export function filter<A, B extends A>(
   from: Schema<A>,
   refinement: Refinement<A, B>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): Schema<B>
 export function filter<A>(
   from: Schema<A>,
   predicate: Predicate<A>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): Schema<A>
 export function filter<A>(
   from: Schema<A>,
   predicate: Predicate<A>,
-  meta: unknown,
+  meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): Schema<A> {
   return pipe(

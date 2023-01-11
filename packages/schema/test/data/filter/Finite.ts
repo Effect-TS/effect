@@ -22,12 +22,12 @@ describe.concurrent("finite", () => {
     Util.expectDecodingFailure(
       schema,
       Infinity,
-      `Infinity did not satisfy refinement({"type":"Finite"})`
+      `Infinity did not satisfy: Number must be finite`
     )
     Util.expectDecodingFailure(
       schema,
       -Infinity,
-      `-Infinity did not satisfy refinement({"type":"Finite"})`
+      `-Infinity did not satisfy: Number must be finite`
     )
   })
 

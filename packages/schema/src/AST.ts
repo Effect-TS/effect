@@ -573,11 +573,20 @@ export const enums = (
  * @category model
  * @since 1.0.0
  */
+export interface Meta {
+  readonly message: string
+  readonly meta: unknown
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
   readonly decode: Parser<any, any>["parse"]
-  readonly meta: unknown
+  readonly meta: Meta
 }
 
 /**
@@ -587,7 +596,7 @@ export interface Refinement extends Annotated {
 export const refinement = (
   from: AST,
   decode: Parser<any, any>["parse"],
-  meta: unknown,
+  meta: Meta,
   annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
 

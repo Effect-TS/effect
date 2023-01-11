@@ -15,8 +15,18 @@ const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
 const PreferChar = pipe(
   S.string,
   S.filterOrFail(
-    (s) => s.length === 1 ? PE.success(s) : PE.warning(PE.refinement({ type: "Char" }, s), s),
-    { type: "Char" }
+    (s) =>
+      s.length === 1 ? PE.success(s) : PE.warning(
+        PE.refinement({
+          message: "String is not a single character",
+          meta: { type: "Char" }
+        }, s),
+        s
+      ),
+    {
+      message: "String is not a single character",
+      meta: { type: "Char" }
+    }
   )
 )
 
@@ -35,7 +45,7 @@ describe.concurrent("Encoder", () => {
     expect(E.encodeOrThrow(schema)(1)).toEqual("1")
     expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
       new Error(`1 error(s) found
-└─ "10" did not satisfy refinement({"maxLength":1})`)
+└─ "10" did not satisfy: String cannot exceed 1 characters`)
     )
   })
 
@@ -52,7 +62,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       O.some(10),
-      `member: /value "10" did not satisfy refinement({"maxLength":1}), member: /_tag "Some" did not satisfy isEqual(None)`
+      `member: /value "10" did not satisfy: String cannot exceed 1 characters, member: /_tag "Some" did not satisfy isEqual(None)`
     )
   })
 
@@ -144,7 +154,11 @@ describe.concurrent("Encoder", () => {
   it("tuple/e", () => {
     const schema = S.tuple(NumberFromString)
     Util.expectEncodingSuccess(schema, [1], ["1"])
-    Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
+    Util.expectEncodingFailure(
+      schema,
+      [10],
+      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+    )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
@@ -154,7 +168,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" did not satisfy refinement({"type":"Char"}), /1 "bb" did not satisfy refinement({"type":"Char"})`
+      `/0 "aa" did not satisfy: String is not a single character, /1 "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -169,7 +183,11 @@ describe.concurrent("Encoder", () => {
     const schema = pipe(S.tuple(), S.optionalElement(NumberFromString))
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, [1], ["1"])
-    Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
+    Util.expectEncodingFailure(
+      schema,
+      [10],
+      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+    )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
@@ -207,7 +225,11 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, [], [])
     Util.expectEncodingSuccess(schema, [1], ["1"])
     Util.expectEncodingSuccess(schema, [1, 2], ["1", "2"])
-    Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
+    Util.expectEncodingFailure(
+      schema,
+      [10],
+      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+    )
   })
 
   it("tuple/r warnings", () => {
@@ -216,7 +238,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" did not satisfy refinement({"type":"Char"}), /1 "bb" did not satisfy refinement({"type":"Char"})`
+      `/0 "aa" did not satisfy: String is not a single character, /1 "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -226,7 +248,11 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, ["a", 1], ["a", "1"])
     Util.expectEncodingSuccess(schema, ["a", "b", 1], ["a", "b", "1"])
     Util.expectEncodingFailure(schema, [] as any, `/0 is missing`)
-    Util.expectEncodingFailure(schema, [10], `/0 "10" did not satisfy refinement({"maxLength":1})`)
+    Util.expectEncodingFailure(
+      schema,
+      [10],
+      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+    )
   })
 
   it("tuple/r + e warnings", () => {
@@ -235,7 +261,7 @@ describe.concurrent("Encoder", () => {
       schema,
       [1, 2, "aa", "bb"],
       [1, 2, "aa", "bb"],
-      `/2 "aa" did not satisfy refinement({"type":"Char"}), /3 "bb" did not satisfy refinement({"type":"Char"})`
+      `/2 "aa" did not satisfy: String is not a single character, /3 "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -286,7 +312,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy refinement({"type":"Char"}), /b "bb" did not satisfy refinement({"type":"Char"})`
+      `/a "aa" did not satisfy: String is not a single character, /b "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -295,7 +321,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a" },
-      `/aa "aa" did not satisfy refinement({"maxLength":1})`
+      `/aa "aa" did not satisfy: String cannot exceed 1 characters`
     )
   })
 
@@ -304,7 +330,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa" },
-      `/a "aa" did not satisfy refinement({"maxLength":1})`
+      `/a "aa" did not satisfy: String cannot exceed 1 characters`
     )
   })
 
@@ -314,7 +340,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { aa: "a", bb: "b" },
       { aa: "a", bb: "b" },
-      `/aa "aa" did not satisfy refinement({"type":"Char"}), /bb "bb" did not satisfy refinement({"type":"Char"})`
+      `/aa "aa" did not satisfy: String is not a single character, /bb "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -324,7 +350,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy refinement({"type":"Char"}), /b "bb" did not satisfy refinement({"type":"Char"})`
+      `/a "aa" did not satisfy: String is not a single character, /b "bb" did not satisfy: String is not a single character`
     )
   })
 
@@ -503,7 +529,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy refinement({"maxLength":1}), /1 "10" did not satisfy refinement({"maxLength":1})`,
+      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })
@@ -513,7 +539,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy refinement({"maxLength":1}), /1 "10" did not satisfy refinement({"maxLength":1})`,
+      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })
@@ -523,7 +549,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy refinement({"maxLength":1}), /1 "10" did not satisfy refinement({"maxLength":1})`,
+      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })
@@ -533,7 +559,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: 10, b: 10 },
-      `/a "10" did not satisfy refinement({"maxLength":1}), /b "10" did not satisfy refinement({"maxLength":1})`,
+      `/a "10" did not satisfy: String cannot exceed 1 characters, /b "10" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })
@@ -543,7 +569,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a", bb: "bb" },
-      `/aa "aa" did not satisfy refinement({"maxLength":1}), /bb "bb" did not satisfy refinement({"maxLength":1})`,
+      `/aa "aa" did not satisfy: String cannot exceed 1 characters, /bb "bb" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })
@@ -553,7 +579,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy refinement({"maxLength":1}), /b "bb" did not satisfy refinement({"maxLength":1})`,
+      `/a "aa" did not satisfy: String cannot exceed 1 characters, /b "bb" did not satisfy: String cannot exceed 1 characters`,
       allErrors
     )
   })

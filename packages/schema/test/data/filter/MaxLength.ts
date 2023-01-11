@@ -20,7 +20,11 @@ describe.concurrent("maxLength", () => {
     const schema = _.maxLength(1)(S.string)
     Util.expectDecodingSuccess(schema, "")
     Util.expectDecodingSuccess(schema, "a")
-    Util.expectDecodingFailure(schema, "aa", `"aa" did not satisfy refinement({"maxLength":1})`)
+    Util.expectDecodingFailure(
+      schema,
+      "aa",
+      `"aa" did not satisfy: String cannot exceed 1 characters`
+    )
   })
 
   it("Pretty", () => {

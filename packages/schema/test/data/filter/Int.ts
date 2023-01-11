@@ -20,7 +20,7 @@ describe.concurrent("int", () => {
     const schema = _.int(S.number)
     Util.expectDecodingSuccess(schema, 0)
     Util.expectDecodingSuccess(schema, 1)
-    Util.expectDecodingFailure(schema, 0.5, `0.5 did not satisfy refinement({"type":"integer"})`)
+    Util.expectDecodingFailure(schema, 0.5, `0.5 did not satisfy: Number must be an integer`)
   })
 
   it("Pretty", () => {

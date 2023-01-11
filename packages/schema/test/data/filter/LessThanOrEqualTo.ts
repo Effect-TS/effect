@@ -20,7 +20,11 @@ describe.concurrent("lessThanOrEqualTo", () => {
     const schema = _.lessThanOrEqualTo(0)(S.number)
     Util.expectDecodingSuccess(schema, 0)
     Util.expectDecodingSuccess(schema, -1)
-    Util.expectDecodingFailure(schema, 1, `1 did not satisfy refinement({"maximum":0})`)
+    Util.expectDecodingFailure(
+      schema,
+      1,
+      `1 did not satisfy: Number must be less than or equal to 0`
+    )
   })
 
   it("Pretty", () => {

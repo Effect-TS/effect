@@ -6,6 +6,7 @@ import type { Left, Right } from "@fp-ts/data/Either"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Validated } from "@fp-ts/data/These"
 import * as T from "@fp-ts/data/These"
+import type { Meta } from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
@@ -13,7 +14,7 @@ import * as T from "@fp-ts/data/These"
 export type ParseResult<A> = Validated<ParseError, A>
 
 /**
- * `DecodeError` is a type that represents the different types of errors that can occur when decoding a value.
+ * `ParseError` is a type that represents the different types of errors that can occur when decoding a value.
  *
  * @category model
  * @since 1.0.0
@@ -31,7 +32,7 @@ export type ParseError =
   | Member
 
 /**
- * The `Type` variant of the `DecodeError` type represents an error that occurs when the `actual` value is not of the expected type.
+ * The `Type` variant of the `ParseError` type represents an error that occurs when the `actual` value is not of the expected type.
  * The `expected` field specifies the name of the expected type, and the `actual` field contains the value that caused the error.
  * This error can occur when trying to decode a value using a codec that is only able to decode values of a specific type,
  * and the actual value is not of that type. For example, if you are using a codec to decode a string value and the actual value
@@ -57,7 +58,7 @@ export const type = (expected: string, actual: unknown): Type => ({
 })
 
 /**
- * The `Equal` variant of the `DecodeError` type represents an error that occurs when the `actual` value being decoded is not equal
+ * The `Equal` variant of the `ParseError` type represents an error that occurs when the `actual` value being decoded is not equal
  * to the `expected` value. This error is typically used when decoding a value that must match a specific value, such as a boolean or a
  * string literal. The `expected` field of the `Equal` error contains the expected value, and the `actual` field contains the value
  * that was actually encountered during decoding.
@@ -81,7 +82,7 @@ export const equal = (
 ): Equal => ({ _tag: "Equal", expected, actual })
 
 /**
- * The `Enums` variant of the `DecodeError` type represents an error that occurs when the `actual` value being decoded
+ * The `Enums` variant of the `ParseError` type represents an error that occurs when the `actual` value being decoded
  * is not one of the expected enum values. This error typically occurs when decoding a string or number value that is expected
  * to match one of a predefined set of values. The `enums` field of this error type is an array of tuples, where each tuple contains
  * a string representation of the expected enum value and its corresponding raw value.
@@ -108,7 +109,7 @@ export const enums = (
 ): Enums => ({ _tag: "Enums", enums, actual })
 
 /**
- * The `Refinement` variant of the `DecodeError` type indicates that the actual value did not pass a refinement check.
+ * The `Refinement` variant of the `ParseError` type indicates that the actual value did not pass a refinement check.
  * This error typically occurs when a `filter` function is used to further validate the shape or type of a value.
  * The `meta` field can be used to include additional information about the refinement,
  * such as the expected type or shape of the value, or a custom error message.
@@ -118,7 +119,7 @@ export const enums = (
  */
 export interface Refinement {
   readonly _tag: "Refinement"
-  readonly meta: unknown
+  readonly meta: Meta
   readonly actual: unknown
 }
 
@@ -126,14 +127,14 @@ export interface Refinement {
  * @category constructors
  * @since 1.0.0
  */
-export const refinement = (meta: unknown, actual: unknown): Refinement => ({
+export const refinement = (meta: Meta, actual: unknown): Refinement => ({
   _tag: "Refinement",
   meta,
   actual
 })
 
 /**
- * The `Transform` variant of the `DecodeError` type represents an error that occurs when a value cannot be transformed
+ * The `Transform` variant of the `ParseError` type represents an error that occurs when a value cannot be transformed
  * from one format to another. For example, this error might occur when attempting to parse a string as a number.
  * The `from` field specifies the format that the value is being transformed from, and the `to` field specifies the format
  * that the value is being transformed to. The `actual` field contains the value that caused the error.
@@ -196,7 +197,7 @@ export const index = (
 export const isIndex = (e: ParseError): e is Index => e._tag === "Index"
 
 /**
- * The `Key` variant of the `DecodeError` type represents an error that occurs when a key in an object is invalid.
+ * The `Key` variant of the `ParseError` type represents an error that occurs when a key in an object is invalid.
  * This error typically occurs when the `actual` value is not a valid key type (e.g. a string or number)
  * or when the key is not present in the object being decoded. In either case, the `key` field of the error will contain
  * the invalid key value. This error is typically used in combination with the `Unexpected` error,

@@ -82,7 +82,7 @@ const go = (e: DE.ParseError): Tree<string> => {
       return make(`${stringify(e.actual)} did not satisfy is(${e.expected})`)
     case "Refinement":
       return make(
-        `${stringify(e.actual)} did not satisfy refinement(${stringify(e.meta)})`
+        `${stringify(e.actual)} did not satisfy: ${e.meta.message}`
       )
     case "Transform":
       return make(

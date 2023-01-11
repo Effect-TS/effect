@@ -14,14 +14,20 @@ import type { Schema } from "@fp-ts/schema/Schema"
  * @since 1.0.0
  */
 export const finite = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.filter(self, (a): a is A => Number.isFinite(a), { type: "Finite" })
+  I.filter(self, (a): a is A => Number.isFinite(a), {
+    message: "Number must be finite",
+    meta: { type: "finite" }
+  })
 
 /**
  * @since 1.0.0
  */
 export const greaterThan = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a > min, { exclusiveMinimum: min }, {
+    I.filter(self, (a): a is A => a > min, {
+      message: `Number must be greater than ${min}`,
+      meta: { exclusiveMinimum: min }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMinimum: min })
     })
 
@@ -30,7 +36,10 @@ export const greaterThan = (min: number) =>
  */
 export const greaterThanOrEqualTo = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a >= min, { minimum: min }, {
+    I.filter(self, (a): a is A => a >= min, {
+      message: `Number must be greater than or equal to ${min}`,
+      meta: { minimum: min }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minimum: min })
     })
 
@@ -40,14 +49,18 @@ export const greaterThanOrEqualTo = (min: number) =>
 export const instanceOf = <A extends abstract new(...args: any) => any>(constructor: A) =>
   (self: Schema<object>): Schema<InstanceType<A>> =>
     I.filter(self, (a): a is InstanceType<A> => a instanceof constructor, {
-      instanceof: constructor
+      message: `Object must be an instance of ${constructor.name}`,
+      meta: { instanceof: constructor }
     })
 
 /**
  * @since 1.0.0
  */
 export const int = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.filter(self, (a): a is A => Number.isInteger(a), { type: "integer" }, {
+  I.filter(self, (a): a is A => Number.isInteger(a), {
+    message: "Number must be an integer",
+    meta: { type: "integer" }
+  }, {
     [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ type: "integer" })
   })
 
@@ -56,7 +69,10 @@ export const int = <A extends number>(self: Schema<A>): Schema<A> =>
  */
 export const lessThan = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a < max, { exclusiveMaximum: max }, {
+    I.filter(self, (a): a is A => a < max, {
+      message: `Number must be less than ${max}`,
+      meta: { exclusiveMaximum: max }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMaximum: max })
     })
 
@@ -65,7 +81,10 @@ export const lessThan = (max: number) =>
  */
 export const lessThanOrEqualTo = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a <= max, { maximum: max }, {
+    I.filter(self, (a): a is A => a <= max, {
+      message: `Number must be less than or equal to ${max}`,
+      meta: { maximum: max }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maximum: max })
     })
 
@@ -76,7 +95,10 @@ export const maxLength = (
   maxLength: number
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a.length <= maxLength, { maxLength }, {
+    I.filter(self, (a): a is A => a.length <= maxLength, {
+      message: `String cannot exceed ${maxLength} characters`,
+      meta: { maxLength }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maxLength })
     })
 
@@ -87,7 +109,10 @@ export const minLength = (
   minLength: number
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a.length >= minLength, { minLength }, {
+    I.filter(self, (a): a is A => a.length >= minLength, {
+      message: `String must be at least ${minLength} characters long`,
+      meta: { minLength }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minLength })
     })
 
@@ -95,7 +120,10 @@ export const minLength = (
  * @since 1.0.0
  */
 export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
-  I.filter(self, (a): a is A => !Number.isNaN(a), { type: "NonNaN" })
+  I.filter(self, (a): a is A => !Number.isNaN(a), {
+    message: "Number cannot be NaN",
+    meta: { type: "NonNaN" }
+  })
 
 /**
  * @since 1.0.0
@@ -107,10 +135,18 @@ export const pattern = (
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> => {
     const pattern = regex.source
-    return I.filter(self, (a): a is A => regex.test(a), { pattern, ...meta }, {
-      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern }),
-      ...annotations
-    })
+    return I.filter(
+      self,
+      (a): a is A => regex.test(a),
+      {
+        message: `String must match the pattern: ${pattern}`,
+        meta: { pattern, ...meta }
+      },
+      {
+        [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern }),
+        ...annotations
+      }
+    )
   }
 
 /**
@@ -118,7 +154,10 @@ export const pattern = (
  */
 export const startsWith = (startsWith: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a.startsWith(startsWith), { startsWith }, {
+    I.filter(self, (a): a is A => a.startsWith(startsWith), {
+      message: `String does not begin with specified value ${JSON.stringify(startsWith)}`,
+      meta: { startsWith }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^${startsWith}` })
     })
 
@@ -127,7 +166,10 @@ export const startsWith = (startsWith: string) =>
  */
 export const endsWith = (endsWith: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a.endsWith(endsWith), { endsWith }, {
+    I.filter(self, (a): a is A => a.endsWith(endsWith), {
+      message: `String does not end with specified value ${JSON.stringify(endsWith)}`,
+      meta: { endsWith }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^.*${endsWith}$` })
     })
 
@@ -136,6 +178,9 @@ export const endsWith = (endsWith: string) =>
  */
 export const includes = (searchString: string) =>
   <A extends string>(self: Schema<A>): Schema<A> =>
-    I.filter(self, (a): a is A => a.includes(searchString), { includes: searchString }, {
+    I.filter(self, (a): a is A => a.includes(searchString), {
+      message: `String does not include the specified value ${JSON.stringify(searchString)}`,
+      meta: { includes: searchString }
+    }, {
       [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `.*${searchString}.*` })
     })
