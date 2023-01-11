@@ -21,7 +21,6 @@ export type ParseResult<A> = Validated<ParseError, A>
  */
 export type ParseError =
   | Type
-  | Transform
   | Index
   | Key
   | Missing
@@ -51,35 +50,6 @@ export interface Type {
 export const type = (expected: AST.AST, actual: unknown): Type => ({
   _tag: "Type",
   expected,
-  actual
-})
-
-/**
- * The `Transform` variant of the `ParseError` type represents an error that occurs when a value cannot be transformed
- * from one format to another. For example, this error might occur when attempting to parse a string as a number.
- * The `from` field specifies the format that the value is being transformed from, and the `to` field specifies the format
- * that the value is being transformed to. The `actual` field contains the value that caused the error.
- * This error is typically used in conjunction with the `parse` function from the `@fp-ts/schema/data/parser` module,
- * which allows users to define custom parsers for specific types or formats.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Transform {
-  readonly _tag: "Transform"
-  readonly from: AST.AST
-  readonly to: AST.AST
-  readonly actual: unknown
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const transform = (from: AST.AST, to: AST.AST, actual: unknown): Transform => ({
-  _tag: "Transform",
-  from,
-  to,
   actual
 })
 

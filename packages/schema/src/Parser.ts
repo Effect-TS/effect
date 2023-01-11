@@ -161,19 +161,7 @@ const parserFor = <A>(
       case "BigIntKeyword":
         return make(
           I.makeSchema(ast),
-          (u) => {
-            if (I.isBigInt(u)) {
-              return PE.success(u)
-            }
-            if (isString(u) || isNumber(u) || isBoolean(u)) {
-              try {
-                return PE.success(BigInt(u))
-              } catch (_e) {
-                return PE.failure(PE.transform(primitive, ast, u))
-              }
-            }
-            return PE.failure(PE.type(primitive, u))
-          }
+          (u) => I.isBigInt(u) ? PE.success(u) : PE.failure(PE.type(ast, u))
         )
       case "SymbolKeyword":
         return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => PE.type(ast, u))
@@ -547,8 +535,6 @@ const unknownRecord = AST.typeLiteral([], [
   AST.indexSignature(AST.stringKeyword, AST.unknownKeyword, true),
   AST.indexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
 ])
-
-const primitive = AST.union([AST.stringKeyword, AST.numberKeyword, AST.booleanKeyword])
 
 const hasUnexpectedError = (e: PE.ParseError): boolean =>
   (PE.isKey(e) && e.errors.some(PE.isUnexpected)) ||

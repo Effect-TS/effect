@@ -91,10 +91,6 @@ const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
     case "Type":
       return `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
-    case "Transform":
-      return `${formatActual(e.actual)} must be parsable from ${formatAST(e.from)} to ${
-        formatAST(e.to)
-      }`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":

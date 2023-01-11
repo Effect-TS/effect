@@ -124,7 +124,7 @@ export const formatAST = (ast: AST.AST): string => {
     case "TypeAlias":
       return `an instance of ${ast.identifier}`
     case "Transform":
-      return `a value parsable from ${formatAST(ast.from)} to  ${formatAST(ast.to)}`
+      return `parsable from ${formatAST(ast.from)} to ${formatAST(ast.to)}`
   }
 }
 
@@ -133,10 +133,6 @@ const go = (e: DE.ParseError): Tree<string> => {
     case "Type":
       return make(
         `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
-      )
-    case "Transform":
-      return make(
-        `${formatActual(e.actual)} must be parsable from ${formatAST(e.from)} to ${formatAST(e.to)}`
       )
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))

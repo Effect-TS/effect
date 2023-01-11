@@ -270,18 +270,16 @@ describe.concurrent("Decoder", () => {
     const schema = S.bigint
     Util.expectDecodingSuccess(schema, 0n, 0n)
     Util.expectDecodingSuccess(schema, 1n, 1n)
-    Util.expectDecodingSuccess(schema, BigInt("1"), BigInt("1"))
-    Util.expectDecodingSuccess(schema, "1", 1n)
 
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be a string or a number or a boolean"
+      "null must be a bigint"
     )
     Util.expectDecodingFailure(
       schema,
       1.2,
-      `1.2 must be parsable from a string or a number or a boolean to a bigint`
+      `1.2 must be a bigint`
     )
   })
 

@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { pipe } from "@fp-ts/data/Function"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -14,22 +15,28 @@ import type { Schema } from "@fp-ts/schema/Schema"
 
   @since 1.0.0
 */
-export const parseNumber: (self: Schema<string>) => Schema<number> = I.transformOrFail(
-  I.number,
-  (s: string) => {
-    if (s === "NaN") {
-      return PE.success(NaN)
-    }
-    if (s === "Infinity") {
-      return PE.success(Infinity)
-    }
-    if (s === "-Infinity") {
-      return PE.success(-Infinity)
-    }
-    const n = parseFloat(s)
-    return isNaN(n) ?
-      PE.failure(PE.transform(I.string.ast, I.number.ast, s)) :
-      PE.success(n)
-  },
-  (n) => PE.success(String(n))
-)
+export const parseNumber = (self: Schema<string>): Schema<number> => {
+  const schema: Schema<number> = pipe(
+    self,
+    I.transformOrFail(
+      I.number,
+      (s: string) => {
+        if (s === "NaN") {
+          return PE.success(NaN)
+        }
+        if (s === "Infinity") {
+          return PE.success(Infinity)
+        }
+        if (s === "-Infinity") {
+          return PE.success(-Infinity)
+        }
+        const n = parseFloat(s)
+        return isNaN(n) ?
+          PE.failure(PE.type(schema.ast, s)) :
+          PE.success(n)
+      },
+      (n) => PE.success(String(n))
+    )
+  )
+  return schema
+}
