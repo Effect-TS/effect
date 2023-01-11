@@ -89,7 +89,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       O.some(1),
-      `member: /value 1 must be a string, member: /_tag "Some" must be the literal "None"`
+      `union member: /value 1 must be a string, union member: /_tag "Some" must be the literal "None"`
     )
   })
 
@@ -443,7 +443,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 member: "a" must be a number, member: "a" must be undefined`
+      `/0 union member: "a" must be a number, union member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -480,7 +480,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 member: "a" must be a number, member: "a" must be undefined`
+      `/0 union member: "a" must be a number, union member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -592,7 +592,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a member: "a" must be a number, member: "a" must be undefined`
+      `/a union member: "a" must be a number, union member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -634,7 +634,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a member: "a" must be a number, member: "a" must be undefined`
+      `/a union member: "a" must be a number, union member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })

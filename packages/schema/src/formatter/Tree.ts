@@ -142,7 +142,7 @@ const go = (e: DE.ParseError): Tree<string> => {
       return make(`key ${formatActual(e.key)}`, e.errors.map(go))
     case "Missing":
       return make(`is missing`)
-    case "Member":
+    case "UnionMember":
       return make(`union member`, e.errors.map(go))
   }
 }

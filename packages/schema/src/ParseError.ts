@@ -25,7 +25,7 @@ export type ParseError =
   | Key
   | Missing
   | Unexpected
-  | Member
+  | UnionMember
 
 /**
  * The `Type` variant of the `ParseError` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -172,8 +172,8 @@ export const isUnexpected = (e: ParseError): e is Unexpected => e._tag === "Unex
  * @category model
  * @since 1.0.0
  */
-export interface Member {
-  readonly _tag: "Member"
+export interface UnionMember {
+  readonly _tag: "UnionMember"
   readonly errors: NonEmptyReadonlyArray<ParseError>
 }
 
@@ -181,10 +181,10 @@ export interface Member {
  * @category constructors
  * @since 1.0.0
  */
-export const member = (
+export const unionMember = (
   errors: NonEmptyReadonlyArray<ParseError>
-): Member => ({
-  _tag: "Member",
+): UnionMember => ({
+  _tag: "UnionMember",
   errors
 })
 

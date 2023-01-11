@@ -55,7 +55,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       O.some(10),
-      `member: /value "10" must be a string at most 1 character(s) long, member: /_tag "Some" must be the literal "None"`
+      `union member: /value "10" must be a string at most 1 character(s) long, union member: /_tag "Some" must be the literal "None"`
     )
   })
 

@@ -99,8 +99,8 @@ const formatDecodeError = (e: PE.ParseError): string => {
       return `is missing`
     case "Unexpected":
       return `is unexpected`
-    case "Member":
-      return `member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
+    case "UnionMember":
+      return `union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
   }
 }
 

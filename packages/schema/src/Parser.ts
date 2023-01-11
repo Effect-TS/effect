@@ -458,7 +458,7 @@ const parserFor = <A>(
                 output = t
               }
             } else {
-              es.push(PE.member(t.left))
+              es.push(PE.unionMember(t.left))
             }
           }
 
