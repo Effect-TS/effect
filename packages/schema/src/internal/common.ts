@@ -92,11 +92,13 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
 export const typeAlias = (
+  identifier: string,
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
   annotations?: AST.Annotated["annotations"]
 ): Schema<any> =>
   makeSchema(AST.typeAlias(
+    identifier,
     typeParameters.map((tp) => tp.ast),
     type.ast,
     annotations

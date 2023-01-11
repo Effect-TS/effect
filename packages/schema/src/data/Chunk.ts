@@ -38,6 +38,7 @@ const pretty = <A>(item: Pretty<A>): Pretty<Chunk<A>> =>
  */
 export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
   I.typeAlias(
+    "Chunk",
     [item],
     I.struct({
       _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")),

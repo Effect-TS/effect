@@ -54,6 +54,7 @@ const pretty = <K, V>(key: Pretty<K>, value: Pretty<V>): Pretty<ReadonlyMap<K, V
  */
 export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<ReadonlyMap<K, V>> =>
   I.typeAlias(
+    "ReadonlyMap",
     [key, value],
     I.struct({
       size: I.number

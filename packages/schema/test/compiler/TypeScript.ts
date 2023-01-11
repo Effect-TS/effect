@@ -136,22 +136,17 @@ const getPropertyName = (ast: AST.PropertySignature): ts.PropertyName =>
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
     switch (ast._tag) {
-      case "TypeAlias":
-        return pipe(
-          getIdentifier(ast),
-          O.match(
-            () => go(ast.type),
-            (id) =>
-              make(
-                ast,
-                pipe(
-                  ast.typeParameters,
-                  traverse((ast) => go(ast).nodes),
-                  map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
-                )
-              )
+      case "TypeAlias": {
+        const id = ast.identifier
+        return make(
+          ast,
+          pipe(
+            ast.typeParameters,
+            traverse((ast) => go(ast).nodes),
+            map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
           )
         )
+      }
       case "Literal": {
         const literal = ast.literal
         if (typeof literal === "string") {

@@ -25,7 +25,7 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `null must be an instance of ReadonlySet`
     )
     Util.expectDecodingFailure(
       schema,

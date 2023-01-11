@@ -154,6 +154,7 @@ const getTemplateLiterals = (
   @since 1.0.0
 */
 export const typeAlias: (
+  identifier: string,
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
   annotations?: AST.Annotated["annotations"]

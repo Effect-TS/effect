@@ -53,6 +53,7 @@ export interface Annotated {
  */
 export interface TypeAlias extends Annotated {
   readonly _tag: "TypeAlias"
+  readonly identifier: string
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
 }
@@ -62,10 +63,11 @@ export interface TypeAlias extends Annotated {
  * @since 1.0.0
  */
 export const typeAlias = (
+  identifier: string,
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: Annotated["annotations"] = {}
-): TypeAlias => ({ _tag: "TypeAlias", typeParameters, type, annotations })
+): TypeAlias => ({ _tag: "TypeAlias", identifier, typeParameters, type, annotations })
 
 /**
  * @category guards

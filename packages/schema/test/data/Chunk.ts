@@ -26,7 +26,7 @@ describe.concurrent("Chunk", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `null must be an instance of Chunk`
     )
     Util.expectDecodingFailure(
       schema,

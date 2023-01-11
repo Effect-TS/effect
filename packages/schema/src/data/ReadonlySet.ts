@@ -45,6 +45,7 @@ const pretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
  */
 export const readonlySet = <A>(item: Schema<A>): Schema<ReadonlySet<A>> =>
   I.typeAlias(
+    "ReadonlySet",
     [item],
     I.struct({
       size: I.number

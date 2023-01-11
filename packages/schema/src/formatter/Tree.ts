@@ -122,7 +122,7 @@ export const formatAST = (ast: AST.AST): string => {
     case "Lazy":
       return `an instance of ${ast.identifier}`
     case "TypeAlias":
-      return formatAST(ast.type)
+      return `an instance of ${ast.identifier}`
     case "Transform":
       return `a value parsable from ${formatAST(ast.from)} to  ${formatAST(ast.to)}`
   }
