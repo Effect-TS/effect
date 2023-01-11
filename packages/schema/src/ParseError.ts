@@ -21,7 +21,6 @@ export type ParseResult<A> = Validated<ParseError, A>
  */
 export type ParseError =
   | Type
-  | Refinement
   | Transform
   | Index
   | Key
@@ -52,31 +51,6 @@ export interface Type {
 export const type = (expected: AST.AST, actual: unknown): Type => ({
   _tag: "Type",
   expected,
-  actual
-})
-
-/**
- * The `Refinement` variant of the `ParseError` type indicates that the actual value did not pass a refinement check.
- * This error typically occurs when a `filter` function is used to further validate the shape or type of a value.
- * The `meta` field can be used to include additional information about the refinement,
- * such as the expected type or shape of the value, or a custom error message.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Refinement {
-  readonly _tag: "Refinement"
-  readonly meta: AST.Meta
-  readonly actual: unknown
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const refinement = (meta: AST.Meta, actual: unknown): Refinement => ({
-  _tag: "Refinement",
-  meta,
   actual
 })
 

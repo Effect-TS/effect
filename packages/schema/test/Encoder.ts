@@ -12,17 +12,10 @@ import * as Util from "@fp-ts/schema/test/util"
 const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
 
 // raises a warning while encoding if the string is not a char
-const PreferChar = pipe(
+const PreferChar: S.Schema<string> = pipe(
   S.string,
   S.filterOrFail(
-    (s) =>
-      s.length === 1 ? PE.success(s) : PE.warning(
-        PE.refinement({
-          message: "a single character",
-          meta: { type: "Char" }
-        }, s),
-        s
-      ),
+    (s) => s.length === 1 ? PE.success(s) : PE.warning(PE.type(PreferChar.ast, s), s),
     {
       message: "a single character",
       meta: { type: "Char" }

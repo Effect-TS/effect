@@ -502,7 +502,7 @@ export function filter<A>(
   meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A> {
-  return (self) => I.filter(self, predicate, meta, annotations)
+  return I.filter(predicate, meta, annotations)
 }
 
 /**

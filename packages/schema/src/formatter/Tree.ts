@@ -110,7 +110,7 @@ export const formatAST = (ast: AST.AST): string => {
     case "Union":
       return ast.types.map(formatAST).join(" or ")
     case "Refinement":
-      return `a refinement of ${formatAST(ast.from)} such that: ` + ast.meta.message
+      return ast.meta.message
     case "TemplateLiteral":
       return `a value conforming to the template literal ${formatTemplateLiteral(ast)}`
     case "Tuple":
@@ -133,10 +133,6 @@ const go = (e: DE.ParseError): Tree<string> => {
     case "Type":
       return make(
         `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
-      )
-    case "Refinement":
-      return make(
-        `${formatActual(e.actual)} must be ${e.meta.message}`
       )
     case "Transform":
       return make(

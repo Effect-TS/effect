@@ -113,31 +113,31 @@ export const filterOrFail = <A, B extends A>(
 
 /** @internal */
 export function filter<A, B extends A>(
-  from: Schema<A>,
   refinement: Refinement<A, B>,
   meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
-): Schema<B>
+): (from: Schema<A>) => Schema<B>
 export function filter<A>(
-  from: Schema<A>,
   predicate: Predicate<A>,
   meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
-): Schema<A>
+): (from: Schema<A>) => Schema<A>
 export function filter<A>(
-  from: Schema<A>,
   predicate: Predicate<A>,
   meta: AST.Meta,
   annotations?: AST.Annotated["annotations"]
-): Schema<A> {
-  return pipe(
-    from,
-    filterOrFail(
-      (a) => predicate(a) ? PE.success(a) : PE.failure(PE.refinement(meta, a)),
-      meta,
-      annotations
+): (from: Schema<A>) => Schema<A> {
+  return (from) => {
+    const schema: Schema<A> = pipe(
+      from,
+      filterOrFail(
+        (a) => predicate(a) ? PE.success(a) : PE.failure(PE.type(schema.ast, a)),
+        meta,
+        annotations
+      )
     )
-  )
+    return schema
+  }
 }
 
 /** @internal */
