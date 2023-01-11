@@ -17,7 +17,7 @@ describe.concurrent("Decoder", () => {
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrowError(
       new Error(`1 error(s) found
-└─ 1 did not satisfy: Input must be a string`)
+└─ 1 must be a string`)
     )
   })
 
@@ -70,11 +70,11 @@ describe.concurrent("Decoder", () => {
       `1 error(s) found
 └─ key "b"
    ├─ union member
-   │  └─ "b" did not satisfy: Input must be undefined
+   │  └─ "b" must be undefined
    ├─ union member
    │  └─ "b" did not satisfy isEqual(null)
    └─ union member
-      └─ "b" did not satisfy: Input must be a number`
+      └─ "b" must be a number`
     )
 
     Util.expectEncodingSuccess(schema, { a: "a", b: O.none }, { a: "a" })
@@ -89,14 +89,14 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       O.some(1),
-      `member: /value 1 did not satisfy: Input must be a string, member: /_tag "Some" did not satisfy isEqual(None)`
+      `member: /value 1 must be a string, member: /_tag "Some" did not satisfy isEqual(None)`
     )
   })
 
   it("void", () => {
     const schema = S.void
     Util.expectDecodingSuccess(schema, undefined, undefined)
-    Util.expectDecodingFailure(schema, 1, `1 did not satisfy: Input must be void`)
+    Util.expectDecodingFailure(schema, 1, `1 must be void`)
   })
 
   it("any", () => {
@@ -142,11 +142,11 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, "a", "a")
     Util.expectDecodingSuccess(schema, "ab", "ab")
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy: Input must be a string`)
+    Util.expectDecodingFailure(schema, null, `null must be a string`)
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" did not satisfy: Input must be a value conforming to the template literal a${string}"
+      "\"\" must conform to the template literal a${string}"
     )
   })
 
@@ -155,16 +155,16 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, "a1", "a1")
     Util.expectDecodingSuccess(schema, "a1.2", "a1.2")
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy: Input must be a string`)
+    Util.expectDecodingFailure(schema, null, `null must be a string`)
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" did not satisfy: Input must be a value conforming to the template literal a${number}"
+      "\"\" must conform to the template literal a${number}"
     )
     Util.expectDecodingFailure(
       schema,
       "aa",
-      "\"aa\" did not satisfy: Input must be a value conforming to the template literal a${number}"
+      "\"aa\" must conform to the template literal a${number}"
     )
   })
 
@@ -183,17 +183,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" did not satisfy: Input must be a value conforming to the template literal a${string}b"
+      "\"\" must conform to the template literal a${string}b"
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" did not satisfy: Input must be a value conforming to the template literal a${string}b"
+      "\"a\" must conform to the template literal a${string}b"
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" did not satisfy: Input must be a value conforming to the template literal a${string}b"
+      "\"b\" must conform to the template literal a${string}b"
     )
   })
 
@@ -206,12 +206,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" did not satisfy: Input must be a value conforming to the template literal a${string}b${string}"
+      "\"a\" must conform to the template literal a${string}b${string}"
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" did not satisfy: Input must be a value conforming to the template literal a${string}b${string}"
+      "\"b\" must conform to the template literal a${string}b${string}"
     )
   })
 
@@ -241,13 +241,13 @@ describe.concurrent("Decoder", () => {
 
   it("never", () => {
     const schema = S.never
-    Util.expectDecodingFailure(schema, 1, "1 did not satisfy: Input must be never")
+    Util.expectDecodingFailure(schema, 1, "1 must be never")
   })
 
   it("string", () => {
     const schema = S.string
     Util.expectDecodingSuccess(schema, "a", "a")
-    Util.expectDecodingFailure(schema, 1, "1 did not satisfy: Input must be a string")
+    Util.expectDecodingFailure(schema, 1, "1 must be a string")
   })
 
   it("number", () => {
@@ -256,14 +256,14 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, NaN, NaN)
     Util.expectDecodingSuccess(schema, Infinity, Infinity)
     Util.expectDecodingSuccess(schema, -Infinity, -Infinity)
-    Util.expectDecodingFailure(schema, "a", `"a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, "a", `"a" must be a number`)
   })
 
   it("boolean", () => {
     const schema = S.boolean
     Util.expectDecodingSuccess(schema, true, true)
     Util.expectDecodingSuccess(schema, false, false)
-    Util.expectDecodingFailure(schema, 1, `1 did not satisfy: Input must be a boolean`)
+    Util.expectDecodingFailure(schema, 1, `1 must be a boolean`)
   })
 
   it("bigint", () => {
@@ -276,7 +276,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null did not satisfy: Input must be a string or a number or a boolean"
+      "null must be a string or must be a number or must be a boolean"
     )
     Util.expectDecodingFailure(
       schema,
@@ -292,7 +292,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "@fp-ts/schema/test/a",
-      `"@fp-ts/schema/test/a" did not satisfy: Input must be a symbol`
+      `"@fp-ts/schema/test/a" must be a symbol`
     )
   })
 
@@ -300,10 +300,10 @@ describe.concurrent("Decoder", () => {
     const schema = S.object
     Util.expectDecodingSuccess(schema, {})
     Util.expectDecodingSuccess(schema, [])
-    Util.expectDecodingFailure(schema, null, `null did not satisfy: Input must be an object`)
-    Util.expectDecodingFailure(schema, "a", `"a" did not satisfy: Input must be an object`)
-    Util.expectDecodingFailure(schema, 1, `1 did not satisfy: Input must be an object`)
-    Util.expectDecodingFailure(schema, true, `true did not satisfy: Input must be an object`)
+    Util.expectDecodingFailure(schema, null, `null must be an object`)
+    Util.expectDecodingFailure(schema, "a", `"a" must be an object`)
+    Util.expectDecodingFailure(schema, 1, `1 must be an object`)
+    Util.expectDecodingFailure(schema, true, `true must be an object`)
   })
 
   it("literal 1 member", () => {
@@ -356,7 +356,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       3,
-      `3 did not satisfy: Input must be a value conforming to the enum Fruits`
+      `3 must conform to the enum Fruits`
     )
   })
 
@@ -376,7 +376,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" did not satisfy: Input must be a value conforming to the enum Fruits`
+      `"Cantaloupe" must conform to the enum Fruits`
     )
   })
 
@@ -394,7 +394,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" did not satisfy: Input must be a value conforming to the enum Fruits`
+      `"Cantaloupe" must conform to the enum Fruits`
     )
   })
 
@@ -405,9 +405,9 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
-    Util.expectDecodingFailure(schema, {}, `{} did not satisfy: Input must be a tuple or an array`)
+    Util.expectDecodingFailure(schema, {}, `{} must be a tuple or an array`)
     Util.expectDecodingFailure(schema, [undefined], `/0 is unexpected`)
     Util.expectDecodingFailure(schema, [1], `/0 is unexpected`)
   })
@@ -419,15 +419,15 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
       schema,
       [undefined],
-      `/0 undefined did not satisfy: Input must be a number`
+      `/0 undefined must be a number`
     )
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
 
@@ -439,13 +439,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 member: "a" did not satisfy: Input must be a number, member: "a" did not satisfy: Input must be undefined`
+      `/0 member: "a" must be a number, member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -458,12 +458,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 "a" did not satisfy: Input must be a number`
+      `/0 "a" must be a number`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -477,12 +477,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 member: "a" did not satisfy: Input must be a number, member: "a" did not satisfy: Input must be undefined`
+      `/0 member: "a" must be a number, member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -492,8 +492,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a"])
     Util.expectDecodingSuccess(schema, ["a", 1])
 
-    Util.expectDecodingFailure(schema, [1], `/0 1 did not satisfy: Input must be a string`)
-    Util.expectDecodingFailure(schema, ["a", "b"], `/1 "b" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, [1], `/0 1 must be a string`)
+    Util.expectDecodingFailure(schema, ["a", "b"], `/1 "b" must be a number`)
   })
 
   it("tuple. e r", () => {
@@ -512,7 +512,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a", 1])
     Util.expectDecodingSuccess(schema, ["a", 1, 2])
 
-    Util.expectDecodingFailure(schema, [1], `/0 1 did not satisfy: Input must be a string`)
+    Util.expectDecodingFailure(schema, [1], `/0 1 must be a string`)
   })
 
   it("tuple. r", () => {
@@ -521,8 +521,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, [1])
     Util.expectDecodingSuccess(schema, [1, 2])
 
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" did not satisfy: Input must be a number`)
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
+    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" must be a number`)
   })
 
   it("tuple. r e", () => {
@@ -532,8 +532,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a", "b", 1])
 
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" did not satisfy: Input must be a number`)
-    Util.expectDecodingFailure(schema, [1, 2], `/0 1 did not satisfy: Input must be a string`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
+    Util.expectDecodingFailure(schema, [1, 2], `/0 1 must be a string`)
   })
 
   it("tuple. e r e", () => {
@@ -544,9 +544,9 @@ describe.concurrent("Decoder", () => {
 
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(schema, ["a"], `/1 is missing`)
-    Util.expectDecodingFailure(schema, [true], `/0 true did not satisfy: Input must be a string`)
-    Util.expectDecodingFailure(schema, ["a", 1], `/1 1 did not satisfy: Input must be a boolean`)
-    Util.expectDecodingFailure(schema, [1, true], `/0 1 did not satisfy: Input must be a string`)
+    Util.expectDecodingFailure(schema, [true], `/0 true must be a string`)
+    Util.expectDecodingFailure(schema, ["a", 1], `/1 1 must be a boolean`)
+    Util.expectDecodingFailure(schema, [1, true], `/0 1 must be a string`)
   })
 
   it("struct/empty", () => {
@@ -558,7 +558,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a struct or a record`
+      `null must be an object`
     )
   })
 
@@ -569,13 +569,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      "/a undefined did not satisfy: Input must be a number"
+      "/a undefined must be a number"
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -588,13 +588,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a member: "a" did not satisfy: Input must be a number, member: "a" did not satisfy: Input must be undefined`
+      `/a member: "a" must be a number, member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -607,17 +607,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a "a" did not satisfy: Input must be a number`
+      `/a "a" must be a number`
     )
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      `/a undefined did not satisfy: Input must be a number`
+      `/a undefined must be a number`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -631,12 +631,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a member: "a" did not satisfy: Input must be a number, member: "a" did not satisfy: Input must be undefined`
+      `/a member: "a" must be a number, member: "a" must be undefined`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -656,11 +656,11 @@ describe.concurrent("Decoder", () => {
 
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(schema, { b: "b" }, "/a is missing")
-    Util.expectDecodingFailure(schema, { a: 1 }, "/a 1 did not satisfy: Input must be a string")
+    Util.expectDecodingFailure(schema, { a: 1 }, "/a 1 must be a string")
     Util.expectDecodingFailure(
       schema,
       { a: "a", b: 1 },
-      "/b 1 did not satisfy: Input must be a string"
+      "/b 1 must be a string"
     )
   })
 
@@ -672,12 +672,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "[] did not satisfy: Input must be a struct or a record"
+      "[] must be an object"
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a "a" did not satisfy: Input must be a number`
+      `/a "a" must be a number`
     )
   })
 
@@ -690,12 +690,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "[] did not satisfy: Input must be a struct or a record"
+      "[] must be an object"
     )
     Util.expectDecodingFailure(
       schema,
       { [a]: "a" },
-      `/Symbol(@fp-ts/schema/test/a) "a" did not satisfy: Input must be a number`
+      `/Symbol(@fp-ts/schema/test/a) "a" must be a number`
     )
   })
 
@@ -721,7 +721,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, {}, `/a is missing`)
     Util.expectDecodingFailure(schema, { a: 1 }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 2 }, `/a is missing`)
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
   })
 
   it("struct/ record(keyof struct({ a, b } & Record<string, string>), number)", () => {
@@ -734,7 +734,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, { a: 1 })
     Util.expectDecodingSuccess(schema, { b: 2 })
 
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
   })
 
   it("struct/ record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
@@ -749,11 +749,11 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, {}, `/a is missing`)
     Util.expectDecodingFailure(schema, { a: 1 }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 2 }, `/a is missing`)
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: 2, [c]: "c" },
-      `/Symbol(@fp-ts/schema/test/c) "c" did not satisfy: Input must be a number`
+      `/Symbol(@fp-ts/schema/test/c) "c" must be a number`
     )
   })
 
@@ -784,7 +784,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { _tag: "a" },
-      `/_tag "a" did not satisfy: Input must be a number`
+      `/_tag "a" must be a number`
     )
   })
 
@@ -799,12 +799,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { "": 1 },
-      "/ \"\" did not satisfy: Input must be a value conforming to the template literal ${string}-${string}"
+      "/ \"\" must conform to the template literal ${string}-${string}"
     )
     Util.expectDecodingFailure(
       schema,
       { "-": "a" },
-      `/- "a" did not satisfy: Input must be a number`
+      `/- "a" must be a number`
     )
   })
 
@@ -828,7 +828,7 @@ describe.concurrent("Decoder", () => {
 
   it("union/ empty union", () => {
     const schema = S.union()
-    Util.expectDecodingFailure(schema, 1, "1 did not satisfy: Input must be never")
+    Util.expectDecodingFailure(schema, 1, "1 must be never")
   })
 
   it("union/ more required property signatures", () => {
@@ -869,7 +869,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 did not satisfy: Input must be a struct or a record"
+      "/as /0 /as /0 1 must be an object"
     )
   })
 
@@ -937,7 +937,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      `/a undefined did not satisfy: Input must be a number`
+      `/a undefined must be a number`
     )
   })
 
@@ -960,9 +960,9 @@ describe.concurrent("Decoder", () => {
       `1 error(s) found
 └─ index 0
    ├─ union member
-   │  └─ "a" did not satisfy: Input must be a number
+   │  └─ "a" must be a number
    └─ union member
-      └─ "a" did not satisfy: Input must be undefined`
+      └─ "a" must be undefined`
     )
   })
 
@@ -980,11 +980,11 @@ describe.concurrent("Decoder", () => {
 ├─ union member
 │  └─ index 0
 │     ├─ union member
-│     │  └─ "a" did not satisfy: Input must be a number
+│     │  └─ "a" must be a number
 │     └─ union member
-│        └─ "a" did not satisfy: Input must be undefined
+│        └─ "a" must be undefined
 └─ union member
-   └─ ["a"] did not satisfy: Input must be a string`
+   └─ ["a"] must be a string`
     )
   })
 
@@ -996,7 +996,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null did not satisfy: Input must be a struct or a record"
+      "null must be an object"
     )
     Util.expectDecodingFailure(schema, { a: "a" }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 1 }, "/a is missing")
@@ -1011,7 +1011,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null did not satisfy: Input must be a struct or a record"
+      "null must be an object"
     )
     Util.expectDecodingFailure(schema, { [a]: "a" }, `/b is missing`)
     Util.expectDecodingFailure(
@@ -1291,7 +1291,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [1, "b"],
-      `/0 1 did not satisfy: Input must be a string, /1 "b" did not satisfy: Input must be a number`,
+      `/0 1 must be a string, /1 "b" must be a number`,
       allErrors
     )
   })
@@ -1306,7 +1306,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a", "b", "c"],
-      `/1 "b" did not satisfy: Input must be a number, /2 "c" did not satisfy: Input must be a number`,
+      `/1 "b" must be a number, /2 "c" must be a number`,
       allErrors
     )
   })
@@ -1316,7 +1316,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a", "b"],
-      `/0 "a" did not satisfy: Input must be a number, /1 "b" did not satisfy: Input must be a number`,
+      `/0 "a" must be a number, /1 "b" must be a number`,
       allErrors
     )
   })
@@ -1331,7 +1331,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: "b" },
-      `/a 1 did not satisfy: Input must be a string, /b "b" did not satisfy: Input must be a number`,
+      `/a 1 must be a string, /b "b" must be a number`,
       allErrors
     )
   })
@@ -1361,7 +1361,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a", b: "b" },
-      `/a "a" did not satisfy: Input must be a number, /b "b" did not satisfy: Input must be a number`,
+      `/a "a" must be a number, /b "b" must be a number`,
       allErrors
     )
   })

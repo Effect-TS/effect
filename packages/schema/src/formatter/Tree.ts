@@ -78,61 +78,53 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const formatTuple = (_ast: AST.Tuple): string => {
-  return "a tuple or an array" // TODO
-}
-
-const formatTypeLiteral = (_ast: AST.TypeLiteral): string => {
-  return "a struct or a record" // TODO
-}
-
 /** @internal */
 export const formatAST = (ast: AST.AST): string => {
   switch (ast._tag) {
     case "StringKeyword":
-      return "a string"
+      return "must be a string"
     case "NumberKeyword":
-      return "a number"
+      return "must be a number"
     case "BooleanKeyword":
-      return "a boolean"
+      return "must be a boolean"
     case "BigIntKeyword":
-      return "a bigint"
+      return "must be a bigint"
     case "UndefinedKeyword":
-      return "undefined"
+      return "must be undefined"
     case "SymbolKeyword":
-      return "a symbol"
+      return "must be a symbol"
     case "ObjectKeyword":
-      return "an object"
+      return "must be an object"
     case "AnyKeyword":
-      return "any"
+      return "must be any"
     case "UnknownKeyword":
-      return "unknown"
+      return "must be unknown"
     case "VoidKeyword":
-      return "void"
+      return "must be void"
     case "NeverKeyword":
-      return "never"
+      return "must be never"
     case "Literal":
-      return `the literal ${formatActual(ast.literal)}`
+      return `must be the literal ${formatActual(ast.literal)}`
     case "UniqueSymbol":
-      return `the unique symbol ${formatActual(ast.symbol)}`
+      return `must be the unique symbol ${formatActual(ast.symbol)}`
     case "Union":
       return ast.types.map(formatAST).join(" or ")
     case "Refinement":
-      return `a refinement of ${formatAST(ast.from)} such that: ` + ast.meta.message
+      return `must be a refinement of ${formatAST(ast.from)} such that: ` + ast.meta.message
     case "TemplateLiteral":
-      return `a value conforming to the template literal ${formatTemplateLiteral(ast)}`
+      return `must conform to the template literal ${formatTemplateLiteral(ast)}`
     case "Tuple":
-      return formatTuple(ast)
+      return "must be a tuple or an array"
     case "TypeLiteral":
-      return formatTypeLiteral(ast)
+      return "must be an object"
     case "Enums":
-      return `a value conforming to the enum ${ast.identifier}`
+      return `must conform to the enum ${ast.identifier}`
     case "Lazy":
-      return `an instance of ${"TODO"}` // TODO
+      return `must be an instance of ${"TODO"}` // TODO
     case "TypeAlias":
-      return `an instance of ${formatAST(ast.type)}` // TODO
+      return formatAST(ast.type)
     case "Transform":
-      return `a value parseable from ${ast.from} to ${ast.to}` // TODO
+      return `must be parseable from ${ast.from} to ${ast.to}` // TODO
   }
 }
 
@@ -140,7 +132,7 @@ const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(
-        `${formatActual(e.actual)} did not satisfy: Input must be ${formatAST(e.expected)}`
+        `${formatActual(e.actual)} ${formatAST(e.expected)}`
       )
     case "Refinement":
       return make(

@@ -25,7 +25,7 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be an instance of a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(
       schema,
@@ -70,9 +70,9 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" did not satisfy: Input must be a number`)
+    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" must be a number`)
   })
 
   it("fromValues. encoder", () => {

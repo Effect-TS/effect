@@ -29,7 +29,7 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be an instance of a struct or a record`
+      `null must be an object`
     )
     Util.expectDecodingFailure(
       schema,
@@ -87,12 +87,12 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null did not satisfy: Input must be a tuple or an array`
+      `null must be a tuple or an array`
     )
     Util.expectDecodingFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `/1 /1 1 did not satisfy: Input must be a string`
+      `/1 /1 1 must be a string`
     )
   })
 
