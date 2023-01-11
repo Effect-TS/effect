@@ -97,7 +97,7 @@ describe.concurrent("Arbitrary", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     property(schema)
   })
 
@@ -107,7 +107,7 @@ describe.concurrent("Arbitrary", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     property(schema)
   })
 
@@ -117,7 +117,7 @@ describe.concurrent("Arbitrary", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     property(schema)
   })
 

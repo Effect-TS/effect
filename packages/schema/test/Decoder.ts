@@ -347,7 +347,7 @@ describe.concurrent("Decoder", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     Util.expectDecodingSuccess(schema, Fruits.Apple)
     Util.expectDecodingSuccess(schema, Fruits.Banana)
     Util.expectDecodingSuccess(schema, 0)
@@ -356,7 +356,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       3,
-      `3 did not satisfy isEnum([["Apple",0],["Banana",1]])`
+      `3 did not satisfy: Input must be a value conforming to the enum Fruits`
     )
   })
 
@@ -366,7 +366,7 @@ describe.concurrent("Decoder", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     Util.expectDecodingSuccess(schema, Fruits.Apple)
     Util.expectDecodingSuccess(schema, Fruits.Cantaloupe)
     Util.expectDecodingSuccess(schema, "apple")
@@ -376,7 +376,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" did not satisfy isEnum([["Apple","apple"],["Banana","banana"],["Cantaloupe",0]])`
+      `"Cantaloupe" did not satisfy: Input must be a value conforming to the enum Fruits`
     )
   })
 
@@ -386,7 +386,7 @@ describe.concurrent("Decoder", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums(Fruits)
+    const schema = S.enums("Fruits", Fruits)
     Util.expectDecodingSuccess(schema, "apple")
     Util.expectDecodingSuccess(schema, "banana")
     Util.expectDecodingSuccess(schema, 3)
@@ -394,7 +394,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" did not satisfy isEnum([["Apple","apple"],["Banana","banana"],["Cantaloupe",3]])`
+      `"Cantaloupe" did not satisfy: Input must be a value conforming to the enum Fruits`
     )
   })
 

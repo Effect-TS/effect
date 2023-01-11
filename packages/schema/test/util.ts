@@ -97,8 +97,6 @@ const formatDecodeError = (e: PE.ParseError): string => {
       return `${formatActual(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
       return `${formatActual(e.actual)} did not satisfy isEqual(${String(e.expected)})`
-    case "Enums":
-      return `${formatActual(e.actual)} did not satisfy isEnum(${formatActual(e.enums)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":

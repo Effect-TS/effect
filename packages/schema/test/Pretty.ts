@@ -128,7 +128,7 @@ describe.concurrent("Pretty", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`0`)
       expect(pretty(Fruits.Banana)).toEqual(`1`)
@@ -140,7 +140,7 @@ describe.concurrent("Pretty", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -153,7 +153,7 @@ describe.concurrent("Pretty", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)

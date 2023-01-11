@@ -496,7 +496,7 @@ const parserFor = <A>(
           (u) =>
             ast.enums.some(([_, value]) => value === u) ?
               PE.success(u) :
-              PE.failure(PE.enums(ast.enums, u))
+              PE.failure(PE.type(ast, u))
         )
       case "Refinement": {
         const type = go(ast.from)

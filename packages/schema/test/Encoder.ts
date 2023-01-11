@@ -116,7 +116,7 @@ describe.concurrent("Encoder", () => {
         Apple,
         Banana
       }
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, 0)
       Util.expectEncodingSuccess(schema, Fruits.Banana, 1)
     })
@@ -127,7 +127,7 @@ describe.concurrent("Encoder", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
       Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
       Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 0)
@@ -139,7 +139,7 @@ describe.concurrent("Encoder", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums(Fruits)
+      const schema = S.enums("Fruits", Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
       Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
       Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 3)

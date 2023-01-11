@@ -555,8 +555,9 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
  * @category model
  * @since 1.0.0
  */
-export interface Enums extends Annotated {
+export interface Enums {
   readonly _tag: "Enums"
+  readonly identifier: string
   readonly enums: ReadonlyArray<readonly [string, string | number]>
 }
 
@@ -565,9 +566,9 @@ export interface Enums extends Annotated {
  * @since 1.0.0
  */
 export const enums = (
-  enums: ReadonlyArray<readonly [string, string | number]>,
-  annotations: Annotated["annotations"] = {}
-): Enums => ({ _tag: "Enums", enums, annotations })
+  identifier: string,
+  enums: ReadonlyArray<readonly [string, string | number]>
+): Enums => ({ _tag: "Enums", identifier, enums })
 
 /**
  * @category model

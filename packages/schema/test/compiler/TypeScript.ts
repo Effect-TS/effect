@@ -335,10 +335,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
       case "Lazy":
         throw new Error("Unhandled schema: TODO")
       case "Enums": {
-        const id = pipe(
-          getIdentifier(ast),
-          O.getOrThrow(() => new Error("cannot find an indentifier for this native enum"))
-        )
+        const id = ts.factory.createIdentifier(ast.identifier)
         const typeNode = ts.factory.createTypeQueryNode(id)
         const declaration = ts.factory.createEnumDeclaration(
           undefined,
@@ -531,9 +528,7 @@ describe.concurrent("TypeScript", () => {
       Apple,
       Banana
     }
-    const schema = S.enums(Fruits, {
-      [IdentifierAnnotationId]: identifierAnnotation("Fruits")
-    })
+    const schema = S.enums("Fruits", Fruits)
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([
       `enum Fruits {

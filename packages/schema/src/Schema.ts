@@ -60,15 +60,15 @@ export const uniqueSymbol: <S extends symbol>(
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(
-  enums: A,
-  annotations: AST.Annotated["annotations"] = {}
+  identifier: string,
+  enums: A
 ): Schema<A[keyof A]> =>
   make(
     AST.enums(
+      identifier,
       Object.keys(enums).filter(
         (key) => typeof enums[enums[key]] !== "number"
-      ).map((key) => [key, enums[key]]),
-      annotations
+      ).map((key) => [key, enums[key]])
     )
   )
 

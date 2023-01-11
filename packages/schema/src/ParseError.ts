@@ -22,7 +22,6 @@ export type ParseResult<A> = Validated<ParseError, A>
 export type ParseError =
   | Type
   | Equal
-  | Enums
   | Refinement
   | Transform
   | Index
@@ -80,33 +79,6 @@ export const equal = (
   expected: unknown,
   actual: unknown
 ): Equal => ({ _tag: "Equal", expected, actual })
-
-/**
- * The `Enums` variant of the `ParseError` type represents an error that occurs when the `actual` value being decoded
- * is not one of the expected enum values. This error typically occurs when decoding a string or number value that is expected
- * to match one of a predefined set of values. The `enums` field of this error type is an array of tuples, where each tuple contains
- * a string representation of the expected enum value and its corresponding raw value.
- * The `actual` field contains the value that was actually encountered during decoding.
- * This error is often used in combination with the `S.enums` schema constructor,
- * which allows users to specify a set of allowed enum values for a decoded value.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Enums {
-  readonly _tag: "Enums"
-  readonly enums: ReadonlyArray<readonly [string, string | number]>
-  readonly actual: unknown
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const enums = (
-  enums: ReadonlyArray<readonly [string, string | number]>,
-  actual: unknown
-): Enums => ({ _tag: "Enums", enums, actual })
 
 /**
  * The `Refinement` variant of the `ParseError` type indicates that the actual value did not pass a refinement check.

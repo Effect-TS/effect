@@ -126,7 +126,7 @@ export const formatAST = (ast: AST.AST): string => {
     case "TypeLiteral":
       return formatTypeLiteral(ast)
     case "Enums":
-      return `a value conforming to the enum ${"TODO"}` // TODO
+      return `a value conforming to the enum ${ast.identifier}`
     case "Lazy":
       return `an instance of ${"TODO"}` // TODO
     case "TypeAlias":
@@ -154,8 +154,6 @@ const go = (e: DE.ParseError): Tree<string> => {
       return make(
         `${formatActual(e.actual)} did not satisfy isEqual(${formatActual(e.expected)})`
       )
-    case "Enums":
-      return make(`${formatActual(e.actual)} did not satisfy isEnum(${formatActual(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
     case "Unexpected":

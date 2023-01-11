@@ -116,7 +116,7 @@ enum Fruits {
 }
 
 // $ExpectType Schema<Fruits>
-S.enums(Fruits);
+S.enums("Fruits", Fruits);
 
 //
 // Nullables
