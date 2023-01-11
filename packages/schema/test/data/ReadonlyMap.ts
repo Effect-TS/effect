@@ -34,7 +34,7 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `/1 /0 "a" did not satisfy parsing from (string) to (number)`
+      `/1 /0 "a" must be parsable from a value that must be a string to a value that must be a number`
     )
   })
 

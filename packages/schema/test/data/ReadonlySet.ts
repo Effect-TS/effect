@@ -30,7 +30,7 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `/1 "a" did not satisfy parsing from (string) to (number)`
+      `/1 "a" must be parsable from a value that must be a string to a value that must be a number`
     )
   })
 

@@ -118,8 +118,8 @@ export const refinement = (meta: AST.Meta, actual: unknown): Refinement => ({
  */
 export interface Transform {
   readonly _tag: "Transform"
-  readonly from: string
-  readonly to: string
+  readonly from: AST.AST
+  readonly to: AST.AST
   readonly actual: unknown
 }
 
@@ -127,7 +127,7 @@ export interface Transform {
  * @category constructors
  * @since 1.0.0
  */
-export const transform = (from: string, to: string, actual: unknown): Transform => ({
+export const transform = (from: AST.AST, to: AST.AST, actual: unknown): Transform => ({
   _tag: "Transform",
   from,
   to,

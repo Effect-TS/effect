@@ -281,7 +281,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       1.2,
-      `1.2 did not satisfy parsing from (string | number | boolean) to (bigint)`
+      `1.2 must be parsable from a value that must be a string or must be a number or must be a boolean to a value that must be a bigint`
     )
   })
 

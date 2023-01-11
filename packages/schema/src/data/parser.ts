@@ -28,7 +28,7 @@ export const parseNumber: (self: Schema<string>) => Schema<number> = I.transform
     }
     const n = parseFloat(s)
     return isNaN(n) ?
-      PE.failure(PE.transform("string", "number", s)) :
+      PE.failure(PE.transform(I.string.ast, I.number.ast, s)) :
       PE.success(n)
   },
   (n) => PE.success(String(n))

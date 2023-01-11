@@ -94,7 +94,9 @@ const formatDecodeError = (e: PE.ParseError): string => {
     case "Refinement":
       return `${formatActual(e.actual)} did not satisfy: ${e.meta.message}`
     case "Transform":
-      return `${formatActual(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+      return `${formatActual(e.actual)} must be parsable from a value that ${
+        formatAST(e.from)
+      } to a value that ${formatAST(e.to)}`
     case "Equal":
       return `${formatActual(e.actual)} did not satisfy isEqual(${String(e.expected)})`
     case "Index":

@@ -169,7 +169,7 @@ const parserFor = <A>(
               try {
                 return PE.success(BigInt(u))
               } catch (_e) {
-                return PE.failure(PE.transform("string | number | boolean", "bigint", u))
+                return PE.failure(PE.transform(primitive, ast, u))
               }
             }
             return PE.failure(PE.type(primitive, u))
