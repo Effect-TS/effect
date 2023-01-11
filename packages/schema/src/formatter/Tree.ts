@@ -3,25 +3,17 @@
  */
 
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import type * as AST from "@fp-ts/schema/AST"
 import type * as DE from "@fp-ts/schema/ParseError"
 
-/**
- * @since 1.0.0
- */
-export interface Forest<A> extends ReadonlyArray<Tree<A>> {}
+interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
-/**
- * @since 1.0.0
- */
-export interface Tree<A> {
+interface Tree<A> {
   value: A
   forest: Forest<A>
 }
 
-/**
- * @since 1.0.0
- */
-export const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
+const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
   value,
   forest
 })
@@ -29,7 +21,7 @@ export const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 /**
  * @since 1.0.0
  */
-export const format = (errors: NonEmptyReadonlyArray<DE.ParseError>): string =>
+export const formatErrors = (errors: NonEmptyReadonlyArray<DE.ParseError>): string =>
   drawTree(make(`${errors.length} error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
@@ -47,10 +39,8 @@ const draw = (indentation: string, forest: Forest<string>): string => {
   return r
 }
 
-/**
- * @since 1.0.0
- */
-export const stringify = (actual: unknown): string => {
+/** @internal */
+export const formatActual = (actual: unknown): string => {
   if (typeof actual === "number") {
     return Number.isNaN(actual) ? "NaN" : String(actual)
   }
@@ -64,10 +54,10 @@ export const stringify = (actual: unknown): string => {
     return "null"
   }
   if (actual instanceof Set) {
-    return `Set([${stringify(Array.from(actual.values()))}])`
+    return `Set([${formatActual(Array.from(actual.values()))}])`
   }
   if (actual instanceof Map) {
-    return `Map([${stringify(Array.from(actual.entries()))}])`
+    return `Map([${formatActual(Array.from(actual.entries()))}])`
   }
   try {
     return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
@@ -76,30 +66,102 @@ export const stringify = (actual: unknown): string => {
   }
 }
 
+const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
+  switch (span.type._tag) {
+    case "StringKeyword":
+      return "${string}"
+    case "NumberKeyword":
+      return "${number}"
+  }
+}
+
+const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
+  ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
+
+const formatTuple = (_ast: AST.Tuple): string => {
+  return "a tuple or an array" // TODO
+}
+
+const formatTypeLiteral = (_ast: AST.TypeLiteral): string => {
+  return "a struct or a record" // TODO
+}
+
+/** @internal */
+export const formatAST = (ast: AST.AST): string => {
+  switch (ast._tag) {
+    case "StringKeyword":
+      return "a string"
+    case "NumberKeyword":
+      return "a number"
+    case "BooleanKeyword":
+      return "a boolean"
+    case "BigIntKeyword":
+      return "a bigint"
+    case "UndefinedKeyword":
+      return "undefined"
+    case "SymbolKeyword":
+      return "a symbol"
+    case "ObjectKeyword":
+      return "an object"
+    case "AnyKeyword":
+      return "any"
+    case "UnknownKeyword":
+      return "unknown"
+    case "VoidKeyword":
+      return "void"
+    case "NeverKeyword":
+      return "never"
+    case "Literal":
+      return `the literal ${formatActual(ast.literal)}`
+    case "UniqueSymbol":
+      return `the unique symbol ${formatActual(ast.symbol)}`
+    case "Union":
+      return ast.types.map(formatAST).join(" or ")
+    case "Refinement":
+      return `a refinement of ${formatAST(ast.from)} such that: ` + ast.meta.message
+    case "TemplateLiteral":
+      return `a value conforming to the template literal ${formatTemplateLiteral(ast)}`
+    case "Tuple":
+      return formatTuple(ast)
+    case "TypeLiteral":
+      return formatTypeLiteral(ast)
+    case "Enums":
+      return `a value conforming to the enum ${"TODO"}` // TODO
+    case "Lazy":
+      return `an instance of ${"TODO"}` // TODO
+    case "TypeAlias":
+      return `an instance of ${formatAST(ast.type)}` // TODO
+    case "Transform":
+      return `a value parseable from ${ast.from} to ${ast.to}` // TODO
+  }
+}
+
 const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Type":
-      return make(`${stringify(e.actual)} did not satisfy is(${e.expected})`)
+      return make(
+        `${formatActual(e.actual)} did not satisfy: Input must be ${formatAST(e.expected)}`
+      )
     case "Refinement":
       return make(
-        `${stringify(e.actual)} did not satisfy: ${e.meta.message}`
+        `${formatActual(e.actual)} did not satisfy: ${e.meta.message}`
       )
     case "Transform":
       return make(
-        `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+        `${formatActual(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
       )
     case "Equal":
       return make(
-        `${stringify(e.actual)} did not satisfy isEqual(${stringify(e.expected)})`
+        `${formatActual(e.actual)} did not satisfy isEqual(${formatActual(e.expected)})`
       )
     case "Enums":
-      return make(`${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`)
+      return make(`${formatActual(e.actual)} did not satisfy isEnum(${formatActual(e.enums)})`)
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
     case "Unexpected":
       return make(`is unexpected`)
     case "Key":
-      return make(`key ${stringify(e.key)}`, e.errors.map(go))
+      return make(`key ${formatActual(e.key)}`, e.errors.map(go))
     case "Missing":
       return make(`is missing`)
     case "Member":

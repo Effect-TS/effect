@@ -3,7 +3,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
-import { format, stringify } from "@fp-ts/schema/formatter/Tree"
+import { formatActual, formatAST, formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
@@ -90,15 +90,15 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
     case "Type":
-      return `${stringify(e.actual)} did not satisfy is(${e.expected})`
+      return `${formatActual(e.actual)} did not satisfy: Input must be ${formatAST(e.expected)}`
     case "Refinement":
-      return `${stringify(e.actual)} did not satisfy: ${e.meta.message}`
+      return `${formatActual(e.actual)} did not satisfy: ${e.meta.message}`
     case "Transform":
-      return `${stringify(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
+      return `${formatActual(e.actual)} did not satisfy parsing from (${e.from}) to (${e.to})`
     case "Equal":
-      return `${stringify(e.actual)} did not satisfy isEqual(${String(e.expected)})`
+      return `${formatActual(e.actual)} did not satisfy isEqual(${String(e.expected)})`
     case "Enums":
-      return `${stringify(e.actual)} did not satisfy isEnum(${stringify(e.enums)})`
+      return `${formatActual(e.actual)} did not satisfy isEnum(${formatActual(e.enums)})`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":
@@ -113,7 +113,7 @@ const formatDecodeError = (e: PE.ParseError): string => {
 }
 
 export const expectDecodingFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
-  const t = pipe(P.decode(schema)(u), T.mapLeft(format))
+  const t = pipe(P.decode(schema)(u), T.mapLeft(formatErrors))
   expect(T.isLeft(t)).toEqual(true)
   expect(t).toEqual(T.left(message))
 }
@@ -124,7 +124,7 @@ export const expectDecodingWarningTree = <A>(
   message: string,
   a: A
 ) => {
-  const t = pipe(P.decode(schema)(u), T.mapLeft(format))
+  const t = pipe(P.decode(schema)(u), T.mapLeft(formatErrors))
   expect(T.isBoth(t)).toEqual(true)
   expect(t).toEqual(T.both(message, a))
 }

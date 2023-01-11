@@ -29,11 +29,11 @@ describe.concurrent("Option", () => {
       {},
       `3 error(s) found
 ├─ union member
-│  └─ {} did not satisfy is(undefined)
+│  └─ {} did not satisfy: Input must be undefined
 ├─ union member
 │  └─ {} did not satisfy isEqual(null)
 └─ union member
-   └─ {} did not satisfy is(number)`
+   └─ {} did not satisfy: Input must be a number`
     )
   })
 

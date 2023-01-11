@@ -6,7 +6,7 @@ import type { Left, Right } from "@fp-ts/data/Either"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import type { Validated } from "@fp-ts/data/These"
 import * as T from "@fp-ts/data/These"
-import type { Meta } from "@fp-ts/schema/AST"
+import type * as AST from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
@@ -33,9 +33,9 @@ export type ParseError =
 
 /**
  * The `Type` variant of the `ParseError` type represents an error that occurs when the `actual` value is not of the expected type.
- * The `expected` field specifies the name of the expected type, and the `actual` field contains the value that caused the error.
- * This error can occur when trying to decode a value using a codec that is only able to decode values of a specific type,
- * and the actual value is not of that type. For example, if you are using a codec to decode a string value and the actual value
+ * The `expected` field specifies the expected type, and the `actual` field contains the value that caused the error.
+ * This error can occur when trying to decode a value using a schema that is only able to decode values of a specific type,
+ * and the actual value is not of that type. For example, if you are using a schema to decode a string value and the actual value
  * is a number, a `Type` decode error would be returned.
  *
  * @category model
@@ -43,7 +43,7 @@ export type ParseError =
  */
 export interface Type {
   readonly _tag: "Type"
-  readonly expected: string
+  readonly expected: AST.AST
   readonly actual: unknown
 }
 
@@ -51,7 +51,7 @@ export interface Type {
  * @category constructors
  * @since 1.0.0
  */
-export const type = (expected: string, actual: unknown): Type => ({
+export const type = (expected: AST.AST, actual: unknown): Type => ({
   _tag: "Type",
   expected,
   actual
@@ -119,7 +119,7 @@ export const enums = (
  */
 export interface Refinement {
   readonly _tag: "Refinement"
-  readonly meta: Meta
+  readonly meta: AST.Meta
   readonly actual: unknown
 }
 
@@ -127,7 +127,7 @@ export interface Refinement {
  * @category constructors
  * @since 1.0.0
  */
-export const refinement = (meta: Meta, actual: unknown): Refinement => ({
+export const refinement = (meta: AST.Meta, actual: unknown): Refinement => ({
   _tag: "Refinement",
   meta,
   actual

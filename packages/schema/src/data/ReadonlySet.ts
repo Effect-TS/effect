@@ -17,11 +17,12 @@ const parser = <A>(
   item: P.Parser<unknown, A>
 ): P.Parser<unknown, ReadonlySet<A>> => {
   const items = P.decode(I.array(item))
+  const schema = readonlySet(item)
   return I.makeParser(
-    readonlySet(item),
+    schema,
     (u, options) =>
       !isSet(u) ?
-        PE.failure(PE.type("Set<unknown>", u)) :
+        PE.failure(PE.type(schema.ast, u)) :
         pipe(
           Array.from(u.values()),
           (us) => items(us, options),

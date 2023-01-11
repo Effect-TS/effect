@@ -51,7 +51,7 @@ describe.concurrent("Encoder", () => {
 
   it("never", () => {
     const schema = S.never
-    Util.expectEncodingFailure(schema, 1 as any as never, "1 did not satisfy is(never)")
+    Util.expectEncodingFailure(schema, 1 as any as never, "1 did not satisfy: Input must be never")
   })
 
   it("type alias without annotations", () => {
@@ -398,7 +398,7 @@ describe.concurrent("Encoder", () => {
       _tag: "Union",
       types: [] as any
     })
-    Util.expectEncodingFailure(schema, "a", `"a" did not satisfy is(never)`)
+    Util.expectEncodingFailure(schema, "a", `"a" did not satisfy: Input must be never`)
   })
 
   describe.concurrent("partial", () => {
@@ -503,7 +503,11 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
     Util.expectEncodingSuccess(schema, [], [])
 
-    Util.expectEncodingFailure(schema, null as any, `null did not satisfy is({})`)
+    Util.expectEncodingFailure(
+      schema,
+      null as any,
+      `null did not satisfy: Input must be a struct or a record`
+    )
   })
 
   // ---------------------------------------------

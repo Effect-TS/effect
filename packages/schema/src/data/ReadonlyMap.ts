@@ -18,11 +18,12 @@ const parser = <K, V>(
   value: P.Parser<unknown, V>
 ): P.Parser<unknown, ReadonlyMap<K, V>> => {
   const items = P.decode(I.array(I.tuple(key, value)))
+  const schema = readonlyMap(key, value)
   return I.makeParser(
-    readonlyMap(key, value),
+    schema,
     (u, options) =>
       !isMap(u) ?
-        PE.failure(PE.type("Map<unknown, unknown>", u)) :
+        PE.failure(PE.type(schema.ast, u)) :
         pipe(
           Array.from(u.entries()),
           (us) => items(us, options),

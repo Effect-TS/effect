@@ -14,11 +14,12 @@ import type { Schema } from "@fp-ts/schema/Schema"
 
 const parser = <A>(item: P.Parser<unknown, A>): P.Parser<unknown, Chunk<A>> => {
   const items = P.decode(I.array(item))
+  const schema = chunk(item)
   return I.makeParser(
-    chunk(item),
+    schema,
     (u, options) =>
       !C.isChunk(u) ?
-        PE.failure(PE.type("Chunk<unknown>", u)) :
+        PE.failure(PE.type(schema.ast, u)) :
         pipe(C.toReadonlyArray(u), (us) => items(us, options), I.map(C.fromIterable))
   )
 }

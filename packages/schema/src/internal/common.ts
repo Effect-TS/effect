@@ -36,7 +36,7 @@ export const isNonEmpty = RA.isNonEmpty
 // ---------------------------------------------
 
 /** @internal */
-export const isUnknownObject = (u: unknown): u is { readonly [x: PropertyKey]: unknown } =>
+export const isUnknownObject = (u: unknown): u is { readonly [x: string | symbol]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
 /** @internal */

@@ -23,7 +23,11 @@ describe.concurrent("Chunk", () => {
     Util.expectDecodingSuccess(schema, C.empty(), C.empty())
     Util.expectDecodingSuccess(schema, C.fromIterable(["1", "2", "3"]), C.fromIterable([1, 2, 3]))
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy is(Chunk<unknown>)`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      `null did not satisfy: Input must be an instance of a struct or a record`
+    )
     Util.expectDecodingFailure(
       schema,
       C.fromIterable(["1", "a", "3"]),
@@ -65,8 +69,12 @@ describe.concurrent("Chunk", () => {
     Util.expectDecodingSuccess(schema, [], C.empty())
     Util.expectDecodingSuccess(schema, [1, 2, 3], C.fromIterable([1, 2, 3]))
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" did not satisfy is(number)`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      `null did not satisfy: Input must be a tuple or an array`
+    )
+    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" did not satisfy: Input must be a number`)
   })
 
   it("fromValues. encoder", () => {

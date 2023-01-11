@@ -26,7 +26,11 @@ describe.concurrent("ReadonlyMap", () => {
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy is(Map<unknown, unknown>)`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      `null did not satisfy: Input must be an instance of a struct or a record`
+    )
     Util.expectDecodingFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
@@ -80,11 +84,15 @@ describe.concurrent("ReadonlyMap", () => {
       new Map([[1, "a"], [2, "b"], [3, "c"]])
     )
 
-    Util.expectDecodingFailure(schema, null, `null did not satisfy is(ReadonlyArray<unknown>)`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      `null did not satisfy: Input must be a tuple or an array`
+    )
     Util.expectDecodingFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `/1 /1 1 did not satisfy is(string)`
+      `/1 /1 1 did not satisfy: Input must be a string`
     )
   })
 

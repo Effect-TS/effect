@@ -12,7 +12,7 @@ import { isString } from "@fp-ts/data/String"
 import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as AST from "@fp-ts/schema/AST"
-import { format } from "@fp-ts/schema/formatter/Tree"
+import { formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -63,7 +63,7 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
   (u: unknown, options?: ParseOptions): A => {
     const t = parserFor(schema).parse(u, options)
     if (PE.isFailure(t)) {
-      throw new Error(format(t.left))
+      throw new Error(formatErrors(t.left))
     }
     return t.right
   }
@@ -84,7 +84,7 @@ export const asserts = <A>(schema: Schema<A>) =>
   (input: unknown, options?: ParseOptions): asserts input is A => {
     const t = parserFor(schema, "guard").parse(input, options)
     if (PE.isFailure(t)) {
-      throw new Error(format(t.left))
+      throw new Error(formatErrors(t.left))
     }
   }
 
@@ -104,7 +104,7 @@ export const encodeOrThrow = <A>(schema: Schema<A>) =>
   (a: A, options?: ParseOptions): unknown => {
     const t = parserFor(schema, "encoder").parse(a, options)
     if (PE.isFailure(t)) {
-      throw new Error(format(t.left))
+      throw new Error(formatErrors(t.left))
     }
     return t.right
   }
@@ -140,24 +140,24 @@ const parserFor = <A>(
           (u) => PE.equal(ast.symbol, u)
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type("undefined", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type(ast, u))
       case "VoidKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type("void", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type(ast, u))
       case "NeverKeyword":
-        return make(I.makeSchema(ast), (u) => PE.failure(PE.type("never", u))) as any
+        return make(I.makeSchema(ast), (u) => PE.failure(PE.type(ast, u))) as any
       case "UnknownKeyword":
         return make(I.makeSchema(ast), PE.success)
       case "AnyKeyword":
         return make(I.makeSchema(ast), PE.success)
       case "StringKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isString, (u) => PE.type("string", u))
+        return I.fromRefinement(I.makeSchema(ast), isString, (u) => PE.type(ast, u))
       case "NumberKeyword":
         return make(
           I.makeSchema(ast),
-          (u) => isNumber(u) ? PE.success(u) : PE.failure(PE.type("number", u))
+          (u) => isNumber(u) ? PE.success(u) : PE.failure(PE.type(ast, u))
         )
       case "BooleanKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => PE.type("boolean", u))
+        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => PE.type(ast, u))
       case "BigIntKeyword":
         return make(
           I.makeSchema(ast),
@@ -172,13 +172,13 @@ const parserFor = <A>(
                 return PE.failure(PE.transform("string | number | boolean", "bigint", u))
               }
             }
-            return PE.failure(PE.type("string | number | boolean", u))
+            return PE.failure(PE.type(primitive, u))
           }
         )
       case "SymbolKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => PE.type("symbol", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => PE.type(ast, u))
       case "ObjectKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => PE.type("object", u))
+        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => PE.type(ast, u))
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -186,7 +186,7 @@ const parserFor = <A>(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!Array.isArray(input)) {
-              return PE.failure(PE.type("ReadonlyArray<unknown>", input))
+              return PE.failure(PE.type(unknownArray, input))
             }
             const output: Array<any> = []
             const es: Array<PE.ParseError> = []
@@ -318,13 +318,13 @@ const parserFor = <A>(
           [go(is.parameter), go(is.type)] as const
         )
         if (propertySignaturesTypes.length === 0 && indexSignatures.length === 0) {
-          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => PE.type("{}", u))
+          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => PE.type(ast, u))
         }
         return make(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!I.isUnknownObject(input)) {
-              return PE.failure(PE.type("{ readonly [x: PropertyKey]: unknown }", input))
+              return PE.failure(PE.type(unknownRecord, input))
             }
             const output: any = {}
             const expectedKeys: any = {}
@@ -481,7 +481,7 @@ const parserFor = <A>(
             output :
             I.isNonEmpty(es) ?
             PE.failures(es) :
-            PE.failure(PE.type("never", u))
+            PE.failure(PE.type(AST.neverKeyword, u))
         })
       }
       case "Lazy": {
@@ -511,8 +511,8 @@ const parserFor = <A>(
           I.makeSchema(ast),
           (u) =>
             isString(u) ?
-              regex.test(u) ? PE.success(u) : PE.failure(PE.type(regex.source, u)) :
-              PE.failure(PE.type("string", u))
+              regex.test(u) ? PE.success(u) : PE.failure(PE.type(ast, u)) :
+              PE.failure(PE.type(AST.stringKeyword, u))
         )
       }
       case "Transform": {
@@ -540,6 +540,15 @@ const parserFor = <A>(
 
   return go(schema.ast)
 }
+
+const unknownArray = AST.tuple([], O.some([AST.unknownKeyword]), true)
+
+const unknownRecord = AST.typeLiteral([], [
+  AST.indexSignature(AST.stringKeyword, AST.unknownKeyword, true),
+  AST.indexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
+])
+
+const primitive = AST.union([AST.stringKeyword, AST.numberKeyword, AST.booleanKeyword])
 
 const hasUnexpectedError = (e: PE.ParseError): boolean =>
   (PE.isKey(e) && e.errors.some(PE.isUnexpected)) ||
