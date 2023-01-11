@@ -31,7 +31,7 @@ describe.concurrent("Option", () => {
 ├─ union member
 │  └─ {} must be undefined
 ├─ union member
-│  └─ {} must be equal to null
+│  └─ {} must be the literal null
 └─ union member
    └─ {} must be a number`
     )

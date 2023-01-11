@@ -21,7 +21,6 @@ export type ParseResult<A> = Validated<ParseError, A>
  */
 export type ParseError =
   | Type
-  | Equal
   | Refinement
   | Transform
   | Index
@@ -55,30 +54,6 @@ export const type = (expected: AST.AST, actual: unknown): Type => ({
   expected,
   actual
 })
-
-/**
- * The `Equal` variant of the `ParseError` type represents an error that occurs when the `actual` value being decoded is not equal
- * to the `expected` value. This error is typically used when decoding a value that must match a specific value, such as a boolean or a
- * string literal. The `expected` field of the `Equal` error contains the expected value, and the `actual` field contains the value
- * that was actually encountered during decoding.
- *
- * @category model
- * @since 1.0.0
- */
-export interface Equal {
-  readonly _tag: "Equal"
-  readonly expected: unknown
-  readonly actual: unknown
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const equal = (
-  expected: unknown,
-  actual: unknown
-): Equal => ({ _tag: "Equal", expected, actual })
 
 /**
  * The `Refinement` variant of the `ParseError` type indicates that the actual value did not pass a refinement check.

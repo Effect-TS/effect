@@ -131,13 +131,13 @@ const parserFor = <A>(
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.literal => u === ast.literal,
-          (u) => PE.equal(ast.literal, u)
+          (u) => PE.type(ast, u)
         )
       case "UniqueSymbol":
         return I.fromRefinement(
           I.makeSchema(ast),
           (u): u is typeof ast.symbol => u === ast.symbol,
-          (u) => PE.equal(ast.symbol, u)
+          (u) => PE.type(ast, u)
         )
       case "UndefinedKeyword":
         return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type(ast, u))
