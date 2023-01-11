@@ -18,13 +18,13 @@ const PreferChar = pipe(
     (s) =>
       s.length === 1 ? PE.success(s) : PE.warning(
         PE.refinement({
-          message: "String is not a single character",
+          message: "a single character",
           meta: { type: "Char" }
         }, s),
         s
       ),
     {
-      message: "String is not a single character",
+      message: "a single character",
       meta: { type: "Char" }
     }
   )
@@ -45,7 +45,7 @@ describe.concurrent("Encoder", () => {
     expect(E.encodeOrThrow(schema)(1)).toEqual("1")
     expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
       new Error(`1 error(s) found
-└─ "10" did not satisfy: String cannot exceed 1 characters`)
+└─ "10" must be a string at most 1 character(s) long`)
     )
   })
 
@@ -62,7 +62,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       O.some(10),
-      `member: /value "10" did not satisfy: String cannot exceed 1 characters, member: /_tag "Some" did not satisfy isEqual(None)`
+      `member: /value "10" must be a string at most 1 character(s) long, member: /_tag "Some" did not satisfy isEqual(None)`
     )
   })
 
@@ -157,7 +157,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+      `/0 "10" must be a string at most 1 character(s) long`
     )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
@@ -168,7 +168,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" did not satisfy: String is not a single character, /1 "bb" did not satisfy: String is not a single character`
+      `/0 "aa" must be a single character, /1 "bb" must be a single character`
     )
   })
 
@@ -186,7 +186,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+      `/0 "10" must be a string at most 1 character(s) long`
     )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
@@ -228,7 +228,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+      `/0 "10" must be a string at most 1 character(s) long`
     )
   })
 
@@ -238,7 +238,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" did not satisfy: String is not a single character, /1 "bb" did not satisfy: String is not a single character`
+      `/0 "aa" must be a single character, /1 "bb" must be a single character`
     )
   })
 
@@ -251,7 +251,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters`
+      `/0 "10" must be a string at most 1 character(s) long`
     )
   })
 
@@ -261,7 +261,7 @@ describe.concurrent("Encoder", () => {
       schema,
       [1, 2, "aa", "bb"],
       [1, 2, "aa", "bb"],
-      `/2 "aa" did not satisfy: String is not a single character, /3 "bb" did not satisfy: String is not a single character`
+      `/2 "aa" must be a single character, /3 "bb" must be a single character`
     )
   })
 
@@ -312,7 +312,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy: String is not a single character, /b "bb" did not satisfy: String is not a single character`
+      `/a "aa" must be a single character, /b "bb" must be a single character`
     )
   })
 
@@ -321,7 +321,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a" },
-      `/aa "aa" did not satisfy: String cannot exceed 1 characters`
+      `/aa "aa" must be a string at most 1 character(s) long`
     )
   })
 
@@ -330,7 +330,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa" },
-      `/a "aa" did not satisfy: String cannot exceed 1 characters`
+      `/a "aa" must be a string at most 1 character(s) long`
     )
   })
 
@@ -340,7 +340,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { aa: "a", bb: "b" },
       { aa: "a", bb: "b" },
-      `/aa "aa" did not satisfy: String is not a single character, /bb "bb" did not satisfy: String is not a single character`
+      `/aa "aa" must be a single character, /bb "bb" must be a single character`
     )
   })
 
@@ -350,7 +350,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy: String is not a single character, /b "bb" did not satisfy: String is not a single character`
+      `/a "aa" must be a single character, /b "bb" must be a single character`
     )
   })
 
@@ -532,7 +532,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
+      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
       allErrors
     )
   })
@@ -542,7 +542,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
+      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
       allErrors
     )
   })
@@ -552,7 +552,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" did not satisfy: String cannot exceed 1 characters, /1 "10" did not satisfy: String cannot exceed 1 characters`,
+      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
       allErrors
     )
   })
@@ -562,7 +562,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: 10, b: 10 },
-      `/a "10" did not satisfy: String cannot exceed 1 characters, /b "10" did not satisfy: String cannot exceed 1 characters`,
+      `/a "10" must be a string at most 1 character(s) long, /b "10" must be a string at most 1 character(s) long`,
       allErrors
     )
   })
@@ -572,7 +572,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a", bb: "bb" },
-      `/aa "aa" did not satisfy: String cannot exceed 1 characters, /bb "bb" did not satisfy: String cannot exceed 1 characters`,
+      `/aa "aa" must be a string at most 1 character(s) long, /bb "bb" must be a string at most 1 character(s) long`,
       allErrors
     )
   })
@@ -582,7 +582,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa", b: "bb" },
-      `/a "aa" did not satisfy: String cannot exceed 1 characters, /b "bb" did not satisfy: String cannot exceed 1 characters`,
+      `/a "aa" must be a string at most 1 character(s) long, /b "bb" must be a string at most 1 character(s) long`,
       allErrors
     )
   })

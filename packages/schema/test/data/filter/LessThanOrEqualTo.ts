@@ -23,7 +23,7 @@ describe.concurrent("lessThanOrEqualTo", () => {
     Util.expectDecodingFailure(
       schema,
       1,
-      `1 did not satisfy: Number must be less than or equal to 0`
+      `1 must be a number less than or equal to 0`
     )
   })
 

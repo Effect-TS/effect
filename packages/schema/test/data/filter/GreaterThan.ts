@@ -19,8 +19,8 @@ describe.concurrent("greaterThan", () => {
   it("Decoder", () => {
     const schema = _.greaterThan(0)(S.number)
     Util.expectDecodingSuccess(schema, 1)
-    Util.expectDecodingFailure(schema, 0, `0 did not satisfy: Number must be greater than 0`)
-    Util.expectDecodingFailure(schema, -1, `-1 did not satisfy: Number must be greater than 0`)
+    Util.expectDecodingFailure(schema, 0, `0 must be a number greater than 0`)
+    Util.expectDecodingFailure(schema, -1, `-1 must be a number greater than 0`)
   })
 
   it("Pretty", () => {

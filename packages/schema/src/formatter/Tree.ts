@@ -136,7 +136,7 @@ const go = (e: DE.ParseError): Tree<string> => {
       )
     case "Refinement":
       return make(
-        `${formatActual(e.actual)} did not satisfy: ${e.meta.message}`
+        `${formatActual(e.actual)} must be ${e.meta.message}`
       )
     case "Transform":
       return make(

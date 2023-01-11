@@ -23,7 +23,7 @@ describe.concurrent("maxLength", () => {
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" did not satisfy: String cannot exceed 1 characters`
+      `"aa" must be a string at most 1 character(s) long`
     )
   })
 

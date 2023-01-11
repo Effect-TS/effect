@@ -817,12 +817,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { "": 1 },
-      `/ "" did not satisfy: String must be at least 2 characters long`
+      `/ "" must be a string at least 2 character(s) long`
     )
     Util.expectDecodingFailure(
       schema,
       { "a": 1 },
-      `/a "a" did not satisfy: String must be at least 2 characters long`
+      `/a "a" must be a string at least 2 character(s) long`
     )
   })
 
@@ -1026,7 +1026,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" did not satisfy: String cannot exceed 1 characters`
+      `"aa" must be a string at most 1 character(s) long`
     )
   })
 
@@ -1038,7 +1038,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" did not satisfy: String must be at least 1 characters long`
+      `"" must be a string at least 1 character(s) long`
     )
   })
 
@@ -1049,12 +1049,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" did not satisfy: String must be at least 1 characters long`
+      `"" must be a string at least 1 character(s) long`
     )
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" did not satisfy: String cannot exceed 1 characters`
+      `"aa" must be a string at most 1 character(s) long`
     )
   })
 
@@ -1066,12 +1066,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" did not satisfy: String does not begin with specified value "a"`
+      `"" must be a string starting with "a"`
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      `"b" did not satisfy: String does not begin with specified value "a"`
+      `"b" must be a string starting with "a"`
     )
   })
 
@@ -1083,12 +1083,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" did not satisfy: String does not end with specified value "a"`
+      `"" must be a string ending with "a"`
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      `"b" did not satisfy: String does not end with specified value "a"`
+      `"b" must be a string ending with "a"`
     )
   })
 
@@ -1100,12 +1100,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "ab",
-      `"ab" did not satisfy: String must match the pattern: ^abb+$`
+      `"ab" must be a string matching the pattern: ^abb+$`
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      `"a" did not satisfy: String must match the pattern: ^abb+$`
+      `"a" must be a string matching the pattern: ^abb+$`
     )
   })
 
@@ -1113,63 +1113,18 @@ describe.concurrent("Decoder", () => {
     const schema = pipe(
       S.string,
       S.filter((s) => s.length === 1, {
-        message: "String is not a single character",
+        message: "a single character",
         meta: { type: "Char" }
       })
     )
     Util.expectDecodingSuccess(schema, "a")
 
-    Util.expectDecodingFailure(schema, "", `"" did not satisfy: String is not a single character`)
+    Util.expectDecodingFailure(schema, "", `"" must be a single character`)
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" did not satisfy: String is not a single character`
+      `"aa" must be a single character`
     )
-  })
-
-  it("greaterThan", () => {
-    const schema = pipe(S.number, S.greaterThan(0))
-    Util.expectDecodingSuccess(schema, 1)
-  })
-
-  it("greaterThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.greaterThanOrEqualTo(0))
-    Util.expectDecodingSuccess(schema, 0)
-    Util.expectDecodingSuccess(schema, 1)
-
-    Util.expectDecodingFailure(
-      schema,
-      -1,
-      `-1 did not satisfy: Number must be greater than or equal to 0`
-    )
-  })
-
-  it("lessThan", () => {
-    const schema = pipe(S.number, S.lessThan(0))
-    Util.expectDecodingSuccess(schema, -1)
-
-    Util.expectDecodingFailure(schema, 0, `0 did not satisfy: Number must be less than 0`)
-    Util.expectDecodingFailure(schema, 1, `1 did not satisfy: Number must be less than 0`)
-  })
-
-  it("lessThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.lessThanOrEqualTo(0))
-    Util.expectDecodingSuccess(schema, -1)
-    Util.expectDecodingSuccess(schema, 0)
-
-    Util.expectDecodingFailure(
-      schema,
-      1,
-      `1 did not satisfy: Number must be less than or equal to 0`
-    )
-  })
-
-  it("int", () => {
-    const schema = pipe(S.number, S.int)
-    Util.expectDecodingSuccess(schema, 0)
-    Util.expectDecodingSuccess(schema, 1)
-
-    Util.expectDecodingFailure(schema, 1.2, `1.2 did not satisfy: Number must be an integer`)
   })
 
   // ---------------------------------------------
@@ -1348,7 +1303,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: 2 },
-      `/a "a" did not satisfy: String must be at least 2 characters long, /b "b" did not satisfy: String must be at least 2 characters long`,
+      `/a "a" must be a string at least 2 character(s) long, /b "b" must be a string at least 2 character(s) long`,
       allErrors
     )
   })
