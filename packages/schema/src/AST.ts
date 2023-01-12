@@ -50,6 +50,16 @@ export interface Annotated {
 /**
  * @since 1.0.0
  */
+export type MessageAnnotation = string
+
+/**
+ * @since 1.0.0
+ */
+export const MessageAnnotationId = "@fp-ts/schema/AST/MessageAnnotationId"
+
+/**
+ * @since 1.0.0
+ */
 export type IdentifierAnnotation = string
 
 /**
@@ -711,20 +721,11 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
  * @category model
  * @since 1.0.0
  */
-export interface Meta {
-  readonly message: string
-  readonly meta: unknown
-}
-
-/**
- * @category model
- * @since 1.0.0
- */
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
   readonly decode: Parser<any, any>["parse"]
-  readonly meta: Meta
+  readonly meta: unknown
 }
 
 /**
@@ -734,7 +735,7 @@ export interface Refinement extends Annotated {
 export const refinement = (
   from: AST,
   decode: Parser<any, any>["parse"],
-  meta: Meta,
+  meta: unknown,
   annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
 

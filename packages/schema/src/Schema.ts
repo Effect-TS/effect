@@ -463,7 +463,8 @@ export const lazy: <A>(
  */
 export const filterOrFail: <A, B extends A>(
   decode: Parser<A, B>["parse"],
-  meta: AST.Meta,
+  description: string,
+  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ) => (self: Schema<A>) => Schema<B> = I.filterOrFail
 
@@ -473,20 +474,23 @@ export const filterOrFail: <A, B extends A>(
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
-  meta: AST.Meta,
+  description: string,
+  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
-  meta: AST.Meta,
+  description: string,
+  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
-  meta: AST.Meta,
+  description: string,
+  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A> {
-  return I.filter(predicate, meta, annotations)
+  return I.filter(predicate, description, meta, annotations)
 }
 
 /**
@@ -518,6 +522,14 @@ export const transform: <A, B>(
 // ---------------------------------------------
 // annotations
 // ---------------------------------------------
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const message = (message: AST.MessageAnnotation) =>
+  <A>(self: Schema<A>): Schema<A> =>
+    make(AST.annotation(self.ast, AST.MessageAnnotationId, message))
 
 /**
  * @category annotations

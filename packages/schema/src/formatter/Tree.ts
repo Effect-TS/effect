@@ -74,12 +74,16 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
+const getMessage = AST.getAnnotation<AST.MessageAnnotation>(AST.MessageAnnotationId)
+
 const getTitle = AST.getAnnotation<AST.TitleAnnotation>(AST.TitleAnnotationId)
 
 const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(AST.IdentifierAnnotationId)
 
+const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(AST.DescriptionAnnotationId)
+
 const getExpected = (ast: AST.AST): O.Option<string> =>
-  pipe(getIdentifier(ast), O.catchAll(() => getTitle(ast)))
+  pipe(getIdentifier(ast), O.catchAll(() => getTitle(ast)), O.catchAll(() => getDescription(ast)))
 
 /** @internal */
 export const formatExpected = (ast: AST.AST): string => {
@@ -103,7 +107,7 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Union":
       return ast.types.map(formatExpected).join(" or ")
     case "Refinement":
-      return pipe(getExpected(ast), O.getOrElse(() => ast.meta.message))
+      return pipe(getExpected(ast), O.getOrElse(() => "refinement"))
     case "TemplateLiteral":
       return pipe(getExpected(ast), O.getOrElse(() => formatTemplateLiteral(ast)))
     case "Tuple":
@@ -134,7 +138,12 @@ const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(
-        `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
+        pipe(
+          getMessage(e.expected),
+          O.getOrElse(() =>
+            `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
+          )
+        )
       )
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))
