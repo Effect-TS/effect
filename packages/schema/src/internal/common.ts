@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 
+import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
 import * as O from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as T from "@fp-ts/data/These"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as PE from "@fp-ts/schema/ParseError"
@@ -17,10 +17,10 @@ import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
 
 /** @internal */
-export const flatMap = T.flatMap
+export const flatMap = E.flatMap
 
 /** @internal */
-export const map = T.map
+export const map = E.map
 
 /** @internal */
 export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A> => {

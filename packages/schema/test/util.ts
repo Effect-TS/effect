@@ -1,8 +1,8 @@
+import * as E from "@fp-ts/data/Either"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import { formatActual, formatErrors, formatExpected } from "@fp-ts/schema/formatter/Tree"
@@ -27,10 +27,14 @@ export const property = <A>(schema: Schema<A>) => {
   }))
 }
 
-export const expectDecodingSuccess = <A>(schema: Schema<A>, u: unknown, a: A = u as any) => {
-  const t = P.decode(schema)(u)
-  expect(T.isRight(t)).toEqual(true)
-  expect(t).toEqual(T.right(a))
+export const expectDecodingSuccess = <A>(
+  schema: Schema<A>,
+  u: unknown,
+  a: A = u as any,
+  options?: P.ParseOptions
+) => {
+  const t = P.decode(schema)(u, options)
+  expect(t).toStrictEqual(E.right(a))
 }
 
 export const expectDecodingFailure = <A>(
@@ -39,27 +43,18 @@ export const expectDecodingFailure = <A>(
   message: string,
   options?: P.ParseOptions
 ) => {
-  const t = pipe(P.decode(schema)(u, options), T.mapLeft(formatAll))
-  expect(T.isLeft(t)).toEqual(true)
-  expect(t).toEqual(T.left(message))
+  const t = pipe(P.decode(schema)(u, options), E.mapLeft(formatAll))
+  expect(t).toStrictEqual(E.left(message))
 }
 
-export const expectDecodingWarning = <A>(
+export const expectEncodingSuccess = <A>(
   schema: Schema<A>,
-  u: unknown,
   a: A,
-  message: string,
+  o: unknown,
   options?: P.ParseOptions
 ) => {
-  const t = pipe(P.decode(schema)(u, options), T.mapLeft(formatAll))
-  expect(T.isBoth(t)).toEqual(true)
-  expect(t).toEqual(T.both(message, a))
-}
-
-export const expectEncodingSuccess = <A>(schema: Schema<A>, a: A, o: unknown) => {
-  const t = P.encode(schema)(a)
-  expect(T.isRight(t)).toEqual(true)
-  expect(t).toStrictEqual(T.right(o))
+  const t = P.encode(schema)(a, options)
+  expect(t).toStrictEqual(E.right(o))
 }
 
 export const expectEncodingFailure = <A>(
@@ -68,21 +63,8 @@ export const expectEncodingFailure = <A>(
   message: string,
   options?: P.ParseOptions
 ) => {
-  const t = pipe(P.encode(schema)(a, options), T.mapLeft(formatAll))
-  expect(T.isLeft(t)).toEqual(true)
-  expect(t).toEqual(T.left(message))
-}
-
-export const expectEncodingWarning = <A>(
-  schema: Schema<A>,
-  a: A,
-  o: unknown,
-  message: string,
-  options?: P.ParseOptions
-) => {
-  const t = pipe(P.encode(schema)(a, options), T.mapLeft(formatAll))
-  expect(T.isBoth(t)).toEqual(true)
-  expect(t).toEqual(T.both(message, o))
+  const t = pipe(P.encode(schema)(a, options), E.mapLeft(formatAll))
+  expect(t).toStrictEqual(E.left(message))
 }
 
 const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
@@ -114,18 +96,7 @@ const formatDecodeError = (e: PE.ParseError): string => {
 }
 
 export const expectDecodingFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
-  const t = pipe(P.decode(schema)(u), T.mapLeft(formatErrors))
-  expect(T.isLeft(t)).toEqual(true)
-  expect(t).toEqual(T.left(message))
-}
-
-export const expectDecodingWarningTree = <A>(
-  schema: Schema<A>,
-  u: unknown,
-  message: string,
-  a: A
-) => {
-  const t = pipe(P.decode(schema)(u), T.mapLeft(formatErrors))
-  expect(T.isBoth(t)).toEqual(true)
-  expect(t).toEqual(T.both(message, a))
+  const t = pipe(P.decode(schema)(u), E.mapLeft(formatErrors))
+  expect(E.isLeft(t)).toEqual(true)
+  expect(t).toEqual(E.left(message))
 }

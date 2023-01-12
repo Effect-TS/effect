@@ -2,7 +2,6 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
-import * as PE from "@fp-ts/schema/ParseError"
 import type { ParseOptions } from "@fp-ts/schema/Parser"
 import * as E from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -10,16 +9,6 @@ import * as Util from "@fp-ts/schema/test/util"
 
 // raises an error while encoding from a number if the string is not a char
 const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
-
-// raises a warning while encoding if the string is not a char
-const PreferChar: S.Schema<string> = pipe(
-  S.string,
-  S.filterOrFail(
-    (s) => s.length === 1 ? PE.success(s) : PE.warning(PE.type(PreferChar.ast, s), s),
-    "a single character",
-    { type: "char" }
-  )
-)
 
 // raises an error while encoding if the string is not a char
 const MustChar = pipe(S.string, S.maxLength(1))
@@ -153,16 +142,6 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
 
-  it("tuple/e: warnings", () => {
-    const schema = S.tuple(PreferChar, PreferChar)
-    Util.expectEncodingWarning(
-      schema,
-      ["aa", "bb"],
-      ["aa", "bb"],
-      `/0 Expected a single character, actual "aa", /1 Expected a single character, actual "bb"`
-    )
-  })
-
   it("tuple/e with undefined", () => {
     const schema = S.tuple(S.union(NumberFromString, S.undefined))
     Util.expectEncodingSuccess(schema, [1], ["1"])
@@ -223,16 +202,6 @@ describe.concurrent("Encoder", () => {
     )
   })
 
-  it("tuple/r warnings", () => {
-    const schema = S.array(PreferChar)
-    Util.expectEncodingWarning(
-      schema,
-      ["aa", "bb"],
-      ["aa", "bb"],
-      `/0 Expected a single character, actual "aa", /1 Expected a single character, actual "bb"`
-    )
-  })
-
   it("tuple/r + e", () => {
     const schema = pipe(S.array(S.string), S.element(NumberFromString))
     Util.expectEncodingSuccess(schema, [1], ["1"])
@@ -243,16 +212,6 @@ describe.concurrent("Encoder", () => {
       schema,
       [10],
       `/0 Expected a string at most 1 character(s) long, actual "10"`
-    )
-  })
-
-  it("tuple/r + e warnings", () => {
-    const schema = pipe(S.array(S.number), S.element(PreferChar), S.element(PreferChar))
-    Util.expectEncodingWarning(
-      schema,
-      [1, 2, "aa", "bb"],
-      [1, 2, "aa", "bb"],
-      `/2 Expected a single character, actual "aa", /3 Expected a single character, actual "bb"`
     )
   })
 
@@ -297,16 +256,6 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, { [a]: "a" }, { [a]: "a" })
   })
 
-  it("struct/ property signature warnings", () => {
-    const schema = S.struct({ a: PreferChar, b: PreferChar })
-    Util.expectEncodingWarning(
-      schema,
-      { a: "aa", b: "bb" },
-      { a: "aa", b: "bb" },
-      `/a Expected a single character, actual "aa", /b Expected a single character, actual "bb"`
-    )
-  })
-
   it("record/ key error", () => {
     const schema = S.record(MustChar, S.string)
     Util.expectEncodingFailure(
@@ -322,26 +271,6 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa" },
       `/a Expected a string at most 1 character(s) long, actual "aa"`
-    )
-  })
-
-  it("record/ key warnings", () => {
-    const schema = S.record(PreferChar, S.string)
-    Util.expectEncodingWarning(
-      schema,
-      { aa: "a", bb: "b" },
-      { aa: "a", bb: "b" },
-      `/aa Expected a single character, actual "aa", /bb Expected a single character, actual "bb"`
-    )
-  })
-
-  it("record/ value warnings", () => {
-    const schema = S.record(S.string, PreferChar)
-    Util.expectEncodingWarning(
-      schema,
-      { a: "aa", b: "bb" },
-      { a: "aa", b: "bb" },
-      `/a Expected a single character, actual "aa", /b Expected a single character, actual "bb"`
     )
   })
 
@@ -449,42 +378,39 @@ describe.concurrent("Encoder", () => {
     isUnexpectedAllowed: true
   }
 
-  it("isUnexpectedAllowed/union/struct choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed/union/struct choose the output more info", () => {
     const a = S.struct({ a: S.optional(S.number) })
     const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
     const schema = S.union(a, b)
-    Util.expectEncodingWarning(
+    Util.expectEncodingSuccess(
       schema,
       { a: 1, b: "b", c: true } as any,
       {
         a: 1,
         b: "b"
       },
-      `/c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed/union/tuple choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed/union/tuple choose the output more info", () => {
     const a = S.tuple(S.number)
     const b = pipe(S.tuple(S.number), S.optionalElement(S.string))
     const schema = S.union(a, b)
-    Util.expectEncodingWarning(
+    Util.expectEncodingSuccess(
       schema,
       [1, "b", true] as any,
       [1, "b"],
-      `/2 is unexpected`,
       isUnexpectedAllowed
     )
   })
 
   it("isUnexpectedAllowed/tuple unexpected indexes", () => {
     const schema = S.tuple(S.string)
-    Util.expectEncodingWarning(
+    Util.expectEncodingSuccess(
       schema,
       ["a", 1, 2] as any,
       ["a"],
-      `/1 is unexpected, /2 is unexpected`,
       isUnexpectedAllowed
     )
   })

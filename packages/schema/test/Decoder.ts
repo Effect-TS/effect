@@ -1130,92 +1130,85 @@ describe.concurrent("Decoder", () => {
     isUnexpectedAllowed: true
   }
 
-  it("isUnexpectedAllowed/union choose the output with less warnings related to unexpected keys / indexes", () => {
+  it("isUnexpectedAllowed/union choose the output with more info", () => {
     const a = S.struct({ a: S.optional(S.number) })
     const b = S.struct({ a: S.optional(S.number), b: S.optional(S.string) })
     const schema = S.union(a, b)
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       { a: 1, b: "b", c: true },
       {
         a: 1,
         b: "b"
       },
-      `/c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed/tuple unexpected indexes", () => {
+  it("isUnexpectedAllowed/tuple of a struct", () => {
     const schema = S.tuple(S.struct({ b: S.number }))
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       [{ b: 1, c: "c" }],
       [{ b: 1 }],
-      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed. tuple. rest element warnings", () => {
+  it("isUnexpectedAllowed/tuple rest element of a struct", () => {
     const schema = S.array(S.struct({ b: S.number }))
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       [{ b: 1, c: "c" }],
       [{ b: 1 }],
-      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed. tuple. post rest elements warnings", () => {
+  it("isUnexpectedAllowed/tuple. post rest elements of a struct", () => {
     const schema = pipe(S.array(S.string), S.element(S.struct({ b: S.number })))
     Util.expectDecodingSuccess(schema, [{ b: 1 }])
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       [{ b: 1, c: "c" }],
       [{ b: 1 }],
-      `/0 /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed. tuple. allowUnexpected = true", () => {
+  it("isUnexpectedAllowed/tuple excess elements", () => {
     const schema = S.tuple(S.number)
-    Util.expectDecodingWarning(schema, [1, "b"], [1], `/1 is unexpected`, isUnexpectedAllowed)
+    Util.expectDecodingSuccess(schema, [1, "b"], [1], isUnexpectedAllowed)
   })
 
-  it("isUnexpectedAllowed. struct. allowUnexpected = true", () => {
+  it("isUnexpectedAllowed/struct excess property signatures", () => {
     const schema = S.struct({ a: S.number })
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       { a: 1, b: "b" },
       { a: 1 },
-      `/b is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed. struct. key warnings", () => {
+  it("isUnexpectedAllowed/struct nested struct", () => {
     const schema = S.struct({ a: S.struct({ b: S.number }) })
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       { a: { b: 1, c: "c" } },
       {
         a: { b: 1 }
       },
-      `/a /c is unexpected`,
       isUnexpectedAllowed
     )
   })
 
-  it("isUnexpectedAllowed. struct. index signature warnings", () => {
+  it("isUnexpectedAllowed/record of struct", () => {
     const schema = S.record(S.string, S.struct({ b: S.number }))
-    Util.expectDecodingWarning(
+    Util.expectDecodingSuccess(
       schema,
       { a: { b: 1, c: "c" } },
       { a: { b: 1 } },
-      `/a /c is unexpected`,
       isUnexpectedAllowed
     )
   })

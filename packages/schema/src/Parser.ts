@@ -6,10 +6,8 @@ import { isBoolean } from "@fp-ts/data/Boolean"
 import { pipe } from "@fp-ts/data/Function"
 import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
-import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import type { Both } from "@fp-ts/data/These"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as AST from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"
@@ -179,7 +177,6 @@ const parserFor = <A>(
             const output: Array<any> = []
             const es: Array<PE.ParseError> = []
             const allErrors = options?.allErrors
-            let isLeft = false
             let i = 0
             // ---------------------------------------------
             // handle elements
@@ -187,15 +184,11 @@ const parserFor = <A>(
             for (; i < elements.length; i++) {
               if (input.length < i + 1) {
                 // the input element is missing...
-                if (ast.elements[i].isOptional) {
-                  // ...but the element is optional, go on
-                  continue
-                } else {
+                if (!ast.elements[i].isOptional) {
                   // ...but the element is required
                   const e = PE.index(i, [PE.missing])
                   if (allErrors) {
                     es.push(e)
-                    isLeft = true
                     continue
                   } else {
                     return PE.failure(e)
@@ -209,13 +202,10 @@ const parserFor = <A>(
                   const e = PE.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
-                    isLeft = true
                     continue
                   } else {
                     return PE.failures(I.mutableAppend(es, e))
                   }
-                } else if (PE.hasWarnings(t)) {
-                  es.push(PE.index(i, t.left))
                 }
                 output.push(t.right)
               }
@@ -232,15 +222,11 @@ const parserFor = <A>(
                   const e = PE.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
-                    isLeft = true
                     continue
                   } else {
                     return PE.failures(I.mutableAppend(es, e))
                   }
                 } else {
-                  if (PE.hasWarnings(t)) {
-                    es.push(PE.index(i, t.left))
-                  }
                   output.push(t.right)
                 }
               }
@@ -259,13 +245,10 @@ const parserFor = <A>(
                     const e = PE.index(i, t.left)
                     if (allErrors) {
                       es.push(e)
-                      isLeft = true
                       continue
                     } else {
                       return PE.failures(I.mutableAppend(es, e))
                     }
-                  } else if (PE.hasWarnings(t)) {
-                    es.push(PE.index(i, t.left))
                   }
                   output.push(t.right)
                 }
@@ -277,12 +260,9 @@ const parserFor = <A>(
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
                 const e = PE.index(i, [PE.unexpected(input[i])])
-                if (isUnexpectedAllowed) {
-                  es.push(e)
-                } else {
+                if (!isUnexpectedAllowed) {
                   if (allErrors) {
                     es.push(e)
-                    isLeft = true
                     continue
                   } else {
                     return PE.failures(I.mutableAppend(es, e))
@@ -295,7 +275,7 @@ const parserFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              isLeft ? PE.failures(es) : PE.warnings(es, output) :
+              PE.failures(es) :
               PE.success(output)
           }
         )
@@ -318,7 +298,6 @@ const parserFor = <A>(
             const expectedKeys: any = {}
             const es: Array<PE.ParseError> = []
             const allErrors = options?.allErrors
-            let isLeft = false
             // ---------------------------------------------
             // handle property signatures
             // ---------------------------------------------
@@ -328,33 +307,29 @@ const parserFor = <A>(
               const name = ps.name
               expectedKeys[name] = null
               if (!Object.prototype.hasOwnProperty.call(input, name)) {
-                if (ps.isOptional) {
-                  continue
+                if (!ps.isOptional) {
+                  const e = PE.key(name, [PE.missing])
+                  if (allErrors) {
+                    es.push(e)
+                    continue
+                  } else {
+                    return PE.failure(e)
+                  }
                 }
-                const e = PE.key(name, [PE.missing])
-                if (allErrors) {
-                  es.push(e)
-                  isLeft = true
-                  continue
-                } else {
-                  return PE.failure(e)
+              } else {
+                const t = parser.parse(input[name], options)
+                if (PE.isFailure(t)) {
+                  // the input key is present but is not valid
+                  const e = PE.key(name, t.left)
+                  if (allErrors) {
+                    es.push(e)
+                    continue
+                  } else {
+                    return PE.failures(I.mutableAppend(es, e))
+                  }
                 }
+                output[name] = t.right
               }
-              const t = parser.parse(input[name], options)
-              if (PE.isFailure(t)) {
-                // the input key is present but is not valid
-                const e = PE.key(name, t.left)
-                if (allErrors) {
-                  es.push(e)
-                  isLeft = true
-                  continue
-                } else {
-                  return PE.failures(I.mutableAppend(es, e))
-                }
-              } else if (PE.hasWarnings(t)) {
-                es.push(PE.key(name, t.left))
-              }
-              output[name] = t.right
             }
             // ---------------------------------------------
             // handle index signatures
@@ -373,13 +348,10 @@ const parserFor = <A>(
                     const e = PE.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
-                      isLeft = true
                       continue
                     } else {
                       return PE.failures(I.mutableAppend(es, e))
                     }
-                  } else if (PE.hasWarnings(t)) {
-                    es.push(PE.key(key, t.left))
                   }
                   // ---------------------------------------------
                   // handle values
@@ -389,15 +361,11 @@ const parserFor = <A>(
                     const e = PE.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
-                      isLeft = true
                       continue
                     } else {
                       return PE.failures(I.mutableAppend(es, e))
                     }
                   } else {
-                    if (PE.hasWarnings(t)) {
-                      es.push(PE.key(key, t.left))
-                    }
                     output[key] = t.right
                   }
                 }
@@ -410,12 +378,9 @@ const parserFor = <A>(
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
                   const e = PE.key(key, [PE.unexpected(input[key])])
-                  if (isUnexpectedAllowed) {
-                    es.push(e)
-                  } else {
+                  if (!isUnexpectedAllowed) {
                     if (allErrors) {
                       es.push(e)
-                      isLeft = true
                       continue
                     } else {
                       return PE.failures(I.mutableAppend(es, e))
@@ -429,7 +394,7 @@ const parserFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              isLeft ? PE.failures(es) : PE.warnings(es, output) :
+              PE.failures(es) :
               PE.success(output)
           }
         )
@@ -438,7 +403,6 @@ const parserFor = <A>(
         const types = ast.types.map(go)
         return make(I.makeSchema(ast), (u, options) => {
           const es: Array<PE.ParseError> = []
-          let output: Both<NonEmptyReadonlyArray<PE.ParseError>, any> | null = null
 
           // ---------------------------------------------
           // compute best output
@@ -446,17 +410,7 @@ const parserFor = <A>(
           for (let i = 0; i < types.length; i++) {
             const t = types[i].parse(u, options)
             if (PE.isSuccess(t)) {
-              // if there are no warnings this is the best output
               return t
-            } else if (PE.hasWarnings(t)) {
-              // choose the output with less warnings related to unexpected keys / indexes
-              if (
-                !output ||
-                output.left.filter(hasUnexpectedError).length >
-                  t.left.filter(hasUnexpectedError).length
-              ) {
-                output = t
-              }
             } else {
               es.push(PE.unionMember(t.left))
             }
@@ -465,9 +419,7 @@ const parserFor = <A>(
           // ---------------------------------------------
           // compute output
           // ---------------------------------------------
-          return output ?
-            output :
-            I.isNonEmpty(es) ?
+          return I.isNonEmpty(es) ?
             PE.failures(es) :
             PE.failure(PE.type(AST.neverKeyword, u))
         })
@@ -517,7 +469,3 @@ const unknownRecord = AST.typeLiteral([], [
   AST.indexSignature(AST.stringKeyword, AST.unknownKeyword, true),
   AST.indexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
 ])
-
-const hasUnexpectedError = (e: PE.ParseError): boolean =>
-  (PE.isKey(e) && e.errors.some(PE.isUnexpected)) ||
-  (PE.isIndex(e) && e.errors.some(PE.isUnexpected))

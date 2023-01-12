@@ -2,16 +2,15 @@
  * @since 1.0.0
  */
 
-import type { Left, Right } from "@fp-ts/data/Either"
+import type { Either, Left, Right } from "@fp-ts/data/Either"
+import * as E from "@fp-ts/data/Either"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import type { Validated } from "@fp-ts/data/These"
-import * as T from "@fp-ts/data/These"
 import type * as AST from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
  */
-export type ParseResult<A> = Validated<ParseError, A>
+export type ParseResult<A> = Either<NonEmptyReadonlyArray<ParseError>, A>
 
 /**
  * `ParseError` is a type that represents the different types of errors that can occur when decoding a value.
@@ -192,13 +191,13 @@ export const unionMember = (
  * @category constructors
  * @since 1.0.0
  */
-export const success: <A>(a: A) => ParseResult<A> = T.right
+export const success: <A>(a: A) => ParseResult<A> = E.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const failure = (e: ParseError): ParseResult<never> => T.left([e])
+export const failure = (e: ParseError): ParseResult<never> => E.left([e])
 
 /**
  * @category constructors
@@ -206,28 +205,13 @@ export const failure = (e: ParseError): ParseResult<never> => T.left([e])
  */
 export const failures = (
   es: NonEmptyReadonlyArray<ParseError>
-): ParseResult<never> => T.left(es)
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const warning = <A>(e: ParseError, a: A): ParseResult<A> => T.both([e], a)
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const warnings = <A>(
-  es: NonEmptyReadonlyArray<ParseError>,
-  a: A
-): ParseResult<A> => T.both(es, a)
+): ParseResult<never> => E.left(es)
 
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isSuccess: <A>(self: ParseResult<A>) => self is Right<A> = T.isRight
+export const isSuccess: <A>(self: ParseResult<A>) => self is Right<A> = E.isRight
 
 /**
  * @category guards
@@ -235,12 +219,4 @@ export const isSuccess: <A>(self: ParseResult<A>) => self is Right<A> = T.isRigh
  */
 export const isFailure: <A>(
   self: ParseResult<A>
-) => self is Left<NonEmptyReadonlyArray<ParseError>> = T.isLeft
-
-/**
- * @category guards
- * @since 1.0.0
- */
-export const hasWarnings: <A>(
-  self: ParseResult<A>
-) => self is T.Both<NonEmptyReadonlyArray<ParseError>, A> = T.isBoth
+) => self is Left<NonEmptyReadonlyArray<ParseError>> = E.isLeft
