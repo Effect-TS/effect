@@ -11,6 +11,7 @@ import * as O from "@fp-ts/data/Option"
 import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
+import { TitleId } from "@fp-ts/schema/annotation/AST"
 import type { Parser } from "@fp-ts/schema/Parser"
 
 /**
@@ -47,56 +48,6 @@ export type AST =
 export interface Annotated {
   readonly annotations: Record<string | symbol, unknown>
 }
-
-/**
- * @since 1.0.0
- */
-export type MessageAnnotation = string
-
-/**
- * @since 1.0.0
- */
-export const MessageAnnotationId = "@fp-ts/schema/AST/MessageAnnotationId"
-
-/**
- * @since 1.0.0
- */
-export type IdentifierAnnotation = string
-
-/**
- * @since 1.0.0
- */
-export const IdentifierAnnotationId = "@fp-ts/schema/AST/IdentifierAnnotationId"
-
-/**
- * @since 1.0.0
- */
-export type TitleAnnotation = string
-
-/**
- * @since 1.0.0
- */
-export const TitleAnnotationId = "@fp-ts/schema/AST/TitleAnnotationId"
-
-/**
- * @since 1.0.0
- */
-export type DescriptionAnnotation = string
-
-/**
- * @since 1.0.0
- */
-export const DescriptionAnnotationId = "@fp-ts/schema/AST/DescriptionAnnotationId"
-
-/**
- * @since 1.0.0
- */
-export type ExamplesAnnotation = ReadonlyArray<unknown>
-
-/**
- * @since 1.0.0
- */
-export const ExamplesAnnotationId = "@fp-ts/schema/AST/ExamplesAnnotationId"
 
 /**
  * @since 1.0.0
@@ -200,7 +151,7 @@ export interface UndefinedKeyword extends Annotated {
 export const undefinedKeyword: UndefinedKeyword = {
   _tag: "UndefinedKeyword",
   annotations: {
-    [TitleAnnotationId]: "undefined"
+    [TitleId]: "undefined"
   }
 }
 
@@ -219,7 +170,7 @@ export interface VoidKeyword extends Annotated {
 export const voidKeyword: VoidKeyword = {
   _tag: "VoidKeyword",
   annotations: {
-    [TitleAnnotationId]: "void"
+    [TitleId]: "void"
   }
 }
 
@@ -238,7 +189,7 @@ export interface NeverKeyword extends Annotated {
 export const neverKeyword: NeverKeyword = {
   _tag: "NeverKeyword",
   annotations: {
-    [TitleAnnotationId]: "never"
+    [TitleId]: "never"
   }
 }
 
@@ -257,7 +208,7 @@ export interface UnknownKeyword extends Annotated {
 export const unknownKeyword: UnknownKeyword = {
   _tag: "UnknownKeyword",
   annotations: {
-    [TitleAnnotationId]: "unknown"
+    [TitleId]: "unknown"
   }
 }
 
@@ -276,7 +227,7 @@ export interface AnyKeyword extends Annotated {
 export const anyKeyword: AnyKeyword = {
   _tag: "AnyKeyword",
   annotations: {
-    [TitleAnnotationId]: "any"
+    [TitleId]: "any"
   }
 }
 
@@ -295,7 +246,7 @@ export interface StringKeyword extends Annotated {
 export const stringKeyword: StringKeyword = {
   _tag: "StringKeyword",
   annotations: {
-    [TitleAnnotationId]: "string"
+    [TitleId]: "string"
   }
 }
 
@@ -320,7 +271,7 @@ export interface NumberKeyword extends Annotated {
 export const numberKeyword: NumberKeyword = {
   _tag: "NumberKeyword",
   annotations: {
-    [TitleAnnotationId]: "number"
+    [TitleId]: "number"
   }
 }
 
@@ -345,7 +296,7 @@ export interface BooleanKeyword extends Annotated {
 export const booleanKeyword: BooleanKeyword = {
   _tag: "BooleanKeyword",
   annotations: {
-    [TitleAnnotationId]: "boolean"
+    [TitleId]: "boolean"
   }
 }
 
@@ -364,7 +315,7 @@ export interface BigIntKeyword extends Annotated {
 export const bigIntKeyword: BigIntKeyword = {
   _tag: "BigIntKeyword",
   annotations: {
-    [TitleAnnotationId]: "bigint"
+    [TitleId]: "bigint"
   }
 }
 
@@ -383,7 +334,7 @@ export interface SymbolKeyword extends Annotated {
 export const symbolKeyword: SymbolKeyword = {
   _tag: "SymbolKeyword",
   annotations: {
-    [TitleAnnotationId]: "symbol"
+    [TitleId]: "symbol"
   }
 }
 
@@ -408,7 +359,7 @@ export interface ObjectKeyword extends Annotated {
 export const objectKeyword: ObjectKeyword = {
   _tag: "ObjectKeyword",
   annotations: {
-    [TitleAnnotationId]: "object"
+    [TitleId]: "object"
   }
 }
 

@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
+import { IdentifierId } from "@fp-ts/schema/annotation/AST"
+import * as H from "@fp-ts/schema/annotation/Hook"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
@@ -60,7 +60,7 @@ export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<Read
       size: I.number
     }),
     {
-      [AST.IdentifierAnnotationId]: "ReadonlyMap",
+      [IdentifierId]: "ReadonlyMap",
       [H.ParserHookId]: H.hook(parser),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)

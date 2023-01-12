@@ -3,7 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
+import * as H from "@fp-ts/schema/annotation/Hook"
 import { make } from "@fp-ts/schema/Arbitrary"
 import * as S from "@fp-ts/schema/Schema"
 

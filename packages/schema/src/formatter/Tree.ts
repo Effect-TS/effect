@@ -5,6 +5,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import type * as DE from "@fp-ts/schema/ParseError"
 
@@ -74,13 +75,21 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const getMessage = AST.getAnnotation<AST.MessageAnnotation>(AST.MessageAnnotationId)
+const getMessage = AST.getAnnotation<annotations.Message>(
+  annotations.MessageId
+)
 
-const getTitle = AST.getAnnotation<AST.TitleAnnotation>(AST.TitleAnnotationId)
+const getTitle = AST.getAnnotation<annotations.Title>(
+  annotations.TitleId
+)
 
-const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(AST.IdentifierAnnotationId)
+const getIdentifier = AST.getAnnotation<annotations.Identifier>(
+  annotations.IdentifierId
+)
 
-const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(AST.DescriptionAnnotationId)
+const getDescription = AST.getAnnotation<annotations.Description>(
+  annotations.DescriptionId
+)
 
 const getExpected = (ast: AST.AST): O.Option<string> =>
   pipe(getIdentifier(ast), O.catchAll(() => getTitle(ast)), O.catchAll(() => getDescription(ast)))

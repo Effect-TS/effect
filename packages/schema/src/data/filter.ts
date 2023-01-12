@@ -3,10 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
-import {
-  jsonSchemaAnnotation,
-  JSONSchemaAnnotationId
-} from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import { JSONSchemaId } from "@fp-ts/schema/annotation/AST"
 import type { Annotated } from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -28,7 +25,7 @@ export const greaterThan = (min: number) =>
     pipe(
       self,
       I.filter((a): a is A => a > min, `a number greater than ${min}`, { exclusiveMinimum: min }, {
-        [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMinimum: min })
+        [JSONSchemaId]: { exclusiveMinimum: min }
       })
     )
 
@@ -42,7 +39,7 @@ export const greaterThanOrEqualTo = (min: number) =>
       I.filter((a): a is A => a >= min, `a number greater than or equal to ${min}`, {
         minimum: min
       }, {
-        [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minimum: min })
+        [JSONSchemaId]: { minimum: min }
       })
     )
 
@@ -67,7 +64,7 @@ export const int = <A extends number>(self: Schema<A>): Schema<A> =>
   pipe(
     self,
     I.filter((a): a is A => Number.isInteger(a), "integer", { type: "integer" }, {
-      [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ type: "integer" })
+      [JSONSchemaId]: { type: "integer" }
     })
   )
 
@@ -79,7 +76,7 @@ export const lessThan = (max: number) =>
     pipe(
       self,
       I.filter((a): a is A => a < max, `a number less than ${max}`, { exclusiveMaximum: max }, {
-        [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ exclusiveMaximum: max })
+        [JSONSchemaId]: { exclusiveMaximum: max }
       })
     )
 
@@ -91,7 +88,7 @@ export const lessThanOrEqualTo = (max: number) =>
     pipe(
       self,
       I.filter((a): a is A => a <= max, `a number less than or equal to ${max}`, { maximum: max }, {
-        [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maximum: max })
+        [JSONSchemaId]: { maximum: max }
       })
     )
 
@@ -109,7 +106,7 @@ export const maxLength = (
         `a string at most ${maxLength} character(s) long`,
         { maxLength },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ maxLength })
+          [JSONSchemaId]: { maxLength }
         }
       )
     )
@@ -128,7 +125,7 @@ export const minLength = (
         `a string at least ${minLength} character(s) long`,
         { minLength },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ minLength })
+          [JSONSchemaId]: { minLength }
         }
       )
     )
@@ -159,7 +156,7 @@ export const pattern = (
         `a string matching the pattern ${pattern}`,
         { pattern, ...meta },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern }),
+          [JSONSchemaId]: { pattern },
           ...annotations
         }
       )
@@ -178,7 +175,7 @@ export const startsWith = (startsWith: string) =>
         `a string starting with ${JSON.stringify(startsWith)}`,
         { startsWith },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^${startsWith}` })
+          [JSONSchemaId]: { pattern: `^${startsWith}` }
         }
       )
     )
@@ -195,7 +192,7 @@ export const endsWith = (endsWith: string) =>
         `a string ending with ${JSON.stringify(endsWith)}`,
         { endsWith },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `^.*${endsWith}$` })
+          [JSONSchemaId]: { pattern: `^.*${endsWith}$` }
         }
       )
     )
@@ -212,7 +209,7 @@ export const includes = (searchString: string) =>
         `a string including ${JSON.stringify(searchString)}`,
         { includes: searchString },
         {
-          [JSONSchemaAnnotationId]: jsonSchemaAnnotation({ pattern: `.*${searchString}.*` })
+          [JSONSchemaId]: { pattern: `.*${searchString}.*` }
         }
       )
     )

@@ -9,6 +9,7 @@ import * as O from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
+import { DescriptionId } from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as PE from "@fp-ts/schema/ParseError"
@@ -122,7 +123,7 @@ export function filter<A>(
 ): (from: Schema<A>) => Schema<A> {
   return (from) =>
     makeSchema(AST.refinement(from.ast, predicate, meta, {
-      [AST.DescriptionAnnotationId]: description,
+      [DescriptionId]: description,
       ...annotations
     }))
 }

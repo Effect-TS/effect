@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import * as AST from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
@@ -16,11 +15,6 @@ export interface Hook<A> {
 export const hook = (
   handler: (...typeParameters: ReadonlyArray<any>) => any
 ): Hook<any> => ({ handler })
-
-/**
- * @since 1.0.0
- */
-export const getHook = AST.getAnnotation
 
 /**
  * @since 1.0.0

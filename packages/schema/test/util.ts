@@ -3,6 +3,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import { formatActual, formatErrors, formatExpected } from "@fp-ts/schema/formatter/Tree"
@@ -71,7 +72,7 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
-const getMessage = AST.getAnnotation<AST.MessageAnnotation>(AST.MessageAnnotationId)
+const getMessage = AST.getAnnotation<annotations.Message>(annotations.MessageId)
 
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {

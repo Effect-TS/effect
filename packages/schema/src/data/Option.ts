@@ -4,8 +4,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
-import * as AST from "@fp-ts/schema/AST"
+import { IdentifierId } from "@fp-ts/schema/annotation/AST"
+import * as H from "@fp-ts/schema/annotation/Hook"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -30,7 +30,7 @@ const inline = <A>(value: Schema<A>): Schema<Option<A>> =>
  */
 export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
   I.typeAlias([value], inline(value), {
-    [AST.IdentifierAnnotationId]: "Option",
+    [IdentifierId]: "Option",
     [H.PrettyHookId]: H.hook(pretty)
   })
 

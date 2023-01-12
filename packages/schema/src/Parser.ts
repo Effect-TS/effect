@@ -8,7 +8,7 @@ import { isNumber } from "@fp-ts/data/Number"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
+import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
@@ -107,7 +107,7 @@ export const encodeOrThrow = <A>(schema: Schema<A>) =>
     return t.right
   }
 
-const getHook = H.getHook<H.Hook<Parser<unknown, any>>>(
+const getHook = AST.getAnnotation<H.Hook<Parser<unknown, any>>>(
   H.ParserHookId
 )
 

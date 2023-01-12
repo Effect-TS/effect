@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { Json } from "@fp-ts/data/Json"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
+import * as H from "@fp-ts/schema/annotation/Hook"
 import * as I from "@fp-ts/schema/internal/common"
 import type * as S from "@fp-ts/schema/Schema"
 

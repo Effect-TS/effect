@@ -1,9 +1,10 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { getJSONSchemaAnnotation } from "@fp-ts/schema/annotation/JSONSchemaAnnotation"
+import type { JSONSchema } from "@fp-ts/schema/annotation/AST"
+import { JSONSchemaId } from "@fp-ts/schema/annotation/AST"
 import * as A from "@fp-ts/schema/Arbitrary"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import { isJson } from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Parser"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -79,6 +80,10 @@ export type JsonSchema7Type =
   | JsonSchema7AllOfType
   | JsonSchema7ObjectType
 
+const getJSONSchemaAnnotation = AST.getAnnotation<JSONSchema>(
+  JSONSchemaId
+)
+
 const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
   const go = (ast: AST.AST): JsonSchema7Type => {
     switch (ast._tag) {
@@ -87,7 +92,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
           getJSONSchemaAnnotation(ast),
           O.match(
             () => go(ast.type),
-            ({ schema }) => ({ ...go(ast.type), ...schema })
+            (schema) => ({ ...go(ast.type), ...schema })
           )
         )
       case "Literal": {
@@ -221,7 +226,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
           getJSONSchemaAnnotation(ast),
           O.match(
             () => from,
-            ({ schema }) => ({ ...from, ...schema })
+            (schema) => ({ ...from, ...schema })
           )
         )
       }

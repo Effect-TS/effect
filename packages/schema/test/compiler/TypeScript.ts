@@ -4,11 +4,7 @@ import * as covariant from "@fp-ts/core/typeclass/Covariant"
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import {
-  documentationAnnotation,
-  DocumentationAnnotationId,
-  getDocumentationAnnotation
-} from "@fp-ts/schema/annotation/DocumentationAnnotation"
+import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as R from "@fp-ts/schema/data/filter"
 import * as S from "@fp-ts/schema/Schema"
@@ -83,13 +79,9 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(AST.IdentifierAnnotationId)
-
-const getDocumentation = (annotated: AST.Annotated): O.Option<string> =>
-  pipe(
-    getDocumentationAnnotation(annotated),
-    O.map((annotation) => annotation.documentation)
-  )
+const getIdentifier = AST.getAnnotation<annotations.Identifier>(
+  annotations.IdentifierId
+)
 
 const addJsDocComment = (node: ts.Node, documentation: string): void => {
   ts.addSyntheticLeadingComment(
@@ -102,7 +94,7 @@ const addJsDocComment = (node: ts.Node, documentation: string): void => {
 
 const addDocumentationOf = (annotated: AST.Annotated) =>
   <N extends ts.Node>(node: N): N => {
-    const documentation = getDocumentation(annotated)
+    const documentation = getDocumentationAnnotation(annotated)
     if (O.isSome(documentation)) {
       addJsDocComment(node, documentation.value)
     }
@@ -123,6 +115,10 @@ const getPropertyName = (ast: AST.PropertySignature): ts.PropertyName =>
   typeof ast.name === "symbol" ?
     ts.factory.createComputedPropertyName(createSymbol(ast.name.description)) :
     ts.factory.createIdentifier(String(ast.name))
+
+const getDocumentationAnnotation = AST.getAnnotation<annotations.Documentation>(
+  annotations.DocumentationId
+)
 
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
@@ -513,7 +509,7 @@ describe.concurrent("TypeScript", () => {
 
   it("uniqueSymbol", () => {
     const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-      [AST.IdentifierAnnotationId]: "a"
+      [annotations.IdentifierId]: "a"
     })
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
@@ -649,14 +645,14 @@ describe.concurrent("TypeScript", () => {
       const schema = pipe(
         S.tuple(
           S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-            [AST.IdentifierAnnotationId]: "a"
+            [annotations.IdentifierId]: "a"
           })
         ),
         S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"), {
-          [AST.IdentifierAnnotationId]: "b"
+          [annotations.IdentifierId]: "b"
         })),
         S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"), {
-          [AST.IdentifierAnnotationId]: "c"
+          [annotations.IdentifierId]: "c"
         }))
       )
       const ts = typeScriptFor(schema)
@@ -765,7 +761,7 @@ describe.concurrent("TypeScript", () => {
       const schema = pipe(
         S.struct({
           [a]: S.uniqueSymbol(b, {
-            [AST.IdentifierAnnotationId]: "b"
+            [annotations.IdentifierId]: "b"
           }),
           c: S.number
         }),
@@ -773,7 +769,7 @@ describe.concurrent("TypeScript", () => {
           S.record(
             S.string,
             S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d"), {
-              [AST.IdentifierAnnotationId]: "d"
+              [annotations.IdentifierId]: "d"
             })
           )
         )
@@ -796,7 +792,7 @@ describe.concurrent("TypeScript", () => {
       S.string,
       S.number,
       S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-        [AST.IdentifierAnnotationId]: "a"
+        [annotations.IdentifierId]: "a"
       })
     )
     const ts = typeScriptFor(schema)
@@ -838,7 +834,7 @@ describe.concurrent("TypeScript", () => {
       const schema = S.make(AST.typeLiteral(
         [
           AST.propertySignature("a", AST.stringKeyword, false, true, {
-            [DocumentationAnnotationId]: documentationAnnotation("description")
+            [annotations.DocumentationId]: "description"
           })
         ],
         []

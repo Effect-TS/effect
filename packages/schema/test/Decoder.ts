@@ -99,13 +99,23 @@ describe.concurrent("Decoder", () => {
       S.message("not a string"),
       S.nonEmpty,
       S.message("required"),
-      S.maxLength(1),
-      S.message("too long")
+      S.maxLength(10),
+      S.message("too long"),
+      S.identifier("Password"),
+      S.title("password"),
+      S.description(
+        "A password is a string of characters used to verify the identity of a user during the authentication process"
+      ),
+      S.examples(["1Ki77y", "jelly22fi$h"]),
+      S.documentation(`
+        jsDoc documentation...
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua
+      `)
     )
     Util.expectDecodingFailure(schema, null, "not a string")
     Util.expectDecodingFailure(schema, "", "required")
     Util.expectDecodingSuccess(schema, "a", "a")
-    Util.expectDecodingFailure(schema, "aa", "too long")
+    Util.expectDecodingFailure(schema, "aaaaaaaaaaaaaa", "too long")
   })
 
   it("void", () => {

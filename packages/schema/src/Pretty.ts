@@ -5,8 +5,8 @@ import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as H from "@fp-ts/schema/annotation/HookAnnotation"
-import type * as AST from "@fp-ts/schema/AST"
+import * as H from "@fp-ts/schema/annotation/Hook"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Parser"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -31,7 +31,7 @@ export const make: <A>(schema: Schema<A>, pretty: Pretty<A>["pretty"]) => Pretty
  */
 export const pretty = <A>(schema: Schema<A>) => (a: A): string => prettyFor(schema).pretty(a)
 
-const getHook = H.getHook<H.Hook<Pretty<any>>>(
+const getHook = AST.getAnnotation<H.Hook<Pretty<any>>>(
   H.PrettyHookId
 )
 

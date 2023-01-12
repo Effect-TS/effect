@@ -5,8 +5,8 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as TAH from "@fp-ts/schema/annotation/HookAnnotation"
-import type * as AST from "@fp-ts/schema/AST"
+import * as TAH from "@fp-ts/schema/annotation/Hook"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
@@ -46,7 +46,7 @@ const record = <K extends PropertyKey, V>(
     return out
   })
 
-const getHook = TAH.getHook<TAH.Hook<Arbitrary<any>>>(
+const getHook = AST.getAnnotation<TAH.Hook<Arbitrary<any>>>(
   TAH.ArbitraryHookId
 )
 
