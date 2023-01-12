@@ -93,6 +93,21 @@ describe.concurrent("Decoder", () => {
     )
   })
 
+  it("annotations/message refinement", () => {
+    const schema = pipe(
+      S.string,
+      S.message("not a string"),
+      S.nonEmpty,
+      S.message("required"),
+      S.maxLength(1),
+      S.message("too long")
+    )
+    Util.expectDecodingFailure(schema, null, "not a string")
+    Util.expectDecodingFailure(schema, "", "required")
+    Util.expectDecodingSuccess(schema, "a", "a")
+    Util.expectDecodingFailure(schema, "aa", "too long")
+  })
+
   it("void", () => {
     const schema = S.void
     Util.expectDecodingSuccess(schema, undefined, undefined)

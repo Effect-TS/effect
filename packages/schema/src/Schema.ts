@@ -461,17 +461,6 @@ export const lazy: <A>(
  * @category combinators
  * @since 1.0.0
  */
-export const filterOrFail: <A, B extends A>(
-  decode: Parser<A, B>["parse"],
-  description: string,
-  meta: unknown,
-  annotations?: AST.Annotated["annotations"]
-) => (self: Schema<A>) => Schema<B> = I.filterOrFail
-
-/**
- * @category combinators
- * @since 1.0.0
- */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
   description: string,

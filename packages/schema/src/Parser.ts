@@ -434,7 +434,11 @@ const parserFor = <A>(
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
-          (u, options) => pipe(type.parse(u, options), I.flatMap(ast.decode))
+          (u, options) =>
+            pipe(
+              type.parse(u, options),
+              I.flatMap((a) => ast.refinement(a) ? PE.success(a) : PE.failure(PE.type(ast, a)))
+            )
         )
       }
       case "Transform": {

@@ -8,7 +8,6 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as TAH from "@fp-ts/schema/annotation/HookAnnotation"
 import type * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
-import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
 import type * as FastCheck from "fast-check"
 
@@ -212,7 +211,7 @@ const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
             () =>
               make(
                 I.makeSchema(ast),
-                (fc) => from.arbitrary(fc).filter((a) => !PE.isFailure(ast.decode(a)))
+                (fc) => from.arbitrary(fc).filter((a) => ast.refinement(a))
               ),
             ({ handler }) => handler(from)
           )

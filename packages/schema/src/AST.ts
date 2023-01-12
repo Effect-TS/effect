@@ -8,6 +8,7 @@ import * as Number from "@fp-ts/data/Number"
 import { isNumber } from "@fp-ts/data/Number"
 import type { Option } from "@fp-ts/data/Option"
 import * as O from "@fp-ts/data/Option"
+import type { Predicate } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import { isString } from "@fp-ts/data/String"
 import type { Parser } from "@fp-ts/schema/Parser"
@@ -724,7 +725,7 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
-  readonly decode: Parser<any, any>["parse"]
+  readonly refinement: Predicate<any>
   readonly meta: unknown
 }
 
@@ -734,10 +735,10 @@ export interface Refinement extends Annotated {
  */
 export const refinement = (
   from: AST,
-  decode: Parser<any, any>["parse"],
+  refinement: Predicate<any>,
   meta: unknown,
   annotations: Annotated["annotations"] = {}
-): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
+): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
 
 /**
  * @category model
