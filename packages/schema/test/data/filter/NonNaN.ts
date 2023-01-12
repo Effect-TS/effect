@@ -18,7 +18,7 @@ describe.concurrent("nonNaN", () => {
   it("Decoder", () => {
     const schema = _.nonNaN(S.number)
     Util.expectDecodingSuccess(schema, 1)
-    Util.expectDecodingFailure(schema, NaN, `NaN must be a number NaN excluded`)
+    Util.expectDecodingFailure(schema, NaN, `Expected a number NaN excluded, actual NaN`)
   })
 
   it("Pretty", () => {

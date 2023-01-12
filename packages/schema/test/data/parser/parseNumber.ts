@@ -22,12 +22,12 @@ describe.concurrent("parseNumber", () => {
     Util.expectDecodingFailure(
       schema,
       "a",
-      `"a" must be parsable from a string to a number`
+      `Expected a parsable value from string to number, actual "a"`
     )
     Util.expectDecodingFailure(
       schema,
       "a1",
-      `"a1" must be parsable from a string to a number`
+      `Expected a parsable value from string to number, actual "a1"`
     )
   })
 
@@ -50,7 +50,7 @@ describe.concurrent("parseNumber", () => {
     Util.expectDecodingFailure(
       schema,
       "a",
-      `"a" must be parsable from a string to a number`
+      `Expected a parsable value from string to number, actual "a"`
     )
   })
 })

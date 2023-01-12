@@ -160,7 +160,7 @@ describe.concurrent("is", () => {
       Apple,
       Banana
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Banana)).toEqual(true)
@@ -175,7 +175,7 @@ describe.concurrent("is", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Cantaloupe)).toEqual(true)
@@ -191,7 +191,7 @@ describe.concurrent("is", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is("apple")).toEqual(true)
     expect(is("banana")).toEqual(true)
@@ -533,11 +533,12 @@ describe.concurrent("is", () => {
         readonly name: string
         readonly categories: ReadonlyArray<Category>
       }
-      const schema: S.Schema<Category> = S.lazy<Category>("Category", () =>
+      const schema: S.Schema<Category> = S.lazy<Category>(() =>
         S.struct({
           name: S.string,
           categories: S.array(schema)
-        }))
+        })
+      )
       const is = P.is(schema)
       expect(is({ name: "a", categories: [] })).toEqual(true)
       expect(
@@ -561,16 +562,18 @@ describe.concurrent("is", () => {
         readonly b: number
         readonly as: ReadonlyArray<A>
       }
-      const schemaA: S.Schema<A> = S.lazy<A>("A", () =>
+      const schemaA: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           bs: S.array(schemaB)
-        }))
-      const schemaB: S.Schema<B> = S.lazy<B>("B", () =>
+        })
+      )
+      const schemaB: S.Schema<B> = S.lazy<B>(() =>
         S.struct({
           b: S.number,
           as: S.array(schemaA)
-        }))
+        })
+      )
       const isA = P.is(schemaA)
       expect(isA({ a: "a1", bs: [] })).toEqual(true)
       expect(isA({ a: "a1", bs: [{ b: 1, as: [] }] })).toEqual(true)
@@ -587,11 +590,12 @@ describe.concurrent("is", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const A: S.Schema<A> = S.lazy<A>("A", () =>
+      const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           as: S.array(A)
-        }))
+        })
+      )
       const schemaB = pipe(A, S.pick("as"))
       const isB = P.is(schemaB)
       expect(isB({ as: [] })).toEqual(true)
@@ -604,11 +608,12 @@ describe.concurrent("is", () => {
         readonly a: string
         readonly as: ReadonlyArray<A>
       }
-      const A: S.Schema<A> = S.lazy<A>("A", () =>
+      const A: S.Schema<A> = S.lazy<A>(() =>
         S.struct({
           a: S.string,
           as: S.array(A)
-        }))
+        })
+      )
       const schemaB = pipe(A, S.omit("a"))
       const isB = P.is(schemaB)
       expect(isB({ as: [] })).toEqual(true)

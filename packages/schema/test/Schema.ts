@@ -87,7 +87,7 @@ describe.concurrent("Schema", () => {
       Apple,
       Banana
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     const is = P.is(schema)
     expect(is(Fruits.Apple)).toEqual(true)
     expect(is(Fruits.Banana)).toEqual(true)

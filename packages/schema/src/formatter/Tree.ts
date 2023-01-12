@@ -2,8 +2,10 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/data/Function"
+import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import type * as AST from "@fp-ts/schema/AST"
+import * as AST from "@fp-ts/schema/AST"
 import type * as DE from "@fp-ts/schema/ParseError"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
@@ -72,53 +74,59 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
+const getTitle = AST.getAnnotation<AST.TitleAnnotation>(AST.TitleAnnotationId)
+
+const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(AST.IdentifierAnnotationId)
+
+const getExpected = (ast: AST.AST): O.Option<string> =>
+  pipe(getIdentifier(ast), O.catchAll(() => getTitle(ast)))
+
 /** @internal */
-export const formatAST = (ast: AST.AST): string => {
+export const formatExpected = (ast: AST.AST): string => {
   switch (ast._tag) {
     case "StringKeyword":
-      return "a string"
     case "NumberKeyword":
-      return "a number"
     case "BooleanKeyword":
-      return "a boolean"
     case "BigIntKeyword":
-      return "a bigint"
     case "UndefinedKeyword":
-      return "undefined"
     case "SymbolKeyword":
-      return "a symbol"
     case "ObjectKeyword":
-      return "an object"
     case "AnyKeyword":
-      return "any"
     case "UnknownKeyword":
-      return "unknown"
     case "VoidKeyword":
-      return "void"
     case "NeverKeyword":
-      return "never"
+      return pipe(getExpected(ast), O.getOrElse(() => ast._tag))
     case "Literal":
-      return `the literal ${formatActual(ast.literal)}`
+      return pipe(getExpected(ast), O.getOrElse(() => formatActual(ast.literal)))
     case "UniqueSymbol":
-      return `the unique symbol ${formatActual(ast.symbol)}`
+      return pipe(getExpected(ast), O.getOrElse(() => formatActual(ast.symbol)))
     case "Union":
-      return ast.types.map(formatAST).join(" or ")
+      return ast.types.map(formatExpected).join(" or ")
     case "Refinement":
-      return ast.meta.message
+      return pipe(getExpected(ast), O.getOrElse(() => ast.meta.message))
     case "TemplateLiteral":
-      return `a value conforming to the template literal ${formatTemplateLiteral(ast)}`
+      return pipe(getExpected(ast), O.getOrElse(() => formatTemplateLiteral(ast)))
     case "Tuple":
-      return "a tuple or an array"
+      return pipe(getExpected(ast), O.getOrElse(() => "tuple or array"))
     case "TypeLiteral":
-      return "an object"
+      return pipe(getExpected(ast), O.getOrElse(() => "type literal"))
     case "Enums":
-      return `a value conforming to the enum ${ast.identifier}`
+      return pipe(
+        getExpected(ast),
+        O.getOrElse(() => ast.enums.map((_, value) => JSON.stringify(value)).join(" | "))
+      )
     case "Lazy":
-      return `an instance of ${ast.identifier}`
+      return pipe(
+        getExpected(ast),
+        O.getOrElse(() => "<anonymous Lazy schema>")
+      )
     case "TypeAlias":
-      return `an instance of ${ast.identifier}`
+      return pipe(
+        getExpected(ast),
+        O.getOrElse(() => "<anonymous TypeAlias schema>")
+      )
     case "Transform":
-      return `parsable from ${formatAST(ast.from)} to ${formatAST(ast.to)}`
+      return `a parsable value from ${formatExpected(ast.from)} to ${formatExpected(ast.to)}`
   }
 }
 
@@ -126,7 +134,7 @@ const go = (e: DE.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(
-        `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
+        `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
       )
     case "Index":
       return make(`index ${e.index}`, e.errors.map(go))

@@ -15,8 +15,8 @@ describe.concurrent("instanceOf", () => {
   it("Decoder", () => {
     const schema = _.instanceOf(Set)(S.object)
     Util.expectDecodingSuccess(schema, new Set())
-    Util.expectDecodingFailure(schema, 1, `1 must be an object`)
-    Util.expectDecodingFailure(schema, {}, `{} must be an instance of Set`)
+    Util.expectDecodingFailure(schema, 1, `Expected object, actual 1`)
+    Util.expectDecodingFailure(schema, {}, `Expected an instance of Set, actual {}`)
   })
 
   it("Pretty", () => {

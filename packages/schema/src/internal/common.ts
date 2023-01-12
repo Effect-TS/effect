@@ -91,13 +91,11 @@ export const makeSchema = <A>(ast: AST.AST): Schema<A> => ({ ast }) as any
 
 /** @internal */
 export const typeAlias = (
-  identifier: string,
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
   annotations?: AST.Annotated["annotations"]
 ): Schema<any> =>
   makeSchema(AST.typeAlias(
-    identifier,
     typeParameters.map((tp) => tp.ast),
     type.ast,
     annotations
@@ -276,10 +274,9 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
 
 /** @internal */
 export const lazy = <A>(
-  identifier: string,
   f: () => Schema<A>,
   annotations?: AST.Annotated["annotations"]
-): Schema<A> => makeSchema(AST.lazy(identifier, () => f().ast, annotations))
+): Schema<A> => makeSchema(AST.lazy(() => f().ast, annotations))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
@@ -308,13 +305,6 @@ export const getKeysForIndexSignature = (
       return []
   }
 }
-
-/** @internal */
-export const getAnnotation = <A>(key: PropertyKey) =>
-  (annotated: AST.Annotated): O.Option<A> =>
-    Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
-      O.some(annotated.annotations[key] as any) :
-      O.none
 
 /** @internal */
 export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {

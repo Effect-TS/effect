@@ -6,6 +6,7 @@ import * as C from "@fp-ts/data/Chunk"
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import * as A from "@fp-ts/schema/Arbitrary"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
@@ -38,13 +39,13 @@ const pretty = <A>(item: Pretty<A>): Pretty<Chunk<A>> =>
  */
 export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
   I.typeAlias(
-    "Chunk",
     [item],
     I.struct({
       _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")),
       length: I.number
     }),
     {
+      [AST.IdentifierAnnotationId]: "Chunk",
       [H.ParserHookId]: H.hook(parser),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)

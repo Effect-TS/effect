@@ -475,7 +475,7 @@ const parserFor = <A>(
       case "Lazy": {
         const f = () => go(ast.f())
         const get = I.memoize<void, Parser<any, any>>(f)
-        const schema = I.lazy(ast.identifier, f)
+        const schema = I.lazy(f)
         return make(schema, (a, options) => get().parse(a, options))
       }
       case "Refinement": {

@@ -17,7 +17,7 @@ describe.concurrent("Decoder", () => {
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrowError(
       new Error(`1 error(s) found
-└─ 1 must be a string`)
+└─ Expected string, actual 1`)
     )
   })
 
@@ -70,11 +70,11 @@ describe.concurrent("Decoder", () => {
       `1 error(s) found
 └─ key "b"
    ├─ union member
-   │  └─ "b" must be undefined
+   │  └─ Expected undefined, actual "b"
    ├─ union member
-   │  └─ "b" must be the literal null
+   │  └─ Expected null, actual "b"
    └─ union member
-      └─ "b" must be a number`
+      └─ Expected number, actual "b"`
     )
 
     Util.expectEncodingSuccess(schema, { a: "a", b: O.none }, { a: "a" })
@@ -89,14 +89,14 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       O.some(1),
-      `union member: /value 1 must be a string, union member: /_tag "Some" must be the literal "None"`
+      `union member: /value Expected string, actual 1, union member: /_tag Expected "None", actual "Some"`
     )
   })
 
   it("void", () => {
     const schema = S.void
     Util.expectDecodingSuccess(schema, undefined, undefined)
-    Util.expectDecodingFailure(schema, 1, `1 must be void`)
+    Util.expectDecodingFailure(schema, 1, `Expected void, actual 1`)
   })
 
   it("any", () => {
@@ -125,16 +125,16 @@ describe.concurrent("Decoder", () => {
     const schema = S.templateLiteral(S.literal("a"))
     Util.expectDecodingSuccess(schema, "a", "a")
 
-    Util.expectDecodingFailure(schema, "ab", `"ab" must be the literal "a"`)
-    Util.expectDecodingFailure(schema, "", `"" must be the literal "a"`)
-    Util.expectDecodingFailure(schema, null, `null must be the literal "a"`)
+    Util.expectDecodingFailure(schema, "ab", `Expected "a", actual "ab"`)
+    Util.expectDecodingFailure(schema, "", `Expected "a", actual ""`)
+    Util.expectDecodingFailure(schema, null, `Expected "a", actual null`)
   })
 
   it("templateLiteral. a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
     Util.expectDecodingSuccess(schema, "a b", "a b")
 
-    Util.expectDecodingFailure(schema, "a  b", `"a  b" must be the literal "a b"`)
+    Util.expectDecodingFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
   })
 
   it("templateLiteral. a${string}", () => {
@@ -145,12 +145,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be a value conforming to the template literal a${string}"
+      "Expected a${string}, actual null"
     )
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must be a value conforming to the template literal a${string}"
+      "Expected a${string}, actual \"\""
     )
   })
 
@@ -162,17 +162,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be a value conforming to the template literal a${number}"
+      "Expected a${number}, actual null"
     )
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must be a value conforming to the template literal a${number}"
+      "Expected a${number}, actual \"\""
     )
     Util.expectDecodingFailure(
       schema,
       "aa",
-      "\"aa\" must be a value conforming to the template literal a${number}"
+      "Expected a${number}, actual \"aa\""
     )
   })
 
@@ -191,17 +191,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      "\"\" must be a value conforming to the template literal a${string}b"
+      "Expected a${string}b, actual \"\""
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" must be a value conforming to the template literal a${string}b"
+      "Expected a${string}b, actual \"a\""
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" must be a value conforming to the template literal a${string}b"
+      "Expected a${string}b, actual \"b\""
     )
   })
 
@@ -214,12 +214,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "a",
-      "\"a\" must be a value conforming to the template literal a${string}b${string}"
+      "Expected a${string}b${string}, actual \"a\""
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      "\"b\" must be a value conforming to the template literal a${string}b${string}"
+      "Expected a${string}b${string}, actual \"b\""
     )
   })
 
@@ -237,25 +237,25 @@ describe.concurrent("Decoder", () => {
       "_id",
       `4 error(s) found
 ├─ union member
-│  └─ "_id" must be the literal "welcome_email_id"
+│  └─ Expected "welcome_email_id", actual "_id"
 ├─ union member
-│  └─ "_id" must be the literal "email_heading_id"
+│  └─ Expected "email_heading_id", actual "_id"
 ├─ union member
-│  └─ "_id" must be the literal "footer_title_id"
+│  └─ Expected "footer_title_id", actual "_id"
 └─ union member
-   └─ "_id" must be the literal "footer_sendoff_id"`
+   └─ Expected "footer_sendoff_id", actual "_id"`
     )
   })
 
   it("never", () => {
     const schema = S.never
-    Util.expectDecodingFailure(schema, 1, "1 must be never")
+    Util.expectDecodingFailure(schema, 1, "Expected never, actual 1")
   })
 
   it("string", () => {
     const schema = S.string
     Util.expectDecodingSuccess(schema, "a", "a")
-    Util.expectDecodingFailure(schema, 1, "1 must be a string")
+    Util.expectDecodingFailure(schema, 1, "Expected string, actual 1")
   })
 
   it("number", () => {
@@ -264,14 +264,14 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, NaN, NaN)
     Util.expectDecodingSuccess(schema, Infinity, Infinity)
     Util.expectDecodingSuccess(schema, -Infinity, -Infinity)
-    Util.expectDecodingFailure(schema, "a", `"a" must be a number`)
+    Util.expectDecodingFailure(schema, "a", `Expected number, actual "a"`)
   })
 
   it("boolean", () => {
     const schema = S.boolean
     Util.expectDecodingSuccess(schema, true, true)
     Util.expectDecodingSuccess(schema, false, false)
-    Util.expectDecodingFailure(schema, 1, `1 must be a boolean`)
+    Util.expectDecodingFailure(schema, 1, `Expected boolean, actual 1`)
   })
 
   it("bigint", () => {
@@ -282,12 +282,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be a bigint"
+      "Expected bigint, actual null"
     )
     Util.expectDecodingFailure(
       schema,
       1.2,
-      `1.2 must be a bigint`
+      `Expected bigint, actual 1.2`
     )
   })
 
@@ -298,7 +298,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "@fp-ts/schema/test/a",
-      `"@fp-ts/schema/test/a" must be a symbol`
+      `Expected symbol, actual "@fp-ts/schema/test/a"`
     )
   })
 
@@ -306,18 +306,18 @@ describe.concurrent("Decoder", () => {
     const schema = S.object
     Util.expectDecodingSuccess(schema, {})
     Util.expectDecodingSuccess(schema, [])
-    Util.expectDecodingFailure(schema, null, `null must be an object`)
-    Util.expectDecodingFailure(schema, "a", `"a" must be an object`)
-    Util.expectDecodingFailure(schema, 1, `1 must be an object`)
-    Util.expectDecodingFailure(schema, true, `true must be an object`)
+    Util.expectDecodingFailure(schema, null, `Expected object, actual null`)
+    Util.expectDecodingFailure(schema, "a", `Expected object, actual "a"`)
+    Util.expectDecodingFailure(schema, 1, `Expected object, actual 1`)
+    Util.expectDecodingFailure(schema, true, `Expected object, actual true`)
   })
 
   it("literal 1 member", () => {
     const schema = S.literal(1)
     Util.expectDecodingSuccess(schema, 1)
 
-    Util.expectDecodingFailure(schema, "a", `"a" must be the literal 1`)
-    Util.expectDecodingFailure(schema, null, `null must be the literal 1`)
+    Util.expectDecodingFailure(schema, "a", `Expected 1, actual "a"`)
+    Util.expectDecodingFailure(schema, null, `Expected 1, actual null`)
   })
 
   it("literal 2 members", () => {
@@ -330,9 +330,9 @@ describe.concurrent("Decoder", () => {
       null,
       `2 error(s) found
 ├─ union member
-│  └─ null must be the literal 1
+│  └─ Expected 1, actual null
 └─ union member
-   └─ null must be the literal "a"`
+   └─ Expected "a", actual null`
     )
   })
 
@@ -344,7 +344,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Symbol(@fp-ts/schema/test/a)",
-      `"Symbol(@fp-ts/schema/test/a)" must be the unique symbol Symbol(@fp-ts/schema/test/a)`
+      `Expected Symbol(@fp-ts/schema/test/a), actual "Symbol(@fp-ts/schema/test/a)"`
     )
   })
 
@@ -353,7 +353,7 @@ describe.concurrent("Decoder", () => {
       Apple,
       Banana
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     Util.expectDecodingSuccess(schema, Fruits.Apple)
     Util.expectDecodingSuccess(schema, Fruits.Banana)
     Util.expectDecodingSuccess(schema, 0)
@@ -362,7 +362,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       3,
-      `3 must be a value conforming to the enum Fruits`
+      `Expected 0 | 1, actual 3`
     )
   })
 
@@ -372,7 +372,7 @@ describe.concurrent("Decoder", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     Util.expectDecodingSuccess(schema, Fruits.Apple)
     Util.expectDecodingSuccess(schema, Fruits.Cantaloupe)
     Util.expectDecodingSuccess(schema, "apple")
@@ -382,7 +382,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" must be a value conforming to the enum Fruits`
+      `Expected 0 | 1 | 2, actual "Cantaloupe"`
     )
   })
 
@@ -392,7 +392,7 @@ describe.concurrent("Decoder", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     Util.expectDecodingSuccess(schema, "apple")
     Util.expectDecodingSuccess(schema, "banana")
     Util.expectDecodingSuccess(schema, 3)
@@ -400,7 +400,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "Cantaloupe",
-      `"Cantaloupe" must be a value conforming to the enum Fruits`
+      `Expected 0 | 1 | 2, actual "Cantaloupe"`
     )
   })
 
@@ -411,9 +411,9 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
-    Util.expectDecodingFailure(schema, {}, `{} must be a tuple or an array`)
+    Util.expectDecodingFailure(schema, {}, `Expected tuple or array, actual {}`)
     Util.expectDecodingFailure(schema, [undefined], `/0 is unexpected`)
     Util.expectDecodingFailure(schema, [1], `/0 is unexpected`)
   })
@@ -425,15 +425,15 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
       schema,
       [undefined],
-      `/0 undefined must be a number`
+      `/0 Expected number, actual undefined`
     )
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 Expected number, actual "a"`)
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
 
@@ -445,13 +445,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 union member: "a" must be a number, union member: "a" must be undefined`
+      `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -464,12 +464,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 "a" must be a number`
+      `/0 Expected number, actual "a"`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -483,12 +483,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       ["a"],
-      `/0 union member: "a" must be a number, union member: "a" must be undefined`
+      `/0 union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
     )
     Util.expectDecodingFailure(schema, [1, "b"], `/1 is unexpected`)
   })
@@ -498,8 +498,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a"])
     Util.expectDecodingSuccess(schema, ["a", 1])
 
-    Util.expectDecodingFailure(schema, [1], `/0 1 must be a string`)
-    Util.expectDecodingFailure(schema, ["a", "b"], `/1 "b" must be a number`)
+    Util.expectDecodingFailure(schema, [1], `/0 Expected string, actual 1`)
+    Util.expectDecodingFailure(schema, ["a", "b"], `/1 Expected number, actual "b"`)
   })
 
   it("tuple. e r", () => {
@@ -518,7 +518,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a", 1])
     Util.expectDecodingSuccess(schema, ["a", 1, 2])
 
-    Util.expectDecodingFailure(schema, [1], `/0 1 must be a string`)
+    Util.expectDecodingFailure(schema, [1], `/0 Expected string, actual 1`)
   })
 
   it("tuple. r", () => {
@@ -527,8 +527,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, [1])
     Util.expectDecodingSuccess(schema, [1, 2])
 
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" must be a number`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 Expected number, actual "a"`)
+    Util.expectDecodingFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
   })
 
   it("tuple. r e", () => {
@@ -538,8 +538,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, ["a", "b", 1])
 
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
-    Util.expectDecodingFailure(schema, ["a"], `/0 "a" must be a number`)
-    Util.expectDecodingFailure(schema, [1, 2], `/0 1 must be a string`)
+    Util.expectDecodingFailure(schema, ["a"], `/0 Expected number, actual "a"`)
+    Util.expectDecodingFailure(schema, [1, 2], `/0 Expected string, actual 1`)
   })
 
   it("tuple. e r e", () => {
@@ -550,9 +550,9 @@ describe.concurrent("Decoder", () => {
 
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(schema, ["a"], `/1 is missing`)
-    Util.expectDecodingFailure(schema, [true], `/0 true must be a string`)
-    Util.expectDecodingFailure(schema, ["a", 1], `/1 1 must be a boolean`)
-    Util.expectDecodingFailure(schema, [1, true], `/0 1 must be a string`)
+    Util.expectDecodingFailure(schema, [true], `/0 Expected string, actual true`)
+    Util.expectDecodingFailure(schema, ["a", 1], `/1 Expected boolean, actual 1`)
+    Util.expectDecodingFailure(schema, [1, true], `/0 Expected string, actual 1`)
   })
 
   it("struct/empty", () => {
@@ -564,7 +564,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
   })
 
@@ -575,13 +575,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      "/a undefined must be a number"
+      "/a Expected number, actual undefined"
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -594,13 +594,13 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a union member: "a" must be a number, union member: "a" must be undefined`
+      `/a union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -613,17 +613,17 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a "a" must be a number`
+      `/a Expected number, actual "a"`
     )
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      `/a undefined must be a number`
+      `/a Expected number, actual undefined`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -637,12 +637,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a union member: "a" must be a number, union member: "a" must be undefined`
+      `/a union member: Expected number, actual "a", union member: Expected undefined, actual "a"`
     )
     Util.expectDecodingFailure(schema, { a: 1, b: "b" }, "/b is unexpected")
   })
@@ -662,11 +662,11 @@ describe.concurrent("Decoder", () => {
 
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(schema, { b: "b" }, "/a is missing")
-    Util.expectDecodingFailure(schema, { a: 1 }, "/a 1 must be a string")
+    Util.expectDecodingFailure(schema, { a: 1 }, "/a Expected string, actual 1")
     Util.expectDecodingFailure(
       schema,
       { a: "a", b: 1 },
-      "/b 1 must be a string"
+      "/b Expected string, actual 1"
     )
   })
 
@@ -678,12 +678,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "[] must be an object"
+      "Expected type literal, actual []"
     )
     Util.expectDecodingFailure(
       schema,
       { a: "a" },
-      `/a "a" must be a number`
+      `/a Expected number, actual "a"`
     )
   })
 
@@ -696,12 +696,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "[] must be an object"
+      "Expected type literal, actual []"
     )
     Util.expectDecodingFailure(
       schema,
       { [a]: "a" },
-      `/Symbol(@fp-ts/schema/test/a) "a" must be a number`
+      `/Symbol(@fp-ts/schema/test/a) Expected number, actual "a"`
     )
   })
 
@@ -727,7 +727,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, {}, `/a is missing`)
     Util.expectDecodingFailure(schema, { a: 1 }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 2 }, `/a is missing`)
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
   })
 
   it("struct/ record(keyof struct({ a, b } & Record<string, string>), number)", () => {
@@ -740,7 +740,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, { a: 1 })
     Util.expectDecodingSuccess(schema, { b: 2 })
 
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
   })
 
   it("struct/ record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
@@ -755,11 +755,11 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, {}, `/a is missing`)
     Util.expectDecodingFailure(schema, { a: 1 }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 2 }, `/a is missing`)
-    Util.expectDecodingFailure(schema, { a: "a" }, `/a "a" must be a number`)
+    Util.expectDecodingFailure(schema, { a: "a" }, `/a Expected number, actual "a"`)
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: 2, [c]: "c" },
-      `/Symbol(@fp-ts/schema/test/c) "c" must be a number`
+      `/Symbol(@fp-ts/schema/test/c) Expected number, actual "c"`
     )
   })
 
@@ -790,7 +790,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { _tag: "a" },
-      `/_tag "a" must be a number`
+      `/_tag Expected number, actual "a"`
     )
   })
 
@@ -805,12 +805,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { "": 1 },
-      "/ \"\" must be a value conforming to the template literal ${string}-${string}"
+      "/ Expected ${string}-${string}, actual \"\""
     )
     Util.expectDecodingFailure(
       schema,
       { "-": "a" },
-      `/- "a" must be a number`
+      `/- Expected number, actual "a"`
     )
   })
 
@@ -823,18 +823,18 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { "": 1 },
-      `/ "" must be a string at least 2 character(s) long`
+      `/ Expected a string at least 2 character(s) long, actual ""`
     )
     Util.expectDecodingFailure(
       schema,
       { "a": 1 },
-      `/a "a" must be a string at least 2 character(s) long`
+      `/a Expected a string at least 2 character(s) long, actual "a"`
     )
   })
 
   it("union/ empty union", () => {
     const schema = S.union()
-    Util.expectDecodingFailure(schema, 1, "1 must be never")
+    Util.expectDecodingFailure(schema, 1, "Expected never, actual 1")
   })
 
   it("union/required property signatures: should return the best output", () => {
@@ -856,11 +856,12 @@ describe.concurrent("Decoder", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>("A", () =>
+    const schema: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
         as: S.array(schema)
-      }))
+      })
+    )
 
     Util.expectDecodingSuccess(schema, { a: "a1", as: [] })
     Util.expectDecodingSuccess(schema, { a: "a1", as: [{ a: "a2", as: [] }] })
@@ -868,7 +869,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -878,7 +879,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 1 must be an object"
+      "/as /0 /as /0 Expected type literal, actual 1"
     )
   })
 
@@ -895,19 +896,21 @@ describe.concurrent("Decoder", () => {
       readonly right: Expression
     }
 
-    const Expression: S.Schema<Expression> = S.lazy("Expression", () =>
+    const Expression: S.Schema<Expression> = S.lazy(() =>
       S.struct({
         type: S.literal("expression"),
         value: S.union(S.number, Operation)
-      }))
+      })
+    )
 
-    const Operation: S.Schema<Operation> = S.lazy("Operation", () =>
+    const Operation: S.Schema<Operation> = S.lazy(() =>
       S.struct({
         type: S.literal("operation"),
         operator: S.union(S.literal("+"), S.literal("-")),
         left: Expression,
         right: Expression
-      }))
+      })
+    )
 
     const input = {
       type: "operation",
@@ -944,7 +947,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: undefined },
-      `/a undefined must be a number`
+      `/a Expected number, actual undefined`
     )
   })
 
@@ -967,9 +970,9 @@ describe.concurrent("Decoder", () => {
       `1 error(s) found
 └─ index 0
    ├─ union member
-   │  └─ "a" must be a number
+   │  └─ Expected number, actual "a"
    └─ union member
-      └─ "a" must be undefined`
+      └─ Expected undefined, actual "a"`
     )
   })
 
@@ -987,11 +990,11 @@ describe.concurrent("Decoder", () => {
 ├─ union member
 │  └─ index 0
 │     ├─ union member
-│     │  └─ "a" must be a number
+│     │  └─ Expected number, actual "a"
 │     └─ union member
-│        └─ "a" must be undefined
+│        └─ Expected undefined, actual "a"
 └─ union member
-   └─ ["a"] must be a string`
+   └─ Expected string, actual ["a"]`
     )
   })
 
@@ -1003,7 +1006,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be an object"
+      "Expected type literal, actual null"
     )
     Util.expectDecodingFailure(schema, { a: "a" }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 1 }, "/a is missing")
@@ -1018,7 +1021,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "null must be an object"
+      "Expected type literal, actual null"
     )
     Util.expectDecodingFailure(schema, { [a]: "a" }, `/b is missing`)
     Util.expectDecodingFailure(
@@ -1036,7 +1039,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" must be a string at most 1 character(s) long`
+      `Expected a string at most 1 character(s) long, actual "aa"`
     )
   })
 
@@ -1048,7 +1051,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string at least 1 character(s) long`
+      `Expected a string at least 1 character(s) long, actual ""`
     )
   })
 
@@ -1059,12 +1062,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string at least 1 character(s) long`
+      `Expected a string at least 1 character(s) long, actual ""`
     )
     Util.expectDecodingFailure(
       schema,
       "aa",
-      `"aa" must be a string at most 1 character(s) long`
+      `Expected a string at most 1 character(s) long, actual "aa"`
     )
   })
 
@@ -1076,12 +1079,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string starting with "a"`
+      `Expected a string starting with "a", actual ""`
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      `"b" must be a string starting with "a"`
+      `Expected a string starting with "a", actual "b"`
     )
   })
 
@@ -1093,12 +1096,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string ending with "a"`
+      `Expected a string ending with "a", actual ""`
     )
     Util.expectDecodingFailure(
       schema,
       "b",
-      `"b" must be a string ending with "a"`
+      `Expected a string ending with "a", actual "b"`
     )
   })
 
@@ -1110,12 +1113,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "ab",
-      `"ab" must be a string matching the pattern ^abb+$`
+      `Expected a string matching the pattern ^abb+$, actual "ab"`
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      `"a" must be a string matching the pattern ^abb+$`
+      `Expected a string matching the pattern ^abb+$, actual "a"`
     )
   })
 
@@ -1235,7 +1238,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [1, "b"],
-      `/0 1 must be a string, /1 "b" must be a number`,
+      `/0 Expected string, actual 1, /1 Expected number, actual "b"`,
       allErrors
     )
   })
@@ -1250,7 +1253,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a", "b", "c"],
-      `/1 "b" must be a number, /2 "c" must be a number`,
+      `/1 Expected number, actual "b", /2 Expected number, actual "c"`,
       allErrors
     )
   })
@@ -1260,7 +1263,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       ["a", "b"],
-      `/0 "a" must be a number, /1 "b" must be a number`,
+      `/0 Expected number, actual "a", /1 Expected number, actual "b"`,
       allErrors
     )
   })
@@ -1275,7 +1278,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: "b" },
-      `/a 1 must be a string, /b "b" must be a number`,
+      `/a Expected string, actual 1, /b Expected number, actual "b"`,
       allErrors
     )
   })
@@ -1295,7 +1298,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: 2 },
-      `/a "a" must be a string at least 2 character(s) long, /b "b" must be a string at least 2 character(s) long`,
+      `/a Expected a string at least 2 character(s) long, actual "a", /b Expected a string at least 2 character(s) long, actual "b"`,
       allErrors
     )
   })
@@ -1305,7 +1308,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a", b: "b" },
-      `/a "a" must be a number, /b "b" must be a number`,
+      `/a Expected number, actual "a", /b Expected number, actual "b"`,
       allErrors
     )
   })

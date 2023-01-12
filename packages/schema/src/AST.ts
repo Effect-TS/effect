@@ -48,12 +48,60 @@ export interface Annotated {
 }
 
 /**
+ * @since 1.0.0
+ */
+export type IdentifierAnnotation = string
+
+/**
+ * @since 1.0.0
+ */
+export const IdentifierAnnotationId = "@fp-ts/schema/AST/IdentifierAnnotationId"
+
+/**
+ * @since 1.0.0
+ */
+export type TitleAnnotation = string
+
+/**
+ * @since 1.0.0
+ */
+export const TitleAnnotationId = "@fp-ts/schema/AST/TitleAnnotationId"
+
+/**
+ * @since 1.0.0
+ */
+export type DescriptionAnnotation = string
+
+/**
+ * @since 1.0.0
+ */
+export const DescriptionAnnotationId = "@fp-ts/schema/AST/DescriptionAnnotationId"
+
+/**
+ * @since 1.0.0
+ */
+export type ExamplesAnnotation = ReadonlyArray<unknown>
+
+/**
+ * @since 1.0.0
+ */
+export const ExamplesAnnotationId = "@fp-ts/schema/AST/ExamplesAnnotationId"
+
+/**
+ * @since 1.0.0
+ */
+export const getAnnotation = <A>(key: PropertyKey) =>
+  (annotated: Annotated): O.Option<A> =>
+    Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
+      O.some(annotated.annotations[key] as any) :
+      O.none
+
+/**
  * @category model
  * @since 1.0.0
  */
 export interface TypeAlias extends Annotated {
   readonly _tag: "TypeAlias"
-  readonly identifier: string
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
 }
@@ -63,11 +111,10 @@ export interface TypeAlias extends Annotated {
  * @since 1.0.0
  */
 export const typeAlias = (
-  identifier: string,
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: Annotated["annotations"] = {}
-): TypeAlias => ({ _tag: "TypeAlias", identifier, typeParameters, type, annotations })
+): TypeAlias => ({ _tag: "TypeAlias", typeParameters, type, annotations })
 
 /**
  * @category guards
@@ -84,7 +131,7 @@ export type LiteralValue = string | number | boolean | null | bigint
  * @category model
  * @since 1.0.0
  */
-export interface Literal {
+export interface Literal extends Annotated {
   readonly _tag: "Literal"
   readonly literal: LiteralValue
 }
@@ -95,7 +142,7 @@ export interface Literal {
  */
 export const literal = (
   literal: LiteralValue
-): Literal => ({ _tag: "Literal", literal })
+): Literal => ({ _tag: "Literal", literal, annotations: {} })
 
 /**
  * @category guards
@@ -131,7 +178,7 @@ export const isUniqueSymbol = (ast: AST): ast is UniqueSymbol => ast._tag === "U
  * @category model
  * @since 1.0.0
  */
-export interface UndefinedKeyword {
+export interface UndefinedKeyword extends Annotated {
   readonly _tag: "UndefinedKeyword"
 }
 
@@ -139,13 +186,18 @@ export interface UndefinedKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const undefinedKeyword: UndefinedKeyword = { _tag: "UndefinedKeyword" }
+export const undefinedKeyword: UndefinedKeyword = {
+  _tag: "UndefinedKeyword",
+  annotations: {
+    [TitleAnnotationId]: "undefined"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface VoidKeyword {
+export interface VoidKeyword extends Annotated {
   readonly _tag: "VoidKeyword"
 }
 
@@ -153,13 +205,18 @@ export interface VoidKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const voidKeyword: VoidKeyword = { _tag: "VoidKeyword" }
+export const voidKeyword: VoidKeyword = {
+  _tag: "VoidKeyword",
+  annotations: {
+    [TitleAnnotationId]: "void"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface NeverKeyword {
+export interface NeverKeyword extends Annotated {
   readonly _tag: "NeverKeyword"
 }
 
@@ -167,13 +224,18 @@ export interface NeverKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const neverKeyword: NeverKeyword = { _tag: "NeverKeyword" }
+export const neverKeyword: NeverKeyword = {
+  _tag: "NeverKeyword",
+  annotations: {
+    [TitleAnnotationId]: "never"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface UnknownKeyword {
+export interface UnknownKeyword extends Annotated {
   readonly _tag: "UnknownKeyword"
 }
 
@@ -181,13 +243,18 @@ export interface UnknownKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const unknownKeyword: UnknownKeyword = { _tag: "UnknownKeyword" }
+export const unknownKeyword: UnknownKeyword = {
+  _tag: "UnknownKeyword",
+  annotations: {
+    [TitleAnnotationId]: "unknown"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface AnyKeyword {
+export interface AnyKeyword extends Annotated {
   readonly _tag: "AnyKeyword"
 }
 
@@ -195,13 +262,18 @@ export interface AnyKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const anyKeyword: AnyKeyword = { _tag: "AnyKeyword" }
+export const anyKeyword: AnyKeyword = {
+  _tag: "AnyKeyword",
+  annotations: {
+    [TitleAnnotationId]: "any"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface StringKeyword {
+export interface StringKeyword extends Annotated {
   readonly _tag: "StringKeyword"
 }
 
@@ -209,7 +281,12 @@ export interface StringKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const stringKeyword: StringKeyword = { _tag: "StringKeyword" }
+export const stringKeyword: StringKeyword = {
+  _tag: "StringKeyword",
+  annotations: {
+    [TitleAnnotationId]: "string"
+  }
+}
 
 /**
  * @category guards
@@ -221,7 +298,7 @@ export const isStringKeyword = (ast: AST): ast is StringKeyword => ast._tag === 
  * @category model
  * @since 1.0.0
  */
-export interface NumberKeyword {
+export interface NumberKeyword extends Annotated {
   readonly _tag: "NumberKeyword"
 }
 
@@ -229,7 +306,12 @@ export interface NumberKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const numberKeyword: NumberKeyword = { _tag: "NumberKeyword" }
+export const numberKeyword: NumberKeyword = {
+  _tag: "NumberKeyword",
+  annotations: {
+    [TitleAnnotationId]: "number"
+  }
+}
 
 /**
  * @category guards
@@ -241,7 +323,7 @@ export const isNumberKeyword = (ast: AST): ast is NumberKeyword => ast._tag === 
  * @category model
  * @since 1.0.0
  */
-export interface BooleanKeyword {
+export interface BooleanKeyword extends Annotated {
   readonly _tag: "BooleanKeyword"
 }
 
@@ -249,13 +331,18 @@ export interface BooleanKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const booleanKeyword: BooleanKeyword = { _tag: "BooleanKeyword" }
+export const booleanKeyword: BooleanKeyword = {
+  _tag: "BooleanKeyword",
+  annotations: {
+    [TitleAnnotationId]: "boolean"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface BigIntKeyword {
+export interface BigIntKeyword extends Annotated {
   readonly _tag: "BigIntKeyword"
 }
 
@@ -263,13 +350,18 @@ export interface BigIntKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const bigIntKeyword: BigIntKeyword = { _tag: "BigIntKeyword" }
+export const bigIntKeyword: BigIntKeyword = {
+  _tag: "BigIntKeyword",
+  annotations: {
+    [TitleAnnotationId]: "bigint"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface SymbolKeyword {
+export interface SymbolKeyword extends Annotated {
   readonly _tag: "SymbolKeyword"
 }
 
@@ -277,7 +369,12 @@ export interface SymbolKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const symbolKeyword: SymbolKeyword = { _tag: "SymbolKeyword" }
+export const symbolKeyword: SymbolKeyword = {
+  _tag: "SymbolKeyword",
+  annotations: {
+    [TitleAnnotationId]: "symbol"
+  }
+}
 
 /**
  * @category guards
@@ -289,7 +386,7 @@ export const isSymbolKeyword = (ast: AST): ast is SymbolKeyword => ast._tag === 
  * @category model
  * @since 1.0.0
  */
-export interface ObjectKeyword {
+export interface ObjectKeyword extends Annotated {
   readonly _tag: "ObjectKeyword"
 }
 
@@ -297,15 +394,19 @@ export interface ObjectKeyword {
  * @category constructors
  * @since 1.0.0
  */
-export const objectKeyword: ObjectKeyword = { _tag: "ObjectKeyword" }
+export const objectKeyword: ObjectKeyword = {
+  _tag: "ObjectKeyword",
+  annotations: {
+    [TitleAnnotationId]: "object"
+  }
+}
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface Enums {
+export interface Enums extends Annotated {
   readonly _tag: "Enums"
-  readonly identifier: string
   readonly enums: ReadonlyArray<readonly [string, string | number]>
 }
 
@@ -314,9 +415,8 @@ export interface Enums {
  * @since 1.0.0
  */
 export const enums = (
-  identifier: string,
   enums: ReadonlyArray<readonly [string, string | number]>
-): Enums => ({ _tag: "Enums", identifier, enums })
+): Enums => ({ _tag: "Enums", enums, annotations: {} })
 
 /**
  * @since 1.0.0
@@ -330,7 +430,7 @@ export interface TemplateLiteralSpan {
  * @category model
  * @since 1.0.0
  */
-export interface TemplateLiteral {
+export interface TemplateLiteral extends Annotated {
   readonly _tag: "TemplateLiteral"
   readonly head: string
   readonly spans: RA.NonEmptyReadonlyArray<TemplateLiteralSpan>
@@ -344,7 +444,7 @@ export const templateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>
 ): TemplateLiteral | Literal =>
-  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literal(head)
+  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans, annotations: {} } : literal(head)
 
 /**
  * @category guards
@@ -513,7 +613,7 @@ export const isTypeLiteral = (ast: AST): ast is TypeLiteral => ast._tag === "Typ
  * @category model
  * @since 1.0.0
  */
-export interface Union {
+export interface Union extends Annotated {
   readonly _tag: "Union"
   readonly types: readonly [AST, AST, ...Array<AST>]
 }
@@ -561,7 +661,8 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
  * @since 1.0.0
  */
 export const union = (
-  candidates: ReadonlyArray<AST>
+  candidates: ReadonlyArray<AST>,
+  annotations: Annotated["annotations"] = {}
 ): AST => {
   const types = unify(candidates)
   switch (types.length) {
@@ -571,7 +672,7 @@ export const union = (
       return types[0]
     default: {
       // @ts-expect-error (TypeScript doesn't know that `types` has >= 2 elements after sorting)
-      return { _tag: "Union", types: sortByWeightDesc(types) }
+      return { _tag: "Union", types: sortByWeightDesc(types), annotations }
     }
   }
 }
@@ -587,7 +688,6 @@ export const isUnion = (ast: AST): ast is Union => ast._tag === "Union"
  * @since 1.0.0
  */
 export interface Lazy extends Annotated {
-  readonly identifier: string
   readonly _tag: "Lazy"
   readonly f: () => AST
 }
@@ -597,10 +697,9 @@ export interface Lazy extends Annotated {
  * @since 1.0.0
  */
 export const lazy = (
-  identifier: string,
   f: () => AST,
   annotations: Annotated["annotations"] = {}
-): Lazy => ({ _tag: "Lazy", identifier, f, annotations })
+): Lazy => ({ _tag: "Lazy", f, annotations })
 
 /**
  * @category guards
@@ -643,7 +742,7 @@ export const refinement = (
  * @category model
  * @since 1.0.0
  */
-export interface Transform {
+export interface Transform extends Annotated {
   readonly _tag: "Transform"
   readonly from: AST
   readonly to: AST
@@ -660,7 +759,7 @@ export const transform = (
   to: AST,
   decode: Transform["decode"],
   encode: Transform["encode"]
-): Transform => ({ _tag: "Transform", from, to, decode, encode })
+): Transform => ({ _tag: "Transform", from, to, decode, encode, annotations: {} })
 
 /**
  * @category guards
@@ -671,6 +770,14 @@ export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transfo
 // ---------------------------------------------
 // API
 // ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const annotation = (ast: AST, id: PropertyKey, value: unknown) => ({
+  ...ast,
+  annotations: { ...ast.annotations, [id]: value }
+})
 
 /**
  * @since 1.0.0
@@ -900,7 +1007,7 @@ export const partial = (ast: AST): AST => {
     case "Union":
       return union(ast.types.map((member) => partial(member)))
     case "Lazy":
-      return lazy(ast.identifier, () => partial(ast.f()))
+      return lazy(() => partial(ast.f()))
     case "Refinement":
       return partial(ast.from)
     case "Transform":

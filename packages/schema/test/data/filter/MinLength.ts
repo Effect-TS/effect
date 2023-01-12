@@ -23,7 +23,7 @@ describe.concurrent("minLength", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string at least 1 character(s) long`
+      `Expected a string at least 1 character(s) long, actual ""`
     )
   })
 

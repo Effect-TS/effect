@@ -4,6 +4,7 @@
 import { pipe } from "@fp-ts/data/Function"
 import * as H from "@fp-ts/schema/annotation/HookAnnotation"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
+import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
@@ -54,12 +55,12 @@ const pretty = <K, V>(key: Pretty<K>, value: Pretty<V>): Pretty<ReadonlyMap<K, V
  */
 export const readonlyMap = <K, V>(key: Schema<K>, value: Schema<V>): Schema<ReadonlyMap<K, V>> =>
   I.typeAlias(
-    "ReadonlyMap",
     [key, value],
     I.struct({
       size: I.number
     }),
     {
+      [AST.IdentifierAnnotationId]: "ReadonlyMap",
       [H.ParserHookId]: H.hook(parser),
       [H.PrettyHookId]: H.hook(pretty),
       [H.ArbitraryHookId]: H.hook(arbitrary)

@@ -3,7 +3,7 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as T from "@fp-ts/data/These"
 import * as A from "@fp-ts/schema/Arbitrary"
-import { formatActual, formatAST, formatErrors } from "@fp-ts/schema/formatter/Tree"
+import { formatActual, formatErrors, formatExpected } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
@@ -90,7 +90,7 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
     case "Type":
-      return `${formatActual(e.actual)} must be ${formatAST(e.expected)}`
+      return `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":

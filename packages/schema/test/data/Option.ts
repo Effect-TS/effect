@@ -50,11 +50,11 @@ describe.concurrent("Option", () => {
       {},
       `3 error(s) found
 ├─ union member
-│  └─ {} must be undefined
+│  └─ Expected undefined, actual {}
 ├─ union member
-│  └─ {} must be the literal null
+│  └─ Expected null, actual {}
 └─ union member
-   └─ {} must be a string`
+   └─ Expected string, actual {}`
     )
   })
 

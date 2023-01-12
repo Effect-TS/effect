@@ -38,13 +38,13 @@ describe.concurrent("Encoder", () => {
     expect(E.encodeOrThrow(schema)(1)).toEqual("1")
     expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
       new Error(`1 error(s) found
-└─ "10" must be a string at most 1 character(s) long`)
+└─ Expected a string at most 1 character(s) long, actual "10"`)
     )
   })
 
   it("never", () => {
     const schema = S.never
-    Util.expectEncodingFailure(schema, 1 as any as never, "1 must be never")
+    Util.expectEncodingFailure(schema, 1 as any as never, "Expected never, actual 1")
   })
 
   it("type alias without annotations", () => {
@@ -55,7 +55,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       O.some(10),
-      `union member: /value "10" must be a string at most 1 character(s) long, union member: /_tag "Some" must be the literal "None"`
+      `union member: /value Expected a string at most 1 character(s) long, actual "10", union member: /_tag Expected "None", actual "Some"`
     )
   })
 
@@ -109,7 +109,7 @@ describe.concurrent("Encoder", () => {
         Apple,
         Banana
       }
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, 0)
       Util.expectEncodingSuccess(schema, Fruits.Banana, 1)
     })
@@ -120,7 +120,7 @@ describe.concurrent("Encoder", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
       Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
       Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 0)
@@ -132,7 +132,7 @@ describe.concurrent("Encoder", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       Util.expectEncodingSuccess(schema, Fruits.Apple, "apple")
       Util.expectEncodingSuccess(schema, Fruits.Banana, "banana")
       Util.expectEncodingSuccess(schema, Fruits.Cantaloupe, 3)
@@ -150,7 +150,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" must be a string at most 1 character(s) long`
+      `/0 Expected a string at most 1 character(s) long, actual "10"`
     )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
@@ -161,7 +161,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" must be a single character, /1 "bb" must be a single character`
+      `/0 Expected a single character, actual "aa", /1 Expected a single character, actual "bb"`
     )
   })
 
@@ -179,7 +179,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" must be a string at most 1 character(s) long`
+      `/0 Expected a string at most 1 character(s) long, actual "10"`
     )
     Util.expectEncodingFailure(schema, [1, "b"] as any, `/1 is unexpected`)
   })
@@ -221,7 +221,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" must be a string at most 1 character(s) long`
+      `/0 Expected a string at most 1 character(s) long, actual "10"`
     )
   })
 
@@ -231,7 +231,7 @@ describe.concurrent("Encoder", () => {
       schema,
       ["aa", "bb"],
       ["aa", "bb"],
-      `/0 "aa" must be a single character, /1 "bb" must be a single character`
+      `/0 Expected a single character, actual "aa", /1 Expected a single character, actual "bb"`
     )
   })
 
@@ -244,7 +244,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10],
-      `/0 "10" must be a string at most 1 character(s) long`
+      `/0 Expected a string at most 1 character(s) long, actual "10"`
     )
   })
 
@@ -254,7 +254,7 @@ describe.concurrent("Encoder", () => {
       schema,
       [1, 2, "aa", "bb"],
       [1, 2, "aa", "bb"],
-      `/2 "aa" must be a single character, /3 "bb" must be a single character`
+      `/2 Expected a single character, actual "aa", /3 Expected a single character, actual "bb"`
     )
   })
 
@@ -305,7 +305,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" must be a single character, /b "bb" must be a single character`
+      `/a Expected a single character, actual "aa", /b Expected a single character, actual "bb"`
     )
   })
 
@@ -314,7 +314,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a" },
-      `/aa "aa" must be a string at most 1 character(s) long`
+      `/aa Expected a string at most 1 character(s) long, actual "aa"`
     )
   })
 
@@ -323,7 +323,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa" },
-      `/a "aa" must be a string at most 1 character(s) long`
+      `/a Expected a string at most 1 character(s) long, actual "aa"`
     )
   })
 
@@ -333,7 +333,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { aa: "a", bb: "b" },
       { aa: "a", bb: "b" },
-      `/aa "aa" must be a single character, /bb "bb" must be a single character`
+      `/aa Expected a single character, actual "aa", /bb Expected a single character, actual "bb"`
     )
   })
 
@@ -343,7 +343,7 @@ describe.concurrent("Encoder", () => {
       schema,
       { a: "aa", b: "bb" },
       { a: "aa", b: "bb" },
-      `/a "aa" must be a single character, /b "bb" must be a single character`
+      `/a Expected a single character, actual "aa", /b Expected a single character, actual "bb"`
     )
   })
 
@@ -389,9 +389,10 @@ describe.concurrent("Encoder", () => {
   it("union/ forced empty union", () => {
     const schema = S.make({
       _tag: "Union",
-      types: [] as any
+      types: [] as any,
+      annotations: {}
     })
-    Util.expectEncodingFailure(schema, "a", `"a" must be never`)
+    Util.expectEncodingFailure(schema, "a", `Expected never, actual "a"`)
   })
 
   describe.concurrent("partial", () => {
@@ -429,11 +430,12 @@ describe.concurrent("Encoder", () => {
       readonly a: number
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>("A", () =>
+    const schema: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: NumberFromString,
         as: S.array(schema)
-      }))
+      })
+    )
     Util.expectEncodingSuccess(schema, { a: 1, as: [] }, { a: "1", as: [] })
     Util.expectEncodingSuccess(schema, { a: 1, as: [{ a: 2, as: [] }] }, {
       a: "1",
@@ -498,7 +500,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       null as any,
-      `null must be an object`
+      `Expected type literal, actual null`
     )
   })
 
@@ -525,7 +527,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
+      `/0 Expected a string at most 1 character(s) long, actual "10", /1 Expected a string at most 1 character(s) long, actual "10"`,
       allErrors
     )
   })
@@ -535,7 +537,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
+      `/0 Expected a string at most 1 character(s) long, actual "10", /1 Expected a string at most 1 character(s) long, actual "10"`,
       allErrors
     )
   })
@@ -545,7 +547,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       [10, 10],
-      `/0 "10" must be a string at most 1 character(s) long, /1 "10" must be a string at most 1 character(s) long`,
+      `/0 Expected a string at most 1 character(s) long, actual "10", /1 Expected a string at most 1 character(s) long, actual "10"`,
       allErrors
     )
   })
@@ -555,7 +557,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: 10, b: 10 },
-      `/a "10" must be a string at most 1 character(s) long, /b "10" must be a string at most 1 character(s) long`,
+      `/a Expected a string at most 1 character(s) long, actual "10", /b Expected a string at most 1 character(s) long, actual "10"`,
       allErrors
     )
   })
@@ -565,7 +567,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { aa: "a", bb: "bb" },
-      `/aa "aa" must be a string at most 1 character(s) long, /bb "bb" must be a string at most 1 character(s) long`,
+      `/aa Expected a string at most 1 character(s) long, actual "aa", /bb Expected a string at most 1 character(s) long, actual "bb"`,
       allErrors
     )
   })
@@ -575,7 +577,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       { a: "aa", b: "bb" },
-      `/a "aa" must be a string at most 1 character(s) long, /b "bb" must be a string at most 1 character(s) long`,
+      `/a Expected a string at most 1 character(s) long, actual "aa", /b Expected a string at most 1 character(s) long, actual "bb"`,
       allErrors
     )
   })

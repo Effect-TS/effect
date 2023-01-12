@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as I from "@fp-ts/schema/internal/common"
+import * as AST from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
@@ -20,7 +20,7 @@ export const hook = (
 /**
  * @since 1.0.0
  */
-export const getHook = I.getAnnotation
+export const getHook = AST.getAnnotation
 
 /**
  * @since 1.0.0

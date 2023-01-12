@@ -60,12 +60,10 @@ export const uniqueSymbol: <S extends symbol>(
  * @since 1.0.0
  */
 export const enums = <A extends { [x: string]: string | number }>(
-  identifier: string,
   enums: A
 ): Schema<A[keyof A]> =>
   make(
     AST.enums(
-      identifier,
       Object.keys(enums).filter(
         (key) => typeof enums[enums[key]] !== "number"
       ).map((key) => [key, enums[key]])
@@ -154,7 +152,6 @@ const getTemplateLiterals = (
   @since 1.0.0
 */
 export const typeAlias: (
-  identifier: string,
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
   annotations?: AST.Annotated["annotations"]
@@ -456,7 +453,6 @@ export const extend = <B>(that: Schema<B>) =>
  * @since 1.0.0
  */
 export const lazy: <A>(
-  identifier: string,
   f: () => Schema<A>,
   annotations?: AST.Annotated["annotations"]
 ) => Schema<A> = I.lazy
@@ -518,6 +514,41 @@ export const transform: <A, B>(
   f: (a: A) => B,
   g: (b: B) => A
 ) => (self: Schema<A>) => Schema<B> = I.transform
+
+// ---------------------------------------------
+// annotations
+// ---------------------------------------------
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const identifier = (identifier: AST.IdentifierAnnotation) =>
+  <A>(self: Schema<A>): Schema<A> =>
+    make(AST.annotation(self.ast, AST.IdentifierAnnotationId, identifier))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const title = (title: AST.TitleAnnotation) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, AST.TitleAnnotationId, title))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const description = (description: AST.DescriptionAnnotation) =>
+  <A>(self: Schema<A>): Schema<A> =>
+    make(AST.annotation(self.ast, AST.DescriptionAnnotationId, description))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const examples = (examples: AST.ExamplesAnnotation) =>
+  <A>(self: Schema<A>): Schema<A> =>
+    make(AST.annotation(self.ast, AST.ExamplesAnnotationId, examples))
 
 // ---------------------------------------------
 // data

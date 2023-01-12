@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as I from "@fp-ts/schema/internal/common"
+import * as AST from "@fp-ts/schema/AST"
 
 /**
  * @since 1.0.0
@@ -25,4 +25,6 @@ export const jsonSchemaAnnotation = (schema: object): JSONSchemaAnnotation => ({
 /**
  * @since 1.0.0
  */
-export const getJSONSchemaAnnotation = I.getAnnotation<JSONSchemaAnnotation>(JSONSchemaAnnotationId)
+export const getJSONSchemaAnnotation = AST.getAnnotation<JSONSchemaAnnotation>(
+  JSONSchemaAnnotationId
+)

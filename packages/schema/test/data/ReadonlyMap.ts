@@ -29,12 +29,12 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an instance of ReadonlyMap`
+      `Expected ReadonlyMap, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       new Map([["1", "a"], ["a", "b"]]),
-      `/1 /0 "a" must be parsable from a string to a number`
+      `/1 /0 Expected a parsable value from string to number, actual "a"`
     )
   })
 
@@ -87,12 +87,12 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       [[1, "a"], [2, 1]],
-      `/1 /1 1 must be a string`
+      `/1 /1 Expected string, actual 1`
     )
   })
 

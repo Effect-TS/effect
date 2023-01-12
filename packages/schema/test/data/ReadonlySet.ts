@@ -25,12 +25,12 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be an instance of ReadonlySet`
+      `Expected ReadonlySet, actual null`
     )
     Util.expectDecodingFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `/1 "a" must be parsable from a string to a number`
+      `/1 Expected a parsable value from string to number, actual "a"`
     )
   })
 
@@ -70,9 +70,9 @@ describe.concurrent("ReadonlySet", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `null must be a tuple or an array`
+      `Expected tuple or array, actual null`
     )
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 "a" must be a number`)
+    Util.expectDecodingFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
   })
 
   it("fromValues. encoder", () => {

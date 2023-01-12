@@ -128,7 +128,7 @@ describe.concurrent("Pretty", () => {
         Apple,
         Banana
       }
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`0`)
       expect(pretty(Fruits.Banana)).toEqual(`1`)
@@ -140,7 +140,7 @@ describe.concurrent("Pretty", () => {
         Banana = "banana",
         Cantaloupe = 0
       }
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -153,7 +153,7 @@ describe.concurrent("Pretty", () => {
         Banana: "banana",
         Cantaloupe: 3
       } as const
-      const schema = S.enums("Fruits", Fruits)
+      const schema = S.enums(Fruits)
       const pretty = P.pretty(schema)
       expect(pretty(Fruits.Apple)).toEqual(`"apple"`)
       expect(pretty(Fruits.Banana)).toEqual(`"banana"`)
@@ -349,11 +349,12 @@ describe.concurrent("Pretty", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const A: S.Schema<A> = S.lazy<A>("A", () =>
+    const A: S.Schema<A> = S.lazy<A>(() =>
       S.struct({
         a: S.string,
         as: S.array(A)
-      }))
+      })
+    )
     const pretty = P.pretty(A)
     expect(pretty({ a: "a", as: [] })).toEqual(
       `{ "a": "a", "as": [] }`

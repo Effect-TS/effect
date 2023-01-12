@@ -9,11 +9,6 @@ import {
   DocumentationAnnotationId,
   getDocumentationAnnotation
 } from "@fp-ts/schema/annotation/DocumentationAnnotation"
-import {
-  getIdentifierAnnotation,
-  identifierAnnotation,
-  IdentifierAnnotationId
-} from "@fp-ts/schema/annotation/IdentifierAnnotation"
 import * as AST from "@fp-ts/schema/AST"
 import * as R from "@fp-ts/schema/data/filter"
 import * as S from "@fp-ts/schema/Schema"
@@ -88,11 +83,7 @@ const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
     as: Writer<ReadonlyArray<A>>
   ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
-const getIdentifier = (annotated: AST.Annotated): O.Option<ts.Identifier> =>
-  pipe(
-    getIdentifierAnnotation(annotated),
-    O.map((annotation) => ts.factory.createIdentifier(annotation.identifier))
-  )
+const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(AST.IdentifierAnnotationId)
 
 const getDocumentation = (annotated: AST.Annotated): O.Option<string> =>
   pipe(
@@ -136,17 +127,22 @@ const getPropertyName = (ast: AST.PropertySignature): ts.PropertyName =>
 const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
   const go = (ast: AST.AST): TypeScript<any> => {
     switch (ast._tag) {
-      case "TypeAlias": {
-        const id = ast.identifier
-        return make(
-          ast,
-          pipe(
-            ast.typeParameters,
-            traverse((ast) => go(ast).nodes),
-            map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
+      case "TypeAlias":
+        return pipe(
+          getIdentifier(ast),
+          O.match(
+            () => go(ast.type),
+            (id) =>
+              make(
+                ast,
+                pipe(
+                  ast.typeParameters,
+                  traverse((ast) => go(ast).nodes),
+                  map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
+                )
+              )
           )
         )
-      }
       case "Literal": {
         const literal = ast.literal
         if (typeof literal === "string") {
@@ -177,6 +173,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
       case "UniqueSymbol": {
         const id = pipe(
           getIdentifier(ast),
+          O.map((id) => ts.factory.createIdentifier(id)),
           O.getOrThrow(() =>
             new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
           )
@@ -330,7 +327,11 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
       case "Lazy":
         throw new Error("Unhandled schema: TODO")
       case "Enums": {
-        const id = ts.factory.createIdentifier(ast.identifier)
+        const id = pipe(
+          getIdentifier(ast),
+          O.map((id) => ts.factory.createIdentifier(id)),
+          O.getOrThrow(() => new Error(`cannot find an indentifier for this enum`))
+        )
         const typeNode = ts.factory.createTypeQueryNode(id)
         const declaration = ts.factory.createEnumDeclaration(
           undefined,
@@ -512,7 +513,7 @@ describe.concurrent("TypeScript", () => {
 
   it("uniqueSymbol", () => {
     const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-      [IdentifierAnnotationId]: identifierAnnotation("a")
+      [AST.IdentifierAnnotationId]: "a"
     })
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
@@ -523,7 +524,7 @@ describe.concurrent("TypeScript", () => {
       Apple,
       Banana
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = pipe(S.enums(Fruits), S.identifier("Fruits"))
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([
       `enum Fruits {
@@ -648,14 +649,14 @@ describe.concurrent("TypeScript", () => {
       const schema = pipe(
         S.tuple(
           S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-            [IdentifierAnnotationId]: identifierAnnotation("a")
+            [AST.IdentifierAnnotationId]: "a"
           })
         ),
         S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"), {
-          [IdentifierAnnotationId]: identifierAnnotation("b")
+          [AST.IdentifierAnnotationId]: "b"
         })),
         S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"), {
-          [IdentifierAnnotationId]: identifierAnnotation("c")
+          [AST.IdentifierAnnotationId]: "c"
         }))
       )
       const ts = typeScriptFor(schema)
@@ -764,7 +765,7 @@ describe.concurrent("TypeScript", () => {
       const schema = pipe(
         S.struct({
           [a]: S.uniqueSymbol(b, {
-            [IdentifierAnnotationId]: identifierAnnotation("b")
+            [AST.IdentifierAnnotationId]: "b"
           }),
           c: S.number
         }),
@@ -772,7 +773,7 @@ describe.concurrent("TypeScript", () => {
           S.record(
             S.string,
             S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d"), {
-              [IdentifierAnnotationId]: identifierAnnotation("d")
+              [AST.IdentifierAnnotationId]: "d"
             })
           )
         )
@@ -795,7 +796,7 @@ describe.concurrent("TypeScript", () => {
       S.string,
       S.number,
       S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
-        [IdentifierAnnotationId]: identifierAnnotation("a")
+        [AST.IdentifierAnnotationId]: "a"
       })
     )
     const ts = typeScriptFor(schema)

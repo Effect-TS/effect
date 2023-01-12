@@ -27,7 +27,7 @@ describe.concurrent("includes", () => {
     Util.expectDecodingFailure(
       schema,
       "",
-      `"" must be a string including "a"`
+      `Expected a string including "a", actual ""`
     )
   })
 

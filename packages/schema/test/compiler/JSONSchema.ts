@@ -310,7 +310,7 @@ describe("jsonSchemaFor", () => {
       Apple,
       Banana
     }
-    property(S.enums("Fruits", Fruits))
+    property(S.enums(Fruits))
   })
 
   it("String enums", () => {
@@ -319,7 +319,7 @@ describe("jsonSchemaFor", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    property(S.enums("Fruits", Fruits))
+    property(S.enums(Fruits))
   })
 
   it("Const enums", () => {
@@ -328,7 +328,7 @@ describe("jsonSchemaFor", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    property(S.enums("Fruits", Fruits))
+    property(S.enums(Fruits))
   })
 
   it("union", () => {

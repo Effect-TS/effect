@@ -169,7 +169,7 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
       case "Lazy": {
         const f = () => go(ast.f())
         const get = I.memoize<void, Pretty<A>>(f)
-        const schema = I.lazy(ast.identifier, f)
+        const schema = I.lazy(f)
         return make(schema, (a) => get().pretty(a))
       }
       case "Enums":

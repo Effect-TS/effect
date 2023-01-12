@@ -97,7 +97,7 @@ describe.concurrent("Arbitrary", () => {
       Apple,
       Banana
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     property(schema)
   })
 
@@ -107,7 +107,7 @@ describe.concurrent("Arbitrary", () => {
       Banana = "banana",
       Cantaloupe = 0
     }
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     property(schema)
   })
 
@@ -117,7 +117,7 @@ describe.concurrent("Arbitrary", () => {
       Banana: "banana",
       Cantaloupe: 3
     } as const
-    const schema = S.enums("Fruits", Fruits)
+    const schema = S.enums(Fruits)
     property(schema)
   })
 
@@ -179,7 +179,6 @@ describe.concurrent("Arbitrary", () => {
   it("lazy", () => {
     type A = readonly [number, A | null]
     const schema: S.Schema<A> = S.lazy<A>(
-      "A",
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
     property(schema)
