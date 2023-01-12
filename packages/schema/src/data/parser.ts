@@ -20,7 +20,7 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
     self,
     I.transformOrFail(
       I.number,
-      (s: string) => {
+      function decode(s: string) {
         if (s === "NaN") {
           return PE.success(NaN)
         }
@@ -35,7 +35,9 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
           PE.failure(PE.type(schema.ast, s)) :
           PE.success(n)
       },
-      (n) => PE.success(String(n))
+      function mapFrom(n) {
+        return PE.success(String(n))
+      }
     )
   )
   return schema

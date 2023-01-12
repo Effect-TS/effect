@@ -31,13 +31,13 @@ export type AST =
   | BigIntKeyword
   | SymbolKeyword
   | ObjectKeyword
+  | Enums
+  | TemplateLiteral
   | Tuple
   | TypeLiteral
   | Union
   | Lazy
-  | Enums
   | Refinement
-  | TemplateLiteral
   | Transform
 
 /**
@@ -300,6 +300,60 @@ export interface ObjectKeyword {
 export const objectKeyword: ObjectKeyword = { _tag: "ObjectKeyword" }
 
 /**
+ * @category model
+ * @since 1.0.0
+ */
+export interface Enums {
+  readonly _tag: "Enums"
+  readonly identifier: string
+  readonly enums: ReadonlyArray<readonly [string, string | number]>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const enums = (
+  identifier: string,
+  enums: ReadonlyArray<readonly [string, string | number]>
+): Enums => ({ _tag: "Enums", identifier, enums })
+
+/**
+ * @since 1.0.0
+ */
+export interface TemplateLiteralSpan {
+  readonly type: StringKeyword | NumberKeyword
+  readonly literal: string
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
+export interface TemplateLiteral {
+  readonly _tag: "TemplateLiteral"
+  readonly head: string
+  readonly spans: RA.NonEmptyReadonlyArray<TemplateLiteralSpan>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const templateLiteral = (
+  head: string,
+  spans: ReadonlyArray<TemplateLiteralSpan>
+): TemplateLiteral | Literal =>
+  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literal(head)
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral =>
+  ast._tag === "TemplateLiteral"
+
+/**
  * @since 1.0.0
  */
 export interface Element {
@@ -558,25 +612,6 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
  * @category model
  * @since 1.0.0
  */
-export interface Enums {
-  readonly _tag: "Enums"
-  readonly identifier: string
-  readonly enums: ReadonlyArray<readonly [string, string | number]>
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const enums = (
-  identifier: string,
-  enums: ReadonlyArray<readonly [string, string | number]>
-): Enums => ({ _tag: "Enums", identifier, enums })
-
-/**
- * @category model
- * @since 1.0.0
- */
 export interface Meta {
   readonly message: string
   readonly meta: unknown
@@ -603,41 +638,6 @@ export const refinement = (
   meta: Meta,
   annotations: Annotated["annotations"] = {}
 ): Refinement => ({ _tag: "Refinement", from, decode, meta, annotations })
-
-/**
- * @since 1.0.0
- */
-export interface TemplateLiteralSpan {
-  readonly type: StringKeyword | NumberKeyword
-  readonly literal: string
-}
-
-/**
- * @category model
- * @since 1.0.0
- */
-export interface TemplateLiteral {
-  readonly _tag: "TemplateLiteral"
-  readonly head: string
-  readonly spans: RA.NonEmptyReadonlyArray<TemplateLiteralSpan>
-}
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const templateLiteral = (
-  head: string,
-  spans: ReadonlyArray<TemplateLiteralSpan>
-): TemplateLiteral | Literal =>
-  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans } : literal(head)
-
-/**
- * @category guards
- * @since 1.0.0
- */
-export const isTemplateLiteral = (ast: AST): ast is TemplateLiteral =>
-  ast._tag === "TemplateLiteral"
 
 /**
  * @category model

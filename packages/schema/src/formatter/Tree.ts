@@ -41,23 +41,17 @@ const draw = (indentation: string, forest: Forest<string>): string => {
 
 /** @internal */
 export const formatActual = (actual: unknown): string => {
-  if (typeof actual === "number") {
-    return Number.isNaN(actual) ? "NaN" : String(actual)
-  }
-  if (typeof actual === "symbol") {
-    return String(actual)
-  }
   if (actual === undefined) {
     return "undefined"
   }
   if (actual === null) {
     return "null"
   }
-  if (actual instanceof Set) {
-    return `Set([${formatActual(Array.from(actual.values()))}])`
+  if (typeof actual === "number") {
+    return Number.isNaN(actual) ? "NaN" : String(actual)
   }
-  if (actual instanceof Map) {
-    return `Map([${formatActual(Array.from(actual.entries()))}])`
+  if (typeof actual === "symbol") {
+    return String(actual)
   }
   try {
     return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)

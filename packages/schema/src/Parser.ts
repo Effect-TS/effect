@@ -130,43 +130,43 @@ const parserFor = <A>(
       case "Literal":
         return I.fromRefinement(
           I.makeSchema(ast),
-          (u): u is typeof ast.literal => u === ast.literal,
-          (u) => PE.type(ast, u)
+          (u): u is typeof ast.literal => u === ast.literal
         )
       case "UniqueSymbol":
         return I.fromRefinement(
           I.makeSchema(ast),
-          (u): u is typeof ast.symbol => u === ast.symbol,
-          (u) => PE.type(ast, u)
+          (u): u is typeof ast.symbol => u === ast.symbol
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined)
       case "VoidKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), I.isUndefined)
       case "NeverKeyword":
-        return make(I.makeSchema(ast), (u) => PE.failure(PE.type(ast, u))) as any
+        return I.fromRefinement(I.makeSchema(ast), I.isNever)
       case "UnknownKeyword":
-        return make(I.makeSchema(ast), PE.success)
       case "AnyKeyword":
         return make(I.makeSchema(ast), PE.success)
       case "StringKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isString, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), isString)
       case "NumberKeyword":
-        return make(
-          I.makeSchema(ast),
-          (u) => isNumber(u) ? PE.success(u) : PE.failure(PE.type(ast, u))
-        )
+        return I.fromRefinement(I.makeSchema(ast), isNumber)
       case "BooleanKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isBoolean, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), isBoolean)
       case "BigIntKeyword":
-        return make(
-          I.makeSchema(ast),
-          (u) => I.isBigInt(u) ? PE.success(u) : PE.failure(PE.type(ast, u))
-        )
+        return I.fromRefinement(I.makeSchema(ast), I.isBigInt)
       case "SymbolKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isSymbol, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), I.isSymbol)
       case "ObjectKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isObject, (u) => PE.type(ast, u))
+        return I.fromRefinement(I.makeSchema(ast), I.isObject)
+      case "Enums":
+        return I.fromRefinement(
+          I.makeSchema(ast),
+          (u): u is any => ast.enums.some(([_, value]) => value === u)
+        )
+      case "TemplateLiteral": {
+        const regex = I.getTemplateLiteralRegex(ast)
+        return I.fromRefinement(I.makeSchema(ast), (u): u is any => isString(u) && regex.test(u))
+      }
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
         const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -301,13 +301,13 @@ const parserFor = <A>(
         )
       }
       case "TypeLiteral": {
+        if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
+          return I.fromRefinement(I.makeSchema(ast), I.isNotNull)
+        }
         const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter), go(is.type)] as const
         )
-        if (propertySignaturesTypes.length === 0 && indexSignatures.length === 0) {
-          return I.fromRefinement(I.makeSchema(ast), I.isNotNull, (u) => PE.type(ast, u))
-        }
         return make(
           I.makeSchema(ast),
           (input: unknown, options) => {
@@ -478,29 +478,11 @@ const parserFor = <A>(
         const schema = I.lazy(ast.identifier, f)
         return make(schema, (a, options) => get().parse(a, options))
       }
-      case "Enums":
-        return make(
-          I.makeSchema(ast),
-          (u) =>
-            ast.enums.some(([_, value]) => value === u) ?
-              PE.success(u) :
-              PE.failure(PE.type(ast, u))
-        )
       case "Refinement": {
         const type = go(ast.from)
         return make(
           I.makeSchema(ast),
           (u, options) => pipe(type.parse(u, options), I.flatMap(ast.decode))
-        )
-      }
-      case "TemplateLiteral": {
-        const regex = I.getTemplateLiteralRegex(ast)
-        return make(
-          I.makeSchema(ast),
-          (u) =>
-            isString(u) ?
-              regex.test(u) ? PE.success(u) : PE.failure(PE.type(ast, u)) :
-              PE.failure(PE.type(AST.stringKeyword, u))
         )
       }
       case "Transform": {

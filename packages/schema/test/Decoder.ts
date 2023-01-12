@@ -142,7 +142,11 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, "a", "a")
     Util.expectDecodingSuccess(schema, "ab", "ab")
 
-    Util.expectDecodingFailure(schema, null, `null must be a string`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      "null must be a value conforming to the template literal a${string}"
+    )
     Util.expectDecodingFailure(
       schema,
       "",
@@ -155,7 +159,11 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingSuccess(schema, "a1", "a1")
     Util.expectDecodingSuccess(schema, "a1.2", "a1.2")
 
-    Util.expectDecodingFailure(schema, null, `null must be a string`)
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      "null must be a value conforming to the template literal a${number}"
+    )
     Util.expectDecodingFailure(
       schema,
       "",
@@ -829,14 +837,14 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(schema, 1, "1 must be never")
   })
 
-  it("union/ more required property signatures", () => {
+  it("union/required property signatures: should return the best output", () => {
     const a = S.struct({ a: S.string })
     const ab = S.struct({ a: S.string, b: S.number })
     const schema = S.union(a, ab)
     Util.expectDecodingSuccess(schema, { a: "a", b: 1 })
   })
 
-  it("union/ optional property signatures", () => {
+  it("union/optional property signatures: should return the best output", () => {
     const ab = S.struct({ a: S.string, b: S.optional(S.number) })
     const ac = S.struct({ a: S.string, c: S.optional(S.number) })
     const schema = S.union(ab, ac)
@@ -859,10 +867,14 @@ describe.concurrent("Decoder", () => {
 
     Util.expectDecodingFailure(
       schema,
+      null,
+      `null must be an object`
+    )
+    Util.expectDecodingFailure(
+      schema,
       { a: "a1" },
       `/as is missing`
     )
-
     Util.expectDecodingFailure(
       schema,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
@@ -1098,12 +1110,12 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       "ab",
-      `"ab" must be a string matching the pattern: ^abb+$`
+      `"ab" must be a string matching the pattern ^abb+$`
     )
     Util.expectDecodingFailure(
       schema,
       "a",
-      `"a" must be a string matching the pattern: ^abb+$`
+      `"a" must be a string matching the pattern ^abb+$`
     )
   })
 

@@ -152,7 +152,7 @@ export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
     self,
     I.filter((a): a is A => !Number.isNaN(a), {
       message: "a number NaN excluded",
-      meta: { type: "NonNaN" }
+      meta: { type: "nonNaN" }
     })
   )
 
@@ -171,7 +171,7 @@ export const pattern = (
       I.filter(
         (a): a is A => regex.test(a),
         {
-          message: `a string matching the pattern: ${pattern}`,
+          message: `a string matching the pattern ${pattern}`,
           meta: { pattern, ...meta }
         },
         {

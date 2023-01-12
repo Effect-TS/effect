@@ -72,10 +72,9 @@ export const makeParser = <I, A>(
 /** @internal */
 export const fromRefinement = <A>(
   schema: Schema<A>,
-  refinement: (u: unknown) => u is A,
-  onFalse: (u: unknown) => PE.ParseError
+  refinement: (u: unknown) => u is A
 ): Parser<unknown, A> =>
-  makeParser(schema, (u) => refinement(u) ? PE.success(u) : PE.failure(onFalse(u)))
+  makeParser(schema, (u) => refinement(u) ? PE.success(u) : PE.failure(PE.type(schema.ast, u)))
 
 /** @internal */
 export const makePretty = <A>(
@@ -131,7 +130,9 @@ export function filter<A>(
     const schema: Schema<A> = pipe(
       from,
       filterOrFail(
-        (a) => predicate(a) ? PE.success(a) : PE.failure(PE.type(schema.ast, a)),
+        function refinement(a) {
+          return predicate(a) ? PE.success(a) : PE.failure(PE.type(schema.ast, a))
+        },
         meta,
         annotations
       )
@@ -148,9 +149,16 @@ export const transformOrFail = <A, B>(
 ) => (self: Schema<A>): Schema<B> => makeSchema(AST.transform(self.ast, to.ast, decode, encode))
 
 /** @internal */
-export const transform = <A, B>(to: Schema<B>, f: (a: A) => B, g: (b: B) => A) =>
+export const transform = <A, B>(to: Schema<B>, ab: (a: A) => B, ba: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(self, transformOrFail(to, (a) => PE.success(f(a)), (b) => PE.success(g(b))))
+    pipe(
+      self,
+      transformOrFail(to, function mapTo(a) {
+        return PE.success(ab(a))
+      }, function mapFrom(b) {
+        return PE.success(ba(b))
+      })
+    )
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))
@@ -195,6 +203,9 @@ export const number: Schema<number> = makeSchema(AST.numberKeyword)
 
 /** @internal */
 export const boolean: Schema<boolean> = makeSchema(AST.booleanKeyword)
+
+/** @internal */
+export const isNever = (u: unknown): u is never => false
 
 /** @internal */
 export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
@@ -329,15 +340,13 @@ export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
 /** @internal */
-export const memoize = <A, B>(f: (a: A) => B, trace = false): (a: A) => B => {
+export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {
   const cache = new Map()
   return (a) => {
     if (!cache.has(a)) {
       const b = f(a)
       cache.set(a, b)
       return b
-    } else if (trace) {
-      console.log("cache hit, key: ", a, ", value: ", cache.get(a))
     }
     return cache.get(a)
   }
