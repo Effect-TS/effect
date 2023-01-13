@@ -1,5 +1,53 @@
 # @fp-ts/schema
 
+## 0.0.8
+
+### Patch Changes
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`fe8667e`](https://github.com/fp-ts/schema/commit/fe8667e588c4f0538aeee2f46f6959d27e7f0b39) Thanks [@gcanti](https://github.com/gcanti)! - allow encoders to possibly fail
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`de00b9c`](https://github.com/fp-ts/schema/commit/de00b9ca69091be413b80944981226d1fc5e40b8) Thanks [@gcanti](https://github.com/gcanti)! - DecodeError: remove UnexpectedKey, UnexpectedIndex in favour of Unexpected
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`ff15a08`](https://github.com/fp-ts/schema/commit/ff15a08fe5f3382a801515811a8f75541ecc2b2e) Thanks [@gcanti](https://github.com/gcanti)! - The `allErrors` option is a feature that allows you to receive all decoding errors when attempting to decode a value using a schema
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`a7ac861`](https://github.com/fp-ts/schema/commit/a7ac861d803b3a15e59e6a008e86dc515fdb693a) Thanks [@gcanti](https://github.com/gcanti)! - AST: rename LiteralType to Literal
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`1dd0988`](https://github.com/fp-ts/schema/commit/1dd09889c1267ef59b1c86cce8192ac06445906e) Thanks [@gcanti](https://github.com/gcanti)! - rename parseString to parseNumber
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`245aea7`](https://github.com/fp-ts/schema/commit/245aea7d3286d6e9c96250d0a43212ae5ba1c2a9) Thanks [@gcanti](https://github.com/gcanti)! - ditch These in favour of Either
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`ce6bbea`](https://github.com/fp-ts/schema/commit/ce6bbea7e9fa9d9e3ce88fee79ff9e7308d59cad) Thanks [@gcanti](https://github.com/gcanti)! - remove Codec module
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`8f984af`](https://github.com/fp-ts/schema/commit/8f984af3c589c5c4304441baaa19be4abc586519) Thanks [@gcanti](https://github.com/gcanti)! - remove Encoder module
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`f94ca4c`](https://github.com/fp-ts/schema/commit/f94ca4c3ef15c6d6c005e73d925ee0089efd7797) Thanks [@gcanti](https://github.com/gcanti)! - rename regex to pattern
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`3f641e8`](https://github.com/fp-ts/schema/commit/3f641e8aba5e837cb03651704c6b1615719efb37) Thanks [@gcanti](https://github.com/gcanti)! - unify type alias hooks
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`7373473`](https://github.com/fp-ts/schema/commit/7373473d74f2d9069a43f84138272322960aa0c6) Thanks [@gcanti](https://github.com/gcanti)! - refactor annotations
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`af3b3be`](https://github.com/fp-ts/schema/commit/af3b3be7aa7fee7d7107aa6b11b31bef7e90b58a) Thanks [@gcanti](https://github.com/gcanti)! - AST: rename Struct to TypeLiteral
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`a70747a`](https://github.com/fp-ts/schema/commit/a70747a8bad53912e4cabed011c3a063971eaf12) Thanks [@gcanti](https://github.com/gcanti)! - record: add support for refinements
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`2387312`](https://github.com/fp-ts/schema/commit/23873120c1c736569f5e19ffef99184e765d4767) Thanks [@gcanti](https://github.com/gcanti)! - AST: add Transform node
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`ae5a6e8`](https://github.com/fp-ts/schema/commit/ae5a6e87ada9cb97e9c46924415ad4599d062e57) Thanks [@gcanti](https://github.com/gcanti)! - rename Decoder to Parser, DecodeError to ParseError, DecodeResult to ParseResult
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`05635d9`](https://github.com/fp-ts/schema/commit/05635d9378eab156d2a6765cd955157b669b5a64) Thanks [@gcanti](https://github.com/gcanti)! - refactor /data using transform: Chunk.fromArray, ReadonlyMap.fromEntries, ReadonlySet.fromArray
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`2f431e4`](https://github.com/fp-ts/schema/commit/2f431e4c1a757030c91bc3fa75cc34833eeba6a7) Thanks [@gcanti](https://github.com/gcanti)! - AST: change IndexSignature key to AST
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`c720816`](https://github.com/fp-ts/schema/commit/c7208167c9a1c1d9a86d8a2b5ebb31aa4e47d71e) Thanks [@gcanti](https://github.com/gcanti)! - IndexSignature: add support for TemplateLiteral as parameter
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`632450d`](https://github.com/fp-ts/schema/commit/632450d3d79342f1c4ec646d80624ab863cc8839) Thanks [@gcanti](https://github.com/gcanti)! - add includes string filter
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`9cdd60e`](https://github.com/fp-ts/schema/commit/9cdd60e580eef96999a9d1eb214198551709f592) Thanks [@gcanti](https://github.com/gcanti)! - AST: rename Field to PropertySignature
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`29c3597`](https://github.com/fp-ts/schema/commit/29c359776a7fa5444eef3ad19cd8d81e2fd5f9b1) Thanks [@gcanti](https://github.com/gcanti)! - add support for template literals
+
+- [#30](https://github.com/fp-ts/schema/pull/30) [`92b4069`](https://github.com/fp-ts/schema/commit/92b4069e373456f5d0918d54464ae14ee13d88a6) Thanks [@gcanti](https://github.com/gcanti)! - ParseError: remove Equal error
+
 ## 0.0.7
 
 ### Patch Changes
