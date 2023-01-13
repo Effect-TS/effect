@@ -6,7 +6,6 @@ import * as O from "@fp-ts/data/Option"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
-import * as R from "@fp-ts/schema/data/filter"
 import * as S from "@fp-ts/schema/Schema"
 import ts from "typescript"
 
@@ -824,7 +823,7 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("int", () => {
-    const schema = R.int(S.number)
+    const schema = pipe(S.number, S.int())
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([`number`])
   })

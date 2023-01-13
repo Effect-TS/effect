@@ -3,7 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
-import { RefinementId } from "@fp-ts/schema/annotation/AST"
+import { CustomId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import { make } from "@fp-ts/schema/Arbitrary"
 import * as S from "@fp-ts/schema/Schema"
@@ -17,7 +17,7 @@ export const UUID: S.Schema<string> = pipe(
   S.string,
   S.pattern(uuidRegex),
   S.annotations({
-    [RefinementId]: { type: "UUID" },
+    [CustomId]: { type: "UUID" },
     [H.ArbitraryHookId]: H.hook(() => make(UUID, (fc) => fc.uuid()))
   })
 )

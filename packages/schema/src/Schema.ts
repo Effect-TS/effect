@@ -76,7 +76,8 @@ export const enums = <A extends { [x: string]: string | number }>(
  * @since 1.0.0
  */
 export const instanceOf: <A extends abstract new(...args: any) => any>(
-  constructor: A
+  constructor: A,
+  annotationOptions?: AnnotationOptions<object>
 ) => (self: Schema<object>) => Schema<InstanceType<A>> = F.instanceOf
 
 /**
@@ -166,104 +167,133 @@ export const typeAlias: (
  * @category filters
  * @since 1.0.0
  */
-export const minLength: (minLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.minLength
+export const minLength: <A extends string>(
+  minLength: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.minLength
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const maxLength: (maxLength: number) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.maxLength
+export const maxLength: <A extends string>(
+  maxLength: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.maxLength
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const length = (length: number) =>
-  <A extends string>(self: Schema<A>): Schema<A> => minLength(length)(maxLength(length)(self))
+export const length = <A extends string>(
+  length: number,
+  annotationOptions?: AnnotationOptions<A>
+) =>
+  (self: Schema<A>): Schema<A> => minLength(length, annotationOptions)(maxLength<A>(length)(self))
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const nonEmpty: <A extends string>(self: Schema<A>) => Schema<A> = minLength(1)
+export const nonEmpty = <A extends string>(
+  annotationOptions?: AnnotationOptions<A>
+): (self: Schema<A>) => Schema<A> => minLength(1, annotationOptions)
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const startsWith: (startsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.startsWith
+export const startsWith: <A extends string>(
+  startsWith: string,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.startsWith
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const endsWith: (endsWith: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.endsWith
+export const endsWith: <A extends string>(
+  endsWith: string,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.endsWith
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const includes: (searchString: string) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.includes
+export const includes: <A extends string>(
+  searchString: string,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.includes
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const pattern: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> =
-  F.pattern
+export const pattern: <A extends string>(
+  regex: RegExp,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.pattern
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const lessThan: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  F.lessThan
+export const lessThan: <A extends number>(
+  max: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.lessThan
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const lessThanOrEqualTo: (max: number) => <A extends number>(self: Schema<A>) => Schema<A> =
-  F.lessThanOrEqualTo
+export const lessThanOrEqualTo: <A extends number>(
+  max: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.lessThanOrEqualTo
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const greaterThan: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = F.greaterThan
+export const greaterThan: <A extends number>(
+  min: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.greaterThan
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const greaterThanOrEqualTo: (
-  min: number
-) => <A extends number>(self: Schema<A>) => Schema<A> = F.greaterThanOrEqualTo
+export const greaterThanOrEqualTo: <A extends number>(
+  min: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.greaterThanOrEqualTo
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const int: <A extends number>(self: Schema<A>) => Schema<A> = F.int
+export const int: <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.int
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const nonNaN: <A extends number>(self: Schema<A>) => Schema<A> = F.nonNaN
+export const nonNaN: <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.nonNaN
 
 /**
  * @category filters
  * @since 1.0.0
  */
-export const finite: <A extends number>(self: Schema<A>) => Schema<A> = F.finite
+export const finite: <A extends number>(
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.finite
 
 // ---------------------------------------------
 // combinators
@@ -459,22 +489,34 @@ export const lazy: <A>(
  * @category combinators
  * @since 1.0.0
  */
+export type AnnotationOptions<A> = {
+  message?: A.Message<A>
+  identifier?: A.Identifier
+  title?: A.Title
+  description?: A.Description
+  examples?: A.Examples
+  documentation?: A.Documentation
+  jsonSchema?: A.JSONSchema
+  custom?: A.Custom
+}
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  annotationOptions?: AnnotationOptions<A>
 ): (self: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  options?: AnnotationOptions<A>
 ): (self: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  options?: AnnotationOptions<A>
 ): (self: Schema<A>) => Schema<A> {
-  return I.filter(predicate, description, annotations)
+  return I.filter(predicate, options)
 }
 
 /**
@@ -511,14 +553,15 @@ export const transform: <A, B>(
  * @category annotations
  * @since 1.0.0
  */
-export const annotations = (annotations: AST.Annotated["annotations"]) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotations(self.ast, annotations))
+export const annotations: (
+  annotations: AST.Annotated["annotations"]
+) => <A>(self: Schema<A>) => Schema<A> = I.annotations
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: A.Message) =>
+export const message = (message: A.Message<unknown>) =>
   <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.MessageId, message))
 
 /**

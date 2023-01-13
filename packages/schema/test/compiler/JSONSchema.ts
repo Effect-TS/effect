@@ -455,6 +455,6 @@ describe("jsonSchemaFor", () => {
   })
 
   it("integer", () => {
-    property(S.int(S.number))
+    property(pipe(S.number, S.int()))
   })
 })

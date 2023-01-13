@@ -315,17 +315,17 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("int", () => {
-    const schema = pipe(S.number, S.int)
+    const schema = pipe(S.number, S.int())
     property(schema)
   })
 
   it("nonNaN", () => {
-    const schema = pipe(S.number, S.nonNaN)
+    const schema = pipe(S.number, S.nonNaN())
     property(schema)
   })
 
   it("finite", () => {
-    const schema = pipe(S.number, S.finite)
+    const schema = pipe(S.number, S.finite())
     property(schema)
   })
 })

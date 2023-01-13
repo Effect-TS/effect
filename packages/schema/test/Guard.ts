@@ -756,7 +756,7 @@ describe.concurrent("is", () => {
   })
 
   it("nonEmpty", () => {
-    const schema = pipe(S.string, S.nonEmpty)
+    const schema = pipe(S.string, S.nonEmpty())
     const is = P.is(schema)
     expect(is("a")).toEqual(true)
     expect(is("aa")).toEqual(true)

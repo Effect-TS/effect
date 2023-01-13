@@ -75,7 +75,7 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const getMessage = AST.getAnnotation<annotations.Message>(
+const getMessage = AST.getAnnotation<annotations.Message<unknown>>(
   annotations.MessageId
 )
 
@@ -149,6 +149,7 @@ const go = (e: DE.ParseError): Tree<string> => {
       return make(
         pipe(
           getMessage(e.expected),
+          O.map((f) => f(e.actual)),
           O.getOrElse(() =>
             `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
           )

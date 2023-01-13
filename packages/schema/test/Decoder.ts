@@ -95,27 +95,20 @@ describe.concurrent("Decoder", () => {
 
   it("annotations/message refinement", () => {
     const schema = pipe(
+      // initial schema, a string
       S.string,
-      S.message("not a string"),
-      S.nonEmpty,
-      S.message("required"),
-      S.maxLength(10),
-      S.message("too long"),
-      S.identifier("Password"),
-      S.title("password"),
-      S.description(
-        "A password is a string of characters used to verify the identity of a user during the authentication process"
-      ),
-      S.examples(["1Ki77y", "jelly22fi$h"]),
-      S.documentation(`
-        jsDoc documentation...
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua
-      `)
+      // add an error message for non-string values
+      S.message(() => "not a string"),
+      // add a constraint to the schema, only non-empty strings are valid
+      S.nonEmpty({ message: () => "required" }),
+      // add a constraint to the schema, only strings with a length less or equal than 10 are valid
+      S.maxLength(10, { message: (s) => `${s} is too long` })
     )
+
     Util.expectDecodingFailure(schema, null, "not a string")
     Util.expectDecodingFailure(schema, "", "required")
     Util.expectDecodingSuccess(schema, "a", "a")
-    Util.expectDecodingFailure(schema, "aaaaaaaaaaaaaa", "too long")
+    Util.expectDecodingFailure(schema, "aaaaaaaaaaaaaa", "aaaaaaaaaaaaaa is too long")
   })
 
   it("void", () => {
@@ -1069,7 +1062,7 @@ describe.concurrent("Decoder", () => {
   })
 
   it("nonEmpty", () => {
-    const schema = pipe(S.string, S.nonEmpty)
+    const schema = pipe(S.string, S.nonEmpty())
     Util.expectDecodingSuccess(schema, "a")
     Util.expectDecodingSuccess(schema, "aa")
 

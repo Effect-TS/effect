@@ -5,17 +5,17 @@
 /**
  * @since 1.0.0
  */
-export type Refinement = unknown
+export type Custom = unknown
 
 /**
  * @since 1.0.0
  */
-export const RefinementId = "@fp-ts/schema/annotation/RefinementId"
+export const CustomId = "@fp-ts/schema/annotation/CustomId"
 
 /**
  * @since 1.0.0
  */
-export type Message = string
+export type Message<A> = (a: A) => string
 
 /**
  * @since 1.0.0

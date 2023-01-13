@@ -9,13 +9,19 @@ import * as O from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import { DescriptionId } from "@fp-ts/schema/annotation/AST"
+import * as A from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import * as PE from "@fp-ts/schema/ParseError"
 import type { Parser } from "@fp-ts/schema/Parser"
 import type { Pretty } from "@fp-ts/schema/Pretty"
-import type { OptionalKeys, OptionalSchema, Schema, Spread } from "@fp-ts/schema/Schema"
+import type {
+  AnnotationOptions,
+  OptionalKeys,
+  OptionalSchema,
+  Schema,
+  Spread
+} from "@fp-ts/schema/Schema"
 
 /** @internal */
 export const flatMap = E.flatMap
@@ -103,26 +109,48 @@ export const typeAlias = (
   ))
 
 /** @internal */
+export const annotations = (annotations: AST.Annotated["annotations"]) =>
+  <A>(self: Schema<A>): Schema<A> => makeSchema(AST.annotations(self.ast, annotations))
+
+/** @internal */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  options?: AnnotationOptions<A>
 ): (from: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  options?: AnnotationOptions<A>
 ): (from: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
-  description: string,
-  annotations?: AST.Annotated["annotations"]
+  options?: AnnotationOptions<A>
 ): (from: Schema<A>) => Schema<A> {
-  return (from) =>
-    makeSchema(AST.refinement(from.ast, predicate, {
-      [DescriptionId]: description,
-      ...annotations
-    }))
+  const annotations: AST.Annotated["annotations"] = {}
+  if (options?.message !== undefined) {
+    annotations[A.MessageId] = options?.message
+  }
+  if (options?.identifier !== undefined) {
+    annotations[A.IdentifierId] = options?.identifier
+  }
+  if (options?.title !== undefined) {
+    annotations[A.TitleId] = options?.title
+  }
+  if (options?.description !== undefined) {
+    annotations[A.DescriptionId] = options?.description
+  }
+  if (options?.examples !== undefined) {
+    annotations[A.ExamplesId] = options?.examples
+  }
+  if (options?.documentation !== undefined) {
+    annotations[A.DocumentationId] = options?.documentation
+  }
+  if (options?.jsonSchema !== undefined) {
+    annotations[A.JSONSchemaId] = options?.jsonSchema
+  }
+  if (options?.custom !== undefined) {
+    annotations[A.CustomId] = options?.custom
+  }
+  return (from) => makeSchema(AST.refinement(from.ast, predicate, annotations))
 }
 
 /** @internal */

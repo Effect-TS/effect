@@ -72,13 +72,14 @@ const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
-const getMessage = AST.getAnnotation<annotations.Message>(annotations.MessageId)
+const getMessage = AST.getAnnotation<annotations.Message<unknown>>(annotations.MessageId)
 
 const formatDecodeError = (e: PE.ParseError): string => {
   switch (e._tag) {
     case "Type":
       return pipe(
         getMessage(e.expected),
+        O.map((f) => f(e.actual)),
         O.getOrElse(() =>
           `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
         )

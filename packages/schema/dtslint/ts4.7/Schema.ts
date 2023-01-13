@@ -98,13 +98,13 @@ pipe(S.number, S.lessThan(5));
 pipe(S.number, S.lessThanOrEqualTo(5));
 
 // $ExpectType Schema<number>
-pipe(S.number, S.int);
+pipe(S.number, S.int());
 
 // $ExpectType Schema<number>
-pipe(S.number, S.nonNaN); // not NaN
+pipe(S.number, S.nonNaN()); // not NaN
 
 // $ExpectType Schema<number>
-pipe(S.number, S.finite); // value must be finite, not Infinity or -Infinity
+pipe(S.number, S.finite()); // value must be finite, not Infinity or -Infinity
 
 //
 // Native enums
