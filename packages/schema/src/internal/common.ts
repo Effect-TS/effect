@@ -163,14 +163,7 @@ export const transformOrFail = <A, B>(
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, ab: (a: A) => B, ba: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(
-      self,
-      transformOrFail(to, function mapTo(a) {
-        return PE.success(ab(a))
-      }, function mapFrom(b) {
-        return PE.success(ba(b))
-      })
-    )
+    pipe(self, transformOrFail(to, (a) => PE.success(ab(a)), (b) => PE.success(ba(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))
