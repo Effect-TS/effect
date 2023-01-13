@@ -13,7 +13,7 @@ import * as AST from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
-import type { Schema } from "@fp-ts/schema/Schema"
+import type { Infer, Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @category model
@@ -73,6 +73,14 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
 export const is = <A>(schema: Schema<A>) =>
   (input: unknown, options?: ParseOptions): input is A =>
     !PE.isFailure(parserFor(schema, "guard").parse(input, options))
+
+/**
+ * @since 1.0.0
+ */
+export type InferAsserts<S extends Schema<any>> = (
+  input: unknown,
+  options?: ParseOptions
+) => asserts input is Infer<S>
 
 /**
  * @category assertions
