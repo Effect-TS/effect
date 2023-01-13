@@ -3,8 +3,7 @@
  */
 
 import { pipe } from "@fp-ts/data/Function"
-import { JSONSchemaId } from "@fp-ts/schema/annotation/AST"
-import type { Annotated } from "@fp-ts/schema/AST"
+import { JSONSchemaId, RefinementId } from "@fp-ts/schema/annotation/AST"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -14,7 +13,9 @@ import type { Schema } from "@fp-ts/schema/Schema"
 export const finite = <A extends number>(self: Schema<A>): Schema<A> =>
   pipe(
     self,
-    I.filter((a): a is A => Number.isFinite(a), "a finite number", { type: "finite" })
+    I.filter((a): a is A => Number.isFinite(a), "a finite number", {
+      [RefinementId]: { type: "finite" }
+    })
   )
 
 /**
@@ -24,7 +25,7 @@ export const greaterThan = (min: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
     pipe(
       self,
-      I.filter((a): a is A => a > min, `a number greater than ${min}`, { exclusiveMinimum: min }, {
+      I.filter((a): a is A => a > min, `a number greater than ${min}`, {
         [JSONSchemaId]: { exclusiveMinimum: min }
       })
     )
@@ -37,8 +38,6 @@ export const greaterThanOrEqualTo = (min: number) =>
     pipe(
       self,
       I.filter((a): a is A => a >= min, `a number greater than or equal to ${min}`, {
-        minimum: min
-      }, {
         [JSONSchemaId]: { minimum: min }
       })
     )
@@ -53,7 +52,9 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(construc
       I.filter(
         (a): a is InstanceType<A> => a instanceof constructor,
         `an instance of ${constructor.name}`,
-        { instanceof: constructor }
+        {
+          [RefinementId]: { type: "instanceOf", instanceOf: constructor }
+        }
       )
     )
 
@@ -63,7 +64,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(construc
 export const int = <A extends number>(self: Schema<A>): Schema<A> =>
   pipe(
     self,
-    I.filter((a): a is A => Number.isInteger(a), "integer", { type: "integer" }, {
+    I.filter((a): a is A => Number.isInteger(a), "integer", {
       [JSONSchemaId]: { type: "integer" }
     })
   )
@@ -75,7 +76,7 @@ export const lessThan = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
     pipe(
       self,
-      I.filter((a): a is A => a < max, `a number less than ${max}`, { exclusiveMaximum: max }, {
+      I.filter((a): a is A => a < max, `a number less than ${max}`, {
         [JSONSchemaId]: { exclusiveMaximum: max }
       })
     )
@@ -87,7 +88,7 @@ export const lessThanOrEqualTo = (max: number) =>
   <A extends number>(self: Schema<A>): Schema<A> =>
     pipe(
       self,
-      I.filter((a): a is A => a <= max, `a number less than or equal to ${max}`, { maximum: max }, {
+      I.filter((a): a is A => a <= max, `a number less than or equal to ${max}`, {
         [JSONSchemaId]: { maximum: max }
       })
     )
@@ -104,7 +105,6 @@ export const maxLength = (
       I.filter(
         (a): a is A => a.length <= maxLength,
         `a string at most ${maxLength} character(s) long`,
-        { maxLength },
         {
           [JSONSchemaId]: { maxLength }
         }
@@ -123,7 +123,6 @@ export const minLength = (
       I.filter(
         (a): a is A => a.length >= minLength,
         `a string at least ${minLength} character(s) long`,
-        { minLength },
         {
           [JSONSchemaId]: { minLength }
         }
@@ -136,16 +135,16 @@ export const minLength = (
 export const nonNaN = <A extends number>(self: Schema<A>): Schema<A> =>
   pipe(
     self,
-    I.filter((a): a is A => !Number.isNaN(a), "a number NaN excluded", { type: "nonNaN" })
+    I.filter((a): a is A => !Number.isNaN(a), "a number NaN excluded", {
+      [RefinementId]: { type: "nonNaN" }
+    })
   )
 
 /**
  * @since 1.0.0
  */
 export const pattern = (
-  regex: RegExp,
-  meta?: object,
-  annotations?: Annotated["annotations"]
+  regex: RegExp
 ) =>
   <A extends string>(self: Schema<A>): Schema<A> => {
     const pattern = regex.source
@@ -154,10 +153,9 @@ export const pattern = (
       I.filter(
         (a): a is A => regex.test(a),
         `a string matching the pattern ${pattern}`,
-        { pattern, ...meta },
         {
-          [JSONSchemaId]: { pattern },
-          ...annotations
+          [RefinementId]: { type: "pattern", regex },
+          [JSONSchemaId]: { pattern }
         }
       )
     )
@@ -173,8 +171,8 @@ export const startsWith = (startsWith: string) =>
       I.filter(
         (a): a is A => a.startsWith(startsWith),
         `a string starting with ${JSON.stringify(startsWith)}`,
-        { startsWith },
         {
+          [RefinementId]: { type: "startsWith", startsWith },
           [JSONSchemaId]: { pattern: `^${startsWith}` }
         }
       )
@@ -190,8 +188,8 @@ export const endsWith = (endsWith: string) =>
       I.filter(
         (a): a is A => a.endsWith(endsWith),
         `a string ending with ${JSON.stringify(endsWith)}`,
-        { endsWith },
         {
+          [RefinementId]: { type: "endsWith", endsWith },
           [JSONSchemaId]: { pattern: `^.*${endsWith}$` }
         }
       )
@@ -207,8 +205,8 @@ export const includes = (searchString: string) =>
       I.filter(
         (a): a is A => a.includes(searchString),
         `a string including ${JSON.stringify(searchString)}`,
-        { includes: searchString },
         {
+          [RefinementId]: { type: "includes", includes: searchString },
           [JSONSchemaId]: { pattern: `.*${searchString}.*` }
         }
       )

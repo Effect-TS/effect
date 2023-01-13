@@ -7,7 +7,7 @@ import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
-import * as annotations from "@fp-ts/schema/annotation/AST"
+import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
@@ -214,11 +214,8 @@ export const includes: (searchString: string) => <A extends string>(self: Schema
  * @category filters
  * @since 1.0.0
  */
-export const pattern: (
-  regex: RegExp,
-  meta?: object,
-  annotations?: AST.Annotated["annotations"]
-) => <A extends string>(self: Schema<A>) => Schema<A> = F.pattern
+export const pattern: (regex: RegExp) => <A extends string>(self: Schema<A>) => Schema<A> =
+  F.pattern
 
 /**
  * @category filters
@@ -465,22 +462,19 @@ export const lazy: <A>(
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (self: Schema<A>) => Schema<A> {
-  return I.filter(predicate, description, meta, annotations)
+  return I.filter(predicate, description, annotations)
 }
 
 /**
@@ -517,47 +511,51 @@ export const transform: <A, B>(
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: annotations.Message) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, annotations.MessageId, message))
+export const annotations = (annotations: AST.Annotated["annotations"]) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotations(self.ast, annotations))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const identifier = (identifier: annotations.Identifier) =>
+export const message = (message: A.Message) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.MessageId, message))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const identifier = (identifier: A.Identifier) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.IdentifierId, identifier))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const title = (title: A.Title) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.TitleId, title))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const description = (description: A.Description) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.DescriptionId, description))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const examples = (examples: A.Examples) =>
+  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.ExamplesId, examples))
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const documentation = (documentation: A.Documentation) =>
   <A>(self: Schema<A>): Schema<A> =>
-    make(AST.annotation(self.ast, annotations.IdentifierId, identifier))
-
-/**
- * @category annotations
- * @since 1.0.0
- */
-export const title = (title: annotations.Title) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, annotations.TitleId, title))
-
-/**
- * @category annotations
- * @since 1.0.0
- */
-export const description = (description: annotations.Description) =>
-  <A>(self: Schema<A>): Schema<A> =>
-    make(AST.annotation(self.ast, annotations.DescriptionId, description))
-
-/**
- * @category annotations
- * @since 1.0.0
- */
-export const examples = (examples: annotations.Examples) =>
-  <A>(self: Schema<A>): Schema<A> =>
-    make(AST.annotation(self.ast, annotations.ExamplesId, examples))
-
-/**
- * @category annotations
- * @since 1.0.0
- */
-export const documentation = (documentation: annotations.Documentation) =>
-  <A>(self: Schema<A>): Schema<A> =>
-    make(AST.annotation(self.ast, annotations.DocumentationId, documentation))
+    make(AST.annotation(self.ast, A.DocumentationId, documentation))
 
 // ---------------------------------------------
 // data

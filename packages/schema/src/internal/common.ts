@@ -106,23 +106,20 @@ export const typeAlias = (
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (from: Schema<A>) => Schema<B>
 export function filter<A>(
   predicate: Predicate<A>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (from: Schema<A>) => Schema<A>
 export function filter<A>(
   predicate: Predicate<A>,
   description: string,
-  meta: unknown,
   annotations?: AST.Annotated["annotations"]
 ): (from: Schema<A>) => Schema<A> {
   return (from) =>
-    makeSchema(AST.refinement(from.ast, predicate, meta, {
+    makeSchema(AST.refinement(from.ast, predicate, {
       [DescriptionId]: description,
       ...annotations
     }))

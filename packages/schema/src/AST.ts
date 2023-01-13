@@ -677,7 +677,6 @@ export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
   readonly refinement: Predicate<any>
-  readonly meta: unknown
 }
 
 /**
@@ -687,9 +686,8 @@ export interface Refinement extends Annotated {
 export const refinement = (
   from: AST,
   refinement: Predicate<any>,
-  meta: unknown,
   annotations: Annotated["annotations"] = {}
-): Refinement => ({ _tag: "Refinement", from, refinement, meta, annotations })
+): Refinement => ({ _tag: "Refinement", from, refinement, annotations })
 
 /**
  * @category model
@@ -723,6 +721,14 @@ export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transfo
 // ---------------------------------------------
 // API
 // ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const annotations = (ast: AST, annotations: Annotated["annotations"]) => ({
+  ...ast,
+  annotations: { ...ast.annotations, ...annotations }
+})
 
 /**
  * @since 1.0.0
