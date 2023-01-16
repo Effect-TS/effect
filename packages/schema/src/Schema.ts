@@ -461,20 +461,35 @@ export const record: <K extends string | symbol, V>(
   value: Schema<V>
 ) => Schema<{ readonly [k in K]: V }> = I.record
 
+const productTypeLiteralArrays = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
+  if (!xs.every(AST.isTypeLiteral) || !ys.every(AST.isTypeLiteral)) {
+    throw new Error("`extend` is not supported on this schema")
+  }
+
+  return AST.union(
+    xs.flatMap((x) =>
+      ys.map((y) =>
+        AST.typeLiteral(
+          x.propertySignatures.concat(y.propertySignatures),
+          x.indexSignatures.concat(y.indexSignatures)
+        )
+      )
+    )
+  )
+}
+
 /**
  * @category combinators
  * @since 1.0.0
  */
 export const extend = <B>(that: Schema<B>) =>
-  <A>(self: Schema<A>): Schema<Spread<A & B>> => {
-    if (AST.isTypeLiteral(self.ast) && AST.isTypeLiteral(that.ast)) {
-      return make(AST.typeLiteral(
-        self.ast.propertySignatures.concat(that.ast.propertySignatures),
-        self.ast.indexSignatures.concat(that.ast.indexSignatures)
-      ))
-    }
-    throw new Error("`extend` is not supported on this schema")
-  }
+  <A>(self: Schema<A>): Schema<Spread<A & B>> =>
+    make(
+      productTypeLiteralArrays(
+        AST.isUnion(self.ast) ? self.ast.types : [self.ast],
+        AST.isUnion(that.ast) ? that.ast.types : [that.ast]
+      )
+    )
 
 /**
  * @category combinators

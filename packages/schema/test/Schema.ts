@@ -237,4 +237,66 @@ describe.concurrent("Schema", () => {
       expect(is({ a: "a", b: 1, c: 1 })).toBe(false)
     })
   })
+
+  describe.concurrent("extend with union types", () => {
+    it(`extend union of structs with struct`, () => {
+      const schema = pipe(
+        S.struct({ b: S.boolean }),
+        S.extend(S.union(
+          S.struct({ a: S.literal("a") }),
+          S.struct({ a: S.literal("b") })
+        ))
+      )
+      const is = P.is(schema)
+
+      expect(is({ a: "a", b: false })).toBe(true)
+      expect(is({ a: "b", b: false })).toBe(true)
+
+      expect(is({ a: "a" })).toBe(false)
+      expect(is({ a: "b" })).toBe(false)
+    })
+
+    it(`extend struct with union of structs`, () => {
+      const schema = pipe(
+        S.union(
+          S.struct({ a: S.literal("a") }),
+          S.struct({ b: S.literal("b") })
+        ),
+        S.extend(S.struct({ c: S.boolean }))
+      )
+      const is = P.is(schema)
+
+      expect(is({ a: "a", c: false })).toBe(true)
+      expect(is({ b: "b", c: false })).toBe(true)
+
+      expect(is({ a: "a" })).toBe(false)
+      expect(is({ a: "b" })).toBe(false)
+    })
+
+    it(`extend union of structs with union of structs`, () => {
+      const schema = pipe(
+        S.union(
+          S.struct({ a: S.literal("a") }),
+          S.struct({ a: S.literal("b") })
+        ),
+        S.extend(
+          S.union(
+            S.struct({ c: S.boolean }),
+            S.struct({ d: S.number })
+          )
+        )
+      )
+      const is = P.is(schema)
+
+      expect(is({ a: "a", c: false })).toBe(true)
+      expect(is({ a: "b", d: 69 })).toBe(true)
+      expect(is({ a: "a", d: 69 })).toBe(true)
+      expect(is({ a: "b", c: false })).toBe(true)
+
+      expect(is({ a: "a" })).toBe(false)
+      expect(is({ a: "b" })).toBe(false)
+      expect(is({ c: false })).toBe(false)
+      expect(is({ d: 42 })).toBe(false)
+    })
+  })
 })
