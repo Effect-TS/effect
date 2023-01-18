@@ -62,7 +62,7 @@ function floatSafeRemainder(val: number, step: number) {
   const decCount = valDecCount > stepDecCount ? valDecCount : stepDecCount
   const valInt = parseInt(val.toFixed(decCount).replace(".", ""))
   const stepInt = parseInt(step.toFixed(decCount).replace(".", ""))
-  return (valInt % stepInt) / Math.pow(10, decCount)
+  return (((valInt % stepInt) + stepInt) % stepInt) / Math.pow(10, decCount)
 }
 
 /**
