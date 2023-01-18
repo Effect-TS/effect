@@ -57,6 +57,23 @@ export const greaterThanOrEqualTo = <A extends number>(
 /**
  * @since 1.0.0
  */
+export const multipleOf = <A extends number>(
+  divisor: number,
+  annotationOptions?: AnnotationOptions<A>
+) =>
+  (self: Schema<A>): Schema<A> =>
+    pipe(
+      self,
+      I.filter((a): a is A => a % divisor === 0, {
+        description: `a number divisible by ${divisor}`,
+        jsonSchema: { multipleOf: divisor },
+        ...annotationOptions
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
 export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotationOptions?: AnnotationOptions<object>
