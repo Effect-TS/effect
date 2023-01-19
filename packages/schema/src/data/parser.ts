@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
+import * as D from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
@@ -32,9 +33,7 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
           return PE.success(-Infinity)
         }
         const n = parseFloat(s)
-        return isNaN(n) ?
-          PE.failure(PE.type(schema.ast, s)) :
-          PE.success(n)
+        return isNaN(n) ? PE.failure(PE.type(schema.ast, s)) : PE.success(n)
       },
       function mapFrom(n) {
         return PE.success(String(n))
@@ -59,3 +58,29 @@ export const trim = (self: Schema<string>): Schema<string> =>
       (s) => s.trim()
     )
   )
+
+/**
+  Transforms a `string` schema into a `Date` schema by parsing the string using `new Date(_)`.
+
+  @param self - The `string` schema to transform.
+
+  @since 1.0.0
+*/
+export const parseDate = (self: Schema<string>): Schema<Date> => {
+  const schema: Schema<Date> = pipe(
+    self,
+    I.transformOrFail(
+      D.date,
+      function decode(s: string) {
+        const d = new Date(s)
+        return isNaN(d as any)
+          ? PE.failure(PE.type(schema.ast, s))
+          : PE.success(d)
+      },
+      function mapFrom(n) {
+        return PE.success(n.toISOString())
+      }
+    )
+  )
+  return schema
+}

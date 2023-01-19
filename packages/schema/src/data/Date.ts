@@ -1,0 +1,31 @@
+/**
+ * @since 1.0.0
+ */
+import { IdentifierId } from "@fp-ts/schema/annotation/AST"
+import * as H from "@fp-ts/schema/annotation/Hook"
+import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
+import * as I from "@fp-ts/schema/internal/common"
+import * as PE from "@fp-ts/schema/ParseError"
+import type * as P from "@fp-ts/schema/Parser"
+import type { Pretty } from "@fp-ts/schema/Pretty"
+import type { Schema } from "@fp-ts/schema/Schema"
+
+const isDate = (u: unknown): u is Date =>
+  typeof u === "object" && typeof u !== null && u instanceof Date
+
+const parser = (): P.Parser<unknown, Date> =>
+  I.makeParser(date, (u) => !isDate(u) ? PE.failure(PE.type(date.ast, u)) : PE.success(u))
+
+const arbitrary = (): Arbitrary<Date> => I.makeArbitrary(date, (fc) => fc.date())
+
+const pretty = (): Pretty<Date> => I.makePretty(date, (date) => `new Date(${JSON.stringify(date)})`)
+
+/**
+ * @since 1.0.0
+ */
+export const date: Schema<Date> = I.typeAlias([], I.struct({}), {
+  [IdentifierId]: "Date",
+  [H.ParserHookId]: H.hook(parser),
+  [H.PrettyHookId]: H.hook(pretty),
+  [H.ArbitraryHookId]: H.hook(arbitrary)
+})
