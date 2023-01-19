@@ -116,6 +116,28 @@ export const int = <A extends number>(annotationOptions?: AnnotationOptions<A>) 
       })
     )
 
+const trimmedRegex = /^\S.*\S$|^\S$|^$/
+
+/**
+ * Note. This combinator does not make any transformations, it only validates. If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
+ *
+ * @since 1.0.0
+ */
+export const trimmed = <A extends string>(annotationOptions?: AnnotationOptions<A>) =>
+  (self: Schema<A>): Schema<A> =>
+    pipe(
+      self,
+      I.filter((a): a is A => trimmedRegex.test(a), {
+        description: "a string with no leading or trailing whitespace",
+        custom: { type: "trimmed" },
+        jsonSchema: {
+          type: "string",
+          pattern: trimmedRegex.source
+        },
+        ...annotationOptions
+      })
+    )
+
 /**
  * @since 1.0.0
  */

@@ -12,6 +12,7 @@ import * as AST from "@fp-ts/schema/AST"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
+import * as P from "@fp-ts/schema/data/parser"
 import * as I from "@fp-ts/schema/internal/common"
 import type { Parser } from "@fp-ts/schema/Parser"
 
@@ -280,6 +281,17 @@ export const int: <A extends number>(
 ) => (self: Schema<A>) => Schema<A> = F.int
 
 /**
+ * Note. This combinator does not make any transformations, it only validates. If what you were looking for was a combinator to trim strings, then check out the {@linkcode trim} combinator.
+ *
+ * @see trim
+ * @category filters
+ * @since 1.0.0
+ */
+export const trimmed: <A extends string>(
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = F.trimmed
+
+/**
  * @category filters
  * @since 1.0.0
  */
@@ -376,6 +388,14 @@ export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
 export const nonEmptyArray = <A>(
   item: Schema<A>
 ): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const trim = (
+  item: Schema<string>
+): Schema<string> => P.trim(item)
 
 /**
  * @since 1.0.0

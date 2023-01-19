@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import { pipe } from "@fp-ts/data/Function"
+import * as F from "@fp-ts/schema/data/filter"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PE from "@fp-ts/schema/ParseError"
 import type { Schema } from "@fp-ts/schema/Schema"
@@ -42,3 +43,19 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
   )
   return schema
 }
+
+/**
+ * Transforms a `string` schema into a `string` schema with no leading or trailing whitespace.
+ *
+ * @param self - The `string` schema to transform.
+ * @since 1.0.0
+ */
+export const trim = (self: Schema<string>): Schema<string> =>
+  pipe(
+    self,
+    I.transform(
+      pipe(self, F.trimmed()),
+      (s) => s.trim(),
+      (s) => s.trim()
+    )
+  )
