@@ -298,5 +298,30 @@ describe.concurrent("Schema", () => {
       expect(is({ c: false })).toBe(false)
       expect(is({ d: 42 })).toBe(false)
     })
+
+    it(`extend struct by union with mutually exclusive properties`, () => {
+      const schema1 = pipe(
+        S.struct({ a: S.literal("a") }),
+        S.extend(
+          S.union(
+            S.struct({ a: S.literal("a"), b: S.string }),
+            S.struct({ a: S.literal("b"), b: S.number })
+          )
+        )
+      )
+
+      const schema2 = pipe(
+        S.union(
+          S.struct({ a: S.literal("a"), b: S.string }),
+          S.struct({ a: S.literal("b"), b: S.number })
+        ),
+        S.extend(S.struct({ a: S.literal("a") }))
+      )
+
+      const equivalentSchema = S.struct({ a: S.literal("a"), b: S.string })
+
+      expect(schema1).toStrictEqual(equivalentSchema)
+      expect(schema2).toStrictEqual(equivalentSchema)
+    })
   })
 })
