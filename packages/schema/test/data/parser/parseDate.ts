@@ -19,8 +19,8 @@ describe.concurrent("parseDate", () => {
   it("Decoder", () => {
     Util.expectDecodingSuccess(
       schema,
-      "Wed Nov 01 2000 00:00:00 GMT+1300",
-      new Date(2000, 10, 1)
+      "1970-01-01T00:00:00.000Z",
+      new Date(0)
     )
     Util.expectDecodingFailure(
       schema,
