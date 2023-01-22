@@ -9,6 +9,7 @@ import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
+import * as DataDate from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
@@ -65,7 +66,7 @@ export const enums = <A extends { [x: string]: string | number }>(
   enums: A
 ): Schema<A[keyof A]> =>
   make(
-    AST.enums(
+    AST.createEnums(
       Object.keys(enums).filter(
         (key) => typeof enums[enums[key]] !== "number"
       ).map((key) => [key, enums[key]])
@@ -103,7 +104,7 @@ export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
       RA.flatMap((a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b)))
     )
   }
-  return make(AST.union(types))
+  return make(AST.createUnion(types))
 }
 
 const combineTemplateLiterals = (
@@ -112,11 +113,11 @@ const combineTemplateLiterals = (
 ): AST.TemplateLiteral | AST.Literal => {
   if (AST.isLiteral(a)) {
     return AST.isLiteral(b) ?
-      AST.literal(String(a.literal) + String(b.literal)) :
-      AST.templateLiteral(String(a.literal) + b.head, b.spans)
+      AST.createLiteral(String(a.literal) + String(b.literal)) :
+      AST.createTemplateLiteral(String(a.literal) + b.head, b.spans)
   }
   if (AST.isLiteral(b)) {
-    return AST.templateLiteral(
+    return AST.createTemplateLiteral(
       a.head,
       pipe(
         a.spans,
@@ -124,7 +125,7 @@ const combineTemplateLiterals = (
       )
     )
   }
-  return AST.templateLiteral(
+  return AST.createTemplateLiteral(
     a.head,
     pipe(
       a.spans,
@@ -142,7 +143,7 @@ const getTemplateLiterals = (
       return [ast]
     case "NumberKeyword":
     case "StringKeyword":
-      return [AST.templateLiteral("", [{ type: ast, literal: "" }])]
+      return [AST.createTemplateLiteral("", [{ type: ast, literal: "" }])]
     case "Union":
       return pipe(ast.types, RA.flatMap(getTemplateLiterals))
     default:
@@ -281,9 +282,9 @@ export const int: <A extends number>(
 ) => (self: Schema<A>) => Schema<A> = F.int
 
 /**
- * Note. This combinator does not make any transformations, it only validates. If what you were looking for was a combinator to trim strings, then check out the {@linkcode trim} combinator.
+ * Note. This combinator does not make any transformations, it only validates.
+ * If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
  *
- * @see trim
  * @category filters
  * @since 1.0.0
  */
@@ -358,7 +359,7 @@ export const rest = <R>(rest: Schema<R>) =>
 export const element = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, AST.element(element.ast, false)))
+      return make(AST.appendElement(self.ast, AST.createElement(element.ast, false)))
     }
     throw new Error("`element` is not supported on this schema")
   }
@@ -370,7 +371,7 @@ export const element = <E>(element: Schema<E>) =>
 export const optionalElement = <E>(element: Schema<E>) =>
   <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E?]> => {
     if (AST.isTuple(self.ast)) {
-      return make(AST.appendElement(self.ast, AST.element(element.ast, true)))
+      return make(AST.appendElement(self.ast, AST.createElement(element.ast, true)))
     }
     throw new Error("`optionalElement` is not supported on this schema")
   }
@@ -388,14 +389,6 @@ export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
 export const nonEmptyArray = <A>(
   item: Schema<A>
 ): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
-
-/**
- * @category combinators
- * @since 1.0.0
- */
-export const trim = (
-  item: Schema<string>
-): Schema<string> => P.trim(item)
 
 /**
  * @since 1.0.0
@@ -503,7 +496,7 @@ const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): b
 
 const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
   if (xs.every(AST.isTypeLiteral) && ys.every(AST.isTypeLiteral)) {
-    return AST.union(
+    return AST.createUnion(
       xs.flatMap((x) =>
         ys.map((y) => {
           if (isOverlappingPropertySignatures(x, y)) {
@@ -512,7 +505,7 @@ const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST
           if (isOverlappingIndexSignatures(x, y)) {
             throw new Error("`extend` cannot handle overlapping index signatures")
           }
-          return AST.typeLiteral(
+          return AST.createTypeLiteral(
             x.propertySignatures.concat(y.propertySignatures),
             x.indexSignatures.concat(y.indexSignatures)
           )
@@ -622,35 +615,35 @@ export const annotations: (
  * @since 1.0.0
  */
 export const message = (message: A.Message<unknown>) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.MessageId, message))
+  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.MessageId, message))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const identifier = (identifier: A.Identifier) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.IdentifierId, identifier))
+  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.IdentifierId, identifier))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const title = (title: A.Title) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.TitleId, title))
+  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.TitleId, title))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const description = (description: A.Description) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.DescriptionId, description))
+  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.DescriptionId, description))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
 export const examples = (examples: A.Examples) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.annotation(self.ast, A.ExamplesId, examples))
+  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.ExamplesId, examples))
 
 /**
  * @category annotations
@@ -658,7 +651,7 @@ export const examples = (examples: A.Examples) =>
  */
 export const documentation = (documentation: A.Documentation) =>
   <A>(self: Schema<A>): Schema<A> =>
-    make(AST.annotation(self.ast, A.DocumentationId, documentation))
+    make(AST.setAnnotation(self.ast, A.DocumentationId, documentation))
 
 // ---------------------------------------------
 // data
@@ -743,13 +736,29 @@ export const symbol: Schema<symbol> = I.symbol
 export const object: Schema<object> = I.object
 
 /**
+ * Transforms a `string` into a `string` with no leading or trailing whitespace.
+ *
+ * @category data
+ * @since 1.0.0
+ */
+export const date: Schema<Date> = DataDate.date
+
+/**
  * @category data
  * @since 1.0.0
  */
 export const json: Schema<Json> = DataJson.json
 
 /**
-  @category data
-  @since 1.0.0
+ * Transforms a `string` into a `string` with no leading or trailing whitespace.
+ *
+ * @category parsers
+ * @since 1.0.0
+ */
+export const trim = (item: Schema<string>): Schema<string> => P.trim(item)
+
+/**
+ * @category parsers
+ * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.fromNullable

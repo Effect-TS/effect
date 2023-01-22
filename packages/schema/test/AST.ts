@@ -12,11 +12,20 @@ describe.concurrent("AST", () => {
   })
 
   it("union. should remove never from members", () => {
-    expect(AST.union([AST.neverKeyword, AST.neverKeyword])).toEqual(AST.neverKeyword)
-    expect(AST.union([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
-    expect(AST.union([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
-    expect(AST.union([AST.neverKeyword, AST.stringKeyword, AST.neverKeyword, AST.numberKeyword]))
-      .toEqual(AST.union([AST.stringKeyword, AST.numberKeyword]))
+    expect(AST.createUnion([AST.neverKeyword, AST.neverKeyword])).toEqual(
+      AST.neverKeyword
+    )
+    expect(AST.createUnion([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.createUnion([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
+    expect(
+      AST.createUnion([
+        AST.neverKeyword,
+        AST.stringKeyword,
+        AST.neverKeyword,
+        AST.numberKeyword
+      ])
+    )
+      .toEqual(AST.createUnion([AST.stringKeyword, AST.numberKeyword]))
   })
 
   it("union. should unify string literals with string", () => {
@@ -88,24 +97,24 @@ describe.concurrent("AST", () => {
   it("partial. tuple. e", () => {
     // type A = [string]
     // type B = Partial<A>
-    const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
     expect(AST.partial(tuple)).toEqual(
-      AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
+      AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none, true)
     )
   })
 
   it("partial. tuple. e + r", () => {
     // type A = readonly [string, ...Array<number>]
     // type B = Partial<A>
-    const tuple = AST.tuple(
-      [AST.element(AST.stringKeyword, false)],
+    const tuple = AST.createTuple(
+      [AST.createElement(AST.stringKeyword, false)],
       O.some([AST.numberKeyword]),
       true
     )
     expect(AST.partial(tuple)).toEqual(
-      AST.tuple(
-        [AST.element(AST.stringKeyword, true)],
-        O.some([AST.union([AST.numberKeyword, AST.undefinedKeyword])]),
+      AST.createTuple(
+        [AST.createElement(AST.stringKeyword, true)],
+        O.some([AST.createUnion([AST.numberKeyword, AST.undefinedKeyword])]),
         true
       )
     )
@@ -114,15 +123,15 @@ describe.concurrent("AST", () => {
   it("partial. tuple. e + r + e", () => {
     // type A = readonly [string, ...Array<number>, boolean]
     // type B = Partial<A>
-    const tuple = AST.tuple(
-      [AST.element(AST.stringKeyword, false)],
+    const tuple = AST.createTuple(
+      [AST.createElement(AST.stringKeyword, false)],
       O.some([AST.numberKeyword, AST.booleanKeyword]),
       true
     )
     expect(AST.partial(tuple)).toEqual(
-      AST.tuple(
-        [AST.element(AST.stringKeyword, true)],
-        O.some([AST.union([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])]),
+      AST.createTuple(
+        [AST.createElement(AST.stringKeyword, true)],
+        O.some([AST.createUnion([AST.numberKeyword, AST.booleanKeyword, AST.undefinedKeyword])]),
         true
       )
     )
@@ -130,10 +139,14 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("appendRestElement", () => {
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
+      const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
       const actual = AST.appendRestElement(tuple, AST.numberKeyword)
       expect(actual).toEqual(
-        AST.tuple([AST.element(AST.stringKeyword, false)], O.some([AST.numberKeyword]), true)
+        AST.createTuple(
+          [AST.createElement(AST.stringKeyword, false)],
+          O.some([AST.numberKeyword]),
+          true
+        )
       )
     })
 
@@ -141,7 +154,7 @@ describe.concurrent("AST", () => {
       expect(() =>
         AST.appendRestElement(
           AST.appendRestElement(
-            AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true),
+            AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true),
             AST.numberKeyword
           ),
           AST.booleanKeyword
@@ -152,10 +165,13 @@ describe.concurrent("AST", () => {
 
   describe.concurrent("appendElement", () => {
     it("non existing rest element", () => {
-      const tuple = AST.tuple([AST.element(AST.stringKeyword, false)], O.none, true)
-      expect(AST.appendElement(tuple, AST.element(AST.numberKeyword, false))).toEqual(
-        AST.tuple(
-          [AST.element(AST.stringKeyword, false), AST.element(AST.numberKeyword, false)],
+      const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
+      expect(AST.appendElement(tuple, AST.createElement(AST.numberKeyword, false))).toEqual(
+        AST.createTuple(
+          [
+            AST.createElement(AST.stringKeyword, false),
+            AST.createElement(AST.numberKeyword, false)
+          ],
           O.none,
           true
         )
@@ -163,14 +179,14 @@ describe.concurrent("AST", () => {
     })
 
     it("existing rest element", () => {
-      const tuple = AST.tuple(
-        [AST.element(AST.stringKeyword, false)],
+      const tuple = AST.createTuple(
+        [AST.createElement(AST.stringKeyword, false)],
         O.some([AST.numberKeyword]),
         true
       )
-      expect(AST.appendElement(tuple, AST.element(AST.booleanKeyword, false))).toEqual(
-        AST.tuple(
-          [AST.element(AST.stringKeyword, false)],
+      expect(AST.appendElement(tuple, AST.createElement(AST.booleanKeyword, false))).toEqual(
+        AST.createTuple(
+          [AST.createElement(AST.stringKeyword, false)],
           O.some([AST.numberKeyword, AST.booleanKeyword]),
           true
         )
@@ -178,18 +194,19 @@ describe.concurrent("AST", () => {
     })
 
     it("A required element cannot follow an optional element", () => {
-      const tuple = AST.tuple([AST.element(AST.stringKeyword, true)], O.none, true)
-      expect(() => AST.appendElement(tuple, AST.element(AST.numberKeyword, false)))
+      const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none, true)
+      expect(() => AST.appendElement(tuple, AST.createElement(AST.numberKeyword, false)))
         .toThrowError(
           new Error("A required element cannot follow an optional element. ts(1257)")
         )
     })
 
     it("An optional element cannot follow a rest element", () => {
-      const tuple = AST.tuple([], O.some([AST.stringKeyword]), true)
-      expect(() => AST.appendElement(tuple, AST.element(AST.numberKeyword, true))).toThrowError(
-        new Error("An optional element cannot follow a rest element. ts(1266)")
-      )
+      const tuple = AST.createTuple([], O.some([AST.stringKeyword]), true)
+      expect(() => AST.appendElement(tuple, AST.createElement(AST.numberKeyword, true)))
+        .toThrowError(
+          new Error("An optional element cannot follow a rest element. ts(1266)")
+        )
     })
   })
 
@@ -200,8 +217,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
           propertySignatures: [
-            AST.propertySignature("b", AST.literal("b"), false, true),
-            AST.propertySignature("a", AST.stringKeyword, false, true)
+            AST.createPropertySignature("b", AST.createLiteral("b"), false, true),
+            AST.createPropertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           annotations: {}
@@ -213,8 +230,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
           propertySignatures: [
-            AST.propertySignature("b", AST.undefinedKeyword, false, true),
-            AST.propertySignature("a", AST.stringKeyword, false, true)
+            AST.createPropertySignature("b", AST.undefinedKeyword, false, true),
+            AST.createPropertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           annotations: {}
@@ -226,8 +243,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
           propertySignatures: [
-            AST.propertySignature("b", AST.booleanKeyword, false, true),
-            AST.propertySignature("a", AST.stringKeyword, false, true)
+            AST.createPropertySignature("b", AST.booleanKeyword, false, true),
+            AST.createPropertySignature("a", AST.stringKeyword, false, true)
           ],
           indexSignatures: [],
           annotations: {}
@@ -239,8 +256,8 @@ describe.concurrent("AST", () => {
         expect(schema.ast).toEqual({
           _tag: "TypeLiteral",
           propertySignatures: [
-            AST.propertySignature("b", AST.literal(null), false, true),
-            AST.propertySignature("a", AST.booleanKeyword, false, true)
+            AST.createPropertySignature("b", AST.createLiteral(null), false, true),
+            AST.createPropertySignature("a", AST.booleanKeyword, false, true)
           ],
           indexSignatures: [],
           annotations: {}
@@ -252,31 +269,31 @@ describe.concurrent("AST", () => {
   describe.concurrent("propertyKeys", () => {
     it("TypeAlias", () => {
       // type Test = keyof O.Option<number> // "_tag"
-      expect(AST.propertyKeys(DataOption.fromNullable(S.number).ast)).toEqual(["_tag"])
+      expect(AST.getPropertyKeys(DataOption.fromNullable(S.number).ast)).toEqual(["_tag"])
     })
 
     it("tuple", () => {
       // type Test = keyof [] // never
-      expect(AST.propertyKeys(S.tuple().ast)).toEqual([])
+      expect(AST.getPropertyKeys(S.tuple().ast)).toEqual([])
       // type Test = keyof [string, number] // '0' | '1'
-      expect(AST.propertyKeys(S.tuple(S.string, S.number).ast)).toEqual(["0", "1"])
+      expect(AST.getPropertyKeys(S.tuple(S.string, S.number).ast)).toEqual(["0", "1"])
     })
 
     it("struct", () => {
       // type Test = keyof {} // never
-      expect(AST.propertyKeys(S.struct({}).ast)).toEqual([])
+      expect(AST.getPropertyKeys(S.struct({}).ast)).toEqual([])
       // type Test = keyof { a: string, b: number } // 'a' | 'b'
-      expect(AST.propertyKeys(S.struct({ a: S.string, b: S.number }).ast)).toEqual(["a", "b"])
+      expect(AST.getPropertyKeys(S.struct({ a: S.string, b: S.number }).ast)).toEqual(["a", "b"])
 
       const a = Symbol.for("@fp-ts/schema/test/a")
       // type Test = keyof { [a]: string } // typeof A
-      expect(AST.propertyKeys(S.struct({ [a]: S.string }).ast)).toEqual([a])
+      expect(AST.getPropertyKeys(S.struct({ [a]: S.string }).ast)).toEqual([a])
     })
 
     describe.concurrent("union", () => {
       it("empty union", () => {
         const schema = S.union()
-        expect(AST.propertyKeys(schema.ast)).toEqual(AST.propertyKeys(AST.neverKeyword))
+        expect(AST.getPropertyKeys(schema.ast)).toEqual(AST.getPropertyKeys(AST.neverKeyword))
       })
 
       it("discriminated unions", () => {
@@ -284,7 +301,7 @@ describe.concurrent("AST", () => {
           S.struct({ _tag: S.literal("A"), a: S.string }),
           S.struct({ _tag: S.literal("B"), b: S.number })
         )
-        expect(AST.propertyKeys(schema.ast)).toEqual(["_tag"])
+        expect(AST.getPropertyKeys(schema.ast)).toEqual(["_tag"])
       })
     })
 
@@ -300,7 +317,7 @@ describe.concurrent("AST", () => {
           as: S.array(schema)
         })
       )
-      expect(AST.propertyKeys(schema.ast)).toEqual(["a", "as"])
+      expect(AST.getPropertyKeys(schema.ast)).toEqual(["a", "as"])
     })
   })
 
@@ -308,7 +325,7 @@ describe.concurrent("AST", () => {
     it("type alias", () => {
       const schema = DataOption.fromNullable(S.number)
       expect(AST.getPropertySignatures(schema.ast)).toEqual([
-        AST.propertySignature(
+        AST.createPropertySignature(
           "_tag",
           S.union(S.literal("Some"), S.literal("None")).ast,
           false,
@@ -320,8 +337,8 @@ describe.concurrent("AST", () => {
     it("tuple", () => {
       const schema = S.tuple(S.string, S.number)
       expect(AST.getPropertySignatures(schema.ast)).toEqual([
-        AST.propertySignature("0", S.string.ast, false, true),
-        AST.propertySignature("1", S.number.ast, false, true)
+        AST.createPropertySignature("0", S.string.ast, false, true),
+        AST.createPropertySignature("1", S.number.ast, false, true)
       ])
     })
 
@@ -329,8 +346,8 @@ describe.concurrent("AST", () => {
       it("string keys", () => {
         const schema = S.struct({ a: S.string, b: S.number })
         expect(AST.getPropertySignatures(schema.ast)).toEqual([
-          AST.propertySignature("a", S.string.ast, false, true),
-          AST.propertySignature("b", S.number.ast, false, true)
+          AST.createPropertySignature("a", S.string.ast, false, true),
+          AST.createPropertySignature("b", S.number.ast, false, true)
         ])
       })
 
@@ -339,8 +356,8 @@ describe.concurrent("AST", () => {
         const b = Symbol.for("@fp-ts/schema/test/b")
         const schema = S.struct({ [a]: S.string, [b]: S.number })
         expect(AST.getPropertySignatures(schema.ast)).toEqual([
-          AST.propertySignature(a, S.string.ast, false, true),
-          AST.propertySignature(b, S.number.ast, false, true)
+          AST.createPropertySignature(a, S.string.ast, false, true),
+          AST.createPropertySignature(b, S.number.ast, false, true)
         ])
       })
     })
@@ -352,7 +369,12 @@ describe.concurrent("AST", () => {
           S.struct({ a: S.boolean, c: S.boolean })
         )
         expect(AST.getPropertySignatures(schema.ast)).toEqual([
-          AST.propertySignature("a", AST.union([S.string.ast, S.boolean.ast]), false, true)
+          AST.createPropertySignature(
+            "a",
+            AST.createUnion([S.string.ast, S.boolean.ast]),
+            false,
+            true
+          )
         ])
       })
 
@@ -362,7 +384,12 @@ describe.concurrent("AST", () => {
           S.struct({ c: S.boolean, a: S.optional(S.boolean) })
         )
         expect(AST.getPropertySignatures(schema.ast)).toEqual([
-          AST.propertySignature("a", AST.union([S.string.ast, S.boolean.ast]), true, true)
+          AST.createPropertySignature(
+            "a",
+            AST.createUnion([S.string.ast, S.boolean.ast]),
+            true,
+            true
+          )
         ])
       })
     })
@@ -379,10 +406,10 @@ describe.concurrent("AST", () => {
         })
       )
       expect(AST.getPropertySignatures(Category.ast)).toEqual([
-        AST.propertySignature("name", S.string.ast, false, true),
-        AST.propertySignature(
+        AST.createPropertySignature("name", S.string.ast, false, true),
+        AST.createPropertySignature(
           "categories",
-          AST.tuple([], O.some([Category.ast]), true),
+          AST.createTuple([], O.some([Category.ast]), true),
           false,
           true
         )

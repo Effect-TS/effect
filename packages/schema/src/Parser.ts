@@ -463,7 +463,7 @@ const parserFor = <A>(
           case "encoder": {
             const from = go(ast.from)
             return make(
-              I.makeSchema(AST.transform(ast.to, ast.from, ast.encode, ast.decode)),
+              I.makeSchema(AST.createTransform(ast.to, ast.from, ast.encode, ast.decode)),
               (a, options) => pipe(ast.encode(a, options), I.flatMap((a) => from.parse(a, options)))
             )
           }
@@ -475,9 +475,9 @@ const parserFor = <A>(
   return go(schema.ast)
 }
 
-const unknownArray = AST.tuple([], O.some([AST.unknownKeyword]), true)
+const unknownArray = AST.createTuple([], O.some([AST.unknownKeyword]), true)
 
-const unknownRecord = AST.typeLiteral([], [
-  AST.indexSignature(AST.stringKeyword, AST.unknownKeyword, true),
-  AST.indexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
+const unknownRecord = AST.createTypeLiteral([], [
+  AST.createIndexSignature(AST.stringKeyword, AST.unknownKeyword, true),
+  AST.createIndexSignature(AST.symbolKeyword, AST.unknownKeyword, true)
 ])

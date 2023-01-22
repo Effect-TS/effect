@@ -102,7 +102,7 @@ export const typeAlias = (
   type: Schema<any>,
   annotations?: AST.Annotated["annotations"]
 ): Schema<any> =>
-  makeSchema(AST.typeAlias(
+  makeSchema(AST.createTypeAlias(
     typeParameters.map((tp) => tp.ast),
     type.ast,
     annotations
@@ -110,7 +110,7 @@ export const typeAlias = (
 
 /** @internal */
 export const annotations = (annotations: AST.Annotated["annotations"]) =>
-  <A>(self: Schema<A>): Schema<A> => makeSchema(AST.annotations(self.ast, annotations))
+  <A>(self: Schema<A>): Schema<A> => makeSchema(AST.mergeAnnotations(self.ast, annotations))
 
 /** @internal */
 export function filter<A, B extends A>(
@@ -150,7 +150,7 @@ export function filter<A>(
   if (options?.custom !== undefined) {
     annotations[A.CustomId] = options?.custom
   }
-  return (from) => makeSchema(AST.refinement(from.ast, predicate, annotations))
+  return (from) => makeSchema(AST.createRefinement(from.ast, predicate, annotations))
 }
 
 /** @internal */
@@ -158,7 +158,8 @@ export const transformOrFail = <A, B>(
   to: Schema<B>,
   decode: Parser<A, B>["parse"],
   encode: Parser<B, A>["parse"]
-) => (self: Schema<A>): Schema<B> => makeSchema(AST.transform(self.ast, to.ast, decode, encode))
+) =>
+  (self: Schema<A>): Schema<B> => makeSchema(AST.createTransform(self.ast, to.ast, decode, encode))
 
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, ab: (a: A) => B, ba: (b: B) => A) =>
@@ -166,7 +167,7 @@ export const transform = <A, B>(to: Schema<B>, ab: (a: A) => B, ba: (b: B) => A)
     pipe(self, transformOrFail(to, (a) => PR.success(ab(a)), (b) => PR.success(ba(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
-  makeSchema(AST.literal(value))
+  makeSchema(AST.createLiteral(value))
 
 /** @internal */
 export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
@@ -177,7 +178,7 @@ export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
 export const uniqueSymbol = <S extends symbol>(
   symbol: S,
   annotations?: AST.Annotated["annotations"]
-): Schema<S> => makeSchema(AST.uniqueSymbol(symbol, annotations))
+): Schema<S> => makeSchema(AST.createUniqueSymbol(symbol, annotations))
 
 /** @internal */
 export const never: Schema<never> = makeSchema(AST.neverKeyword)
@@ -195,7 +196,7 @@ export const isUndefined = (u: unknown): u is undefined => u === undefined
 export const _undefined: Schema<undefined> = makeSchema(AST.undefinedKeyword)
 
 /** @internal */
-export const _null: Schema<null> = makeSchema(AST.literal(null))
+export const _null: Schema<null> = makeSchema(AST.createLiteral(null))
 
 /** @internal */
 export const _void: Schema<void> = makeSchema(AST.voidKeyword)
@@ -238,7 +239,7 @@ type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
 /** @internal */
 export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-): Schema<Infer<Members[number]>> => makeSchema(AST.union(members.map((m) => m.ast)))
+): Schema<Infer<Members[number]>> => makeSchema(AST.createUnion(members.map((m) => m.ast)))
 
 /** @internal */
 export const nullable = <A>(self: Schema<A>): Schema<A | null> => union(_null, self)
@@ -265,9 +266,9 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
   >
 > =>
   makeSchema(
-    AST.typeLiteral(
+    AST.createTypeLiteral(
       ownKeys(fields).map((key) =>
-        AST.propertySignature(key, fields[key].ast, isOptionalSchema(fields[key]), true)
+        AST.createPropertySignature(key, fields[key].ast, isOptionalSchema(fields[key]), true)
       ),
       []
     )
@@ -277,23 +278,25 @@ export const struct = <Fields extends Record<PropertyKey, Schema<any>>>(
 export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
 ): Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
-  makeSchema(AST.tuple(elements.map((schema) => AST.element(schema.ast, false)), O.none, true))
+  makeSchema(
+    AST.createTuple(elements.map((schema) => AST.createElement(schema.ast, false)), O.none, true)
+  )
 
 /** @internal */
 export const lazy = <A>(
   f: () => Schema<A>,
   annotations?: AST.Annotated["annotations"]
-): Schema<A> => makeSchema(AST.lazy(() => f().ast, annotations))
+): Schema<A> => makeSchema(AST.createLazy(() => f().ast, annotations))
 
 /** @internal */
 export const array = <A>(item: Schema<A>): Schema<ReadonlyArray<A>> =>
-  makeSchema(AST.tuple([], O.some([item.ast]), true))
+  makeSchema(AST.createTuple([], O.some([item.ast]), true))
 
 /** @internal */
 export const record = <K extends string | symbol, V>(
   key: Schema<K>,
   value: Schema<V>
-): Schema<{ readonly [k in K]: V }> => makeSchema(AST.record(key.ast, value.ast, true))
+): Schema<{ readonly [k in K]: V }> => makeSchema(AST.createRecord(key.ast, value.ast, true))
 
 /** @internal */
 export const getKeysForIndexSignature = (

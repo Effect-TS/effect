@@ -6,31 +6,31 @@ import * as S from "@fp-ts/schema/Schema"
 describe.concurrent("Schema", () => {
   it("templateLiteral. a", () => {
     const schema = S.templateLiteral(S.literal("a"))
-    expect(schema.ast).toEqual(AST.literal("a"))
+    expect(schema.ast).toEqual(AST.createLiteral("a"))
   })
 
   it("templateLiteral. a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
     expect(schema.ast).toEqual(
-      AST.literal("a b")
+      AST.createLiteral("a b")
     )
   })
 
   it("templateLiteral. (a | b) c", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
     expect(schema.ast).toEqual(
-      AST.union([AST.literal("ac"), AST.literal("bc")])
+      AST.createUnion([AST.createLiteral("ac"), AST.createLiteral("bc")])
     )
   })
 
   it("templateLiteral. (a | b) c (d | e)", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
     expect(schema.ast).toEqual(
-      AST.union([
-        AST.literal("acd"),
-        AST.literal("ace"),
-        AST.literal("bcd"),
-        AST.literal("bce")
+      AST.createUnion([
+        AST.createLiteral("acd"),
+        AST.createLiteral("ace"),
+        AST.createLiteral("bcd"),
+        AST.createLiteral("bce")
       ])
     )
   })
@@ -38,11 +38,11 @@ describe.concurrent("Schema", () => {
   it("templateLiteral. (a | b) string (d | e)", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.string, S.literal("d", "e"))
     expect(schema.ast).toEqual(
-      AST.union([
-        AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "d" }]),
-        AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "e" }]),
-        AST.templateLiteral("b", [{ type: AST.stringKeyword, literal: "d" }]),
-        AST.templateLiteral("b", [{ type: AST.stringKeyword, literal: "e" }])
+      AST.createUnion([
+        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "d" }]),
+        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "e" }]),
+        AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "d" }]),
+        AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "e" }])
       ])
     )
   })
@@ -50,14 +50,14 @@ describe.concurrent("Schema", () => {
   it("templateLiteral. a${string}", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string)
     expect(schema.ast).toEqual(
-      AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
+      AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
     )
   })
 
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
     expect(schema.ast).toEqual(
-      AST.templateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
+      AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
     )
   })
 
@@ -72,12 +72,12 @@ describe.concurrent("Schema", () => {
     })
 
     it("should return an unwrapped AST with exactly one literal", () => {
-      expect(S.literal(1).ast).toEqual(AST.literal(1))
+      expect(S.literal(1).ast).toEqual(AST.createLiteral(1))
     })
 
     it("should return a union with more than one literal", () => {
       expect(S.literal(1, 2).ast).toEqual(
-        AST.union([AST.literal(1), AST.literal(2)])
+        AST.createUnion([AST.createLiteral(1), AST.createLiteral(2)])
       )
     })
   })
@@ -268,14 +268,14 @@ describe.concurrent("Schema", () => {
           if (AST.isTypeLiteral(schema.ast)) {
             const propertySignatures = schema.ast.propertySignatures.slice()
             const i = propertySignatures.findIndex((ps) => ps.name === from)
-            propertySignatures[i] = AST.propertySignature(
+            propertySignatures[i] = AST.createPropertySignature(
               to,
               propertySignatures[i].type,
               propertySignatures[i].isOptional,
               propertySignatures[i].isReadonly
             )
             return S.make(
-              AST.typeLiteral(propertySignatures, schema.ast.indexSignatures)
+              AST.createTypeLiteral(propertySignatures, schema.ast.indexSignatures)
             )
           }
           throw new Error("cannot rename")
@@ -315,10 +315,10 @@ describe.concurrent("Schema", () => {
         >
       > =>
         S.make(
-          AST.typeLiteral(
+          AST.createTypeLiteral(
             Object.keys(fields).map((key) => {
               const isOptional = key.endsWith("?")
-              return AST.propertySignature(
+              return AST.createPropertySignature(
                 isOptional ? key.substring(0, key.length - 1) : key,
                 fields[key].ast,
                 isOptional,

@@ -119,7 +119,10 @@ export const int = <A extends number>(annotationOptions?: AnnotationOptions<A>) 
 const trimmedRegex = /^\S.*\S$|^\S$|^$/
 
 /**
- * Note. This combinator does not make any transformations, it only validates. If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
+ * Verifies that a string contains no leading or trailing whitespaces.
+ *
+ * Note. This combinator does not make any transformations, it only validates.
+ * If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
  *
  * @since 1.0.0
  */

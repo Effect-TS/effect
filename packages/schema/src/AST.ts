@@ -72,7 +72,7 @@ export interface TypeAlias extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const typeAlias = (
+export const createTypeAlias = (
   typeParameters: ReadonlyArray<AST>,
   type: AST,
   annotations: Annotated["annotations"] = {}
@@ -102,7 +102,7 @@ export interface Literal extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const literal = (
+export const createLiteral = (
   literal: LiteralValue
 ): Literal => ({ _tag: "Literal", literal, annotations: {} })
 
@@ -125,7 +125,7 @@ export interface UniqueSymbol extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol = (
+export const createUniqueSymbol = (
   symbol: symbol,
   annotations: Annotated["annotations"] = {}
 ): UniqueSymbol => ({ _tag: "UniqueSymbol", symbol, annotations })
@@ -376,7 +376,7 @@ export interface Enums extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const enums = (
+export const createEnums = (
   enums: ReadonlyArray<readonly [string, string | number]>
 ): Enums => ({ _tag: "Enums", enums, annotations: {} })
 
@@ -402,11 +402,13 @@ export interface TemplateLiteral extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const templateLiteral = (
+export const createTemplateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>
 ): TemplateLiteral | Literal =>
-  RA.isNonEmpty(spans) ? { _tag: "TemplateLiteral", head, spans, annotations: {} } : literal(head)
+  RA.isNonEmpty(spans) ?
+    { _tag: "TemplateLiteral", head, spans, annotations: {} } :
+    createLiteral(head)
 
 /**
  * @category guards
@@ -426,7 +428,7 @@ export interface Element {
 /**
  * @since 1.0.0
  */
-export const element = (
+export const createElement = (
   type: AST,
   isOptional: boolean
 ): Element => ({ type, isOptional })
@@ -446,7 +448,7 @@ export interface Tuple extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const tuple = (
+export const createTuple = (
   elements: ReadonlyArray<Element>,
   rest: Option<RA.NonEmptyReadonlyArray<AST>>,
   isReadonly: boolean,
@@ -478,7 +480,7 @@ export interface PropertySignature extends Annotated {
 /**
  * @since 1.0.0
  */
-export const propertySignature = (
+export const createPropertySignature = (
   name: PropertyKey,
   type: AST,
   isOptional: boolean,
@@ -498,7 +500,7 @@ export interface IndexSignature {
 /**
  * @since 1.0.0
  */
-export const indexSignature = (
+export const createIndexSignature = (
   parameter: StringKeyword | SymbolKeyword | TemplateLiteral | Refinement,
   type: AST,
   isReadonly: boolean
@@ -554,7 +556,7 @@ const sortByCardinalityAsc = RA.sort(
  * @category constructors
  * @since 1.0.0
  */
-export const typeLiteral = (
+export const createTypeLiteral = (
   propertySignatures: ReadonlyArray<PropertySignature>,
   indexSignatures: ReadonlyArray<IndexSignature>,
   annotations: Annotated["annotations"] = {}
@@ -631,7 +633,7 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
  * @category constructors
  * @since 1.0.0
  */
-export const union = (
+export const createUnion = (
   candidates: ReadonlyArray<AST>,
   annotations: Annotated["annotations"] = {}
 ): AST => {
@@ -667,7 +669,7 @@ export interface Lazy extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const lazy = (
+export const createLazy = (
   f: () => AST,
   annotations: Annotated["annotations"] = {}
 ): Lazy => ({ _tag: "Lazy", f, annotations })
@@ -692,7 +694,7 @@ export interface Refinement extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const refinement = (
+export const createRefinement = (
   from: AST,
   refinement: Predicate<any>,
   annotations: Annotated["annotations"] = {}
@@ -720,7 +722,7 @@ export interface Transform extends Annotated {
  * @category constructors
  * @since 1.0.0
  */
-export const transform = (
+export const createTransform = (
   from: AST,
   to: AST,
   decode: Transform["decode"],
@@ -738,22 +740,28 @@ export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transfo
 // ---------------------------------------------
 
 /**
+ * Adds a group of annotations, potentially overwriting existing annotations.
+ *
  * @since 1.0.0
  */
-export const annotations = (ast: AST, annotations: Annotated["annotations"]) => ({
+export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]) => ({
   ...ast,
   annotations: { ...ast.annotations, ...annotations }
 })
 
 /**
+ * Adds an annotation, potentially overwriting the existing annotation with the specified id.
+ *
  * @since 1.0.0
  */
-export const annotation = (ast: AST, id: PropertyKey, value: unknown) => ({
+export const setAnnotation = (ast: AST, id: PropertyKey, value: unknown) => ({
   ...ast,
   annotations: { ...ast.annotations, [id]: value }
 })
 
 /**
+ * Adds a rest element to the end of a tuple, or throws an exception if the rest element is already present.
+ *
  * @since 1.0.0
  */
 export const appendRestElement = (
@@ -764,10 +772,14 @@ export const appendRestElement = (
     // example: `type A = [...string[], ...number[]]` is illegal
     throw new Error("A rest element cannot follow another rest element. ts(1265)")
   }
-  return tuple(ast.elements, O.some([restElement]), ast.isReadonly)
+  return createTuple(ast.elements, O.some([restElement]), ast.isReadonly)
 }
 
 /**
+ * Appends an element to a tuple or throws an exception in the following cases:
+ * - A required element cannot follow an optional element. ts(1257)
+ * - An optional element cannot follow a rest element. ts(1266)
+ *
  * @since 1.0.0
  */
 export const appendElement = (
@@ -780,12 +792,12 @@ export const appendElement = (
   return pipe(
     ast.rest,
     O.match(
-      () => tuple([...ast.elements, newElement], O.none, ast.isReadonly),
+      () => createTuple([...ast.elements, newElement], O.none, ast.isReadonly),
       (rest) => {
         if (newElement.isOptional) {
           throw new Error("An optional element cannot follow a rest element. ts(1266)")
         }
-        return tuple(ast.elements, O.some([...rest, newElement.type]), ast.isReadonly)
+        return createTuple(ast.elements, O.some([...rest, newElement.type]), ast.isReadonly)
       }
     )
   )
@@ -799,10 +811,10 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
     case "StringKeyword":
-      return [literal("length")]
+      return [createLiteral("length")]
     case "TypeLiteral":
       return ast.propertySignatures.map((f): AST =>
-        typeof f.name === "symbol" ? uniqueSymbol(f.name) : literal(f.name)
+        typeof f.name === "symbol" ? createUniqueSymbol(f.name) : createLiteral(f.name)
       ).concat(ast.indexSignatures.map((is) => is.parameter))
     case "Union": {
       let out: ReadonlyArray<AST> = _keyof(ast.types[0])
@@ -827,14 +839,18 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
 }
 
 /**
+ * Equivalent at runtime to the TypeScript type-level `keyof` operator.
+ *
  * @since 1.0.0
  */
-export const keyof = (ast: AST): AST => union(_keyof(ast))
+export const keyof = (ast: AST): AST => createUnion(_keyof(ast))
 
 /**
+ * Create a record with the specified key type and value type.
+ *
  * @since 1.0.0
  */
-export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral => {
+export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLiteral => {
   const propertySignatures: Array<PropertySignature> = []
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
@@ -848,15 +864,15 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
       case "SymbolKeyword":
       case "TemplateLiteral":
       case "Refinement":
-        indexSignatures.push(indexSignature(key, value, isReadonly))
+        indexSignatures.push(createIndexSignature(key, value, isReadonly))
         break
       case "Literal":
         if (isString(key.literal) || isNumber(key.literal)) {
-          propertySignatures.push(propertySignature(key.literal, value, false, isReadonly))
+          propertySignatures.push(createPropertySignature(key.literal, value, false, isReadonly))
         }
         break
       case "UniqueSymbol":
-        propertySignatures.push(propertySignature(key.symbol, value, false, isReadonly))
+        propertySignatures.push(createPropertySignature(key.symbol, value, false, isReadonly))
         break
       case "Union":
         key.types.forEach(go)
@@ -866,53 +882,55 @@ export const record = (key: AST, value: AST, isReadonly: boolean): TypeLiteral =
     }
   }
   go(key)
-  return typeLiteral(propertySignatures, indexSignatures)
+  return createTypeLiteral(propertySignatures, indexSignatures)
 }
 
 /**
+ * Equivalent at runtime to the built-in TypeScript utility type `Pick`.
+ *
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return typeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
+  return createTypeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
 }
 
 /**
+ * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
+ *
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return typeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
+  return createTypeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
 }
 
 /** @internal */
-export const propertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
+export const getPropertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
   switch (ast._tag) {
     case "TypeAlias":
-      return propertyKeys(ast.type)
+      return getPropertyKeys(ast.type)
     case "Tuple":
       return ast.elements.map((_, i) => String(i))
     case "TypeLiteral":
       return ast.propertySignatures.map((ps) => ps.name)
     case "Union": {
-      let out: ReadonlyArray<PropertyKey> = propertyKeys(ast.types[0])
+      let out: ReadonlyArray<PropertyKey> = getPropertyKeys(ast.types[0])
       for (let i = 1; i < ast.types.length; i++) {
-        out = RA.intersection(propertyKeys(ast.types[i]))(out)
+        out = RA.intersection(getPropertyKeys(ast.types[i]))(out)
       }
       return out
     }
     case "Lazy":
-      return propertyKeys(ast.f())
+      return getPropertyKeys(ast.f())
     case "Refinement":
-      return propertyKeys(ast.from)
+      return getPropertyKeys(ast.from)
     case "Transform":
-      return propertyKeys(ast.to)
+      return getPropertyKeys(ast.to)
     default:
       return []
   }
 }
 
-/**
- * @since 1.0.0
- */
+/** @internal */
 export const getPropertySignatures = (
   ast: AST
 ): ReadonlyArray<PropertySignature> => {
@@ -921,16 +939,16 @@ export const getPropertySignatures = (
       return getPropertySignatures(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
-        propertySignature(String(i), element.type, element.isOptional, ast.isReadonly)
+        createPropertySignature(String(i), element.type, element.isOptional, ast.isReadonly)
       )
     case "TypeLiteral":
       return ast.propertySignatures
     case "Union": {
       const propertySignatures = pipe(ast.types, RA.flatMap(getPropertySignatures))
-      return propertyKeys(ast).map((key) => {
+      return getPropertyKeys(ast).map((key) => {
         let isOptional = false
         let isReadonly = false
-        const type = union(
+        const type = createUnion(
           propertySignatures.filter((ps) => ps.name === key).map((ps) => {
             if (ps.isReadonly) {
               isReadonly = true
@@ -941,7 +959,7 @@ export const getPropertySignatures = (
             return ps.type
           })
         )
-        return propertySignature(key, type, isOptional, isReadonly)
+        return createPropertySignature(key, type, isOptional, isReadonly)
       })
     }
     case "Lazy":
@@ -956,6 +974,8 @@ export const getPropertySignatures = (
 }
 
 /**
+ * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
+ *
  * @since 1.0.0
  */
 export const partial = (ast: AST): AST => {
@@ -963,25 +983,25 @@ export const partial = (ast: AST): AST => {
     case "TypeAlias":
       return partial(ast.type)
     case "Tuple":
-      return tuple(
-        ast.elements.map((e) => element(e.type, true)),
+      return createTuple(
+        ast.elements.map((e) => createElement(e.type, true)),
         pipe(
           ast.rest,
-          O.map((rest) => [union([...rest, undefinedKeyword])])
+          O.map((rest) => [createUnion([...rest, undefinedKeyword])])
         ),
         ast.isReadonly
       )
     case "TypeLiteral":
-      return typeLiteral(
+      return createTypeLiteral(
         ast.propertySignatures.map((f) =>
-          propertySignature(f.name, f.type, true, f.isReadonly, f.annotations)
+          createPropertySignature(f.name, f.type, true, f.isReadonly, f.annotations)
         ),
         ast.indexSignatures
       )
     case "Union":
-      return union(ast.types.map((member) => partial(member)))
+      return createUnion(ast.types.map((member) => partial(member)))
     case "Lazy":
-      return lazy(() => partial(ast.f()))
+      return createLazy(() => partial(ast.f()))
     case "Refinement":
       return partial(ast.from)
     case "Transform":

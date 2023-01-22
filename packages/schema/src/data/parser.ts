@@ -9,11 +9,9 @@ import * as PR from "@fp-ts/schema/ParseResult"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
-  Transforms a `string` schema into a `number` schema by parsing the string value as a number.
-  If the string is not a valid number representation, the decoding will fail with a `DecodeError.transform` error.
-  The following special string values are supported: "NaN", "Infinity", "-Infinity".
+  Transforms a `string` into a `number` by parsing the string using `parseFloat`.
 
-  @param self - The `string` schema to transform.
+  The following special string values are supported: "NaN", "Infinity", "-Infinity".
 
   @since 1.0.0
 */
@@ -22,7 +20,7 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
     self,
     I.transformOrFail(
       I.number,
-      function decode(s: string) {
+      (s) => {
         if (s === "NaN") {
           return PR.success(NaN)
         }
@@ -35,18 +33,15 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
         const n = parseFloat(s)
         return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
       },
-      function mapFrom(n) {
-        return PR.success(String(n))
-      }
+      (n) => PR.success(String(n))
     )
   )
   return schema
 }
 
 /**
- * Transforms a `string` schema into a `string` schema with no leading or trailing whitespace.
+ * The `trim` parser allows removing whitespaces from the beginning and end of a string.
  *
- * @param self - The `string` schema to transform.
  * @since 1.0.0
  */
 export const trim = (self: Schema<string>): Schema<string> =>
@@ -60,9 +55,7 @@ export const trim = (self: Schema<string>): Schema<string> =>
   )
 
 /**
-  Transforms a `string` schema into a `Date` schema by parsing the string using `new Date(_)`.
-
-  @param self - The `string` schema to transform.
+  Transforms a `string` into a `Date` by parsing the string using `Date.parse`.
 
   @since 1.0.0
 */
@@ -71,15 +64,13 @@ export const parseDate = (self: Schema<string>): Schema<Date> => {
     self,
     I.transformOrFail(
       D.date,
-      function decode(s: string) {
-        const d = new Date(s)
-        return isNaN(d as any)
+      (s) => {
+        const n = Date.parse(s)
+        return isNaN(n)
           ? PR.failure(PR.type(schema.ast, s))
-          : PR.success(d)
+          : PR.success(new Date(n))
       },
-      function mapFrom(n) {
-        return PR.success(n.toISOString())
-      }
+      (n) => PR.success(n.toISOString())
     )
   )
   return schema
