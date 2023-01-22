@@ -11,6 +11,14 @@ describe.concurrent("AST", () => {
     expect(S.union(S.string, S.string).ast).toEqual(S.string.ast)
   })
 
+  it("union. should remove never from members", () => {
+    expect(AST.union([AST.neverKeyword, AST.neverKeyword])).toEqual(AST.neverKeyword)
+    expect(AST.union([AST.neverKeyword, AST.stringKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.union([AST.stringKeyword, AST.neverKeyword])).toEqual(AST.stringKeyword)
+    expect(AST.union([AST.neverKeyword, AST.stringKeyword, AST.neverKeyword, AST.numberKeyword]))
+      .toEqual(AST.union([AST.stringKeyword, AST.numberKeyword]))
+  })
+
   it("union. should unify string literals with string", () => {
     expect(S.union(S.literal("a"), S.string).ast).toEqual(S.string.ast)
   })
