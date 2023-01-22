@@ -61,7 +61,7 @@ describe.concurrent("Schema", () => {
     )
   })
 
-  it("optional. should flatten optional calls", () => {
+  it("optional/ should flatten optional calls", () => {
     const schema = S.optional(S.optional(S.string))
     expect(schema).toEqual(S.optional(S.string))
   })
@@ -143,6 +143,119 @@ describe.concurrent("Schema", () => {
       expect(is("b")).toEqual(false)
       expect(is("c")).toEqual(false)
     })
+  })
+
+  it(`extend/ union of structs with struct`, () => {
+    const schema = pipe(
+      S.struct({ b: S.boolean }),
+      S.extend(S.union(
+        S.struct({ a: S.literal("a") }),
+        S.struct({ a: S.literal("b") })
+      ))
+    )
+    const is = P.is(schema)
+
+    expect(is({ a: "a", b: false })).toBe(true)
+    expect(is({ a: "b", b: false })).toBe(true)
+
+    expect(is({ a: "a" })).toBe(false)
+    expect(is({ a: "b" })).toBe(false)
+  })
+
+  it("extend/ can only handle type literals or unions of type literals", () => {
+    expect(() => pipe(S.string, S.extend(S.number))).toThrowError(
+      new Error("`extend` can only handle type literals or unions of type literals")
+    )
+  })
+
+  it(`extend/overlapping index signatures/ string`, () => {
+    expect(() =>
+      pipe(
+        S.record(S.string, S.number),
+        S.extend(S.record(S.string, S.boolean))
+      )
+    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+  })
+
+  it(`extend/overlapping index signatures/ symbol`, () => {
+    expect(() =>
+      pipe(
+        S.record(S.symbol, S.number),
+        S.extend(S.record(S.symbol, S.boolean))
+      )
+    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+  })
+
+  it("extend/overlapping index signatures/ refinements", () => {
+    expect(() =>
+      pipe(
+        S.record(S.string, S.number),
+        S.extend(S.record(pipe(S.string, S.minLength(2)), S.boolean))
+      )
+    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+  })
+
+  it(`extend/ struct with union of structs`, () => {
+    const schema = pipe(
+      S.union(
+        S.struct({ a: S.literal("a") }),
+        S.struct({ b: S.literal("b") })
+      ),
+      S.extend(S.struct({ c: S.boolean }))
+    )
+    const is = P.is(schema)
+
+    expect(is({ a: "a", c: false })).toBe(true)
+    expect(is({ b: "b", c: false })).toBe(true)
+
+    expect(is({ a: "a" })).toBe(false)
+    expect(is({ a: "b" })).toBe(false)
+  })
+
+  it(`extend/ union of structs with union of structs`, () => {
+    const schema = pipe(
+      S.union(
+        S.struct({ a: S.literal("a") }),
+        S.struct({ a: S.literal("b") })
+      ),
+      S.extend(
+        S.union(
+          S.struct({ c: S.boolean }),
+          S.struct({ d: S.number })
+        )
+      )
+    )
+    const is = P.is(schema)
+
+    expect(is({ a: "a", c: false })).toBe(true)
+    expect(is({ a: "b", d: 69 })).toBe(true)
+    expect(is({ a: "a", d: 69 })).toBe(true)
+    expect(is({ a: "b", c: false })).toBe(true)
+
+    expect(is({ a: "a" })).toBe(false)
+    expect(is({ a: "b" })).toBe(false)
+    expect(is({ c: false })).toBe(false)
+    expect(is({ d: 42 })).toBe(false)
+  })
+
+  it(`extend/ overlapping property signatures`, () => {
+    expect(() =>
+      pipe(
+        S.struct({ a: S.literal("a") }),
+        S.extend(S.struct({ a: S.string }))
+      )
+    ).toThrowError(new Error("`extend` cannot handle overlapping property signatures"))
+    expect(() =>
+      pipe(
+        S.struct({ a: S.literal("a") }),
+        S.extend(
+          S.union(
+            S.struct({ a: S.string }),
+            S.struct({ b: S.number })
+          )
+        )
+      )
+    ).toThrowError(new Error("`extend` cannot handle overlapping property signatures"))
   })
 
   describe.concurrent("experimental", () => {
@@ -235,93 +348,6 @@ describe.concurrent("Schema", () => {
 
       expect(is({ a: "a" })).toBe(false)
       expect(is({ a: "a", b: 1, c: 1 })).toBe(false)
-    })
-  })
-
-  describe.concurrent("extend with union types", () => {
-    it(`extend union of structs with struct`, () => {
-      const schema = pipe(
-        S.struct({ b: S.boolean }),
-        S.extend(S.union(
-          S.struct({ a: S.literal("a") }),
-          S.struct({ a: S.literal("b") })
-        ))
-      )
-      const is = P.is(schema)
-
-      expect(is({ a: "a", b: false })).toBe(true)
-      expect(is({ a: "b", b: false })).toBe(true)
-
-      expect(is({ a: "a" })).toBe(false)
-      expect(is({ a: "b" })).toBe(false)
-    })
-
-    it(`extend struct with union of structs`, () => {
-      const schema = pipe(
-        S.union(
-          S.struct({ a: S.literal("a") }),
-          S.struct({ b: S.literal("b") })
-        ),
-        S.extend(S.struct({ c: S.boolean }))
-      )
-      const is = P.is(schema)
-
-      expect(is({ a: "a", c: false })).toBe(true)
-      expect(is({ b: "b", c: false })).toBe(true)
-
-      expect(is({ a: "a" })).toBe(false)
-      expect(is({ a: "b" })).toBe(false)
-    })
-
-    it(`extend union of structs with union of structs`, () => {
-      const schema = pipe(
-        S.union(
-          S.struct({ a: S.literal("a") }),
-          S.struct({ a: S.literal("b") })
-        ),
-        S.extend(
-          S.union(
-            S.struct({ c: S.boolean }),
-            S.struct({ d: S.number })
-          )
-        )
-      )
-      const is = P.is(schema)
-
-      expect(is({ a: "a", c: false })).toBe(true)
-      expect(is({ a: "b", d: 69 })).toBe(true)
-      expect(is({ a: "a", d: 69 })).toBe(true)
-      expect(is({ a: "b", c: false })).toBe(true)
-
-      expect(is({ a: "a" })).toBe(false)
-      expect(is({ a: "b" })).toBe(false)
-      expect(is({ c: false })).toBe(false)
-      expect(is({ d: 42 })).toBe(false)
-    })
-
-    it(`extend struct by union with mutually exclusive properties`, () => {
-      const schema1 = pipe(
-        S.struct({ a: S.literal("a") }),
-        S.extend(
-          S.union(
-            S.struct({ a: S.literal("a"), b: S.string }),
-            S.struct({ a: S.literal("b"), b: S.number })
-          )
-        )
-      )
-
-      const schema2 = pipe(
-        S.union(
-          S.struct({ a: S.literal("a"), b: S.string }),
-          S.struct({ a: S.literal("b"), b: S.number })
-        ),
-        S.extend(S.struct({ a: S.literal("a") }))
-      )
-
-      const equivalentSchema = S.struct({ a: S.literal("a"), b: S.string })
-
-      expect(schema1).toStrictEqual(equivalentSchema)
-      expect(schema2).toStrictEqual(equivalentSchema)
     })
   })
 })

@@ -5,7 +5,6 @@
 import { pipe } from "@fp-ts/data/Function"
 import type { Json } from "@fp-ts/data/Json"
 import type { Option } from "@fp-ts/data/Option"
-import * as O from "@fp-ts/data/Option"
 import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
 import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
@@ -482,65 +481,46 @@ export const record: <K extends string | symbol, V>(
   value: Schema<V>
 ) => Schema<{ readonly [k in K]: V }> = I.record
 
-const areMutuallyExclusive = (a: AST.AST, b: AST.AST) => {
-  if (a._tag === "Literal" && b._tag === "Literal") {
-    return a.literal !== b.literal
-  }
+const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
+  x.propertySignatures.some((px) => y.propertySignatures.some((py) => px.name === py.name))
 
-  throw new Error(
-    `Mutual exclusivity check is not supported between ${a._tag} and ${b._tag}`
+const getParameter = (
+  x: AST.IndexSignature["parameter"]
+): AST.StringKeyword | AST.SymbolKeyword | AST.TemplateLiteral =>
+  // @ts-expect-error
+  AST.isRefinement(x) ? getParameter(x.from) : x
+
+const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
+  x.indexSignatures.some((ix) =>
+    y.indexSignatures.some((iy) => {
+      const bx = getParameter(ix.parameter)
+      const by = getParameter(iy.parameter)
+      // there cannot be two string index signatures or two symbol index signatures at the same time
+      return (AST.isStringKeyword(bx) && AST.isStringKeyword(by)) ||
+        (AST.isSymbolKeyword(bx) && AST.isSymbolKeyword(by))
+    })
   )
-}
 
-const intersectTypeLiterals = (x: AST.TypeLiteral, y: AST.TypeLiteral) => {
-  const findOverlappingProperties = (
-    as: ReadonlyArray<AST.PropertySignature>,
-    bs: ReadonlyArray<AST.PropertySignature>
-  ) =>
-    pipe(
-      as,
-      RA.filterMap((a) =>
-        pipe(
-          bs,
-          RA.findFirst((b) => a.name === b.name),
-          O.map((b) => [a, b])
-        )
+const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
+  if (xs.every(AST.isTypeLiteral) && ys.every(AST.isTypeLiteral)) {
+    return AST.union(
+      xs.flatMap((x) =>
+        ys.map((y) => {
+          if (isOverlappingPropertySignatures(x, y)) {
+            throw new Error("`extend` cannot handle overlapping property signatures")
+          }
+          if (isOverlappingIndexSignatures(x, y)) {
+            throw new Error("`extend` cannot handle overlapping index signatures")
+          }
+          return AST.typeLiteral(
+            x.propertySignatures.concat(y.propertySignatures),
+            x.indexSignatures.concat(y.indexSignatures)
+          )
+        })
       )
     )
-
-  const overlappingProperties = findOverlappingProperties(
-    x.propertySignatures,
-    y.propertySignatures
-  )
-  const mutualyExclusiveProperties = overlappingProperties.filter(([a, b]) =>
-    areMutuallyExclusive(a.type, b.type)
-  )
-
-  if (mutualyExclusiveProperties.length !== 0) {
-    return O.none
   }
-
-  const overlappingYProperties = overlappingProperties.map(([_, y]) => y)
-  const nonOverlappingYProperties = y.propertySignatures.filter((i) =>
-    !overlappingYProperties.includes(i)
-  )
-
-  return O.of(
-    AST.typeLiteral(
-      x.propertySignatures.concat(nonOverlappingYProperties),
-      x.indexSignatures.concat(y.indexSignatures)
-    )
-  )
-}
-
-const productTypeLiteralArrays = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
-  if (!xs.every(AST.isTypeLiteral) || !ys.every(AST.isTypeLiteral)) {
-    throw new Error("`extend` is not supported on this schema")
-  }
-
-  return AST.union(
-    xs.flatMap((x) => pipe(ys, RA.filterMap((y) => intersectTypeLiterals(x, y))))
-  )
+  throw new Error("`extend` can only handle type literals or unions of type literals")
 }
 
 /**
@@ -550,7 +530,7 @@ const productTypeLiteralArrays = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<
 export const extend = <B>(that: Schema<B>) =>
   <A>(self: Schema<A>): Schema<Spread<A & B>> =>
     make(
-      productTypeLiteralArrays(
+      intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],
         AST.isUnion(that.ast) ? that.ast.types : [that.ast]
       )

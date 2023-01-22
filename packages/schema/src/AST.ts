@@ -699,6 +699,12 @@ export const refinement = (
 ): Refinement => ({ _tag: "Refinement", from, refinement, annotations })
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isRefinement = (ast: AST): ast is Refinement => ast._tag === "Refinement"
+
+/**
  * @category model
  * @since 1.0.0
  */

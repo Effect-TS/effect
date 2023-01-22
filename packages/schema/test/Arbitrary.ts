@@ -328,17 +328,4 @@ describe.concurrent("Arbitrary", () => {
     const schema = pipe(S.number, S.finite())
     property(schema)
   })
-
-  it("extend with union containing overlapping fields", () => {
-    const schema = pipe(
-      S.struct({ a: S.literal("a") }),
-      S.extend(
-        S.union(
-          S.struct({ a: S.literal("b"), b: S.string }),
-          S.struct({ a: S.literal("a"), b: S.number })
-        )
-      )
-    )
-    property(schema)
-  })
 })
