@@ -12,8 +12,8 @@ import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import * as PE from "@fp-ts/schema/ParseError"
 import type { Parser } from "@fp-ts/schema/Parser"
+import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type {
   AnnotationOptions,
@@ -81,7 +81,7 @@ export const fromRefinement = <A>(
   schema: Schema<A>,
   refinement: (u: unknown) => u is A
 ): Parser<unknown, A> =>
-  makeParser(schema, (u) => refinement(u) ? PE.success(u) : PE.failure(PE.type(schema.ast, u)))
+  makeParser(schema, (u) => refinement(u) ? PR.success(u) : PR.failure(PR.type(schema.ast, u)))
 
 /** @internal */
 export const makePretty = <A>(
@@ -163,7 +163,7 @@ export const transformOrFail = <A, B>(
 /** @internal */
 export const transform = <A, B>(to: Schema<B>, ab: (a: A) => B, ba: (b: B) => A) =>
   (self: Schema<A>): Schema<B> =>
-    pipe(self, transformOrFail(to, (a) => PE.success(ab(a)), (b) => PE.success(ba(b))))
+    pipe(self, transformOrFail(to, (a) => PR.success(ab(a)), (b) => PR.success(ba(b))))
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   makeSchema(AST.literal(value))

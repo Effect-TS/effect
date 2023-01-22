@@ -7,7 +7,7 @@ import * as O from "@fp-ts/data/Option"
 import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
-import type * as DE from "@fp-ts/schema/ParseError"
+import type * as PR from "@fp-ts/schema/ParseResult"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
@@ -24,7 +24,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 /**
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<DE.ParseError>): string =>
+export const formatErrors = (errors: NonEmptyReadonlyArray<PR.ParseError>): string =>
   drawTree(make(`${errors.length} error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
@@ -143,7 +143,7 @@ export const formatExpected = (ast: AST.AST): string => {
   }
 }
 
-const go = (e: DE.ParseError): Tree<string> => {
+const go = (e: PR.ParseError): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(

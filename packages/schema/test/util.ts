@@ -8,8 +8,8 @@ import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
 import { formatActual, formatErrors, formatExpected } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
-import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
+import * as PR from "@fp-ts/schema/ParseResult"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as fc from "fast-check"
 
@@ -21,7 +21,7 @@ export const property = <A>(schema: Schema<A>) => {
       return false
     }
     const roundtrip = pipe(a, P.encode(schema), I.flatMap(P.decode(schema)))
-    if (PE.isFailure(roundtrip)) {
+    if (PR.isFailure(roundtrip)) {
       return false
     }
     return is(roundtrip.right)
@@ -68,13 +68,13 @@ export const expectEncodingFailure = <A>(
   expect(t).toStrictEqual(E.left(message))
 }
 
-const formatAll = (errors: NonEmptyReadonlyArray<PE.ParseError>): string => {
+const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseError>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
 const getMessage = AST.getAnnotation<annotations.Message<unknown>>(annotations.MessageId)
 
-const formatDecodeError = (e: PE.ParseError): string => {
+const formatDecodeError = (e: PR.ParseError): string => {
   switch (e._tag) {
     case "Type":
       return pipe(

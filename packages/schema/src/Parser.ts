@@ -12,7 +12,7 @@ import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
-import * as PE from "@fp-ts/schema/ParseError"
+import * as PR from "@fp-ts/schema/ParseResult"
 import type { Infer, Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -30,7 +30,7 @@ export interface ParseOptions {
  */
 export interface Parser<I, A> extends Schema<A> {
   readonly I: (i: I) => void
-  readonly parse: (i: I, options?: ParseOptions) => PE.ParseResult<A>
+  readonly parse: (i: I, options?: ParseOptions) => PR.ParseResult<A>
 }
 
 /**
@@ -51,7 +51,7 @@ export const make: <I, A>(schema: Schema<A>, parse: Parser<I, A>["parse"]) => Pa
  */
 export const decode = <A>(
   schema: Schema<A>
-): (i: unknown, options?: ParseOptions) => PE.ParseResult<A> => parserFor(schema).parse
+): (i: unknown, options?: ParseOptions) => PR.ParseResult<A> => parserFor(schema).parse
 
 /**
  * @category decoding
@@ -60,7 +60,7 @@ export const decode = <A>(
 export const decodeOrThrow = <A>(schema: Schema<A>) =>
   (u: unknown, options?: ParseOptions): A => {
     const t = parserFor(schema).parse(u, options)
-    if (PE.isFailure(t)) {
+    if (PR.isFailure(t)) {
       throw new Error(formatErrors(t.left))
     }
     return t.right
@@ -72,7 +72,7 @@ export const decodeOrThrow = <A>(schema: Schema<A>) =>
  */
 export const is = <A>(schema: Schema<A>) =>
   (input: unknown, options?: ParseOptions): input is A =>
-    !PE.isFailure(parserFor(schema, "guard").parse(input, options))
+    !PR.isFailure(parserFor(schema, "guard").parse(input, options))
 
 /**
  * @since 1.0.0
@@ -89,7 +89,7 @@ export type InferAsserts<S extends Schema<any>> = (
 export const asserts = <A>(schema: Schema<A>) =>
   (input: unknown, options?: ParseOptions): asserts input is A => {
     const t = parserFor(schema, "guard").parse(input, options)
-    if (PE.isFailure(t)) {
+    if (PR.isFailure(t)) {
       throw new Error(formatErrors(t.left))
     }
   }
@@ -100,7 +100,7 @@ export const asserts = <A>(schema: Schema<A>) =>
  */
 export const encode = <A>(
   schema: Schema<A>
-): (a: A, options?: ParseOptions) => PE.ParseResult<unknown> => parserFor(schema, "encoder").parse
+): (a: A, options?: ParseOptions) => PR.ParseResult<unknown> => parserFor(schema, "encoder").parse
 
 /**
  * @category encoding
@@ -109,7 +109,7 @@ export const encode = <A>(
 export const encodeOrThrow = <A>(schema: Schema<A>) =>
   (a: A, options?: ParseOptions): unknown => {
     const t = parserFor(schema, "encoder").parse(a, options)
-    if (PE.isFailure(t)) {
+    if (PR.isFailure(t)) {
       throw new Error(formatErrors(t.left))
     }
     return t.right
@@ -151,7 +151,7 @@ const parserFor = <A>(
         return I.fromRefinement(I.makeSchema(ast), I.isNever)
       case "UnknownKeyword":
       case "AnyKeyword":
-        return make(I.makeSchema(ast), PE.success)
+        return make(I.makeSchema(ast), PR.success)
       case "StringKeyword":
         return I.fromRefinement(I.makeSchema(ast), isString)
       case "NumberKeyword":
@@ -180,10 +180,10 @@ const parserFor = <A>(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!Array.isArray(input)) {
-              return PE.failure(PE.type(unknownArray, input))
+              return PR.failure(PR.type(unknownArray, input))
             }
             const output: Array<any> = []
-            const es: Array<PE.ParseError> = []
+            const es: Array<PR.ParseError> = []
             const allErrors = options?.allErrors
             let i = 0
             // ---------------------------------------------
@@ -194,25 +194,25 @@ const parserFor = <A>(
                 // the input element is missing...
                 if (!ast.elements[i].isOptional) {
                   // ...but the element is required
-                  const e = PE.index(i, [PE.missing])
+                  const e = PR.index(i, [PR.missing])
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failure(e)
+                    return PR.failure(e)
                   }
                 }
               } else {
                 const parser = elements[i]
                 const t = parser.parse(input[i], options)
-                if (PE.isFailure(t)) {
+                if (PR.isFailure(t)) {
                   // the input element is present but is not valid
-                  const e = PE.index(i, t.left)
+                  const e = PR.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failures(I.mutableAppend(es, e))
+                    return PR.failures(I.mutableAppend(es, e))
                   }
                 }
                 output.push(t.right)
@@ -226,13 +226,13 @@ const parserFor = <A>(
               const tail = RA.tailNonEmpty(rest.value)
               for (; i < input.length - tail.length; i++) {
                 const t = head.parse(input[i], options)
-                if (PE.isFailure(t)) {
-                  const e = PE.index(i, t.left)
+                if (PR.isFailure(t)) {
+                  const e = PR.index(i, t.left)
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failures(I.mutableAppend(es, e))
+                    return PR.failures(I.mutableAppend(es, e))
                   }
                 } else {
                   output.push(t.right)
@@ -245,17 +245,17 @@ const parserFor = <A>(
                 i += j
                 if (input.length < i + 1) {
                   // the input element is missing and the element is required, bail out
-                  return PE.failures(I.mutableAppend(es, PE.index(i, [PE.missing])))
+                  return PR.failures(I.mutableAppend(es, PR.index(i, [PR.missing])))
                 } else {
                   const t = tail[j].parse(input[i], options)
-                  if (PE.isFailure(t)) {
+                  if (PR.isFailure(t)) {
                     // the input element is present but is not valid
-                    const e = PE.index(i, t.left)
+                    const e = PR.index(i, t.left)
                     if (allErrors) {
                       es.push(e)
                       continue
                     } else {
-                      return PE.failures(I.mutableAppend(es, e))
+                      return PR.failures(I.mutableAppend(es, e))
                     }
                   }
                   output.push(t.right)
@@ -267,13 +267,13 @@ const parserFor = <A>(
               // ---------------------------------------------
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (; i < input.length; i++) {
-                const e = PE.index(i, [PE.unexpected(input[i])])
+                const e = PR.index(i, [PR.unexpected(input[i])])
                 if (!isUnexpectedAllowed) {
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failures(I.mutableAppend(es, e))
+                    return PR.failures(I.mutableAppend(es, e))
                   }
                 }
               }
@@ -283,8 +283,8 @@ const parserFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              PE.failures(es) :
-              PE.success(output)
+              PR.failures(es) :
+              PR.success(output)
           }
         )
       }
@@ -300,11 +300,11 @@ const parserFor = <A>(
           I.makeSchema(ast),
           (input: unknown, options) => {
             if (!I.isUnknownObject(input)) {
-              return PE.failure(PE.type(unknownRecord, input))
+              return PR.failure(PR.type(unknownRecord, input))
             }
             const output: any = {}
             const expectedKeys: any = {}
-            const es: Array<PE.ParseError> = []
+            const es: Array<PR.ParseError> = []
             const allErrors = options?.allErrors
             // ---------------------------------------------
             // handle property signatures
@@ -316,24 +316,24 @@ const parserFor = <A>(
               expectedKeys[name] = null
               if (!Object.prototype.hasOwnProperty.call(input, name)) {
                 if (!ps.isOptional) {
-                  const e = PE.key(name, [PE.missing])
+                  const e = PR.key(name, [PR.missing])
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failure(e)
+                    return PR.failure(e)
                   }
                 }
               } else {
                 const t = parser.parse(input[name], options)
-                if (PE.isFailure(t)) {
+                if (PR.isFailure(t)) {
                   // the input key is present but is not valid
-                  const e = PE.key(name, t.left)
+                  const e = PR.key(name, t.left)
                   if (allErrors) {
                     es.push(e)
                     continue
                   } else {
-                    return PE.failures(I.mutableAppend(es, e))
+                    return PR.failures(I.mutableAppend(es, e))
                   }
                 }
                 output[name] = t.right
@@ -352,26 +352,26 @@ const parserFor = <A>(
                   // handle keys
                   // ---------------------------------------------
                   let t = parameter.parse(key, options)
-                  if (PE.isFailure(t)) {
-                    const e = PE.key(key, t.left)
+                  if (PR.isFailure(t)) {
+                    const e = PR.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
                       continue
                     } else {
-                      return PE.failures(I.mutableAppend(es, e))
+                      return PR.failures(I.mutableAppend(es, e))
                     }
                   }
                   // ---------------------------------------------
                   // handle values
                   // ---------------------------------------------
                   t = type.parse(input[key], options)
-                  if (PE.isFailure(t)) {
-                    const e = PE.key(key, t.left)
+                  if (PR.isFailure(t)) {
+                    const e = PR.key(key, t.left)
                     if (allErrors) {
                       es.push(e)
                       continue
                     } else {
-                      return PE.failures(I.mutableAppend(es, e))
+                      return PR.failures(I.mutableAppend(es, e))
                     }
                   } else {
                     output[key] = t.right
@@ -385,13 +385,13 @@ const parserFor = <A>(
               const isUnexpectedAllowed = options?.isUnexpectedAllowed
               for (const key of I.ownKeys(input)) {
                 if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
-                  const e = PE.key(key, [PE.unexpected(input[key])])
+                  const e = PR.key(key, [PR.unexpected(input[key])])
                   if (!isUnexpectedAllowed) {
                     if (allErrors) {
                       es.push(e)
                       continue
                     } else {
-                      return PE.failures(I.mutableAppend(es, e))
+                      return PR.failures(I.mutableAppend(es, e))
                     }
                   }
                 }
@@ -402,25 +402,25 @@ const parserFor = <A>(
             // compute output
             // ---------------------------------------------
             return I.isNonEmpty(es) ?
-              PE.failures(es) :
-              PE.success(output)
+              PR.failures(es) :
+              PR.success(output)
           }
         )
       }
       case "Union": {
         const types = ast.types.map(go)
         return make(I.makeSchema(ast), (u, options) => {
-          const es: Array<PE.ParseError> = []
+          const es: Array<PR.ParseError> = []
 
           // ---------------------------------------------
           // compute best output
           // ---------------------------------------------
           for (let i = 0; i < types.length; i++) {
             const t = types[i].parse(u, options)
-            if (PE.isSuccess(t)) {
+            if (PR.isSuccess(t)) {
               return t
             } else {
-              es.push(PE.unionMember(t.left))
+              es.push(PR.unionMember(t.left))
             }
           }
 
@@ -428,8 +428,8 @@ const parserFor = <A>(
           // compute output
           // ---------------------------------------------
           return I.isNonEmpty(es) ?
-            PE.failures(es) :
-            PE.failure(PE.type(AST.neverKeyword, u))
+            PR.failures(es) :
+            PR.failure(PR.type(AST.neverKeyword, u))
         })
       }
       case "Lazy": {
@@ -445,7 +445,7 @@ const parserFor = <A>(
           (u, options) =>
             pipe(
               type.parse(u, options),
-              I.flatMap((a) => ast.refinement(a) ? PE.success(a) : PE.failure(PE.type(ast, a)))
+              I.flatMap((a) => ast.refinement(a) ? PR.success(a) : PR.failure(PR.type(ast, a)))
             )
         )
       }

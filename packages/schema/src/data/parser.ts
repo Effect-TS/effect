@@ -5,7 +5,7 @@ import { pipe } from "@fp-ts/data/Function"
 import * as D from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as I from "@fp-ts/schema/internal/common"
-import * as PE from "@fp-ts/schema/ParseError"
+import * as PR from "@fp-ts/schema/ParseResult"
 import type { Schema } from "@fp-ts/schema/Schema"
 
 /**
@@ -24,19 +24,19 @@ export const parseNumber = (self: Schema<string>): Schema<number> => {
       I.number,
       function decode(s: string) {
         if (s === "NaN") {
-          return PE.success(NaN)
+          return PR.success(NaN)
         }
         if (s === "Infinity") {
-          return PE.success(Infinity)
+          return PR.success(Infinity)
         }
         if (s === "-Infinity") {
-          return PE.success(-Infinity)
+          return PR.success(-Infinity)
         }
         const n = parseFloat(s)
-        return isNaN(n) ? PE.failure(PE.type(schema.ast, s)) : PE.success(n)
+        return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
       },
       function mapFrom(n) {
-        return PE.success(String(n))
+        return PR.success(String(n))
       }
     )
   )
@@ -74,11 +74,11 @@ export const parseDate = (self: Schema<string>): Schema<Date> => {
       function decode(s: string) {
         const d = new Date(s)
         return isNaN(d as any)
-          ? PE.failure(PE.type(schema.ast, s))
-          : PE.success(d)
+          ? PR.failure(PR.type(schema.ast, s))
+          : PR.success(d)
       },
       function mapFrom(n) {
-        return PE.success(n.toISOString())
+        return PR.success(n.toISOString())
       }
     )
   )

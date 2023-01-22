@@ -8,8 +8,8 @@ import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as I from "@fp-ts/schema/internal/common"
-import * as PE from "@fp-ts/schema/ParseError"
 import * as P from "@fp-ts/schema/Parser"
+import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
@@ -20,7 +20,7 @@ const parser = <A>(item: P.Parser<unknown, A>): P.Parser<unknown, Chunk<A>> => {
     schema,
     (u, options) =>
       !C.isChunk(u) ?
-        PE.failure(PE.type(schema.ast, u)) :
+        PR.failure(PR.type(schema.ast, u)) :
         pipe(C.toReadonlyArray(u), (us) => items(us, options), I.map(C.fromIterable))
   )
 }
