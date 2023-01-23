@@ -56,6 +56,10 @@ describe.concurrent("Arbitrary", () => {
     property(S.string)
   })
 
+  it("void", () => {
+    property(S.void)
+  })
+
   it("number", () => {
     property(S.number)
   })
@@ -90,6 +94,14 @@ describe.concurrent("Arbitrary", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const schema = S.uniqueSymbol(a)
     property(schema)
+  })
+
+  it("empty enums should throw", () => {
+    enum Fruits {}
+    const schema = S.enums(Fruits)
+    expect(() => A.arbitrary(schema)(fc)).toThrowError(
+      new Error("cannot build an Arbitrary for an empty enum")
+    )
   })
 
   it("Numeric enums", () => {
