@@ -308,8 +308,7 @@ export const getKeysForIndexSignature = (
     case "SymbolKeyword":
       return Object.getOwnPropertySymbols(input)
     case "Refinement":
-      // @ts-expect-error
-      return getKeysForIndexSignature(input, parameter.from)
+      return getKeysForIndexSignature(input, parameter.from as any)
   }
 }
 

@@ -650,8 +650,7 @@ export const createUnion = (
     case 1:
       return types[0]
     default: {
-      // @ts-expect-error (TypeScript doesn't know that `types` has >= 2 elements after sorting)
-      return { _tag: "Union", types: sortByWeightDesc(types), annotations }
+      return { _tag: "Union", types: sortByWeightDesc(types) as any, annotations }
     }
   }
 }
@@ -813,37 +812,34 @@ export const appendElement = (
 export const getParameter = (
   x: IndexSignature["parameter"]
 ): StringKeyword | SymbolKeyword | TemplateLiteral =>
-  // @ts-expect-error
-  isRefinement(x) ? getParameter(x.from) : x
+  isRefinement(x) ? getParameter(x.from as any) : x
 
-const getKeyofMembers = (ast: AST): ReadonlyArray<AST> => {
+const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAlias":
-      return getKeyofMembers(ast.type)
+      return _keyof(ast.type)
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
     case "StringKeyword":
       return [createLiteral("length")]
     case "TypeLiteral":
-      return ast.propertySignatures.map((f): AST =>
-        typeof f.name === "symbol" ? createUniqueSymbol(f.name) : createLiteral(f.name)
+      return ast.propertySignatures.map((p): AST =>
+        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
       ).concat(ast.indexSignatures.map((is) => getParameter(is.parameter)))
     case "Union": {
-      let out: ReadonlyArray<AST> = getKeyofMembers(ast.types[0])
-      for (let i = 1; i < ast.types.length; i++) {
-        out = RA.intersection(getKeyofMembers(ast.types[i]))(out)
-      }
-      return out
+      return getPropertySignatures(ast).map((p): AST =>
+        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
+      )
     }
     case "Lazy":
-      return getKeyofMembers(ast.f())
+      return _keyof(ast.f())
     case "Refinement":
-      return getKeyofMembers(ast.from)
+      return _keyof(ast.from)
     case "Transform":
-      return getKeyofMembers(ast.to)
+      return _keyof(ast.to)
     default:
-      return [neverKeyword]
+      return []
   }
 }
 
@@ -852,7 +848,7 @@ const getKeyofMembers = (ast: AST): ReadonlyArray<AST> => {
  *
  * @since 1.0.0
  */
-export const keyof = (ast: AST): AST => createUnion(getKeyofMembers(ast))
+export const keyof = (ast: AST): AST => createUnion(_keyof(ast))
 
 /**
  * Create a record with the specified key type and value type.
@@ -913,33 +909,6 @@ export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
 }
 
 /** @internal */
-export const getPropertyKeys = (ast: AST): ReadonlyArray<PropertyKey> => {
-  switch (ast._tag) {
-    case "TypeAlias":
-      return getPropertyKeys(ast.type)
-    case "Tuple":
-      return ast.elements.map((_, i) => String(i))
-    case "TypeLiteral":
-      return ast.propertySignatures.map((ps) => ps.name)
-    case "Union": {
-      let out: ReadonlyArray<PropertyKey> = getPropertyKeys(ast.types[0])
-      for (let i = 1; i < ast.types.length; i++) {
-        out = RA.intersection(getPropertyKeys(ast.types[i]))(out)
-      }
-      return out
-    }
-    case "Lazy":
-      return getPropertyKeys(ast.f())
-    case "Refinement":
-      return getPropertyKeys(ast.from)
-    case "Transform":
-      return getPropertyKeys(ast.to)
-    default:
-      return []
-  }
-}
-
-/** @internal */
 export const getPropertySignatures = (
   ast: AST
 ): ReadonlyArray<PropertySignature> => {
@@ -953,23 +922,25 @@ export const getPropertySignatures = (
     case "TypeLiteral":
       return ast.propertySignatures
     case "Union": {
-      const propertySignatures = pipe(ast.types, RA.flatMap(getPropertySignatures))
-      return getPropertyKeys(ast).map((key) => {
-        let isOptional = false
-        let isReadonly = false
-        const type = createUnion(
-          propertySignatures.filter((ps) => ps.name === key).map((ps) => {
-            if (ps.isReadonly) {
-              isReadonly = true
-            }
-            if (ps.isOptional) {
-              isOptional = true
-            }
-            return ps.type
-          })
-        )
-        return createPropertySignature(key, type, isOptional, isReadonly)
-      })
+      const propertySignatures = ast.types.map(getPropertySignatures)
+      return pipe(
+        propertySignatures[0],
+        RA.filterMap(({ name }) => {
+          if (propertySignatures.every((ps) => ps.some((p) => p.name === name))) {
+            const members = pipe(
+              propertySignatures,
+              RA.flatMap((ps) => ps.filter((p) => p.name === name))
+            )
+            return O.some(createPropertySignature(
+              name,
+              createUnion(members.map((p) => p.type)),
+              members.some((p) => p.isOptional),
+              members.some((p) => p.isReadonly)
+            ))
+          }
+          return O.none
+        })
+      )
     }
     case "Lazy":
       return getPropertySignatures(ast.f())

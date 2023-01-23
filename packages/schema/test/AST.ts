@@ -160,8 +160,18 @@ describe.concurrent("AST", () => {
     expect(AST.keyof(S.string.ast)).toEqual(S.literal("length").ast)
   })
 
+  it("keyof/ number", () => {
+    expect(AST.keyof(S.number.ast)).toEqual(AST.neverKeyword)
+  })
+
   it("keyof/ lazy", () => {
     expect(AST.keyof(json.ast)).toEqual(S.never.ast)
+  })
+
+  it("keyof/union/ symbol keys", () => {
+    const a = Symbol.for("@fp-ts/schema/test/a")
+    expect(AST.keyof(S.union(S.struct({ [a]: S.string }), S.struct({ [a]: S.number })).ast))
+      .toEqual(AST.createUniqueSymbol(a))
   })
 
   it("keyof/ should unify string literals with string", () => {
@@ -353,73 +363,6 @@ describe.concurrent("AST", () => {
         annotations: {}
       })
     })
-  })
-
-  it("propertyKeys/ TypeAlias", () => {
-    // type Test = keyof O.Option<number> // "_tag"
-    expect(AST.getPropertyKeys(DataOption.fromNullable(S.number).ast)).toEqual(["_tag"])
-  })
-
-  it("propertyKeys/ Refinement", () => {
-    expect(
-      AST.getPropertyKeys(
-        pipe(
-          S.struct({ a: S.string, b: S.string }),
-          S.filter(({ a, b }) => a === b)
-        ).ast
-      )
-    ).toEqual([
-      "a",
-      "b"
-    ])
-  })
-
-  it("propertyKeys/ tuple", () => {
-    // type Test = keyof [] // never
-    expect(AST.getPropertyKeys(S.tuple().ast)).toEqual([])
-    // type Test = keyof [string, number] // '0' | '1'
-    expect(AST.getPropertyKeys(S.tuple(S.string, S.number).ast)).toEqual(["0", "1"])
-  })
-
-  it("propertyKeys/ struct", () => {
-    // type Test = keyof {} // never
-    expect(AST.getPropertyKeys(S.struct({}).ast)).toEqual([])
-    // type Test = keyof { a: string, b: number } // 'a' | 'b'
-    expect(AST.getPropertyKeys(S.struct({ a: S.string, b: S.number }).ast)).toEqual(["a", "b"])
-
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    // type Test = keyof { [a]: string } // typeof A
-    expect(AST.getPropertyKeys(S.struct({ [a]: S.string }).ast)).toEqual([a])
-  })
-
-  describe.concurrent("propertyKeys/ union", () => {
-    it("empty union", () => {
-      const schema = S.union()
-      expect(AST.getPropertyKeys(schema.ast)).toEqual(AST.getPropertyKeys(AST.neverKeyword))
-    })
-
-    it("discriminated unions", () => {
-      const schema = S.union(
-        S.struct({ _tag: S.literal("A"), a: S.string }),
-        S.struct({ _tag: S.literal("B"), b: S.number })
-      )
-      expect(AST.getPropertyKeys(schema.ast)).toEqual(["_tag"])
-    })
-  })
-
-  it("propertyKeys/ lazy", () => {
-    // type Test = keyof A // 'a' | 'as'
-    interface A {
-      readonly a: string
-      readonly as: ReadonlyArray<A>
-    }
-    const schema: S.Schema<A> = S.lazy<A>(() =>
-      S.struct({
-        a: S.string,
-        as: S.array(schema)
-      })
-    )
-    expect(AST.getPropertyKeys(schema.ast)).toEqual(["a", "as"])
   })
 
   it("getPropertySignatures/ string", () => {
