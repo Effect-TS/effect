@@ -46,11 +46,9 @@ export const isNonEmpty = RA.isNonEmpty
 export const isUnknownObject = (u: unknown): u is { readonly [x: string | symbol]: unknown } =>
   typeof u === "object" && u != null && !Array.isArray(u)
 
-/** @internal */
-export const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
 
-/** @internal */
-export const isJsonObject = (u: unknown): u is JsonObject =>
+const isJsonObject = (u: unknown): u is JsonObject =>
   isUnknownObject(u) && Object.keys(u).every((key) => isJson(u[key]))
 
 /** @internal */
@@ -301,7 +299,7 @@ export const record = <K extends string | symbol, V>(
 /** @internal */
 export const getKeysForIndexSignature = (
   input: { readonly [x: PropertyKey]: unknown },
-  parameter: AST.AST
+  parameter: AST.IndexSignature["parameter"]
 ): ReadonlyArray<string> | ReadonlyArray<symbol> => {
   switch (parameter._tag) {
     case "StringKeyword":
@@ -310,9 +308,8 @@ export const getKeysForIndexSignature = (
     case "SymbolKeyword":
       return Object.getOwnPropertySymbols(input)
     case "Refinement":
+      // @ts-expect-error
       return getKeysForIndexSignature(input, parameter.from)
-    default:
-      return []
   }
 }
 

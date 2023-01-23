@@ -350,4 +350,35 @@ describe.concurrent("Schema", () => {
       expect(is({ a: "a", b: 1, c: 1 })).toBe(false)
     })
   })
+
+  it("filter/ annotationOptions", () => {
+    const schema = pipe(
+      S.string,
+      S.filter((s): s is string => s.length === 1, {
+        custom: { type: "Char" },
+        description: "description",
+        documentation: "documentation",
+        examples: ["examples"],
+        identifier: "identifier",
+        jsonSchema: { minLength: 1, maxLength: 1 },
+        title: "title"
+      })
+    )
+    expect(schema.ast.annotations).toEqual({
+      "@fp-ts/schema/annotation/CustomId": {
+        "type": "Char"
+      },
+      "@fp-ts/schema/annotation/DescriptionId": "description",
+      "@fp-ts/schema/annotation/DocumentationId": "documentation",
+      "@fp-ts/schema/annotation/ExamplesId": [
+        "examples"
+      ],
+      "@fp-ts/schema/annotation/IdentifierId": "identifier",
+      "@fp-ts/schema/annotation/JSONSchemaId": {
+        "maxLength": 1,
+        "minLength": 1
+      },
+      "@fp-ts/schema/annotation/TitleId": "title"
+    })
+  })
 })
