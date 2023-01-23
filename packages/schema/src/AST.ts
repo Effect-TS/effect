@@ -816,10 +816,10 @@ export const getParameter = (
   // @ts-expect-error
   isRefinement(x) ? getParameter(x.from) : x
 
-const _keyof = (ast: AST): ReadonlyArray<AST> => {
+const getKeyofMembers = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAlias":
-      return _keyof(ast.type)
+      return getKeyofMembers(ast.type)
     case "NeverKeyword":
     case "AnyKeyword":
       return [stringKeyword, numberKeyword, symbolKeyword]
@@ -830,18 +830,18 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
         typeof f.name === "symbol" ? createUniqueSymbol(f.name) : createLiteral(f.name)
       ).concat(ast.indexSignatures.map((is) => getParameter(is.parameter)))
     case "Union": {
-      let out: ReadonlyArray<AST> = _keyof(ast.types[0])
+      let out: ReadonlyArray<AST> = getKeyofMembers(ast.types[0])
       for (let i = 1; i < ast.types.length; i++) {
-        out = RA.intersection(_keyof(ast.types[i]))(out)
+        out = RA.intersection(getKeyofMembers(ast.types[i]))(out)
       }
       return out
     }
     case "Lazy":
-      return _keyof(ast.f())
+      return getKeyofMembers(ast.f())
     case "Refinement":
-      return _keyof(ast.from)
+      return getKeyofMembers(ast.from)
     case "Transform":
-      return _keyof(ast.to)
+      return getKeyofMembers(ast.to)
     default:
       return [neverKeyword]
   }
@@ -852,7 +852,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
  *
  * @since 1.0.0
  */
-export const keyof = (ast: AST): AST => createUnion(_keyof(ast))
+export const keyof = (ast: AST): AST => createUnion(getKeyofMembers(ast))
 
 /**
  * Create a record with the specified key type and value type.
