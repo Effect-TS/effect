@@ -805,4 +805,16 @@ describe.concurrent("is", () => {
       expect(is({ a: 1 })).toBe(true)
     })
   })
+
+  it("partial/lazy", () => {
+    type A = {
+      readonly a: ReadonlyArray<A>
+    }
+    // type B = Partial<A>
+    const schema: S.Schema<A> = S.lazy(() => S.struct({ a: S.array(schema) }))
+    const partial = S.partial(schema)
+    const is = P.is(partial)
+    expect(is({})).toBe(true)
+    expect(is({ a: [] })).toBe(true)
+  })
 })

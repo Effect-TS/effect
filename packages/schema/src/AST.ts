@@ -516,7 +516,8 @@ export interface TypeLiteral extends Annotated {
   readonly indexSignatures: ReadonlyArray<IndexSignature>
 }
 
-const getCardinality = (ast: AST): number => {
+/** @internal */
+export const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
     case "TypeAlias":
       return getCardinality(ast.type)
@@ -582,18 +583,23 @@ export interface Union extends Annotated {
   readonly types: readonly [AST, AST, ...Array<AST>]
 }
 
-const getWeight = (ast: AST): number => {
+/** @internal */
+export const getWeight = (ast: AST): number => {
   switch (ast._tag) {
     case "TypeAlias":
       return getWeight(ast.type)
     case "Tuple":
-      return ast.elements.length + (O.isSome(ast.rest) ? 1 : 0)
+      return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
     case "TypeLiteral":
       return ast.propertySignatures.length + ast.indexSignatures.length
     case "Union":
       return ast.types.reduce((n, member) => n + getWeight(member), 0)
     case "Lazy":
       return 10
+    case "Refinement":
+      return getWeight(ast.from)
+    case "Transform":
+      return getWeight(ast.to)
     default:
       return 0
   }
@@ -803,6 +809,13 @@ export const appendElement = (
   )
 }
 
+/** @internal */
+export const getParameter = (
+  x: IndexSignature["parameter"]
+): StringKeyword | SymbolKeyword | TemplateLiteral =>
+  // @ts-expect-error
+  isRefinement(x) ? getParameter(x.from) : x
+
 const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "TypeAlias":
@@ -815,7 +828,7 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
     case "TypeLiteral":
       return ast.propertySignatures.map((f): AST =>
         typeof f.name === "symbol" ? createUniqueSymbol(f.name) : createLiteral(f.name)
-      ).concat(ast.indexSignatures.map((is) => is.parameter))
+      ).concat(ast.indexSignatures.map((is) => getParameter(is.parameter)))
     case "Union": {
       let out: ReadonlyArray<AST> = _keyof(ast.types[0])
       for (let i = 1; i < ast.types.length; i++) {
@@ -829,10 +842,6 @@ const _keyof = (ast: AST): ReadonlyArray<AST> => {
       return _keyof(ast.from)
     case "Transform":
       return _keyof(ast.to)
-    case "Literal":
-    case "TemplateLiteral":
-    case "Tuple":
-      throw new Error("cannot compute `keyof`")
     default:
       return [neverKeyword]
   }
@@ -878,7 +887,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
         key.types.forEach(go)
         break
       default:
-        throw new Error("cannot compute `record`")
+        throw new Error(`createRecord: Unsupported key ${key._tag}`)
     }
   }
   go(key)
@@ -1003,9 +1012,8 @@ export const partial = (ast: AST): AST => {
     case "Lazy":
       return createLazy(() => partial(ast.f()))
     case "Refinement":
-      return partial(ast.from)
     case "Transform":
-      return partial(ast.to)
+      throw new Error(`partial: Unsupported type ${ast._tag}`)
     default:
       return ast
   }

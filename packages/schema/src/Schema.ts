@@ -477,17 +477,11 @@ export const record: <K extends string | symbol, V>(
 const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
   x.propertySignatures.some((px) => y.propertySignatures.some((py) => px.name === py.name))
 
-const getParameter = (
-  x: AST.IndexSignature["parameter"]
-): AST.StringKeyword | AST.SymbolKeyword | AST.TemplateLiteral =>
-  // @ts-expect-error
-  AST.isRefinement(x) ? getParameter(x.from) : x
-
 const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
   x.indexSignatures.some((ix) =>
     y.indexSignatures.some((iy) => {
-      const bx = getParameter(ix.parameter)
-      const by = getParameter(iy.parameter)
+      const bx = AST.getParameter(ix.parameter)
+      const by = AST.getParameter(iy.parameter)
       // there cannot be two string index signatures or two symbol index signatures at the same time
       return (AST.isStringKeyword(bx) && AST.isStringKeyword(by)) ||
         (AST.isSymbolKeyword(bx) && AST.isSymbolKeyword(by))
