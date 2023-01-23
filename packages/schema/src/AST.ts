@@ -948,7 +948,7 @@ export const getPropertySignatures = (
       return getPropertySignatures(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>
-        createPropertySignature(String(i), element.type, element.isOptional, ast.isReadonly)
+        createPropertySignature(i, element.type, element.isOptional, ast.isReadonly)
       )
     case "TypeLiteral":
       return ast.propertySignatures

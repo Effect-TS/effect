@@ -453,8 +453,8 @@ describe.concurrent("AST", () => {
   it("getPropertySignatures/ tuple", () => {
     const schema = S.tuple(S.string, S.number)
     expect(AST.getPropertySignatures(schema.ast)).toEqual([
-      AST.createPropertySignature("0", S.string.ast, false, true),
-      AST.createPropertySignature("1", S.number.ast, false, true)
+      AST.createPropertySignature(0, S.string.ast, false, true),
+      AST.createPropertySignature(1, S.number.ast, false, true)
     ])
   })
 
