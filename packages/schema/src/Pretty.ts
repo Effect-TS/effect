@@ -52,8 +52,6 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
           (literal: AST.LiteralValue): string =>
             typeof literal === "bigint" ?
               `${literal.toString()}n` :
-              typeof literal === "symbol" ?
-              String(literal) :
               JSON.stringify(literal)
         )
       case "SymbolKeyword":
