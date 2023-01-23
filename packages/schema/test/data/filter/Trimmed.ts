@@ -5,7 +5,7 @@ import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const schema = pipe(S.string, _.trimmed())
+const schema = pipe(S.string, S.trimmed())
 
 describe.concurrent("trimmed", () => {
   it("property tests", () => {

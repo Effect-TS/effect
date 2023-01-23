@@ -5,7 +5,7 @@ import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const schema = pipe(S.object, _.instanceOf(Set))
+const schema = pipe(S.object, S.instanceOf(Set))
 
 describe.concurrent("instanceOf", () => {
   it("Guard", () => {

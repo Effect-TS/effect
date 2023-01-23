@@ -6,7 +6,7 @@ import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("includes", () => {
   it("property tests", () => {
-    Util.property(_.includes("a")(S.string))
+    Util.property(S.includes("a")(S.string))
   })
 
   it("Guard", () => {

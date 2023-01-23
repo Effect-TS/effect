@@ -4,26 +4,66 @@ import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Schema", () => {
-  it("templateLiteral. a", () => {
+  it("exports", () => {
+    expect(S.transformOrFail).exist
+    expect(S.date).exist
+    expect(S.json).exist
+    expect(S.OptionalSchemaId).exist
+  })
+
+  it("title", () => {
+    expect(pipe(S.string, S.title("MyString")).ast.annotations).toEqual({
+      "@fp-ts/schema/annotation/TitleId": "MyString"
+    })
+  })
+
+  it("description", () => {
+    expect(pipe(S.string, S.description("description")).ast.annotations).toEqual({
+      "@fp-ts/schema/annotation/DescriptionId": "description",
+      "@fp-ts/schema/annotation/TitleId": "string"
+    })
+  })
+
+  it("examples", () => {
+    expect(pipe(S.string, S.examples(["example"])).ast.annotations).toEqual({
+      "@fp-ts/schema/annotation/ExamplesId": ["example"],
+      "@fp-ts/schema/annotation/TitleId": "string"
+    })
+  })
+
+  it("documentation", () => {
+    expect(pipe(S.string, S.documentation("documentation")).ast.annotations).toEqual({
+      "@fp-ts/schema/annotation/DocumentationId": "documentation",
+      "@fp-ts/schema/annotation/TitleId": "string"
+    })
+  })
+
+  it("templateLiteral/ should throw on Unsupported template literal spans", () => {
+    expect(() => S.templateLiteral(S.boolean)).toThrowError(
+      new Error("Unsupported template literal span BooleanKeyword")
+    )
+  })
+
+  it("templateLiteral/ a", () => {
     const schema = S.templateLiteral(S.literal("a"))
     expect(schema.ast).toEqual(AST.createLiteral("a"))
   })
 
-  it("templateLiteral. a b", () => {
+  it("templateLiteral/ a b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
     expect(schema.ast).toEqual(
       AST.createLiteral("a b")
     )
   })
 
-  it("templateLiteral. (a | b) c", () => {
+  it("templateLiteral/ (a | b) c", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
     expect(schema.ast).toEqual(
       AST.createUnion([AST.createLiteral("ac"), AST.createLiteral("bc")])
     )
   })
 
-  it("templateLiteral. (a | b) c (d | e)", () => {
+  it("templateLiteral/ (a | b) c (d | e)", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
     expect(schema.ast).toEqual(
       AST.createUnion([
@@ -35,7 +75,7 @@ describe.concurrent("Schema", () => {
     )
   })
 
-  it("templateLiteral. (a | b) string (d | e)", () => {
+  it("templateLiteral/ (a | b) string (d | e)", () => {
     const schema = S.templateLiteral(S.literal("a", "b"), S.string, S.literal("d", "e"))
     expect(schema.ast).toEqual(
       AST.createUnion([
@@ -47,14 +87,14 @@ describe.concurrent("Schema", () => {
     )
   })
 
-  it("templateLiteral. a${string}", () => {
+  it("templateLiteral/ a${string}", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string)
     expect(schema.ast).toEqual(
       AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
     )
   })
 
-  it("templateLiteral. a${string}b", () => {
+  it("templateLiteral/ a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
     expect(schema.ast).toEqual(
       AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
@@ -380,5 +420,26 @@ describe.concurrent("Schema", () => {
       },
       "@fp-ts/schema/annotation/TitleId": "title"
     })
+  })
+
+  it("rest/ should throw on unsupported schemas", () => {
+    const schema = pipe(S.tuple(), S.filter(() => true))
+    expect(() => pipe(schema, S.rest(S.number))).toThrowError(
+      new Error("`rest` is not supported on this schema")
+    )
+  })
+
+  it("element/ should throw on unsupported schemas", () => {
+    const schema = pipe(S.tuple(), S.filter(() => true))
+    expect(() => pipe(schema, S.element(S.number))).toThrowError(
+      new Error("`element` is not supported on this schema")
+    )
+  })
+
+  it("optionalElement/ should throw on unsupported schemas", () => {
+    const schema = pipe(S.tuple(), S.filter(() => true))
+    expect(() => pipe(schema, S.optionalElement(S.number))).toThrowError(
+      new Error("`optionalElement` is not supported on this schema")
+    )
   })
 })
