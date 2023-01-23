@@ -81,12 +81,6 @@ export const index = (
 })
 
 /**
- * @category guards
- * @since 1.0.0
- */
-export const isIndex = (e: ParseError): e is Index => e._tag === "Index"
-
-/**
  * The `Key` variant of the `ParseError` type represents an error that occurs when a key in an object is invalid.
  * This error typically occurs when the `actual` value is not a valid key type (e.g. a string or number)
  * or when the key is not present in the object being decoded. In either case, the `key` field of the error will contain
@@ -114,12 +108,6 @@ export const key = (
   key,
   errors
 })
-
-/**
- * @category guards
- * @since 1.0.0
- */
-export const isKey = (e: ParseError): e is Key => e._tag === "Key"
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -158,12 +146,6 @@ export const unexpected = (
   _tag: "Unexpected",
   actual
 })
-
-/**
- * @category guards
- * @since 1.0.0
- */
-export const isUnexpected = (e: ParseError): e is Unexpected => e._tag === "Unexpected"
 
 /**
  * Error that occurs when a member in a union has an error.
