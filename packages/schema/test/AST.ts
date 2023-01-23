@@ -61,12 +61,6 @@ describe.concurrent("AST", () => {
     expect(AST.getWeight(pipe(S.array(S.string), S.filter((as) => as.length === 2)).ast)).toEqual(1)
   })
 
-  it("union/ should remove duplicated members", () => {
-    const a = S.literal("a")
-    expect(S.union(a, a).ast).toEqual(a.ast)
-    expect(S.union(S.string, S.string).ast).toEqual(S.string.ast)
-  })
-
   it("union/ should remove never from members", () => {
     expect(AST.createUnion([AST.neverKeyword, AST.neverKeyword])).toEqual(
       AST.neverKeyword
@@ -115,13 +109,6 @@ describe.concurrent("AST", () => {
     expect(S.union(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")), S.symbol).ast).toEqual(
       S.symbol.ast
     )
-  })
-
-  it("union/ should remove duplicated ASTs", () => {
-    const a = S.literal("a")
-    const b = S.literal("b")
-    const schema = S.union(a, b, S.union(a, b))
-    expect(schema.ast).toEqual(S.union(a, b).ast)
   })
 
   describe.concurrent("union/ should give precedence to schemas containing more infos", () => {

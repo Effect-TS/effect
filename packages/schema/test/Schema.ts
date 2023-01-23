@@ -437,4 +437,12 @@ describe.concurrent("Schema", () => {
       new Error("`optionalElement` is not supported on this schema")
     )
   })
+
+  // TODO
+  it.skip("lazy", () => {
+    type A = null | { readonly a: A }
+    const schema: S.Schema<A> = S.lazy(() => S.union(S.null, schema))
+    const is = P.is(schema)
+    expect(is(null)).toEqual(true) // Maximum call stack size exceeded
+  })
 })

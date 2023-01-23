@@ -610,7 +610,7 @@ const sortByWeightDesc = RA.sort(
 )
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
-  let out = RA.uniq(pipe(
+  let out = pipe(
     candidates,
     RA.flatMap((ast: AST): ReadonlyArray<AST> => {
       switch (ast._tag) {
@@ -622,7 +622,7 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
           return [ast]
       }
     })
-  ))
+  )
   if (out.some(isStringKeyword)) {
     out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "string"))
   }
