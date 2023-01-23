@@ -57,7 +57,7 @@ export const formatActual = (actual: unknown): string => {
     return String(actual)
   }
   try {
-    return JSON.stringify(actual, (_, value) => typeof value === "function" ? value.name : value)
+    return JSON.stringify(actual)
   } catch (e) {
     return String(actual)
   }
