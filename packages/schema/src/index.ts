@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+/* c8 ignore start */
 export {
   /**
    * @since 1.0.0
@@ -60,3 +61,4 @@ export {
 } from "@fp-ts/schema/ParseResult"
 
 export * from "@fp-ts/schema/Schema"
+/* c8 ignore end */
