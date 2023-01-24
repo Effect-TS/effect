@@ -30,6 +30,9 @@ const pretty = <E, A>(
     )
   )
 
+/**
+ * @since 1.0.0
+ */
 export const either = <E, A>(
   left: Schema<E>,
   right: Schema<A>
