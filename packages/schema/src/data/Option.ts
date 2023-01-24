@@ -1,20 +1,45 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@fp-ts/data/Function"
-import type { Option } from "@fp-ts/data/Option"
-import * as O from "@fp-ts/data/Option"
+import { pipe } from "@fp-ts/core/Function"
+import type { Option } from "@fp-ts/core/Option"
+import * as O from "@fp-ts/core/Option"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
+import * as A from "@fp-ts/schema/Arbitrary"
 import * as I from "@fp-ts/schema/internal/common"
-import * as P from "@fp-ts/schema/Pretty"
+import * as P from "@fp-ts/schema/Parser"
+import * as PR from "@fp-ts/schema/ParseResult"
+import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-const pretty = <A>(value: P.Pretty<A>): P.Pretty<Option<A>> =>
-  P.make(
+const parser = <A>(item: P.Parser<unknown, A>): P.Parser<unknown, Option<A>> => {
+  const schema = option(item)
+  const value = P.decode(item)
+  return I.makeParser(
+    schema,
+    (u, options) =>
+      !O.isOption(u) ?
+        PR.failure(PR.type(schema.ast, u)) :
+        O.isNone(u) ?
+        PR.success(O.none()) :
+        pipe(value(u.value, options), I.map(O.some))
+  )
+}
+
+const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Option<A>> => {
+  const struct = A.arbitrary(inline(item))
+  return A.make(
+    option(item),
+    (fc) => struct(fc).map(O.match(() => O.none(), (value) => O.some(value)))
+  )
+}
+
+const pretty = <A>(value: Pretty<A>): Pretty<Option<A>> =>
+  I.makePretty(
     option(value),
     O.match(
-      () => "none",
+      () => "none()",
       (a) => `some(${value.pretty(a)})`
     )
   )
@@ -28,11 +53,18 @@ const inline = <A>(value: Schema<A>): Schema<Option<A>> =>
 /**
  * @since 1.0.0
  */
-export const option = <A>(value: Schema<A>): Schema<Option<A>> =>
-  I.typeAlias([value], inline(value), {
-    [IdentifierId]: "Option",
-    [H.PrettyHookId]: H.hook(pretty)
-  })
+export const option = <A>(value: Schema<A>): Schema<Option<A>> => {
+  return I.typeAlias(
+    [value],
+    inline(value),
+    {
+      [IdentifierId]: "Option",
+      [H.ParserHookId]: H.hook(parser),
+      [H.PrettyHookId]: H.hook(pretty),
+      [H.ArbitraryHookId]: H.hook(arbitrary)
+    }
+  )
+}
 
 /**
  * @since 1.0.0

@@ -2,12 +2,12 @@
  * @since 1.0.0
  */
 
-import { isBoolean } from "@fp-ts/data/Boolean"
-import { pipe } from "@fp-ts/data/Function"
-import { isNumber } from "@fp-ts/data/Number"
-import * as O from "@fp-ts/data/Option"
-import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isString } from "@fp-ts/data/String"
+import { isBoolean } from "@fp-ts/core/Boolean"
+import { pipe } from "@fp-ts/core/Function"
+import { isNumber } from "@fp-ts/core/Number"
+import * as O from "@fp-ts/core/Option"
+import * as RA from "@fp-ts/core/ReadonlyArray"
+import { isString } from "@fp-ts/core/String"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"

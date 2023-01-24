@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/core/Function"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -14,6 +14,11 @@ describe.concurrent("Arbitrary", () => {
   it("exports", () => {
     expect(A.make).exist
     expect(A.arbitrary).exist
+  })
+
+  it("type alias without annotations", () => {
+    const schema = S.typeAlias([], S.string)
+    property(schema)
   })
 
   it("templateLiteral. a", () => {

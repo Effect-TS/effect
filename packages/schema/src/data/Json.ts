@@ -1,10 +1,30 @@
 /**
  * @since 1.0.0
  */
-import type { Json } from "@fp-ts/data/Json"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as I from "@fp-ts/schema/internal/common"
 import type * as S from "@fp-ts/schema/Schema"
+
+/**
+ * @since 1.0.0
+ */
+export type JsonArray = ReadonlyArray<Json>
+
+/**
+ * @since 1.0.0
+ */
+export type JsonObject = { readonly [key: string]: Json }
+
+/**
+ * @since 1.0.0
+ */
+export type Json =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonArray
+  | JsonObject
 
 /**
  * @since 1.0.0

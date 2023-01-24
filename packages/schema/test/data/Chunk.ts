@@ -1,5 +1,5 @@
+import { pipe } from "@fp-ts/core/Function"
 import * as C from "@fp-ts/data/Chunk"
-import { pipe } from "@fp-ts/data/Function"
 import * as _ from "@fp-ts/schema/data/Chunk"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as P from "@fp-ts/schema/Parser"

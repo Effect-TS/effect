@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
+import { pipe } from "@fp-ts/core/Function"
 import type { Chunk } from "@fp-ts/data/Chunk"
 import * as C from "@fp-ts/data/Chunk"
-import { pipe } from "@fp-ts/data/Function"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"
@@ -41,7 +41,7 @@ export const chunk = <A>(item: Schema<A>): Schema<Chunk<A>> =>
   I.typeAlias(
     [item],
     I.struct({
-      _id: I.uniqueSymbol(Symbol.for("@fp-ts/data/Chunk")),
+      _id: I.uniqueSymbol(Symbol.for("@fp-ts/core/Chunk")),
       length: I.number
     }),
     {

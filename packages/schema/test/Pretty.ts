@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -360,7 +360,7 @@ describe.concurrent("Pretty", () => {
       )
     )
     const pretty = P.pretty(schema)
-    expect(pretty(O.none)).toEqual(`{ "_tag": "None" }`)
+    expect(pretty(O.none())).toEqual(`{ "_tag": "None" }`)
     expect(pretty(O.some(1))).toEqual(`{ "_tag": "Some", "value": 1 }`)
   })
 

@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
-import { isNonEmpty } from "@fp-ts/data/ReadonlyArray"
-import * as RA from "@fp-ts/data/ReadonlyArray"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
+import { isNonEmpty } from "@fp-ts/core/ReadonlyArray"
+import * as RA from "@fp-ts/core/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"

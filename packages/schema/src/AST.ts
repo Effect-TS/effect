@@ -2,15 +2,15 @@
  * @since 1.0.0
  */
 
+import { pipe } from "@fp-ts/core/Function"
+import * as Number from "@fp-ts/core/Number"
+import { isNumber } from "@fp-ts/core/Number"
+import type { Option } from "@fp-ts/core/Option"
+import * as O from "@fp-ts/core/Option"
+import type { Predicate } from "@fp-ts/core/Predicate"
+import * as RA from "@fp-ts/core/ReadonlyArray"
+import { isString } from "@fp-ts/core/String"
 import * as Order from "@fp-ts/core/typeclass/Order"
-import { pipe } from "@fp-ts/data/Function"
-import * as Number from "@fp-ts/data/Number"
-import { isNumber } from "@fp-ts/data/Number"
-import type { Option } from "@fp-ts/data/Option"
-import * as O from "@fp-ts/data/Option"
-import type { Predicate } from "@fp-ts/data/Predicate"
-import * as RA from "@fp-ts/data/ReadonlyArray"
-import { isString } from "@fp-ts/data/String"
 import { TitleId } from "@fp-ts/schema/annotation/AST"
 import type { Parser } from "@fp-ts/schema/Parser"
 
@@ -56,7 +56,7 @@ export const getAnnotation = <A>(key: PropertyKey) =>
   (annotated: Annotated): O.Option<A> =>
     Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
       O.some(annotated.annotations[key] as any) :
-      O.none
+      O.none()
 
 /**
  * @category model
@@ -797,7 +797,7 @@ export const appendElement = (
   return pipe(
     ast.rest,
     O.match(
-      () => createTuple([...ast.elements, newElement], O.none, ast.isReadonly),
+      () => createTuple([...ast.elements, newElement], O.none(), ast.isReadonly),
       (rest) => {
         if (newElement.isOptional) {
           throw new Error("An optional element cannot follow a rest element. ts(1266)")
@@ -938,7 +938,7 @@ export const getPropertySignatures = (
               members.some((p) => p.isReadonly)
             ))
           }
-          return O.none
+          return O.none()
         })
       )
     }
@@ -983,8 +983,9 @@ export const partial = (ast: AST): AST => {
     case "Lazy":
       return createLazy(() => partial(ast.f()))
     case "Refinement":
+      return partial(ast.from)
     case "Transform":
-      throw new Error(`partial: Unsupported type ${ast._tag}`)
+      return partial(ast.to)
     default:
       return ast
   }

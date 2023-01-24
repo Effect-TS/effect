@@ -40,12 +40,23 @@ export {
   /**
    * @since 1.0.0
    */
+  failure,
+  /**
+   * @since 1.0.0
+   */
+  failures,
+  /**
+   * @since 1.0.0
+   */
   isFailure,
   /**
    * @since 1.0.0
    */
-
-  isSuccess
+  isSuccess,
+  /**
+   * @since 1.0.0
+   */
+  success
 } from "@fp-ts/schema/ParseResult"
 
 export * from "@fp-ts/schema/Schema"

@@ -1,9 +1,9 @@
+import { pipe } from "@fp-ts/core/Function"
 import type { TypeLambda } from "@fp-ts/core/HKT"
+import * as O from "@fp-ts/core/Option"
+import * as RA from "@fp-ts/core/ReadonlyArray"
 import type * as applicative from "@fp-ts/core/typeclass/Applicative"
 import * as covariant from "@fp-ts/core/typeclass/Covariant"
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
-import * as RA from "@fp-ts/data/ReadonlyArray"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as S from "@fp-ts/schema/Schema"
@@ -40,15 +40,14 @@ const map = <A, B>(f: (a: A) => B) => (self: Writer<A>): Writer<B> => [f(self[0]
 const Applicative: applicative.Applicative<WriterLambda> = {
   imap: covariant.imap<WriterLambda>(map),
   map,
-  product: (that) => (self) => [[self[0], that[0]], self[1].concat(that[1])],
-  productMany: (collection) =>
-    (self) => {
-      const as = Array.from(collection)
-      return [
-        [self[0], ...as.map((a) => a[0])],
-        RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))
-      ]
-    },
+  product: (self, that) => [[self[0], that[0]], self[1].concat(that[1])],
+  productMany: (self, collection) => {
+    const as = Array.from(collection)
+    return [
+      [self[0], ...as.map((a) => a[0])],
+      RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))
+    ]
+  },
   productAll: (collection) => {
     const as = Array.from(collection)
     return [as.map((a) => a[0]), RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))]
@@ -296,8 +295,10 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               ast.indexSignatures,
               traverse((indexSignature) =>
                 pipe(
-                  go(indexSignature.parameter).nodes,
-                  Applicative.product(go(indexSignature.type).nodes),
+                  Applicative.product(
+                    go(indexSignature.parameter).nodes,
+                    go(indexSignature.type).nodes
+                  ),
                   map(([key, value]) =>
                     ts.factory.createIndexSignature(
                       indexSignature.isReadonly ?

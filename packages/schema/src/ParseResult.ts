@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Either, Left, Right } from "@fp-ts/data/Either"
-import * as E from "@fp-ts/data/Either"
-import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
+import type { Either, Left, Right } from "@fp-ts/core/Either"
+import * as E from "@fp-ts/core/Either"
+import type { NonEmptyReadonlyArray } from "@fp-ts/core/ReadonlyArray"
 import type * as AST from "@fp-ts/schema/AST"
 
 /**

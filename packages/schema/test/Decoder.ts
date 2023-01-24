@@ -1,6 +1,5 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
-import * as DataOption from "@fp-ts/schema/data/Option"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -59,9 +58,9 @@ describe.concurrent("Decoder", () => {
       }))
     )
 
-    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none })
-    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none })
-    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none })
+    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
+    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
+    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
     Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
     Util.expectDecodingFailureTree(
@@ -77,20 +76,15 @@ describe.concurrent("Decoder", () => {
       └─ Expected number, actual "b"`
     )
 
-    Util.expectEncodingSuccess(schema, { a: "a", b: O.none }, { a: "a" })
+    Util.expectEncodingSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
     Util.expectEncodingSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
   })
 
   it("type alias without annotations", () => {
-    const schema = DataOption.option(S.string)
-    Util.expectDecodingSuccess(schema, O.none, O.none)
-    Util.expectDecodingSuccess(schema, O.some("a"), O.some("a"))
+    const schema = S.typeAlias([], S.string)
+    Util.expectDecodingSuccess(schema, "a", "a")
 
-    Util.expectDecodingFailure(
-      schema,
-      O.some(1),
-      `union member: /value Expected string, actual 1, union member: /_tag Expected "None", actual "Some"`
-    )
+    Util.expectDecodingFailure(schema, 1, `Expected string, actual 1`)
   })
 
   it("annotations/message refinement", () => {

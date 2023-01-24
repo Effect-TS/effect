@@ -2,16 +2,16 @@
  * @since 1.0.0
  */
 
-import * as E from "@fp-ts/data/Either"
-import { pipe } from "@fp-ts/data/Function"
-import type { Json, JsonArray, JsonObject } from "@fp-ts/data/Json"
-import * as O from "@fp-ts/data/Option"
-import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
-import type { NonEmptyReadonlyArray } from "@fp-ts/data/ReadonlyArray"
-import * as RA from "@fp-ts/data/ReadonlyArray"
+import * as E from "@fp-ts/core/Either"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
+import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
+import type { NonEmptyReadonlyArray } from "@fp-ts/core/ReadonlyArray"
+import * as RA from "@fp-ts/core/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
+import type { Json, JsonArray, JsonObject } from "@fp-ts/schema/data/Json"
 import type { Parser } from "@fp-ts/schema/Parser"
 import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
@@ -277,7 +277,7 @@ export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
 ): Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> =>
   makeSchema(
-    AST.createTuple(elements.map((schema) => AST.createElement(schema.ast, false)), O.none, true)
+    AST.createTuple(elements.map((schema) => AST.createElement(schema.ast, false)), O.none(), true)
   )
 
 /** @internal */

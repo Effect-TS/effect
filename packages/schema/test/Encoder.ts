@@ -1,6 +1,4 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
-import * as DataOption from "@fp-ts/schema/data/Option"
+import { pipe } from "@fp-ts/core/Function"
 import * as P from "@fp-ts/schema/data/parser"
 import type { ParseOptions } from "@fp-ts/schema/Parser"
 import * as E from "@fp-ts/schema/Parser"
@@ -32,18 +30,6 @@ describe.concurrent("Encoder", () => {
   it("never", () => {
     const schema = S.never
     Util.expectEncodingFailure(schema, 1 as any as never, "Expected never, actual 1")
-  })
-
-  it("type alias without annotations", () => {
-    const schema = DataOption.option(NumberFromString)
-    Util.expectEncodingSuccess(schema, O.none, O.none)
-    Util.expectEncodingSuccess(schema, O.some(1), O.some("1"))
-
-    Util.expectEncodingFailure(
-      schema,
-      O.some(10),
-      `union member: /value Expected a string at most 1 character(s) long, actual "10", union member: /_tag Expected "None", actual "Some"`
-    )
   })
 
   it("templateLiteral. a${string}b", () => {

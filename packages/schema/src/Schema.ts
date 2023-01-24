@@ -2,16 +2,16 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/data/Function"
-import type { Json } from "@fp-ts/data/Json"
-import type { Option } from "@fp-ts/data/Option"
-import type { Predicate, Refinement } from "@fp-ts/data/Predicate"
-import * as RA from "@fp-ts/data/ReadonlyArray"
+import { pipe } from "@fp-ts/core/Function"
+import type { Option } from "@fp-ts/core/Option"
+import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
+import * as RA from "@fp-ts/core/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as DataDate from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
+import type { Json } from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
 import * as I from "@fp-ts/schema/internal/common"

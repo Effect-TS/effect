@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@fp-ts/data/Function"
+import { pipe } from "@fp-ts/core/Function"
 import * as D from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as I from "@fp-ts/schema/internal/common"

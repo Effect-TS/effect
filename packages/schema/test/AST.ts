@@ -1,9 +1,9 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
+import * as S from "@fp-ts/schema"
 import * as AST from "@fp-ts/schema/AST"
 import { json } from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("AST", () => {
   it("exports", () => {
@@ -175,23 +175,29 @@ describe.concurrent("AST", () => {
   })
 
   it("partial/refinement", () => {
-    expect(() =>
-      pipe(S.struct({ a: S.string, b: S.string }), S.filter(({ a, b }) => a === b), S.partial)
-    ).toThrowError(new Error("partial: Unsupported type Refinement"))
+    const schema = pipe(
+      S.struct({ a: S.string, b: S.string }),
+      S.filter(({ a, b }) => a === b),
+      S.partial
+    )
+    expect(schema.ast).toEqual(S.struct({ a: S.optional(S.string), b: S.optional(S.string) }).ast)
   })
 
   it("partial/transform", () => {
-    expect(() => pipe(S.string, S.trim, S.partial)).toThrowError(
-      new Error("partial: Unsupported type Transform")
+    const schema = pipe(
+      S.string,
+      S.transform(S.struct({ a: S.string }), (a) => ({ a }), ({ a }) => a),
+      S.partial
     )
+    expect(schema.ast).toEqual(S.struct({ a: S.optional(S.string) }).ast)
   })
 
   it("partial/tuple/ e", () => {
     // type A = [string]
     // type B = Partial<A>
-    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
     expect(AST.partial(tuple)).toEqual(
-      AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none, true)
+      AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none(), true)
     )
   })
 
@@ -230,7 +236,7 @@ describe.concurrent("AST", () => {
   })
 
   it("appendRestElement/ should add a rest element", () => {
-    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
     const actual = AST.appendRestElement(tuple, AST.numberKeyword)
     expect(actual).toEqual(
       AST.createTuple(
@@ -245,7 +251,7 @@ describe.concurrent("AST", () => {
     expect(() =>
       AST.appendRestElement(
         AST.appendRestElement(
-          AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true),
+          AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true),
           AST.numberKeyword
         ),
         AST.booleanKeyword
@@ -254,14 +260,14 @@ describe.concurrent("AST", () => {
   })
 
   it("appendElement/ should append an element (rest element)", () => {
-    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none, true)
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
     expect(AST.appendElement(tuple, AST.createElement(AST.numberKeyword, false))).toEqual(
       AST.createTuple(
         [
           AST.createElement(AST.stringKeyword, false),
           AST.createElement(AST.numberKeyword, false)
         ],
-        O.none,
+        O.none(),
         true
       )
     )
@@ -283,7 +289,7 @@ describe.concurrent("AST", () => {
   })
 
   it("appendElement/ A required element cannot follow an optional element", () => {
-    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none, true)
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, true)], O.none(), true)
     expect(() => AST.appendElement(tuple, AST.createElement(AST.numberKeyword, false)))
       .toThrowError(
         new Error("A required element cannot follow an optional element. ts(1257)")

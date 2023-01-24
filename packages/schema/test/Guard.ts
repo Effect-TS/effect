@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as O from "@fp-ts/data/Option"
+import { pipe } from "@fp-ts/core/Function"
+import * as O from "@fp-ts/core/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -714,7 +714,7 @@ describe.concurrent("is", () => {
     it("type alias", () => {
       const schema = S.partial(DataOption.option(S.number))
       const is = P.is(schema)
-      expect(is(O.none)).toEqual(true)
+      expect(is(O.none())).toEqual(true)
       expect(is(O.some(1))).toEqual(true)
       expect(is({})).toEqual(true)
     })
