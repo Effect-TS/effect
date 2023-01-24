@@ -69,16 +69,16 @@ export const makeArbitrary = <A>(
 ): Arbitrary<A> => ({ ast: schema.ast, arbitrary }) as any
 
 /** @internal */
-export const makeParser = <I, A>(
+export const makeParser = <A>(
   schema: Schema<A>,
-  parse: Parser<I, A>["parse"]
-): Parser<I, A> => ({ ast: schema.ast, parse }) as any
+  parse: Parser<A>["parse"]
+): Parser<A> => ({ ast: schema.ast, parse }) as any
 
 /** @internal */
 export const fromRefinement = <A>(
   schema: Schema<A>,
   refinement: (u: unknown) => u is A
-): Parser<unknown, A> =>
+): Parser<A> =>
   makeParser(schema, (u) => refinement(u) ? PR.success(u) : PR.failure(PR.type(schema.ast, u)))
 
 /** @internal */
@@ -154,8 +154,8 @@ export function filter<A>(
 /** @internal */
 export const transformOrFail = <A, B>(
   to: Schema<B>,
-  decode: Parser<A, B>["parse"],
-  encode: Parser<B, A>["parse"]
+  decode: (input: A, options?: AST.ParseOptions) => PR.ParseResult<B>,
+  encode: (input: B, options?: AST.ParseOptions) => PR.ParseResult<A>
 ) =>
   (self: Schema<A>): Schema<B> => makeSchema(AST.createTransform(self.ast, to.ast, decode, encode))
 

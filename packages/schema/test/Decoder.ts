@@ -1,5 +1,6 @@
 import { pipe } from "@fp-ts/core/Function"
 import * as O from "@fp-ts/core/Option"
+import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
@@ -1138,7 +1139,7 @@ describe.concurrent("Decoder", () => {
   // isUnexpectedAllowed option
   // ---------------------------------------------
 
-  const isUnexpectedAllowed: P.ParseOptions = {
+  const isUnexpectedAllowed: ParseOptions = {
     isUnexpectedAllowed: true
   }
 
@@ -1229,7 +1230,7 @@ describe.concurrent("Decoder", () => {
   // allErrors option
   // ---------------------------------------------
 
-  const allErrors: P.ParseOptions = {
+  const allErrors: ParseOptions = {
     allErrors: true
   }
 

@@ -1,6 +1,6 @@
 import { pipe } from "@fp-ts/core/Function"
+import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/data/parser"
-import type { ParseOptions } from "@fp-ts/schema/Parser"
 import * as E from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"

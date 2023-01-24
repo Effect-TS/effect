@@ -14,9 +14,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 const isSet = (u: unknown): u is Set<unknown> =>
   typeof u === "object" && typeof u !== null && u instanceof Set
 
-const parser = <A>(
-  item: P.Parser<unknown, A>
-): P.Parser<unknown, ReadonlySet<A>> => {
+const parser = <A>(item: P.Parser<A>): P.Parser<ReadonlySet<A>> => {
   const items = P.decode(I.array(item))
   const schema = readonlySet(item)
   return I.makeParser(

@@ -12,7 +12,7 @@ import * as RA from "@fp-ts/core/ReadonlyArray"
 import { isString } from "@fp-ts/core/String"
 import * as Order from "@fp-ts/core/typeclass/Order"
 import { TitleId } from "@fp-ts/schema/annotation/AST"
-import type { Parser } from "@fp-ts/schema/Parser"
+import type { ParseResult } from "@fp-ts/schema/ParseResult"
 
 /**
  * @category model
@@ -715,12 +715,21 @@ export const isRefinement = (ast: AST): ast is Refinement => ast._tag === "Refin
  * @category model
  * @since 1.0.0
  */
+export interface ParseOptions {
+  readonly isUnexpectedAllowed?: boolean
+  readonly allErrors?: boolean
+}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Transform extends Annotated {
   readonly _tag: "Transform"
   readonly from: AST
   readonly to: AST
-  readonly decode: Parser<any, any>["parse"]
-  readonly encode: Parser<any, any>["parse"]
+  readonly decode: (input: any, options?: ParseOptions) => ParseResult<any>
+  readonly encode: (input: any, options?: ParseOptions) => ParseResult<any>
 }
 
 /**

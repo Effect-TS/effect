@@ -10,40 +10,26 @@ import * as RA from "@fp-ts/core/ReadonlyArray"
 import { isString } from "@fp-ts/core/String"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
+import type { ParseOptions } from "@fp-ts/schema/AST"
 import { formatErrors } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PR from "@fp-ts/schema/ParseResult"
+import type { ParseResult } from "@fp-ts/schema/ParseResult"
 import type { Infer, Schema } from "@fp-ts/schema/Schema"
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface ParseOptions {
-  readonly isUnexpectedAllowed?: boolean
-  readonly allErrors?: boolean
+export interface Parser<A> extends Schema<A> {
+  readonly parse: (input: unknown, options?: ParseOptions) => ParseResult<A>
 }
-
-/**
- * @category model
- * @since 1.0.0
- */
-export interface Parser<I, A> extends Schema<A> {
-  readonly I: (i: I) => void
-  readonly parse: (i: I, options?: ParseOptions) => PR.ParseResult<A>
-}
-
-/**
- * @since 1.0.0
- */
-export type InferInput<D extends Parser<any, any>> = Parameters<D["I"]>[0]
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: <I, A>(schema: Schema<A>, parse: Parser<I, A>["parse"]) => Parser<I, A> =
-  I.makeParser
+export const make: <A>(schema: Schema<A>, parse: Parser<A>["parse"]) => Parser<A> = I.makeParser
 
 /**
  * @category decoding
@@ -51,15 +37,15 @@ export const make: <I, A>(schema: Schema<A>, parse: Parser<I, A>["parse"]) => Pa
  */
 export const decode = <A>(
   schema: Schema<A>
-): (i: unknown, options?: ParseOptions) => PR.ParseResult<A> => parserFor(schema).parse
+): (input: unknown, options?: ParseOptions) => ParseResult<A> => parserFor(schema).parse
 
 /**
  * @category decoding
  * @since 1.0.0
  */
 export const decodeOrThrow = <A>(schema: Schema<A>) =>
-  (u: unknown, options?: ParseOptions): A => {
-    const t = parserFor(schema).parse(u, options)
+  (input: unknown, options?: ParseOptions): A => {
+    const t = parserFor(schema).parse(input, options)
     if (PR.isFailure(t)) {
       throw new Error(formatErrors(t.left))
     }
@@ -100,7 +86,7 @@ export const asserts = <A>(schema: Schema<A>) =>
  */
 export const encode = <A>(
   schema: Schema<A>
-): (a: A, options?: ParseOptions) => PR.ParseResult<unknown> => parserFor(schema, "encoder").parse
+): (a: A, options?: ParseOptions) => ParseResult<unknown> => parserFor(schema, "encoder").parse
 
 /**
  * @category encoding
@@ -115,15 +101,15 @@ export const encodeOrThrow = <A>(schema: Schema<A>) =>
     return t.right
   }
 
-const getHook = AST.getAnnotation<H.Hook<Parser<unknown, any>>>(
+const getHook = AST.getAnnotation<H.Hook<Parser<any>>>(
   H.ParserHookId
 )
 
 const parserFor = <A>(
   schema: Schema<A>,
   as: "decoder" | "guard" | "encoder" = "decoder"
-): Parser<unknown, A> => {
-  const go = (ast: AST.AST): Parser<any, any> => {
+): Parser<A> => {
+  const go = (ast: AST.AST): Parser<any> => {
     switch (ast._tag) {
       case "TypeAlias":
         return pipe(
@@ -434,7 +420,7 @@ const parserFor = <A>(
       }
       case "Lazy": {
         const f = () => go(ast.f())
-        const get = I.memoize<void, Parser<any, any>>(f)
+        const get = I.memoize<void, Parser<any>>(f)
         const schema = I.lazy(f)
         return make(schema, (a, options) => get().parse(a, options))
       }

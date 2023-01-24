@@ -13,7 +13,7 @@ import type { Schema } from "@fp-ts/schema/Schema"
 const isDate = (u: unknown): u is Date =>
   typeof u === "object" && typeof u !== null && u instanceof Date
 
-const parser = (): P.Parser<unknown, Date> =>
+const parser = (): P.Parser<Date> =>
   I.makeParser(date, (u) => !isDate(u) ? PR.failure(PR.type(date.ast, u)) : PR.success(u))
 
 const arbitrary = (): Arbitrary<Date> => I.makeArbitrary(date, (fc) => fc.date())

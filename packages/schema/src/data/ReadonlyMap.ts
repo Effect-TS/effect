@@ -15,9 +15,9 @@ const isMap = (u: unknown): u is Map<unknown, unknown> =>
   typeof u === "object" && typeof u !== null && u instanceof Map
 
 const parser = <K, V>(
-  key: P.Parser<unknown, K>,
-  value: P.Parser<unknown, V>
-): P.Parser<unknown, ReadonlyMap<K, V>> => {
+  key: P.Parser<K>,
+  value: P.Parser<V>
+): P.Parser<ReadonlyMap<K, V>> => {
   const items = P.decode(I.array(I.tuple(key, value)))
   const schema = readonlyMap(key, value)
   return I.makeParser(

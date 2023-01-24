@@ -8,6 +8,7 @@ import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
 import * as RA from "@fp-ts/core/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
+import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as DataDate from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
 import * as DataJson from "@fp-ts/schema/data/Json"
@@ -15,7 +16,7 @@ import type { Json } from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
 import * as I from "@fp-ts/schema/internal/common"
-import type { Parser } from "@fp-ts/schema/Parser"
+import type { ParseResult } from "@fp-ts/schema/ParseResult"
 
 /**
  * @category model
@@ -575,8 +576,8 @@ export function filter<A>(
  */
 export const transformOrFail: <A, B>(
   to: Schema<B>,
-  decode: Parser<A, B>["parse"],
-  encode: Parser<B, A>["parse"]
+  decode: (input: A, options?: ParseOptions) => ParseResult<B>,
+  encode: (input: B, options?: ParseOptions) => ParseResult<A>
 ) => (self: Schema<A>) => Schema<B> = I.transformOrFail
 
 /**

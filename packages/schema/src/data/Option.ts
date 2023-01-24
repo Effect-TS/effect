@@ -13,7 +13,7 @@ import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-const parser = <A>(item: P.Parser<unknown, A>): P.Parser<unknown, Option<A>> => {
+const parser = <A>(item: P.Parser<A>): P.Parser<Option<A>> => {
   const schema = option(item)
   const value = P.decode(item)
   return I.makeParser(

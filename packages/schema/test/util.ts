@@ -6,6 +6,7 @@ import type { NonEmptyReadonlyArray } from "@fp-ts/core/ReadonlyArray"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
+import type { ParseOptions } from "@fp-ts/schema/AST"
 import { formatActual, formatErrors, formatExpected } from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
 import * as P from "@fp-ts/schema/Parser"
@@ -32,7 +33,7 @@ export const expectDecodingSuccess = <A>(
   schema: Schema<A>,
   u: unknown,
   a: A = u as any,
-  options?: P.ParseOptions
+  options?: ParseOptions
 ) => {
   const t = P.decode(schema)(u, options)
   expect(t).toStrictEqual(E.right(a))
@@ -42,7 +43,7 @@ export const expectDecodingFailure = <A>(
   schema: Schema<A>,
   u: unknown,
   message: string,
-  options?: P.ParseOptions
+  options?: ParseOptions
 ) => {
   const t = pipe(P.decode(schema)(u, options), E.mapLeft(formatAll))
   expect(t).toStrictEqual(E.left(message))
@@ -52,7 +53,7 @@ export const expectEncodingSuccess = <A>(
   schema: Schema<A>,
   a: A,
   o: unknown,
-  options?: P.ParseOptions
+  options?: ParseOptions
 ) => {
   const t = P.encode(schema)(a, options)
   expect(t).toStrictEqual(E.right(o))
@@ -62,7 +63,7 @@ export const expectEncodingFailure = <A>(
   schema: Schema<A>,
   a: A,
   message: string,
-  options?: P.ParseOptions
+  options?: ParseOptions
 ) => {
   const t = pipe(P.encode(schema)(a, options), E.mapLeft(formatAll))
   expect(t).toStrictEqual(E.left(message))
