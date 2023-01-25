@@ -491,4 +491,9 @@ describe.concurrent("Encoder", () => {
       allErrors
     )
   })
+
+  it("encode parsed number with refinement", () => {
+    const schema = pipe(P.parseNumber(S.string), S.int())
+    Util.expectEncodingSuccess(schema, 1, "1")
+  })
 })

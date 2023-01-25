@@ -426,14 +426,22 @@ const parserFor = <A>(
       }
       case "Refinement": {
         const type = go(ast.from)
-        return make(
-          I.makeSchema(ast),
-          (u, options) =>
-            pipe(
-              type.parse(u, options),
-              I.flatMap((a) => ast.refinement(a) ? PR.success(a) : PR.failure(PR.type(ast, a)))
+        const checkRefinement = (a: unknown) =>
+          ast.refinement(a) ? PR.success(a) : PR.failure(PR.type(ast, a))
+
+        switch (as) {
+          case "guard":
+          case "decoder":
+            return make(
+              I.makeSchema(ast),
+              (u, options) => pipe(type.parse(u, options), I.flatMap(checkRefinement))
             )
-        )
+          case "encoder":
+            return make(
+              I.makeSchema(ast),
+              (u, options) => pipe(checkRefinement(u), I.flatMap((a) => type.parse(a, options)))
+            )
+        }
       }
       case "Transform": {
         switch (as) {
