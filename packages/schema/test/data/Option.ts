@@ -21,6 +21,9 @@ describe.concurrent("Option", () => {
     expect(is(O.some(1))).toEqual(true)
     expect(is(null)).toEqual(false)
     expect(is(O.some("a"))).toEqual(false)
+
+    expect(is({ _tag: "None" })).toEqual(false)
+    expect(is({ _tag: "Some", value: 1 })).toEqual(false)
   })
 
   it("option. Decoder", () => {

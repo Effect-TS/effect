@@ -13,9 +13,9 @@ import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
 
-const parser = <A>(item: P.Parser<A>): P.Parser<Option<A>> => {
-  const schema = option(item)
-  const value = P.decode(item)
+const parser = <A>(value: P.Parser<A>): P.Parser<Option<A>> => {
+  const schema = option(value)
+  const decodeValue = P.decode(value)
   return I.makeParser(
     schema,
     (u, options) =>
@@ -23,14 +23,14 @@ const parser = <A>(item: P.Parser<A>): P.Parser<Option<A>> => {
         PR.failure(PR.type(schema.ast, u)) :
         O.isNone(u) ?
         PR.success(O.none()) :
-        pipe(value(u.value, options), I.map(O.some))
+        pipe(decodeValue(u.value, options), I.map(O.some))
   )
 }
 
-const arbitrary = <A>(item: A.Arbitrary<A>): A.Arbitrary<Option<A>> => {
-  const struct = A.arbitrary(inline(item))
+const arbitrary = <A>(value: A.Arbitrary<A>): A.Arbitrary<Option<A>> => {
+  const struct = A.arbitrary(inline(value))
   return A.make(
-    option(item),
+    option(value),
     (fc) => struct(fc).map(O.match(() => O.none(), (value) => O.some(value)))
   )
 }

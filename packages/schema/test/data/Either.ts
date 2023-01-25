@@ -1,5 +1,5 @@
-import * as E from "@fp-ts/data/Either"
-import { pipe } from "@fp-ts/data/Function"
+import * as E from "@fp-ts/core/Either"
+import { pipe } from "@fp-ts/core/Function"
 import * as _ from "@fp-ts/schema/data/Either"
 import { parseNumber } from "@fp-ts/schema/data/parser"
 import * as P from "@fp-ts/schema/Parser"
@@ -19,7 +19,12 @@ describe.concurrent("Either", () => {
     const is = P.is(schema)
     expect(is(E.left("a"))).toEqual(true)
     expect(is(E.right(1))).toEqual(true)
+    expect(is(null)).toEqual(false)
     expect(is(E.right("a"))).toEqual(false)
+    expect(is(E.left(1))).toEqual(false)
+
+    expect(is({ _tag: "Right", right: 1 })).toEqual(false)
+    expect(is({ _tag: "Left", left: "a" })).toEqual(false)
   })
 
   it("either. Decoder", () => {
@@ -31,7 +36,7 @@ describe.concurrent("Either", () => {
   it("either. Pretty", () => {
     const schema = _.either(S.string, S.number)
     const pretty = Pretty.pretty(schema)
-    expect(pretty(E.left("a"))).toEqual("left(\"a\")")
+    expect(pretty(E.left("a"))).toEqual(`left("a")`)
     expect(pretty(E.right(1))).toEqual("right(1)")
   })
 })
