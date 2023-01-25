@@ -14,7 +14,7 @@ describe.concurrent("Either", () => {
     Util.property(_.either(S.string, S.number))
   })
 
-  it("option. Guard", () => {
+  it("either. Guard", () => {
     const schema = _.either(S.string, S.number)
     const is = P.is(schema)
     expect(is(E.left("a"))).toEqual(true)
