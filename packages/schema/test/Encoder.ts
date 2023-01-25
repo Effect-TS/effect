@@ -265,8 +265,8 @@ describe.concurrent("Encoder", () => {
       S.struct({ a: S.number }),
       S.extend(S.record(S.string, NumberFromString))
     )
-    Util.expectEncodingSuccess(schema, { a: 1 }, { a: "1" })
-    Util.expectEncodingSuccess(schema, { a: 1, b: 1 }, { a: "1", b: "1" })
+    Util.expectEncodingSuccess(schema, { a: 1 }, { a: 1 })
+    Util.expectEncodingSuccess(schema, { a: 1, b: 1 }, { a: 1, b: "1" })
   })
 
   it("extend/record/ record(symbol, NumberFromString)", () => {

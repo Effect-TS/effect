@@ -129,6 +129,7 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
           I.makeSchema(ast),
           (input: { readonly [x: PropertyKey]: unknown }) => {
             const output: Array<string> = []
+            const expectedKeys: any = {}
             // ---------------------------------------------
             // handle property signatures
             // ---------------------------------------------
@@ -139,6 +140,7 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
                 continue
               }
               output.push(`${prettyName(name)}: ${propertySignaturesTypes[i].pretty(input[name])}`)
+              expectedKeys[name] = null
             }
             // ---------------------------------------------
             // handle index signatures
@@ -148,6 +150,9 @@ const prettyFor = <A>(schema: Schema<A>): Pretty<A> => {
                 const type = indexSignatureTypes[i]
                 const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
                 for (const key of keys) {
+                  if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
+                    continue
+                  }
                   output.push(`${prettyName(key)}: ${type.pretty(input[key])}`)
                 }
               }

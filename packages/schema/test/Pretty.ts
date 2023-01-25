@@ -402,4 +402,11 @@ describe.concurrent("Pretty", () => {
     const pretty = P.pretty(pipe(S.string, S.trim))
     expect(pretty("a")).toEqual(`"a"`)
   })
+
+  it("extend with record", () => {
+    const pretty = P.pretty(
+      pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string)))
+    )
+    expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
+  })
 })

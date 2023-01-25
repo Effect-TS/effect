@@ -1318,4 +1318,13 @@ describe.concurrent("Decoder", () => {
       allErrors
     )
   })
+
+  it("extend struct with record", () => {
+    const schema = pipe(
+      S.struct({ a: S.string }),
+      S.extend(S.record(S.string, S.boolean))
+    )
+
+    Util.expectDecodingSuccess(schema, { a: "a" })
+  })
 })

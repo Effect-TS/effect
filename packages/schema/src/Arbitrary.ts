@@ -163,7 +163,7 @@ const arbitraryFor = <A>(schema: Schema<A>): Arbitrary<A> => {
               const parameter = indexSignatures[i][0].arbitrary(fc)
               const type = indexSignatures[i][1].arbitrary(fc)
               output = output.chain((o) => {
-                return record(fc, parameter, type).map((d) => ({ ...o, ...d }))
+                return record(fc, parameter, type).map((d) => ({ ...d, ...o }))
               })
             }
 
