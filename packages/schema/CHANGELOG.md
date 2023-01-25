@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.1.1
+
+### Patch Changes
+
+- [#58](https://github.com/fp-ts/schema/pull/58) [`aaaa8dc`](https://github.com/fp-ts/schema/commit/aaaa8dca43f063fcd811da668a19b66731839c44) Thanks [@gcanti](https://github.com/gcanti)! - fix: encoder refinement #57
+
 ## 0.1.0
 
 ### Minor Changes
