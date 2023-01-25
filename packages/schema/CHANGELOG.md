@@ -1,5 +1,21 @@
 # @fp-ts/schema
 
+## 0.1.0
+
+### Minor Changes
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`880fdc1`](https://github.com/fp-ts/schema/commit/880fdc158fa58aaaeab54ff96f8d00472db6c858) Thanks [@gcanti](https://github.com/gcanti)! - refactor index exports
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`dbc158a`](https://github.com/fp-ts/schema/commit/dbc158a4965407b7cadc5c14c883e897b9d75731) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to @fp-ts/core@0.1.1
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`68f18e9`](https://github.com/fp-ts/schema/commit/68f18e917609a2f50ba4275a7207e7725b871952) Thanks [@gcanti](https://github.com/gcanti)! - rename ParseError module to ParseResult
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`9161174`](https://github.com/fp-ts/schema/commit/91611741bdc45dee25aa173a76ba6cf06f12072b) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to @fp-ts/data@0.1.0
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`71461a7`](https://github.com/fp-ts/schema/commit/71461a7ed573cc6430cb5a1957441dc0c34f0d68) Thanks [@gcanti](https://github.com/gcanti)! - move ParseOptions to AST and remove the `I` type parameter from Parser
+
+- [#50](https://github.com/fp-ts/schema/pull/50) [`b51e2a4`](https://github.com/fp-ts/schema/commit/b51e2a45e860c8102625e4cb019adb2d90a540ce) Thanks [@gcanti](https://github.com/gcanti)! - AST: added the `create` prefix to the APIs in order to conform to the style of TypeScript's AST
+
 ## 0.0.8
 
 ### Patch Changes
