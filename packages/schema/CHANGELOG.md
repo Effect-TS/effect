@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.1.2
+
+### Patch Changes
+
+- [#64](https://github.com/fp-ts/schema/pull/64) [`417fc5b`](https://github.com/fp-ts/schema/commit/417fc5bb95d8b77ee96c7102568ce2fb3c44af27) Thanks [@gcanti](https://github.com/gcanti)! - Bug fix:- Parser + Arbitrary: favor property signatures over index signatures - Pretty: fix duplicated keys in presence of property signatures + index signatures
+
 ## 0.1.1
 
 ### Patch Changes
