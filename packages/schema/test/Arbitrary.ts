@@ -346,12 +346,11 @@ describe.concurrent("Arbitrary", () => {
     property(schema)
   })
 
-  it("extend struct with record", () => {
+  it("extend/ struct + record", () => {
     const schema = pipe(
       S.struct({ a: S.string }),
-      S.extend(S.record(S.string, S.boolean))
+      S.extend(S.record(S.string, S.union(S.string, S.number)))
     )
-
     property(schema)
   })
 })

@@ -403,10 +403,13 @@ describe.concurrent("Pretty", () => {
     expect(pretty("a")).toEqual(`"a"`)
   })
 
-  it("extend with record", () => {
-    const pretty = P.pretty(
-      pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string)))
+  it("extend/ struct + record", () => {
+    const schema = pipe(
+      S.struct({ a: S.string }),
+      S.extend(S.record(S.string, S.union(S.string, S.number)))
     )
+    const pretty = P.pretty(schema)
     expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
+    expect(pretty({ a: "a", b: "b", c: 1 })).toEqual(`{ "a": "a", "b": "b", "c": 1 }`)
   })
 })
