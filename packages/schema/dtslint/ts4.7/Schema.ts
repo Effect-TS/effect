@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/data/Function";
+import { pipe } from "@fp-ts/core/Function";
 import * as S from "@fp-ts/schema/Schema";
 
 //
@@ -218,10 +218,10 @@ S.record(S.templateLiteral(S.literal('a'), S.string), S.string)
 // Extend
 //
 
-// $ExpectType Schema<{ [x: string]: string; readonly a: string; readonly b: string; readonly c: boolean; }>
+// $ExpectType Schema<{ [x: string]: string; readonly a: string; readonly b: string; readonly c: string; }>
 pipe(
   S.struct({ a: S.string, b: S.string }),
-  S.extend(S.struct({ c: S.boolean })), // <= you can add more fields
+  S.extend(S.struct({ c: S.string })), // <= you can add more fields
   S.extend(S.record(S.string, S.string)) // <= you can add more index signatures
 );
 
