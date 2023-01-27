@@ -101,11 +101,6 @@ describe.concurrent("Schema", () => {
     )
   })
 
-  it("optional/ should flatten optional calls", () => {
-    const schema = S.optional(S.optional(S.string))
-    expect(schema).toEqual(S.optional(S.string))
-  })
-
   describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
       expect(S.literal().ast).toEqual(AST.neverKeyword)

@@ -30,7 +30,7 @@ export interface Schema<A> {
 /**
  * @since 1.0.0
  */
-export type Infer<S extends Schema<any>> = Parameters<S["A"]>[0]
+export type Infer<S extends { readonly A: (_: any) => any }> = Parameters<S["A"]>[0]
 
 // ---------------------------------------------
 // constructors
@@ -413,29 +413,29 @@ export type OptionalSchemaId = typeof OptionalSchemaId
 /**
  * @since 1.0.0
  */
-export interface OptionalSchema<A, isOptional extends boolean> extends Schema<A>, AST.Annotated {
+export interface OptionalSchema<A> {
+  readonly A: (_: A) => A
   readonly _id: OptionalSchemaId
-  readonly isOptional: isOptional
 }
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => OptionalSchema<A, true> = I.optional
+export const optional: <A>(schema: Schema<A>) => OptionalSchema<A> = I.optional
 
 /**
  * @since 1.0.0
  */
 export type OptionalKeys<T> = {
-  [K in keyof T]: T[K] extends OptionalSchema<any, true> ? K : never
+  [K in keyof T]: T[K] extends OptionalSchema<any> ? K : never
 }[keyof T]
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const struct: <Fields extends Record<PropertyKey, Schema<any>>>(
+export const struct: <Fields extends Record<PropertyKey, Schema<any> | OptionalSchema<any>>>(
   fields: Fields
 ) => Schema<
   Spread<
