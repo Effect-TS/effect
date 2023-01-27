@@ -7,7 +7,6 @@ describe.concurrent("Schema", () => {
   it("exports", () => {
     expect(S.transformOrFail).exist
     expect(S.date).exist
-    expect(S.json).exist
     expect(S.OptionalSchemaId).exist
   })
 

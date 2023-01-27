@@ -11,8 +11,6 @@ import * as AST from "@fp-ts/schema/AST"
 import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as DataDate from "@fp-ts/schema/data/Date"
 import * as F from "@fp-ts/schema/data/filter"
-import * as DataJson from "@fp-ts/schema/data/Json"
-import type { Json } from "@fp-ts/schema/data/Json"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/data/parser"
 import * as I from "@fp-ts/schema/internal/common"
@@ -737,12 +735,6 @@ export const object: Schema<object> = I.object
  * @since 1.0.0
  */
 export const date: Schema<Date> = DataDate.date
-
-/**
- * @category data
- * @since 1.0.0
- */
-export const json: Schema<Json> = DataJson.json
 
 /**
  * Transforms a `string` into a `string` with no leading or trailing whitespace.
