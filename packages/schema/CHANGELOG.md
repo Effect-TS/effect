@@ -1,5 +1,13 @@
 # @fp-ts/schema
 
+## 0.1.3
+
+### Patch Changes
+
+- [#68](https://github.com/fp-ts/schema/pull/68) [`460c8d3`](https://github.com/fp-ts/schema/commit/460c8d337a0d3b68177830ff264d2c7ee52525b4) Thanks [@gcanti](https://github.com/gcanti)! - Schema: remove `json` export
+
+- [#68](https://github.com/fp-ts/schema/pull/68) [`a0a47e9`](https://github.com/fp-ts/schema/commit/a0a47e9cd53d10a50d6e0c50f7440f8cc2462e5f) Thanks [@gcanti](https://github.com/gcanti)! - enforce optional to be used as an outer wrapper of a Schema, closes #67
+
 ## 0.1.2
 
 ### Patch Changes
