@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as E from "@fp-ts/core/Either"
 import { pipe } from "@fp-ts/core/Function"
 import * as B from "@fp-ts/data/Brand"
 import * as I from "@fp-ts/schema/internal/common"
@@ -20,6 +21,11 @@ export const brand = <C extends B.Brand<string>>(
         self,
         I.filter<A, A & C>(
           (x): x is A & C => constructor.refine(x),
-          annotationOptions
+          {
+            message: (a) =>
+              (constructor.either(a) as E.Left<B.Brand.BrandErrors>).left.map((v) => v.message)
+                .join(", "),
+            ...(annotationOptions ?? {})
+          }
         )
       )
