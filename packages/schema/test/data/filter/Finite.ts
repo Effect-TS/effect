@@ -1,11 +1,10 @@
 import { pipe } from "@fp-ts/core/Function"
-import * as _ from "@fp-ts/schema/data/filter"
 import * as p from "@fp-ts/schema/Parser"
 import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
-const schema = pipe(S.number, _.finite())
+const schema = pipe(S.number, S.finite())
 
 describe.concurrent("finite", () => {
   it("property tests", () => {

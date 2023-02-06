@@ -1,12 +1,13 @@
 import { pipe } from "@fp-ts/core/Function"
-import * as _ from "@fp-ts/schema/data/filter"
+import * as _ from "@fp-ts/schema/data/Number"
+import { minLength } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("multipleOf", () => {
   it("property tests", () => {
-    Util.property(_.minLength(0)(S.string))
+    Util.property(minLength(0)(S.string))
   })
 
   it("Guard", () => {

@@ -1,12 +1,12 @@
 import { pipe } from "@fp-ts/core/Function"
 import type { ParseOptions } from "@fp-ts/schema/AST"
-import * as P from "@fp-ts/schema/data/parser"
+import { parseNumber } from "@fp-ts/schema/data/String"
 import * as E from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 // raises an error while encoding from a number if the string is not a char
-const NumberFromString = pipe(S.string, S.maxLength(1), P.parseNumber)
+const NumberFromString = pipe(S.string, S.maxLength(1), parseNumber)
 
 // raises an error while encoding if the string is not a char
 const MustChar = pipe(S.string, S.maxLength(1))
@@ -493,7 +493,7 @@ describe.concurrent("Encoder", () => {
   })
 
   it("encode parsed number with refinement", () => {
-    const schema = pipe(P.parseNumber(S.string), S.int())
+    const schema = pipe(parseNumber(S.string), S.int())
     Util.expectEncodingSuccess(schema, 1, "1")
   })
 })

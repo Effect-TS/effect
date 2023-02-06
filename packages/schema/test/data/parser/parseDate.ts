@@ -1,4 +1,4 @@
-import { parseDate } from "@fp-ts/schema/data/parser"
+import { parseDate } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"

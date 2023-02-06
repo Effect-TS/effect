@@ -1,7 +1,7 @@
 import * as E from "@fp-ts/core/Either"
 import { pipe } from "@fp-ts/core/Function"
 import * as _ from "@fp-ts/schema/data/Either"
-import { parseNumber } from "@fp-ts/schema/data/parser"
+import { parseNumber } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"
 import * as Pretty from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"

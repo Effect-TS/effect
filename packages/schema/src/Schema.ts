@@ -10,9 +10,10 @@ import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as DataDate from "@fp-ts/schema/data/Date"
-import * as F from "@fp-ts/schema/data/filter"
+import * as N from "@fp-ts/schema/data/Number"
+import * as O from "@fp-ts/schema/data/Object"
 import * as DataOption from "@fp-ts/schema/data/Option"
-import * as P from "@fp-ts/schema/data/parser"
+import * as S from "@fp-ts/schema/data/String"
 import * as I from "@fp-ts/schema/internal/common"
 import type { ParseResult } from "@fp-ts/schema/ParseResult"
 
@@ -79,7 +80,7 @@ export const enums = <A extends { [x: string]: string | number }>(
 export const instanceOf: <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotationOptions?: AnnotationOptions<object>
-) => (self: Schema<object>) => Schema<InstanceType<A>> = F.instanceOf
+) => (self: Schema<object>) => Schema<InstanceType<A>> = O.instanceOf
 
 /**
  * @since 1.0.0
@@ -171,7 +172,7 @@ export const typeAlias: (
 export const minLength: <A extends string>(
   minLength: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.minLength
+) => (self: Schema<A>) => Schema<A> = S.minLength
 
 /**
  * @category filters
@@ -180,7 +181,7 @@ export const minLength: <A extends string>(
 export const maxLength: <A extends string>(
   maxLength: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.maxLength
+) => (self: Schema<A>) => Schema<A> = S.maxLength
 
 /**
  * @category filters
@@ -207,7 +208,7 @@ export const nonEmpty = <A extends string>(
 export const startsWith: <A extends string>(
   startsWith: string,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.startsWith
+) => (self: Schema<A>) => Schema<A> = S.startsWith
 
 /**
  * @category filters
@@ -216,7 +217,7 @@ export const startsWith: <A extends string>(
 export const endsWith: <A extends string>(
   endsWith: string,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.endsWith
+) => (self: Schema<A>) => Schema<A> = S.endsWith
 
 /**
  * @category filters
@@ -225,7 +226,7 @@ export const endsWith: <A extends string>(
 export const includes: <A extends string>(
   searchString: string,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.includes
+) => (self: Schema<A>) => Schema<A> = S.includes
 
 /**
  * @category filters
@@ -234,7 +235,7 @@ export const includes: <A extends string>(
 export const pattern: <A extends string>(
   regex: RegExp,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.pattern
+) => (self: Schema<A>) => Schema<A> = S.pattern
 
 /**
  * @category filters
@@ -243,7 +244,7 @@ export const pattern: <A extends string>(
 export const lessThan: <A extends number>(
   max: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.lessThan
+) => (self: Schema<A>) => Schema<A> = N.lessThan
 
 /**
  * @category filters
@@ -252,7 +253,7 @@ export const lessThan: <A extends number>(
 export const lessThanOrEqualTo: <A extends number>(
   max: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.lessThanOrEqualTo
+) => (self: Schema<A>) => Schema<A> = N.lessThanOrEqualTo
 
 /**
  * @category filters
@@ -261,7 +262,7 @@ export const lessThanOrEqualTo: <A extends number>(
 export const greaterThan: <A extends number>(
   min: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.greaterThan
+) => (self: Schema<A>) => Schema<A> = N.greaterThan
 
 /**
  * @category filters
@@ -270,7 +271,7 @@ export const greaterThan: <A extends number>(
 export const greaterThanOrEqualTo: <A extends number>(
   min: number,
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.greaterThanOrEqualTo
+) => (self: Schema<A>) => Schema<A> = N.greaterThanOrEqualTo
 
 /**
  * @category filters
@@ -278,7 +279,7 @@ export const greaterThanOrEqualTo: <A extends number>(
  */
 export const int: <A extends number>(
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.int
+) => (self: Schema<A>) => Schema<A> = N.int
 
 /**
  * Note. This combinator does not make any transformations, it only validates.
@@ -289,7 +290,7 @@ export const int: <A extends number>(
  */
 export const trimmed: <A extends string>(
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.trimmed
+) => (self: Schema<A>) => Schema<A> = S.trimmed
 
 /**
  * @category filters
@@ -297,7 +298,7 @@ export const trimmed: <A extends string>(
  */
 export const nonNaN: <A extends number>(
   annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.nonNaN
+) => (self: Schema<A>) => Schema<A> = N.nonNaN
 
 /**
  * @category filters
@@ -305,7 +306,7 @@ export const nonNaN: <A extends number>(
  */
 export const finite: <A extends number>(
   options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = F.finite
+) => (self: Schema<A>) => Schema<A> = N.finite
 
 // ---------------------------------------------
 // combinators
@@ -742,7 +743,7 @@ export const date: Schema<Date> = DataDate.date
  * @category parsers
  * @since 1.0.0
  */
-export const trim = (item: Schema<string>): Schema<string> => P.trim(item)
+export const trim = (item: Schema<string>): Schema<string> => S.trim(item)
 
 /**
  * @category parsers
