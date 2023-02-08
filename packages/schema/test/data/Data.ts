@@ -1,4 +1,4 @@
-import * as Data from "@fp-ts/data/Data"
+import * as Data from "@effect/data/Data"
 import * as _ from "@fp-ts/schema/data/Data"
 import * as P from "@fp-ts/schema/Parser"
 import * as Pretty from "@fp-ts/schema/Pretty"

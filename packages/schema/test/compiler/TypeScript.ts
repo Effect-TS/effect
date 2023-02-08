@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/core/Function"
+import { dual, pipe } from "@fp-ts/core/Function"
 import type { TypeLambda } from "@fp-ts/core/HKT"
 import * as O from "@fp-ts/core/Option"
 import * as RA from "@fp-ts/core/ReadonlyArray"
@@ -35,7 +35,13 @@ interface WriterLambda extends TypeLambda {
   readonly type: Writer<this["Target"]>
 }
 
-const map = <A, B>(f: (a: A) => B) => (self: Writer<A>): Writer<B> => [f(self[0]), self[1]]
+const map: {
+  <A, B>(f: (a: A) => B): (self: Writer<A>) => Writer<B>
+  <A, B>(self: Writer<A>, f: (a: A) => B): Writer<B>
+} = dual<
+  <A, B>(f: (a: A) => B) => (self: Writer<A>) => Writer<B>,
+  <A, B>(self: Writer<A>, f: (a: A) => B) => Writer<B>
+>(2, (self, f) => [f(self[0]), self[1]])
 
 const Applicative: applicative.Applicative<WriterLambda> = {
   imap: covariant.imap<WriterLambda>(map),
@@ -168,9 +174,11 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         const id = pipe(
           getIdentifier(ast),
           O.map((id) => ts.factory.createIdentifier(id)),
-          O.getOrThrow(() =>
-            new Error(`cannot find an indentifier for this unique symbol ${String(ast.symbol)}`)
-          )
+          O.getOrElse(() => {
+            throw new Error(
+              `cannot find an indentifier for this unique symbol ${String(ast.symbol)}`
+            )
+          })
         )
         const typeNode = ts.factory.createTypeQueryNode(id)
         const declaration = ts.factory.createVariableDeclaration(
@@ -326,7 +334,9 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         const id = pipe(
           getIdentifier(ast),
           O.map((id) => ts.factory.createIdentifier(id)),
-          O.getOrThrow(() => new Error(`cannot find an indentifier for this enum`))
+          O.getOrElse(() => {
+            throw new Error(`cannot find an indentifier for this enum`)
+          })
         )
         const typeNode = ts.factory.createTypeQueryNode(id)
         const declaration = ts.factory.createEnumDeclaration(

@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
+import type { Chunk } from "@effect/data/Chunk"
+import * as C from "@effect/data/Chunk"
 import { pipe } from "@fp-ts/core/Function"
-import type { Chunk } from "@fp-ts/data/Chunk"
-import * as C from "@fp-ts/data/Chunk"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"

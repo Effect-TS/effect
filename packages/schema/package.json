@@ -69,7 +69,7 @@
     "@changesets/cli": "^2.25.2",
     "@effect-ts/build-utils": "0.40.5",
     "@effect-ts/core": "^0.60.2",
-    "@effect/language-service": "^0.0.10",
+    "@effect/language-service": "^0.0.19",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@types/benchmark": "^2.1.2",
     "@types/chai": "^4.3.4",
@@ -114,8 +114,8 @@
     }
   },
   "dependencies": {
-    "@fp-ts/core": "0.1.1",
-    "@fp-ts/data": "^0.1.0",
+    "@effect/data": "~0.1.0",
+    "@fp-ts/core": "~0.2.0",
     "fast-check": "^3.6.2"
   }
 }

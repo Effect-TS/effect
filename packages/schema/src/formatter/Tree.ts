@@ -92,7 +92,7 @@ const getDescription = AST.getAnnotation<annotations.Description>(
 )
 
 const getExpected = (ast: AST.AST): O.Option<string> =>
-  pipe(getIdentifier(ast), O.catchAll(() => getTitle(ast)), O.catchAll(() => getDescription(ast)))
+  pipe(getIdentifier(ast), O.orElse(() => getTitle(ast)), O.orElse(() => getDescription(ast)))
 
 /** @internal */
 export const formatExpected = (ast: AST.AST): string => {
