@@ -140,3 +140,51 @@ export const nonNaN = <A extends number>(annotationOptions?: AnnotationOptions<A
         ...annotationOptions
       })
     )
+
+/**
+ * @since 1.0.0
+ */
+export const positive = <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+): (self: Schema<A>) => Schema<A> =>
+  greaterThan(0, {
+    description: "a positive number",
+    custom: { type: "positive" },
+    ...annotationOptions
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const negative = <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+): (self: Schema<A>) => Schema<A> =>
+  lessThan(0, {
+    description: "a negative number",
+    custom: { type: "negative" },
+    ...annotationOptions
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const nonNegative = <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+): (self: Schema<A>) => Schema<A> =>
+  greaterThanOrEqualTo(0, {
+    description: "a non-negative number",
+    custom: { type: "nonNegative" },
+    ...annotationOptions
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const nonPositive = <A extends number>(
+  annotationOptions?: AnnotationOptions<A>
+): (self: Schema<A>) => Schema<A> =>
+  lessThanOrEqualTo(0, {
+    description: "a non-positive number",
+    custom: { type: "nonPositive" },
+    ...annotationOptions
+  })

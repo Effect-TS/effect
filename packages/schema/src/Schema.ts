@@ -308,6 +308,38 @@ export const finite: <A extends number>(
   options?: AnnotationOptions<A>
 ) => (self: Schema<A>) => Schema<A> = N.finite
 
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const positive: <A extends number>(
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.positive
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const negative: <A extends number>(
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.negative
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNegative: <A extends number>(
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.nonNegative
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonPositive: <A extends number>(
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.nonPositive
+
 // ---------------------------------------------
 // combinators
 // ---------------------------------------------
