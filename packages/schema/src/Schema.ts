@@ -13,6 +13,7 @@ import * as DataDate from "@fp-ts/schema/data/Date"
 import * as N from "@fp-ts/schema/data/Number"
 import * as O from "@fp-ts/schema/data/Object"
 import * as DataOption from "@fp-ts/schema/data/Option"
+import * as SRA from "@fp-ts/schema/data/ReadonlyArray"
 import * as S from "@fp-ts/schema/data/String"
 import * as I from "@fp-ts/schema/internal/common"
 import type { ParseResult } from "@fp-ts/schema/ParseResult"
@@ -339,6 +340,33 @@ export const nonNegative: <A extends number>(
 export const nonPositive: <A extends number>(
   options?: AnnotationOptions<A>
 ) => (self: Schema<A>) => Schema<A> = N.nonPositive
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const maxItems: <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.maxItems
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const minItems: <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.minItems
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const itemsCount: <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.itemsCount
 
 // ---------------------------------------------
 // combinators
