@@ -85,7 +85,11 @@ export const pattern = <A extends string>(
     return pipe(
       self,
       I.filter(
-        (a): a is A => regex.test(a),
+        (a): a is A => {
+          // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
+          regex.lastIndex = 0
+          return regex.test(a)
+        },
         {
           description: `a string matching the pattern ${pattern}`,
           jsonSchema: { pattern },

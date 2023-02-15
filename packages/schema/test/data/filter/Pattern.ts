@@ -1,15 +1,24 @@
 import { pipe } from "@fp-ts/core/Function"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
+import * as S from "@fp-ts/schema"
 
 describe.concurrent("pattern", () => {
   it("Guard", () => {
     const schema = pipe(S.string, S.pattern(/^abb+$/))
-    const is = P.is(schema)
+    const is = S.is(schema)
     expect(is("abb")).toEqual(true)
     expect(is("abbb")).toEqual(true)
 
     expect(is("ab")).toEqual(false)
     expect(is("a")).toEqual(false)
+  })
+
+  it("should reset lastIndex to 0 before each `test` call (#88)", () => {
+    const regex = /^(A|B)$/g
+    const schema: S.Schema<string> = pipe(
+      S.string,
+      S.pattern(regex)
+    )
+    expect(S.decodeOrThrow(schema)("A")).toEqual("A")
+    expect(S.decodeOrThrow(schema)("A")).toEqual("A")
   })
 })
