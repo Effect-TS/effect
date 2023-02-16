@@ -412,4 +412,16 @@ describe.concurrent("Pretty", () => {
     expect(pretty({ a: "a" })).toEqual(`{ "a": "a" }`)
     expect(pretty({ a: "a", b: "b", c: 1 })).toEqual(`{ "a": "a", "b": "b", "c": 1 }`)
   })
+
+  it("should allow for custom compilers", () => {
+    const match: typeof P.match = {
+      ...P.match,
+      "BooleanKeyword": (ast) => P.make(S.make(ast), (b: boolean) => b ? "True" : "False")
+    }
+    const go = P.getCompiler(match)
+    const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast).pretty(a)
+    expect(pretty(S.boolean)(true)).toEqual(`True`)
+    const schema = S.tuple(S.string, S.boolean)
+    expect(pretty(schema)(["a", true])).toEqual(`["a", True]`)
+  })
 })
