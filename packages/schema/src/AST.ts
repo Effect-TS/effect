@@ -999,3 +999,23 @@ export const partial = (ast: AST): AST => {
       return ast
   }
 }
+
+/**
+ * @since 1.0.0
+ */
+export type Compiler<A> = (ast: AST) => A
+
+/**
+ * @since 1.0.0
+ */
+export type Match<A> = {
+  [K in AST["_tag"]]: (ast: Extract<AST, { _tag: K }>, compile: Compiler<A>) => A
+}
+
+/**
+ * @since 1.0.0
+ */
+export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
+  const compile = (ast: AST): A => match[ast._tag](ast as any, compile)
+  return compile
+}

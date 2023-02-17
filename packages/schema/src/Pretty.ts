@@ -32,27 +32,7 @@ const getHook = AST.getAnnotation<H.Hook<Pretty<any>>>(
 /**
  * @since 1.0.0
  */
-export type Compiler<A> = (ast: AST.AST) => A
-
-/**
- * @since 1.0.0
- */
-export type Match<A> = {
-  [K in AST.AST["_tag"]]: (ast: Extract<AST.AST, { _tag: K }>, compile: Compiler<A>) => A
-}
-
-/**
- * @since 1.0.0
- */
-export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
-  const compile = (ast: AST.AST): A => match[ast._tag](ast as any, compile)
-  return compile
-}
-
-/**
- * @since 1.0.0
- */
-export const match: Match<Pretty<any>> = {
+export const match: AST.Match<Pretty<any>> = {
   "TypeAlias": (ast, go) =>
     pipe(
       getHook(ast),
@@ -189,7 +169,7 @@ export const match: Match<Pretty<any>> = {
   "Transform": (ast, go) => go(ast.to)
 }
 
-const compile = getCompiler(match)
+const compile = AST.getCompiler(match)
 
 /**
  * @category prettify

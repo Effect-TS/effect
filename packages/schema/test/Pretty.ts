@@ -1,5 +1,6 @@
 import { pipe } from "@fp-ts/core/Function"
 import * as O from "@fp-ts/core/Option"
+import * as AST from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
 
@@ -418,7 +419,7 @@ describe.concurrent("Pretty", () => {
       ...P.match,
       "BooleanKeyword": (ast) => P.make(S.make(ast), (b: boolean) => b ? "True" : "False")
     }
-    const go = P.getCompiler(match)
+    const go = AST.getCompiler(match)
     const pretty = <A>(schema: S.Schema<A>) => (a: A): string => go(schema.ast).pretty(a)
     expect(pretty(S.boolean)(true)).toEqual(`True`)
     const schema = S.tuple(S.string, S.boolean)
