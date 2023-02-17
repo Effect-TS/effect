@@ -4,6 +4,15 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Number", () => {
+  it("between", () => {
+    const schema = pipe(S.number, N.between(-1, 1))
+
+    Util.expectDecodingFailure(schema, -2, "Expected a number between -1 and 1, actual -2")
+    Util.expectDecodingSuccess(schema, 0, 0)
+    Util.expectEncodingSuccess(schema, 1, 1)
+    Util.expectDecodingFailure(schema, 2, "Expected a number between -1 and 1, actual 2")
+  })
+
   it("positive", () => {
     const schema = pipe(S.number, N.positive())
 

@@ -278,6 +278,16 @@ export const greaterThanOrEqualTo: <A extends number>(
  * @category filters
  * @since 1.0.0
  */
+export const between: <A extends number>(
+  min: number,
+  max: number,
+  annotationOptions?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.between
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
 export const int: <A extends number>(
   annotationOptions?: AnnotationOptions<A>
 ) => (self: Schema<A>) => Schema<A> = N.int
