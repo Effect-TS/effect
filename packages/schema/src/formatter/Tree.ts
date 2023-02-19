@@ -53,6 +53,9 @@ export const formatActual = (actual: unknown): string => {
   if (typeof actual === "number") {
     return Number.isNaN(actual) ? "NaN" : String(actual)
   }
+  if (typeof actual === "bigint") {
+    return String(actual) + "n"
+  }
   if (typeof actual === "symbol") {
     return String(actual)
   }

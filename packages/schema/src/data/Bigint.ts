@@ -17,7 +17,7 @@ export const greaterThan = <A extends bigint>(
     pipe(
       self,
       I.filter((a): a is A => a > min, {
-        description: `a bigint greater than ${min}`,
+        description: `a bigint greater than ${min}n`,
         jsonSchema: { exclusiveMinimum: min },
         ...annotationOptions
       })
@@ -34,7 +34,7 @@ export const greaterThanOrEqualTo = <A extends bigint>(
     pipe(
       self,
       I.filter((a): a is A => a >= min, {
-        description: `a bigint greater than or equal to ${min}`,
+        description: `a bigint greater than or equal to ${min}n`,
         jsonSchema: { minimum: min },
         ...annotationOptions
       })
@@ -48,7 +48,7 @@ export const lessThan = <A extends bigint>(max: bigint, annotationOptions?: Anno
     pipe(
       self,
       I.filter((a): a is A => a < max, {
-        description: `a bigint less than ${max}`,
+        description: `a bigint less than ${max}n`,
         jsonSchema: { exclusiveMaximum: max },
         ...annotationOptions
       })
@@ -65,7 +65,7 @@ export const lessThanOrEqualTo = <A extends bigint>(
     pipe(
       self,
       I.filter((a): a is A => a <= max, {
-        description: `a bigint less than or equal to ${max}`,
+        description: `a bigint less than or equal to ${max}n`,
         jsonSchema: { maximum: max },
         ...annotationOptions
       })
@@ -83,7 +83,7 @@ export const between = <A extends bigint>(
     pipe(
       self,
       I.filter((a): a is A => a >= min && a <= max, {
-        description: `a bigint between ${min} and ${max}`,
+        description: `a bigint between ${min}n and ${max}n`,
         jsonSchema: { maximum: max, minimum: max },
         ...annotationOptions
       })
