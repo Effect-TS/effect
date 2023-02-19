@@ -1,7 +1,9 @@
 import * as E from "@fp-ts/core/Either"
 import { pipe } from "@fp-ts/core/Function"
 import { isNumber } from "@fp-ts/core/Number"
+import { isRecord } from "@fp-ts/core/Predicate"
 import { isString } from "@fp-ts/core/String"
+import type { Json, JsonArray, JsonObject } from "@fp-ts/schema/data/Json"
 import { json } from "@fp-ts/schema/data/Json"
 import * as _ from "@fp-ts/schema/formatter/Tree"
 import * as I from "@fp-ts/schema/internal/common"
@@ -30,7 +32,18 @@ describe.concurrent("Tree", () => {
   })
 
   it("formatErrors/ lazy", () => {
-    const parser = I.fromRefinement(json, I.isJson)
+    const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+
+    const isJsonObject = (u: unknown): u is JsonObject =>
+      isRecord(u) && Object.keys(u).every((key) => isJson(u[key]))
+
+    const isJson = (u: unknown): u is Json =>
+      u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
+      typeof u === "boolean" ||
+      isJsonArray(u) ||
+      isJsonObject(u)
+
+    const parser = I.fromRefinement(json, isJson)
     expect(pipe(parser.parse(undefined), E.mapLeft(_.formatErrors))).toEqual(
       E.left(`1 error(s) found
 └─ Expected <anonymous Lazy schema>, actual undefined`)

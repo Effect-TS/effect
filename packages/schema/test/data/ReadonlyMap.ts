@@ -55,6 +55,7 @@ describe.concurrent("ReadonlyMap", () => {
     expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
 
     expect(is(null)).toEqual(false)
+    expect(is(undefined)).toEqual(false)
     expect(is(new Map<number, string | number>([[1, "a"], [2, 1]]))).toEqual(false)
     expect(is(new Map<number, string | number>([[1, 1], [2, "b"]]))).toEqual(false)
     expect(is(new Map([[1, 1], [2, 2]]))).toEqual(false)

@@ -1,11 +1,12 @@
 import { pipe } from "@fp-ts/core/Function"
 import * as O from "@fp-ts/core/Option"
+import { isRecord } from "@fp-ts/core/Predicate"
 import * as RA from "@fp-ts/core/ReadonlyArray"
 import type { JSONSchema } from "@fp-ts/schema/annotation/AST"
 import { JSONSchemaId } from "@fp-ts/schema/annotation/AST"
 import * as A from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import { isJson } from "@fp-ts/schema/internal/common"
+import type { Json, JsonArray, JsonObject } from "@fp-ts/schema/data/Json"
 import * as P from "@fp-ts/schema/Parser"
 import type { Schema } from "@fp-ts/schema/Schema"
 import * as S from "@fp-ts/schema/Schema"
@@ -79,6 +80,17 @@ export type JsonSchema7Type =
   | JsonSchema7AnyOfType
   | JsonSchema7AllOfType
   | JsonSchema7ObjectType
+
+const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+
+const isJsonObject = (u: unknown): u is JsonObject =>
+  isRecord(u) && Object.keys(u).every((key) => isJson(u[key]))
+
+export const isJson = (u: unknown): u is Json =>
+  u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
+  typeof u === "boolean" ||
+  isJsonArray(u) ||
+  isJsonObject(u)
 
 const getJSONSchemaAnnotation = AST.getAnnotation<JSONSchema>(
   JSONSchemaId

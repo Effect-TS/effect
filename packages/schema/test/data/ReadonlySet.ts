@@ -47,6 +47,8 @@ describe.concurrent("ReadonlySet", () => {
     expect(is(new Set(["a", "b", "c"]))).toEqual(true)
 
     expect(is(new Set(["a", "b", 1]))).toEqual(false)
+    expect(is(null)).toEqual(false)
+    expect(is(undefined)).toEqual(false)
   })
 
   it("readonlySet. pretty", () => {

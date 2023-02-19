@@ -6,8 +6,17 @@ import { isBoolean } from "@fp-ts/core/Boolean"
 import { pipe } from "@fp-ts/core/Function"
 import { isNumber } from "@fp-ts/core/Number"
 import * as O from "@fp-ts/core/Option"
+import {
+  isBigint,
+  isNever,
+  isNotNullable,
+  isObject,
+  isRecord,
+  isString,
+  isSymbol,
+  isUndefined
+} from "@fp-ts/core/Predicate"
 import * as RA from "@fp-ts/core/ReadonlyArray"
-import { isString } from "@fp-ts/core/String"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import type { ParseOptions } from "@fp-ts/schema/AST"
@@ -130,11 +139,11 @@ const parserFor = <A>(
           (u): u is typeof ast.symbol => u === ast.symbol
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined)
+        return I.fromRefinement(I.makeSchema(ast), isUndefined)
       case "VoidKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isUndefined)
+        return I.fromRefinement(I.makeSchema(ast), isUndefined)
       case "NeverKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isNever)
+        return I.fromRefinement(I.makeSchema(ast), isNever)
       case "UnknownKeyword":
       case "AnyKeyword":
         return make(I.makeSchema(ast), PR.success)
@@ -145,11 +154,11 @@ const parserFor = <A>(
       case "BooleanKeyword":
         return I.fromRefinement(I.makeSchema(ast), isBoolean)
       case "BigIntKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isBigInt)
+        return I.fromRefinement(I.makeSchema(ast), isBigint)
       case "SymbolKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isSymbol)
+        return I.fromRefinement(I.makeSchema(ast), isSymbol)
       case "ObjectKeyword":
-        return I.fromRefinement(I.makeSchema(ast), I.isObject)
+        return I.fromRefinement(I.makeSchema(ast), isObject)
       case "Enums":
         return I.fromRefinement(
           I.makeSchema(ast),
@@ -276,7 +285,7 @@ const parserFor = <A>(
       }
       case "TypeLiteral": {
         if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-          return I.fromRefinement(I.makeSchema(ast), I.isNotNull)
+          return I.fromRefinement(I.makeSchema(ast), isNotNullable)
         }
         const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
@@ -285,7 +294,7 @@ const parserFor = <A>(
         return make(
           I.makeSchema(ast),
           (input: unknown, options) => {
-            if (!I.isUnknownObject(input)) {
+            if (!isRecord(input)) {
               return PR.failure(PR.type(unknownRecord, input))
             }
             const output: any = {}

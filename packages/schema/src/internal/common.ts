@@ -11,7 +11,6 @@ import * as RA from "@fp-ts/core/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
-import type { Json, JsonArray, JsonObject } from "@fp-ts/schema/data/Json"
 import type { Parser } from "@fp-ts/schema/Parser"
 import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
@@ -31,26 +30,6 @@ export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A>
 
 /** @internal */
 export const isNonEmpty = RA.isNonEmpty
-
-// ---------------------------------------------
-// Refinements
-// ---------------------------------------------
-
-/** @internal */
-export const isUnknownObject = (u: unknown): u is { readonly [x: string | symbol]: unknown } =>
-  typeof u === "object" && u != null && !Array.isArray(u)
-
-const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
-
-const isJsonObject = (u: unknown): u is JsonObject =>
-  isUnknownObject(u) && Object.keys(u).every((key) => isJson(u[key]))
-
-/** @internal */
-export const isJson = (u: unknown): u is Json =>
-  u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
-  typeof u === "boolean" ||
-  isJsonArray(u) ||
-  isJsonObject(u)
 
 // ---------------------------------------------
 // artifacts constructors
@@ -183,9 +162,6 @@ export const unknown: S.Schema<unknown> = makeSchema(AST.unknownKeyword)
 export const any: S.Schema<any> = makeSchema(AST.anyKeyword)
 
 /** @internal */
-export const isUndefined = (u: unknown): u is undefined => u === undefined
-
-/** @internal */
 export const _undefined: S.Schema<undefined> = makeSchema(AST.undefinedKeyword)
 
 /** @internal */
@@ -204,28 +180,13 @@ export const number: S.Schema<number> = makeSchema(AST.numberKeyword)
 export const boolean: S.Schema<boolean> = makeSchema(AST.booleanKeyword)
 
 /** @internal */
-export const isNever = (u: unknown): u is never => false
-
-/** @internal */
-export const isBigInt = (u: unknown): u is bigint => typeof u === "bigint"
-
-/** @internal */
 export const bigint: S.Schema<bigint> = makeSchema(AST.bigIntKeyword)
-
-/** @internal */
-export const isSymbol = (u: unknown): u is symbol => typeof u === "symbol"
 
 /** @internal */
 export const symbol: S.Schema<symbol> = makeSchema(AST.symbolKeyword)
 
 /** @internal */
 export const object: S.Schema<object> = makeSchema(AST.objectKeyword)
-
-/** @internal */
-export const isObject = (u: unknown): u is object => typeof u === "object" && u !== null
-
-/** @internal */
-export const isNotNull = (u: unknown): u is {} => u !== null
 
 /** @internal */
 export const union = <Members extends ReadonlyArray<S.Schema<any>>>(

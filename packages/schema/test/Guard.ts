@@ -334,6 +334,7 @@ describe.concurrent("is", () => {
     expect(is([])).toEqual(true)
 
     expect(is(null)).toEqual(false)
+    expect(is(undefined)).toEqual(false)
   })
 
   describe.concurrent("struct", () => {

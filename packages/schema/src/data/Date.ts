@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { isDate } from "@fp-ts/core/Predicate"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
@@ -9,9 +10,6 @@ import type * as P from "@fp-ts/schema/Parser"
 import * as PR from "@fp-ts/schema/ParseResult"
 import type { Pretty } from "@fp-ts/schema/Pretty"
 import type { Schema } from "@fp-ts/schema/Schema"
-
-const isDate = (u: unknown): u is Date =>
-  typeof u === "object" && typeof u !== null && u instanceof Date
 
 const parser = (): P.Parser<Date> =>
   I.makeParser(date, (u) => !isDate(u) ? PR.failure(PR.type(date.ast, u)) : PR.success(u))
