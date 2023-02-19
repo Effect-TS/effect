@@ -67,7 +67,7 @@ export const multipleOf = <A extends number>(
       self,
       I.filter((a): a is A => N.remainder(a, divisor) === 0, {
         description: `a number divisible by ${divisor}`,
-        jsonSchema: { multipleOf: divisor < 0 ? -divisor : divisor }, // spec requires positive divisor
+        jsonSchema: { multipleOf: Math.abs(divisor) }, // spec requires positive divisor
         ...annotationOptions
       })
     )
