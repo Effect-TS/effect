@@ -14,6 +14,10 @@ import * as Order from "@fp-ts/core/typeclass/Order"
 import { TitleId } from "@fp-ts/schema/annotation/AST"
 import type { ParseResult } from "@fp-ts/schema/ParseResult"
 
+// -------------------------------------------------------------------------------------
+// model
+// -------------------------------------------------------------------------------------
+
 /**
  * @category model
  * @since 1.0.0
@@ -516,43 +520,6 @@ export interface TypeLiteral extends Annotated {
   readonly indexSignatures: ReadonlyArray<IndexSignature>
 }
 
-/** @internal */
-export const getCardinality = (ast: AST): number => {
-  switch (ast._tag) {
-    case "TypeAlias":
-      return getCardinality(ast.type)
-    case "NeverKeyword":
-      return 0
-    case "Literal":
-    case "UndefinedKeyword":
-    case "VoidKeyword":
-    case "UniqueSymbol":
-      return 1
-    case "BooleanKeyword":
-      return 2
-    case "StringKeyword":
-    case "NumberKeyword":
-    case "BigIntKeyword":
-    case "SymbolKeyword":
-      return 3
-    case "ObjectKeyword":
-      return 4
-    case "UnknownKeyword":
-    case "AnyKeyword":
-      return 6
-    case "Refinement":
-      return getCardinality(ast.from)
-    case "Transform":
-      return getCardinality(ast.to)
-    default:
-      return 5
-  }
-}
-
-const sortByCardinalityAsc = RA.sort(
-  pipe(Number.Order, Order.contramap(({ type }: { readonly type: AST }) => getCardinality(type)))
-)
-
 /**
  * @category constructors
  * @since 1.0.0
@@ -581,58 +548,6 @@ export const isTypeLiteral = (ast: AST): ast is TypeLiteral => ast._tag === "Typ
 export interface Union extends Annotated {
   readonly _tag: "Union"
   readonly types: readonly [AST, AST, ...Array<AST>]
-}
-
-/** @internal */
-export const getWeight = (ast: AST): number => {
-  switch (ast._tag) {
-    case "TypeAlias":
-      return getWeight(ast.type)
-    case "Tuple":
-      return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
-    case "TypeLiteral":
-      return ast.propertySignatures.length + ast.indexSignatures.length
-    case "Union":
-      return ast.types.reduce((n, member) => n + getWeight(member), 0)
-    case "Lazy":
-      return 10
-    case "Refinement":
-      return getWeight(ast.from)
-    case "Transform":
-      return getWeight(ast.to)
-    default:
-      return 0
-  }
-}
-
-const sortByWeightDesc = RA.sort(
-  Order.reverse(pipe(Number.Order, Order.contramap(getWeight)))
-)
-
-const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
-  let out = pipe(
-    candidates,
-    RA.flatMap((ast: AST): ReadonlyArray<AST> => {
-      switch (ast._tag) {
-        case "NeverKeyword":
-          return []
-        case "Union":
-          return ast.types
-        default:
-          return [ast]
-      }
-    })
-  )
-  if (out.some(isStringKeyword)) {
-    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "string"))
-  }
-  if (out.some(isNumberKeyword)) {
-    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "number"))
-  }
-  if (out.some(isSymbolKeyword)) {
-    out = out.filter((m) => !isUniqueSymbol(m))
-  }
-  return out
 }
 
 /**
@@ -749,9 +664,9 @@ export const createTransform = (
  */
 export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transform"
 
-// ---------------------------------------------
+// -------------------------------------------------------------------------------------
 // API
-// ---------------------------------------------
+// -------------------------------------------------------------------------------------
 
 /**
  * Adds a group of annotations, potentially overwriting existing annotations.
@@ -817,41 +732,6 @@ export const appendElement = (
   )
 }
 
-/** @internal */
-export const getParameter = (
-  x: IndexSignature["parameter"]
-): StringKeyword | SymbolKeyword | TemplateLiteral =>
-  isRefinement(x) ? getParameter(x.from as any) : x
-
-const _keyof = (ast: AST): ReadonlyArray<AST> => {
-  switch (ast._tag) {
-    case "TypeAlias":
-      return _keyof(ast.type)
-    case "NeverKeyword":
-    case "AnyKeyword":
-      return [stringKeyword, numberKeyword, symbolKeyword]
-    case "StringKeyword":
-      return [createLiteral("length")]
-    case "TypeLiteral":
-      return ast.propertySignatures.map((p): AST =>
-        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
-      ).concat(ast.indexSignatures.map((is) => getParameter(is.parameter)))
-    case "Union": {
-      return getPropertySignatures(ast).map((p): AST =>
-        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
-      )
-    }
-    case "Lazy":
-      return _keyof(ast.f())
-    case "Refinement":
-      return _keyof(ast.from)
-    case "Transform":
-      return _keyof(ast.to)
-    default:
-      return []
-  }
-}
-
 /**
  * Equivalent at runtime to the TypeScript type-level `keyof` operator.
  *
@@ -905,7 +785,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return createTypeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
+  return createTypeLiteral(_getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
 }
 
 /**
@@ -914,52 +794,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return createTypeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
-}
-
-/** @internal */
-export const getPropertySignatures = (
-  ast: AST
-): ReadonlyArray<PropertySignature> => {
-  switch (ast._tag) {
-    case "TypeAlias":
-      return getPropertySignatures(ast.type)
-    case "Tuple":
-      return ast.elements.map((element, i) =>
-        createPropertySignature(i, element.type, element.isOptional, ast.isReadonly)
-      )
-    case "TypeLiteral":
-      return ast.propertySignatures
-    case "Union": {
-      const propertySignatures = ast.types.map(getPropertySignatures)
-      return pipe(
-        propertySignatures[0],
-        RA.filterMap(({ name }) => {
-          if (propertySignatures.every((ps) => ps.some((p) => p.name === name))) {
-            const members = pipe(
-              propertySignatures,
-              RA.flatMap((ps) => ps.filter((p) => p.name === name))
-            )
-            return O.some(createPropertySignature(
-              name,
-              createUnion(members.map((p) => p.type)),
-              members.some((p) => p.isOptional),
-              members.some((p) => p.isReadonly)
-            ))
-          }
-          return O.none()
-        })
-      )
-    }
-    case "Lazy":
-      return getPropertySignatures(ast.f())
-    case "Refinement":
-      return getPropertySignatures(ast.from)
-    case "Transform":
-      return getPropertySignatures(ast.to)
-    default:
-      return []
-  }
+  return createTypeLiteral(_getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
 }
 
 /**
@@ -1000,6 +835,10 @@ export const partial = (ast: AST): AST => {
   }
 }
 
+// -------------------------------------------------------------------------------------
+// compiler harness
+// -------------------------------------------------------------------------------------
+
 /**
  * @since 1.0.0
  */
@@ -1018,4 +857,177 @@ export type Match<A> = {
 export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   const compile = (ast: AST): A => match[ast._tag](ast as any, compile)
   return compile
+}
+
+// -------------------------------------------------------------------------------------
+// internal
+// -------------------------------------------------------------------------------------
+
+/** @internal */
+export const _getCardinality = (ast: AST): number => {
+  switch (ast._tag) {
+    case "TypeAlias":
+      return _getCardinality(ast.type)
+    case "NeverKeyword":
+      return 0
+    case "Literal":
+    case "UndefinedKeyword":
+    case "VoidKeyword":
+    case "UniqueSymbol":
+      return 1
+    case "BooleanKeyword":
+      return 2
+    case "StringKeyword":
+    case "NumberKeyword":
+    case "BigIntKeyword":
+    case "SymbolKeyword":
+      return 3
+    case "ObjectKeyword":
+      return 4
+    case "UnknownKeyword":
+    case "AnyKeyword":
+      return 6
+    case "Refinement":
+      return _getCardinality(ast.from)
+    case "Transform":
+      return _getCardinality(ast.to)
+    default:
+      return 5
+  }
+}
+
+const sortByCardinalityAsc = RA.sort(
+  pipe(Number.Order, Order.contramap(({ type }: { readonly type: AST }) => _getCardinality(type)))
+)
+
+/** @internal */
+export const _getWeight = (ast: AST): number => {
+  switch (ast._tag) {
+    case "TypeAlias":
+      return _getWeight(ast.type)
+    case "Tuple":
+      return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
+    case "TypeLiteral":
+      return ast.propertySignatures.length + ast.indexSignatures.length
+    case "Union":
+      return ast.types.reduce((n, member) => n + _getWeight(member), 0)
+    case "Lazy":
+      return 10
+    case "Refinement":
+      return _getWeight(ast.from)
+    case "Transform":
+      return _getWeight(ast.to)
+    default:
+      return 0
+  }
+}
+
+const sortByWeightDesc = RA.sort(
+  Order.reverse(pipe(Number.Order, Order.contramap(_getWeight)))
+)
+
+const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
+  let out = pipe(
+    candidates,
+    RA.flatMap((ast: AST): ReadonlyArray<AST> => {
+      switch (ast._tag) {
+        case "NeverKeyword":
+          return []
+        case "Union":
+          return ast.types
+        default:
+          return [ast]
+      }
+    })
+  )
+  if (out.some(isStringKeyword)) {
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "string"))
+  }
+  if (out.some(isNumberKeyword)) {
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "number"))
+  }
+  if (out.some(isSymbolKeyword)) {
+    out = out.filter((m) => !isUniqueSymbol(m))
+  }
+  return out
+}
+
+/** @internal */
+export const _getParameter = (
+  x: IndexSignature["parameter"]
+): StringKeyword | SymbolKeyword | TemplateLiteral =>
+  isRefinement(x) ? _getParameter(x.from as any) : x
+
+const _keyof = (ast: AST): ReadonlyArray<AST> => {
+  switch (ast._tag) {
+    case "TypeAlias":
+      return _keyof(ast.type)
+    case "NeverKeyword":
+    case "AnyKeyword":
+      return [stringKeyword, numberKeyword, symbolKeyword]
+    case "StringKeyword":
+      return [createLiteral("length")]
+    case "TypeLiteral":
+      return ast.propertySignatures.map((p): AST =>
+        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
+      ).concat(ast.indexSignatures.map((is) => _getParameter(is.parameter)))
+    case "Union": {
+      return _getPropertySignatures(ast).map((p): AST =>
+        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
+      )
+    }
+    case "Lazy":
+      return _keyof(ast.f())
+    case "Refinement":
+      return _keyof(ast.from)
+    case "Transform":
+      return _keyof(ast.to)
+    default:
+      return []
+  }
+}
+
+/** @internal */
+export const _getPropertySignatures = (
+  ast: AST
+): ReadonlyArray<PropertySignature> => {
+  switch (ast._tag) {
+    case "TypeAlias":
+      return _getPropertySignatures(ast.type)
+    case "Tuple":
+      return ast.elements.map((element, i) =>
+        createPropertySignature(i, element.type, element.isOptional, ast.isReadonly)
+      )
+    case "TypeLiteral":
+      return ast.propertySignatures
+    case "Union": {
+      const propertySignatures = ast.types.map(_getPropertySignatures)
+      return pipe(
+        propertySignatures[0],
+        RA.filterMap(({ name }) => {
+          if (propertySignatures.every((ps) => ps.some((p) => p.name === name))) {
+            const members = pipe(
+              propertySignatures,
+              RA.flatMap((ps) => ps.filter((p) => p.name === name))
+            )
+            return O.some(createPropertySignature(
+              name,
+              createUnion(members.map((p) => p.type)),
+              members.some((p) => p.isOptional),
+              members.some((p) => p.isReadonly)
+            ))
+          }
+          return O.none()
+        })
+      )
+    }
+    case "Lazy":
+      return _getPropertySignatures(ast.f())
+    case "Refinement":
+      return _getPropertySignatures(ast.from)
+    case "Transform":
+      return _getPropertySignatures(ast.to)
+    default:
+      return []
+  }
 }

@@ -37,28 +37,30 @@ describe.concurrent("AST", () => {
   })
 
   it("getCardinality/ never", () => {
-    expect(AST.getCardinality(AST.neverKeyword)).toEqual(0)
+    expect(AST._getCardinality(AST.neverKeyword)).toEqual(0)
   })
 
   it("getCardinality/ object", () => {
-    expect(AST.getCardinality(AST.objectKeyword)).toEqual(4)
+    expect(AST._getCardinality(AST.objectKeyword)).toEqual(4)
   })
 
   it("getCardinality/ refinement", () => {
-    expect(AST.getCardinality(pipe(S.string, S.nonEmpty()).ast)).toEqual(3)
+    expect(AST._getCardinality(pipe(S.string, S.nonEmpty()).ast)).toEqual(3)
   })
 
   it("getWeight/transform/ should return the weight of type", () => {
-    expect(AST.getWeight(S.option(S.number).ast)).toEqual(3)
+    expect(AST._getWeight(S.option(S.number).ast)).toEqual(3)
   })
 
   it("getWeight/union/ should return the sum of the members weight", () => {
-    expect(AST.getWeight(S.union(S.struct({ a: S.string }), S.struct({ b: S.number })).ast))
+    expect(AST._getWeight(S.union(S.struct({ a: S.string }), S.struct({ b: S.number })).ast))
       .toEqual(2)
   })
 
   it("getWeight/refinement/ should return the weight of the from type", () => {
-    expect(AST.getWeight(pipe(S.array(S.string), S.filter((as) => as.length === 2)).ast)).toEqual(1)
+    expect(AST._getWeight(pipe(S.array(S.string), S.filter((as) => as.length === 2)).ast)).toEqual(
+      1
+    )
   })
 
   it("union/ should remove never from members", () => {
@@ -360,12 +362,12 @@ describe.concurrent("AST", () => {
 
   it("getPropertySignatures/ string", () => {
     const schema = S.string
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([])
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([])
   })
 
   it("getPropertySignatures/ type alias", () => {
     const schema = DataOption.fromNullable(S.number)
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "_tag",
         S.union(S.literal("Some"), S.literal("None")).ast,
@@ -380,7 +382,7 @@ describe.concurrent("AST", () => {
       S.struct({ a: S.string, b: S.string }),
       S.filter(({ a, b }) => a === b)
     )
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature("a", S.string.ast, false, true),
       AST.createPropertySignature("b", S.string.ast, false, true)
     ])
@@ -388,7 +390,7 @@ describe.concurrent("AST", () => {
 
   it("getPropertySignatures/ tuple", () => {
     const schema = S.tuple(S.string, S.number)
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(0, S.string.ast, false, true),
       AST.createPropertySignature(1, S.number.ast, false, true)
     ])
@@ -396,7 +398,7 @@ describe.concurrent("AST", () => {
 
   it("getPropertySignatures/struct string keys", () => {
     const schema = S.struct({ a: S.string, b: S.number })
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature("a", S.string.ast, false, true),
       AST.createPropertySignature("b", S.number.ast, false, true)
     ])
@@ -406,7 +408,7 @@ describe.concurrent("AST", () => {
     const a = Symbol.for("@fp-ts/schema/test/a")
     const b = Symbol.for("@fp-ts/schema/test/b")
     const schema = S.struct({ [a]: S.string, [b]: S.number })
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(a, S.string.ast, false, true),
       AST.createPropertySignature(b, S.number.ast, false, true)
     ])
@@ -417,7 +419,7 @@ describe.concurrent("AST", () => {
       S.struct({ a: S.string, b: S.number }),
       S.struct({ a: S.boolean, c: S.boolean })
     )
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "a",
         AST.createUnion([S.string.ast, S.boolean.ast]),
@@ -432,7 +434,7 @@ describe.concurrent("AST", () => {
       S.struct({ a: S.string, b: S.number }),
       S.struct({ c: S.boolean, a: S.optional(S.boolean) })
     )
-    expect(AST.getPropertySignatures(schema.ast)).toEqual([
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "a",
         AST.createUnion([S.string.ast, S.boolean.ast]),
@@ -453,7 +455,7 @@ describe.concurrent("AST", () => {
         categories: S.array(Category)
       })
     )
-    expect(AST.getPropertySignatures(Category.ast)).toEqual([
+    expect(AST._getPropertySignatures(Category.ast)).toEqual([
       AST.createPropertySignature("name", S.string.ast, false, true),
       AST.createPropertySignature(
         "categories",

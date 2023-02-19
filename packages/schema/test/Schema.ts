@@ -8,6 +8,29 @@ describe.concurrent("Schema", () => {
     expect(S.transformOrFail).exist
     expect(S.date).exist
     expect(S.OptionalSchemaId).exist
+    expect(S.between).exist
+    expect(S.positive).exist
+    expect(S.negative).exist
+    expect(S.nonNegative).exist
+    expect(S.nonPositive).exist
+    expect(S.maxItems).exist
+    expect(S.minItems).exist
+    expect(S.itemsCount).exist
+  })
+
+  it("getPropertySignatures", () => {
+    const Name = pipe(S.string, S.identifier("name"))
+    const Age = pipe(S.number, S.identifier("age"))
+    const schema = pipe(
+      S.struct({
+        name: Name,
+        age: Age
+      }),
+      S.filter(({ name }) => name === name.toLowerCase())
+    )
+    const shape = S.getPropertySignatures(schema)
+    expect(shape.name).toStrictEqual(Name)
+    expect(shape.age).toStrictEqual(Age)
   })
 
   it("title", () => {

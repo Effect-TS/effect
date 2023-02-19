@@ -530,6 +530,39 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     make(AST.omit(self.ast, keys))
 
 /**
+ * Returns an object containing all property signatures of a given schema.
+ *
+ * ```
+ * Schema<A> -> { [K in keyof A]: Schema<A[K]> }
+ * ```
+ *
+ * @param schema - The schema to extract property signatures from.
+ *
+ * @example
+ * import * as S from "@fp-ts/schema"
+ *
+ * const Person = S.struct({
+ *   name: S.string,
+ *   age: S.number
+ * })
+ *
+ * const shape = S.getPropertySignatures(Person)
+ *
+ * assert.deepStrictEqual(shape.name, S.string)
+ * assert.deepStrictEqual(shape.age, S.number)
+ *
+ * @since 1.0.0
+ */
+export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: Schema<A[K]> } => {
+  const out: Record<PropertyKey, Schema<any>> = {}
+  const propertySignatures = AST._getPropertySignatures(schema.ast)
+  for (const propertySignature of propertySignatures) {
+    out[propertySignature.name] = make(propertySignature.type)
+  }
+  return out as any
+}
+
+/**
  * @category combinators
  * @since 1.0.0
  */
@@ -550,8 +583,8 @@ const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral)
 const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
   x.indexSignatures.some((ix) =>
     y.indexSignatures.some((iy) => {
-      const bx = AST.getParameter(ix.parameter)
-      const by = AST.getParameter(iy.parameter)
+      const bx = AST._getParameter(ix.parameter)
+      const by = AST._getParameter(iy.parameter)
       // there cannot be two string index signatures or two symbol index signatures at the same time
       return (AST.isStringKeyword(bx) && AST.isStringKeyword(by)) ||
         (AST.isSymbolKeyword(bx) && AST.isSymbolKeyword(by))
