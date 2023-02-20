@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { Brand } from "@effect/data/Brand"
 import { pipe } from "@fp-ts/core/Function"
 import type { Option } from "@fp-ts/core/Option"
 import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
@@ -561,6 +562,31 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
   }
   return out as any
 }
+
+/**
+ * Returns a nominal branded schema by applying a brand to a given schema.
+ *
+ * ```
+ * Schema<A> + B -> Schema<A & Brand<B>>
+ * ```
+ *
+ * @param self - The input schema to be combined with the brand.
+ * @param brand - The brand to apply.
+ *
+ * @example
+ * import * as S from "@fp-ts/schema"
+ * import { pipe } from "@fp-ts/core/Function"
+ *
+ * const Int = pipe(S.number, S.int(), S.brand("Int"))
+ * type Int = S.Infer<typeof Int> // number & Brand<"Int">
+ *
+ * @category combinators
+ * @since 1.0.0
+ */
+export const brand: <B extends string, A>(
+  brand: B,
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A & Brand<B>> = I.brand
 
 /**
  * @category combinators

@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import type { Brand } from "@effect/data/Brand"
 import * as E from "@fp-ts/core/Either"
 import { pipe } from "@fp-ts/core/Function"
 import * as O from "@fp-ts/core/Option"
@@ -83,19 +84,7 @@ export const typeAlias = (
 export const annotations = (annotations: AST.Annotated["annotations"]) =>
   <A>(self: S.Schema<A>): S.Schema<A> => makeSchema(AST.mergeAnnotations(self.ast, annotations))
 
-/** @internal */
-export function filter<A, B extends A>(
-  refinement: Refinement<A, B>,
-  options?: S.AnnotationOptions<A>
-): (from: S.Schema<A>) => S.Schema<B>
-export function filter<A>(
-  predicate: Predicate<A>,
-  options?: S.AnnotationOptions<A>
-): (from: S.Schema<A>) => S.Schema<A>
-export function filter<A>(
-  predicate: Predicate<A>,
-  options?: S.AnnotationOptions<A>
-): (from: S.Schema<A>) => S.Schema<A> {
+const toAnnotations = <A>(options?: S.AnnotationOptions<A>): AST.Annotated["annotations"] => {
   const annotations: AST.Annotated["annotations"] = {}
   if (options?.message !== undefined) {
     annotations[A.MessageId] = options?.message
@@ -121,8 +110,36 @@ export function filter<A>(
   if (options?.custom !== undefined) {
     annotations[A.CustomId] = options?.custom
   }
-  return (from) => makeSchema(AST.createRefinement(from.ast, predicate, annotations))
+  return annotations
 }
+
+/** @internal */
+export function filter<A, B extends A>(
+  refinement: Refinement<A, B>,
+  options?: S.AnnotationOptions<A>
+): (from: S.Schema<A>) => S.Schema<B>
+export function filter<A>(
+  predicate: Predicate<A>,
+  options?: S.AnnotationOptions<A>
+): (from: S.Schema<A>) => S.Schema<A>
+export function filter<A>(
+  predicate: Predicate<A>,
+  options?: S.AnnotationOptions<A>
+): (from: S.Schema<A>) => S.Schema<A> {
+  return (from) => makeSchema(AST.createRefinement(from.ast, predicate, toAnnotations(options)))
+}
+
+const getBrands = (ast: AST.AST): Array<string> =>
+  (ast.annotations[A.BrandId] as Array<string> | undefined) || []
+
+/** @internal */
+export const brand = <B extends string, A>(brand: B, options?: S.AnnotationOptions<A>) =>
+  (self: S.Schema<A>): S.Schema<A & Brand<B>> => {
+    const annotations = toAnnotations(options)
+    annotations[A.BrandId] = [...getBrands(self.ast), brand]
+    const ast = AST.mergeAnnotations(self.ast, annotations)
+    return makeSchema(ast)
+  }
 
 /** @internal */
 export const transformOrFail = <A, B>(

@@ -1,4 +1,5 @@
 import { pipe } from "@fp-ts/core/Function"
+import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -16,6 +17,23 @@ describe.concurrent("Schema", () => {
     expect(S.maxItems).exist
     expect(S.minItems).exist
     expect(S.itemsCount).exist
+  })
+
+  it("brand", () => {
+    // const Branded: S.Schema<number & Brand<"A"> & Brand<"B">>
+    const Branded = pipe(
+      S.number,
+      S.int(),
+      S.brand("A"),
+      S.brand("B", {
+        description: "a B brand"
+      })
+    )
+    expect(Branded.ast.annotations).toEqual({
+      [A.BrandId]: ["A", "B"],
+      [A.DescriptionId]: "a B brand",
+      [A.JSONSchemaId]: { type: "integer" }
+    })
   })
 
   it("getPropertySignatures", () => {

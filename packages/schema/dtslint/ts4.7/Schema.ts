@@ -1,5 +1,12 @@
 import { pipe } from "@fp-ts/core/Function";
-import * as S from "@fp-ts/schema/Schema";
+import * as S from "@fp-ts/schema";
+
+//
+// brand
+//
+
+// $ExpectType Schema<number & Brand<"Int">>
+pipe(S.number, S.int(), S.brand('Int'))
 
 //
 // Primitives
