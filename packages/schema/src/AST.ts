@@ -217,6 +217,12 @@ export const unknownKeyword: UnknownKeyword = {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isUnknownKeyword = (ast: AST): ast is UnknownKeyword => ast._tag === "UnknownKeyword"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -234,6 +240,12 @@ export const anyKeyword: AnyKeyword = {
     [TitleId]: "any"
   }
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isAnyKeyword = (ast: AST): ast is AnyKeyword => ast._tag === "AnyKeyword"
 
 /**
  * @category model
@@ -952,6 +964,12 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
       }
     })
   )
+  if (out.some(isAnyKeyword)) {
+    return [anyKeyword]
+  }
+  if (out.some(isUnknownKeyword)) {
+    return [unknownKeyword]
+  }
   if (out.some(isStringKeyword)) {
     out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "string"))
   }

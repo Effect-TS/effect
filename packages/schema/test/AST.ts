@@ -99,6 +99,14 @@ describe.concurrent("AST", () => {
     )
   })
 
+  it("union/ should unify any with anything", () => {
+    expect(S.union(S.literal("a"), S.any).ast).toEqual(S.any.ast)
+  })
+
+  it("union/ should unify unknown with anything", () => {
+    expect(S.union(S.literal("a"), S.unknown).ast).toEqual(S.unknown.ast)
+  })
+
   it("union/ should unify string literals with string", () => {
     expect(S.union(S.literal("a"), S.string).ast).toEqual(S.string.ast)
   })
