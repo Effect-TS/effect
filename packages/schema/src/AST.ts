@@ -305,6 +305,12 @@ export const booleanKeyword: BooleanKeyword = {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isBooleanKeyword = (ast: AST): ast is BooleanKeyword => ast._tag === "BooleanKeyword"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -322,6 +328,12 @@ export const bigIntKeyword: BigIntKeyword = {
     [TitleId]: "bigint"
   }
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isBigIntKeyword = (ast: AST): ast is BigIntKeyword => ast._tag === "BigIntKeyword"
 
 /**
  * @category model
@@ -945,6 +957,12 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   }
   if (out.some(isNumberKeyword)) {
     out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "number"))
+  }
+  if (out.some(isBooleanKeyword)) {
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "boolean"))
+  }
+  if (out.some(isBigIntKeyword)) {
+    out = out.filter((m) => !(isLiteral(m) && typeof m.literal === "bigint"))
   }
   if (out.some(isSymbolKeyword)) {
     out = out.filter((m) => !isUniqueSymbol(m))

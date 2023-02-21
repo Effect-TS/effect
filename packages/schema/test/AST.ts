@@ -107,6 +107,14 @@ describe.concurrent("AST", () => {
     expect(S.union(S.literal(1), S.number).ast).toEqual(S.number.ast)
   })
 
+  it("union/ should unify boolean literals with boolean", () => {
+    expect(S.union(S.literal(true), S.boolean).ast).toEqual(S.boolean.ast)
+  })
+
+  it("union/ should unify bigint literals with bigint", () => {
+    expect(S.union(S.literal(1n), S.bigint).ast).toEqual(S.bigint.ast)
+  })
+
   it("union/ should unify symbol literals with symbol", () => {
     expect(S.union(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")), S.symbol).ast).toEqual(
       S.symbol.ast
