@@ -1,5 +1,19 @@
 # @fp-ts/schema
 
+## 0.2.1
+
+### Patch Changes
+
+- [#101](https://github.com/fp-ts/schema/pull/101) [`cbf60e8`](https://github.com/fp-ts/schema/commit/cbf60e8b242519bd103420efb57df92d6b19d90f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add `brand` combinator
+
+- [#97](https://github.com/fp-ts/schema/pull/97) [`7259743`](https://github.com/fp-ts/schema/commit/72597436b77316e1497dcd6680ad01703bb1d55f) Thanks [@gcanti](https://github.com/gcanti)! - Schema: export getPropertySignatures (∼ zod's shape feature)
+
+- [#93](https://github.com/fp-ts/schema/pull/93) [`e3ead18`](https://github.com/fp-ts/schema/commit/e3ead1835d104787d07db16bd43ed8252e565f6d) Thanks [@gcanti](https://github.com/gcanti)! - format bigints
+
+- [#95](https://github.com/fp-ts/schema/pull/95) [`88acf7f`](https://github.com/fp-ts/schema/commit/88acf7f9cf54d200117ec2c9a23afa8d141bdb71) Thanks [@gcanti](https://github.com/gcanti)! - fix empty struct validation and reuse /core/Predicate module for all refinements
+
+- [#103](https://github.com/fp-ts/schema/pull/103) [`8d90f3c`](https://github.com/fp-ts/schema/commit/8d90f3cda70f3561302e673ff573ea765da844e2) Thanks [@gcanti](https://github.com/gcanti)! - enhance union unification for any and unknown
+
 ## 0.2.0
 
 ### Minor Changes
