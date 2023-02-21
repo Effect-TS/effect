@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import * as S from "@fp-ts/schema"
 import * as _ from "@fp-ts/schema/data/Option"
 import { parseNumber } from "@fp-ts/schema/data/String"

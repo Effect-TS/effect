@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import { isDate } from "@fp-ts/core/Predicate"
+import { isDate } from "@effect/data/Predicate"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"

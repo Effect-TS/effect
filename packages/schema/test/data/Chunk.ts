@@ -1,5 +1,5 @@
 import * as C from "@effect/data/Chunk"
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import * as _ from "@fp-ts/schema/data/Chunk"
 import { parseNumber } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"

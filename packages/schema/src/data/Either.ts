@@ -1,9 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { Either } from "@fp-ts/core/Either"
-import * as E from "@fp-ts/core/Either"
-import { pipe } from "@fp-ts/core/Function"
+import type { Either } from "@effect/data/Either"
+import * as E from "@effect/data/Either"
+import * as Equal from "@effect/data/Equal"
+import { pipe } from "@effect/data/Function"
+import * as Hash from "@effect/data/Hash"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"
@@ -56,8 +58,18 @@ const inline = <E, A>(
   right: Schema<A>
 ): Schema<Either<E, A>> =>
   I.union(
-    I.struct({ _tag: I.literal("Left"), left }),
-    I.struct({ _tag: I.literal("Right"), right })
+    I.struct({
+      _tag: I.literal("Left"),
+      left,
+      [Equal.symbol]: I.any,
+      [Hash.symbol]: I.any
+    }),
+    I.struct({
+      _tag: I.literal("Right"),
+      right,
+      [Equal.symbol]: I.any,
+      [Hash.symbol]: I.any
+    })
   )
 
 /**

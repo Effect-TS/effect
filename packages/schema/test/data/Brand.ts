@@ -1,5 +1,5 @@
 import * as B from "@effect/data/Brand"
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import * as _ from "@fp-ts/schema/data/Brand"
 import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"

@@ -3,7 +3,7 @@
  */
 import * as D from "@effect/data/Data"
 import * as E from "@effect/data/Equal"
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"

@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import * as DataOption from "@fp-ts/schema/data/Option"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -485,15 +485,6 @@ describe.concurrent("is", () => {
     expect(is({})).toEqual(false)
     expect(is({ a: 1 })).toEqual(false)
     expect(is({ b: 2 })).toEqual(false)
-  })
-
-  it("record(keyof Option<number>, number)", () => {
-    const schema = S.record(S.keyof(S.option(S.number)), S.number)
-    const is = P.is(schema)
-    expect(is({ _tag: 1 })).toEqual(true)
-
-    expect(is({})).toEqual(false)
-    expect(is({ _tag: "a" })).toEqual(false)
   })
 
   it("record(${string}-${string}, number)", () => {

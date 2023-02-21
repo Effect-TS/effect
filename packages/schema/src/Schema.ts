@@ -3,10 +3,10 @@
  */
 
 import type { Brand } from "@effect/data/Brand"
-import { pipe } from "@fp-ts/core/Function"
-import type { Option } from "@fp-ts/core/Option"
-import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
-import * as RA from "@fp-ts/core/ReadonlyArray"
+import { pipe } from "@effect/data/Function"
+import type { Option } from "@effect/data/Option"
+import type { Predicate, Refinement } from "@effect/data/Predicate"
+import * as RA from "@effect/data/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import type { ParseOptions } from "@fp-ts/schema/AST"
@@ -575,7 +575,7 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
  *
  * @example
  * import * as S from "@fp-ts/schema"
- * import { pipe } from "@fp-ts/core/Function"
+ * import { pipe } from "@effect/data/Function"
  *
  * const Int = pipe(S.number, S.int(), S.brand("Int"))
  * type Int = S.Infer<typeof Int> // number & Brand<"Int">

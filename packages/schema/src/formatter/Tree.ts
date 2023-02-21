@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
-import type { NonEmptyReadonlyArray } from "@fp-ts/core/ReadonlyArray"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
+import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import type * as PR from "@fp-ts/schema/ParseResult"

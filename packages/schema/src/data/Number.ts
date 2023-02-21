@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/core/Function"
-import * as N from "@fp-ts/core/Number"
+import { pipe } from "@effect/data/Function"
+import * as N from "@effect/data/Number"
 import * as I from "@fp-ts/schema/internal/common"
 import type { AnnotationOptions, Schema } from "@fp-ts/schema/Schema"
 

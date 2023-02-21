@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import * as S from "@fp-ts/schema"
 import * as AST from "@fp-ts/schema/AST"
 import { json } from "@fp-ts/schema/data/Json"
@@ -49,7 +49,7 @@ describe.concurrent("AST", () => {
   })
 
   it("getWeight/transform/ should return the weight of type", () => {
-    expect(AST._getWeight(S.option(S.number).ast)).toEqual(3)
+    expect(AST._getWeight(S.option(S.number).ast)).toEqual(7)
   })
 
   it("getWeight/union/ should return the sum of the members weight", () => {
@@ -387,6 +387,18 @@ describe.concurrent("AST", () => {
       AST.createPropertySignature(
         "_tag",
         S.union(S.literal("Some"), S.literal("None")).ast,
+        false,
+        true
+      ),
+      AST.createPropertySignature(
+        Symbol.for("@effect/data/Equal"),
+        S.any.ast,
+        false,
+        true
+      ),
+      AST.createPropertySignature(
+        Symbol.for("@effect/data/Hash"),
+        S.any.ast,
         false,
         true
       )

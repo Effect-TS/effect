@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/core/Function";
+import { pipe } from "@effect/data/Function";
 import * as S from "@fp-ts/schema/Schema";
 
 // optional/ should not allow combinators afterwards

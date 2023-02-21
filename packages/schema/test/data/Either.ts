@@ -1,5 +1,5 @@
-import * as E from "@fp-ts/core/Either"
-import { pipe } from "@fp-ts/core/Function"
+import * as E from "@effect/data/Either"
+import { pipe } from "@effect/data/Function"
 import * as _ from "@fp-ts/schema/data/Either"
 import { parseNumber } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"

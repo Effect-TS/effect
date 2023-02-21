@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import * as D from "@fp-ts/schema/data/Date"
 import * as I from "@fp-ts/schema/internal/common"
 import * as PR from "@fp-ts/schema/ParseResult"

@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import type { ParseOptions } from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Parser"
 import * as S from "@fp-ts/schema/Schema"
@@ -792,18 +792,6 @@ describe.concurrent("Decoder", () => {
       schema,
       { [b]: 2 },
       `/Symbol(@fp-ts/schema/test/a) is missing`
-    )
-  })
-
-  it("struct/ record(keyof Option<number>, number)", () => {
-    const schema = S.record(S.keyof(S.option(S.number)), S.number)
-    Util.expectDecodingSuccess(schema, { _tag: 1 })
-
-    Util.expectDecodingFailure(schema, {}, `/_tag is missing`)
-    Util.expectDecodingFailure(
-      schema,
-      { _tag: "a" },
-      `/_tag Expected number, actual "a"`
     )
   })
 

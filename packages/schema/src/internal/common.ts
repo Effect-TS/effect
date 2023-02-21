@@ -3,12 +3,12 @@
  */
 
 import type { Brand } from "@effect/data/Brand"
-import * as E from "@fp-ts/core/Either"
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
-import type { Predicate, Refinement } from "@fp-ts/core/Predicate"
-import type { NonEmptyReadonlyArray } from "@fp-ts/core/ReadonlyArray"
-import * as RA from "@fp-ts/core/ReadonlyArray"
+import * as E from "@effect/data/Either"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
+import type { Predicate, Refinement } from "@effect/data/Predicate"
+import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
+import * as RA from "@effect/data/ReadonlyArray"
 import * as A from "@fp-ts/schema/annotation/AST"
 import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
 import * as AST from "@fp-ts/schema/AST"
@@ -30,7 +30,7 @@ export const mutableAppend = <A>(self: Array<A>, a: A): NonEmptyReadonlyArray<A>
 }
 
 /** @internal */
-export const isNonEmpty = RA.isNonEmpty
+export const isNonEmptyReadonlyArray = RA.isNonEmptyReadonlyArray
 
 // ---------------------------------------------
 // artifacts constructors

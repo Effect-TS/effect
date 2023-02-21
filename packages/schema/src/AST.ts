@@ -2,15 +2,15 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/core/Function"
-import * as Number from "@fp-ts/core/Number"
-import { isNumber } from "@fp-ts/core/Number"
-import type { Option } from "@fp-ts/core/Option"
-import * as O from "@fp-ts/core/Option"
-import type { Predicate } from "@fp-ts/core/Predicate"
-import * as RA from "@fp-ts/core/ReadonlyArray"
-import { isString } from "@fp-ts/core/String"
-import * as Order from "@fp-ts/core/typeclass/Order"
+import { pipe } from "@effect/data/Function"
+import * as Number from "@effect/data/Number"
+import { isNumber } from "@effect/data/Number"
+import type { Option } from "@effect/data/Option"
+import * as O from "@effect/data/Option"
+import type { Predicate } from "@effect/data/Predicate"
+import * as RA from "@effect/data/ReadonlyArray"
+import { isString } from "@effect/data/String"
+import * as Order from "@effect/data/typeclass/Order"
 import { TitleId } from "@fp-ts/schema/annotation/AST"
 import type { ParseResult } from "@fp-ts/schema/ParseResult"
 
@@ -434,7 +434,7 @@ export const createTemplateLiteral = (
   head: string,
   spans: ReadonlyArray<TemplateLiteralSpan>
 ): TemplateLiteral | Literal =>
-  RA.isNonEmpty(spans) ?
+  RA.isNonEmptyReadonlyArray(spans) ?
     { _tag: "TemplateLiteral", head, spans, annotations: {} } :
     createLiteral(head)
 

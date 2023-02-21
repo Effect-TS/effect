@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import { CustomId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import { make } from "@fp-ts/schema/Arbitrary"

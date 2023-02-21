@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
-import { isBoolean } from "@fp-ts/core/Boolean"
-import { pipe } from "@fp-ts/core/Function"
-import { isNumber } from "@fp-ts/core/Number"
-import * as O from "@fp-ts/core/Option"
+import { isBoolean } from "@effect/data/Boolean"
+import { pipe } from "@effect/data/Function"
+import { isNumber } from "@effect/data/Number"
+import * as O from "@effect/data/Option"
 import {
   isBigint,
   isNever,
@@ -15,8 +15,8 @@ import {
   isString,
   isSymbol,
   isUndefined
-} from "@fp-ts/core/Predicate"
-import * as RA from "@fp-ts/core/ReadonlyArray"
+} from "@effect/data/Predicate"
+import * as RA from "@effect/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import type { ParseOptions } from "@fp-ts/schema/AST"
@@ -277,7 +277,7 @@ const parserFor = <A>(
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ?
+            return I.isNonEmptyReadonlyArray(es) ?
               PR.failures(es) :
               PR.success(output)
           }
@@ -400,7 +400,7 @@ const parserFor = <A>(
             // ---------------------------------------------
             // compute output
             // ---------------------------------------------
-            return I.isNonEmpty(es) ?
+            return I.isNonEmptyReadonlyArray(es) ?
               PR.failures(es) :
               PR.success(output)
           }
@@ -426,7 +426,7 @@ const parserFor = <A>(
           // ---------------------------------------------
           // compute output
           // ---------------------------------------------
-          return I.isNonEmpty(es) ?
+          return I.isNonEmptyReadonlyArray(es) ?
             PR.failures(es) :
             PR.failure(PR.type(AST.neverKeyword, u))
         })

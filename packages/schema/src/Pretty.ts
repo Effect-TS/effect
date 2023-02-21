@@ -1,10 +1,9 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
-import { isNonEmpty } from "@fp-ts/core/ReadonlyArray"
-import * as RA from "@fp-ts/core/ReadonlyArray"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
+import * as RA from "@effect/data/ReadonlyArray"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as AST from "@fp-ts/schema/AST"
 import * as I from "@fp-ts/schema/internal/common"
@@ -147,7 +146,7 @@ export const match: AST.Match<Pretty<any>> = {
           }
         }
 
-        return isNonEmpty(output) ? "{ " + output.join(", ") + " }" : "{}"
+        return I.isNonEmptyReadonlyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
       }
     )
   },

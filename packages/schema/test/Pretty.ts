@@ -1,5 +1,5 @@
-import { pipe } from "@fp-ts/core/Function"
-import * as O from "@fp-ts/core/Option"
+import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import * as AST from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Pretty"
 import * as S from "@fp-ts/schema/Schema"
@@ -52,7 +52,7 @@ describe.concurrent("Pretty", () => {
 
   it("symbol", () => {
     const pretty = P.pretty(S.symbol)
-    expect(pretty(Symbol.for("@fp-ts/core/test/a"))).toEqual("Symbol(@fp-ts/core/test/a)")
+    expect(pretty(Symbol.for("@effect/data/test/a"))).toEqual("Symbol(@effect/data/test/a)")
   })
 
   it("void", () => {

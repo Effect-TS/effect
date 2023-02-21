@@ -1,9 +1,9 @@
-import { dual, pipe } from "@fp-ts/core/Function"
-import type { TypeLambda } from "@fp-ts/core/HKT"
-import * as O from "@fp-ts/core/Option"
-import * as RA from "@fp-ts/core/ReadonlyArray"
-import type * as applicative from "@fp-ts/core/typeclass/Applicative"
-import * as covariant from "@fp-ts/core/typeclass/Covariant"
+import { dual, pipe } from "@effect/data/Function"
+import type { TypeLambda } from "@effect/data/HKT"
+import * as O from "@effect/data/Option"
+import * as RA from "@effect/data/ReadonlyArray"
+import type * as applicative from "@effect/data/typeclass/Applicative"
+import * as covariant from "@effect/data/typeclass/Covariant"
 import * as annotations from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as S from "@fp-ts/schema/Schema"
@@ -223,7 +223,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
           )
         )
         if (O.isSome(ast.rest)) {
-          const isArray = RA.isEmpty(ast.elements) && ast.rest.value.length === 1
+          const isArray = RA.isEmptyReadonlyArray(ast.elements) && ast.rest.value.length === 1
           if (isArray) {
             return make(
               ast,

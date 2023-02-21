@@ -114,8 +114,7 @@
     }
   },
   "dependencies": {
-    "@effect/data": "~0.1.2",
-    "@fp-ts/core": "~0.2.1",
+    "@effect/data": "~0.2.0",
     "fast-check": "^3.6.3"
   }
 }

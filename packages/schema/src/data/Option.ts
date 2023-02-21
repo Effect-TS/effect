@@ -1,9 +1,11 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@fp-ts/core/Function"
-import type { Option } from "@fp-ts/core/Option"
-import * as O from "@fp-ts/core/Option"
+import * as Equal from "@effect/data/Equal"
+import { pipe } from "@effect/data/Function"
+import * as Hash from "@effect/data/Hash"
+import type { Option } from "@effect/data/Option"
+import * as O from "@effect/data/Option"
 import { IdentifierId } from "@fp-ts/schema/annotation/AST"
 import * as H from "@fp-ts/schema/annotation/Hook"
 import * as A from "@fp-ts/schema/Arbitrary"
@@ -46,8 +48,17 @@ const pretty = <A>(value: Pretty<A>): Pretty<Option<A>> =>
 
 const inline = <A>(value: Schema<A>): Schema<Option<A>> =>
   I.union(
-    I.struct({ _tag: I.literal("None") }),
-    I.struct({ _tag: I.literal("Some"), value })
+    I.struct({
+      _tag: I.literal("None"),
+      [Equal.symbol]: I.any,
+      [Hash.symbol]: I.any
+    }),
+    I.struct({
+      _tag: I.literal("Some"),
+      value,
+      [Equal.symbol]: I.any,
+      [Hash.symbol]: I.any
+    })
   )
 
 /**

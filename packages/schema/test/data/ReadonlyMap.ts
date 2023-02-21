@@ -1,4 +1,4 @@
-import { pipe } from "@fp-ts/core/Function"
+import { pipe } from "@effect/data/Function"
 import * as _ from "@fp-ts/schema/data/ReadonlyMap"
 import { parseNumber } from "@fp-ts/schema/data/String"
 import * as P from "@fp-ts/schema/Parser"
