@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.3.0
+
+### Minor Changes
+
+- [#105](https://github.com/fp-ts/schema/pull/105) [`91a0c5e`](https://github.com/fp-ts/schema/commit/91a0c5ef843982595264c62d4732a00b497ab6fd) Thanks [@gcanti](https://github.com/gcanti)! - Replace @fp-ts/core with @effect/data
+
 ## 0.2.1
 
 ### Patch Changes
