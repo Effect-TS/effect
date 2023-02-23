@@ -859,9 +859,7 @@ export const symbol: Schema<symbol> = I.symbol
 export const object: Schema<object> = I.object
 
 /**
- * Transforms a `string` into a `string` with no leading or trailing whitespace.
- *
- * @category data
+ * @category primitives
  * @since 1.0.0
  */
 export const date: Schema<Date> = DataDate.date
