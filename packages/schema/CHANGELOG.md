@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.3.1
+
+### Patch Changes
+
+- [#109](https://github.com/fp-ts/schema/pull/109) [`be69acb`](https://github.com/fp-ts/schema/commit/be69acb7ee07a86db99370851ceb7778a0ab8728) Thanks [@ahrjarrett](https://github.com/ahrjarrett)! - fixes jsonSchema annotation bug in data/Bigint and data/Number
+
 ## 0.3.0
 
 ### Minor Changes
