@@ -130,7 +130,7 @@ export const between = <A extends number>(
       self,
       I.filter((a): a is A => a >= min && a <= max, {
         description: `a number between ${min} and ${max}`,
-        jsonSchema: { maximum: max, minimum: max },
+        jsonSchema: { maximum: max, minimum: min },
         ...annotationOptions
       })
     )
