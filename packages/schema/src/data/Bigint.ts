@@ -84,7 +84,7 @@ export const between = <A extends bigint>(
       self,
       I.filter((a): a is A => a >= min && a <= max, {
         description: `a bigint between ${min}n and ${max}n`,
-        jsonSchema: { maximum: max, minimum: max },
+        jsonSchema: { maximum: max, minimum: min },
         ...annotationOptions
       })
     )
