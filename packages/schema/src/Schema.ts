@@ -721,6 +721,48 @@ export const transform: <A, B>(
   g: (b: B) => A
 ) => (self: Schema<A>) => Schema<B> = I.transform
 
+/**
+ * Attaches a property signature with the specified key and value to the schema.
+ * This API is useful when you want to add a property to your schema which doesn't describe the shape of the input,
+ * but rather maps to another schema, for example when you want to add a discriminant to a simple union.
+ *
+ * @param self - The input schema.
+ * @param key - The name of the property to add to the schema.
+ * @param value - The value of the property to add to the schema.
+ *
+ * @example
+ * import * as S from "@fp-ts/schema"
+ * import { pipe } from "@effect/data/Function"
+ *
+ * const Circle = S.struct({ radius: S.number })
+ * const Square = S.struct({ sideLength: S.number })
+ * const Shape = S.union(
+ *   pipe(Circle, S.attachPropertySignature("kind", "circle")),
+ *   pipe(Square, S.attachPropertySignature("kind", "square"))
+ * )
+ *
+ * assert.deepStrictEqual(S.decodeOrThrow(Shape)({ radius: 10 }), {
+ *   kind: "circle",
+ *   radius: 10
+ * })
+ *
+ * @category combinators
+ * @since 1.0.0
+ */
+export const attachPropertySignature = <K extends PropertyKey, V extends AST.LiteralValue>(
+  key: K,
+  value: V
+) =>
+  <A extends object>(schema: Schema<A>): Schema<Spread<A & { readonly [k in K]: V }>> =>
+    pipe(
+      schema,
+      transform<A, any>(
+        pipe(schema, extend(struct({ [key]: literal(value) }))),
+        (a) => ({ ...a, [key]: value }),
+        ({ [key]: _key, ...rest }) => rest
+      )
+    )
+
 // ---------------------------------------------
 // annotations
 // ---------------------------------------------

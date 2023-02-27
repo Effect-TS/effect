@@ -8,6 +8,10 @@ import * as DataOption from "@fp-ts/schema/data/Option"
 describe.concurrent("AST", () => {
   it("exports", () => {
     expect(AST.isUniqueSymbol).exist
+    expect(AST.isUnknownKeyword).exist
+    expect(AST.isAnyKeyword).exist
+    expect(AST.isBooleanKeyword).exist
+    expect(AST.isBigIntKeyword).exist
     expect(AST.isTransform).exist
     expect(AST.isRefinement).exist
   })

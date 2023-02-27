@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
+import * as S from "@fp-ts/schema"
 import * as A from "@fp-ts/schema/annotation/AST"
 import * as AST from "@fp-ts/schema/AST"
 import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
 
 describe.concurrent("Schema", () => {
   it("exports", () => {
@@ -479,5 +479,35 @@ describe.concurrent("Schema", () => {
     const schema: S.Schema<A> = S.lazy(() => S.union(S.null, schema))
     const is = P.is(schema)
     expect(is(null)).toEqual(true) // Maximum call stack size exceeded
+  })
+
+  it("attachPropertySignature", () => {
+    const Circle = S.struct({ radius: S.number })
+    const Square = S.struct({ sideLength: S.number })
+    const DiscriminatedShape = S.union(
+      pipe(Circle, S.attachPropertySignature("kind", "circle")),
+      pipe(Square, S.attachPropertySignature("kind", "square"))
+    )
+
+    expect(S.decodeOrThrow(DiscriminatedShape)({ radius: 10 })).toEqual({
+      kind: "circle",
+      radius: 10
+    })
+    expect(
+      S.encodeOrThrow(DiscriminatedShape)({
+        kind: "circle",
+        radius: 10
+      })
+    ).toEqual({ radius: 10 })
+    expect(S.decodeOrThrow(DiscriminatedShape)({ sideLength: 10 })).toEqual({
+      kind: "square",
+      sideLength: 10
+    })
+    expect(
+      S.encodeOrThrow(DiscriminatedShape)({
+        kind: "square",
+        sideLength: 10
+      })
+    ).toEqual({ sideLength: 10 })
   })
 })

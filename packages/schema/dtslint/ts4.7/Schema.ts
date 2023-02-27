@@ -263,3 +263,10 @@ const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
 
 // $ExpectType Schema<"welcome_email_id" | "email_heading_id" | "footer_title_id" | "footer_sendoff_id">
 S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
+
+//
+// attachPropertySignature
+//
+
+// $ExpectType Schema<{ readonly radius: number; readonly kind: "circle"; }>
+pipe(S.struct({ radius: S.number }), S.attachPropertySignature("kind", "circle"))
