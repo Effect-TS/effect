@@ -1,5 +1,11 @@
 # @fp-ts/schema
 
+## 0.3.2
+
+### Patch Changes
+
+- [#112](https://github.com/fp-ts/schema/pull/112) [`7fdb986`](https://github.com/fp-ts/schema/commit/7fdb98638dad6cc7bf33ef127c4921e93089b0dc) Thanks [@gcanti](https://github.com/gcanti)! - Schema: add attachPropertySignature
+
 ## 0.3.1
 
 ### Patch Changes
