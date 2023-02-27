@@ -28,14 +28,14 @@ export const currentSpan = FiberRef.unsafeMake(Option.none<OtelApi.Span>())
 /**
  * @since 1.0.0
  */
-export const withSpanOptions: {
-  (name: string, options: OtelApi.SpanOptions): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options: OtelApi.SpanOptions): Effect.Effect<R, E, A>
+export const withSpan: {
+  (name: string, options?: OtelApi.SpanOptions): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: OtelApi.SpanOptions): Effect.Effect<R, E, A>
 } = Debug.dualWithTrace<
-  (name: string, options: OtelApi.SpanOptions) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options: OtelApi.SpanOptions) => Effect.Effect<R, E, A>
+  (name: string, options?: OtelApi.SpanOptions) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(self: Effect.Effect<R, E, A>, name: string, options?: OtelApi.SpanOptions) => Effect.Effect<R, E, A>
 >(
-  3,
+  (args) => typeof args[0] !== "string",
   (trace) =>
     (self, name, options) =>
       FiberRef.getWith(currentApi, (maybeApi) =>
@@ -81,17 +81,6 @@ export const withSpanOptions: {
               )
         )).traced(trace)
 )
-
-/**
- * @since 1.0.0
- */
-export const withSpan: {
-  (name: string): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
-  <R, E, A>(self: Effect.Effect<R, E, A>, name: string): Effect.Effect<R, E, A>
-} = Debug.dualWithTrace<
-  (name: string) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, name: string) => Effect.Effect<R, E, A>
->(2, (trace) => (self, name) => withSpanOptions(self, name, {}).traced(trace))
 
 /**
  * @since 1.0.0
