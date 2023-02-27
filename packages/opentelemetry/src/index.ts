@@ -93,12 +93,15 @@ export const Api = Layer.scopedDiscard(
  * @since 1.0.0
  */
 export const Tracer = (name: string, version?: string) =>
-  Layer.scopedDiscard(
-    FiberRef.getWith(
-      currentApi,
-      (maybeApi) =>
-        maybeApi._tag === "None" ?
-          Effect.unit() :
-          FiberRef.locallyScoped(currentTracer, Option.some(maybeApi.value.trace.getTracer(name, version)))
+  Layer.provide(
+    Api,
+    Layer.scopedDiscard(
+      FiberRef.getWith(
+        currentApi,
+        (maybeApi) =>
+          maybeApi._tag === "None" ?
+            Effect.unit() :
+            FiberRef.locallyScoped(currentTracer, Option.some(maybeApi.value.trace.getTracer(name, version)))
+      )
     )
   )
