@@ -3,27 +3,86 @@
  */
 import * as OtelApi from "@opentelemetry/api"
 
-import * as Option from "@effect/data/Option"
+import * as Context from "@effect/data/Context"
 import * as Cause from "@effect/io/Cause"
 import * as Debug from "@effect/io/Debug"
 import * as Effect from "@effect/io/Effect"
-import * as FiberRef from "@effect/io/FiberRef"
 import * as Layer from "@effect/io/Layer"
 
 /**
  * @since 1.0.0
  */
-export const currentApi = FiberRef.unsafeMake(Option.none<typeof OtelApi>())
+export interface Tracer extends OtelApi.Tracer {}
 
 /**
  * @since 1.0.0
  */
-export const currentTracer = FiberRef.unsafeMake(Option.none<OtelApi.Tracer>())
+export interface Meter extends OtelApi.Meter {}
 
 /**
  * @since 1.0.0
  */
-export const currentSpan = FiberRef.unsafeMake(Option.none<OtelApi.Span>())
+export interface Span extends OtelApi.Span {}
+
+/**
+ * @since 1.0.0
+ */
+export interface SpanOptions extends OtelApi.SpanOptions {}
+
+/**
+ * @since 1.0.0
+ */
+export const TelemetryTypeId = Symbol.for("@effect/opentelemetry/TelemetryTypeId")
+
+/**
+ * @since 1.0.0
+ */
+export type TelemetryTypeId = typeof TelemetryTypeId
+
+/**
+ * @since 1.0.0
+ */
+export type Api = typeof OtelApi
+
+/**
+ * @since 1.0.0
+ */
+export interface Telemetry {
+  readonly [TelemetryTypeId]: TelemetryTypeId
+  readonly api: Api
+  readonly tracer: Tracer
+  readonly meter: Meter
+}
+
+/**
+ * @since 1.0.0
+ */
+export const currentTelemetryTag = Context.Tag<Telemetry>("@effect/opentelemetry/currentTelemetryTag")
+
+/**
+ * @since 1.0.0
+ */
+export const currentSpanTag = Context.Tag<Span>("@effect/opentelemetry/currentSpanTag")
+
+/**
+ * @since 1.0.0
+ */
+export const currentSpanOption = Debug.methodWithTrace((trace) =>
+  (_: void) =>
+    Effect.contextWith(
+      (ctx: Context.Context<never>) => Context.getOption(ctx, currentSpanTag)
+    ).traced(trace)
+)
+
+/**
+ * @since 1.0.0
+ */
+export const currentTelemetryOption = Debug.methodWithTrace((trace) =>
+  (_: void) =>
+    Effect.contextWith(
+      (ctx: Context.Context<never>) => Context.getOption(ctx, currentTelemetryTag)
+    ).traced(trace)
+)
 
 /**
  * @since 1.0.0
@@ -38,70 +97,60 @@ export const withSpan: {
   (args) => typeof args[0] !== "string",
   (trace) =>
     (self, name, options) =>
-      FiberRef.getWith(currentApi, (maybeApi) =>
-        maybeApi._tag === "None" ? self : FiberRef.getWith(
-          currentTracer,
-          (maybeTracer) =>
-            maybeTracer._tag === "None" ?
-              self :
-              FiberRef.getWith(
-                currentSpan,
-                (maybeParent) =>
-                  Effect.acquireUseRelease(
-                    Effect.sync(() => {
-                      const active = maybeApi.value.context.active()
-                      if (maybeParent._tag === "Some") {
-                        const context = maybeApi.value.trace.setSpan(active, maybeParent.value)
-                        return maybeTracer.value.startSpan(name, options ? {} : {}, context)
-                      }
-                      return maybeTracer.value.startSpan(name, options ? {} : {}, active)
-                    }),
-                    (span) => FiberRef.locally(currentSpan, Option.some(span))(self),
-                    (span, exit) =>
-                      Effect.sync(() => {
-                        if (exit._tag === "Success") {
-                          span.setStatus({
-                            code: maybeApi.value.SpanStatusCode.OK
-                          })
-                        } else {
-                          if (Cause.isInterruptedOnly(exit.cause)) {
-                            span.setStatus({
-                              code: maybeApi.value.SpanStatusCode.OK
-                            })
-                          } else {
-                            span.setStatus({
-                              code: maybeApi.value.SpanStatusCode.ERROR,
-                              message: Cause.pretty(exit.cause)
-                            })
-                          }
-                        }
-                        span.end()
-                      })
-                  )
-              )
-        )).traced(trace)
+      Effect.contextWithEffect((ctx: Context.Context<never>) => {
+        const maybeTelemetry = Context.getOption(ctx, currentTelemetryTag)
+        return maybeTelemetry._tag === "None" ?
+          self :
+          Effect.acquireUseRelease(
+            Effect.sync(() => {
+              const maybeParent = Context.getOption(ctx, currentSpanTag)
+              const active = maybeTelemetry.value.api.context.active()
+              if (maybeParent._tag === "Some") {
+                const context = maybeTelemetry.value.api.trace.setSpan(active, maybeParent.value)
+                return maybeTelemetry.value.tracer.startSpan(name, options, context)
+              }
+              return maybeTelemetry.value.tracer.startSpan(name, options, active)
+            }),
+            (span) => Effect.provideService(currentSpanTag, span)(self),
+            (span, exit) =>
+              Effect.sync(() => {
+                if (exit._tag === "Success") {
+                  span.setStatus({
+                    code: maybeTelemetry.value.api.SpanStatusCode.OK
+                  })
+                } else {
+                  if (Cause.isInterruptedOnly(exit.cause)) {
+                    span.setStatus({
+                      code: maybeTelemetry.value.api.SpanStatusCode.OK
+                    })
+                  } else {
+                    span.setStatus({
+                      code: maybeTelemetry.value.api.SpanStatusCode.ERROR,
+                      message: Cause.pretty(exit.cause)
+                    })
+                  }
+                }
+                span.end()
+              })
+          )
+      }).traced(trace)
 )
 
 /**
  * @since 1.0.0
  */
-export const Api = Layer.scopedDiscard(
-  Effect.suspendSucceed(() => FiberRef.locallyScoped(currentApi, Option.some(OtelApi)))
-)
-
-/**
- * @since 1.0.0
- */
-export const Tracer = (name: string, version?: string) =>
-  Layer.provide(
-    Api,
-    Layer.scopedDiscard(
-      FiberRef.getWith(
-        currentApi,
-        (maybeApi) =>
-          maybeApi._tag === "None" ?
-            Effect.unit() :
-            FiberRef.locallyScoped(currentTracer, Option.some(maybeApi.value.trace.getTracer(name, version)))
-      )
-    )
+export const Telemetry = (
+  { meter, tracer }: {
+    meter: { name: string; version?: string }
+    tracer: { name: string; version?: string }
+  }
+) =>
+  Layer.sync(
+    currentTelemetryTag,
+    () => ({
+      tracer: OtelApi.trace.getTracer(tracer.name, tracer.version),
+      meter: OtelApi.metrics.getMeter(meter.name, meter.version),
+      api: OtelApi,
+      [TelemetryTypeId]: TelemetryTypeId
+    } as const)
   )
