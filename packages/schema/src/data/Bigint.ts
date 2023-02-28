@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import * as B from "@effect/data/Bigint"
 import { pipe } from "@effect/data/Function"
 import * as I from "@fp-ts/schema/internal/common"
 import type { AnnotationOptions, Schema } from "@fp-ts/schema/Schema"
@@ -136,3 +137,19 @@ export const nonPositive = <A extends bigint>(
     custom: { type: "nonPositive" },
     ...annotationOptions
   })
+
+/**
+ * Clamps a bigint between a minimum and a maximum value.
+ *
+ * @since 1.0.0
+ */
+export const clamp = <A extends bigint>(min: bigint, max: bigint) =>
+  (self: Schema<A>): Schema<A> =>
+    pipe(
+      self,
+      I.transform(
+        pipe(self, between(min, max)),
+        (self) => B.clamp(self, min, max) as A,
+        (self) => B.clamp(self, min, max) as A
+      )
+    )

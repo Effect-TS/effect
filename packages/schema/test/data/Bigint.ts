@@ -4,6 +4,14 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Bigint", () => {
+  it("clamp", () => {
+    const schema = pipe(S.bigint, B.clamp(-1n, 1n))
+
+    Util.expectDecodingSuccess(schema, 3n, 1n)
+    Util.expectDecodingSuccess(schema, 0n, 0n)
+    Util.expectDecodingSuccess(schema, -3n, -1n)
+  })
+
   it("greaterThan", () => {
     const schema = pipe(S.bigint, B.greaterThan(0n))
 

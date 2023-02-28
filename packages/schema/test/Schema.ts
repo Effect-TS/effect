@@ -14,6 +14,7 @@ describe.concurrent("Schema", () => {
     expect(S.negative).exist
     expect(S.nonNegative).exist
     expect(S.nonPositive).exist
+    expect(S.clamp).exist
     expect(S.maxItems).exist
     expect(S.minItems).exist
     expect(S.itemsCount).exist

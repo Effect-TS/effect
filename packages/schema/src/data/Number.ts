@@ -196,3 +196,19 @@ export const nonPositive = <A extends number>(
     custom: { type: "nonPositive" },
     ...annotationOptions
   })
+
+/**
+ * Clamps a number between a minimum and a maximum value.
+ *
+ * @since 1.0.0
+ */
+export const clamp = <A extends number>(min: number, max: number) =>
+  (self: Schema<A>): Schema<A> =>
+    pipe(
+      self,
+      I.transform(
+        pipe(self, between<A>(min, max)),
+        (self) => N.clamp(self, min, max) as A,
+        (self) => N.clamp(self, min, max) as A
+      )
+    )

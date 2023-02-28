@@ -919,3 +919,15 @@ export const trim = (item: Schema<string>): Schema<string> => S.trim(item)
  * @since 1.0.0
  */
 export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.fromNullable
+
+/**
+ * Restricts the value to be within the range specified by the minimum and maximum values.
+ *
+ * @category parsers
+ * @since 1.0.0
+ */
+export const clamp: <A extends number>(
+  min: number,
+  max: number,
+  options?: AnnotationOptions<A>
+) => (self: Schema<A>) => Schema<A> = N.clamp

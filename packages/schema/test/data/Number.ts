@@ -4,6 +4,14 @@ import * as S from "@fp-ts/schema/Schema"
 import * as Util from "@fp-ts/schema/test/util"
 
 describe.concurrent("Number", () => {
+  it("clamp", () => {
+    const schema = pipe(S.number, N.clamp(-1, 1))
+
+    Util.expectDecodingSuccess(schema, 3, 1)
+    Util.expectDecodingSuccess(schema, 0, 0)
+    Util.expectDecodingSuccess(schema, -3, -1)
+  })
+
   it("between", () => {
     const schema = pipe(S.number, N.between(-1, 1))
 
