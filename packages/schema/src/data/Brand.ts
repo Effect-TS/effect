@@ -10,6 +10,11 @@ import type * as S from "@effect/schema/Schema"
 /**
  * @since 1.0.0
  */
+export const BrandTypeId = "@effect/schema/data/Brand/BrandTypeId"
+
+/**
+ * @since 1.0.0
+ */
 export const brand = <C extends B.Brand<string>>(
   constructor: B.Brand.Constructor<C>,
   annotationOptions?: S.AnnotationOptions<B.Brand.Unbranded<C>>
@@ -20,10 +25,11 @@ export const brand = <C extends B.Brand<string>>(
       I.filter<A, A & C>(
         (x): x is A & C => constructor.refine(x),
         {
+          typeId: BrandTypeId,
           message: (a) =>
             (constructor.either(a) as E.Left<B.Brand.BrandErrors>).left.map((v) => v.message)
               .join(", "),
-          ...(annotationOptions ?? {})
+          ...annotationOptions
         }
       )
     )

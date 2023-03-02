@@ -1,10 +1,19 @@
-import { trim } from "@effect/schema/data/String"
+import * as String from "@effect/schema/data/String"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("trim", () => {
-  const schema = trim(S.string)
+  it("exports", () => {
+    expect(String.TrimmedTypeId).exist
+    expect(String.PatternTypeId).exist
+    expect(String.StartsWithTypeId).exist
+    expect(String.EndsWithTypeId).exist
+    expect(String.IncludesTypeId).exist
+    expect(String.UUIDTypeId).exist
+  })
+
+  const schema = String.trim(S.string)
 
   it("property tests", () => {
     Util.property(schema)

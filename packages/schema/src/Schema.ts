@@ -82,7 +82,7 @@ export const enums = <A extends { [x: string]: string | number }>(
 export const instanceOf: <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotationOptions?: AnnotationOptions<object>
-) => (self: Schema<object>) => Schema<InstanceType<A>> = O.instanceOf
+) => Schema<InstanceType<A>> = O.instanceOf
 
 /**
  * @since 1.0.0
@@ -666,6 +666,7 @@ export const lazy: <A>(
  * @since 1.0.0
  */
 export type AnnotationOptions<A> = {
+  typeId?: A.Type | { id: A.Type; params: unknown }
   message?: A.Message<A>
   identifier?: A.Identifier
   title?: A.Title
@@ -673,7 +674,6 @@ export type AnnotationOptions<A> = {
   examples?: A.Examples
   documentation?: A.Documentation
   jsonSchema?: A.JSONSchema
-  custom?: A.Custom
 }
 
 /**
@@ -918,7 +918,7 @@ export const trim = (item: Schema<string>): Schema<string> => S.trim(item)
  * @category parsers
  * @since 1.0.0
  */
-export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.fromNullable
+export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.parseNullable
 
 /**
  * Restricts the value to be within the range specified by the minimum and maximum values.

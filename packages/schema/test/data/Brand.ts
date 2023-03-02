@@ -23,6 +23,10 @@ type Eur = number & B.Brand<"Eur">
 const Eur = B.nominal<Eur>()
 
 describe.concurrent("Brand", () => {
+  it("exports", () => {
+    expect(_.BrandTypeId).exist
+  })
+
   it("property tests", () => {
     Util.property(_.brand(Int)(S.number)) // refined
     Util.property(_.brand(Eur)(S.number)) // nominal

@@ -1,17 +1,17 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as S from "@effect/schema"
+import { parseString } from "@effect/schema/data/Number"
 import * as _ from "@effect/schema/data/Option"
-import { parseNumber } from "@effect/schema/data/String"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = pipe(S.string, parseNumber)
+const NumberFromString = pipe(S.string, parseString)
 
 describe.concurrent("Option", () => {
   it("option. property tests", () => {
-    Util.property(_.fromNullable(NumberFromString))
+    Util.property(_.parseNullable(NumberFromString))
   })
 
   it("option. Guard", () => {
@@ -39,12 +39,12 @@ describe.concurrent("Option", () => {
     expect(pretty(O.some(1))).toEqual("some(1)")
   })
 
-  it("fromNullable. property tests", () => {
-    Util.property(_.fromNullable(S.number))
+  it("parseNullable. property tests", () => {
+    Util.property(_.parseNullable(S.number))
   })
 
-  it("fromNullable. Decoder", () => {
-    const schema = _.fromNullable(NumberFromString)
+  it("parseNullable. Decoder", () => {
+    const schema = _.parseNullable(NumberFromString)
     Util.expectDecodingSuccess(schema, undefined, O.none())
     Util.expectDecodingSuccess(schema, null, O.none())
     Util.expectDecodingSuccess(schema, "1", O.some(1))
@@ -65,8 +65,8 @@ describe.concurrent("Option", () => {
     )
   })
 
-  it("fromNullable. Encoder", () => {
-    const schema = _.fromNullable(NumberFromString)
+  it("parseNullable. Encoder", () => {
+    const schema = _.parseNullable(NumberFromString)
     Util.expectEncodingSuccess(schema, O.none(), null)
     Util.expectEncodingSuccess(schema, O.some(1), "1")
   })

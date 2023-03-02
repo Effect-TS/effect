@@ -86,6 +86,15 @@ export const annotations = (annotations: AST.Annotated["annotations"]) =>
 
 const toAnnotations = <A>(options?: S.AnnotationOptions<A>): AST.Annotated["annotations"] => {
   const annotations: AST.Annotated["annotations"] = {}
+  if (options?.typeId !== undefined) {
+    const typeId = options?.typeId
+    if (typeof typeId === "object") {
+      annotations[A.TypeId] = typeId.id
+      annotations[typeId.id] = typeId.params
+    } else {
+      annotations[A.TypeId] = typeId
+    }
+  }
   if (options?.message !== undefined) {
     annotations[A.MessageId] = options?.message
   }
@@ -106,9 +115,6 @@ const toAnnotations = <A>(options?: S.AnnotationOptions<A>): AST.Annotated["anno
   }
   if (options?.jsonSchema !== undefined) {
     annotations[A.JSONSchemaId] = options?.jsonSchema
-  }
-  if (options?.custom !== undefined) {
-    annotations[A.CustomId] = options?.custom
   }
   return annotations
 }

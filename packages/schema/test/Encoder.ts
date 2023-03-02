@@ -1,12 +1,12 @@
 import { pipe } from "@effect/data/Function"
 import type { ParseOptions } from "@effect/schema/AST"
-import { parseNumber } from "@effect/schema/data/String"
+import { parseString } from "@effect/schema/data/Number"
 import * as E from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 // raises an error while encoding from a number if the string is not a char
-const NumberFromString = pipe(S.string, S.maxLength(1), parseNumber)
+const NumberFromString = pipe(S.string, S.maxLength(1), parseString)
 
 // raises an error while encoding if the string is not a char
 const MustChar = pipe(S.string, S.maxLength(1))
@@ -493,7 +493,7 @@ describe.concurrent("Encoder", () => {
   })
 
   it("encode parsed number with refinement", () => {
-    const schema = pipe(parseNumber(S.string), S.int())
+    const schema = pipe(parseString(S.string), S.int())
     Util.expectEncodingSuccess(schema, 1, "1")
   })
 })

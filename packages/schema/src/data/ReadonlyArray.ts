@@ -13,18 +13,6 @@ import type { AnnotationOptions, Schema } from "@effect/schema/Schema"
 export const MinItemsId = "@effect/schema/ReadonlyArray/minItems"
 
 /**
- * @category identifiers
- * @since 1.0.0
- */
-export const MaxItemsId = "@effect/schema/ReadonlyArray/maxItems"
-
-/**
- * @category identifiers
- * @since 1.0.0
- */
-export const ItemsCountId = "@effect/schema/ReadonlyArray/itemsCount"
-
-/**
  * @since 1.0.0
  */
 export const minItems = <A>(
@@ -35,12 +23,17 @@ export const minItems = <A>(
     pipe(
       self,
       I.filter((a): a is ReadonlyArray<A> => a.length >= n, {
+        typeId: MinItemsId,
         description: `an array of at least ${n} items`,
         jsonSchema: { minItems: n },
-        custom: { id: MinItemsId },
         ...annotationOptions
       })
     )
+
+/**
+ * @since 1.0.0
+ */
+export const MaxItemsId = "@effect/schema/ReadonlyArray/maxItems"
 
 /**
  * @since 1.0.0
@@ -53,12 +46,17 @@ export const maxItems = <A>(
     pipe(
       self,
       I.filter((a): a is ReadonlyArray<A> => a.length <= n, {
+        typeId: MaxItemsId,
         description: `an array of at most ${n} items`,
         jsonSchema: { maxItems: n },
-        custom: { id: MaxItemsId },
         ...annotationOptions
       })
     )
+
+/**
+ * @since 1.0.0
+ */
+export const ItemsCountId = "@effect/schema/ReadonlyArray/itemsCount"
 
 /**
  * @since 1.0.0
@@ -71,9 +69,9 @@ export const itemsCount = <A>(
     pipe(
       self,
       I.filter((a): a is ReadonlyArray<A> => a.length === n, {
+        typeId: ItemsCountId,
         description: `an array of exactly ${n} items`,
         jsonSchema: { minItems: n, maxItems: n },
-        custom: { id: ItemsCountId },
         ...annotationOptions
       })
     )

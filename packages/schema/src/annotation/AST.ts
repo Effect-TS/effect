@@ -15,12 +15,12 @@ export const BrandId = "@effect/schema/annotation/BrandId"
 /**
  * @since 1.0.0
  */
-export type Custom = unknown
+export type Type = string | symbol
 
 /**
  * @since 1.0.0
  */
-export const CustomId = "@effect/schema/annotation/CustomId"
+export const TypeId = "@effect/schema/annotation/TypeId"
 
 /**
  * @since 1.0.0

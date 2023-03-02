@@ -4,6 +4,18 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Bigint", () => {
+  it("exports", () => {
+    expect(B.GreaterThanTypeId).exist
+    expect(B.GreaterThanOrEqualToTypeId).exist
+    expect(B.LessThanTypeId).exist
+    expect(B.LessThanOrEqualToTypeId).exist
+    expect(B.BetweenTypeId).exist
+    expect(B.PositiveTypeId).exist
+    expect(B.NegativeTypeId).exist
+    expect(B.NonNegativeTypeId).exist
+    expect(B.NonPositiveTypeId).exist
+  })
+
   it("clamp", () => {
     const schema = pipe(S.bigint, B.clamp(-1n, 1n))
 

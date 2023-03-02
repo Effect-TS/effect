@@ -386,7 +386,7 @@ describe.concurrent("AST", () => {
   })
 
   it("getPropertySignatures/ type alias", () => {
-    const schema = DataOption.fromNullable(S.number)
+    const schema = DataOption.parseNullable(S.number)
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "_tag",

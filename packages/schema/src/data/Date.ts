@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { pipe } from "@effect/data/Function"
 import { isDate } from "@effect/data/Predicate"
 import { IdentifierId } from "@effect/schema/annotation/AST"
 import * as H from "@effect/schema/annotation/Hook"
@@ -27,3 +28,25 @@ export const date: Schema<Date> = I.typeAlias([], I.struct({}), {
   [H.PrettyHookId]: H.hook(pretty),
   [H.ArbitraryHookId]: H.hook(arbitrary)
 })
+
+/**
+  Transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+
+  @since 1.0.0
+*/
+export const parseString = (self: Schema<string>): Schema<Date> => {
+  const schema: Schema<Date> = pipe(
+    self,
+    I.transformOrFail(
+      date,
+      (s) => {
+        const n = Date.parse(s)
+        return isNaN(n)
+          ? PR.failure(PR.type(schema.ast, s))
+          : PR.success(new Date(n))
+      },
+      (n) => PR.success(n.toISOString())
+    )
+  )
+  return schema
+}

@@ -1,13 +1,13 @@
 import * as C from "@effect/data/Chunk"
 import { pipe } from "@effect/data/Function"
 import * as _ from "@effect/schema/data/Chunk"
-import { parseNumber } from "@effect/schema/data/String"
+import { parseString } from "@effect/schema/data/Number"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = pipe(S.string, parseNumber)
+const NumberFromString = pipe(S.string, parseString)
 
 describe.concurrent("Chunk", () => {
   it("chunk. keyof", () => {

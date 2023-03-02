@@ -18,6 +18,7 @@ describe.concurrent("Schema", () => {
     expect(S.maxItems).exist
     expect(S.minItems).exist
     expect(S.itemsCount).exist
+    expect(S.annotations).exist
   })
 
   it("brand", () => {
@@ -31,6 +32,7 @@ describe.concurrent("Schema", () => {
       })
     )
     expect(Branded.ast.annotations).toEqual({
+      [A.TypeId]: "@effect/schema/data/Number/IntTypeId",
       [A.BrandId]: ["A", "B"],
       [A.DescriptionId]: "a B brand",
       [A.JSONSchemaId]: { type: "integer" }
@@ -426,7 +428,7 @@ describe.concurrent("Schema", () => {
     const schema = pipe(
       S.string,
       S.filter((s): s is string => s.length === 1, {
-        custom: { type: "Char" },
+        typeId: "Char",
         description: "description",
         documentation: "documentation",
         examples: ["examples"],
@@ -436,9 +438,7 @@ describe.concurrent("Schema", () => {
       })
     )
     expect(schema.ast.annotations).toEqual({
-      "@effect/schema/annotation/CustomId": {
-        "type": "Char"
-      },
+      [A.TypeId]: "Char",
       "@effect/schema/annotation/DescriptionId": "description",
       "@effect/schema/annotation/DocumentationId": "documentation",
       "@effect/schema/annotation/ExamplesId": [

@@ -3,10 +3,14 @@
  */
 
 import { pipe } from "@effect/data/Function"
-import * as D from "@effect/schema/data/Date"
+import * as H from "@effect/schema/annotation/Hook"
 import * as I from "@effect/schema/internal/common"
-import * as PR from "@effect/schema/ParseResult"
 import type { AnnotationOptions, Schema } from "@effect/schema/Schema"
+
+/**
+ * @since 1.0.0
+ */
+export const TrimmedTypeId = "@effect/schema/data/String/TrimmedTypeId"
 
 const trimmedRegex = /^\S.*\S$|^\S$|^$/
 
@@ -23,8 +27,8 @@ export const trimmed = <A extends string>(annotationOptions?: AnnotationOptions<
     pipe(
       self,
       I.filter((a): a is A => trimmedRegex.test(a), {
+        typeId: TrimmedTypeId,
         description: "a string with no leading or trailing whitespace",
-        custom: { type: "trimmed" },
         jsonSchema: {
           type: "string",
           pattern: trimmedRegex.source
@@ -76,6 +80,11 @@ export const minLength = <A extends string>(
 /**
  * @since 1.0.0
  */
+export const PatternTypeId = "@effect/schema/data/String/PatternTypeId"
+
+/**
+ * @since 1.0.0
+ */
 export const pattern = <A extends string>(
   regex: RegExp,
   annotationOptions?: AnnotationOptions<A>
@@ -91,14 +100,19 @@ export const pattern = <A extends string>(
           return regex.test(a)
         },
         {
+          typeId: { id: PatternTypeId, params: { regex } },
           description: `a string matching the pattern ${pattern}`,
           jsonSchema: { pattern },
-          custom: { type: "pattern", regex },
           ...annotationOptions
         }
       )
     )
   }
+
+/**
+ * @since 1.0.0
+ */
+export const StartsWithTypeId = "@effect/schema/data/String/StartsWithTypeId"
 
 /**
  * @since 1.0.0
@@ -113,13 +127,18 @@ export const startsWith = <A extends string>(
       I.filter(
         (a): a is A => a.startsWith(startsWith),
         {
+          typeId: { id: StartsWithTypeId, params: { startsWith } },
           description: `a string starting with ${JSON.stringify(startsWith)}`,
           jsonSchema: { pattern: `^${startsWith}` },
-          custom: { type: "startsWith", startsWith },
           ...annotationOptions
         }
       )
     )
+
+/**
+ * @since 1.0.0
+ */
+export const EndsWithTypeId = "@effect/schema/data/String/EndsWithTypeId"
 
 /**
  * @since 1.0.0
@@ -134,13 +153,18 @@ export const endsWith = <A extends string>(
       I.filter(
         (a): a is A => a.endsWith(endsWith),
         {
+          typeId: { id: EndsWithTypeId, params: { endsWith } },
           description: `a string ending with ${JSON.stringify(endsWith)}`,
           jsonSchema: { pattern: `^.*${endsWith}$` },
-          custom: { type: "endsWith", endsWith },
           ...annotationOptions
         }
       )
     )
+
+/**
+ * @since 1.0.0
+ */
+export const IncludesTypeId = "@effect/schema/data/String/IncludesTypeId"
 
 /**
  * @since 1.0.0
@@ -155,44 +179,13 @@ export const includes = <A extends string>(
       I.filter(
         (a): a is A => a.includes(searchString),
         {
+          typeId: { id: IncludesTypeId, params: { includes: searchString } },
           description: `a string including ${JSON.stringify(searchString)}`,
           jsonSchema: { pattern: `.*${searchString}.*` },
-          custom: { type: "includes", includes: searchString },
           ...annotationOptions
         }
       )
     )
-
-/**
-  Transforms a `string` into a `number` by parsing the string using `parseFloat`.
-
-  The following special string values are supported: "NaN", "Infinity", "-Infinity".
-
-  @since 1.0.0
-*/
-export const parseNumber = (self: Schema<string>): Schema<number> => {
-  const schema: Schema<number> = pipe(
-    self,
-    I.transformOrFail(
-      I.number,
-      (s) => {
-        if (s === "NaN") {
-          return PR.success(NaN)
-        }
-        if (s === "Infinity") {
-          return PR.success(Infinity)
-        }
-        if (s === "-Infinity") {
-          return PR.success(-Infinity)
-        }
-        const n = parseFloat(s)
-        return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
-      },
-      (n) => PR.success(String(n))
-    )
-  )
-  return schema
-}
 
 /**
  * The `trim` parser allows removing whitespaces from the beginning and end of a string.
@@ -210,23 +203,21 @@ export const trim = (self: Schema<string>): Schema<string> =>
   )
 
 /**
-  Transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+ * @since 1.0.0
+ */
+export const UUIDTypeId = "@effect/schema/data/String/UUIDTypeId"
 
-  @since 1.0.0
-*/
-export const parseDate = (self: Schema<string>): Schema<Date> => {
-  const schema: Schema<Date> = pipe(
-    self,
-    I.transformOrFail(
-      D.date,
-      (s) => {
-        const n = Date.parse(s)
-        return isNaN(n)
-          ? PR.failure(PR.type(schema.ast, s))
-          : PR.success(new Date(n))
-      },
-      (n) => PR.success(n.toISOString())
-    )
-  )
-  return schema
-}
+const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
+
+/**
+ * @since 1.0.0
+ */
+export const UUID: Schema<string> = pipe(
+  I.string,
+  pattern(uuidRegex, {
+    typeId: UUIDTypeId
+  }),
+  I.annotations({
+    [H.ArbitraryHookId]: H.hook(() => I.makeArbitrary(UUID, (fc) => fc.uuid()))
+  })
+)
