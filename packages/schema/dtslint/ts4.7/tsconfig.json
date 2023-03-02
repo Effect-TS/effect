@@ -15,10 +15,10 @@
     "target": "ES2021",
     "lib": ["es2015"],
     "paths": {
-      "@fp-ts/schema": ["../../src/index.ts"],
-      "@fp-ts/schema/test/*": ["../../test/*"],
-      "@fp-ts/schema/examples/*": ["../../examples/*"],
-      "@fp-ts/schema/*": ["../../src/*"]
+      "@effect/schema": ["../../src/index.ts"],
+      "@effect/schema/test/*": ["../../test/*"],
+      "@effect/schema/examples/*": ["../../examples/*"],
+      "@effect/schema/*": ["../../src/*"]
     }
   }
 }

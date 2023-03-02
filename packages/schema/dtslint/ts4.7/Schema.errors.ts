@@ -1,5 +1,5 @@
 import { pipe } from "@effect/data/Function";
-import * as S from "@fp-ts/schema/Schema";
+import * as S from "@effect/schema/Schema";
 
 // optional/ should not allow combinators afterwards
 // $ExpectError

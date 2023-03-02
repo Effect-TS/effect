@@ -1,5 +1,5 @@
 import { pipe } from "@effect/data/Function";
-import * as S from "@fp-ts/schema";
+import * as S from "@effect/schema";
 
 //
 // brand
@@ -248,7 +248,7 @@ class Test {
 }
 
 // $ExpectType Schema<Test>
-pipe(S.object, S.instanceOf(Test));
+S.instanceOf(Test);
 
 //
 // Template literals
