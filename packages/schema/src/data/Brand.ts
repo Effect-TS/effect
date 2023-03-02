@@ -4,8 +4,8 @@
 import type * as B from "@effect/data/Brand"
 import type * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
-import * as I from "@fp-ts/schema/internal/common"
-import type * as S from "@fp-ts/schema/Schema"
+import * as I from "@effect/schema/internal/common"
+import type * as S from "@effect/schema/Schema"
 
 /**
  * @since 1.0.0

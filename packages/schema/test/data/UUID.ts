@@ -1,6 +1,6 @@
-import * as _ from "@fp-ts/schema/data/UUID"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import * as _ from "@effect/schema/data/UUID"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("UUID", () => {
   const schema = _.UUID

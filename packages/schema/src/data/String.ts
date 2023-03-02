@@ -3,10 +3,10 @@
  */
 
 import { pipe } from "@effect/data/Function"
-import * as D from "@fp-ts/schema/data/Date"
-import * as I from "@fp-ts/schema/internal/common"
-import * as PR from "@fp-ts/schema/ParseResult"
-import type { AnnotationOptions, Schema } from "@fp-ts/schema/Schema"
+import * as D from "@effect/schema/data/Date"
+import * as I from "@effect/schema/internal/common"
+import * as PR from "@effect/schema/ParseResult"
+import type { AnnotationOptions, Schema } from "@effect/schema/Schema"
 
 const trimmedRegex = /^\S.*\S$|^\S$|^$/
 

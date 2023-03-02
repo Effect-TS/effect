@@ -1,5 +1,5 @@
-import * as _ from "@fp-ts/schema/data/UUID"
-import * as Util from "@fp-ts/schema/test/util"
+import * as _ from "@effect/schema/data/UUID"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("UUID", () => {
   it("property tests", () => {

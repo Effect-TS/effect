@@ -2,14 +2,14 @@
  * @since 1.0.0
  */
 import { pipe } from "@effect/data/Function"
-import { IdentifierId } from "@fp-ts/schema/annotation/AST"
-import * as H from "@fp-ts/schema/annotation/Hook"
-import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as I from "@fp-ts/schema/internal/common"
-import * as P from "@fp-ts/schema/Parser"
-import * as PR from "@fp-ts/schema/ParseResult"
-import type { Pretty } from "@fp-ts/schema/Pretty"
-import type { Schema } from "@fp-ts/schema/Schema"
+import { IdentifierId } from "@effect/schema/annotation/AST"
+import * as H from "@effect/schema/annotation/Hook"
+import type { Arbitrary } from "@effect/schema/Arbitrary"
+import * as I from "@effect/schema/internal/common"
+import * as P from "@effect/schema/Parser"
+import * as PR from "@effect/schema/ParseResult"
+import type { Pretty } from "@effect/schema/Pretty"
+import type { Schema } from "@effect/schema/Schema"
 
 const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
 

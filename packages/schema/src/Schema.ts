@@ -7,17 +7,17 @@ import { pipe } from "@effect/data/Function"
 import type { Option } from "@effect/data/Option"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as A from "@fp-ts/schema/annotation/AST"
-import * as AST from "@fp-ts/schema/AST"
-import type { ParseOptions } from "@fp-ts/schema/AST"
-import * as DataDate from "@fp-ts/schema/data/Date"
-import * as N from "@fp-ts/schema/data/Number"
-import * as O from "@fp-ts/schema/data/Object"
-import * as DataOption from "@fp-ts/schema/data/Option"
-import * as SRA from "@fp-ts/schema/data/ReadonlyArray"
-import * as S from "@fp-ts/schema/data/String"
-import * as I from "@fp-ts/schema/internal/common"
-import type { ParseResult } from "@fp-ts/schema/ParseResult"
+import * as A from "@effect/schema/annotation/AST"
+import * as AST from "@effect/schema/AST"
+import type { ParseOptions } from "@effect/schema/AST"
+import * as DataDate from "@effect/schema/data/Date"
+import * as N from "@effect/schema/data/Number"
+import * as O from "@effect/schema/data/Object"
+import * as DataOption from "@effect/schema/data/Option"
+import * as SRA from "@effect/schema/data/ReadonlyArray"
+import * as S from "@effect/schema/data/String"
+import * as I from "@effect/schema/internal/common"
+import type { ParseResult } from "@effect/schema/ParseResult"
 
 /**
  * @category model
@@ -472,7 +472,7 @@ export type Spread<A> = {
  * @category symbol
  * @since 1.0.0
  */
-export const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
+export const OptionalSchemaId = Symbol.for("@effect/schema/Schema/OptionalSchema")
 
 /**
  * @category symbol
@@ -540,7 +540,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @param schema - The schema to extract property signatures from.
  *
  * @example
- * import * as S from "@fp-ts/schema"
+ * import * as S from "@effect/schema"
  *
  * const Person = S.struct({
  *   name: S.string,
@@ -574,7 +574,7 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
  * @param brand - The brand to apply.
  *
  * @example
- * import * as S from "@fp-ts/schema"
+ * import * as S from "@effect/schema"
  * import { pipe } from "@effect/data/Function"
  *
  * const Int = pipe(S.number, S.int(), S.brand("Int"))
@@ -731,7 +731,7 @@ export const transform: <A, B>(
  * @param value - The value of the property to add to the schema.
  *
  * @example
- * import * as S from "@fp-ts/schema"
+ * import * as S from "@effect/schema"
  * import { pipe } from "@effect/data/Function"
  *
  * const Circle = S.struct({ radius: S.number })

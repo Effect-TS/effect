@@ -1,10 +1,10 @@
 import { pipe } from "@effect/data/Function"
-import * as _ from "@fp-ts/schema/data/ReadonlySet"
-import { parseNumber } from "@fp-ts/schema/data/String"
-import * as P from "@fp-ts/schema/Parser"
-import * as Pretty from "@fp-ts/schema/Pretty"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import * as _ from "@effect/schema/data/ReadonlySet"
+import { parseNumber } from "@effect/schema/data/String"
+import * as P from "@effect/schema/Parser"
+import * as Pretty from "@effect/schema/Pretty"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 const NumberFromString = pipe(S.string, parseNumber)
 

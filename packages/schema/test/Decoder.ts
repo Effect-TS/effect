@@ -1,9 +1,9 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import type { ParseOptions } from "@fp-ts/schema/AST"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import type { ParseOptions } from "@effect/schema/AST"
+import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Decoder", () => {
   it("exports", () => {
@@ -305,13 +305,13 @@ describe.concurrent("Decoder", () => {
   })
 
   it("symbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.symbol
     Util.expectDecodingSuccess(schema, a)
     Util.expectDecodingFailure(
       schema,
-      "@fp-ts/schema/test/a",
-      `Expected symbol, actual "@fp-ts/schema/test/a"`
+      "@effect/schema/test/a",
+      `Expected symbol, actual "@effect/schema/test/a"`
     )
   })
 
@@ -350,14 +350,14 @@ describe.concurrent("Decoder", () => {
   })
 
   it("uniqueSymbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.uniqueSymbol(a)
     Util.expectDecodingSuccess(schema, a)
-    Util.expectDecodingSuccess(schema, Symbol.for("@fp-ts/schema/test/a"))
+    Util.expectDecodingSuccess(schema, Symbol.for("@effect/schema/test/a"))
     Util.expectDecodingFailure(
       schema,
-      "Symbol(@fp-ts/schema/test/a)",
-      `Expected Symbol(@fp-ts/schema/test/a), actual "Symbol(@fp-ts/schema/test/a)"`
+      "Symbol(@effect/schema/test/a)",
+      `Expected Symbol(@effect/schema/test/a), actual "Symbol(@effect/schema/test/a)"`
     )
   })
 
@@ -701,7 +701,7 @@ describe.concurrent("Decoder", () => {
   })
 
   it("struct/ record(symbol, number)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.record(S.symbol, S.number)
     Util.expectDecodingSuccess(schema, {})
     Util.expectDecodingSuccess(schema, { [a]: 1 })
@@ -714,7 +714,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { [a]: "a" },
-      `/Symbol(@fp-ts/schema/test/a) Expected number, actual "a"`
+      `/Symbol(@effect/schema/test/a) Expected number, actual "a"`
     )
   })
 
@@ -762,7 +762,7 @@ describe.concurrent("Decoder", () => {
       S.number
     )
     Util.expectDecodingSuccess(schema, { a: 1, b: 2 })
-    const c = Symbol.for("@fp-ts/schema/test/c")
+    const c = Symbol.for("@effect/schema/test/c")
     Util.expectDecodingSuccess(schema, { a: 1, b: 2, [c]: 3 })
 
     Util.expectDecodingFailure(schema, {}, `/a is missing`)
@@ -772,26 +772,26 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: 1, b: 2, [c]: "c" },
-      `/Symbol(@fp-ts/schema/test/c) Expected number, actual "c"`
+      `/Symbol(@effect/schema/test/c) Expected number, actual "c"`
     )
   })
 
   it("struct/ record(Symbol('a') | Symbol('b'), number)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
     Util.expectDecodingSuccess(schema, { [a]: 1, [b]: 2 })
 
-    Util.expectDecodingFailure(schema, {}, `/Symbol(@fp-ts/schema/test/a) is missing`)
+    Util.expectDecodingFailure(schema, {}, `/Symbol(@effect/schema/test/a) is missing`)
     Util.expectDecodingFailure(
       schema,
       { [a]: 1 },
-      `/Symbol(@fp-ts/schema/test/b) is missing`
+      `/Symbol(@effect/schema/test/b) is missing`
     )
     Util.expectDecodingFailure(
       schema,
       { [b]: 2 },
-      `/Symbol(@fp-ts/schema/test/a) is missing`
+      `/Symbol(@effect/schema/test/a) is missing`
     )
   })
 
@@ -1014,7 +1014,7 @@ describe.concurrent("Decoder", () => {
   })
 
   it("omit/ involving a symbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const base = S.struct({ [a]: S.string, b: S.number, c: S.boolean })
     const schema = pipe(base, S.omit("c"))
     Util.expectDecodingSuccess(schema, { [a]: "a", b: 1 })
@@ -1028,7 +1028,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { b: 1 },
-      `/Symbol(@fp-ts/schema/test/a) is missing`
+      `/Symbol(@effect/schema/test/a) is missing`
     )
   })
 

@@ -4,8 +4,8 @@
 
 import { pipe } from "@effect/data/Function"
 import * as N from "@effect/data/Number"
-import * as I from "@fp-ts/schema/internal/common"
-import type { AnnotationOptions, Schema } from "@fp-ts/schema/Schema"
+import * as I from "@effect/schema/internal/common"
+import type { AnnotationOptions, Schema } from "@effect/schema/Schema"
 
 /**
  * @since 1.0.0

@@ -1,7 +1,7 @@
 import { pipe } from "@effect/data/Function"
-import * as A from "@fp-ts/schema/Arbitrary"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
+import * as A from "@effect/schema/Arbitrary"
+import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
 import * as fc from "fast-check"
 
 export const property = <A>(schema: S.Schema<A>) => {
@@ -96,7 +96,7 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("uniqueSymbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.uniqueSymbol(a)
     property(schema)
   })

@@ -1,4 +1,4 @@
-import * as S from "@fp-ts/schema"
+import * as S from "@effect/schema"
 
 describe.concurrent("index", () => {
   it("exports", () => {

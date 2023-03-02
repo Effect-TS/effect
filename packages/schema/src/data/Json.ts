@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as H from "@fp-ts/schema/annotation/Hook"
-import * as I from "@fp-ts/schema/internal/common"
-import type * as S from "@fp-ts/schema/Schema"
+import * as H from "@effect/schema/annotation/Hook"
+import * as I from "@effect/schema/internal/common"
+import type * as S from "@effect/schema/Schema"
 
 /**
  * @since 1.0.0

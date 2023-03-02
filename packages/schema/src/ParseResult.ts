@@ -5,7 +5,7 @@
 import type { Either, Left, Right } from "@effect/data/Either"
 import * as E from "@effect/data/Either"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import type * as AST from "@fp-ts/schema/AST"
+import type * as AST from "@effect/schema/AST"
 
 /**
  * @since 1.0.0

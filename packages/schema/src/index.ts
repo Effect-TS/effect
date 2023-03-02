@@ -28,14 +28,14 @@ export {
    * @since 1.0.0
    */
   is
-} from "@fp-ts/schema/Parser"
+} from "@effect/schema/Parser"
 
 export type {
   /**
    * @since 1.0.0
    */
   InferAsserts
-} from "@fp-ts/schema/Parser"
+} from "@effect/schema/Parser"
 
 export {
   /**
@@ -58,7 +58,7 @@ export {
    * @since 1.0.0
    */
   success
-} from "@fp-ts/schema/ParseResult"
+} from "@effect/schema/ParseResult"
 
-export * from "@fp-ts/schema/Schema"
+export * from "@effect/schema/Schema"
 /* c8 ignore end */

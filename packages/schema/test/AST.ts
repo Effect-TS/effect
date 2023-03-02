@@ -1,9 +1,9 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as S from "@fp-ts/schema"
-import * as AST from "@fp-ts/schema/AST"
-import { json } from "@fp-ts/schema/data/Json"
-import * as DataOption from "@fp-ts/schema/data/Option"
+import * as S from "@effect/schema"
+import * as AST from "@effect/schema/AST"
+import { json } from "@effect/schema/data/Json"
+import * as DataOption from "@effect/schema/data/Option"
 
 describe.concurrent("AST", () => {
   it("exports", () => {
@@ -128,7 +128,7 @@ describe.concurrent("AST", () => {
   })
 
   it("union/ should unify symbol literals with symbol", () => {
-    expect(S.union(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a")), S.symbol).ast).toEqual(
+    expect(S.union(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")), S.symbol).ast).toEqual(
       S.symbol.ast
     )
   })
@@ -178,7 +178,7 @@ describe.concurrent("AST", () => {
   })
 
   it("keyof/union/ symbol keys", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     expect(AST.keyof(S.union(S.struct({ [a]: S.string }), S.struct({ [a]: S.number })).ast))
       .toEqual(AST.createUniqueSymbol(a))
   })
@@ -190,7 +190,7 @@ describe.concurrent("AST", () => {
   })
 
   it("keyof/ should unify symbol literals with symbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     expect(AST.keyof(
       pipe(S.struct({ [a]: S.string }), S.extend(S.record(S.symbol, S.string))).ast
     )).toEqual(S.symbol.ast)
@@ -437,8 +437,8 @@ describe.concurrent("AST", () => {
   })
 
   it("getPropertySignatures/struct symbol keys", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.struct({ [a]: S.string, [b]: S.number })
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(a, S.string.ast, false, true),

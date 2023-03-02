@@ -4,9 +4,9 @@ import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
 import type * as applicative from "@effect/data/typeclass/Applicative"
 import * as covariant from "@effect/data/typeclass/Covariant"
-import * as annotations from "@fp-ts/schema/annotation/AST"
-import * as AST from "@fp-ts/schema/AST"
-import * as S from "@fp-ts/schema/Schema"
+import * as annotations from "@effect/schema/annotation/AST"
+import * as AST from "@effect/schema/AST"
+import * as S from "@effect/schema/Schema"
 import ts from "typescript"
 
 const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions): string => {
@@ -514,11 +514,11 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("uniqueSymbol", () => {
-    const schema = S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+    const schema = S.uniqueSymbol(Symbol.for("@effect/schema/test/a"), {
       [annotations.IdentifierId]: "a"
     })
     const ts = typeScriptFor(schema)
-    expect(printNodes(ts.nodes)).toEqual([`a = Symbol.for("@fp-ts/schema/test/a")`, `typeof a`])
+    expect(printNodes(ts.nodes)).toEqual([`a = Symbol.for("@effect/schema/test/a")`, `typeof a`])
   })
 
   it("enums", () => {
@@ -650,22 +650,22 @@ describe.concurrent("TypeScript", () => {
     it("all with symbols", () => {
       const schema = pipe(
         S.tuple(
-          S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+          S.uniqueSymbol(Symbol.for("@effect/schema/test/a"), {
             [annotations.IdentifierId]: "a"
           })
         ),
-        S.rest(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/b"), {
+        S.rest(S.uniqueSymbol(Symbol.for("@effect/schema/test/b"), {
           [annotations.IdentifierId]: "b"
         })),
-        S.element(S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/c"), {
+        S.element(S.uniqueSymbol(Symbol.for("@effect/schema/test/c"), {
           [annotations.IdentifierId]: "c"
         }))
       )
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([
-        `a = Symbol.for("@fp-ts/schema/test/a")`,
-        `b = Symbol.for("@fp-ts/schema/test/b")`,
-        `c = Symbol.for("@fp-ts/schema/test/c")`,
+        `a = Symbol.for("@effect/schema/test/a")`,
+        `b = Symbol.for("@effect/schema/test/b")`,
+        `c = Symbol.for("@effect/schema/test/c")`,
         `readonly [
     typeof a,
     ...(typeof b)[],
@@ -762,8 +762,8 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("all with symbols", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
-      const b = Symbol.for("@fp-ts/schema/test/b")
+      const a = Symbol.for("@effect/schema/test/a")
+      const b = Symbol.for("@effect/schema/test/b")
       const schema = pipe(
         S.struct({
           [a]: S.uniqueSymbol(b, {
@@ -774,7 +774,7 @@ describe.concurrent("TypeScript", () => {
         S.extend(
           S.record(
             S.string,
-            S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/d"), {
+            S.uniqueSymbol(Symbol.for("@effect/schema/test/d"), {
               [annotations.IdentifierId]: "d"
             })
           )
@@ -782,10 +782,10 @@ describe.concurrent("TypeScript", () => {
       )
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([
-        `b = Symbol.for("@fp-ts/schema/test/b")`,
-        `d = Symbol.for("@fp-ts/schema/test/d")`,
+        `b = Symbol.for("@effect/schema/test/b")`,
+        `d = Symbol.for("@effect/schema/test/d")`,
         `{
-    readonly [Symbol.for("@fp-ts/schema/test/a")]: typeof b;
+    readonly [Symbol.for("@effect/schema/test/a")]: typeof b;
     readonly c: number;
     readonly [x: string]: typeof d;
 }`
@@ -797,13 +797,13 @@ describe.concurrent("TypeScript", () => {
     const schema = S.union(
       S.string,
       S.number,
-      S.uniqueSymbol(Symbol.for("@fp-ts/schema/test/a"), {
+      S.uniqueSymbol(Symbol.for("@effect/schema/test/a"), {
         [annotations.IdentifierId]: "a"
       })
     )
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual([
-      `a = Symbol.for("@fp-ts/schema/test/a")`,
+      `a = Symbol.for("@effect/schema/test/a")`,
       `string | number | typeof a`
     ])
   })

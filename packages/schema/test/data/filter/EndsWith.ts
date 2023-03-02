@@ -1,6 +1,6 @@
 import { pipe } from "@effect/data/Function"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
+import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
 
 describe.concurrent("endsWith", () => {
   it("Guard", () => {

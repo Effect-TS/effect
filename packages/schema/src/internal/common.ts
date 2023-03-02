@@ -9,13 +9,13 @@ import * as O from "@effect/data/Option"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as A from "@fp-ts/schema/annotation/AST"
-import type { Arbitrary } from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
-import type { Parser } from "@fp-ts/schema/Parser"
-import * as PR from "@fp-ts/schema/ParseResult"
-import type { Pretty } from "@fp-ts/schema/Pretty"
-import type * as S from "@fp-ts/schema/Schema"
+import * as A from "@effect/schema/annotation/AST"
+import type { Arbitrary } from "@effect/schema/Arbitrary"
+import * as AST from "@effect/schema/AST"
+import type { Parser } from "@effect/schema/Parser"
+import * as PR from "@effect/schema/ParseResult"
+import type { Pretty } from "@effect/schema/Pretty"
+import type * as S from "@effect/schema/Schema"
 
 /** @internal */
 export const flatMap = E.flatMap
@@ -213,7 +213,7 @@ export const union = <Members extends ReadonlyArray<S.Schema<any>>>(
 /** @internal */
 export const nullable = <A>(self: S.Schema<A>): S.Schema<A | null> => union(_null, self)
 
-const OptionalSchemaId = Symbol.for("@fp-ts/schema/Schema/OptionalSchema")
+const OptionalSchemaId = Symbol.for("@effect/schema/Schema/OptionalSchema")
 
 const isOptionalSchema = <A>(schema: object): schema is S.OptionalSchema<A> =>
   schema["_id"] === OptionalSchemaId

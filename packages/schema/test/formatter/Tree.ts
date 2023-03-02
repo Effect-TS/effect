@@ -3,12 +3,12 @@ import { pipe } from "@effect/data/Function"
 import { isNumber } from "@effect/data/Number"
 import { isRecord } from "@effect/data/Predicate"
 import { isString } from "@effect/data/String"
-import type { Json, JsonArray, JsonObject } from "@fp-ts/schema/data/Json"
-import { json } from "@fp-ts/schema/data/Json"
-import * as _ from "@fp-ts/schema/formatter/Tree"
-import * as I from "@fp-ts/schema/internal/common"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import type { Json, JsonArray, JsonObject } from "@effect/schema/data/Json"
+import { json } from "@effect/schema/data/Json"
+import * as _ from "@effect/schema/formatter/Tree"
+import * as I from "@effect/schema/internal/common"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Tree", () => {
   it("formatErrors/ Unexpected", () => {

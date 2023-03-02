@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as AST from "@fp-ts/schema/AST"
-import * as P from "@fp-ts/schema/Pretty"
-import * as S from "@fp-ts/schema/Schema"
+import * as AST from "@effect/schema/AST"
+import * as P from "@effect/schema/Pretty"
+import * as S from "@effect/schema/Schema"
 
 describe.concurrent("Pretty", () => {
   it("exports", () => {
@@ -73,10 +73,10 @@ describe.concurrent("Pretty", () => {
   })
 
   it("uniqueSymbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.uniqueSymbol(a)
     const pretty = P.pretty(schema)
-    expect(pretty(a)).toEqual("Symbol(@fp-ts/schema/test/a)")
+    expect(pretty(a)).toEqual("Symbol(@effect/schema/test/a)")
   })
 
   it("Numeric enums", () => {
@@ -141,11 +141,11 @@ describe.concurrent("Pretty", () => {
   })
 
   it("record(symbol, string)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.record(S.symbol, S.string)
     const pretty = P.pretty(schema)
     expect(pretty({ [a]: "a" })).toEqual(
-      `{ Symbol(@fp-ts/schema/test/a): "a" }`
+      `{ Symbol(@effect/schema/test/a): "a" }`
     )
   })
 

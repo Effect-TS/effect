@@ -11,8 +11,8 @@ import type { Predicate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import { isString } from "@effect/data/String"
 import * as Order from "@effect/data/typeclass/Order"
-import { TitleId } from "@fp-ts/schema/annotation/AST"
-import type { ParseResult } from "@fp-ts/schema/ParseResult"
+import { TitleId } from "@effect/schema/annotation/AST"
+import type { ParseResult } from "@effect/schema/ParseResult"
 
 // -------------------------------------------------------------------------------------
 // model

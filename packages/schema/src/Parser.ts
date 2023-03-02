@@ -17,14 +17,14 @@ import {
   isUndefined
 } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as H from "@fp-ts/schema/annotation/Hook"
-import * as AST from "@fp-ts/schema/AST"
-import type { ParseOptions } from "@fp-ts/schema/AST"
-import { formatErrors } from "@fp-ts/schema/formatter/Tree"
-import * as I from "@fp-ts/schema/internal/common"
-import * as PR from "@fp-ts/schema/ParseResult"
-import type { ParseResult } from "@fp-ts/schema/ParseResult"
-import type { Infer, Schema } from "@fp-ts/schema/Schema"
+import * as H from "@effect/schema/annotation/Hook"
+import * as AST from "@effect/schema/AST"
+import type { ParseOptions } from "@effect/schema/AST"
+import { formatErrors } from "@effect/schema/formatter/Tree"
+import * as I from "@effect/schema/internal/common"
+import * as PR from "@effect/schema/ParseResult"
+import type { ParseResult } from "@effect/schema/ParseResult"
+import type { Infer, Schema } from "@effect/schema/Schema"
 
 /**
  * @category model

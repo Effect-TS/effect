@@ -4,11 +4,11 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as H from "@fp-ts/schema/annotation/Hook"
-import * as AST from "@fp-ts/schema/AST"
-import * as I from "@fp-ts/schema/internal/common"
-import * as P from "@fp-ts/schema/Parser"
-import type { Schema } from "@fp-ts/schema/Schema"
+import * as H from "@effect/schema/annotation/Hook"
+import * as AST from "@effect/schema/AST"
+import * as I from "@effect/schema/internal/common"
+import * as P from "@effect/schema/Parser"
+import type { Schema } from "@effect/schema/Schema"
 
 /**
  * @category model

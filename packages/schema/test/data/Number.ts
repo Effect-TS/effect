@@ -1,7 +1,7 @@
 import { pipe } from "@effect/data/Function"
-import * as N from "@fp-ts/schema/data/Number"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import * as N from "@effect/schema/data/Number"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Number", () => {
   it("clamp", () => {

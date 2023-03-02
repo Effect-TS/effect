@@ -19,14 +19,14 @@ export const hook = (
 /**
  * @since 1.0.0
  */
-export const ArbitraryHookId = "@fp-ts/schema/annotation/ArbitraryHookId"
+export const ArbitraryHookId = "@effect/schema/annotation/ArbitraryHookId"
 
 /**
  * @since 1.0.0
  */
-export const ParserHookId = "@fp-ts/schema/annotation/ParserHookId"
+export const ParserHookId = "@effect/schema/annotation/ParserHookId"
 
 /**
  * @since 1.0.0
  */
-export const PrettyHookId = "@fp-ts/schema/annotation/PrettyHookId"
+export const PrettyHookId = "@effect/schema/annotation/PrettyHookId"

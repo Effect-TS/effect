@@ -1,7 +1,7 @@
 import { pipe } from "@effect/data/Function"
-import * as A from "@fp-ts/schema/data/ReadonlyArray"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import * as A from "@effect/schema/data/ReadonlyArray"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("ReadonlyArray", () => {
   it("exports", () => {

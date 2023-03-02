@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as DataOption from "@fp-ts/schema/data/Option"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
+import * as DataOption from "@effect/schema/data/Option"
+import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
 
 describe.concurrent("is", () => {
   it("templateLiteral. a", () => {
@@ -114,10 +114,10 @@ describe.concurrent("is", () => {
   })
 
   it("symbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const is = P.is(S.symbol)
     expect(is(a)).toEqual(true)
-    expect(is("@fp-ts/schema/test/a")).toEqual(false)
+    expect(is("@effect/schema/test/a")).toEqual(false)
   })
 
   it("object", () => {
@@ -147,12 +147,12 @@ describe.concurrent("is", () => {
   })
 
   it("uniqueSymbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.uniqueSymbol(a)
     const is = P.is(schema)
     expect(is(a)).toEqual(true)
-    expect(is(Symbol.for("@fp-ts/schema/test/a"))).toEqual(true)
-    expect(is("Symbol(@fp-ts/schema/test/a)")).toEqual(false)
+    expect(is(Symbol.for("@effect/schema/test/a"))).toEqual(true)
+    expect(is("Symbol(@effect/schema/test/a)")).toEqual(false)
   })
 
   it("Numeric enums", () => {
@@ -388,7 +388,7 @@ describe.concurrent("is", () => {
   })
 
   it("record(string, string)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.record(S.string, S.string)
     const is = P.is(schema)
     expect(is(null)).toEqual(false)
@@ -402,8 +402,8 @@ describe.concurrent("is", () => {
   })
 
   it("record(symbol, string)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.record(S.symbol, S.string)
     const is = P.is(schema)
     expect(is(null)).toEqual(false)
@@ -465,7 +465,7 @@ describe.concurrent("is", () => {
     )
     const is = P.is(schema)
     expect(is({ a: 1, b: 2 })).toEqual(true)
-    const c = Symbol.for("@fp-ts/schema/test/c")
+    const c = Symbol.for("@effect/schema/test/c")
     expect(is({ a: 1, b: 2, [c]: 3 })).toEqual(true)
 
     expect(is({})).toEqual(false)
@@ -476,8 +476,8 @@ describe.concurrent("is", () => {
   })
 
   it("record(Symbol('a') | Symbol('b'), number)", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.record(S.union(S.uniqueSymbol(a), S.uniqueSymbol(b)), S.number)
     const is = P.is(schema)
     expect(is({ [a]: 1, [b]: 2 })).toEqual(true)
@@ -639,7 +639,7 @@ describe.concurrent("is", () => {
     })
 
     it("involving a symbol", () => {
-      const a = Symbol.for("@fp-ts/schema/test/a")
+      const a = Symbol.for("@effect/schema/test/a")
       const base = S.struct({ [a]: S.string, b: S.number, c: S.boolean })
       const schema = pipe(base, S.omit("c"))
       const is = P.is(schema)

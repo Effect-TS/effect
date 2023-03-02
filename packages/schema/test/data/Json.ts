@@ -1,6 +1,6 @@
-import * as _ from "@fp-ts/schema/data/Json"
-import * as P from "@fp-ts/schema/Pretty"
-import * as Util from "@fp-ts/schema/test/util"
+import * as _ from "@effect/schema/data/Json"
+import * as P from "@effect/schema/Pretty"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Json", () => {
   it("property tests. json", () => {

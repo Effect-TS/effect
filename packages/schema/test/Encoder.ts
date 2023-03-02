@@ -1,9 +1,9 @@
 import { pipe } from "@effect/data/Function"
-import type { ParseOptions } from "@fp-ts/schema/AST"
-import { parseNumber } from "@fp-ts/schema/data/String"
-import * as E from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import type { ParseOptions } from "@effect/schema/AST"
+import { parseNumber } from "@effect/schema/data/String"
+import * as E from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 // raises an error while encoding from a number if the string is not a char
 const NumberFromString = pipe(S.string, S.maxLength(1), parseNumber)
@@ -59,7 +59,7 @@ describe.concurrent("Encoder", () => {
   })
 
   it("symbol", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.symbol
     Util.expectEncodingSuccess(schema, a, a)
   })
@@ -237,7 +237,7 @@ describe.concurrent("Encoder", () => {
   })
 
   it("struct/ should handle symbols as keys", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
+    const a = Symbol.for("@effect/schema/test/a")
     const schema = S.struct({ [a]: S.string })
     Util.expectEncodingSuccess(schema, { [a]: "a" }, { [a]: "a" })
   })
@@ -270,7 +270,7 @@ describe.concurrent("Encoder", () => {
   })
 
   it("extend/record/ record(symbol, NumberFromString)", () => {
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = pipe(
       S.struct({ a: S.number }),
       S.extend(S.record(S.symbol, NumberFromString))

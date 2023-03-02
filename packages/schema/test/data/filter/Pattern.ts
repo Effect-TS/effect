@@ -1,5 +1,5 @@
 import { pipe } from "@effect/data/Function"
-import * as S from "@fp-ts/schema"
+import * as S from "@effect/schema"
 
 describe.concurrent("pattern", () => {
   it("Guard", () => {

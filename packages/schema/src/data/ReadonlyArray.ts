@@ -3,26 +3,26 @@
  */
 
 import { pipe } from "@effect/data/Function"
-import * as I from "@fp-ts/schema/internal/common"
-import type { AnnotationOptions, Schema } from "@fp-ts/schema/Schema"
+import * as I from "@effect/schema/internal/common"
+import type { AnnotationOptions, Schema } from "@effect/schema/Schema"
 
 /**
  * @category identifiers
  * @since 1.0.0
  */
-export const MinItemsId = "@fp-ts/schema/ReadonlyArray/minItems"
+export const MinItemsId = "@effect/schema/ReadonlyArray/minItems"
 
 /**
  * @category identifiers
  * @since 1.0.0
  */
-export const MaxItemsId = "@fp-ts/schema/ReadonlyArray/maxItems"
+export const MaxItemsId = "@effect/schema/ReadonlyArray/maxItems"
 
 /**
  * @category identifiers
  * @since 1.0.0
  */
-export const ItemsCountId = "@fp-ts/schema/ReadonlyArray/itemsCount"
+export const ItemsCountId = "@effect/schema/ReadonlyArray/itemsCount"
 
 /**
  * @since 1.0.0

@@ -5,10 +5,10 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as TAH from "@fp-ts/schema/annotation/Hook"
-import * as AST from "@fp-ts/schema/AST"
-import * as I from "@fp-ts/schema/internal/common"
-import type { Schema } from "@fp-ts/schema/Schema"
+import * as TAH from "@effect/schema/annotation/Hook"
+import * as AST from "@effect/schema/AST"
+import * as I from "@effect/schema/internal/common"
+import type { Schema } from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**

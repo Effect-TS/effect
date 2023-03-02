@@ -1,7 +1,7 @@
-import { trim } from "@fp-ts/schema/data/String"
-import * as P from "@fp-ts/schema/Parser"
-import * as S from "@fp-ts/schema/Schema"
-import * as Util from "@fp-ts/schema/test/util"
+import { trim } from "@effect/schema/data/String"
+import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("trim", () => {
   const schema = trim(S.string)

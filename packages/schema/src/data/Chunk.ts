@@ -4,14 +4,14 @@
 import type { Chunk } from "@effect/data/Chunk"
 import * as C from "@effect/data/Chunk"
 import { pipe } from "@effect/data/Function"
-import { IdentifierId } from "@fp-ts/schema/annotation/AST"
-import * as H from "@fp-ts/schema/annotation/Hook"
-import * as A from "@fp-ts/schema/Arbitrary"
-import * as I from "@fp-ts/schema/internal/common"
-import * as P from "@fp-ts/schema/Parser"
-import * as PR from "@fp-ts/schema/ParseResult"
-import type { Pretty } from "@fp-ts/schema/Pretty"
-import type { Schema } from "@fp-ts/schema/Schema"
+import { IdentifierId } from "@effect/schema/annotation/AST"
+import * as H from "@effect/schema/annotation/Hook"
+import * as A from "@effect/schema/Arbitrary"
+import * as I from "@effect/schema/internal/common"
+import * as P from "@effect/schema/Parser"
+import * as PR from "@effect/schema/ParseResult"
+import type { Pretty } from "@effect/schema/Pretty"
+import type { Schema } from "@effect/schema/Schema"
 
 const parser = <A>(item: P.Parser<A>): P.Parser<Chunk<A>> => {
   const items = P.decode(I.array(item))

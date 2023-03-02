@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
-import * as S from "@fp-ts/schema"
-import * as A from "@fp-ts/schema/annotation/AST"
-import * as AST from "@fp-ts/schema/AST"
-import * as P from "@fp-ts/schema/Parser"
+import * as S from "@effect/schema"
+import * as A from "@effect/schema/annotation/AST"
+import * as AST from "@effect/schema/AST"
+import * as P from "@effect/schema/Parser"
 
 describe.concurrent("Schema", () => {
   it("exports", () => {
@@ -54,28 +54,28 @@ describe.concurrent("Schema", () => {
 
   it("title", () => {
     expect(pipe(S.string, S.title("MyString")).ast.annotations).toEqual({
-      "@fp-ts/schema/annotation/TitleId": "MyString"
+      "@effect/schema/annotation/TitleId": "MyString"
     })
   })
 
   it("description", () => {
     expect(pipe(S.string, S.description("description")).ast.annotations).toEqual({
-      "@fp-ts/schema/annotation/DescriptionId": "description",
-      "@fp-ts/schema/annotation/TitleId": "string"
+      "@effect/schema/annotation/DescriptionId": "description",
+      "@effect/schema/annotation/TitleId": "string"
     })
   })
 
   it("examples", () => {
     expect(pipe(S.string, S.examples(["example"])).ast.annotations).toEqual({
-      "@fp-ts/schema/annotation/ExamplesId": ["example"],
-      "@fp-ts/schema/annotation/TitleId": "string"
+      "@effect/schema/annotation/ExamplesId": ["example"],
+      "@effect/schema/annotation/TitleId": "string"
     })
   })
 
   it("documentation", () => {
     expect(pipe(S.string, S.documentation("documentation")).ast.annotations).toEqual({
-      "@fp-ts/schema/annotation/DocumentationId": "documentation",
-      "@fp-ts/schema/annotation/TitleId": "string"
+      "@effect/schema/annotation/DocumentationId": "documentation",
+      "@effect/schema/annotation/TitleId": "string"
     })
   })
 
@@ -185,8 +185,8 @@ describe.concurrent("Schema", () => {
   })
 
   it("keyof/struct/ symbol keys", () => {
-    const a = Symbol.for("@fp-ts/schema/test/a")
-    const b = Symbol.for("@fp-ts/schema/test/b")
+    const a = Symbol.for("@effect/schema/test/a")
+    const b = Symbol.for("@effect/schema/test/b")
     const schema = S.struct({
       [a]: S.string,
       [b]: S.number
@@ -436,20 +436,20 @@ describe.concurrent("Schema", () => {
       })
     )
     expect(schema.ast.annotations).toEqual({
-      "@fp-ts/schema/annotation/CustomId": {
+      "@effect/schema/annotation/CustomId": {
         "type": "Char"
       },
-      "@fp-ts/schema/annotation/DescriptionId": "description",
-      "@fp-ts/schema/annotation/DocumentationId": "documentation",
-      "@fp-ts/schema/annotation/ExamplesId": [
+      "@effect/schema/annotation/DescriptionId": "description",
+      "@effect/schema/annotation/DocumentationId": "documentation",
+      "@effect/schema/annotation/ExamplesId": [
         "examples"
       ],
-      "@fp-ts/schema/annotation/IdentifierId": "identifier",
-      "@fp-ts/schema/annotation/JSONSchemaId": {
+      "@effect/schema/annotation/IdentifierId": "identifier",
+      "@effect/schema/annotation/JSONSchemaId": {
         "maxLength": 1,
         "minLength": 1
       },
-      "@fp-ts/schema/annotation/TitleId": "title"
+      "@effect/schema/annotation/TitleId": "title"
     })
   })
 
