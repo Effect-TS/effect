@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.0.2
+
+### Patch Changes
+
+- [#125](https://github.com/Effect-TS/schema/pull/125) [`41841a3`](https://github.com/Effect-TS/schema/commit/41841a379a97a80e298312d23a1985cc31336834) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - update release
+
 ## 0.0.1
 
 ### Patch Changes
