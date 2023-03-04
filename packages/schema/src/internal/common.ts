@@ -244,7 +244,7 @@ export const struct = <
 > =>
   makeSchema(
     AST.createTypeLiteral(
-      ownKeys(fields).map((key) =>
+      Reflect.ownKeys(fields).map((key) =>
         AST.createPropertySignature(
           key,
           (fields[key] as any).ast,
@@ -314,10 +314,6 @@ export const getTemplateLiteralRegex = (ast: AST.TemplateLiteral): RegExp => {
 // ---------------------------------------------
 // general helpers
 // ---------------------------------------------
-
-/** @internal */
-export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
-  (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
 /** @internal */
 export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {

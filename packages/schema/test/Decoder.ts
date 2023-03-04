@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
+import * as S from "@effect/schema"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
-import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Decoder", () => {
@@ -836,6 +836,37 @@ describe.concurrent("Decoder", () => {
   it("union/ empty union", () => {
     const schema = S.union()
     Util.expectDecodingFailure(schema, 1, "Expected never, actual 1")
+  })
+
+  it("union/ members with literals but the input doesn't have any", () => {
+    const schema = S.union(
+      S.struct({ a: S.literal(1), c: S.string }),
+      S.struct({ b: S.literal(2), d: S.number })
+    )
+    Util.expectDecodingFailure(schema, null, "Expected type literal, actual null")
+    Util.expectDecodingFailure(schema, {}, "/a is missing, /b is missing")
+    Util.expectDecodingFailure(schema, { a: null }, `/a Expected 1, actual null, /b is missing`)
+    Util.expectDecodingFailure(schema, { b: 3 }, `/a is missing, /b Expected 2, actual 3`)
+  })
+
+  it("union/ members with multiple tags", () => {
+    const schema = S.union(
+      S.struct({ category: S.literal("catA"), tag: S.literal("a") }),
+      S.struct({ category: S.literal("catA"), tag: S.literal("b") }),
+      S.struct({ category: S.literal("catA"), tag: S.literal("c") })
+    )
+    Util.expectDecodingFailure(schema, null, "Expected type literal, actual null")
+    Util.expectDecodingFailure(schema, {}, "/category is missing, /tag is missing")
+    Util.expectDecodingFailure(
+      schema,
+      { category: null },
+      `/category Expected "catA", actual null, /tag is missing`
+    )
+    Util.expectDecodingFailure(
+      schema,
+      { tag: "d" },
+      `/category is missing, /tag Expected "b" or "c", actual "d"`
+    )
   })
 
   it("union/required property signatures: should return the best output", () => {

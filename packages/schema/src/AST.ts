@@ -946,9 +946,8 @@ export const _getWeight = (ast: AST): number => {
   }
 }
 
-const sortByWeightDesc = RA.sort(
-  Order.reverse(pipe(Number.Order, Order.contramap(_getWeight)))
-)
+/** @internal */
+export const sortByWeightDesc = RA.sort(Order.reverse(Order.contramap(Number.Order, _getWeight)))
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   let out = pipe(
