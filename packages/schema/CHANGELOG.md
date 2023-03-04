@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.0.4
+
+### Patch Changes
+
+- [#115](https://github.com/Effect-TS/schema/pull/115) [`1555a81`](https://github.com/Effect-TS/schema/commit/1555a81fb814f612f7ad973add6e29c68f5635dc) Thanks [@gcanti](https://github.com/gcanti)! - Optimize decoding of unions using a heuristic based on literals
+
 ## 0.0.3
 
 ### Patch Changes
