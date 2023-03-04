@@ -1,93 +1,121 @@
 {
-  "name": "effect-ts",
-  "private": true,
-  "repository": "https://github.com/Effect-TS/cli.git",
-  "workspaces": [
-    "packages/*",
-    "incubation/*"
+  "name": "@effect/cli",
+  "version": "0.0.0",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/cli.git"
+  },
+  "author": "Michael Arnaldi <ma@matechs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Effect-TS/cli/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/cli",
+  "description": "Functional programming in TypeScript",
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
   ],
   "scripts": {
-    "prepublishOnly": "yarn prettier --write \"./packages*/*/build/**/*.ts\"",
-    "ci": "yarn run clean && yarn run build && yarn run tc && yarn run lint && yarn run circular",
-    "clean": "ultra -r clean",
-    "build": "ultra -r build",
-    "circular": "ultra -r circular",
-    "test": "jest --detectOpenHandles",
-    "autofix": "ultra -r autofix",
-    "lint": "ultra -r lint",
-    "tc": "ultra -r tc",
-    "postinstall": "husky install && ts-patch install -s",
-    "version:alpha": "lerna version prerelease --conventional-commits --preid=alpha",
-    "version:preminor": "lerna version preminor --conventional-commits",
-    "version:minor": "lerna version minor --conventional-commits",
-    "version:prepatch": "lerna version prepatch --conventional-commits",
-    "version:patch": "lerna version patch --conventional-commits",
-    "version:graduate": "lerna version --conventional-commits --conventional-graduate",
-    "version": "yarn install && git stage yarn.lock",
-    "commit": "cz",
-    "ets:rimraf": "cd $INIT_CWD && rimraf",
-    "ets:tsc": "cd $INIT_CWD && tsc",
-    "ets:babel": "cd $INIT_CWD && babel",
-    "ets:eslint": "cd $INIT_CWD && eslint",
-    "ets:prettier": "cd $INIT_CWD && prettier",
-    "ets:concurrently": "cd $INIT_CWD && concurrently",
-    "ets:build-utils": "cd $INIT_CWD && build-utils",
-    "ets:madge": "cd $INIT_CWD && madge",
-    "ets:ts-node": "cd $INIT_CWD && ts-node"
+    "example": "ts-node --project tsconfig.examples.json",
+    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
+    "release": "pnpm run build && changeset publish",
+    "clean": "rimraf build tsbuildinfo dist .ultra.cache.json .cache",
+    "build": "pnpm build-all && pnpm build-pack",
+    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
+    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
+    "build-post": "build-utils pack-v4",
+    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
+    "build-all": "tsc -b tsconfig.json",
+    "build-watch": "tsc -b tsconfig.json --watch",
+    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "autofix": "pnpm lint --fix",
+    "tc": "tsc --noEmit",
+    "docs": "docs-ts",
+    "docs-update": "git add --force --all docs/modules || true",
+    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
   },
-  "config": {
-    "commitizen": {
-      "path": "cz-conventional-changelog"
+  "exports": {
+    ".": {
+      "require": "./build/cjs/index.js"
+    },
+    "./*": {
+      "require": "./build/cjs/*.js"
     }
   },
+  "dependencies": {
+    "@effect/data": "~0.3.2",
+    "@effect/io": "^0.6.0"
+  },
   "devDependencies": {
-    "@babel/cli": "^7.17.6",
-    "@babel/core": "^7.17.5",
-    "@babel/plugin-transform-modules-commonjs": "^7.16.8",
-    "@effect-ts/build-utils": "^0.38.2",
-    "@effect-ts/core": "0.58.0",
-    "@effect-ts/figlet": "^0.4.1",
-    "@effect-ts/jest": "^0.35.2",
-    "@effect-ts/node": "0.38.3",
-    "@effect-ts/printer": "0.13.0",
-    "@effect-ts/tracing-plugin": "^0.19.0",
-    "@types/cpx": "^1.5.2",
-    "@types/glob": "^7.2.0",
-    "@types/jest": "^27.4.1",
-    "@types/node": "^17.0.21",
-    "@typescript-eslint/eslint-plugin": "^5.12.1",
-    "@typescript-eslint/parser": "^5.12.1",
+    "@babel/cli": "^7.21.0",
+    "@babel/core": "^7.21.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.21.2",
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.0",
+    "@effect-ts/build-utils": "0.40.7",
+    "@effect-ts/core": "^0.60.5",
+    "@effect/babel-plugin": "^0.2.0",
+    "@effect/core": "^0.0.16",
+    "@effect/language-service": "^0.0.19",
+    "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
+    "@rollup/pluginutils": "^5.0.2",
+    "@types/benchmark": "^2.1.2",
+    "@types/chai": "^4.3.4",
+    "@types/glob": "^8.1.0",
+    "@types/jest": "^29.4.0",
+    "@types/node": "^18.14.5",
+    "@types/prettier": "2.7.2",
+    "@typescript-eslint/eslint-plugin": "^5.54.0",
+    "@typescript-eslint/parser": "^5.54.0",
+    "@vitejs/plugin-react": "^3.1.0",
+    "@vitest/coverage-c8": "^0.29.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "babel-plugin-replace-import-extension": "^1.1.2",
-    "chalk": "4.1.2",
-    "concurrently": "^7.0.0",
-    "copyfiles": "^2.4.1",
+    "concurrently": "^7.6.0",
     "cpx": "^1.5.0",
-    "cz-conventional-changelog": "^3.3.0",
-    "eslint": "^8.10.0",
-    "eslint-config-prettier": "^8.4.0",
-    "eslint-import-resolver-typescript": "^2.5.0",
-    "eslint-plugin-codegen": "^0.16.1",
-    "eslint-plugin-import": "^2.25.4",
-    "eslint-plugin-jest": "^26.1.1",
-    "eslint-plugin-prettier": "^4.0.0",
-    "eslint-plugin-simple-import-sort": "^7.0.0",
-    "eslint-plugin-sort-destructure-keys": "^1.4.0",
-    "glob": "^7.2.0",
-    "husky": "7.0.4",
-    "jest": "^27.5.1",
-    "lerna": "^4.0.0",
-    "madge": "^5.0.1",
-    "prettier": "^2.5.1",
-    "reflect-metadata": "^0.1.13",
-    "ts-jest": "^27.1.3",
-    "ts-node": "^10.5.0",
-    "ts-patch": "^2.0.1",
-    "typescript": "^4.5.5",
-    "ultra-runner": "^3.10.5"
+    "docs-ts": "0.6.10",
+    "error-stack-parser": "^2.1.4",
+    "eslint": "^8.35.0",
+    "eslint-import-resolver-typescript": "^3.5.3",
+    "eslint-plugin-codegen": "0.17.0",
+    "eslint-plugin-deprecation": "^1.3.3",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.7.0",
+    "glob": "^9.2.1",
+    "madge": "^6.0.0",
+    "picocolors": "^1.0.0",
+    "prettier": "^2.8.4",
+    "rimraf": "^4.2.0",
+    "stackframe": "^1.3.4",
+    "ts-codemod": "^4.0.4",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.5",
+    "ultra-runner": "^3.10.5",
+    "vite": "^4.1.4",
+    "vitest": "0.29.2"
   },
-  "resolutions": {
-    "eslint-plugin-codegen": "patch:eslint-plugin-codegen@0.16.1#.yarn/patches/eslint-plugin-codegen.patch"
+  "pnpm": {
+    "patchedDependencies": {
+      "docs-ts@0.6.10": "patches/docs-ts@0.6.10.patch"
+    }
   },
-  "packageManager": "yarn@3.1.1"
+  "config": {
+    "side": [],
+    "modules": [],
+    "global": []
+  }
 }
