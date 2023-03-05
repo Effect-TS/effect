@@ -13,7 +13,7 @@ describe.concurrent("Pretty", () => {
   it("templateLiteral. a${string}b", () => {
     const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
     const pretty = P.pretty(schema)
-    expect(pretty("acb")).toEqual("acb")
+    expect(pretty("acb")).toEqual(`"acb"`)
   })
 
   it("never", () => {
@@ -22,6 +22,13 @@ describe.concurrent("Pretty", () => {
     expect(() => pretty("a" as any as never)).toThrowError(
       new Error("cannot pretty print a `never` value")
     )
+  })
+
+  it("unknown", () => {
+    const schema = S.unknown
+    const pretty = P.pretty(schema)
+    expect(pretty("a")).toEqual(`"a"`)
+    expect(pretty(1n)).toEqual(`1n`)
   })
 
   it("string", () => {
@@ -324,7 +331,7 @@ describe.concurrent("Pretty", () => {
     expect(pretty(["a", 1, true])).toEqual(`["a", 1, true]`)
   })
 
-  it("union", () => {
+  it("union/ primitives", () => {
     const schema = S.union(S.string, S.number)
     const pretty = P.pretty(schema)
     expect(pretty("a")).toEqual(
@@ -332,6 +339,20 @@ describe.concurrent("Pretty", () => {
     )
     expect(pretty(1)).toEqual(
       "1"
+    )
+  })
+
+  it("union/ discriminated", () => {
+    const schema = S.union(
+      S.struct({ tag: S.literal("a"), a: S.string }),
+      S.struct({ tag: S.literal("b"), b: S.number })
+    )
+    const pretty = P.pretty(schema)
+    expect(pretty({ tag: "a", a: "-" })).toEqual(
+      `{ "tag": "a", "a": "-" }`
+    )
+    expect(pretty({ tag: "b", b: 1 })).toEqual(
+      `{ "tag": "b", "b": 1 }`
     )
   })
 

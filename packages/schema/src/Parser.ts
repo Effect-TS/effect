@@ -411,6 +411,7 @@ const parserFor = <A>(
         const searchTree = _getSearchTree(types, as)
         const ownKeys = Reflect.ownKeys(searchTree.keys)
         const len = ownKeys.length
+        const otherwise = searchTree.otherwise
         return make(I.makeSchema(ast), (input, options) => {
           const es: Array<PR.ParseError> = []
 
@@ -455,7 +456,6 @@ const parserFor = <A>(
           }
           // if none of the schemas with at least one property with a literal value succeeded,
           // proceed with those that have no literal at all
-          const otherwise = searchTree.otherwise
           for (let i = 0; i < otherwise.length; i++) {
             const t = otherwise[i].parse(input, options)
             if (PR.isSuccess(t)) {

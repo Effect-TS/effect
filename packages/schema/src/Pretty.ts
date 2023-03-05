@@ -6,6 +6,7 @@ import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as H from "@effect/schema/annotation/Hook"
 import * as AST from "@effect/schema/AST"
+import { formatActual } from "@effect/schema/formatter/Tree"
 import * as I from "@effect/schema/internal/common"
 import * as P from "@effect/schema/Parser"
 import type { Schema } from "@effect/schema/Schema"
@@ -28,6 +29,12 @@ const getHook = AST.getAnnotation<H.Hook<Pretty<any>>>(
   H.PrettyHookId
 )
 
+const toString = (ast: AST.AST) => make(I.makeSchema(ast), (a) => String(a))
+
+const stringify = (ast: AST.AST) => make(I.makeSchema(ast), (a) => JSON.stringify(a))
+
+const format = (ast: AST.AST) => make(I.makeSchema(ast), formatActual)
+
 /**
  * @since 1.0.0
  */
@@ -40,34 +47,31 @@ export const match: AST.Match<Pretty<any>> = {
         ({ handler }) => handler(...ast.typeParameters.map(go))
       )
     ),
+  "VoidKeyword": (ast) => make(I.makeSchema(ast), () => "void(0)"),
+  "NeverKeyword": (ast) =>
+    make(I.makeSchema(ast), () => {
+      throw new Error("cannot pretty print a `never` value")
+    }),
   "Literal": (ast) =>
     make(
       I.makeSchema(ast),
       (literal: AST.LiteralValue): string =>
         typeof literal === "bigint" ?
-          `${literal.toString()}n` :
+          `${String(literal)}n` :
           JSON.stringify(literal)
     ),
-  "SymbolKeyword": (ast) => make(I.makeSchema(ast), (s) => String(s)),
-  "BooleanKeyword": (ast) => make(I.makeSchema(ast), (s) => String(s)),
-  "UniqueSymbol": (ast) => make(I.makeSchema(ast), (s) => String(s)),
-  "TemplateLiteral": (ast) => make(I.makeSchema(ast), (s) => String(s)),
-  "UndefinedKeyword": (ast) => make(I.makeSchema(ast), () => "undefined"),
-  "VoidKeyword": (ast) => make(I.makeSchema(ast), () => "void(0)"),
-  "NeverKeyword": (ast) =>
-    make(I.makeSchema(ast), () => {
-      throw new Error("cannot pretty print a `never` value")
-    }) as any,
-  "UnknownKeyword": (ast) => make(I.makeSchema(ast), (a) => JSON.stringify(a, null, 2)),
-  "AnyKeyword": (ast) => make(I.makeSchema(ast), (a) => JSON.stringify(a, null, 2)),
-  "ObjectKeyword": (ast) => make(I.makeSchema(ast), (a) => JSON.stringify(a, null, 2)),
-  "StringKeyword": (ast) => make(I.makeSchema(ast), (s) => JSON.stringify(s)),
-  "NumberKeyword": (ast) =>
-    make(
-      I.makeSchema(ast),
-      (n) => Number.isNaN(n) ? "NaN" : String(n)
-    ),
-  "BigIntKeyword": (ast) => make(I.makeSchema(ast), (bi) => `${bi.toString()}n`),
+  "SymbolKeyword": toString,
+  "UniqueSymbol": toString,
+  "TemplateLiteral": stringify,
+  "UndefinedKeyword": toString,
+  "UnknownKeyword": format,
+  "AnyKeyword": format,
+  "ObjectKeyword": format,
+  "StringKeyword": stringify,
+  "NumberKeyword": toString,
+  "BooleanKeyword": toString,
+  "BigIntKeyword": (ast: AST.AST) => make(I.makeSchema(ast), (a) => `${String(a)}n`),
+  "Enums": stringify,
   "Tuple": (ast, go) => {
     const elements = ast.elements.map((e) => go(e.type))
     const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
@@ -127,7 +131,9 @@ export const match: AST.Match<Pretty<any>> = {
           if (ps.isOptional && !Object.prototype.hasOwnProperty.call(input, name)) {
             continue
           }
-          output.push(`${prettyName(name)}: ${propertySignaturesTypes[i].pretty(input[name])}`)
+          output.push(
+            `${getPrettyPropertyKey(name)}: ${propertySignaturesTypes[i].pretty(input[name])}`
+          )
           expectedKeys[name] = null
         }
         // ---------------------------------------------
@@ -141,7 +147,7 @@ export const match: AST.Match<Pretty<any>> = {
               if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
                 continue
               }
-              output.push(`${prettyName(key)}: ${type.pretty(input[key])}`)
+              output.push(`${getPrettyPropertyKey(key)}: ${type.pretty(input[key])}`)
             }
           }
         }
@@ -163,7 +169,6 @@ export const match: AST.Match<Pretty<any>> = {
     const schema = I.lazy(f)
     return make(schema, (a) => get().pretty(a))
   },
-  "Enums": (ast) => make(I.makeSchema(ast), (sn) => JSON.stringify(sn)),
   "Refinement": (ast, go) => go(ast.from),
   "Transform": (ast, go) => go(ast.to)
 }
@@ -176,5 +181,5 @@ const compile = AST.getCompiler(match)
  */
 export const pretty = <A>(schema: Schema<A>) => (a: A): string => compile(schema.ast).pretty(a)
 
-const prettyName = (name: PropertyKey): string =>
+const getPrettyPropertyKey = (name: PropertyKey): string =>
   typeof name === "string" ? JSON.stringify(name) : String(name)
