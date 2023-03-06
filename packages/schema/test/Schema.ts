@@ -520,14 +520,6 @@ describe.concurrent("Schema", () => {
     )
   })
 
-  // TODO
-  it.skip("lazy", () => {
-    type A = null | { readonly a: A }
-    const schema: S.Schema<A> = S.lazy(() => S.union(S.null, schema))
-    const is = P.is(schema)
-    expect(is(null)).toEqual(true) // Maximum call stack size exceeded
-  })
-
   it("attachPropertySignature", () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
