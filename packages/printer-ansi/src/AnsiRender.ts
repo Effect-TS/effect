@@ -2,82 +2,67 @@
  * @since 1.0.0
  */
 
-import * as AR from "@effect/printer-ansi/internal/AnsiRender"
+import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
+import type { AnsiStyle } from "@effect/printer-ansi/AnsiStyle"
+import * as internal from "@effect/printer-ansi/internal_effect_untraced/ansiRender"
+import type { Doc } from "@effect/printer/Doc"
+import type { DocStream } from "@effect/printer/DocStream"
+import type { AvailablePerLine } from "@effect/printer/PageWidth"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms
 // -----------------------------------------------------------------------------
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer/DocStream.Ops renderAnsi
- * @tsplus getter effect/printer/DocStream renderAnsi
+ * @category rendering algorithms
  */
-export const renderAnsi: (self: DocStream<AnsiStyle>) => string = AR.renderAnsi
+export const render: (self: DocStream<AnsiStyle>) => string = internal.render
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Ops renderCompactAnsi
- * @tsplus getter effect/printer-ansi/AnsiDoc renderCompactAnsi
+ * @category rendering algorithms
  */
-export const renderCompactAnsi: (self: AnsiDoc) => string = AR.renderCompactAnsi
+export const compact: (self: AnsiDoc) => string = internal.compact
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Aspects renderPrettyAnsi
- * @tsplus pipeable effect/printer-ansi/AnsiDoc renderPrettyAnsi
+ * @category rendering algorithms
  */
-export const renderPrettyAnsi: (
-  lineWidth: number,
-  ribbonFraction?: number
-) => (
-  self: AnsiDoc
-) => string = AR.renderPrettyAnsi
+export const pretty: {
+  (options: Partial<Omit<AvailablePerLine, "_tag">>): (self: Doc<AnsiStyle>) => string
+  (self: Doc<AnsiStyle>, options: Partial<Omit<AvailablePerLine, "_tag">>): string
+} = internal.pretty
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Ops renderPrettyAnsiDefault
- * @tsplus getter effect/printer-ansi/AnsiDoc renderPrettyAnsiDefault
+ * @category rendering algorithms
  */
-export const renderPrettyAnsiDefault: (self: AnsiDoc) => string = AR.renderPrettyAnsiDefault
+export const prettyDefault: (self: AnsiDoc) => string = internal.prettyDefault
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Ops renderPrettyAnsiUnbounded
- * @tsplus getter effect/printer-ansi/AnsiDoc renderPrettyAnsiUnbounded
+ * @category rendering algorithms
  */
-export const renderPrettyAnsiUnbounded: (self: AnsiDoc) => string = AR.renderPrettyAnsiUnbounded
+export const prettyUnbounded: (self: AnsiDoc) => string = internal.prettyUnbounded
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Aspects renderSmartAnsi
- * @tsplus pipeable effect/printer-ansi/AnsiDoc renderSmartAnsi
+ * @category rendering algorithms
  */
-export const renderSmartAnsi: (
-  lineWidth: number,
-  ribbonFraction?: number
-) => (
-  self: AnsiDoc
-) => string = AR.renderSmartAnsi
+export const smart: {
+  (options: Partial<Omit<AvailablePerLine, "_tag">>): (self: Doc<AnsiStyle>) => string
+  (self: Doc<AnsiStyle>, options: Partial<Omit<AvailablePerLine, "_tag">>): string
+} = internal.smart
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Ops renderSmartAnsiDefault
- * @tsplus getter effect/printer-ansi/AnsiDoc renderSmartAnsiDefault
+ * @category rendering algorithms
  */
-export const renderSmartAnsiDefault: (self: AnsiDoc) => string = AR.renderSmartAnsiDefault
+export const smartDefault: (self: AnsiDoc) => string = internal.smartDefault
 
 /**
- * @category rendering algorithms
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiDoc.Ops renderSmartAnsiUnbounded
- * @tsplus getter effect/printer-ansi/AnsiDoc renderSmartAnsiUnbounded
+ * @category rendering algorithms
  */
-export const renderSmartAnsiUnbounded = AR.renderSmartAnsiUnbounded
+export const smartUnbounded: (self: Doc<AnsiStyle>) => string = internal.smartUnbounded

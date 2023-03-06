@@ -2,7 +2,8 @@
  * @since 1.0.0
  */
 
-import * as O from "@effect/printer/internal/Optimize"
+import type { Doc } from "@effect/printer/Doc"
+import * as internal from "@effect/printer/internal_effect_untraced/optimize"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -12,30 +13,12 @@ import * as O from "@effect/printer/internal/Optimize"
  * Represents optimization of a given document tree through fusion of redundant
  * document nodes.
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Optimize
+ * @category model
  */
 export interface Optimize<A> {
   (depth: Optimize.Depth): Doc<A>
 }
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Optimize.Ops
- */
-export interface OptimizeOps {
-  readonly $: OptimizeAspects
-  readonly Depth: FusionDepthOps
-}
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Optimize.Aspects
- */
-export interface OptimizeAspects {}
 
 /**
  * @since 1.0.0
@@ -48,40 +31,17 @@ export declare namespace Optimize {
  * Represents an instruction that determines how deeply the document fusion
  * optimizer should traverse the document tree.
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Optimize.Depth
+ * @category model
  */
 export type FusionDepth = Shallow | Deep
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Optimize.Depth.Ops
- */
-export interface FusionDepthOps {}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export const FusionDepth: FusionDepthOps = {}
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Optimize: OptimizeOps = {
-  $: {},
-  Depth: FusionDepth
-}
 
 /**
  * Instructs the document fusion optimizer to avoid diving deeply into nested
  * documents, fusing mostly concatenations of text nodes together.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Shallow {
   readonly _tag: "Shallow"
@@ -99,26 +59,24 @@ export interface Shallow {
  * This value should only be utilized if profiling demonstrates that it is
  * **significantly** faster than using `Shallow`.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Deep {
   readonly _tag: "Deep"
 }
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/Optimize.Depth.Ops Shallow
+ * @category instances
  */
 export const Shallow: FusionDepth = {
   _tag: "Shallow"
 }
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/Optimize.Depth.Ops Deep
+ * @category instances
  */
 export const Deep: FusionDepth = {
   _tag: "Deep"
@@ -160,9 +118,10 @@ export const Deep: FusionDepth = {
  * // We can optimize the `inefficient` document using `Optimize`
  * Optimize.optimize(Optimize.Deep)(inefficient)
  *
- * @category optimization
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects optimize
- * @tsplus pipeable effect/printer/Doc optimize
+ * @category optimization
  */
-export const optimize: <A>(depth: FusionDepth) => (self: Doc<A>) => Doc<A> = O.optimize
+export const optimize: {
+  (depth: FusionDepth): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, depth: FusionDepth): Doc<A>
+} = internal.optimize

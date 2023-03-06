@@ -2,42 +2,31 @@
  * @since 1.0.0
  */
 
-import * as SG from "@effect/printer-ansi/internal/SGR"
+import type { Color } from "@effect/printer-ansi/Color"
+import * as internal from "@effect/printer-ansi/internal_effect_untraced/sgr"
+import type { RenderLayer } from "@effect/printer-ansi/RenderLayer"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer-ansi/SGR
+ * @category model
  */
 export type SGR = Reset | SetBold | SetItalicized | SetUnderlined | SetColor
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer-ansi/SGR.Ops
- */
-export interface SGROps {}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const SGR: SGROps = {}
-
-/**
- * @category model
- * @since 1.0.0
  */
 export interface Reset {
   readonly _tag: "Reset"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface SetBold {
   readonly _tag: "SetBold"
@@ -45,8 +34,8 @@ export interface SetBold {
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface SetItalicized {
   readonly _tag: "SetItalicized"
@@ -54,8 +43,8 @@ export interface SetItalicized {
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface SetUnderlined {
   readonly _tag: "SetUnderlined"
@@ -63,14 +52,14 @@ export interface SetUnderlined {
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface SetColor {
   readonly _tag: "SetColor"
   readonly color: Color
   readonly vivid: boolean
-  readonly layer: Layer
+  readonly layer: RenderLayer
 }
 
 // -----------------------------------------------------------------------------
@@ -78,63 +67,47 @@ export interface SetColor {
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops Reset
+ * @category constructors
  */
-export const reset: SGR = { _tag: "Reset" }
+export const reset: SGR = internal.reset
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops SetBold
+ * @category constructors
  */
-export function setBold(bold: boolean): SGR {
-  return { _tag: "SetBold", bold }
-}
+export const setBold: (bold: boolean) => SGR = internal.setBold
 
 /**
- *  * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops SetItalicized
+ * @category constructors
  */
-export function setItalicized(italicized: boolean): SGR {
-  return { _tag: "SetItalicized", italicized }
-}
+export const setItalicized: (italicized: boolean) => SGR = internal.setItalicized
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops SetUnderlined
+ * @category constructors
  */
-export function setUnderlined(underlined: boolean): SGR {
-  return { _tag: "SetUnderlined", underlined }
-}
+export const setUnderlined: (underlined: boolean) => SGR = internal.setUnderlined
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops SetColor
+ * @category constructors
  */
-export function setColor(color: Color, vivid: boolean, layer: Layer): SGR {
-  return { _tag: "SetColor", color, vivid, layer }
-}
+export const setColor: (color: Color, vivid: boolean, layer: RenderLayer) => SGR = internal.setColor
 
 // -----------------------------------------------------------------------------
 // Destructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category destructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops toCode
- * @tsplus getter effect/printer-ansi/SGR toCode
+ * @category destructors
  */
-export const toCode: (self: SGR) => number = SG.toCode
+export const toCode: (self: SGR) => number = internal.toCode
 
 /**
- * @category destructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/SGR.Ops toEscapeSequence
+ * @category destructors
  */
-export const toEscapeSequence: (sgrs: Iterable<SGR>) => string = SG.toEscapeSequence
+export const toEscapeSequence: (sgrs: Iterable<SGR>) => string = internal.toEscapeSequence

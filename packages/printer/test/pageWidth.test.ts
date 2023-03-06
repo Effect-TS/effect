@@ -1,5 +1,8 @@
+import * as PageWidth from "@effect/printer/PageWidth"
+import { describe, expect, it } from "vitest"
+
 describe.concurrent("PageWidth", () => {
   it("remainingWidth", () => {
-    assert.strictEqual(PageWidth.remainingWidth(80, 1, 4, 40), 40)
+    expect(PageWidth.remainingWidth(80, 1, 4, 40)).toBe(40)
   })
 })

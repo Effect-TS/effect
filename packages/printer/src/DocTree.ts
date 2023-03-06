@@ -2,24 +2,31 @@
  * @since 1.0.0
  */
 
-import * as DT from "@effect/printer/internal/DocTree"
-import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
-import type { Monoid } from "@fp-ts/core/typeclass/Monoid"
-import type { Semigroup } from "@fp-ts/core/typeclass/Semigroup"
-import type { Chunk } from "@fp-ts/data/Chunk"
+import type { Chunk } from "@effect/data/Chunk"
+import type { Equal } from "@effect/data/Equal"
+import type { TypeLambda } from "@effect/data/HKT"
+import type * as covariant from "@effect/data/typeclass/Covariant"
+import type * as invariant from "@effect/data/typeclass/Invariant"
+import type * as monoid from "@effect/data/typeclass/Monoid"
+import type * as semigroup from "@effect/data/typeclass/Semigroup"
+import type * as DocStream from "@effect/printer/DocStream"
+import * as internal from "@effect/printer/internal_effect_untraced/docTree"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
-const TypeId: unique symbol = DT.DocTreeTypeId as TypeId
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export const DocTreeTypeId: unique symbol = internal.DocTreeTypeId as DocTreeTypeId
 
 /**
- * @category symbol
  * @since 1.0.0
+ * @category symbol
  */
-export type TypeId = typeof TypeId
+export type DocTreeTypeId = typeof DocTreeTypeId
 
 /**
  * Represents a document that has been laid out into a tree-like structure.
@@ -33,9 +40,8 @@ export type TypeId = typeof TypeId
  * from a tree-like structure that explicitly marks its contents as annotated.
  * A `DocTree` is therefore much more suitable for this use case.
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/DocTree
+ * @category model
  */
 export type DocTree<A> =
   | EmptyTree<A>
@@ -45,100 +51,78 @@ export type DocTree<A> =
   | AnnotationTree<A>
   | ConcatTree<A>
 
+/**
+ * @since 1.0.0
+ */
 export declare namespace DocTree {
+  export interface Variance<A> extends Equal {
+    readonly [DocTreeTypeId]: {
+      readonly _A: (_: never) => A
+    }
+  }
+
   export type TypeLambda = DocTreeTypeLambda
 }
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/DocTree.Ops
  */
-export interface DocTreeOps {
-  $: DocTreeAspects
-}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const DocTree: DocTreeOps = {
-  $: {}
-}
-
 export interface DocTreeTypeLambda extends TypeLambda {
   readonly type: DocTree<this["Target"]>
 }
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/DocTree.Aspects
- */
-export interface DocTreeAspects {}
-
-/**
  * @category model
- * @since 1.0.0
  */
-export interface EmptyTree<A> {
+export interface EmptyTree<A> extends DocTree.Variance<A> {
   readonly _tag: "EmptyTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface CharTree<A> {
+export interface CharTree<A> extends DocTree.Variance<A> {
   readonly _tag: "CharTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly char: string
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface TextTree<A> {
+export interface TextTree<A> extends DocTree.Variance<A> {
   readonly _tag: "TextTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly text: string
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface LineTree<A> {
+export interface LineTree<A> extends DocTree.Variance<A> {
   readonly _tag: "LineTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly indentation: number
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface AnnotationTree<A> {
+export interface AnnotationTree<A> extends DocTree.Variance<A> {
   readonly _tag: "AnnotationTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly annotation: A
   readonly tree: DocTree<A>
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface ConcatTree<A> {
+export interface ConcatTree<A> extends DocTree.Variance<A> {
   readonly _tag: "ConcatTree"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly trees: Chunk<DocTree<A>>
 }
 
@@ -149,115 +133,105 @@ export interface ConcatTree<A> {
 /**
  * Returns `true` if the specified value is a `DocTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops isDocTree
+ * @category refinements
  */
-export const isDocTree: (u: unknown) => u is DocTree<unknown> = DT.isDocTree
+export const isDocTree: (u: unknown) => u is DocTree<unknown> = internal.isDocTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `EmptyTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isEmptyTree
+ * @category refinements
  */
-export const isEmptyTree: <A>(self: DocTree<A>) => self is EmptyTree<A> = DT.isEmptyTree
+export const isEmptyTree: <A>(self: DocTree<A>) => self is EmptyTree<A> = internal.isEmptyTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `CharTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isCharTree
+ * @category refinements
  */
-export const isCharTree: <A>(self: DocTree<A>) => self is CharTree<A> = DT.isCharTree
+export const isCharTree: <A>(self: DocTree<A>) => self is CharTree<A> = internal.isCharTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `TextTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isTextTree
+ * @category refinements
  */
-export const isTextTree: <A>(self: DocTree<A>) => self is DT.TextTree<A> = DT.isTextTree
+export const isTextTree: <A>(self: DocTree<A>) => self is TextTree<A> = internal.isTextTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `LineTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isLineTree
+ * @category refinements
  */
-export const isLineTree: <A>(self: DocTree<A>) => self is DT.LineTree<A> = DT.isLineTree
+export const isLineTree: <A>(self: DocTree<A>) => self is LineTree<A> = internal.isLineTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `AnnotationTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isAnnotationTree
+ * @category refinements
  */
-export const isAnnotationTree: <A>(self: DocTree<A>) => self is DT.AnnotationTree<A> = DT.isAnnotationTree
+export const isAnnotationTree: <A>(self: DocTree<A>) => self is AnnotationTree<A> = internal.isAnnotationTree
 
 /**
  * Returns `true` if the specified `DocTree` is an `ConcatTree`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/DocTree isConcatTree
+ * @category refinements
  */
-export const isConcatTree: <A>(self: DocTree<A>) => self is DT.ConcatTree<A> = DT.isConcatTree
+export const isConcatTree: <A>(self: DocTree<A>) => self is ConcatTree<A> = internal.isConcatTree
 
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops empty
+ * @category constructors
  */
-export const empty: DocTree<never> = DT.empty
+export const empty: DocTree<never> = internal.empty
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops char
+ * @category constructors
  */
-export const char: <A>(char: string) => DocTree<A> = DT.char
+export const char: <A>(char: string) => DocTree<A> = internal.char
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops text
+ * @category constructors
  */
-export const text: <A>(text: string) => DocTree<A> = DT.text
+export const text: <A>(text: string) => DocTree<A> = internal.text
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops line
+ * @category constructors
  */
-export const line: <A>(indentation: number) => DocTree<A> = DT.line
+export const line: <A>(indentation: number) => DocTree<A> = internal.line
 
 /**
  * Annotate the specified `DocTree` with an annotation of type `A`.
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops annotation
+ * @category constructors
  */
-export const annotation: <A>(annotation: A) => (self: DocTree<A>) => DocTree<A> = DT.annotation
+export const annotation: {
+  <A>(annotation: A): <B>(self: DocTree<B>) => DocTree<A | B>
+  <A, B>(self: DocTree<A>, annotation: B): DocTree<A | B>
+} = internal.annotation
 
 /**
  * Horizontally concatenates multiple `DocTree`s.
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops concat
+ * @category constructors
  */
-export const concat: <A>(trees: Chunk<DocTree<A>>) => DocTree<A> = DT.concat
+export const concat: <A>(trees: Chunk<DocTree<A>>) => DocTree<A> = internal.concat
 
 // -----------------------------------------------------------------------------
 // Annotations
@@ -267,55 +241,45 @@ export const concat: <A>(trees: Chunk<DocTree<A>>) => DocTree<A> = DT.concat
  * Change the annotation of a document to a different annotation, or none at
  * all.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Aspects alterAnnotations
- * @tsplus pipeable effect/printer/DocTree alterAnnotations
+ * @category annotations
  */
-export const alterAnnotations: <A, B>(
-  f: (a: A) => Iterable<B>
-) => (
-  self: DocTree<A>
-) => DocTree<B> = DT.alterAnnotations
+export const alterAnnotations: {
+  <A, B>(f: (a: A) => Iterable<B>): (self: DocTree<A>) => DocTree<B>
+  <A, B>(self: DocTree<A>, f: (a: A) => Iterable<B>): DocTree<B>
+} = internal.alterAnnotations
 
 /**
  * Change the annotation of a `DocTree`.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Aspects map
- * @tsplus pipeable effect/printer/DocTree map
- * @tsplus static effect/printer/DocTree.Aspects reAnnotate
- * @tsplus pipeable effect/printer/DocTree reAnnotate
+ * @category annotations
  */
-export const reAnnotate: <A, B>(f: (a: A) => B) => (self: DocTree<A>) => DocTree<B> = DT.reAnnotate
+export const reAnnotate: {
+  <A, B>(f: (a: A) => B): (self: DocTree<A>) => DocTree<B>
+  <A, B>(self: DocTree<A>, f: (a: A) => B): DocTree<B>
+} = internal.reAnnotate
 
 /**
  * Remove all annotations from a `DocTree`.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Aspects unAnnotate
- * @tsplus getter effect/printer/DocTree unAnnotate
+ * @category annotations
  */
-export const unAnnotate: <A>(self: DocTree<A>) => DocTree<never> = DT.unAnnotate
+export const unAnnotate: <A>(self: DocTree<A>) => DocTree<never> = internal.unAnnotate
 
 // -----------------------------------------------------------------------------
 // Folding
 // -----------------------------------------------------------------------------
 
 /**
- * @category folding
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Aspects foldMap
- * @tsplus pipeable effect/printer/DocTree foldMap
+ * @category folding
  */
-export const foldMap: <A, M>(
-  I: Monoid<M>,
-  f: (a: A) => M
-) => (
-  self: DocTree<A>
-) => M = DT.foldMap
+export const foldMap: {
+  <A, M>(M: monoid.Monoid<M>, f: (a: A) => M): (self: DocTree<A>) => M
+  <A, M>(self: DocTree<A>, M: monoid.Monoid<M>, f: (a: A) => M): M
+} = internal.foldMap
 
 // -----------------------------------------------------------------------------
 // Instances
@@ -331,8 +295,8 @@ export const foldMap: <A, M>(
  * import * as Doc from "@effect/printer/Doc"
  * import * as DocTree from "@effect/printer/DocTree"
  * import * as Layout from "@effect/printer/Layout"
- * import { identity, pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { identity, pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<void> = Doc.hsep([
  *   Doc.text("hello"),
@@ -355,16 +319,22 @@ export const foldMap: <A, M>(
  *   "hello >>>world<<<!"
  * )
  *
- * @category rendering
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Aspects renderSimplyDecorated
- * @tsplus pipeable effect/printer/DocTree renderSimplyDecorated
+ * @category rendering
  */
-export const renderSimplyDecorated: <A, M>(
-  M: Monoid<M>,
-  renderText: (text: string) => M,
-  renderAnnotation: (annotation: A, out: M) => M
-) => (self: DocTree<A>) => M = DT.renderSimplyDecorated
+export const renderSimplyDecorated: {
+  <A, M>(
+    M: monoid.Monoid<M>,
+    renderText: (text: string) => M,
+    renderAnnotation: (annotation: A, out: M) => M
+  ): (self: DocTree<A>) => M
+  <A, M>(
+    self: DocTree<A>,
+    M: monoid.Monoid<M>,
+    renderText: (text: string) => M,
+    renderAnnotation: (annotation: A, out: M) => M
+  ): M
+} = internal.renderSimplyDecorated
 
 // -----------------------------------------------------------------------------
 // Conversions
@@ -378,29 +348,32 @@ export const renderSimplyDecorated: <A, M>(
  * @tsplus static effect/printer/DocStream.Aspects treeForm
  * @tsplus getter effect/printer/DocStream treeForm
  */
-export const treeForm: <A>(stream: DocStream<A>) => DocTree<A> = DT.treeForm
+export const treeForm: <A>(stream: DocStream.DocStream<A>) => DocTree<A> = internal.treeForm
 
 // -----------------------------------------------------------------------------
 // Instances
 // -----------------------------------------------------------------------------
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops getSemigroup
+ * @category instances
  */
-export const getSemigroup: <A>() => Semigroup<DocTree<A>> = DT.getSemigroup
+export const getSemigroup: <A>(_: void) => semigroup.Semigroup<DocTree<A>> = internal.getSemigroup
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops getMonoid
+ * @category instances
  */
-export const getMonoid: <A>() => Monoid<DocTree<A>> = DT.getMonoid
+export const getMonoid: <A>(_: void) => monoid.Monoid<DocTree<A>> = internal.getMonoid
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/DocTree.Ops Covariant
+ * @category instances
  */
-export const Functor: _Functor<DocTree.TypeLambda> = DT.Functor
+export const Covariant: covariant.Covariant<DocTree.TypeLambda> = internal.Covariant
+
+/**
+ * @since 1.0.0
+ * @category instances
+ */
+export const Invariant: invariant.Invariant<DocTree.TypeLambda> = internal.Invariant

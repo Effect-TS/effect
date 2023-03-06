@@ -2,7 +2,10 @@
  * @since 1.0.0
  */
 
-import * as R from "@effect/printer/internal/Render"
+import type { Doc } from "@effect/printer/Doc"
+import type { DocStream } from "@effect/printer/DocStream"
+import * as internal from "@effect/printer/internal_effect_untraced/render"
+import type { AvailablePerLine } from "@effect/printer/PageWidth"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms
@@ -14,55 +17,55 @@ import * as R from "@effect/printer/internal/Render"
  * **Note**: this method requires using a `Layout` algorithm to layout a `Doc`
  * into a `DocStream` prior to rendering.
  *
- * @tsplus static effect/printer/DocStream.Ops render
- * @tsplus getter effect/printer/DocStream render
+ * @since 1.0.0
+ * @category rendering
  */
-export const render: <A>(self: DocStream<A>) => string = R.render
+export const render: <A>(self: DocStream<A>) => string = internal.render
 
 /**
- * @tsplus static effect/printer/Doc.Ops compact
- * @tsplus getter effect/printer/Doc compact
+ * @since 1.0.0
+ * @category rendering
  */
-export const compact: <A>(self: Doc<A>) => string = R.compact
+export const compact: <A>(self: Doc<A>) => string = internal.compact
 
 /**
- * @tsplus static effect/printer/Doc.Aspects pretty
- * @tsplus pipeable effect/printer/Doc pretty
+ * @since 1.0.0
+ * @category rendering
  */
-export const pretty: (
-  lineWidth: number,
-  ribbonFraction?: number
-) => <A>(self: Doc<A>) => string = R.pretty
+export const pretty: {
+  (options: Partial<Omit<AvailablePerLine, "_tag">>): <A>(self: Doc<A>) => string
+  <A>(self: Doc<A>, options: Partial<Omit<AvailablePerLine, "_tag">>): string
+} = internal.pretty
 
 /**
- * @tsplus static effect/printer/Doc.Ops prettyDefault
- * @tsplus getter effect/printer/Doc prettyDefault
+ * @since 1.0.0
+ * @category rendering
  */
-export const prettyDefault: <A>(self: Doc<A>) => string = R.prettyDefault
+export const prettyDefault: <A>(self: Doc<A>) => string = internal.prettyDefault
 
 /**
- * @tsplus static effect/printer/Doc.Ops prettyUnbounded
- * @tsplus getter effect/printer/Doc prettyUnbounded
+ * @since 1.0.0
+ * @category rendering
  */
-export const prettyUnbounded: <A>(self: Doc<A>) => string = R.prettyUnbounded
+export const prettyUnbounded: <A>(self: Doc<A>) => string = internal.prettyUnbounded
 
 /**
- * @tsplus static effect/printer/Doc.Aspects smart
- * @tsplus pipeable effect/printer/Doc smart
+ * @since 1.0.0
+ * @category rendering
  */
-export const smart: <A>(
-  lineWidth: number,
-  ribbonFraction?: number
-) => (self: Doc<A>) => string = R.smart
+export const smart: {
+  (options: Partial<Omit<AvailablePerLine, "_tag">>): <A>(self: Doc<A>) => string
+  <A>(self: Doc<A>, options: Partial<Omit<AvailablePerLine, "_tag">>): string
+} = internal.smart
 
 /**
- * @tsplus static effect/printer/Doc.Ops smartDefault
- * @tsplus getter effect/printer/Doc smartDefault
+ * @since 1.0.0
+ * @category rendering
  */
-export const smartDefault: <A>(self: Doc<A>) => string = R.smartDefault
+export const smartDefault: <A>(self: Doc<A>) => string = internal.smartDefault
 
 /**
- * @tsplus static effect/printer/Doc.Ops smartUnbounded
- * @tsplus getter effect/printer/Doc smartUnbounded
+ * @since 1.0.0
+ * @category rendering
  */
-export const smartUnbounded: <A>(self: Doc<A>) => string = R.smartUnbounded
+export const smartUnbounded: <A>(self: Doc<A>) => string = internal.smartUnbounded

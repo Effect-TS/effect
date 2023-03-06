@@ -1,56 +1,72 @@
-import * as Chunk from "@fp-ts/data/Chunk"
-import { pipe } from "@fp-ts/data/Function"
-import * as SafeEval from "@fp-ts/data/SafeEval"
-import * as String from "@fp-ts/data/String"
+import * as Chunk from "@effect/data/Chunk"
+import { pipe } from "@effect/data/Function"
+import * as String from "@effect/data/String"
+import * as Effect from "@effect/io/Effect"
+import * as Doc from "@effect/printer/Doc"
+import * as DocStream from "@effect/printer/DocStream"
+import * as DocTree from "@effect/printer/DocTree"
+import * as Layout from "@effect/printer/Layout"
 
 describe.concurrent("DocTree", () => {
   describe.concurrent("constructors", () => {
     it("char", () => {
-      assert.isTrue(DocStream.char("a")(DocStream.empty).treeForm.isCharTree())
+      const tree = DocTree.treeForm(DocStream.char(DocStream.empty, "a"))
+      expect(DocTree.isCharTree(tree)).toBe(true)
     })
 
     it("text", () => {
-      assert.isTrue(DocStream.text("foo")(DocStream.empty).treeForm.isTextTree())
+      const tree = DocTree.treeForm(DocStream.text(DocStream.empty, "foo"))
+      expect(DocTree.isTextTree(tree)).toBe(true)
     })
 
     it("line", () => {
-      assert.isTrue(DocStream.line(1)(DocStream.empty).treeForm.isLineTree())
+      const tree = DocTree.treeForm(DocStream.line(DocStream.empty, 1))
+      expect(DocTree.isLineTree(tree)).toBe(true)
     })
 
     it("annotated", () => {
-      assert.isTrue(
+      const tree = DocTree.treeForm(
         pipe(
-          DocStream.empty,
-          DocStream.popAnnotation,
+          DocStream.popAnnotation(DocStream.empty),
           DocStream.char("a"),
-          DocStream.pushAnnotation(undefined)
-        ).treeForm.isAnnotationTree()
+          DocStream.pushAnnotation(1)
+        )
       )
+      expect(DocTree.isAnnotationTree(tree)).toBe(true)
     })
 
     it("concat", () => {
-      assert.isTrue(
+      const tree = DocTree.treeForm(
         pipe(
-          DocStream.empty,
-          DocStream.char("c"),
+          DocStream.char(DocStream.empty, "c"),
           DocStream.char("a")
-        ).treeForm.isConcatTree()
+        )
       )
+      expect(DocTree.isConcatTree(tree)).toBe(true)
     })
   })
 
   describe("parser", () => {
     it("should fail if parsing an empty stream", () => {
-      assert.throws(() => {
-        console.log(DocStream.empty.treeForm)
-        DocStream.empty.treeForm
-      })
+      expect(() => {
+        DocTree.treeForm(DocStream.empty)
+      }).toThrowError(
+        new Error(
+          "BUG: DocTree.treeForm - failed to convert DocStream to DocTree" +
+            " - please report an issue at https://github.com/Effect-TS/printer/issues"
+        )
+      )
     })
 
     it("should fail if attempting to parse a failed stream", () => {
-      assert.throws(() => {
-        DocStream.failed.treeForm
-      })
+      expect(() => {
+        DocTree.treeForm(DocStream.failed)
+      }).toThrowError(
+        new Error(
+          "BUG: DocTree.treeForm - found failed doc stream while parsing" +
+            " - please report an issue at https://github.com/Effect-TS/printer/issues"
+        )
+      )
     })
   })
 
@@ -80,27 +96,19 @@ describe.concurrent("DocTree", () => {
         readonly level: number
       }
 
-      function bold(doc: Doc<SimpleHtml>): Doc<SimpleHtml> {
-        return doc.annotate({ _tag: "Bold" })
-      }
+      const bold = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Bold" })
 
-      function color(doc: Doc<SimpleHtml>, color: "Red" | "Green" | "Blue"): Doc<SimpleHtml> {
-        return doc.annotate({ _tag: "Color", color })
-      }
+      const color = (doc: Doc.Doc<SimpleHtml>, color: "Red" | "Green" | "Blue"): Doc.Doc<SimpleHtml> =>
+        Doc.annotate(doc, { _tag: "Color", color })
 
-      function italicized(doc: Doc<SimpleHtml>): Doc<SimpleHtml> {
-        return doc.annotate({ _tag: "Italicized" })
-      }
+      const italicized = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Italicized" })
 
-      function paragraph(doc: Doc<SimpleHtml>): Doc<SimpleHtml> {
-        return doc.annotate({ _tag: "Paragraph" })
-      }
+      const paragraph = (doc: Doc.Doc<SimpleHtml>): Doc.Doc<SimpleHtml> => Doc.annotate(doc, { _tag: "Paragraph" })
 
-      function header(doc: Doc<SimpleHtml>, level: number): Doc<SimpleHtml> {
-        return doc.annotate({ _tag: "Header", level })
-      }
+      const header = (doc: Doc.Doc<SimpleHtml>, level: number): Doc.Doc<SimpleHtml> =>
+        Doc.annotate(doc, { _tag: "Header", level })
 
-      function colorToHex(color: "Red" | "Green" | "Blue"): string {
+      const colorToHex = (color: "Red" | "Green" | "Blue"): string => {
         switch (color) {
           case "Red": {
             return "#f00"
@@ -114,7 +122,7 @@ describe.concurrent("DocTree", () => {
         }
       }
 
-      function encloseInTag(content: string, html: SimpleHtml): string {
+      const encloseInTag = (content: string, html: SimpleHtml): string => {
         switch (html._tag) {
           case "Bold": {
             return `<strong>${content}</strong>`
@@ -134,81 +142,79 @@ describe.concurrent("DocTree", () => {
         }
       }
 
-      function renderTreeSafe(tree: DocTree<SimpleHtml>): SafeEval.SafeEval<string> {
+      const renderTreeSafe = (tree: DocTree.DocTree<SimpleHtml>): Effect.Effect<never, never, string> => {
         switch (tree._tag) {
           case "EmptyTree": {
-            return SafeEval.succeed("")
+            return Effect.succeed("")
           }
           case "CharTree": {
-            return SafeEval.succeed(tree.char)
+            return Effect.succeed(tree.char)
           }
           case "TextTree": {
-            return SafeEval.succeed(tree.text)
+            return Effect.succeed(tree.text)
           }
           case "LineTree": {
-            return SafeEval.succeed("\n" + Doc.textSpaces(tree.indentation))
+            return Effect.succeed("\n" + Doc.textSpaces(tree.indentation))
           }
           case "AnnotationTree": {
-            return pipe(
-              SafeEval.suspend(() => renderTreeSafe(tree.tree)),
-              SafeEval.map((content) => encloseInTag(content, tree.annotation))
+            return Effect.map(
+              Effect.suspendSucceed(() => renderTreeSafe(tree.tree)),
+              (content) => encloseInTag(content, tree.annotation)
             )
           }
           case "ConcatTree": {
             if (tree.trees.length === 0) {
-              return SafeEval.succeed("")
+              return Effect.succeed("")
             }
             const head = Chunk.unsafeHead(tree.trees)
-            return pipe(
-              tree.trees,
-              Chunk.drop(1),
-              Chunk.reduce(
-                SafeEval.suspend(() => renderTreeSafe(head)),
-                (acc, tree) =>
-                  pipe(
-                    acc,
-                    SafeEval.zipWith(SafeEval.suspend(() => renderTreeSafe(tree)), (a, b) => a + b)
-                  )
-              )
+
+            return Chunk.reduce(
+              Chunk.drop(tree.trees, 1),
+              Effect.suspendSucceed(() => renderTreeSafe(head)),
+              (acc, tree) =>
+                Effect.zipWith(
+                  acc,
+                  Effect.suspendSucceed(() => renderTreeSafe(tree)),
+                  (left, right) => left + right
+                )
             )
           }
         }
       }
 
-      function renderTree(tree: DocTree<SimpleHtml>): string {
-        return SafeEval.execute(renderTreeSafe(tree))
-      }
+      const renderTree = (tree: DocTree.DocTree<SimpleHtml>): string => Effect.runSync(renderTreeSafe(tree))
 
-      function render(stream: DocStream<SimpleHtml>): string {
-        return renderTree(stream.treeForm)
-      }
+      const render = (stream: DocStream.DocStream<SimpleHtml>): string => renderTree(DocTree.treeForm(stream))
 
       const document = Doc.vsep([
         header(Doc.text("Example document"), 1),
         paragraph(
           Doc.hsep([
             Doc.text("This is a"),
-            color(Doc.text("paragraph"), "Red").cat(Doc.comma)
+            Doc.cat(
+              color(Doc.text("paragraph"), "Red"),
+              Doc.comma
+            )
           ])
         ),
         paragraph(
           Doc.hsep([
             Doc.text("and"),
-            bold(Doc.text("this text is bold!")).cat(Doc.comma)
+            Doc.cat(
+              bold(Doc.text("this text is bold!")),
+              Doc.comma
+            )
           ])
         ),
         paragraph(Doc.hsep([Doc.text("and"), italicized(Doc.text("this is italicized!"))]))
       ])
 
-      assert.strictEqual(
-        render(document.layoutPretty(Layout.Options.default)),
-        String.stripMargin(
-          `|<h1>Example document</h1>
-           |<p>This is a <span style="color:#f00">paragraph</span>,</p>
-           |<p>and <strong>this text is bold!</strong>,</p>
-           |<p>and <em>this is italicized!</em></p>`
-        )
-      )
+      expect(render(Layout.pretty(document, Layout.defaultOptions))).toBe(String.stripMargin(
+        `|<h1>Example document</h1>
+         |<p>This is a <span style="color:#f00">paragraph</span>,</p>
+         |<p>and <strong>this text is bold!</strong>,</p>
+         |<p>and <em>this is italicized!</em></p>`
+      ))
     })
   })
 })

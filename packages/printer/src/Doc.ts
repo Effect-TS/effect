@@ -17,31 +17,38 @@
  * @since 1.0.0
  */
 
-import * as D from "@effect/printer/internal/Doc"
-import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
-import type { Monoid } from "@fp-ts/core/typeclass/Monoid"
-import type { Semigroup } from "@fp-ts/core/typeclass/Semigroup"
+import type { Equal } from "@effect/data/Equal"
+import type { TypeLambda } from "@effect/data/HKT"
+import type * as covariant from "@effect/data/typeclass/Covariant"
+import type * as invariant from "@effect/data/typeclass/Invariant"
+import type { Monoid } from "@effect/data/typeclass/Monoid"
+import type { Semigroup } from "@effect/data/typeclass/Semigroup"
+import type { Flatten } from "@effect/printer/Flatten"
+import * as internal from "@effect/printer/internal_effect_untraced/doc"
+import type { PageWidth } from "@effect/printer/PageWidth"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
-const TypeId: unique symbol = D.DocTypeId as TypeId
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export const DocTypeId: unique symbol = internal.DocTypeId as DocTypeId
 
 /**
- * @category symbol
  * @since 1.0.0
+ * @category symbol
  */
-export type TypeId = typeof TypeId
+export type DocTypeId = typeof DocTypeId
 
 /**
  * Represents a prettified document that has been annotated with data of type
  * `A`.
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Doc
+ * @category model
  */
 export type Doc<A> =
   | Fail<A>
@@ -62,52 +69,37 @@ export type Doc<A> =
  * @since 1.0.0
  */
 export declare namespace Doc {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Variance<A> extends Equal {
+    readonly [DocTypeId]: {
+      readonly _A: () => A
+    }
+  }
+
   export type TypeLambda = DocTypeLambda
 }
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Doc.Ops
- */
-export interface DocOps {
-  $: DocAspects
-}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Doc: DocOps = {
-  $: {}
-}
-
-/**
- * @category model
- * @since 1.0.0
  */
 export interface DocTypeLambda extends TypeLambda {
   readonly type: Doc<this["Target"]>
 }
 
 /**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Doc.Aspects
- */
-export interface DocAspects {}
-
-/**
- * Represents a document that cannot be rendered. Generally occurs when
+ * Represents a document that cannot be rendereinternal. Generally occurs when
  * flattening a line. The layout algorithms will reject this document and choose
  * a more suitable rendering.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Fail<A> {
+export interface Fail<A> extends Doc.Variance<A> {
   readonly _tag: "Fail"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 /**
@@ -115,13 +107,11 @@ export interface Fail<A> {
  *
  * Conceptually, the `Empty` document can be thought of as the unit of `Cat`.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Empty<A> {
+export interface Empty<A> extends Doc.Variance<A> {
   readonly _tag: "Empty"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 /**
@@ -130,13 +120,11 @@ export interface Empty<A> {
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Char<A> {
+export interface Char<A> extends Doc.Variance<A> {
   readonly _tag: "Char"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly char: string
 }
 
@@ -147,43 +135,37 @@ export interface Char<A> {
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Text<A> {
+export interface Text<A> extends Doc.Variance<A> {
   readonly _tag: "Text"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly text: string
 }
 
 /**
  * Represents a document that contains a hard line break.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Line<A> {
+export interface Line<A> extends Doc.Variance<A> {
   readonly _tag: "Line"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 /**
  * Represents a flattened alternative of two documents. The layout algorithms
  * will choose the first document, but when flattened (via `group`) the second
- * document will be preferred.
+ * document will be preferreinternal.
  *
  * The layout algorithms operate under the assumption that the first alternative
  * is less wide than the flattened second alternative.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface FlatAlt<A> {
+export interface FlatAlt<A> extends Doc.Variance<A> {
   readonly _tag: "FlatAlt"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly left: Doc<A>
   readonly right: Doc<A>
 }
@@ -191,13 +173,11 @@ export interface FlatAlt<A> {
 /**
  * Represents the concatenation of two documents.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Cat<A> {
+export interface Cat<A> extends Doc.Variance<A> {
   readonly _tag: "Cat"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly left: Doc<A>
   readonly right: Doc<A>
 }
@@ -205,13 +185,11 @@ export interface Cat<A> {
 /**
  * Represents a document that is indented by a certain number of columns.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Nest<A> {
+export interface Nest<A> extends Doc.Variance<A> {
   readonly _tag: "Nest"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly indent: number
   readonly doc: Doc<A>
 }
@@ -225,13 +203,11 @@ export interface Nest<A> {
  *   of the second document so that the layout algorithm can pick the document
  *   with the best fit.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Union<A> {
+export interface Union<A> extends Doc.Variance<A> {
   readonly _tag: "Union"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly left: Doc<A>
   readonly right: Doc<A>
 }
@@ -239,65 +215,55 @@ export interface Union<A> {
 /**
  * Represents a document that reacts to the current cursor position.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Column<A> {
+export interface Column<A> extends Doc.Variance<A> {
   readonly _tag: "Column"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly react: (position: number) => Doc<A>
 }
 
 /**
  * Represents a document that reacts to the current page width.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface WithPageWidth<A> {
+export interface WithPageWidth<A> extends Doc.Variance<A> {
   readonly _tag: "WithPageWidth"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly react: (pageWidth: PageWidth) => Doc<A>
 }
 
 /**
  * Represents a document that reacts to the current page width.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface WithPageWidth<A> {
+export interface WithPageWidth<A> extends Doc.Variance<A> {
   readonly _tag: "WithPageWidth"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly react: (pageWidth: PageWidth) => Doc<A>
 }
 
 /**
  * Represents a document that reacts to the current nesting level.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Nesting<A> {
+export interface Nesting<A> extends Doc.Variance<A> {
   readonly _tag: "Nesting"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly react: (level: number) => Doc<A>
 }
 
 /**
  * Represents a document with an associated annotation.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Annotated<A> {
+export interface Annotated<A> extends Doc.Variance<A> {
   readonly _tag: "Annotated"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly annotation: A
   readonly doc: Doc<A>
 }
@@ -309,141 +275,114 @@ export interface Annotated<A> {
 /**
  * Returns `true` if the specified value is a `Doc`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isDoc
+ * @category refinements
  */
-export const isDoc: (u: unknown) => u is Doc<unknown> = D.isDoc
+export const isDoc: (u: unknown) => u is Doc<unknown> = internal.isDoc
 
 /**
  * Returns `true` if the specified `Doc` is a `Fail`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isFail
- * @tsplus fluent effect/printer/Doc isFail
+ * @category refinements
  */
-export const isFail: <A>(self: Doc<A>) => self is Fail<A> = D.isFail
+export const isFail: <A>(self: Doc<A>) => self is Fail<A> = internal.isFail
 
 /**
  * Returns `true` if the specified `Doc` is an `Empty`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isEmpty
- * @tsplus fluent effect/printer/Doc isEmpty
+ * @category refinements
  */
-export const isEmpty: <A>(self: Doc<A>) => self is Empty<A> = D.isEmpty
+export const isEmpty: <A>(self: Doc<A>) => self is Empty<A> = internal.isEmpty
 
 /**
  * Returns `true` if the specified `Doc` is a `Char`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isChar
- * @tsplus fluent effect/printer/Doc isChar
+ * @category refinements
  */
-export const isChar: <A>(self: Doc<A>) => self is Char<A> = D.isChar
+export const isChar: <A>(self: Doc<A>) => self is Char<A> = internal.isChar
 
 /**
  * Returns `true` if the specified `Doc` is a `Text`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isText
- * @tsplus fluent effect/printer/Doc isText
+ * @category refinements
  */
-export const isText: <A>(self: Doc<A>) => self is Text<A> = D.isText
+export const isText: <A>(self: Doc<A>) => self is Text<A> = internal.isText
 
 /**
  * Returns `true` if the specified `Doc` is a `Line`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isLine
- * @tsplus fluent effect/printer/Doc isLine
+ * @category refinements
  */
-export const isLine: <A>(self: Doc<A>) => self is Line<A> = D.isLine
+export const isLine: <A>(self: Doc<A>) => self is Line<A> = internal.isLine
 
 /**
  * Returns `true` if the specified `Doc` is a `FlatAlt`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isFlatAlt
- * @tsplus fluent effect/printer/Doc isFlatAlt
+ * @category refinements
  */
-export const isFlatAlt: <A>(self: Doc<A>) => self is FlatAlt<A> = D.isFlatAlt
+export const isFlatAlt: <A>(self: Doc<A>) => self is FlatAlt<A> = internal.isFlatAlt
 
 /**
  * Returns `true` if the specified `Doc` is a `Cat`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isCat
- * @tsplus fluent effect/printer/Doc isCat
+ * @category refinements
  */
-export const isCat: <A>(self: Doc<A>) => self is Cat<A> = D.isCat
+export const isCat: <A>(self: Doc<A>) => self is Cat<A> = internal.isCat
 
 /**
  * Returns `true` if the specified `Doc` is a `Nest`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isNest
- * @tsplus fluent effect/printer/Doc isNest
+ * @category refinements
  */
-export const isNest: <A>(self: Doc<A>) => self is Nest<A> = D.isNest
+export const isNest: <A>(self: Doc<A>) => self is Nest<A> = internal.isNest
 
 /**
  * Returns `true` if the specified `Doc` is a `Union`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isUnion
- * @tsplus fluent effect/printer/Doc isUnion
+ * @category refinements
  */
-export const isUnion: <A>(self: Doc<A>) => self is Union<A> = D.isUnion
+export const isUnion: <A>(self: Doc<A>) => self is Union<A> = internal.isUnion
 
 /**
  * Returns `true` if the specified `Doc` is a `Column`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isColumn
- * @tsplus fluent effect/printer/Doc isColumn
+ * @category refinements
  */
-export const isColumn: <A>(self: Doc<A>) => self is Column<A> = D.isColumn
+export const isColumn: <A>(self: Doc<A>) => self is Column<A> = internal.isColumn
 
 /**
  * Returns `true` if the specified `Doc` is a `WithPageWidth`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isWithPageWidth
- * @tsplus fluent effect/printer/Doc isWithPageWidth
+ * @category refinements
  */
-export const isWithPageWidth = D.isWithPageWidth
+export const isWithPageWidth = internal.isWithPageWidth
 
 /**
  * Returns `true` if the specified `Doc` is a `Nesting`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isNesting
- * @tsplus fluent effect/printer/Doc isNesting
+ * @category refinements
  */
-export const isNesting: <A>(self: Doc<A>) => self is Nesting<A> = D.isNesting
+export const isNesting: <A>(self: Doc<A>) => self is Nesting<A> = internal.isNesting
 
 /**
  * Returns `true` if the specified `Doc` is a `Annotated`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops isAnnotated
- * @tsplus fluent effect/printer/Doc isAnnotated
+ * @category refinements
  */
-export const isAnnotated: <A>(self: Doc<A>) => self is Annotated<A> = D.isAnnotated
+export const isAnnotated: <A>(self: Doc<A>) => self is Annotated<A> = internal.isAnnotated
 
 // -----------------------------------------------------------------------------
 // Constructors
@@ -455,11 +394,10 @@ export const isAnnotated: <A>(self: Doc<A>) => self is Annotated<A> = D.isAnnota
  * **Invariants**
  * - Cannot be the newline (`"\n"`) character
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops char
+ * @category constructors
  */
-export const char: (char: string) => Doc<never> = D.char
+export const char: (char: string) => Doc<never> = internal.char
 
 /**
  * A document containing a string of text.
@@ -468,11 +406,10 @@ export const char: (char: string) => Doc<never> = D.char
  * - Text cannot be less than two characters long
  * - Text cannot contain a newline (`"\n"`) character
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops text
+ * @category constructors
  */
-export const text: (text: string) => Doc<never> = D.text
+export const text: (text: string) => Doc<never> = internal.text
 
 /**
  * Constructs a document containing a string of text.
@@ -480,11 +417,10 @@ export const text: (text: string) => Doc<never> = D.text
  * **Note**: newline characters (`\n`) contained in the provided string will be
  * disregarded (i.e. not rendered) in the output document.
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops string
+ * @category constructors
  */
-export const string: (str: string) => Doc<never> = D.string
+export const string: (str: string) => Doc<never> = internal.string
 
 // -----------------------------------------------------------------------------
 // Primitives
@@ -501,12 +437,12 @@ export const string: (str: string) => Doc<never> = D.string
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  * import * as assert from "assert"
  *
  * const doc = Doc.vsep([
  *   Doc.text("hello"),
- *   Doc.parens(D.empty), // `parens` for visibility purposes only
+ *   Doc.parens(internal.empty), // `parens` for visibility purposes only
  *   Doc.text("world")
  * ])
  *
@@ -519,23 +455,21 @@ export const string: (str: string) => Doc<never> = D.string
  *   String.stripMargin(expected)
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops empty
+ * @category primitives
  */
-export const empty: Doc<never> = D.empty
+export const empty: Doc<never> = internal.empty
 
 /**
- * The `fail` document is a document that cannot be rendered.
+ * The `fail` document is a document that cannot be rendereinternal.
  *
  * Generally occurs when flattening a line. The layout algorithms will reject
  * this document and choose a more suitable rendering.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops fail
+ * @category primitives
  */
-export const fail: Doc<never> = D.fail
+export const fail: Doc<never> = internal.fail
 
 /**
  * The `line` document advances to the next line and indents to the current
@@ -545,7 +479,7 @@ export const fail: Doc<never> = D.fail
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
  *   Doc.text("lorem ipsum"),
@@ -565,11 +499,10 @@ export const fail: Doc<never> = D.fail
  *   "lorem ipsum dolor sit amet"
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops line
+ * @category primitives
  */
-export const line: Doc<never> = D.line
+export const line: Doc<never> = internal.line
 
 /**
  * The `lineBreak` document is like `line` but behaves like `empty` if the line
@@ -578,7 +511,7 @@ export const line: Doc<never> = D.line
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
  *   Doc.text("lorem ipsum"),
@@ -598,11 +531,10 @@ export const line: Doc<never> = D.line
  *   "lorem ipsumdolor sit amet"
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops lineBreak
+ * @category primitives
  */
-export const lineBreak: Doc<never> = D.lineBreak
+export const lineBreak: Doc<never> = internal.lineBreak
 
 /**
  * The `softLine` document behaves like `space` if the resulting output fits
@@ -611,7 +543,7 @@ export const lineBreak: Doc<never> = D.lineBreak
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
  *   Doc.text("lorem ipsum"),
@@ -635,11 +567,10 @@ export const lineBreak: Doc<never> = D.lineBreak
  *   )
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops softLine
+ * @category primitives
  */
-export const softLine: Doc<never> = D.softLine
+export const softLine: Doc<never> = internal.softLine
 
 /**
  * The `softLineBreak` document is similar to `softLine`, but behaves like
@@ -649,7 +580,7 @@ export const softLine: Doc<never> = D.softLine
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
  *   Doc.text("ThisText"),
@@ -673,20 +604,19 @@ export const softLine: Doc<never> = D.softLine
  *   )
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops softLineBreak
+ * @category primitives
  */
-export const softLineBreak: Doc<never> = D.softLineBreak
+export const softLineBreak: Doc<never> = internal.softLineBreak
 
 /**
  * The `hardLine` document is always laid out as a line break, regardless of
- * space or whether or not the document was `group`"ed.
+ * space or whether or not the document was `group`"einternal.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat([
  *   Doc.text("lorem ipsum"),
@@ -703,182 +633,162 @@ export const softLineBreak: Doc<never> = D.softLineBreak
  *   )
  * )
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops hardLine
+ * @category primitives
  */
-export const hardLine: Doc<never> = D.hardLine
+export const hardLine: Doc<never> = internal.hardLine
 
 /**
  * A document containing a single `\` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops backslash
+ * @category primitives
  */
-export const backslash: Doc<never> = D.backslash
+export const backslash: Doc<never> = internal.backslash
 
 /**
  * A document containing a single `:` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops colon
+ * @category primitives
  */
-export const colon: Doc<never> = D.colon
+export const colon: Doc<never> = internal.colon
 
 /**
  * A document containing a single `,` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops comma
+ * @category primitives
  */
-export const comma: Doc<never> = D.comma
+export const comma: Doc<never> = internal.comma
 
 /**
  * A document containing a single `.` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops dot
+ * @category primitives
  */
-export const dot: Doc<never> = D.dot
+export const dot: Doc<never> = internal.dot
 
 /**
  * A document containing a single `"` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops dquote
+ * @category primitives
  */
-export const dquote: Doc<never> = D.dquote
+export const dquote: Doc<never> = internal.dquote
 
 /**
  * A document containing a single `=` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops equalSign
+ * @category primitives
  */
-export const equalSign: Doc<never> = D.equalSign
+export const equalSign: Doc<never> = internal.equalSign
 
 /**
  * A document containing a single `<` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops langle
+ * @category primitives
  */
-export const langle: Doc<never> = D.langle
+export const langle: Doc<never> = internal.langle
 
 /**
  * A document containing a single `{` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops lbrace
+ * @category primitives
  */
-export const lbrace: Doc<never> = D.lbrace
+export const lbrace: Doc<never> = internal.lbrace
 
 /**
  * A document containing a single `[` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops lbracket
+ * @category primitives
  */
-export const lbracket: Doc<never> = D.lbracket
+export const lbracket: Doc<never> = internal.lbracket
 
 /**
  * A document containing a single `(` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops lparen
+ * @category primitives
  */
-export const lparen: Doc<never> = D.lparen
+export const lparen: Doc<never> = internal.lparen
 
 /**
  * A document containing a single `>` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops rangle
+ * @category primitives
  */
-export const rangle: Doc<never> = D.rangle
+export const rangle: Doc<never> = internal.rangle
 
 /**
  * A document containing a single `}` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops rbrace
+ * @category primitives
  */
-export const rbrace: Doc<never> = D.rbrace
+export const rbrace: Doc<never> = internal.rbrace
 
 /**
  * A document containing a single `]` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops rbracket
+ * @category primitives
  */
-export const rbracket: Doc<never> = D.rbracket
+export const rbracket: Doc<never> = internal.rbracket
 
 /**
  * A document containing a single `)` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops rparen
+ * @category primitives
  */
-export const rparen: Doc<never> = D.rparen
+export const rparen: Doc<never> = internal.rparen
 
 /**
  * A document containing a single `;` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops semi
+ * @category primitives
  */
-export const semi: Doc<never> = D.semi
+export const semi: Doc<never> = internal.semi
 
 /**
  * A document containing a single `/` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops slash
+ * @category primitives
  */
-export const slash: Doc<never> = D.slash
+export const slash: Doc<never> = internal.slash
 
 /**
  * A document containing a single `"` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops squote
+ * @category primitives
  */
-export const squote: Doc<never> = D.squote
+export const squote: Doc<never> = internal.squote
 
 /**
  * A document containing a single ` ` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops space
+ * @category primitives
  */
-export const space: Doc<never> = D.space
+export const space: Doc<never> = internal.space
 
 /**
  * A document containing a single `|` character.
  *
- * @category primitives
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops vbar
+ * @category primitives
  */
-export const vbar: Doc<never> = D.vbar
+export const vbar: Doc<never> = internal.vbar
 
 // -----------------------------------------------------------------------------
 // Concatenation
@@ -887,11 +797,13 @@ export const vbar: Doc<never> = D.vbar
 /**
  * The `cat` combinator lays out two documents separated by nothing.
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus pipeable effect/printer/Doc cat
+ * @category concatenation
  */
-export const cat: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<B | A> = D.cat
+export const cat: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.cat
 
 /**
  * The `cats` combinator will attempt to lay out a collection of documents
@@ -902,7 +814,7 @@ export const cat: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<B | A> = D.cat
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hsep([
  *   Doc.text("Docs:"),
@@ -925,11 +837,10 @@ export const cat: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<B | A> = D.cat
  *   )
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops cats
+ * @category concatenation
  */
-export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.cats
+export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.cats
 
 /**
  * The `catWithLine` combinator concatenates two documents by placing a `line`
@@ -938,8 +849,8 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.cats
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   Doc.char("a"),
@@ -954,12 +865,13 @@ export const cats: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.cats
  *   )
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects catWithLine
- * @tsplus pipeable effect/printer/Doc catWithLine
+ * @category concatenation
  */
-export const catWithLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.catWithLine
+export const catWithLine: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.catWithLine
 
 /**
  * The `catWithLineBreak` combinator concatenates two documents by placing a
@@ -968,8 +880,8 @@ export const catWithLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> =
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   Doc.char("a"),
@@ -989,12 +901,13 @@ export const catWithLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> =
  *   "ab"
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects catWithLineBreak
- * @tsplus pipeable effect/printer/Doc catWithLineBreak
+ * @category concatenation
  */
-export const catWithLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.catWithLineBreak
+export const catWithLineBreak: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.catWithLineBreak
 
 /**
  * The `catWithSoftLine` combinator concatenates two documents by placing a
@@ -1003,8 +916,8 @@ export const catWithLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A |
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   Doc.char("a"),
@@ -1024,12 +937,13 @@ export const catWithLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A |
  *   )
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects catWithSoftLine
- * @tsplus pipeable effect/printer/Doc catWithSoftLine
+ * @category concatenation
  */
-export const catWithSoftLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.catWithSoftLine
+export const catWithSoftLine: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.catWithSoftLine
 
 /**
  * The `catWithSoftLineBreak` combinator concatenates two documents by
@@ -1038,8 +952,8 @@ export const catWithSoftLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | 
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   Doc.char("a"),
@@ -1059,12 +973,13 @@ export const catWithSoftLine: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | 
  *   )
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects catWithSoftLineBreak
- * @tsplus pipeable effect/printer/Doc catWithSoftLineBreak
+ * @category concatenation
  */
-export const catWithSoftLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.catWithSoftLineBreak
+export const catWithSoftLineBreak: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.catWithSoftLineBreak
 
 /**
  * The `catWithSpace` combinator concatenates two documents by placing a
@@ -1073,7 +988,7 @@ export const catWithSoftLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
+ * import { pipe } from "@effect/data/Function"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   Doc.char("a"),
@@ -1085,12 +1000,13 @@ export const catWithSoftLineBreak: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc
  *   "a b"
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects catWithSpace
- * @tsplus pipeable effect/printer/Doc catWithSpace
+ * @category concatenation
  */
-export const catWithSpace: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.catWithSpace
+export const catWithSpace: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.catWithSpace
 
 /**
  * The `concatWith` combinator concatenates all documents in a collection
@@ -1099,7 +1015,7 @@ export const catWithSpace: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> 
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
+ * import { pipe } from "@effect/data/Function"
  *
  * const doc: Doc.Doc<never> = pipe(
  *   [Doc.char("a"), Doc.char("b")],
@@ -1111,19 +1027,17 @@ export const catWithSpace: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> 
  *   "a b"
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops concatWith
+ * @category concatenation
  */
-export const concatWith: <A>(
-  f: (x: Doc<A>, y: Doc<A>) => Doc<A>
-) => (
-  docs: Iterable<Doc<A>>
-) => Doc<A> = D.concatWith
+export const concatWith: {
+  <A>(f: (left: Doc<A>, right: Doc<A>) => Doc<A>): (docs: Iterable<Doc<A>>) => Doc<A>
+  <A>(docs: Iterable<Doc<A>>, f: (left: Doc<A>, right: Doc<A>) => Doc<A>): Doc<A>
+} = internal.concatWith
 
 /**
  * The `vcat` combinator concatenates all documents in a collection vertically.
- * If the output is grouped then the line breaks are removed.
+ * If the output is grouped then the line breaks are removeinternal.
  *
  * In other words `vcat` is like `vsep`, with newlines removed instead of
  * replaced by spaces.
@@ -1131,7 +1045,7 @@ export const concatWith: <A>(
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.vcat(Doc.words("lorem ipsum dolor"))
  *
@@ -1144,11 +1058,10 @@ export const concatWith: <A>(
  *   )
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops vcat
+ * @category concatenation
  */
-export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.vcat
+export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
 
 /**
  * The `hcat` combinator concatenates all documents in a collection horizontally
@@ -1156,7 +1069,7 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.vcat
  *
  * @example
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hcat(Doc.words("lorem ipsum dolor"))
  *
@@ -1165,11 +1078,10 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.vcat
  *   "loremipsumdolor"
  * )
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops hcat
+ * @category concatenation
  */
-export const hcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.hcat
+export const hcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hcat
 
 /**
  * The `fillCat` combinator concatenates all documents in a collection
@@ -1179,13 +1091,12 @@ export const hcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.hcat
  *
  * **Note**: the use of `lineBreak` means that if `group`ed, the documents will
  * be separated with `empty` instead of newlines. See `fillSep` if you want a
- * `space` instead.
+ * `space` insteainternal.
  *
- * @category concatenation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops fillCat
+ * @category concatenation
  */
-export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.fillCat
+export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
 
 // -----------------------------------------------------------------------------
 // Separation
@@ -1215,16 +1126,15 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.fillCat
  *   "lorem ipsum dolor sit amet"
  * )
  *
- * @category separation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops hsep
+ * @category separation
  */
-export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.hsep
+export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
 
 /**
  * The `vsep` combinator concatenates all documents in a collection vertically.
  * If a `group` undoes the line breaks inserted by `vsep`, the documents are
- * separated with a space instead.
+ * separated with a space insteainternal.
  *
  * When a `vsep` is `group`ed, the documents are separated with a `space` if the
  * layoutfits the page, otherwise nothing is done. See the `sep` convenience
@@ -1233,7 +1143,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.hsep
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const unaligned = Doc.hsep([
  *   Doc.text("prefix"),
@@ -1267,11 +1177,10 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.hsep
  *   )
  * )
  *
- * @category separation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops vsep
+ * @category separation
  */
-export const vsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.vsep
+export const vsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vsep
 
 /**
  * The `fillSep` combinator concatenates all documents in a collection
@@ -1283,11 +1192,10 @@ export const vsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.vsep
  * separated with a `space` instead of newlines. See `fillCat` if you do not
  * want a `space`.
  *
- * @category separation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops fillSep
+ * @category separation
  */
-export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.fillSep
+export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
 
 /**
  * The `seps` combinator will attempt to lay out a collection of documents
@@ -1298,7 +1206,7 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.fillSep
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc: Doc.Doc<never> = Doc.hsep([
  *   Doc.text("prefix"),
@@ -1321,11 +1229,10 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.fillSep
  *   )
  * )
  *
- * @category separation
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops seps
+ * @category separation
  */
-export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.seps
+export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
 
 // -----------------------------------------------------------------------------
 // Alternative Layouts
@@ -1344,8 +1251,8 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.seps
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const open = pipe(Doc.empty, Doc.flatAlt(Doc.text("{ ")))
  * const close = pipe(Doc.empty, Doc.flatAlt(Doc.text(" }")))
@@ -1387,20 +1294,22 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.seps
  *   )
  * )
  *
- * @category alternative layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops flatAlt
- * @tsplus pipeable effect/printer/Doc flatAlt
+ * @category alternative layouts
  */
-export const flatAlt: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<A | B> = D.flatAlt
+export const flatAlt: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.flatAlt
 
 /**
- * @category alternative layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops union
- * @tsplus pipeable effect/printer/Doc union
+ * @category alternative layouts
  */
-export const union: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<B | A> = D.union
+export const union: {
+  <B>(that: Doc<B>): <A>(self: Doc<A>) => Doc<B | A>
+  <A, B>(self: Doc<A>, that: Doc<B>): Doc<A | B>
+} = internal.union
 
 /**
  * The `group` combinator attempts to lay out a document onto a single line by
@@ -1410,12 +1319,10 @@ export const union: <B>(that: Doc<B>) => <A>(self: Doc<A>) => Doc<B | A> = D.uni
  *
  * The `group` function is key to layouts that adapt to available space nicely.
  *
- * @category alternative layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops group
- * @tsplus getter effect/printer/Doc group
+ * @category alternative layouts
  */
-export const group: <A>(self: Doc<A>) => Doc<A> = D.group
+export const group: <A>(self: Doc<A>) => Doc<A> = internal.group
 
 // -----------------------------------------------------------------------------
 // Reactive Layouts
@@ -1427,7 +1334,7 @@ export const group: <A>(self: Doc<A>) => Doc<A> = D.group
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * // Example 1:
  * const example1 = Doc.column((l) =>
@@ -1456,11 +1363,10 @@ export const group: <A>(self: Doc<A>) => Doc<A> = D.group
  *   )
  * )
  *
- * @category reactive layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops column
+ * @category reactive layouts
  */
-export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = D.column
+export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = internal.column
 
 /**
  * Lays out a document depending upon the current nesting level (i.e., the
@@ -1469,7 +1375,7 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = D.colu
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.hsep([
  *   Doc.text("prefix"),
@@ -1487,11 +1393,10 @@ export const column: <A>(react: (position: number) => Doc<A>) => Doc<A> = D.colu
  *   )
  * )
  *
- * @category reactive layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops nesting
+ * @category reactive layouts
  */
-export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = D.nesting
+export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal.nesting
 
 /**
  * The `width` combinator makes the column width of a document available to the
@@ -1500,8 +1405,8 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = D.nestin
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const annotate = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
  *   pipe(
@@ -1529,12 +1434,13 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = D.nestin
  *   )
  * )
  *
- * @category reactive layouts
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects width
- * @tsplus pipeable effect/printer/Doc width
+ * @category reactive layouts
  */
-export const width: <A, B>(react: (width: number) => Doc<A>) => (self: Doc<B>) => Doc<A | B> = D.width
+export const width: {
+  <A>(react: (width: number) => Doc<A>): (self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, react: (width: number) => Doc<A>): Doc<A>
+} = internal.width
 
 /**
  * Lays out a document according to the document"s`PageWidth`.
@@ -1542,7 +1448,7 @@ export const width: <A, B>(react: (width: number) => Doc<A>) => (self: Doc<B>) =
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.hsep([
  *   Doc.text("prefix"),
@@ -1572,11 +1478,10 @@ export const width: <A, B>(react: (width: number) => Doc<A>) => (self: Doc<B>) =
  *   )
  * )
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops pageWidth
+ * @category constructors
  */
-export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> = D.pageWidth
+export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> = internal.pageWidth
 
 // -----------------------------------------------------------------------------
 // Alignment
@@ -1599,8 +1504,8 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.vsep([
  *   pipe(Doc.vsep(Doc.words("lorem ipsum dolor")), Doc.nest(4)),
@@ -1619,12 +1524,13 @@ export const pageWidth: <A>(react: (pageWidth: PageWidth) => Doc<A>) => Doc<A> =
  *   )
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops nest
- * @tsplus pipeable effect/printer/Doc nest
+ * @category alignment
  */
-export const nest: (indent: number) => <A>(self: Doc<A>) => Doc<A> = D.nest
+export const nest: {
+  (indent: number): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, indent: number): Doc<A>
+} = internal.nest
 
 /**
  * The `align` combinator lays out a document with the nesting level set to the
@@ -1633,7 +1539,7 @@ export const nest: (indent: number) => <A>(self: Doc<A>) => Doc<A> = D.nest
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * // As an example, the documents below will be placed one above the other
  * // regardless of the current nesting level
@@ -1667,11 +1573,10 @@ export const nest: (indent: number) => <A>(self: Doc<A>) => Doc<A> = D.nest
  *   )
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus getter effect/printer/Doc align
+ * @category alignment
  */
-export const align: <A>(self: Doc<A>) => Doc<A> = D.align
+export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
 
 /**
  * The `hang` combinator lays out a document with the nesting level set to
@@ -1685,8 +1590,8 @@ export const align: <A>(self: Doc<A>) => Doc<A> = D.align
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.hsep([
  *   Doc.text("prefix"),
@@ -1702,12 +1607,13 @@ export const align: <A>(self: Doc<A>) => Doc<A> = D.align
  *   )
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects hang
- * @tsplus pipeable effect/printer/Doc hang
+ * @category alignment
  */
-export const hang: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.hang
+export const hang: {
+  (indent: number): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, indent: number): Doc<A>
+} = internal.hang
 
 /**
  * The `indent` combinator indents a document by the specified `indent`
@@ -1716,8 +1622,8 @@ export const hang: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.hang
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.hcat([
  *   Doc.text("prefix"),
@@ -1734,12 +1640,13 @@ export const hang: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.hang
  *   )
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects indent
- * @tsplus pipeable effect/printer/Doc indent
+ * @category alignment
  */
-export const indent: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.indent
+export const indent: {
+  (indent: number): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, indent: number): Doc<A>
+} = internal.indent
 
 /**
  * The `encloseSep` combinator concatenates a collection of documents,
@@ -1753,8 +1660,8 @@ export const indent: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.indent
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.hsep([
  *   Doc.text("list"),
@@ -1785,15 +1692,13 @@ export const indent: <A>(indent: number) => (self: Doc<A>) => Doc<A> = D.indent
  *   )
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops encloseSep
+ * @category alignment
  */
-export const encloseSep: <A, B, C>(
-  left: Doc<A>,
-  right: Doc<B>,
-  sep: Doc<C>
-) => <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D> = D.encloseSep
+export const encloseSep: {
+  <A, B, C>(left: Doc<A>, right: Doc<B>, sep: Doc<C>): <D>(docs: Iterable<Doc<D>>) => Doc<A | B | C | D>
+  <A, B, C, D>(docs: Iterable<Doc<D>>, left: Doc<A>, right: Doc<B>, sep: Doc<C>): Doc<A | B | C | D>
+} = internal.encloseSep
 
 /**
  * A Haskell-inspired variant of `encloseSep` that uses a comma as the separator
@@ -1814,11 +1719,10 @@ export const encloseSep: <A, B, C>(
  *   "[1, 20, 300, 4000]"
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops list
+ * @category alignment
  */
-export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.list
+export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.list
 
 /**
  * A Haskell-inspired variant of `encloseSep` that uses a comma as the separator
@@ -1839,11 +1743,10 @@ export const list: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.list
  *   "(1, 20, 300, 4000)"
  * )
  *
- * @category alignment
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops tupled
+ * @category alignment
  */
-export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.tupled
+export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
 
 // -----------------------------------------------------------------------------
 // Filling
@@ -1853,13 +1756,13 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.tupled
  * The `fill` combinator first lays out the document `x` and then appends
  * `space`s until the width of the document is equal to the specified `width`.
  * If the width of `x` is already larger than the specified `width`, nothing is
- * appended.
+ * appendeinternal.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * type Signature = [name: string, type: string]
  *
@@ -1890,24 +1793,25 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = D.tupled
  *   )
  * )
  *
- * @category filling
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects fill
- * @tsplus pipeable effect/printer/Doc fill
+ * @category filling
  */
-export const fill: <A>(width: number) => (self: Doc<A>) => Doc<A> = D.fill
+export const fill: {
+  (w: number): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, w: number): Doc<A>
+} = internal.fill
 
 /**
  * The `fillBreak` combinator first lays out the document `x` and then appends
  * `space`s until the width of the document is equal to the specified `width`.
  * If the width of `x` is already larger than the specified `width`, the nesting
- * level is increased by the specified `width` and a `line` is appended.
+ * level is increased by the specified `width` and a `line` is appendeinternal.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * type Signature = [name: string, type: string]
  *
@@ -1939,12 +1843,13 @@ export const fill: <A>(width: number) => (self: Doc<A>) => Doc<A> = D.fill
  *   )
  * )
  *
- * @category filling
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects fillBreak
- * @tsplus pipeable effect/printer/Doc fillBreak
+ * @category filling
  */
-export const fillBreak: <A>(width: number) => (self: Doc<A>) => Doc<A> = D.fillBreak
+export const fillBreak: {
+  (w: number): <A>(self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, w: number): Doc<A>
+} = internal.fillBreak
 
 // -----------------------------------------------------------------------------
 // Flattening
@@ -1953,12 +1858,10 @@ export const fillBreak: <A>(width: number) => (self: Doc<A>) => Doc<A> = D.fillB
 /**
  * Flattens a document but does not report changes.
  *
- * @category flattening
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops flatten
- * @tsplus getter effect/printer/Doc flatten
+ * @category flattening
  */
-export const flatten: <A>(self: Doc<A>) => Doc<A> = D.flatten
+export const flatten: <A>(self: Doc<A>) => Doc<A> = internal.flatten
 
 /**
  * Select the first element of each `Union` and discard the first element of
@@ -1974,12 +1877,10 @@ export const flatten: <A>(self: Doc<A>) => Doc<A> = D.flatten
  * `NeverFlat` is returned when the document cannot be flattened because it
  * contains either a hard `Line` or a `Fail`.
  *
- * @category flattening
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops changesUponFlattening
- * @tsplus getter effect/printer/Doc changesUponFlattening
+ * @category flattening
  */
-export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = D.changesUponFlattening
+export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = internal.changesUponFlattening
 
 // -----------------------------------------------------------------------------
 // Annotations
@@ -1992,12 +1893,13 @@ export const changesUponFlattening: <A>(self: Doc<A>) => Flatten<Doc<A>> = D.cha
  * **Note** This function is relevant only for custom formats with their own annotations,
  * and is not relevant for basic pretty printing.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects annotate
- * @tsplus pipeable effect/printer/Doc annotate
+ * @category annotations
  */
-export const annotate: <A>(annotation: A) => <B>(self: Doc<B>) => Doc<A | B> = D.annotate
+export const annotate: {
+  <A>(annotation: A): (self: Doc<A>) => Doc<A>
+  <A>(self: Doc<A>, annotation: A): Doc<A>
+} = internal.annotate
 
 /**
  * Change the annotations of a document. Individual annotations can be removed,
@@ -2017,98 +1919,120 @@ export const annotate: <A>(annotation: A) => <B>(self: Doc<B>) => Doc<A | B> = D
  * reannotate a document **after** producing the layout by using
  * `alterAnnotations` from the `SimpleDocStream` module.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects alterAnnotations
- * @tsplus pipeable effect/printer/Doc alterAnnotations
+ * @category annotations
  */
-export const alterAnnotations: <A, B>(
-  f: (a: A) => Iterable<B>
-) => (
-  self: Doc<A>
-) => Doc<B> = D.alterAnnotations
+export const alterAnnotations: {
+  <A, B>(f: (a: A) => Iterable<B>): (self: Doc<A>) => Doc<B>
+  <A, B>(self: Doc<A>, f: (a: A) => Iterable<B>): Doc<B>
+} = internal.alterAnnotations
 
 /**
  * Changes the annotation of a document. Useful for modifying documents embedded
  * with one form of annotation with a more general annotation.
  *
- * **Note** that with each invocation, the entire document tree is traversed.
+ * **Note** that with each invocation, the entire document tree is traverseinternal.
  * If possible, it is preferable to reannotate a document after producing the
  * layout using `reAnnotateS`.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects map
- * @tsplus static effect/printer/Doc.Aspects reAnnotate
- * @tsplus pipeable effect/printer/Doc map
- * @tsplus pipeable effect/printer/Doc reAnnotate
+ * @category annotations
  */
-export const reAnnotate: <A, B>(f: (a: A) => B) => (self: Doc<A>) => Doc<B> = D.reAnnotate
+export const reAnnotate: {
+  <A, B>(f: (a: A) => B): (self: Doc<A>) => Doc<B>
+  <A, B>(self: Doc<A>, f: (a: A) => B): Doc<B>
+} = internal.reAnnotate
 
 /**
  * Removes all annotations from a document.
  *
- * **Note**: with each invocation, the entire document tree is traversed.
+ * **Note**: with each invocation, the entire document tree is traverseinternal.
  * If possible, it is preferable to unannotate a document after producing the
  * layout using `unAnnotateS`.
  *
- * @category annotations
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops unAnnotate
- * @tsplus getter effect/printer/Doc unAnnotate
+ * @category annotations
  */
-export const unAnnotate: <A>(self: Doc<A>) => Doc<never> = D.unAnnotate
+export const unAnnotate: <A>(self: Doc<A>) => Doc<never> = internal.unAnnotate
 
 // -----------------------------------------------------------------------------
 // Folding
 // -----------------------------------------------------------------------------
 
 /**
- * @category folding
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects match
- * @tsplus pipeable effect/printer/Doc match
+ * @category folding
  */
-export const match: <A, R>(patterns: {
-  readonly Fail: () => R
-  readonly Empty: () => R
-  readonly Char: (char: string) => R
-  readonly Text: (text: string) => R
-  readonly Line: () => R
-  readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
-  readonly Cat: (x: Doc<A>, y: Doc<A>) => R
-  readonly Nest: (indent: number, doc: Doc<A>) => R
-  readonly Union: (x: Doc<A>, y: Doc<A>) => R
-  readonly Column: (react: (position: number) => Doc<A>) => R
-  readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
-  readonly Nesting: (react: (level: number) => Doc<A>) => R
-  readonly Annotated: (annotation: A, doc: Doc<A>) => R
-}) => (self: Doc<A>) => R = D.match
+export const match: {
+  <A, R>(
+    patterns: {
+      readonly Fail: () => R
+      readonly Empty: () => R
+      readonly Char: (char: string) => R
+      readonly Text: (text: string) => R
+      readonly Line: () => R
+      readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
+      readonly Cat: (x: Doc<A>, y: Doc<A>) => R
+      readonly Nest: (indent: number, doc: Doc<A>) => R
+      readonly Union: (x: Doc<A>, y: Doc<A>) => R
+      readonly Column: (react: (position: number) => Doc<A>) => R
+      readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
+      readonly Nesting: (react: (level: number) => Doc<A>) => R
+      readonly Annotated: (annotation: A, doc: Doc<A>) => R
+    }
+  ): (self: Doc<A>) => R
+  <A, R>(
+    self: Doc<A>,
+    patterns: {
+      readonly Fail: () => R
+      readonly Empty: () => R
+      readonly Char: (char: string) => R
+      readonly Text: (text: string) => R
+      readonly Line: () => R
+      readonly FlatAlt: (x: Doc<A>, y: Doc<A>) => R
+      readonly Cat: (x: Doc<A>, y: Doc<A>) => R
+      readonly Nest: (indent: number, doc: Doc<A>) => R
+      readonly Union: (x: Doc<A>, y: Doc<A>) => R
+      readonly Column: (react: (position: number) => Doc<A>) => R
+      readonly WithPageWidth: (react: (pageWidth: PageWidth) => Doc<A>) => R
+      readonly Nesting: (react: (level: number) => Doc<A>) => R
+      readonly Annotated: (annotation: A, doc: Doc<A>) => R
+    }
+  ): R
+} = internal.match
 
 // -----------------------------------------------------------------------------
 // Instances
 // -----------------------------------------------------------------------------
 
-/**
- * @category instances
- * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops getSemigroup
- */
-export const getSemigroup: <A>() => Semigroup<Doc<A>> = D.getSemigroup
+export const map: {
+  <A, B>(f: (a: A) => B): (self: Doc<A>) => Doc<B>
+  <A, B>(self: Doc<A>, f: (a: A) => B): Doc<B>
+} = internal.map
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops getMonoid
+ * @category instances
  */
-export const getMonoid: <A>() => Monoid<Doc<A>> = D.getMonoid
+export const getSemigroup: <A>(_: void) => Semigroup<Doc<A>> = internal.getSemigroup
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops Functor
+ * @category instances
  */
-export const Functor: _Functor<Doc.TypeLambda> = D.Functor
+export const getMonoid: <A>(_: void) => Monoid<Doc<A>> = internal.getMonoid
+
+/**
+ * @since 1.0.0
+ * @category instances
+ */
+export const Covariant: covariant.Covariant<Doc.TypeLambda> = internal.Covariant
+
+/**
+ * @since 1.0.0
+ * @category instances
+ */
+export const Invariant: invariant.Invariant<Doc.TypeLambda> = internal.Invariant
 
 // -----------------------------------------------------------------------------
 // Utilities
@@ -2121,7 +2045,7 @@ export const Functor: _Functor<Doc.TypeLambda> = D.Functor
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
+ * import { pipe } from "@effect/data/Function"
  *
  * const doc = pipe(
  *   Doc.char("-"),
@@ -2133,77 +2057,61 @@ export const Functor: _Functor<Doc.TypeLambda> = D.Functor
  *   "A-Z"
  * )
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects surround
- * @tsplus pipeable effect/printer/Doc surround
+ * @category utilities
  */
-export const surround: <B, C>(
-  left: Doc<B>,
-  right: Doc<C>
-) => <A>(
-  self: Doc<A>
-) => Doc<A | B | C> = D.surround
+export const surround: {
+  <A, B, C>(left: Doc<A>, right: Doc<B>): (self: Doc<C>) => Doc<A | B | C>
+  <A, B, C>(self: Doc<C>, left: Doc<A>, right: Doc<B>): Doc<A | B | C>
+} = internal.surround
 
 /**
  * Encloses the input document in single quotes (`""`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops singleQuoted
- * @tsplus getter effect/printer/Doc singleQuoted
+ * @category utilities
  */
-export const singleQuoted: <A>(self: Doc<A>) => Doc<A> = D.singleQuoted
+export const singleQuoted: <A>(self: Doc<A>) => Doc<A> = internal.singleQuoted
 
 /**
  * Encloses the input document in double quotes (`""`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops doubleQuoted
- * @tsplus getter effect/printer/Doc doubleQuoted
+ * @category utilities
  */
-export const doubleQuoted: <A>(self: Doc<A>) => Doc<A> = D.doubleQuoted
+export const doubleQuoted: <A>(self: Doc<A>) => Doc<A> = internal.doubleQuoted
 
 /**
  * Encloses the input document in parentheses (`()`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops parenthesized
- * @tsplus getter effect/printer/Doc parenthesized
+ * @category utilities
  */
-export const parenthesized: <A>(self: Doc<A>) => Doc<A> = D.parenthesized
+export const parenthesized: <A>(self: Doc<A>) => Doc<A> = internal.parenthesized
 
 /**
  * Encloses the input document in angle brackets (`<>`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops angledBracketed
- * @tsplus getter effect/printer/Doc angledBracketed
+ * @category utilities
  */
-export const angleBracketed: <A>(self: Doc<A>) => Doc<A> = D.angleBracketed
+export const angleBracketed: <A>(self: Doc<A>) => Doc<A> = internal.angleBracketed
 
 /**
  * Encloses the input document in square brackets (`[]`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops squareBracketed
- * @tsplus getter effect/printer/Doc squareBracketed
+ * @category utilities
  */
-export const squareBracketed: <A>(self: Doc<A>) => Doc<A> = D.squareBracketed
+export const squareBracketed: <A>(self: Doc<A>) => Doc<A> = internal.squareBracketed
 
 /**
  * Encloses the input document in curly braces (`{}`).
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops curlyBraced
- * @tsplus getter effect/printer/Doc curlyBraced
+ * @category utilities
  */
-export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = D.curlyBraced
+export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = internal.curlyBraced
 
 /**
  * The `spaces` combinator lays out a document containing `n` spaces. Negative
@@ -2220,18 +2128,16 @@ export const curlyBraced: <A>(self: Doc<A>) => Doc<A> = D.curlyBraced
  *   "[\"     \"]"
  * )
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops spaces
+ * @category utilities
  */
-export const spaces: (n: number) => Doc<never> = D.spaces
+export const spaces: (n: number) => Doc<never> = internal.spaces
 
 /**
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops textSpaces
+ * @category utilities
  */
-export const textSpaces: (n: number) => string = D.textSpaces
+export const textSpaces: (n: number) => string = internal.textSpaces
 
 /**
  * Splits a string of words into individual `Text` documents using the
@@ -2248,11 +2154,10 @@ export const textSpaces: (n: number) => string = D.textSpaces
  *   "(lorem, ipsum, dolor)"
  * )
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops words
+ * @category utilities
  */
-export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = D.words
+export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = internal.words
 
 /**
  * Splits a string of words into individual `Text` documents using the specified
@@ -2263,7 +2168,7 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = D.
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import * as String from "@fp-ts/data/String"
+ * import * as String from "@effect/data/String"
  *
  * const doc = Doc.reflow(
  *   "Lorem ipsum dolor sit amet, consectetur adipisicing elit, " +
@@ -2281,11 +2186,10 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = D.
  *   )
  * )
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops reflow
+ * @category utilities
  */
-export const reflow: (s: string, char?: string) => Doc<never> = D.reflow
+export const reflow: (s: string, char?: string) => Doc<never> = internal.reflow
 
 /**
  * The `punctuate` combinator appends the `punctuator` document to all but the
@@ -2296,8 +2200,8 @@ export const reflow: (s: string, char?: string) => Doc<never> = D.reflow
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const docs = pipe(
  *   Doc.words("lorem ipsum dolor sit amet"),
@@ -2322,12 +2226,10 @@ export const reflow: (s: string, char?: string) => Doc<never> = D.reflow
  *   )
  * )
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops punctuate
+ * @category utilities
  */
-export const punctuate: <A, B>(
-  punctuator: Doc<A>
-) => (
-  docs: Iterable<Doc<B>>
-) => ReadonlyArray<Doc<A | B>> = D.punctuate
+export const punctuate: {
+  <A, B>(punctuator: Doc<A>): (docs: Iterable<Doc<B>>) => ReadonlyArray<Doc<A | B>>
+  <A, B>(docs: Iterable<Doc<B>>, punctuator: Doc<A>): ReadonlyArray<Doc<A | B>>
+} = internal.punctuate

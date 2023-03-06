@@ -2,18 +2,21 @@
  * @since 1.0.0
  */
 
-import * as L from "@effect/printer/internal/Layout"
-import type { Option } from "@fp-ts/data/Option"
-import type { Predicate } from "@fp-ts/data/Predicate"
+import type { Option } from "@effect/data/Option"
+import type { Predicate } from "@effect/data/Predicate"
+import type { Doc } from "@effect/printer/Doc"
+import type { DocStream } from "@effect/printer/DocStream"
+import * as internal from "@effect/printer/internal_effect_untraced/layout"
+import type { PageWidth } from "@effect/printer/PageWidth"
+import { defaultPageWidth } from "@effect/printer/PageWidth"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Layout
+ * @category model
  */
 export interface Layout<A> {
   (options: Layout.Options): DocStream<A>
@@ -26,9 +29,8 @@ export declare namespace Layout {
   /**
    * Represents the options that will influence the layout algorithms.
    *
-   * @category model
    * @since 1.0.0
-   * @tsplus type effect/printer/Layout.Options
+   * @category model
    */
   export interface Options {
     readonly pageWidth: PageWidth
@@ -41,8 +43,8 @@ export declare namespace Layout {
    *   a line break (used by `layoutSmart`)
    * - width in which to fit the first line
    *
-   * @category model
    * @since 1.0.0
+   * @category model
    */
   export type FittingPredicate<A> = (
     lineIndent: number,
@@ -52,70 +54,32 @@ export declare namespace Layout {
 }
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Layout.Ops
- */
-export interface LayoutOps {
-  readonly $: LayoutAspects
-  readonly Options: LayoutOptionsOps
-}
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Layout.Options.Ops
- */
-export interface LayoutOptionsOps {
-  (pageWidth: PageWidth): Layout.Options
-}
-/**
  * @category constructors
- * @since 1.0.0
- * @tsplus static effect/printer/Layout.Ops Options
  */
-export const LayoutOptions: LayoutOptionsOps = (pageWidth) => ({ pageWidth })
-
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Layout: LayoutOps = {
-  $: {},
-  Options: LayoutOptions
-}
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Layout.Aspects
- */
-export interface LayoutAspects {}
+export const options: (pageWidth: PageWidth) => Layout.Options = internal.options
 
 /**
  * The default layout options, which are suitable when you want to obtain output
  * but do not care about the details.
  *
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Layout.Options.Ops default
+ * @category constructors
  */
-export const defaultLayoutOptions = LayoutOptions(PageWidth.default)
+export const defaultOptions: Layout.Options = options(defaultPageWidth)
 
 // -----------------------------------------------------------------------------
 // Layout Algorithms
 // -----------------------------------------------------------------------------
 
 /**
- * @category layout algorithms
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects layoutWadlerLeijen
- * @tsplus pipeable effect/printer/Doc layoutWadlerLeijen
+ * @category layout algorithms
  */
-export const wadlerLeijen: <A>(
-  fits: Layout.FittingPredicate<A>,
-  options: Layout.Options
-) => (self: Doc<A>) => DocStream<A> = L.wadlerLeijen
+export const wadlerLeijen: {
+  <A>(fits: Layout.FittingPredicate<A>, options: Layout.Options): (self: Doc<A>) => DocStream<A>
+  <A>(self: Doc<A>, fits: Layout.FittingPredicate<A>, options: Layout.Options): DocStream<A>
+} = internal.wadlerLeijen
 
 /**
  * A layout algorithm which will lay out a document without adding any
@@ -128,8 +92,8 @@ export const wadlerLeijen: <A>(
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * const doc = pipe(
  *   Doc.vsep([
@@ -163,12 +127,10 @@ export const wadlerLeijen: <A>(
  *   )
  * )
  *
- * @category layout algorithms
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops layoutCompact
- * @tsplus getter effect/printer/Doc layoutCompact
+ * @category layout algorithms
  */
-export const compact: <A>(self: Doc<A>) => DocStream<A> = L.compact
+export const compact: <A>(self: Doc<A>) => DocStream<A> = internal.compact
 
 /**
  * The `pretty` layout algorithm is the default algorithm for rendering
@@ -182,12 +144,13 @@ export const compact: <A>(self: Doc<A>) => DocStream<A> = L.compact
  * algorithm if the results seem to run off to the right before having lots of
  * line breaks.
  *
- * @tsplus static effect/printer/Doc.Aspects layoutPretty
- * @tsplus pipeable effect/printer/Doc layoutPretty
+ * @since 1.0.0
+ * @category layout algorithms
  */
-export const pretty: (
-  options: Layout.Options
-) => <A>(self: Doc<A>) => DocStream<A> = L.pretty
+export const pretty: {
+  (options: Layout.Options): <A>(self: Doc<A>) => DocStream<A>
+  <A>(self: Doc<A>, options: Layout.Options): DocStream<A>
+} = internal.pretty
 
 /**
  * A layout algorithm with more look ahead than `pretty`, which will introduce
@@ -200,8 +163,8 @@ export const pretty: (
  * import * as Layout from "@effect/printer/Layout"
  * import * as PageWidth from "@effect/printer/PageWidth"
  * import * as Render from "@effect/printer/Render"
- * import { flow, pipe } from "@fp-ts/data/Function"
- * import * as String from "@fp-ts/data/String"
+ * import { flow, pipe } from "@effect/data/Function"
+ * import * as String from "@effect/data/String"
  *
  * // Consider the following python-ish document:
  * const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
@@ -279,22 +242,19 @@ export const pretty: (
  * // may already be too wide. In contrast, `Layout.smart` stops only once it reaches
  * // the fourth line 4, where the `B` has the same indentation as the first `A`.
  *
- * @category layout algorithms
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Aspects layoutSmart
- * @tsplus pipeable effect/printer/Doc layoutSmart
+ * @category layout algorithms
  */
-export const smart: (
-  options: Layout.Options
-) => <A>(self: Doc<A>) => DocStream<A> = L.smart
+export const smart: {
+  (options: Layout.Options): <A>(self: Doc<A>) => DocStream<A>
+  <A>(self: Doc<A>, options: Layout.Options): DocStream<A>
+} = internal.smart
 
 /**
  * The `unbounded` layout algorithm will lay out a document an `Unbounded`
  * page width.
  *
- * @category layout algorithms
  * @since 1.0.0
- * @tsplus static effect/printer/Doc.Ops layoutUnbounded
- * @tsplus getter effect/printer/Doc layoutUnbounded
+ * @category layout algorithms
  */
-export const unbounded: <A>(self: Doc<A>) => DocStream<A> = L.unbounded
+export const unbounded: <A>(self: Doc<A>) => DocStream<A> = internal.unbounded

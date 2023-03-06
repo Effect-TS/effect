@@ -2,21 +2,22 @@
  * @since 1.0.0
  */
 
-import * as F from "@effect/printer/internal/Flatten"
-import type { TypeLambda } from "@fp-ts/core/HKT"
-import type { Covariant as _Functor } from "@fp-ts/core/typeclass/Covariant"
-
-// -----------------------------------------------------------------------------
-// Models
-// -----------------------------------------------------------------------------
-
-const TypeId: unique symbol = F.FlattenTypeId as TypeId
+import type { Equal } from "@effect/data/Equal"
+import type { TypeLambda } from "@effect/data/HKT"
+import type { Covariant as _Functor } from "@effect/data/typeclass/Covariant"
+import * as internal from "@effect/printer/internal_effect_untraced/flatten"
 
 /**
- * @category symbol
  * @since 1.0.0
+ * @category symbol
  */
-export type TypeId = typeof TypeId
+export const FlattenTypeId: unique symbol = internal.FlattenTypeId as FlattenTypeId
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type FlattenTypeId = typeof FlattenTypeId
 
 /**
  * Because certain documents do not change after removal of newlines, etc, there
@@ -25,9 +26,8 @@ export type TypeId = typeof TypeId
  * algorithm to take, resulting in potentially exponential behavior on deeply
  * nested examples.
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/Flatten
+ * @category model
  */
 export type Flatten<A> = Flattened<A> | AlreadyFlat<A> | NeverFlat<A>
 
@@ -35,75 +35,56 @@ export type Flatten<A> = Flattened<A> | AlreadyFlat<A> | NeverFlat<A>
  * @since 1.0.0
  */
 export declare namespace Flatten {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Variance<A> extends Equal {
+    readonly [FlattenTypeId]: {
+      readonly _A: (_: never) => A
+    }
+  }
+
   export type TypeLambda = FlattenTypeLambda
 }
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Flatten.Ops
- */
-export interface FlattenOps {
-  $: FlattenAspects
-}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Flatten: FlattenOps = {
-  $: {}
-}
-
-/**
- * @category model
- * @since 1.0.0
  */
 export interface FlattenTypeLambda extends TypeLambda {
   readonly type: Flatten<this["Target"]>
 }
 
 /**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/Flatten.Aspects
- */
-export interface FlattenAspects {}
-
-/**
  * Represents a `FlattenResult` where `A` is likely flatter than the input.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Flattened<A> {
+export interface Flattened<A> extends Flatten.Variance<A> {
   readonly _tag: "Flattened"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
   readonly value: A
 }
 
 /**
  * Represents a `FlattenResult` where the input was already flat.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface AlreadyFlat<A> {
+export interface AlreadyFlat<A> extends Flatten.Variance<A> {
   readonly _tag: "AlreadyFlat"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 /**
  * Represents a `FlattenResult` where the input cannot be flattened.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface NeverFlat<A> {
+export interface NeverFlat<A> extends Flatten.Variance<A> {
   readonly _tag: "NeverFlat"
-  readonly _id: TypeId
-  readonly _A: (_: never) => A
 }
 
 // -----------------------------------------------------------------------------
@@ -113,95 +94,76 @@ export interface NeverFlat<A> {
 /**
  * Returns `true` if the specified value is a `Flatten`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Ops isFlatten
+ * @category refinements
  */
-export const isFlatten: (u: unknown) => u is Flatten<unknown> = F.isFlatten
+export const isFlatten: (u: unknown) => u is Flatten<unknown> = internal.isFlatten
 
 /**
  * Returns `true` if the specified `Flatten` is a `Flattened`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/Flatten isFlattened
+ * @category refinements
  */
-export const isFlattened: <A>(a: Flatten<A>) => a is Flattened<A> = F.isFlattened
+export const isFlattened: <A>(a: Flatten<A>) => a is Flattened<A> = internal.isFlattened
 
 /**
  * Returns `true` if the specified `Flatten` is an `AlreadyFlat`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/Flatten isAlreadyFlat
+ * @category refinements
  */
-export const isAlreadyFlat: <A>(a: Flatten<A>) => a is AlreadyFlat<A> = F.isAlreadyFlat
+export const isAlreadyFlat: <A>(a: Flatten<A>) => a is AlreadyFlat<A> = internal.isAlreadyFlat
 
 /**
  * Returns `true` if the specified `Flatten` is a `NeverFlat`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/Flatten isNeverFlat
+ * @category refinements
  */
-export const isNeverFlat: <A>(a: Flatten<A>) => a is NeverFlat<A> = F.isNeverFlat
+export const isNeverFlat: <A>(a: Flatten<A>) => a is NeverFlat<A> = internal.isNeverFlat
 
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Ops Flattened
+ * @category constructors
  */
-export const flattened: <A>(value: A) => Flatten<A> = F.flattened
+export const flattened: <A>(value: A) => Flatten<A> = internal.flattened
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Ops AlreadyFlat
+ * @category constructors
  */
-export const alreadyFlat: Flatten<never> = F.alreadyFlat
+export const alreadyFlat: Flatten<never> = internal.alreadyFlat
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Ops NeverFlat
+ * @category constructors
  */
-export const neverFlat: Flatten<never> = F.neverFlat
+export const neverFlat: Flatten<never> = internal.neverFlat
 
 // -----------------------------------------------------------------------------
 // Combinators
 // -----------------------------------------------------------------------------
 
 /**
+ * @since 1.0.0
  * @category mapping
- * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Aspects map
- * @tsplus pipeable effect/printer/Flatten map
  */
-export const map: <A, B>(f: (a: A) => B) => (self: Flatten<A>) => Flatten<B> = F.map
-
-/**
- * @category folding
- * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Aspects match
- * @tsplus pipeable effect/printer/Flatten match
- */
-export const match: <A, R>(patterns: {
-  readonly Flattened: (value: A) => R
-  readonly AlreadyFlat: () => R
-  readonly NeverFlat: () => R
-}) => (flatten: Flatten<A>) => R = F.match
+export const map: {
+  <A, B>(f: (a: A) => B): (self: Flatten<A>) => Flatten<B>
+  <A, B>(self: Flatten<A>, f: (a: A) => B): Flatten<B>
+} = internal.map
 
 // -----------------------------------------------------------------------------
 // Instances
 // -----------------------------------------------------------------------------
 
-/**
- * @category instances
- * @since 1.0.0
- * @tsplus static effect/printer/Flatten.Ops Functor
- */
-export const Functor: _Functor<Flatten.TypeLambda> = F.Functor
+// /**
+//  * @since 1.0.0
+//  * @category instances
+//  */
+// export const Functor: _Functor<Flatten.TypeLambda> = internal.Functor

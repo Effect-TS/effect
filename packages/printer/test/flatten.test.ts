@@ -1,24 +1,26 @@
-import { identity } from "@fp-ts/data/Function"
+import { identity } from "@effect/data/Function"
+import * as Flatten from "@effect/printer/Flatten"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Flatten", () => {
   it("isFlattened", () => {
-    assert.isTrue(Flatten.Flattened(1).isFlattened())
-    assert.isFalse(Flatten.NeverFlat.isFlattened())
+    expect(Flatten.isFlattened(Flatten.flattened(1))).toBe(true)
+    expect(Flatten.isFlattened(Flatten.neverFlat)).toBe(false)
   })
 
   it("isAlreadyFlat", () => {
-    assert.isTrue(Flatten.AlreadyFlat.isAlreadyFlat())
-    assert.isFalse(Flatten.NeverFlat.isAlreadyFlat())
+    expect(Flatten.isAlreadyFlat(Flatten.alreadyFlat)).toBe(true)
+    expect(Flatten.isAlreadyFlat(Flatten.neverFlat)).toBe(false)
   })
 
   it("isNeverFlat", () => {
-    assert.isTrue(Flatten.NeverFlat.isNeverFlat())
-    assert.isFalse(Flatten.AlreadyFlat.isNeverFlat())
+    expect(Flatten.isNeverFlat(Flatten.neverFlat)).toBe(true)
+    expect(Flatten.isNeverFlat(Flatten.alreadyFlat)).toBe(false)
   })
 
   it("map", () => {
-    assert.deepStrictEqual(Flatten.Flattened(1).map((n) => n + 1), Flatten.Flattened(2))
-    assert.deepStrictEqual(Flatten.AlreadyFlat.map(identity), Flatten.AlreadyFlat)
-    assert.deepStrictEqual(Flatten.NeverFlat.map(identity), Flatten.NeverFlat)
+    expect(Flatten.map(Flatten.flattened(1), (n) => n + 1)).toEqual(Flatten.flattened(2))
+    expect(Flatten.map(Flatten.alreadyFlat, identity)).toEqual(Flatten.alreadyFlat)
+    expect(Flatten.map(Flatten.neverFlat, identity)).toEqual(Flatten.neverFlat)
   })
 })

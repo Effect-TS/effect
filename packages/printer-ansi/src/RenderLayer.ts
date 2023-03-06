@@ -1,41 +1,29 @@
 /**
  * @since 1.0.0
  */
+import * as internal from "@effect/printer-ansi/internal_effect_untraced/renderLayer"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer-ansi/Layer
+ * @category model
  */
-export type Layer = Background | Foreground
+export type RenderLayer = Background | Foreground
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer-ansi/Layer.Ops
- */
-export interface LayerOps {}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Layer: LayerOps = {}
-
-/**
- * @category model
- * @since 1.0.0
  */
 export interface Background {
   readonly _tag: "Background"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Foreground {
   readonly _tag: "Foreground"
@@ -46,19 +34,13 @@ export interface Foreground {
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Layer.Ops Foreground
+ * @category constructors
  */
-export const Foreground: Layer = {
-  _tag: "Foreground"
-}
+export const foreground: RenderLayer = internal.foreground
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Layer.Ops Background
+ * @category constructors
  */
-export const Background: Layer = {
-  _tag: "Background"
-}
+export const background: RenderLayer = internal.background

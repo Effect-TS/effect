@@ -1,113 +1,92 @@
-import * as String from "@fp-ts/data/String"
+import * as String from "@effect/data/String"
+import * as Doc from "@effect/printer/Doc"
+import * as Render from "@effect/printer/Render"
+import { describe, expect, it } from "vitest"
 
-function fun<A>(doc: Doc<A>): Doc<A> {
-  return Doc
-    .hcat([Doc.text("fun("), Doc.softLineBreak, doc])
-    .hang(2)
-    .cat(Doc.text(")"))
-}
+const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
+  Doc.cat(
+    Doc.hang(Doc.hcat([Doc.text("fun("), Doc.softLineBreak, doc]), 2),
+    Doc.text(")")
+  )
 
-function funs<A>(doc: Doc<A>): Doc<A> {
-  return fun(fun(fun(fun(fun(doc)))))
-}
+const funs = <A>(doc: Doc.Doc<A>): Doc.Doc<A> => fun(fun(fun(fun(fun(doc)))))
 
 const dashes = Doc.text(Array.from({ length: 26 - 2 }, () => "-").join(""))
 
 const hr = Doc.hcat([Doc.vbar, dashes, Doc.vbar])
 
-const doc = Doc.vsep([hr, funs(Doc.list(Doc.words("abcdef ghijklm")).align), hr])
+const doc = Doc.vsep([hr, funs(Doc.align(Doc.list(Doc.words("abcdef ghijklm")))), hr])
 
 describe.concurrent("Render", () => {
   it("pretty", () => {
-    assert.strictEqual(
-      doc.pretty(14, 1),
-      String.stripMargin(
-        `||------------------------|
-          |fun(fun(fun(
-          |          fun(
-          |            fun(
-          |              [ abcdef
-          |              , ghijklm ])))))
-          ||------------------------|`
-      )
-    )
+    expect(Render.pretty(doc, { lineWidth: 14 })).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(
+       |          fun(
+       |            fun(
+       |              [ abcdef
+       |              , ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 
   it("prettyDefault", () => {
-    assert.strictEqual(
-      doc.prettyDefault,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+       ||------------------------|`
+    ))
   })
 
   it("prettyUnbounded", () => {
-    assert.strictEqual(
-      doc.prettyUnbounded,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.prettyUnbounded(doc)).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+       ||------------------------|`
+    ))
   })
 
   it("smart", () => {
-    assert.strictEqual(
-      doc.smart(14, 1),
-      String.stripMargin(
-        `||------------------------|
-         |fun(
-         |  fun(
-         |    fun(
-         |      fun(
-         |        fun(
-         |          [ abcdef
-         |          , ghijklm ])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.smart(doc, { lineWidth: 14 })).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(
+       |  fun(
+       |    fun(
+       |      fun(
+       |        fun(
+       |          [ abcdef
+       |          , ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 
   it("smartDefault", () => {
-    assert.strictEqual(
-      doc.smartDefault,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.smartDefault(doc)).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+       ||------------------------|`
+    ))
   })
 
   it("renderSmartUnbounded", () => {
-    assert.strictEqual(
-      doc.smartDefault,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.smartUnbounded(doc)).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+       ||------------------------|`
+    ))
   })
 
   it("compact", () => {
-    assert.strictEqual(
-      doc.compact,
-      String.stripMargin(
-        `||------------------------|
-         |fun(
-         |fun(
-         |fun(
-         |fun(
-         |fun(
-         |[ abcdef
-         |, ghijklm ])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.compact(doc)).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(
+       |fun(
+       |fun(
+       |fun(
+       |fun(
+       |[ abcdef
+       |, ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 })

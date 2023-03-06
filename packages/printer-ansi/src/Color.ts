@@ -2,90 +2,77 @@
  * @since 1.0.0
  */
 
-import * as C from "@effect/printer-ansi/internal/Color"
+import * as internal from "@effect/printer-ansi/internal_effect_untraced/color"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer-ansi/Color
+ * @category model
  */
 export type Color = Black | Red | Green | Yellow | Blue | Magenta | Cyan | White
 
 /**
+ * @since 1.0.0
  * @category model
- * @since 1.0.0
- * @tsplus type effect/printer-ansi/Color.Ops
- */
-export interface ColorOps {}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const Color: ColorOps = {}
-
-/**
- * @category model
- * @since 1.0.0
  */
 export interface Black {
   readonly _tag: "Black"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Red {
   readonly _tag: "Red"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Green {
   readonly _tag: "Green"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Yellow {
   readonly _tag: "Yellow"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Blue {
   readonly _tag: "Blue"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Magenta {
   readonly _tag: "Magenta"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface Cyan {
   readonly _tag: "Cyan"
 }
 
 /**
- * @category model
  * @since 1.0.0
+ * @category model
  */
 export interface White {
   readonly _tag: "White"
@@ -96,83 +83,59 @@ export interface White {
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Black
+ * @category constructors
  */
-export const Black: Color = {
-  _tag: "Black"
-}
+export const black: Color = internal.black
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Red
+ * @category constructors
  */
-export const Red: Color = {
-  _tag: "Red"
-}
+export const red: Color = internal.red
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Green
+ * @category constructors
  */
-export const Green: Color = {
-  _tag: "Green"
-}
+export const green: Color = internal.green
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Yellow
+ * @category constructors
  */
-export const Yellow: Color = {
-  _tag: "Yellow"
-}
+export const yellow: Color = internal.yellow
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Blue
+ * @category constructors
  */
-export const Blue: Color = {
-  _tag: "Blue"
-}
+export const blue: Color = internal.blue
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Magenta
+ * @category constructors
  */
-export const Magenta: Color = {
-  _tag: "Magenta"
-}
+export const magenta: Color = internal.magenta
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops Cyan
+ * @category constructors
  */
-export const Cyan: Color = {
-  _tag: "Cyan"
-}
+export const cyan: Color = internal.cyan
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/Color.Ops White
+ * @category constructors
  */
-export const White: Color = {
-  _tag: "White"
-}
+export const white: Color = internal.white
 
 // -----------------------------------------------------------------------------
 // Destructors
 // -----------------------------------------------------------------------------
 
 /**
- * @tsplus static effect/printer-ansi/Color.Ops toCode
- * @tsplus getter effect/printer-ansi/Color toCode
+ * @since 1.0.0
+ * @category destructors
  */
-export const toCode: (color: Color) => number = C.toCode
+export const toCode: (color: Color) => number = internal.toCode

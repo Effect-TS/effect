@@ -1,3 +1,5 @@
+import type * as Doc from "@effect/printer/Doc"
+
 /**
  * Represents a list of nesting level/document pairs that are yet to be laid
  * out.
@@ -15,7 +17,7 @@ export interface Nil {
 export interface Cons<A> {
   readonly _tag: "Cons"
   readonly indent: number
-  readonly document: Doc<A>
+  readonly document: Doc.Doc<A>
   readonly pipeline: LayoutPipeline<A>
 }
 
@@ -31,23 +33,19 @@ export const nil: LayoutPipeline<never> = {
 }
 
 /** @internal */
-export function cons<A>(
+export const cons = <A>(
   indent: number,
-  document: Doc<A>,
+  document: Doc.Doc<A>,
   pipeline: LayoutPipeline<A>
-): LayoutPipeline<A> {
-  return {
-    _tag: "Cons",
-    indent,
-    document,
-    pipeline
-  }
-}
+): LayoutPipeline<A> => ({
+  _tag: "Cons",
+  indent,
+  document,
+  pipeline
+})
 
 /** @internal */
-export function undoAnnotation<A>(pipeline: LayoutPipeline<A>): LayoutPipeline<A> {
-  return {
-    _tag: "UndoAnnotation",
-    pipeline
-  }
-}
+export const undoAnnotation = <A>(pipeline: LayoutPipeline<A>): LayoutPipeline<A> => ({
+  _tag: "UndoAnnotation",
+  pipeline
+})

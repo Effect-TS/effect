@@ -1,50 +1,44 @@
-import { pipe } from "@fp-ts/data/Function"
-import * as String from "@fp-ts/data/String"
+import * as String from "@effect/data/String"
+import * as Doc from "@effect/printer/Doc"
+import * as Render from "@effect/printer/Render"
+import { describe, expect, it } from "vitest"
 
 describe.concurrent("Doc", () => {
   describe.concurrent("constructors", () => {
     it("empty", () => {
-      const doc = Doc.vsep([Doc.text("hello"), Doc.empty.parenthesized, Doc.text("world")])
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|hello
-           |()
-           |world`
-        )
-      )
+      const doc = Doc.vsep([Doc.text("hello"), Doc.parenthesized(Doc.empty), Doc.text("world")])
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|hello
+         |()
+         |world`
+      ))
     })
 
     it("char", () => {
       const doc = Doc.char("a")
-
-      assert.strictEqual(doc.prettyDefault, "a")
+      expect(Render.prettyDefault(doc)).toBe("a")
     })
 
     it("text", () => {
       const doc = Doc.text("foo")
-
-      assert.strictEqual(doc.prettyDefault, "foo")
+      expect(Render.prettyDefault(doc)).toBe("foo")
     })
 
     it("string", () => {
       const doc = Doc.string("foo\nbar")
-
-      assert.strictEqual(doc.prettyDefault, "foobar")
+      expect(Render.prettyDefault(doc)).toBe("foobar")
     })
 
     it("flatAlt", () => {
-      const open = Doc.empty.flatAlt(Doc.text("{ "))
-      const close = Doc.empty.flatAlt(Doc.text(" }"))
-      const separator = Doc.empty.flatAlt(Doc.text("; "))
+      const open = Doc.flatAlt(Doc.empty, Doc.text("{ "))
+      const close = Doc.flatAlt(Doc.empty, Doc.text(" }"))
+      const separator = Doc.flatAlt(Doc.empty, Doc.text("; "))
 
-      function prettyDo<A>(docs: Iterable<Doc<A>>): Doc<A> {
-        return Doc.hsep([
+      const prettyDo = <A>(docs: Iterable<Doc.Doc<A>>): Doc.Doc<A> =>
+        Doc.group(Doc.hsep([
           Doc.text("do"),
-          pipe(docs, Doc.encloseSep(open, close, separator)).align
-        ]).group
-      }
+          Doc.align(Doc.encloseSep(docs, open, close, separator))
+        ]))
 
       const statements = [
         Doc.text("name:_ <- getArgs"),
@@ -53,31 +47,26 @@ describe.concurrent("Doc", () => {
       ]
 
       assert.strictEqual(
-        prettyDo(statements).pretty(80),
+        Render.prettyDefault(prettyDo(statements)),
         "do { name:_ <- getArgs; let greet = \"Hello, \" <> name\"; putStrLn greet }"
       )
 
-      assert.strictEqual(
-        prettyDo(statements).pretty(10),
-        String.stripMargin(
-          `|do name:_ <- getArgs
+      expect(Render.pretty(prettyDo(statements), { lineWidth: 10 })).toBe(String.stripMargin(
+        `|do name:_ <- getArgs
            |   let greet = "Hello, " <> name"
            |   putStrLn greet`
-        )
-      )
+      ))
     })
 
     it("union", () => {
-      const doc = Doc.string("A long string of words").union(Doc.char("b"))
-
-      assert.strictEqual(doc.prettyDefault, "A long string of words")
-      assert.strictEqual(doc.pretty(1), "b")
+      const doc = Doc.union(Doc.string("A long string of words"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("A long string of words")
+      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("b")
     })
 
     it("cat", () => {
-      const doc = Doc.char("a").cat(Doc.char("b"))
-
-      assert.strictEqual(doc.prettyDefault, "ab")
+      const doc = Doc.cat(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("ab")
     })
 
     it("line", () => {
@@ -86,18 +75,11 @@ describe.concurrent("Doc", () => {
         Doc.line,
         Doc.text("dolor sit amet")
       ])
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|lorem ipsum
-           |dolor sit amet`
-        )
-      )
-      assert.strictEqual(
-        doc.group.prettyDefault,
-        "lorem ipsum dolor sit amet"
-      )
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|lorem ipsum
+         |dolor sit amet`
+      ))
+      expect(Render.prettyDefault(Doc.group(doc))).toBe("lorem ipsum dolor sit amet")
     })
 
     it("lineBreak", () => {
@@ -106,18 +88,11 @@ describe.concurrent("Doc", () => {
         Doc.lineBreak,
         Doc.text("dolor sit amet")
       ])
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|lorem ipsum
-           |dolor sit amet`
-        )
-      )
-      assert.strictEqual(
-        doc.group.prettyDefault,
-        "lorem ipsumdolor sit amet"
-      )
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|lorem ipsum
+         |dolor sit amet`
+      ))
+      expect(Render.prettyDefault(Doc.group(doc))).toBe("lorem ipsumdolor sit amet")
     })
 
     it("softLine", () => {
@@ -126,15 +101,11 @@ describe.concurrent("Doc", () => {
         Doc.softLine,
         Doc.text("dolor sit amet")
       ])
-
-      assert.strictEqual(doc.pretty(80), "lorem ipsum dolor sit amet")
-      assert.strictEqual(
-        doc.pretty(10),
-        String.stripMargin(
-          `|lorem ipsum
-           |dolor sit amet`
-        )
-      )
+      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|lorem ipsum
+         |dolor sit amet`
+      ))
     })
 
     it("softLineBreak", () => {
@@ -143,15 +114,11 @@ describe.concurrent("Doc", () => {
         Doc.softLineBreak,
         Doc.text("IsWayTooLong")
       ])
-
-      assert.strictEqual(doc.pretty(80), "ThisTextIsWayTooLong")
-      assert.strictEqual(
-        doc.pretty(10),
-        String.stripMargin(
-          `|ThisText
-           |IsWayTooLong`
-        )
-      )
+      expect(Render.prettyDefault(doc)).toBe("ThisTextIsWayTooLong")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|ThisText
+         |IsWayTooLong`
+      ))
     })
 
     it("hardLine", () => {
@@ -160,33 +127,25 @@ describe.concurrent("Doc", () => {
         Doc.hardLine,
         Doc.text("dolor sit amet")
       ])
-
-      assert.strictEqual(
-        doc.pretty(1000),
-        String.stripMargin(
-          `|lorem ipsum
-           |dolor sit amet`
-        )
-      )
+      expect(Render.pretty(doc, { lineWidth: 1000 })).toBe(String.stripMargin(
+        `|lorem ipsum
+         |dolor sit amet`
+      ))
     })
 
     it("nest", () => {
       const doc = Doc.vsep([
-        Doc.vsep(Doc.words("lorem ipsum dolor")).nest(4),
+        Doc.nest(Doc.vsep(Doc.words("lorem ipsum dolor")), 4),
         Doc.text("sit"),
         Doc.text("amet")
       ])
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|lorem
-           |    ipsum
-           |    dolor
-           |sit
-           |amet`
-        )
-      )
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|lorem
+         |    ipsum
+         |    dolor
+         |sit
+         |amet`
+      ))
     })
 
     it("column", () => {
@@ -194,33 +153,25 @@ describe.concurrent("Doc", () => {
         Doc.text("prefix"),
         Doc.column((l) => Doc.text(`| <- column ${l}`))
       ])
-      const doc = Doc.vsep([0, 4, 8].map((n) => prefix.indent(n)))
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|prefix | <- column 7
-           |    prefix | <- column 11
-           |        prefix | <- column 15`
-        )
-      )
+      const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|prefix | <- column 7
+         |    prefix | <- column 11
+         |        prefix | <- column 15`
+      ))
     })
 
     it("nesting", () => {
       const prefix = Doc.hsep([
         Doc.text("prefix"),
-        Doc.nesting((l) => Doc.text(`Nested: ${l}`).squareBracketed)
+        Doc.nesting((l) => Doc.squareBracketed(Doc.text(`Nested: ${l}`)))
       ])
-      const doc = Doc.vsep([0, 4, 8].map((n) => prefix.indent(n)))
-
-      assert.strictEqual(
-        doc.prettyDefault,
-        String.stripMargin(
-          `|prefix [Nested: 0]
-           |    prefix [Nested: 4]
-           |        prefix [Nested: 8]`
-        )
-      )
+      const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|prefix [Nested: 0]
+         |    prefix [Nested: 4]
+         |        prefix [Nested: 8]`
+      ))
     })
 
     it("withPageWidth", () => {
@@ -231,7 +182,7 @@ describe.concurrent("Doc", () => {
             case "AvailablePerLine": {
               const lineWidth = pageWidth.lineWidth
               const ribbonFraction = pageWidth.ribbonFraction
-              return Doc.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`).squareBracketed
+              return Doc.squareBracketed(Doc.text(`Width: ${lineWidth}, Ribbon Fraction: ${ribbonFraction}`))
             }
             case "Unbounded": {
               return Doc.empty
@@ -239,555 +190,456 @@ describe.concurrent("Doc", () => {
           }
         })
       ])
-      const doc = Doc.vsep([0, 4, 8].map((n) => prefix.indent(n)))
+      const doc = Doc.vsep([0, 4, 8].map((n) => Doc.indent(prefix, n)))
+      expect(Render.pretty(doc, { lineWidth: 32 })).toBe(String.stripMargin(
+        `|prefix [Width: 32, Ribbon Fraction: 1]
+         |    prefix [Width: 32, Ribbon Fraction: 1]
+         |        prefix [Width: 32, Ribbon Fraction: 1]`
+      ))
+    })
+  })
 
-      assert.strictEqual(
-        doc.pretty(32),
-        String.stripMargin(
-          `|prefix [Width: 32, Ribbon Fraction: 1]
-           |    prefix [Width: 32, Ribbon Fraction: 1]
-           |        prefix [Width: 32, Ribbon Fraction: 1]`
-        )
+  describe.concurrent("refinements", () => {
+    it("isFail", () => {
+      expect(Doc.isFail(Doc.fail)).toBe(true)
+      expect(Doc.isFail(Doc.char("a"))).toBe(false)
+    })
+
+    it("isEmpty", () => {
+      expect(Doc.isEmpty(Doc.empty)).toBe(true)
+      expect(Doc.isEmpty(Doc.char("a"))).toBe(false)
+    })
+
+    it("isChar", () => {
+      expect(Doc.isChar(Doc.char("a"))).toBe(true)
+      expect(Doc.isChar(Doc.text("foo"))).toBe(false)
+    })
+
+    it("isText", () => {
+      expect(Doc.isText(Doc.text("foo"))).toBe(true)
+      expect(Doc.isText(Doc.char("a"))).toBe(false)
+    })
+
+    it("isLine", () => {
+      expect(Doc.isLine(Doc.hardLine)).toBe(true)
+      expect(Doc.isLine(Doc.char("a"))).toBe(false)
+    })
+
+    it("isFlatAlt", () => {
+      expect(Doc.isFlatAlt(Doc.flatAlt(Doc.char("a"), Doc.char("b")))).toBe(true)
+      expect(Doc.isFlatAlt(Doc.char("a"))).toBe(false)
+    })
+
+    it("isCat", () => {
+      expect(Doc.isCat(Doc.cat(Doc.char("a"), Doc.char("b")))).toBe(true)
+      expect(Doc.isCat(Doc.char("a"))).toBe(false)
+    })
+
+    it("isNest", () => {
+      expect(Doc.isNest(Doc.nest(Doc.char("a"), 4))).toBe(true)
+      expect(Doc.isNest(Doc.char("a"))).toBe(false)
+    })
+
+    it("isUnion", () => {
+      expect(Doc.isUnion(Doc.union(Doc.char("a"), Doc.char("b")))).toBe(true)
+      expect(Doc.isUnion(Doc.char("a"))).toBe(false)
+    })
+
+    it("isColumn", () => {
+      expect(Doc.isColumn(Doc.column(() => Doc.char("a")))).toBe(true)
+      expect(Doc.isColumn(Doc.char("a"))).toBe(false)
+    })
+
+    it("isWithPageWidth", () => {
+      expect(Doc.isWithPageWidth(Doc.pageWidth(() => Doc.char("a")))).toBe(true)
+      expect(Doc.isWithPageWidth(Doc.char("a"))).toBe(false)
+    })
+
+    it("isNesting", () => {
+      expect(Doc.isNesting(Doc.nesting(() => Doc.char("a")))).toBe(true)
+      expect(Doc.isNesting(Doc.char("a"))).toBe(false)
+    })
+
+    it("isAnnotated", () => {
+      expect(Doc.isAnnotated(Doc.annotate(Doc.char("a"), 1))).toBe(true)
+      expect(Doc.isAnnotated(Doc.char("a"))).toBe(false)
+    })
+  })
+
+  describe.concurrent("concatenation combinators", () => {
+    it("concatWith", () => {
+      const doc = Doc.concatWith([Doc.char("a"), Doc.char("b")], Doc.catWithSpace)
+      expect(Render.prettyDefault(doc)).toBe("a b")
+    })
+
+    it("catWithSpace", () => {
+      const doc = Doc.catWithSpace(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("a b")
+    })
+
+    it("catWithLine", () => {
+      const doc = Doc.catWithLine(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("a\nb")
+    })
+
+    it("catWithLineBreak", () => {
+      const doc = Doc.catWithLineBreak(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("a\nb")
+      expect(Render.prettyDefault(Doc.group(doc))).toBe("ab")
+    })
+
+    it("catWithSoftLine", () => {
+      const doc = Doc.catWithSoftLine(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("a b")
+      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("a\nb")
+    })
+
+    it("catWithSoftLineBreak", () => {
+      const doc = Doc.catWithSoftLineBreak(Doc.char("a"), Doc.char("b"))
+      expect(Render.prettyDefault(doc)).toBe("ab")
+      expect(Render.pretty(doc, { lineWidth: 1 })).toBe("a\nb")
+    })
+  })
+
+  describe.concurrent("alternative combinators", () => {
+    describe.concurrent("group", () => {
+      it("should ensure that the `left` document is less wide than the `right`", () => {
+        const doc = Doc.group(Doc.flatAlt(Doc.text("even wider"), Doc.text("too wide")))
+        // If the `right` document does not fit the page, the algorithm falls
+        // back to an even wider layout
+        expect(Render.pretty(doc, { lineWidth: 7 })).toBe("even wider")
+      })
+
+      it("should flatten the right document", () => {
+        const doc = Doc.group(Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.line, Doc.char("y")])))
+        expect(Render.prettyDefault(doc)).toBe("y y")
+      })
+
+      it("should never render an unflattenable `right` document", () => {
+        const doc = Doc.group(Doc.flatAlt(Doc.char("x"), Doc.hcat([Doc.char("y"), Doc.hardLine, Doc.char("y")])))
+        expect(Render.prettyDefault(doc)).toBe("x")
+      })
+    })
+  })
+
+  describe.concurrent("sep combinators", () => {
+    it("hsep", () => {
+      const doc = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
+      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
+      expect(Render.pretty(doc, { lineWidth: 5 })).toBe("lorem ipsum dolor sit amet")
+    })
+
+    it("vsep", () => {
+      const doc = Doc.hsep([Doc.text("prefix"), Doc.vsep(Doc.words("text to lay out"))])
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|prefix text
+         |to
+         |lay
+         |out`
+      ))
+    })
+
+    it("fillSep", () => {
+      const doc = Doc.fillSep(Doc.words("lorem ipsum dolor sit amet"))
+      expect(Render.prettyDefault(doc)).toBe("lorem ipsum dolor sit amet")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|lorem
+         |ipsum
+         |dolor sit
+         |amet`
+      ))
+    })
+
+    it("sep", () => {
+      const doc = Doc.hsep([Doc.text("prefix"), Doc.seps(Doc.words("text to lay out"))])
+      expect(Render.prettyDefault(doc)).toBe("prefix text to lay out")
+      expect(Render.pretty(doc, { lineWidth: 20 })).toBe(String.stripMargin(
+        `|prefix text
+         |to
+         |lay
+         |out`
+      ))
+    })
+  })
+
+  describe.concurrent("cat combinators", () => {
+    it("hcat", () => {
+      const doc = Doc.hcat(Doc.words("lorem ipsum dolor sit amet"))
+      expect(Render.prettyDefault(doc)).toBe("loremipsumdolorsitamet")
+    })
+
+    it("vcat", () => {
+      const doc = Doc.vcat(Doc.words("lorem ipsum dolor sit amet"))
+
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|lorem
+         |ipsum
+         |dolor
+         |sit
+         |amet`
+      ))
+    })
+
+    it("fillCat", () => {
+      const doc = Doc.fillCat(Doc.words("lorem ipsum dolor sit amet"))
+      expect(Render.prettyDefault(doc)).toBe("loremipsumdolorsitamet")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|loremipsum
+         |dolorsit
+         |amet`
+      ))
+    })
+
+    it("cats", () => {
+      const doc = Doc.hsep([Doc.text("Docs:"), Doc.cats(Doc.words("lorem ipsum dolor"))])
+      expect(Render.prettyDefault(doc)).toBe("Docs: loremipsumdolor")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|Docs: lorem
+         |ipsum
+         |dolor`
+      ))
+    })
+  })
+
+  describe.concurrent("fill combinators", () => {
+    it("fill", () => {
+      type Signature = [name: string, type: string]
+
+      const signatures: ReadonlyArray<Signature> = [
+        ["empty", "Doc"],
+        ["nest", "Int -> Doc -> Doc"],
+        ["fillSep", "[Doc] -> Doc"]
+      ]
+
+      const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+        Doc.hsep([Doc.fill(Doc.text(name), 5), Doc.text("::"), Doc.text(type)])
+
+      const doc = Doc.hsep([
+        Doc.text("let"),
+        Doc.align(Doc.vcat(signatures.map(prettySignature)))
+      ])
+
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|let empty :: Doc
+         |    nest  :: Int -> Doc -> Doc
+         |    fillSep :: [Doc] -> Doc`
+      ))
+    })
+
+    it("fillBreak", () => {
+      type Signature = [name: string, type: string]
+
+      const signatures: ReadonlyArray<Signature> = [
+        ["empty", "Doc"],
+        ["nest", "Int -> Doc -> Doc"],
+        ["fillSep", "[Doc] -> Doc"]
+      ]
+
+      const prettySignature = <A>([name, type]: Signature): Doc.Doc<A> =>
+        Doc.hsep([Doc.fillBreak(Doc.text(name), 5), Doc.text("::"), Doc.text(type)])
+
+      const doc = Doc.hsep([
+        Doc.text("let"),
+        Doc.align(Doc.vcat(signatures.map(prettySignature)))
+      ])
+
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|let empty :: Doc
+         |    nest  :: Int -> Doc -> Doc
+         |    fillSep
+         |          :: [Doc] -> Doc`
+      ))
+    })
+  })
+
+  describe.concurrent("alignment combinators", () => {
+    it("align", () => {
+      const doc = Doc.hsep([
+        Doc.text("lorem"),
+        Doc.align(Doc.vsep([Doc.text("ipsum"), Doc.text("dolor")]))
+      ])
+
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|lorem ipsum
+         |      dolor`
+      ))
+    })
+
+    it("hang", () => {
+      const doc = Doc.hsep([
+        Doc.text("prefix"),
+        Doc.hang(Doc.reflow("Indenting these words with hang"), 4)
+      ])
+
+      expect(Render.pretty(doc, { lineWidth: 24 })).toBe(String.stripMargin(
+        `|prefix Indenting these
+         |           words with
+         |           hang`
+      ))
+    })
+
+    it("indent", () => {
+      const doc = Doc.hcat([
+        Doc.text("prefix"),
+        Doc.indent(Doc.reflow("The indent function indents these words!"), 4)
+      ])
+
+      expect(Render.pretty(doc, { lineWidth: 24 })).toBe(String.stripMargin(
+        `|prefix    The indent
+         |          function
+         |          indents these
+         |          words!`
+      ))
+    })
+
+    it("encloseSep", () => {
+      const doc = Doc.hsep([
+        Doc.text("list"),
+        Doc.align(Doc.encloseSep(
+          ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n)),
+          Doc.lbracket,
+          Doc.rbracket,
+          Doc.comma
+        ))
+      ])
+
+      expect(Render.prettyDefault(doc)).toBe("list [1,20,300,4000]")
+      expect(Render.pretty(doc, { lineWidth: 10 })).toBe(String.stripMargin(
+        `|list [1
+         |     ,20
+         |     ,300
+         |     ,4000]`
+      ))
+    })
+
+    it("list", () => {
+      const doc = Doc.list(
+        ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
       )
+      expect(Render.prettyDefault(doc)).toBe("[1, 20, 300, 4000]")
     })
 
-    describe.concurrent("guards", () => {
-      it("isFail", () => {
-        assert.isTrue(Doc.isFail(Doc.fail))
-        assert.isFalse(Doc.isFail(Doc.char("a")))
-      })
+    it("tupled", () => {
+      const doc = Doc.tupled(
+        ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
+      )
+      expect(Render.prettyDefault(doc)).toBe("(1, 20, 300, 4000)")
+    })
+  })
 
-      it("isEmpty", () => {
-        assert.isTrue(Doc.isEmpty(Doc.empty))
-        assert.isFalse(Doc.isEmpty(Doc.char("a")))
-      })
+  describe.concurrent("reactive/conditional combinators", () => {
+    it("width", () => {
+      const annotate = <A>(self: Doc.Doc<A>): Doc.Doc<A> =>
+        Doc.width(Doc.squareBracketed(self), (w) => Doc.text(` <- width: ${w}`))
 
-      it("isChar", () => {
-        assert.isTrue(Doc.isChar(Doc.char("a")))
-        assert.isFalse(Doc.isChar(Doc.text("foo")))
-      })
+      const docs = [
+        Doc.text("---"),
+        Doc.text("------"),
+        Doc.indent(Doc.text("---"), 3),
+        Doc.vsep([Doc.text("---"), Doc.indent(Doc.text("---"), 4)])
+      ]
 
-      it("isText", () => {
-        assert.isTrue(Doc.isText(Doc.text("foo")))
-        assert.isFalse(Doc.isText(Doc.char("a")))
-      })
+      const doc = Doc.align(Doc.vsep(docs.map(annotate)))
 
-      it("isLine", () => {
-        assert.isTrue(Doc.isLine(Doc.hardLine))
-        assert.isFalse(Doc.isLine(Doc.char("a")))
-      })
+      expect(Render.prettyDefault(doc)).toBe(String.stripMargin(
+        `|[---] <- width: 5
+         |[------] <- width: 8
+         |[   ---] <- width: 8
+         |[---
+         |    ---] <- width: 8`
+      ))
+    })
+  })
 
-      it("isFlatAlt", () => {
-        assert.isTrue(Doc.isFlatAlt(Doc.char("a").flatAlt(Doc.char("b"))))
-        assert.isFalse(Doc.isFlatAlt(Doc.char("a")))
-      })
-
-      it("isCat", () => {
-        assert.isTrue(Doc.isCat(Doc.char("a").cat(Doc.char("b"))))
-        assert.isFalse(Doc.isCat(Doc.char("a")))
-      })
-
-      it("isNest", () => {
-        assert.isTrue(Doc.isNest(Doc.char("a").nest(4)))
-        assert.isFalse(Doc.isNest(Doc.char("a")))
-      })
-
-      it("isUnion", () => {
-        assert.isTrue(Doc.isUnion(Doc.char("a").union(Doc.char("b"))))
-        assert.isFalse(Doc.isUnion(Doc.char("a")))
-      })
-
-      it("isColumn", () => {
-        assert.isTrue(Doc.isColumn(Doc.column(() => Doc.char("a"))))
-        assert.isFalse(Doc.isColumn(Doc.char("a")))
-      })
-
-      it("isWithPageWidth", () => {
-        assert.isTrue(Doc.isWithPageWidth(Doc.pageWidth(() => Doc.char("a"))))
-        assert.isFalse(Doc.isWithPageWidth(Doc.char("a")))
-      })
-
-      it("isNesting", () => {
-        assert.isTrue(Doc.isNesting(Doc.nesting(() => Doc.char("a"))))
-        assert.isFalse(Doc.isNesting(Doc.char("a")))
-      })
-
-      it("isAnnotated", () => {
-        assert.isTrue(Doc.isAnnotated(Doc.char("a").annotate(1)))
-        assert.isFalse(Doc.isAnnotated(Doc.char("a")))
-      })
+  describe.concurrent("utility combinators", () => {
+    it("punctuate", () => {
+      const docs = Doc.punctuate(Doc.words("lorem ipsum dolor sit amet"), Doc.comma)
+      expect(Render.prettyDefault(Doc.hsep(docs))).toBe("lorem, ipsum, dolor, sit, amet")
+      // The separators are put at the end of the entries, which can be better
+      // visualzied if the documents are rendered vertically
+      expect(Render.prettyDefault(Doc.vsep(docs))).toBe(String.stripMargin(
+        `|lorem,
+         |ipsum,
+         |dolor,
+         |sit,
+         |amet`
+      ))
     })
 
-    describe.concurrent("concatenation combinators", () => {
-      it("concatWith", () => {
-        const doc = pipe(
-          [Doc.char("a"), Doc.char("b")],
-          Doc.concatWith((a, b) => a.catWithSpace(b))
-        )
+    it("surround", () => {
+      const doc = Doc.concatWith(
+        Doc.words("@effect printer Doc"),
+        (left, right) => Doc.surround(Doc.slash, left, right)
+      )
 
-        assert.strictEqual(doc.prettyDefault, "a b")
-      })
-
-      it("appendWithSpace", () => {
-        const doc = Doc.char("a").catWithSpace(Doc.char("b"))
-
-        assert.strictEqual(doc.prettyDefault, "a b")
-      })
-
-      it("appendWithLine", () => {
-        const doc = Doc.char("a").catWithLine(Doc.char("b"))
-
-        assert.strictEqual(doc.prettyDefault, "a\nb")
-      })
-
-      it("appendWithLineBreak", () => {
-        const doc = Doc.char("a").catWithLineBreak(Doc.char("b"))
-
-        assert.strictEqual(doc.prettyDefault, "a\nb")
-        assert.strictEqual(doc.group.prettyDefault, "ab")
-      })
-
-      it("appendWithSoftLine", () => {
-        const doc = Doc.char("a").catWithSoftLine(Doc.char("b"))
-
-        assert.strictEqual(doc.prettyDefault, "a b")
-        assert.strictEqual(doc.pretty(1), "a\nb")
-      })
-
-      it("appendWithSoftLineBreak", () => {
-        const doc = Doc.char("a").catWithSoftLineBreak(Doc.char("b"))
-
-        assert.strictEqual(doc.prettyDefault, "ab")
-        assert.strictEqual(doc.pretty(1), "a\nb")
-      })
+      expect(Render.prettyDefault(doc)).toBe("@effect/printer/Doc")
     })
 
-    describe.concurrent("alternative combinators", () => {
-      describe.concurrent("group", () => {
-        it("should ensure that the `left` document is less wide than the `right`", () => {
-          const doc = Doc.text("even wider").flatAlt(Doc.text("too wide")).group
-
-          // If the `right` document does not fit the page, the algorithm falls
-          // back to an even wider layout
-          assert.strictEqual(doc.pretty(7), "even wider")
-        })
-
-        it("should flatten the right document", () => {
-          const doc = Doc.char("x").flatAlt(Doc.hcat([Doc.char("y"), Doc.line, Doc.char("y")])).group
-
-          assert.strictEqual(doc.prettyDefault, "y y")
-        })
-
-        it("should never render an unflattenable `right` document", () => {
-          const doc = Doc.char("x").flatAlt(Doc.hcat([Doc.char("y"), Doc.hardLine, Doc.char("y")])).group
-
-          assert.strictEqual(doc.prettyDefault, "x")
-        })
-      })
+    it("parenthesized", () => {
+      const doc = Doc.parenthesized(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("(a)")
     })
 
-    describe.concurrent("sep combinators", () => {
-      it("hsep", () => {
-        const doc = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
-
-        assert.strictEqual(doc.prettyDefault, "lorem ipsum dolor sit amet")
-        assert.strictEqual(doc.pretty(5), "lorem ipsum dolor sit amet")
-      })
-
-      it("vsep", () => {
-        const doc = Doc.hsep([Doc.text("prefix"), Doc.vsep(Doc.words("text to lay out"))])
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|prefix text
-             |to
-             |lay
-             |out`
-          )
-        )
-      })
-
-      it("fillSep", () => {
-        const doc = Doc.fillSep(Doc.words("lorem ipsum dolor sit amet"))
-
-        assert.strictEqual(doc.prettyDefault, "lorem ipsum dolor sit amet")
-        assert.strictEqual(
-          doc.pretty(10),
-          String.stripMargin(
-            `|lorem
-             |ipsum
-             |dolor sit
-             |amet`
-          )
-        )
-      })
-
-      it("sep", () => {
-        const doc = Doc.hsep([Doc.text("prefix"), Doc.seps(Doc.words("text to lay out"))])
-
-        assert.strictEqual(doc.prettyDefault, "prefix text to lay out")
-        assert.strictEqual(
-          doc.pretty(20),
-          String.stripMargin(
-            `|prefix text
-             |to
-             |lay
-             |out`
-          )
-        )
-      })
+    it("angleBracketed", () => {
+      const doc = Doc.angleBracketed(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("<a>")
     })
 
-    describe.concurrent("cat combinators", () => {
-      it("hcat", () => {
-        const doc = Doc.hcat(Doc.words("lorem ipsum dolor sit amet"))
-
-        assert.strictEqual(doc.prettyDefault, "loremipsumdolorsitamet")
-      })
-
-      it("vcat", () => {
-        const doc = Doc.vcat(Doc.words("lorem ipsum dolor sit amet"))
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|lorem
-             |ipsum
-             |dolor
-             |sit
-             |amet`
-          )
-        )
-      })
-
-      it("fillCat", () => {
-        const doc = Doc.fillCat(Doc.words("lorem ipsum dolor sit amet"))
-
-        assert.strictEqual(doc.prettyDefault, "loremipsumdolorsitamet")
-        assert.strictEqual(
-          doc.pretty(10),
-          String.stripMargin(
-            `|loremipsum
-             |dolorsit
-             |amet`
-          )
-        )
-      })
-
-      it("cats", () => {
-        const doc = Doc.hsep([Doc.text("Docs:"), Doc.cats(Doc.words("lorem ipsum dolor"))])
-
-        assert.strictEqual(doc.prettyDefault, "Docs: loremipsumdolor")
-        assert.strictEqual(
-          doc.pretty(10),
-          String.stripMargin(
-            `|Docs: lorem
-             |ipsum
-             |dolor`
-          )
-        )
-      })
+    it("squareBracketed", () => {
+      const doc = Doc.squareBracketed(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("[a]")
     })
 
-    describe.concurrent("filler combinators", () => {
-      it("fill", () => {
-        type Signature = [name: string, type: string]
-
-        const signatures: ReadonlyArray<Signature> = [
-          ["empty", "Doc"],
-          ["nest", "Int -> Doc -> Doc"],
-          ["fillSep", "[Doc] -> Doc"]
-        ]
-
-        function prettySignature<A>([name, type]: Signature): Doc<A> {
-          return Doc.hsep([Doc.text(name).fill(5), Doc.text("::"), Doc.text(type)])
-        }
-
-        const doc = Doc.hsep([
-          Doc.text("let"),
-          Doc.vcat(signatures.map(prettySignature)).align
-        ])
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|let empty :: Doc
-             |    nest  :: Int -> Doc -> Doc
-             |    fillSep :: [Doc] -> Doc`
-          )
-        )
-      })
-
-      it("fillBreak", () => {
-        type Signature = [name: string, type: string]
-
-        const signatures: ReadonlyArray<Signature> = [
-          ["empty", "Doc"],
-          ["nest", "Int -> Doc -> Doc"],
-          ["fillSep", "[Doc] -> Doc"]
-        ]
-
-        function prettySignature<A>([name, type]: Signature): Doc<A> {
-          return Doc.hsep([Doc.text(name).fillBreak(5), Doc.text("::"), Doc.text(type)])
-        }
-
-        const doc = Doc.hsep([
-          Doc.text("let"),
-          Doc.vcat(signatures.map(prettySignature)).align
-        ])
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|let empty :: Doc
-             |    nest  :: Int -> Doc -> Doc
-             |    fillSep
-             |          :: [Doc] -> Doc`
-          )
-        )
-      })
+    it("curlyBraced", () => {
+      const doc = Doc.curlyBraced(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("{a}")
     })
 
-    describe.concurrent("alignment combinators", () => {
-      it("align", () => {
-        const doc = Doc.hsep([
-          Doc.text("lorem"),
-          Doc.vsep([Doc.text("ipsum"), Doc.text("dolor")]).align
-        ])
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|lorem ipsum
-             |      dolor`
-          )
-        )
-      })
-
-      it("hang", () => {
-        const doc = Doc.hsep([
-          Doc.text("prefix"),
-          Doc.reflow("Indenting these words with hang").hang(4)
-        ])
-
-        assert.strictEqual(
-          doc.pretty(24),
-          String.stripMargin(
-            `|prefix Indenting these
-             |           words with
-             |           hang`
-          )
-        )
-      })
-
-      it("indent", () => {
-        const doc = Doc.hcat([
-          Doc.text("prefix"),
-          Doc.reflow("The indent function indents these words!").indent(4)
-        ])
-
-        assert.strictEqual(
-          doc.pretty(24),
-          String.stripMargin(
-            `|prefix    The indent
-             |          function
-             |          indents these
-             |          words!`
-          )
-        )
-      })
-
-      it("encloseSep", () => {
-        const doc = Doc.hsep([
-          Doc.text("list"),
-          pipe(
-            ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n)),
-            Doc.encloseSep(
-              Doc.lbracket,
-              Doc.rbracket,
-              Doc.comma
-            )
-          ).align
-        ])
-
-        assert.strictEqual(doc.prettyDefault, "list [1,20,300,4000]")
-        assert.strictEqual(
-          doc.pretty(10),
-          String.stripMargin(
-            `|list [1
-             |     ,20
-             |     ,300
-             |     ,4000]`
-          )
-        )
-      })
-
-      it("list", () => {
-        const doc = Doc.list(
-          ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
-        )
-
-        assert.strictEqual(doc.prettyDefault, "[1, 20, 300, 4000]")
-      })
-
-      it("tupled", () => {
-        const doc = Doc.tupled(
-          ["1", "20", "300", "4000"].map((n) => n.length === 1 ? Doc.char(n) : Doc.text(n))
-        )
-
-        assert.strictEqual(doc.prettyDefault, "(1, 20, 300, 4000)")
-      })
+    it("singleQuoted", () => {
+      const doc = Doc.singleQuoted(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("'a'")
     })
 
-    describe.concurrent("reactive/conditional combinators", () => {
-      it("width", () => {
-        function annotate<A>(self: Doc<A>): Doc<A> {
-          return self.squareBracketed.width((w) => Doc.text(` <- width: ${w}`))
-        }
-
-        const docs = [
-          Doc.text("---"),
-          Doc.text("------"),
-          Doc.text("---").indent(3),
-          Doc.vsep([Doc.text("---"), Doc.text("---").indent(4)])
-        ]
-
-        const doc = Doc.vsep(docs.map(annotate)).align
-
-        assert.strictEqual(
-          doc.prettyDefault,
-          String.stripMargin(
-            `|[---] <- width: 5
-             |[------] <- width: 8
-             |[   ---] <- width: 8
-             |[---
-             |    ---] <- width: 8`
-          )
-        )
-      })
+    it("doubleQuoted", () => {
+      const doc = Doc.doubleQuoted(Doc.char("a"))
+      expect(Render.prettyDefault(doc)).toBe("\"a\"")
     })
 
-    describe.concurrent("general combinators", () => {
-      it("punctuate", () => {
-        const docs = pipe(Doc.words("lorem ipsum dolor sit amet"), Doc.punctuate(Doc.comma))
-
-        assert.strictEqual(Doc.hsep(docs).prettyDefault, "lorem, ipsum, dolor, sit, amet")
-
-        // The separators are put at the end of the entries, which can be better
-        // visualzied if the documents are rendered vertically
-        assert.strictEqual(
-          Doc.vsep(docs).prettyDefault,
-          String.stripMargin(
-            `|lorem,
-             |ipsum,
-             |dolor,
-             |sit,
-             |amet`
-          )
-        )
-      })
-
-      it("surround", () => {
-        const doc = pipe(
-          Doc.words("@effect-ts printer Core Doc"),
-          Doc.concatWith((x, y) => Doc.slash.surround(x, y))
-        )
-
-        assert.strictEqual(doc.prettyDefault, "@effect-ts/printer/Core/Doc")
-      })
-
-      it("parenthesized", () => {
-        const doc = Doc.char("a").parenthesized
-
-        assert.strictEqual(doc.prettyDefault, "(a)")
-      })
-
-      it("angled", () => {
-        const doc = Doc.char("a").angledBracketed
-
-        assert.strictEqual(doc.prettyDefault, "<a>")
-      })
-
-      it("bracketed", () => {
-        const doc = Doc.char("a").squareBracketed
-
-        assert.strictEqual(doc.prettyDefault, "[a]")
-      })
-
-      it("braced", () => {
-        const doc = Doc.char("a").curlyBraced
-
-        assert.strictEqual(doc.prettyDefault, "{a}")
-      })
-
-      it("singleQuoted", () => {
-        const doc = Doc.char("a").singleQuoted
-
-        assert.strictEqual(doc.prettyDefault, "'a'")
-      })
-
-      it("doubleQuoted", () => {
-        const doc = Doc.char("a").doubleQuoted
-
-        assert.strictEqual(doc.prettyDefault, "\"a\"")
-      })
-
-      it("spaces", () => {
-        const doc = Doc.spaces(5).doubleQuoted.squareBracketed
-
-        assert.strictEqual(doc.prettyDefault, "[\"     \"]")
-      })
-
-      it("words", () => {
-        const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
-
-        assert.strictEqual(doc.prettyDefault, "(lorem, ipsum, dolor)")
-      })
-
-      it("reflow", () => {
-        const doc = Doc.reflow(
-          "Lorem ipsum dolor sit amet, consectetur adipisicing elit, " +
-            "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-        )
-
-        assert.strictEqual(
-          doc.pretty(32),
-          String.stripMargin(
-            `|Lorem ipsum dolor sit amet,
-             |consectetur adipisicing elit,
-             |sed do eiusmod tempor incididunt
-             |ut labore et dolore magna
-             |aliqua.`
-          )
-        )
-      })
+    it("spaces", () => {
+      const doc = Doc.squareBracketed(Doc.doubleQuoted(Doc.spaces(5)))
+      expect(Render.prettyDefault(doc)).toBe("[\"     \"]")
     })
 
-    describe.concurrent("instances", () => {
-      it("Semigroup", () => {
-        const S = Doc.getSemigroup<never>()
-        const doc = pipe(Doc.text("hello"), S.combine(Doc.text("world")))
-
-        assert.strictEqual(doc.prettyDefault, "helloworld")
-      })
-
-      it("Monoid", () => {
-        const M = Doc.getMonoid<never>()
-        const doc = pipe(
-          Doc.text("hello"),
-          M.combine(M.empty.parenthesized),
-          M.combine(Doc.text("world"))
-        )
-
-        assert.strictEqual(doc.prettyDefault, "hello()world")
-      })
+    it("words", () => {
+      const doc = Doc.tupled(Doc.words("lorem ipsum dolor"))
+      expect(Render.prettyDefault(doc)).toBe("(lorem, ipsum, dolor)")
     })
 
-    describe.concurrent("utils", () => {
-      it("textSpaces", () => {
-        assert.strictEqual(Doc.textSpaces(4), "    ")
-      })
+    it("reflow", () => {
+      const doc = Doc.reflow("Lorem ipsum dolor sit amet, consectetur adipisicing elit")
+      expect(Render.pretty(doc, { lineWidth: 32 })).toBe(String.stripMargin(
+        `|Lorem ipsum dolor sit amet,
+         |consectetur adipisicing elit`
+      ))
+    })
+
+    it("textSpaces", () => {
+      expect(Doc.textSpaces(4)).toBe("    ")
+    })
+  })
+
+  describe.concurrent("instances", () => {
+    it("Semigroup", () => {
+      const S = Doc.getSemigroup<never>()
+      const doc = S.combine(Doc.text("hello"), Doc.text("world"))
+
+      expect(Render.prettyDefault(doc)).toBe("helloworld")
+    })
+
+    it("Monoid", () => {
+      const M = Doc.getMonoid<never>()
+      const doc = M.combine(M.combine(Doc.text("hello"), Doc.parenthesized(M.empty)), Doc.text("world"))
+      expect(Render.prettyDefault(doc)).toBe("hello()world")
     })
   })
 })

@@ -1,15 +1,17 @@
-import * as String from "@fp-ts/data/String"
+import * as String from "@effect/data/String"
+import * as Doc from "@effect/printer/Doc"
+import * as Layout from "@effect/printer/Layout"
+import * as PageWidth from "@effect/printer/PageWidth"
+import * as Render from "@effect/printer/Render"
+import { describe, expect, it } from "vitest"
 
-function fun<A>(doc: Doc<A>): Doc<A> {
-  return Doc
-    .hcat([Doc.text("fun("), Doc.softLineBreak, doc])
-    .hang(2)
-    .cat(Doc.text(")"))
-}
+const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
+  Doc.cat(
+    Doc.hang(Doc.hcat([Doc.text("fun("), Doc.softLineBreak, doc]), 2),
+    Doc.text(")")
+  )
 
-function funs<A>(doc: Doc<A>): Doc<A> {
-  return fun(fun(fun(fun(fun(doc)))))
-}
+const funs = <A>(doc: Doc.Doc<A>): Doc.Doc<A> => fun(fun(fun(fun(fun(doc)))))
 
 const dashes = Doc.text(Array.from({ length: 26 - 2 }, () => "-").join(""))
 
@@ -17,70 +19,58 @@ const hr = Doc.hcat([Doc.vbar, dashes, Doc.vbar])
 
 const doc = Doc.vsep([
   hr,
-  funs(Doc.list(Doc.words("abcdef ghijklm")).align),
+  funs(Doc.align(Doc.list(Doc.words("abcdef ghijklm")))),
   hr
 ])
 
-const pageWidth: PageWidth = PageWidth.AvailablePerLine(26, 1)
+const pageWidth = PageWidth.availablePerLine(26, 1)
 
-const layoutOptions: Layout.Options = Layout.Options(pageWidth)
+const layoutOptions = Layout.options(pageWidth)
 
 describe.concurrent("Layout", () => {
   it("unbounded", () => {
-    assert.strictEqual(
-      doc.layoutUnbounded.render,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.render(Layout.unbounded(doc))).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun([abcdef, ghijklm])))))
+       ||------------------------|`
+    ))
   })
 
   it("pretty", () => {
-    assert.strictEqual(
-      doc.layoutPretty(layoutOptions).render,
-      String.stripMargin(
-        `||------------------------|
-         |fun(fun(fun(fun(fun(
-         |                  [ abcdef
-         |                  , ghijklm ])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.render(Layout.pretty(doc, layoutOptions))).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(fun(fun(fun(fun(
+       |                  [ abcdef
+       |                  , ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 
   it("smart", () => {
-    assert.strictEqual(
-      doc.layoutSmart(layoutOptions).render,
-      String.stripMargin(
-        `||------------------------|
-         |fun(
-         |  fun(
-         |    fun(
-         |      fun(
-         |        fun(
-         |          [ abcdef
-         |          , ghijklm ])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.render(Layout.smart(doc, layoutOptions))).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(
+       |  fun(
+       |    fun(
+       |      fun(
+       |        fun(
+       |          [ abcdef
+       |          , ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 
   it("compact", () => {
-    assert.strictEqual(
-      doc.layoutCompact.render,
-      String.stripMargin(
-        `||------------------------|
-         |fun(
-         |fun(
-         |fun(
-         |fun(
-         |fun(
-         |[ abcdef
-         |, ghijklm ])))))
-         ||------------------------|`
-      )
-    )
+    expect(Render.render(Layout.compact(doc))).toBe(String.stripMargin(
+      `||------------------------|
+       |fun(
+       |fun(
+       |fun(
+       |fun(
+       |fun(
+       |[ abcdef
+       |, ghijklm ])))))
+       ||------------------------|`
+    ))
   })
 })

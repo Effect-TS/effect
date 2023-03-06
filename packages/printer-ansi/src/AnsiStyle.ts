@@ -2,19 +2,20 @@
  * @since 1.0.0
  */
 
-import * as AS from "@effect/printer-ansi/internal/AnsiStyle"
-import type { Monoid as _Monoid } from "@fp-ts/core/typeclass/Monoid"
-import type { Semigroup as _Semigroup } from "@fp-ts/core/typeclass/Semigroup"
-import type { Option } from "@fp-ts/data/Option"
+import type { Option } from "@effect/data/Option"
+import type * as monoid from "@effect/data/typeclass/Monoid"
+import type * as semigroup from "@effect/data/typeclass/Semigroup"
+import type { Color } from "@effect/printer-ansi/Color"
+import * as internal from "@effect/printer-ansi/internal_effect_untraced/ansiStyle"
+import type { SGR } from "@effect/printer-ansi/SGR"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
 /**
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer-ansi/AnsiStyle
+ * @category model
  */
 export interface AnsiStyle {
   readonly foreground: Option<SGR>
@@ -24,97 +25,84 @@ export interface AnsiStyle {
   readonly underlined: Option<SGR>
 }
 
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer-ansi/AnsiStyle.Ops
- */
-export interface AnsiStyleOps {}
-/**
- * @category instances
- * @since 1.0.0
- */
-export const AnsiStyle: AnsiStyleOps = {}
-
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops bold
+ * @category constructors
  */
-export const bold: AnsiStyle = AS.bold
+export const bold: AnsiStyle = internal.bold
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops italicized
+ * @category constructors
  */
-export const italicized: AnsiStyle = AS.italicized
+export const italicized: AnsiStyle = internal.italicized
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops underlined
+ * @category constructors
  */
-export const underlined: AnsiStyle = AS.underlined
+export const underlined: AnsiStyle = internal.underlined
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops color
+ * @category constructors
  */
-export const color: (color: Color) => AnsiStyle = AS.color
+export const color: (color: Color) => AnsiStyle = internal.color
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops dullColor
+ * @category constructors
  */
-export const dullColor: (color: Color) => AnsiStyle = AS.dullColor
+export const dullColor: (color: Color) => AnsiStyle = internal.dullColor
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops backgroundColor
+ * @category constructors
  */
-export const backgroundColor: (color: Color) => AnsiStyle = AS.backgroundColor
+export const backgroundColor: (color: Color) => AnsiStyle = internal.backgroundColor
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops dullBackgroundColor
+ * @category constructors
  */
-export const dullBackgroundColor: (color: Color) => AnsiStyle = AS.dullBackgroundColor
+export const dullBackgroundColor: (color: Color) => AnsiStyle = internal.dullBackgroundColor
 
 // -----------------------------------------------------------------------------
 // Destructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category destructors
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops stringify
- * @tsplus getter effect/printer-ansi/AnsiStyle stringify
+ * @category destructors
  */
-export const stringify: (self: AnsiStyle) => string = AS.stringify
+export const stringify: (self: AnsiStyle) => string = internal.stringify
 
 // -----------------------------------------------------------------------------
 // Instances
 // -----------------------------------------------------------------------------
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops Semigroup
+ * @category instances
  */
-export const Semigroup: _Semigroup<AnsiStyle> = AS.Semigroup
+export const Semigroup: semigroup.Semigroup<AnsiStyle> = internal.Semigroup
 
 /**
- * @category instances
  * @since 1.0.0
- * @tsplus static effect/printer-ansi/AnsiStyle.Ops Monoid
+ * @category instances
  */
-export const Monoid: _Monoid<AnsiStyle> = AS.Monoid
+export const Monoid: monoid.Monoid<AnsiStyle> = internal.Monoid
+
+// -----------------------------------------------------------------------------
+// Instances
+// -----------------------------------------------------------------------------
+
+/**
+ * @since 1.0.0
+ * @categrory combinators
+ */
+export const combine: (self: AnsiStyle, that: AnsiStyle) => AnsiStyle = Semigroup.combine

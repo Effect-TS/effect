@@ -1,164 +1,150 @@
-import * as String from "@fp-ts/data/String"
+import * as String from "@effect/data/String"
+import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
+import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
+import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
+import * as Color from "@effect/printer-ansi/Color"
+import * as Doc from "@effect/printer/Doc"
+import { describe, expect, it } from "vitest"
 
-export const complex = Doc.hsep([
-  Doc.text("red"),
-  Doc.vsep([
-    Doc.hsep([
-      Doc.text("blue+u"),
-      Doc.text("bold").annotate(
-        AnsiStyle.Semigroup.combine(AnsiStyle.bold)(AnsiStyle.color(Color.Blue))
-      ),
-      Doc.text("blue+u")
-    ]).annotate(
-      AnsiStyle.Semigroup.combine(AnsiStyle.underlined)(AnsiStyle.color(Color.Blue))
-    ),
-    Doc.text("red")
-  ]).align
-]).annotate(
-  AnsiStyle.color(Color.Red)
+export const complex = Doc.annotate(
+  Doc.hsep([
+    Doc.text("red"),
+    Doc.align(
+      Doc.vsep([
+        Doc.annotate(
+          Doc.hsep([
+            Doc.text("blue+u"),
+            Doc.annotate(
+              Doc.text("bold"),
+              AnsiStyle.combine(AnsiStyle.color(Color.blue), AnsiStyle.bold)
+            ),
+            Doc.text("blue+u")
+          ]),
+          AnsiStyle.combine(AnsiStyle.color(Color.blue), AnsiStyle.underlined)
+        ),
+        Doc.text("red")
+      ])
+    )
+  ]),
+  AnsiStyle.color(Color.red)
 )
 
 describe.concurrent("Terminal", () => {
   describe.concurrent("Colors/Layers", () => {
-    function foreground(color: Color): AnsiDoc {
-      return Doc.text("foo").annotate(AnsiStyle.color(color))
-    }
+    const foreground = (color: Color.Color): AnsiDoc.AnsiDoc => Doc.annotate(Doc.text("foo"), AnsiStyle.color(color))
 
-    function dullForeground(color: Color): AnsiDoc {
-      return Doc.text("foo").annotate(AnsiStyle.dullColor(color))
-    }
+    const dullForeground = (color: Color.Color): AnsiDoc.AnsiDoc =>
+      Doc.annotate(Doc.text("foo"), AnsiStyle.dullColor(color))
 
-    function background(color: Color): AnsiDoc {
-      return Doc.text("foo").annotate(AnsiStyle.backgroundColor(color))
-    }
+    const background = (color: Color.Color): AnsiDoc.AnsiDoc =>
+      Doc.annotate(Doc.text("foo"), AnsiStyle.backgroundColor(color))
 
-    function dullBackground(color: Color): AnsiDoc {
-      return Doc.text("foo").annotate(AnsiStyle.dullBackgroundColor(color))
-    }
+    const dullBackground = (color: Color.Color): AnsiDoc.AnsiDoc =>
+      Doc.annotate(Doc.text("foo"), AnsiStyle.dullBackgroundColor(color))
 
     it("black", () => {
-      assert.strictEqual(foreground(Color.Black).renderPrettyAnsiDefault, "\u001b[0;90mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Black).renderPrettyAnsiDefault, "\u001b[0;30mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Black).renderPrettyAnsiDefault, "\u001b[0;100mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Black).renderPrettyAnsiDefault, "\u001b[0;40mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.black))).toBe("\u001b[0;90mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.black))).toBe("\u001b[0;30mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.black))).toBe("\u001b[0;100mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.black))).toBe("\u001b[0;40mfoo\u001b[0m")
     })
 
     it("red", () => {
-      assert.strictEqual(foreground(Color.Red).renderPrettyAnsiDefault, "\u001b[0;91mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Red).renderPrettyAnsiDefault, "\u001b[0;31mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Red).renderPrettyAnsiDefault, "\u001b[0;101mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Red).renderPrettyAnsiDefault, "\u001b[0;41mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.red))).toBe("\u001b[0;91mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.red))).toBe("\u001b[0;31mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.red))).toBe("\u001b[0;101mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.red))).toBe("\u001b[0;41mfoo\u001b[0m")
     })
 
     it("green", () => {
-      assert.strictEqual(foreground(Color.Green).renderPrettyAnsiDefault, "\u001b[0;92mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Green).renderPrettyAnsiDefault, "\u001b[0;32mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Green).renderPrettyAnsiDefault, "\u001b[0;102mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Green).renderPrettyAnsiDefault, "\u001b[0;42mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.green))).toBe("\u001b[0;92mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.green))).toBe("\u001b[0;32mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.green))).toBe("\u001b[0;102mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.green))).toBe("\u001b[0;42mfoo\u001b[0m")
     })
 
     it("yellow", () => {
-      assert.strictEqual(foreground(Color.Yellow).renderPrettyAnsiDefault, "\u001b[0;93mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Yellow).renderPrettyAnsiDefault, "\u001b[0;33mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Yellow).renderPrettyAnsiDefault, "\u001b[0;103mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Yellow).renderPrettyAnsiDefault, "\u001b[0;43mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.yellow))).toBe("\u001b[0;93mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.yellow))).toBe("\u001b[0;33mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.yellow))).toBe("\u001b[0;103mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.yellow))).toBe("\u001b[0;43mfoo\u001b[0m")
     })
 
     it("blue", () => {
-      assert.strictEqual(foreground(Color.Blue).renderPrettyAnsiDefault, "\u001b[0;94mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Blue).renderPrettyAnsiDefault, "\u001b[0;34mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Blue).renderPrettyAnsiDefault, "\u001b[0;104mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Blue).renderPrettyAnsiDefault, "\u001b[0;44mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.blue))).toBe("\u001b[0;94mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.blue))).toBe("\u001b[0;34mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.blue))).toBe("\u001b[0;104mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.blue))).toBe("\u001b[0;44mfoo\u001b[0m")
     })
 
     it("magenta", () => {
-      assert.strictEqual(foreground(Color.Magenta).renderPrettyAnsiDefault, "\u001b[0;95mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Magenta).renderPrettyAnsiDefault, "\u001b[0;35mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Magenta).renderPrettyAnsiDefault, "\u001b[0;105mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Magenta).renderPrettyAnsiDefault, "\u001b[0;45mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.magenta))).toBe("\u001b[0;95mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.magenta))).toBe("\u001b[0;35mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.magenta))).toBe("\u001b[0;105mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.magenta))).toBe("\u001b[0;45mfoo\u001b[0m")
     })
 
     it("cyan", () => {
-      assert.strictEqual(foreground(Color.Cyan).renderPrettyAnsiDefault, "\u001b[0;96mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.Cyan).renderPrettyAnsiDefault, "\u001b[0;36mfoo\u001b[0m")
-      assert.strictEqual(background(Color.Cyan).renderPrettyAnsiDefault, "\u001b[0;106mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.Cyan).renderPrettyAnsiDefault, "\u001b[0;46mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.cyan))).toBe("\u001b[0;96mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.cyan))).toBe("\u001b[0;36mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.cyan))).toBe("\u001b[0;106mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.cyan))).toBe("\u001b[0;46mfoo\u001b[0m")
     })
 
     it("white", () => {
-      assert.strictEqual(foreground(Color.White).renderPrettyAnsiDefault, "\u001b[0;97mfoo\u001b[0m")
-      assert.strictEqual(dullForeground(Color.White).renderPrettyAnsiDefault, "\u001b[0;37mfoo\u001b[0m")
-      assert.strictEqual(background(Color.White).renderPrettyAnsiDefault, "\u001b[0;107mfoo\u001b[0m")
-      assert.strictEqual(dullBackground(Color.White).renderPrettyAnsiDefault, "\u001b[0;47mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(foreground(Color.white))).toBe("\u001b[0;97mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullForeground(Color.white))).toBe("\u001b[0;37mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(background(Color.white))).toBe("\u001b[0;107mfoo\u001b[0m")
+      expect(AnsiRender.prettyDefault(dullBackground(Color.white))).toBe("\u001b[0;47mfoo\u001b[0m")
     })
   })
 
   describe.concurrent("Underlined", () => {
     it("underlined", () => {
-      assert.strictEqual(
-        Doc.text("foo").annotate(AnsiStyle.underlined).renderPrettyAnsiDefault,
-        "\u001b[0;4mfoo\u001b[0m"
-      )
+      const doc = Doc.annotate(Doc.text("foo"), AnsiStyle.underlined)
+      expect(AnsiRender.prettyDefault(doc)).toBe("\u001b[0;4mfoo\u001b[0m")
     })
   })
 
   describe.concurrent("Bold", () => {
     it("bold", () => {
-      assert.strictEqual(
-        Doc.text("foo").annotate(AnsiStyle.bold).renderPrettyAnsiDefault,
-        "\u001b[0;1mfoo\u001b[0m"
-      )
+      const doc = Doc.annotate(Doc.text("foo"), AnsiStyle.bold)
+      expect(AnsiRender.prettyDefault(doc)).toBe("\u001b[0;1mfoo\u001b[0m")
     })
   })
 
   describe.concurrent("Complex Example", () => {
     it("should combine annotations appropriately", () => {
-      assert.strictEqual(
-        complex.renderPrettyAnsiDefault,
-        String.stripMargin(
-          `|\u001b[0;91mred \u001b[0;94;4mblue+u \u001b[0;94;1;4mbold\u001b[0;94;4m blue+u\u001b[0;91m
-           |    red\u001b[0m`
-        )
-      )
+      expect(AnsiRender.prettyDefault(complex)).toBe(String.stripMargin(
+        `|\u001b[0;91mred \u001b[0;94;4mblue+u \u001b[0;94;1;4mbold\u001b[0;94;4m blue+u\u001b[0;91m
+         |    red\u001b[0m`
+      ))
     })
   })
 
   describe.concurrent("Annotations", () => {
     it("should re-annotate a document", () => {
-      const result = complex
-        .map((style) => AnsiStyle.Semigroup.combine(style)(AnsiStyle.backgroundColor(Color.White)))
-        .renderPrettyAnsiDefault
-
-      assert.strictEqual(
-        result,
-        String.stripMargin(
-          `|\u001b[0;91;107mred \u001b[0;94;107;4mblue+u \u001b[0;94;107;1;4mbold\u001b[0;94;107;4m blue+u\u001b[0;91;107m
-           |    red\u001b[0m`
-        )
-      )
+      const doc = Doc.map(complex, (style) => AnsiStyle.combine(AnsiStyle.backgroundColor(Color.white), style))
+      expect(AnsiRender.prettyDefault(doc)).toBe(String.stripMargin(
+        `|\u001b[0;91;107mred \u001b[0;94;107;4mblue+u \u001b[0;94;107;1;4mbold\u001b[0;94;107;4m blue+u\u001b[0;91;107m
+         |    red\u001b[0m`
+      ))
     })
 
     it("should alter existing annotations", () => {
-      const altered = complex.alterAnnotations(() => [AnsiStyle.bold, AnsiStyle.color(Color.Green)])
-        .renderPrettyAnsiDefault
-
-      assert.strictEqual(
-        altered,
-        String.stripMargin(
-          `|\u001b[0;1m\u001b[0;92;1mred \u001b[0;92;1m\u001b[0;92;1mblue+u \u001b[0;92;1m\u001b[0;92;1mbold\u001b[0;1m\u001b[0;92m blue+u\u001b[0;1m\u001b[0;92m
-           |    red\u001b[0;1m\u001b[0m`
-        )
-      )
+      const doc = Doc.alterAnnotations(complex, () => [AnsiStyle.bold, AnsiStyle.color(Color.green)])
+      expect(AnsiRender.prettyDefault(doc)).toBe(String.stripMargin(
+        `|\u001b[0;1m\u001b[0;92;1mred \u001b[0;92;1m\u001b[0;92;1mblue+u \u001b[0;92;1m\u001b[0;92;1mbold\u001b[0;1m\u001b[0;92m blue+u\u001b[0;1m\u001b[0;92m
+         |    red\u001b[0;1m\u001b[0m`
+      ))
     })
 
     it("should remove all annotations", () => {
-      assert.strictEqual(
-        complex.unAnnotate.renderPrettyAnsiDefault,
-        String.stripMargin(
-          `|red blue+u bold blue+u
-           |    red`
-        )
-      )
+      const doc = Doc.unAnnotate(complex)
+      expect(AnsiRender.prettyDefault(doc)).toBe(String.stripMargin(
+        `|red blue+u bold blue+u
+         |    red`
+      ))
     })
   })
 })

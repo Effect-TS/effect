@@ -1,36 +1,39 @@
+import * as DocStream from "@effect/printer/DocStream"
+import { describe, expect, it } from "vitest"
+
 describe.concurrent("DocStream", () => {
   it("isFailedStream", () => {
-    assert.isTrue(DocStream.failed.isFailedStream())
-    assert.isFalse(DocStream.empty.isFailedStream())
+    expect(DocStream.isFailedStream(DocStream.failed)).toBe(true)
+    expect(DocStream.isFailedStream(DocStream.empty)).toBe(false)
   })
 
   it("isEmptyStream", () => {
-    assert.isTrue(DocStream.empty.isEmptyStream())
-    assert.isFalse(DocStream.failed.isEmptyStream())
+    expect(DocStream.isEmptyStream(DocStream.empty)).toBe(true)
+    expect(DocStream.isEmptyStream(DocStream.failed)).toBe(false)
   })
 
   it("isCharStream", () => {
-    assert.isTrue(DocStream.char("a")(DocStream.empty).isCharStream())
-    assert.isFalse(DocStream.empty.isCharStream())
+    expect(DocStream.isCharStream(DocStream.char(DocStream.empty, "a"))).toBe(true)
+    expect(DocStream.isCharStream(DocStream.empty)).toBe(false)
   })
 
   it("isTextStream", () => {
-    assert.isTrue(DocStream.text("foo")(DocStream.empty).isTextStream())
-    assert.isFalse(DocStream.empty.isTextStream())
+    expect(DocStream.isTextStream(DocStream.text(DocStream.empty, "foo"))).toBe(true)
+    expect(DocStream.isTextStream(DocStream.empty)).toBe(false)
   })
 
   it("isLineStream", () => {
-    assert.isTrue(DocStream.line(4)(DocStream.empty).isLineStream())
-    assert.isFalse(DocStream.empty.isLineStream())
+    expect(DocStream.isLineStream(DocStream.line(DocStream.empty, 4))).toBe(true)
+    expect(DocStream.isLineStream(DocStream.empty)).toBe(false)
   })
 
   it("isPushAnnotationStream", () => {
-    assert.isTrue(DocStream.pushAnnotation(1)(DocStream.empty).isPushAnnotationStream())
-    assert.isFalse(DocStream.empty.isPushAnnotationStream())
+    expect(DocStream.isPushAnnotationStream(DocStream.pushAnnotation(DocStream.empty, 1))).toBe(true)
+    expect(DocStream.isPushAnnotationStream(DocStream.empty)).toBe(false)
   })
 
   it("isPopAnnotationStream", () => {
-    assert.isTrue(DocStream.popAnnotation(DocStream.empty).isPopAnnotationStream())
-    assert.isFalse(DocStream.empty.isPopAnnotationStream())
+    expect(DocStream.isPopAnnotationStream(DocStream.popAnnotation(DocStream.empty))).toBe(true)
+    expect(DocStream.isPopAnnotationStream(DocStream.empty)).toBe(false)
   })
 })

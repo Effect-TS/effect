@@ -2,42 +2,57 @@
  * @since 1.0.0
  */
 
-import * as PW from "@effect/printer/internal/PageWidth"
-import type * as Equal from "@fp-ts/data/Equal"
+import type { Equal } from "@effect/data/Equal"
+import * as internal from "@effect/printer/internal_effect_untraced/pageWidth"
 
 // -----------------------------------------------------------------------------
 // Models
 // -----------------------------------------------------------------------------
 
-const TypeId: unique symbol = PW.PageWidthTypeId as TypeId
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export const PageWidthTypeId: unique symbol = internal.PageWidthTypeId as PageWidthTypeId
 
 /**
- * @category symbol
  * @since 1.0.0
+ * @category symbol
  */
-export type TypeId = typeof TypeId
+export type PageWidthTypeId = typeof PageWidthTypeId
 
 /**
  * Represents the maximum number of characters that fit onto a single line in a
  * document. The layout algorithms will try to avoid exceeding the set character
  * limit by inserting line breaks where appropriate (e.g., via `softLine`).
  *
- * @category model
  * @since 1.0.0
- * @tsplus type effect/printer/PageWidth
+ * @category model
  */
 export type PageWidth = AvailablePerLine | Unbounded
+
+/**
+ * @since 1.0.0
+ */
+export declare namespace PageWidth {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Proto extends Equal {
+    readonly [PageWidthTypeId]: PageWidthTypeId
+  }
+}
 
 /**
  * Represents a `PageWidth` setting that informs the layout algorithms to avoid
  * exceeding the specified space per line.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface AvailablePerLine extends Equal.Equal {
+export interface AvailablePerLine extends PageWidth.Proto {
   readonly _tag: "AvailablePerLine"
-  readonly _id: TypeId
   /**
    * The number of characters, including whitespace, that can fit on a single
    * line.
@@ -55,28 +70,12 @@ export interface AvailablePerLine extends Equal.Equal {
  * Represents a `PageWidth` setting that informs the layout algorithms to avoid
  * introducing line breaks into a document.
  *
- * @category model
  * @since 1.0.0
+ * @category model
  */
-export interface Unbounded extends Equal.Equal {
+export interface Unbounded extends PageWidth.Proto {
   readonly _tag: "Unbounded"
-  readonly _id: TypeId
 }
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/PageWidth.Ops
- */
-export interface PageWidthOps {}
-export const PageWidth: PageWidthOps = {}
-
-/**
- * @category model
- * @since 1.0.0
- * @tsplus type effect/printer/PageWidth/Aspects
- */
-export interface PageWidthAspects {}
 
 // -----------------------------------------------------------------------------
 // Refinements
@@ -85,59 +84,50 @@ export interface PageWidthAspects {}
 /**
  * Returns `true` if the specified value is a `PageWidth`, `false` otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus static effect/printer/PageWidth.Ops isPageWidth
+ * @category refinements
  */
-export const isPageWidth: (u: unknown) => u is PageWidth = PW.isPageWidth
+export const isPageWidth: (u: unknown) => u is PageWidth = internal.isPageWidth
 
 /**
  * Returns `true` if the specified `PageWidth` is an `AvailablePerLine`, `false`
  * otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/PageWidth isAvailablePerLine
+ * @category refinements
  */
-export const isAvailablePerLine: (self: PageWidth) => self is AvailablePerLine = PW.isAvailablePerLine
+export const isAvailablePerLine: (self: PageWidth) => self is AvailablePerLine = internal.isAvailablePerLine
 
 /**
  * Returns `true` if the specified `PageWidth` is an `Unbounded`, `false`
  * otherwise.
  *
- * @category refinements
  * @since 1.0.0
- * @tsplus fluent effect/printer/PageWidth isUnbounded
+ * @category refinements
  */
-export const isUnbounded: (self: PageWidth) => self is Unbounded = PW.isUnbounded
+export const isUnbounded: (self: PageWidth) => self is Unbounded = internal.isUnbounded
 
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/PageWidth.Ops AvailablePerLine
+ * @category constructors
  */
-export const availablePerLine: (
-  lineWidth: number,
-  ribbonFraction: number
-) => PageWidth = PW.availablePerLine
+export const availablePerLine: (lineWidth: number, ribbonFraction: number) => PageWidth = internal.availablePerLine
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/PageWidth.Ops Unbounded
+ * @category constructors
  */
-export const unbounded: PageWidth = PW.unbounded
+export const unbounded: PageWidth = internal.unbounded
 
 /**
- * @category constructors
  * @since 1.0.0
- * @tsplus static effect/printer/PageWidth.Ops default
+ * @category constructors
  */
-export const defaultPageWidth = PW.availablePerLine(80, 1)
+export const defaultPageWidth: PageWidth = internal.defaultPageWidth
 
 // -----------------------------------------------------------------------------
 // Utilities
@@ -146,13 +136,12 @@ export const defaultPageWidth = PW.availablePerLine(80, 1)
 /**
  * Calculates the remaining width on the current line.
  *
- * @category utilities
  * @since 1.0.0
- * @tsplus static effect/printer/PageWidth.Ops remainingWidth
+ * @category utilities
  */
 export const remainingWidth: (
   lineLength: number,
   ribbonFraction: number,
   lineIndent: number,
   currentColumn: number
-) => number = PW.remainingWidth
+) => number = internal.remainingWidth
