@@ -1,4 +1,6 @@
+import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import * as S from "@effect/schema"
 import * as A from "@effect/schema/annotation/AST"
 import * as AST from "@effect/schema/AST"
@@ -21,7 +23,7 @@ describe.concurrent("Schema", () => {
     expect(S.annotations).exist
   })
 
-  it("brand", () => {
+  it("brand/ annotations", () => {
     // const Branded: S.Schema<number & Brand<"A"> & Brand<"B">>
     const Branded = pipe(
       S.number,
@@ -37,6 +39,50 @@ describe.concurrent("Schema", () => {
       [A.DescriptionId]: "a B brand",
       [A.JSONSchemaId]: { type: "integer" }
     })
+  })
+
+  it("brand/ ()", () => {
+    const Int = pipe(S.number, S.int(), S.brand("Int"))
+    expect(Int(1)).toEqual(1)
+    expect(() => Int(1.2)).toThrowError(
+      new Error(`1 error(s) found
+└─ Expected integer, actual 1.2`)
+    )
+  })
+
+  it("brand/ option", () => {
+    const Int = pipe(S.number, S.int(), S.brand("Int"))
+    expect(Int.option(1)).toEqual(O.some(1))
+    expect(Int.option(1.2)).toEqual(O.none())
+  })
+
+  it("brand/ either", () => {
+    const Int = pipe(S.number, S.int(), S.brand("Int"))
+    expect(Int.either(1)).toEqual(E.right(1))
+    expect(Int.either(1.2)).toEqual(E.left([{
+      meta: 1.2,
+      message: `1 error(s) found
+└─ Expected integer, actual 1.2`
+    }]))
+  })
+
+  it("brand/ refine", () => {
+    const Int = pipe(S.number, S.int(), S.brand("Int"))
+    expect(Int.refine(1)).toEqual(true)
+    expect(Int.refine(1.2)).toEqual(false)
+  })
+
+  it("brand/ composition", () => {
+    const int = <A extends number>(self: S.Schema<A>) => pipe(self, S.int(), S.brand("Int"))
+
+    const positive = <A extends number>(self: S.Schema<A>) =>
+      pipe(self, S.positive(), S.brand("Positive"))
+
+    const PositiveInt = pipe(S.number, int, positive)
+
+    expect(PositiveInt.refine(1)).toEqual(true)
+    expect(PositiveInt.refine(-1)).toEqual(false)
+    expect(PositiveInt.refine(1.2)).toEqual(false)
   })
 
   it("getPropertySignatures", () => {

@@ -2,20 +2,10 @@
  * @since 1.0.0
  */
 
-import { isBoolean } from "@effect/data/Boolean"
 import { pipe } from "@effect/data/Function"
-import { isNumber } from "@effect/data/Number"
 import * as O from "@effect/data/Option"
-import {
-  isBigint,
-  isNever,
-  isNotNullable,
-  isObject,
-  isRecord,
-  isString,
-  isSymbol,
-  isUndefined
-} from "@effect/data/Predicate"
+import type { Option } from "@effect/data/Option"
+import * as P from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as H from "@effect/schema/annotation/Hook"
 import * as AST from "@effect/schema/AST"
@@ -47,6 +37,14 @@ export const make: <A>(schema: Schema<A>, parse: Parser<A>["parse"]) => Parser<A
 export const decode = <A>(
   schema: Schema<A>
 ): (input: unknown, options?: ParseOptions) => ParseResult<A> => parserFor(schema).parse
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
+export const getOption = <A>(schema: Schema<A>) =>
+  (input: unknown, options?: ParseOptions): Option<A> =>
+    O.fromEither(parserFor(schema).parse(input, options))
 
 /**
  * @category decoding
@@ -139,26 +137,26 @@ const parserFor = <A>(
           (u): u is typeof ast.symbol => u === ast.symbol
         )
       case "UndefinedKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isUndefined)
+        return I.fromRefinement(I.makeSchema(ast), P.isUndefined)
       case "VoidKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isUndefined)
+        return I.fromRefinement(I.makeSchema(ast), P.isUndefined)
       case "NeverKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isNever)
+        return I.fromRefinement(I.makeSchema(ast), P.isNever)
       case "UnknownKeyword":
       case "AnyKeyword":
         return make(I.makeSchema(ast), PR.success)
       case "StringKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isString)
+        return I.fromRefinement(I.makeSchema(ast), P.isString)
       case "NumberKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isNumber)
+        return I.fromRefinement(I.makeSchema(ast), P.isNumber)
       case "BooleanKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isBoolean)
+        return I.fromRefinement(I.makeSchema(ast), P.isBoolean)
       case "BigIntKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isBigint)
+        return I.fromRefinement(I.makeSchema(ast), P.isBigint)
       case "SymbolKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isSymbol)
+        return I.fromRefinement(I.makeSchema(ast), P.isSymbol)
       case "ObjectKeyword":
-        return I.fromRefinement(I.makeSchema(ast), isObject)
+        return I.fromRefinement(I.makeSchema(ast), P.isObject)
       case "Enums":
         return I.fromRefinement(
           I.makeSchema(ast),
@@ -166,7 +164,7 @@ const parserFor = <A>(
         )
       case "TemplateLiteral": {
         const regex = I.getTemplateLiteralRegex(ast)
-        return I.fromRefinement(I.makeSchema(ast), (u): u is any => isString(u) && regex.test(u))
+        return I.fromRefinement(I.makeSchema(ast), (u): u is any => P.isString(u) && regex.test(u))
       }
       case "Tuple": {
         const elements = ast.elements.map((e) => go(e.type))
@@ -285,7 +283,7 @@ const parserFor = <A>(
       }
       case "TypeLiteral": {
         if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
-          return I.fromRefinement(I.makeSchema(ast), isNotNullable)
+          return I.fromRefinement(I.makeSchema(ast), P.isNotNullable)
         }
         const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
         const indexSignatures = ast.indexSignatures.map((is) =>
@@ -294,7 +292,7 @@ const parserFor = <A>(
         return make(
           I.makeSchema(ast),
           (input: unknown, options) => {
-            if (!isRecord(input)) {
+            if (!P.isRecord(input)) {
               return PR.failure(PR.type(unknownRecord, input))
             }
             const output: any = {}
@@ -417,7 +415,7 @@ const parserFor = <A>(
 
           if (len > 0) {
             // if there is at least one key then input must be an object
-            if (isRecord(input)) {
+            if (P.isRecord(input)) {
               for (let i = 0; i < len; i++) {
                 const name = ownKeys[i]
                 const buckets = searchTree.keys[name].buckets

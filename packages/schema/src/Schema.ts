@@ -3,6 +3,8 @@
  */
 
 import type { Brand } from "@effect/data/Brand"
+import { RefinedConstructorsTypeId } from "@effect/data/Brand"
+import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import type { Option } from "@effect/data/Option"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
@@ -12,11 +14,13 @@ import * as AST from "@effect/schema/AST"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as DataDate from "@effect/schema/data/Date"
 import * as N from "@effect/schema/data/Number"
-import * as O from "@effect/schema/data/Object"
+import * as DataObject from "@effect/schema/data/Object"
 import * as DataOption from "@effect/schema/data/Option"
 import * as SRA from "@effect/schema/data/ReadonlyArray"
 import * as S from "@effect/schema/data/String"
+import { formatErrors } from "@effect/schema/formatter/Tree"
 import * as I from "@effect/schema/internal/common"
+import * as P from "@effect/schema/Parser"
 import type { ParseResult } from "@effect/schema/ParseResult"
 
 /**
@@ -82,7 +86,7 @@ export const enums = <A extends { [x: string]: string | number }>(
 export const instanceOf: <A extends abstract new(...args: any) => any>(
   constructor: A,
   annotationOptions?: AnnotationOptions<object>
-) => Schema<InstanceType<A>> = O.instanceOf
+) => Schema<InstanceType<A>> = DataObject.instanceOf
 
 /**
  * @since 1.0.0
@@ -564,6 +568,12 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
 }
 
 /**
+ * @category model
+ * @since 1.0.0
+ */
+export interface BrandSchema<A extends Brand<any>> extends Schema<A>, Brand.Constructor<A> {}
+
+/**
  * Returns a nominal branded schema by applying a brand to a given schema.
  *
  * ```
@@ -583,10 +593,32 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
  * @category combinators
  * @since 1.0.0
  */
-export const brand: <B extends string, A>(
+export const brand = <B extends string, A>(
   brand: B,
   options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A & Brand<B>> = I.brand
+) =>
+  (self: Schema<A>): BrandSchema<A & Brand<B>> => {
+    const annotations = I.toAnnotations(options)
+    annotations[A.BrandId] = [...getBrands(self.ast), brand]
+    const ast = AST.mergeAnnotations(self.ast, annotations)
+    const schema: Schema<A & Brand<B>> = make(ast)
+    const decodeOrThrow = P.decodeOrThrow(schema)
+    const getOption = P.getOption(schema)
+    const decode = P.decode(schema)
+    const is = P.is(schema)
+    const out: any = Object.assign((input: unknown) => decodeOrThrow(input), {
+      [RefinedConstructorsTypeId]: RefinedConstructorsTypeId,
+      ast,
+      option: (input: unknown) => getOption(input),
+      either: (input: unknown) =>
+        E.mapLeft(decode(input), (errors) => [{ meta: input, message: formatErrors(errors) }]),
+      refine: (input: unknown): input is A & Brand<B> => is(input)
+    })
+    return out
+  }
+
+const getBrands = (ast: AST.AST): Array<string> =>
+  (ast.annotations[A.BrandId] as Array<string> | undefined) || []
 
 /**
  * @category combinators
