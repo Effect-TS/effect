@@ -12,9 +12,9 @@
   "author": "Michael Arnaldi <ma@matechs.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Effect-TS/cli/issues"
+    "url": "https://github.com/Effect-TS/printer/issues"
   },
-  "homepage": "https://github.com/Effect-TS/cli",
+  "homepage": "https://github.com/Effect-TS/printer",
   "description": "Functional programming in TypeScript",
   "tags": [
     "typescript",
@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
+    "version": "changeset version && pnpm install --no-frozen-lockfile",
     "release": "pnpm run build && changeset publish",
     "clean": "rimraf build tsbuildinfo dist .ultra.cache.json .cache",
     "build": "pnpm build-all && pnpm build-pack",
