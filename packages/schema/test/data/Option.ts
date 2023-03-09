@@ -70,4 +70,32 @@ describe.concurrent("Option", () => {
     Util.expectEncodingSuccess(schema, O.none(), null)
     Util.expectEncodingSuccess(schema, O.some(1), "1")
   })
+
+  it("parseOptionals", () => {
+    expect(() => pipe(S.object, _.parseOptionals({ "b": S.number }))).toThrowError(
+      new Error("`parseOptional` can only handle type literals")
+    )
+
+    const schema = pipe(S.struct({ a: S.string }), _.parseOptionals({ b: S.number }))
+    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
+    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
+    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
+    Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
+
+    Util.expectDecodingFailureTree(
+      schema,
+      { a: "a", b: "b" },
+      `1 error(s) found
+└─ key "b"
+   ├─ union member
+   │  └─ Expected undefined, actual "b"
+   ├─ union member
+   │  └─ Expected null, actual "b"
+   └─ union member
+      └─ Expected number, actual "b"`
+    )
+
+    Util.expectEncodingSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
+    Util.expectEncodingSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
+  })
 })

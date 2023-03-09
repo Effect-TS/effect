@@ -5,7 +5,7 @@ import * as S from "@effect/schema";
 // brand
 //
 
-// $ExpectType Schema<number & Brand<"Int">>
+// $ExpectType BrandSchema<number & Brand<"Int">>
 pipe(S.number, S.int(), S.brand('Int'))
 
 //

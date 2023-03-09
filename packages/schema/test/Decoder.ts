@@ -1,7 +1,6 @@
 import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
 import * as S from "@effect/schema"
-import type { ParseOptions } from "@effect/schema/AST"
+import type * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as Util from "@effect/schema/test/util"
 
@@ -35,50 +34,6 @@ describe.concurrent("Decoder", () => {
 └─ key "name"
    └─ is missing`)
     )
-  })
-
-  it(`transform. { a: 'a' } -> { a: 'a', b: none }`, () => {
-    const from = S.struct({
-      a: S.string,
-      b: S.optional(S.union(S.undefined, S.nullable(S.number)))
-    })
-
-    const to = S.struct({
-      a: S.string,
-      b: S.option(S.number)
-    })
-
-    const schema = pipe(
-      from,
-      pipe(S.transform(to, (o) => ({ ...o, b: O.fromNullable(o.b) }), (o) => {
-        const { b: b, ...rest } = o
-        if (O.isSome(b)) {
-          rest["b"] = b.value
-        }
-        return rest
-      }))
-    )
-
-    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
-
-    Util.expectDecodingFailureTree(
-      schema,
-      { a: "a", b: "b" },
-      `1 error(s) found
-└─ key "b"
-   ├─ union member
-   │  └─ Expected undefined, actual "b"
-   ├─ union member
-   │  └─ Expected null, actual "b"
-   └─ union member
-      └─ Expected number, actual "b"`
-    )
-
-    Util.expectEncodingSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
-    Util.expectEncodingSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
   })
 
   it("type alias without annotations", () => {
@@ -1158,7 +1113,7 @@ describe.concurrent("Decoder", () => {
   // isUnexpectedAllowed option
   // ---------------------------------------------
 
-  const isUnexpectedAllowed: ParseOptions = {
+  const isUnexpectedAllowed: AST.ParseOptions = {
     isUnexpectedAllowed: true
   }
 
@@ -1249,7 +1204,7 @@ describe.concurrent("Decoder", () => {
   // allErrors option
   // ---------------------------------------------
 
-  const allErrors: ParseOptions = {
+  const allErrors: AST.ParseOptions = {
     allErrors: true
   }
 
