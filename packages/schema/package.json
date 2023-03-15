@@ -49,9 +49,6 @@
     "coverage": "vitest run --coverage"
   },
   "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
-    },
     "./*": {
       "require": "./build/cjs/*.js"
     }

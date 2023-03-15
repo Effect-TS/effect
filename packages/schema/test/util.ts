@@ -3,25 +3,24 @@ import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import * as annotations from "@effect/schema/annotation/AST"
 import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import type { ParseOptions } from "@effect/schema/AST"
-import { formatActual, formatErrors, formatExpected } from "@effect/schema/formatter/Tree"
-import * as I from "@effect/schema/internal/common"
-import * as P from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
 import type { Schema } from "@effect/schema/Schema"
+import * as S from "@effect/schema/Schema"
+import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
 
-export const property = <A>(schema: Schema<A>) => {
-  const arbitrary = A.arbitrary(schema)
-  const is = P.is(schema)
-  fc.assert(fc.property(arbitrary(fc), (a) => {
+export const roundtrip = <I, A>(schema: Schema<I, A>) => {
+  const to = S.to(schema)
+  const arb = A.to(to)
+  const is = S.is(to)
+  fc.assert(fc.property(arb(fc), (a) => {
     if (!is(a)) {
       return false
     }
-    const roundtrip = pipe(a, P.encode(schema), I.flatMap(P.decode(schema)))
+    const roundtrip = pipe(a, S.encodeEither(schema), E.flatMap(S.decodeEither(schema)))
     if (PR.isFailure(roundtrip)) {
       return false
     }
@@ -29,43 +28,43 @@ export const property = <A>(schema: Schema<A>) => {
   }))
 }
 
-export const expectDecodingSuccess = <A>(
-  schema: Schema<A>,
+export const expectDecodingSuccess = <I, A>(
+  schema: Schema<I, A>,
   u: unknown,
   a: A = u as any,
   options?: ParseOptions
 ) => {
-  const t = P.decode(schema)(u, options)
+  const t = S.decodeEither(schema)(u, options)
   expect(t).toStrictEqual(E.right(a))
 }
 
-export const expectDecodingFailure = <A>(
-  schema: Schema<A>,
+export const expectDecodingFailure = <I, A>(
+  schema: Schema<I, A>,
   u: unknown,
   message: string,
   options?: ParseOptions
 ) => {
-  const t = pipe(P.decode(schema)(u, options), E.mapLeft(formatAll))
+  const t = pipe(S.decodeEither(schema)(u, options), E.mapLeft(formatAll))
   expect(t).toStrictEqual(E.left(message))
 }
 
-export const expectEncodingSuccess = <A>(
-  schema: Schema<A>,
+export const expectEncodingSuccess = <I, A>(
+  schema: Schema<I, A>,
   a: A,
   o: unknown,
   options?: ParseOptions
 ) => {
-  const t = P.encode(schema)(a, options)
+  const t = S.encodeEither(schema)(a, options)
   expect(t).toStrictEqual(E.right(o))
 }
 
-export const expectEncodingFailure = <A>(
-  schema: Schema<A>,
+export const expectEncodingFailure = <I, A>(
+  schema: Schema<I, A>,
   a: A,
   message: string,
   options?: ParseOptions
 ) => {
-  const t = pipe(P.encode(schema)(a, options), E.mapLeft(formatAll))
+  const t = pipe(S.encodeEither(schema)(a, options), E.mapLeft(formatAll))
   expect(t).toStrictEqual(E.left(message))
 }
 
@@ -73,7 +72,7 @@ const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseError>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
-const getMessage = AST.getAnnotation<annotations.Message<unknown>>(annotations.MessageId)
+const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(AST.MessageAnnotationId)
 
 const formatDecodeError = (e: PR.ParseError): string => {
   switch (e._tag) {
@@ -98,8 +97,13 @@ const formatDecodeError = (e: PR.ParseError): string => {
   }
 }
 
-export const expectDecodingFailureTree = <A>(schema: Schema<A>, u: unknown, message: string) => {
-  const t = pipe(P.decode(schema)(u), E.mapLeft(formatErrors))
+export const expectDecodingFailureTree = <I, A>(
+  schema: Schema<I, A>,
+  u: unknown,
+  message: string,
+  options?: ParseOptions
+) => {
+  const t = pipe(S.decodeEither(schema)(u, options), E.mapLeft(formatErrors))
   expect(E.isLeft(t)).toEqual(true)
   expect(t).toEqual(E.left(message))
 }

@@ -1,46 +1,47 @@
 import { pipe } from "@effect/data/Function"
-import * as S from "@effect/schema"
 import type * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Decoder", () => {
-  it("exports", () => {
-    expect(P.make).exist
-    expect(P.decode).exist
-    expect(P.decodeOrThrow).exist
-  })
-
   it("asserts", () => {
     const schema = S.string
     expect(P.asserts(schema)("a")).toEqual(undefined)
     expect(() => P.asserts(schema)(1)).toThrowError(
-      new Error(`1 error(s) found
+      new Error(`error(s) found
 └─ Expected string, actual 1`)
     )
   })
 
-  it("decodeOrThrow", () => {
+  it("decode", () => {
     const schema = S.struct({
       name: S.string,
       age: S.number
     })
-    expect(P.decodeOrThrow(schema)({ name: "Alice", age: 30 })).toEqual({
+    expect(P.decode(schema)({ name: "Alice", age: 30 })).toEqual({
       name: "Alice",
       age: 30
     })
-    expect(() => P.decodeOrThrow(schema)({})).toThrowError(
-      new Error(`1 error(s) found
-└─ key "name"
+    expect(() => P.decode(schema)({})).toThrowError(
+      new Error(`error(s) found
+└─ ["name"]
    └─ is missing`)
     )
   })
 
-  it("type alias without annotations", () => {
-    const schema = S.typeAlias([], S.string)
-    Util.expectDecodingSuccess(schema, "a", "a")
+  it("from", () => {
+    const schema = S.from(S.numberFromString(S.string))
+    Util.expectDecodingSuccess(schema, "a")
+    Util.expectDecodingFailure(schema, null, "Expected string, actual null")
+    Util.expectDecodingFailure(schema, 1, "Expected string, actual 1")
+  })
 
-    Util.expectDecodingFailure(schema, 1, `Expected string, actual 1`)
+  it("to", () => {
+    const schema = S.to(S.numberFromString(S.string))
+    Util.expectDecodingSuccess(schema, 1)
+    Util.expectDecodingFailure(schema, null, "Expected number, actual null")
+    Util.expectDecodingFailure(schema, "a", `Expected number, actual "a"`)
   })
 
   it("annotations/message refinement", () => {
@@ -203,7 +204,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailureTree(
       schema,
       "_id",
-      `4 error(s) found
+      `error(s) found
 ├─ union member
 │  └─ Expected "welcome_email_id", actual "_id"
 ├─ union member
@@ -296,7 +297,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailureTree(
       schema,
       null,
-      `2 error(s) found
+      `error(s) found
 ├─ union member
 │  └─ Expected 1, actual null
 └─ union member
@@ -379,9 +380,9 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
-    Util.expectDecodingFailure(schema, {}, `Expected tuple or array, actual {}`)
+    Util.expectDecodingFailure(schema, {}, `Expected <anonymous tuple or array schema>, actual {}`)
     Util.expectDecodingFailure(schema, [undefined], `/0 is unexpected`)
     Util.expectDecodingFailure(schema, [1], `/0 is unexpected`)
   })
@@ -393,7 +394,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
@@ -413,7 +414,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     Util.expectDecodingFailure(schema, [], `/0 is missing`)
     Util.expectDecodingFailure(
@@ -432,7 +433,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -451,7 +452,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -532,7 +533,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
   })
 
@@ -543,7 +544,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
@@ -562,7 +563,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
     Util.expectDecodingFailure(schema, {}, "/a is missing")
     Util.expectDecodingFailure(
@@ -581,7 +582,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -605,7 +606,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -646,7 +647,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "Expected type literal, actual []"
+      "Expected <anonymous type literal schema>, actual []"
     )
     Util.expectDecodingFailure(
       schema,
@@ -664,7 +665,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       [],
-      "Expected type literal, actual []"
+      "Expected <anonymous type literal schema>, actual []"
     )
     Util.expectDecodingFailure(
       schema,
@@ -798,7 +799,11 @@ describe.concurrent("Decoder", () => {
       S.struct({ a: S.literal(1), c: S.string }),
       S.struct({ b: S.literal(2), d: S.number })
     )
-    Util.expectDecodingFailure(schema, null, "Expected type literal, actual null")
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      "Expected <anonymous type literal schema>, actual null"
+    )
     Util.expectDecodingFailure(schema, {}, "/a is missing, /b is missing")
     Util.expectDecodingFailure(schema, { a: null }, `/a Expected 1, actual null, /b is missing`)
     Util.expectDecodingFailure(schema, { b: 3 }, `/a is missing, /b Expected 2, actual 3`)
@@ -810,7 +815,11 @@ describe.concurrent("Decoder", () => {
       S.struct({ category: S.literal("catA"), tag: S.literal("b") }),
       S.struct({ category: S.literal("catA"), tag: S.literal("c") })
     )
-    Util.expectDecodingFailure(schema, null, "Expected type literal, actual null")
+    Util.expectDecodingFailure(
+      schema,
+      null,
+      "Expected <anonymous type literal schema>, actual null"
+    )
     Util.expectDecodingFailure(schema, {}, "/category is missing, /tag is missing")
     Util.expectDecodingFailure(
       schema,
@@ -843,7 +852,7 @@ describe.concurrent("Decoder", () => {
       readonly a: string
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>(() =>
+    const schema: S.Schema<A> = S.lazy(() =>
       S.struct({
         a: S.string,
         as: S.array(schema)
@@ -856,7 +865,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -866,7 +875,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       { a: "a1", as: [{ a: "a2", as: [1] }] },
-      "/as /0 /as /0 Expected type literal, actual 1"
+      "/as /0 /as /0 Expected <anonymous type literal schema>, actual 1"
     )
   })
 
@@ -954,8 +963,8 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailureTree(
       schema,
       ["a"],
-      `1 error(s) found
-└─ index 0
+      `error(s) found
+└─ [0]
    ├─ union member
    │  └─ Expected number, actual "a"
    └─ union member
@@ -973,9 +982,9 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailureTree(
       schema,
       ["a"],
-      `2 error(s) found
+      `error(s) found
 ├─ union member
-│  └─ index 0
+│  └─ [0]
 │     ├─ union member
 │     │  └─ Expected number, actual "a"
 │     └─ union member
@@ -993,7 +1002,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "Expected type literal, actual null"
+      "Expected <anonymous type literal schema>, actual null"
     )
     Util.expectDecodingFailure(schema, { a: "a" }, `/b is missing`)
     Util.expectDecodingFailure(schema, { b: 1 }, "/a is missing")
@@ -1008,7 +1017,7 @@ describe.concurrent("Decoder", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      "Expected type literal, actual null"
+      "Expected <anonymous type literal schema>, actual null"
     )
     Util.expectDecodingFailure(schema, { [a]: "a" }, `/b is missing`)
     Util.expectDecodingFailure(

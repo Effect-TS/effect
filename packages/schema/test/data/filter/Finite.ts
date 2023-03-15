@@ -8,7 +8,7 @@ const schema = pipe(S.number, S.finite())
 
 describe.concurrent("finite", () => {
   it("property tests", () => {
-    Util.property(schema)
+    Util.roundtrip(schema)
   })
 
   it("Guard", () => {
@@ -33,7 +33,7 @@ describe.concurrent("finite", () => {
   })
 
   it("Pretty", () => {
-    const pretty = Pretty.pretty(schema)
+    const pretty = Pretty.to(schema)
     expect(pretty(1)).toEqual("1")
     expect(pretty(NaN)).toEqual("NaN")
     expect(pretty(Infinity)).toEqual("Infinity")

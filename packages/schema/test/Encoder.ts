@@ -1,30 +1,30 @@
 import { pipe } from "@effect/data/Function"
+import * as O from "@effect/data/Option"
 import type { ParseOptions } from "@effect/schema/AST"
-import { parseString } from "@effect/schema/data/Number"
-import * as E from "@effect/schema/Parser"
+import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 // raises an error while encoding from a number if the string is not a char
-const NumberFromString = pipe(S.string, S.maxLength(1), parseString)
+const NumberFromString = pipe(S.string, S.maxLength(1), S.numberFromString)
 
 // raises an error while encoding if the string is not a char
 const MustChar = pipe(S.string, S.maxLength(1))
 
 describe.concurrent("Encoder", () => {
-  it("exports", () => {
-    expect(E.make).exist
-    expect(E.encode).exist
-    expect(E.encodeOrThrow).exist
-  })
-
-  it("encodeOrThrow", () => {
+  it("encode", () => {
     const schema = NumberFromString
-    expect(E.encodeOrThrow(schema)(1)).toEqual("1")
-    expect(() => E.encodeOrThrow(schema)(10)).toThrowError(
-      new Error(`1 error(s) found
+    expect(P.encode(schema)(1)).toEqual("1")
+    expect(() => P.encode(schema)(10)).toThrowError(
+      new Error(`error(s) found
 └─ Expected a string at most 1 character(s) long, actual "10"`)
     )
+  })
+
+  it("encodeOption", () => {
+    const schema = pipe(S.string, S.maxLength(1), S.numberFromString)
+    expect(P.encodeOption(schema)(1)).toEqual(O.some("1"))
+    expect(P.encodeOption(schema)(10)).toEqual(O.none())
   })
 
   it("never", () => {
@@ -299,15 +299,6 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1 })
   })
 
-  it("union/ forced empty union", () => {
-    const schema = S.make({
-      _tag: "Union",
-      types: [] as any,
-      annotations: {}
-    })
-    Util.expectEncodingFailure(schema, "a", `Expected never, actual "a"`)
-  })
-
   describe.concurrent("partial", () => {
     it("struct", () => {
       const schema = pipe(S.struct({ a: S.number }), S.partial)
@@ -343,7 +334,11 @@ describe.concurrent("Encoder", () => {
       readonly a: number
       readonly as: ReadonlyArray<A>
     }
-    const schema: S.Schema<A> = S.lazy<A>(() =>
+    interface FromA {
+      readonly a: string
+      readonly as: ReadonlyArray<FromA>
+    }
+    const schema: S.Schema<FromA, A> = S.lazy<FromA, A>(() =>
       S.struct({
         a: NumberFromString,
         as: S.array(schema)
@@ -410,7 +405,7 @@ describe.concurrent("Encoder", () => {
     Util.expectEncodingFailure(
       schema,
       null as any,
-      `Expected type literal, actual null`
+      `Expected <anonymous type literal schema>, actual null`
     )
   })
 
@@ -490,10 +485,5 @@ describe.concurrent("Encoder", () => {
       `/a Expected a string at most 1 character(s) long, actual "aa", /b Expected a string at most 1 character(s) long, actual "bb"`,
       allErrors
     )
-  })
-
-  it("encode parsed number with refinement", () => {
-    const schema = pipe(parseString(S.string), S.int())
-    Util.expectEncodingSuccess(schema, 1, "1")
   })
 })

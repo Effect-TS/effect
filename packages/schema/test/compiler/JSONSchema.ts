@@ -2,11 +2,8 @@ import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import { isRecord } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import type { JSONSchema } from "@effect/schema/annotation/AST"
-import { JSONSchemaId } from "@effect/schema/annotation/AST"
 import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
-import type { Json, JsonArray, JsonObject } from "@effect/schema/data/Json"
 import * as P from "@effect/schema/Parser"
 import type { Schema } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
@@ -81,25 +78,25 @@ export type JsonSchema7Type =
   | JsonSchema7AllOfType
   | JsonSchema7ObjectType
 
-const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+const isJsonArray = (u: unknown): u is S.JsonArray => Array.isArray(u) && u.every(isJson)
 
-const isJsonObject = (u: unknown): u is JsonObject =>
+const isJsonObject = (u: unknown): u is S.JsonObject =>
   isRecord(u) && Object.keys(u).every((key) => isJson(u[key]))
 
-export const isJson = (u: unknown): u is Json =>
+export const isJson = (u: unknown): u is S.Json =>
   u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
   typeof u === "boolean" ||
   isJsonArray(u) ||
   isJsonObject(u)
 
-const getJSONSchemaAnnotation = AST.getAnnotation<JSONSchema>(
-  JSONSchemaId
+const getJSONSchemaAnnotation = AST.getAnnotation<AST.JSONSchemaAnnotation>(
+  AST.JSONSchemaAnnotationId
 )
 
 const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
   const go = (ast: AST.AST): JsonSchema7Type => {
     switch (ast._tag) {
-      case "TypeAlias":
+      case "Declaration":
         return pipe(
           getJSONSchemaAnnotation(ast),
           O.match(
@@ -250,7 +247,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
 }
 
 const property = <A>(schema: Schema<A>) => {
-  const arbitrary = A.arbitrary(schema)
+  const arbitrary = A.to(schema)
   const is = P.is(schema)
   const validate = new Ajv({ strict: false }).compile(jsonSchemaFor(schema))
   const arb = arbitrary(fc).filter(isJson)

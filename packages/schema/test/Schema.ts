@@ -1,26 +1,48 @@
 import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as S from "@effect/schema"
-import * as A from "@effect/schema/annotation/AST"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
+import * as S from "@effect/schema/Schema"
 
 describe.concurrent("Schema", () => {
   it("exports", () => {
-    expect(S.transformOrFail).exist
-    expect(S.date).exist
+    expect(S.GreaterThanBigintTypeId).exist
+    expect(S.GreaterThanOrEqualToBigintTypeId).exist
+    expect(S.LessThanBigintTypeId).exist
+    expect(S.LessThanOrEqualToBigintTypeId).exist
+    expect(S.BetweenBigintTypeId).exist
+    expect(S.PositiveBigintTypeId).exist
+    expect(S.NegativeBigintTypeId).exist
+    expect(S.NonNegativeBigintTypeId).exist
+    expect(S.NonPositiveBigintTypeId).exist
+    expect(S.BrandTypeId).exist
+    expect(S.FiniteTypeId).exist
+    expect(S.GreaterThanTypeId).exist
+    expect(S.GreaterThanOrEqualToTypeId).exist
+    expect(S.MultipleOfTypeId).exist
+    expect(S.IntTypeId).exist
+    expect(S.LessThanTypeId).exist
+    expect(S.LessThanOrEqualToTypeId).exist
+    expect(S.BetweenTypeId).exist
+    expect(S.NonNaNTypeId).exist
+    expect(S.PositiveTypeId).exist
+    expect(S.NegativeTypeId).exist
+    expect(S.NonNegativeTypeId).exist
+    expect(S.NonPositiveTypeId).exist
+    expect(S.InstanceOfTypeId).exist
+    expect(S.MinItemsTypeId).exist
+    expect(S.MaxItemsTypeId).exist
+    expect(S.ItemsCountTypeId).exist
+    expect(S.TrimmedTypeId).exist
+    expect(S.PatternTypeId).exist
+    expect(S.StartsWithTypeId).exist
+    expect(S.EndsWithTypeId).exist
+    expect(S.IncludesTypeId).exist
+    expect(S.UUIDTypeId).exist
+
     expect(S.OptionalSchemaId).exist
-    expect(S.between).exist
-    expect(S.positive).exist
-    expect(S.negative).exist
-    expect(S.nonNegative).exist
-    expect(S.nonPositive).exist
-    expect(S.clamp).exist
-    expect(S.maxItems).exist
-    expect(S.minItems).exist
-    expect(S.itemsCount).exist
-    expect(S.annotations).exist
+    expect(S.nullable).exist
   })
 
   it("brand/ annotations", () => {
@@ -34,10 +56,10 @@ describe.concurrent("Schema", () => {
       })
     )
     expect(Branded.ast.annotations).toEqual({
-      [A.TypeId]: "@effect/schema/data/Number/IntTypeId",
-      [A.BrandId]: ["A", "B"],
-      [A.DescriptionId]: "a B brand",
-      [A.JSONSchemaId]: { type: "integer" }
+      [AST.TypeAnnotationId]: "@effect/schema/IntTypeId",
+      [AST.BrandAnnotationId]: ["A", "B"],
+      [AST.DescriptionAnnotationId]: "a B brand",
+      [AST.JSONSchemaAnnotationId]: { type: "integer" }
     })
   })
 
@@ -45,7 +67,7 @@ describe.concurrent("Schema", () => {
     const Int = pipe(S.number, S.int(), S.brand("Int"))
     expect(Int(1)).toEqual(1)
     expect(() => Int(1.2)).toThrowError(
-      new Error(`1 error(s) found
+      new Error(`error(s) found
 └─ Expected integer, actual 1.2`)
     )
   })
@@ -61,7 +83,7 @@ describe.concurrent("Schema", () => {
     expect(Int.either(1)).toEqual(E.right(1))
     expect(Int.either(1.2)).toEqual(E.left([{
       meta: 1.2,
-      message: `1 error(s) found
+      message: `error(s) found
 └─ Expected integer, actual 1.2`
     }]))
   })
@@ -73,9 +95,9 @@ describe.concurrent("Schema", () => {
   })
 
   it("brand/ composition", () => {
-    const int = <A extends number>(self: S.Schema<A>) => pipe(self, S.int(), S.brand("Int"))
+    const int = <I, A extends number>(self: S.Schema<I, A>) => pipe(self, S.int(), S.brand("Int"))
 
-    const positive = <A extends number>(self: S.Schema<A>) =>
+    const positive = <I, A extends number>(self: S.Schema<I, A>) =>
       pipe(self, S.positive(), S.brand("Positive"))
 
     const PositiveInt = pipe(S.number, int, positive)
@@ -102,28 +124,28 @@ describe.concurrent("Schema", () => {
 
   it("title", () => {
     expect(pipe(S.string, S.title("MyString")).ast.annotations).toEqual({
-      "@effect/schema/annotation/TitleId": "MyString"
+      [AST.TitleAnnotationId]: "MyString"
     })
   })
 
   it("description", () => {
     expect(pipe(S.string, S.description("description")).ast.annotations).toEqual({
-      "@effect/schema/annotation/DescriptionId": "description",
-      "@effect/schema/annotation/TitleId": "string"
+      [AST.DescriptionAnnotationId]: "description",
+      [AST.TitleAnnotationId]: "string"
     })
   })
 
   it("examples", () => {
     expect(pipe(S.string, S.examples(["example"])).ast.annotations).toEqual({
-      "@effect/schema/annotation/ExamplesId": ["example"],
-      "@effect/schema/annotation/TitleId": "string"
+      [AST.ExamplesAnnotationId]: ["example"],
+      [AST.TitleAnnotationId]: "string"
     })
   })
 
   it("documentation", () => {
     expect(pipe(S.string, S.documentation("documentation")).ast.annotations).toEqual({
-      "@effect/schema/annotation/DocumentationId": "documentation",
-      "@effect/schema/annotation/TitleId": "string"
+      [AST.DocumentationAnnotationId]: "documentation",
+      [AST.TitleAnnotationId]: "string"
     })
   })
 
@@ -425,9 +447,9 @@ describe.concurrent("Schema", () => {
         fields: Fields
       ): S.Schema<
         S.Spread<
-          & { readonly [K in RequiredKeys<Fields>]: S.Infer<Fields[K]> }
+          & { readonly [K in RequiredKeys<Fields>]: S.To<Fields[K]> }
           & {
-            readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: S.Infer<
+            readonly [K in OptionalKeys<Fields> as K extends `${infer S}?` ? S : K]+?: S.To<
               Fields[K]
             >
           }
@@ -470,7 +492,7 @@ describe.concurrent("Schema", () => {
     })
   })
 
-  it("filter/ annotationOptions", () => {
+  it("filter/ annotation options", () => {
     const schema = pipe(
       S.string,
       S.filter((s): s is string => s.length === 1, {
@@ -484,18 +506,18 @@ describe.concurrent("Schema", () => {
       })
     )
     expect(schema.ast.annotations).toEqual({
-      [A.TypeId]: "Char",
-      "@effect/schema/annotation/DescriptionId": "description",
-      "@effect/schema/annotation/DocumentationId": "documentation",
-      "@effect/schema/annotation/ExamplesId": [
+      [AST.TypeAnnotationId]: "Char",
+      [AST.DescriptionAnnotationId]: "description",
+      [AST.DocumentationAnnotationId]: "documentation",
+      [AST.ExamplesAnnotationId]: [
         "examples"
       ],
-      "@effect/schema/annotation/IdentifierId": "identifier",
-      "@effect/schema/annotation/JSONSchemaId": {
+      [AST.IdentifierAnnotationId]: "identifier",
+      [AST.JSONSchemaAnnotationId]: {
         "maxLength": 1,
         "minLength": 1
       },
-      "@effect/schema/annotation/TitleId": "title"
+      [AST.TitleAnnotationId]: "title"
     })
   })
 
@@ -528,22 +550,22 @@ describe.concurrent("Schema", () => {
       pipe(Square, S.attachPropertySignature("kind", "square"))
     )
 
-    expect(S.decodeOrThrow(DiscriminatedShape)({ radius: 10 })).toEqual({
+    expect(S.decode(DiscriminatedShape)({ radius: 10 })).toEqual({
       kind: "circle",
       radius: 10
     })
     expect(
-      S.encodeOrThrow(DiscriminatedShape)({
+      S.encode(DiscriminatedShape)({
         kind: "circle",
         radius: 10
       })
     ).toEqual({ radius: 10 })
-    expect(S.decodeOrThrow(DiscriminatedShape)({ sideLength: 10 })).toEqual({
+    expect(S.decode(DiscriminatedShape)({ sideLength: 10 })).toEqual({
       kind: "square",
       sideLength: 10
     })
     expect(
-      S.encodeOrThrow(DiscriminatedShape)({
+      S.encode(DiscriminatedShape)({
         kind: "square",
         sideLength: 10
       })

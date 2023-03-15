@@ -16,9 +16,7 @@
     "lib": ["es2015"],
     "skipLibCheck": true,
     "paths": {
-      "@effect/schema": ["../../src/index.ts"],
       "@effect/schema/test/*": ["../../test/*"],
-      "@effect/schema/examples/*": ["../../examples/*"],
       "@effect/schema/*": ["../../src/*"]
     }
   }

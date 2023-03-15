@@ -7,11 +7,10 @@ import * as Number from "@effect/data/Number"
 import { isNumber } from "@effect/data/Number"
 import type { Option } from "@effect/data/Option"
 import * as O from "@effect/data/Option"
-import type { Predicate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import { isString } from "@effect/data/String"
 import * as Order from "@effect/data/typeclass/Order"
-import { TitleId } from "@effect/schema/annotation/AST"
+import * as I from "@effect/schema/internal/common"
 import type { ParseResult } from "@effect/schema/ParseResult"
 
 // -------------------------------------------------------------------------------------
@@ -23,7 +22,7 @@ import type { ParseResult } from "@effect/schema/ParseResult"
  * @since 1.0.0
  */
 export type AST =
-  | TypeAlias
+  | Declaration
   | Literal
   | UniqueSymbol
   | UndefinedKeyword
@@ -46,6 +45,122 @@ export type AST =
   | Refinement
   | Transform
 
+// ---------------------------------------------
+// annotations
+// ---------------------------------------------
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type BrandAnnotation = ReadonlyArray<string>
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const BrandAnnotationId = "@effect/schema/BrandAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type TypeAnnotation = string | symbol
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const TypeAnnotationId = "@effect/schema/TypeAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type MessageAnnotation<A> = (a: A) => string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const MessageAnnotationId = "@effect/schema/MessageAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type IdentifierAnnotation = string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const IdentifierAnnotationId = "@effect/schema/IdentifierAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type TitleAnnotation = string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const TitleAnnotationId = "@effect/schema/TitleAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type DescriptionAnnotation = string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const DescriptionAnnotationId = "@effect/schema/DescriptionAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type ExamplesAnnotation = ReadonlyArray<unknown>
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const ExamplesAnnotationId = "@effect/schema/ExamplesAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type JSONSchemaAnnotation = object
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const JSONSchemaAnnotationId = "@effect/schema/JSONSchemaAnnotationId"
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export type DocumentationAnnotation = string
+
+/**
+ * @category annotations
+ * @since 1.0.0
+ */
+export const DocumentationAnnotationId = "@effect/schema/DocumentationAnnotationId"
+
+// ---------------------------------------------
+// models
+// ---------------------------------------------
+
 /**
  * @since 1.0.0
  */
@@ -66,27 +181,33 @@ export const getAnnotation = <A>(key: PropertyKey) =>
  * @category model
  * @since 1.0.0
  */
-export interface TypeAlias extends Annotated {
-  readonly _tag: "TypeAlias"
+export interface Declaration extends Annotated {
+  readonly _tag: "Declaration"
   readonly typeParameters: ReadonlyArray<AST>
   readonly type: AST
+  readonly decode: (
+    ...typeParameters: ReadonlyArray<AST>
+  ) => (input: any, options?: ParseOptions) => ParseResult<any>
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const createTypeAlias = (
+export const createDeclaration = (
   typeParameters: ReadonlyArray<AST>,
   type: AST,
+  decode: (
+    ...typeParameters: ReadonlyArray<AST>
+  ) => (input: unknown, options?: ParseOptions) => ParseResult<any>,
   annotations: Annotated["annotations"] = {}
-): TypeAlias => ({ _tag: "TypeAlias", typeParameters, type, annotations })
+): Declaration => ({ _tag: "Declaration", typeParameters, type, decode, annotations })
 
 /**
  * @category guards
  * @since 1.0.0
  */
-export const isTypeAlias = (ast: AST): ast is TypeAlias => ast._tag === "TypeAlias"
+export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
 
 /**
  * @since 1.0.0
@@ -155,7 +276,7 @@ export interface UndefinedKeyword extends Annotated {
 export const undefinedKeyword: UndefinedKeyword = {
   _tag: "UndefinedKeyword",
   annotations: {
-    [TitleId]: "undefined"
+    [TitleAnnotationId]: "undefined"
   }
 }
 
@@ -174,7 +295,7 @@ export interface VoidKeyword extends Annotated {
 export const voidKeyword: VoidKeyword = {
   _tag: "VoidKeyword",
   annotations: {
-    [TitleId]: "void"
+    [TitleAnnotationId]: "void"
   }
 }
 
@@ -193,7 +314,7 @@ export interface NeverKeyword extends Annotated {
 export const neverKeyword: NeverKeyword = {
   _tag: "NeverKeyword",
   annotations: {
-    [TitleId]: "never"
+    [TitleAnnotationId]: "never"
   }
 }
 
@@ -212,7 +333,7 @@ export interface UnknownKeyword extends Annotated {
 export const unknownKeyword: UnknownKeyword = {
   _tag: "UnknownKeyword",
   annotations: {
-    [TitleId]: "unknown"
+    [TitleAnnotationId]: "unknown"
   }
 }
 
@@ -237,7 +358,7 @@ export interface AnyKeyword extends Annotated {
 export const anyKeyword: AnyKeyword = {
   _tag: "AnyKeyword",
   annotations: {
-    [TitleId]: "any"
+    [TitleAnnotationId]: "any"
   }
 }
 
@@ -262,7 +383,7 @@ export interface StringKeyword extends Annotated {
 export const stringKeyword: StringKeyword = {
   _tag: "StringKeyword",
   annotations: {
-    [TitleId]: "string"
+    [TitleAnnotationId]: "string"
   }
 }
 
@@ -287,7 +408,7 @@ export interface NumberKeyword extends Annotated {
 export const numberKeyword: NumberKeyword = {
   _tag: "NumberKeyword",
   annotations: {
-    [TitleId]: "number"
+    [TitleAnnotationId]: "number"
   }
 }
 
@@ -312,7 +433,7 @@ export interface BooleanKeyword extends Annotated {
 export const booleanKeyword: BooleanKeyword = {
   _tag: "BooleanKeyword",
   annotations: {
-    [TitleId]: "boolean"
+    [TitleAnnotationId]: "boolean"
   }
 }
 
@@ -337,7 +458,7 @@ export interface BigIntKeyword extends Annotated {
 export const bigIntKeyword: BigIntKeyword = {
   _tag: "BigIntKeyword",
   annotations: {
-    [TitleId]: "bigint"
+    [TitleAnnotationId]: "bigint"
   }
 }
 
@@ -362,7 +483,7 @@ export interface SymbolKeyword extends Annotated {
 export const symbolKeyword: SymbolKeyword = {
   _tag: "SymbolKeyword",
   annotations: {
-    [TitleId]: "symbol"
+    [TitleAnnotationId]: "symbol"
   }
 }
 
@@ -387,7 +508,7 @@ export interface ObjectKeyword extends Annotated {
 export const objectKeyword: ObjectKeyword = {
   _tag: "ObjectKeyword",
   annotations: {
-    [TitleId]: "object"
+    [TitleAnnotationId]: "object"
   }
 }
 
@@ -631,7 +752,8 @@ export const isLazy = (ast: AST): ast is Lazy => ast._tag === "Lazy"
 export interface Refinement extends Annotated {
   readonly _tag: "Refinement"
   readonly from: AST
-  readonly refinement: Predicate<any>
+  readonly decode: (input: any, options?: ParseOptions) => ParseResult<any>
+  readonly isReversed: boolean
 }
 
 /**
@@ -640,9 +762,10 @@ export interface Refinement extends Annotated {
  */
 export const createRefinement = (
   from: AST,
-  refinement: Predicate<any>,
+  decode: (input: any, options?: ParseOptions) => ParseResult<any>,
+  isReversed: boolean,
   annotations: Annotated["annotations"] = {}
-): Refinement => ({ _tag: "Refinement", from, refinement, annotations })
+): Refinement => ({ _tag: "Refinement", from, decode, isReversed, annotations })
 
 /**
  * @category guards
@@ -669,6 +792,7 @@ export interface Transform extends Annotated {
   readonly to: AST
   readonly decode: (input: any, options?: ParseOptions) => ParseResult<any>
   readonly encode: (input: any, options?: ParseOptions) => ParseResult<any>
+  readonly isReversed: boolean
 }
 
 /**
@@ -679,8 +803,18 @@ export const createTransform = (
   from: AST,
   to: AST,
   decode: Transform["decode"],
-  encode: Transform["encode"]
-): Transform => ({ _tag: "Transform", from, to, decode, encode, annotations: {} })
+  encode: Transform["encode"],
+  isReversed: boolean,
+  annotations: Annotated["annotations"] = {}
+): Transform => ({
+  _tag: "Transform",
+  from,
+  to: getTo(to),
+  decode,
+  encode,
+  isReversed,
+  annotations
+})
 
 /**
  * @category guards
@@ -773,9 +907,6 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
   const indexSignatures: Array<IndexSignature> = []
   const go = (key: AST): void => {
     switch (key._tag) {
-      case "TypeAlias":
-        go(key.type)
-        break
       case "NeverKeyword":
         break
       case "StringKeyword":
@@ -828,8 +959,6 @@ export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
  */
 export const partial = (ast: AST): AST => {
   switch (ast._tag) {
-    case "TypeAlias":
-      return partial(ast.type)
     case "Tuple":
       return createTuple(
         ast.elements.map((e) => createElement(e.type, true)),
@@ -879,8 +1008,113 @@ export type Match<A> = {
  * @since 1.0.0
  */
 export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
-  const compile = (ast: AST): A => match[ast._tag](ast as any, compile)
+  const compile = I.memoize((ast: AST): A => match[ast._tag](ast as any, compile))
   return compile
+}
+
+/**
+ * @since 1.0.0
+ */
+export const getTo = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Declaration":
+      return createDeclaration(ast.typeParameters.map(getTo), ast.type, ast.decode, ast.annotations)
+    case "Tuple":
+      return createTuple(
+        ast.elements.map((e) => ({ ...e, type: getTo(e.type) })),
+        O.map(ast.rest, RA.mapNonEmpty(getTo)),
+        ast.isReadonly,
+        ast.annotations
+      )
+    case "TypeLiteral":
+      return createTypeLiteral(
+        ast.propertySignatures.map((p) => ({ ...p, type: getTo(p.type) })),
+        ast.indexSignatures.map((is) => ({ ...is, type: getTo(is.type) })),
+        ast.annotations
+      )
+    case "Union":
+      return createUnion(ast.types.map(getTo), ast.annotations)
+    case "Lazy":
+      return createLazy(() => getTo(ast.f()), ast.annotations)
+    case "Refinement":
+      return createRefinement(getTo(ast.from), ast.decode, false, ast.annotations)
+    case "Transform":
+      return getTo(ast.to)
+  }
+  return ast
+}
+
+/**
+ * @since 1.0.0
+ */
+export const getFrom = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Declaration":
+      return createDeclaration(
+        ast.typeParameters.map(getFrom),
+        ast.type,
+        ast.decode,
+        ast.annotations
+      )
+    case "Tuple":
+      return createTuple(
+        ast.elements.map((e) => ({ ...e, type: getFrom(e.type) })),
+        O.map(ast.rest, RA.mapNonEmpty(getFrom)),
+        ast.isReadonly,
+        ast.annotations
+      )
+    case "TypeLiteral":
+      return createTypeLiteral(
+        ast.propertySignatures.map((p) => ({ ...p, type: getFrom(p.type) })),
+        ast.indexSignatures.map((is) => ({ ...is, type: getFrom(is.type) })),
+        ast.annotations
+      )
+    case "Union":
+      return createUnion(ast.types.map(getFrom), ast.annotations)
+    case "Lazy":
+      return createLazy(() => getFrom(ast.f()), ast.annotations)
+    case "Refinement":
+    case "Transform":
+      return getFrom(ast.from)
+  }
+  return ast
+}
+
+/**
+ * @since 1.0.0
+ */
+export const reverse = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Declaration":
+      return createDeclaration(
+        ast.typeParameters.map(reverse),
+        ast.type,
+        ast.decode,
+        ast.annotations
+      )
+    case "Tuple":
+      return createTuple(
+        ast.elements.map((e) => ({ ...e, type: reverse(e.type) })),
+        O.map(ast.rest, RA.mapNonEmpty(reverse)),
+        ast.isReadonly,
+        ast.annotations
+      )
+    case "TypeLiteral":
+      return createTypeLiteral(
+        ast.propertySignatures.map((p) => ({ ...p, type: reverse(p.type) })),
+        ast.indexSignatures.map((is) => ({ ...is, type: reverse(is.type) })),
+        ast.annotations
+      )
+    case "Union":
+      return createUnion(ast.types.map(reverse), ast.annotations)
+    case "Lazy":
+      return createLazy(() => reverse(ast.f()), ast.annotations)
+    case "Refinement":
+      return createRefinement(ast.from, ast.decode, !ast.isReversed, ast.annotations)
+    case "Transform":
+      return createTransform(reverse(ast.from), ast.to, ast.decode, ast.encode, !ast.isReversed)
+  }
+  return ast
 }
 
 // -------------------------------------------------------------------------------------
@@ -890,7 +1124,7 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
 /** @internal */
 export const _getCardinality = (ast: AST): number => {
   switch (ast._tag) {
-    case "TypeAlias":
+    case "Declaration":
       return _getCardinality(ast.type)
     case "NeverKeyword":
       return 0
@@ -927,7 +1161,7 @@ const sortByCardinalityAsc = RA.sort(
 /** @internal */
 export const _getWeight = (ast: AST): number => {
   switch (ast._tag) {
-    case "TypeAlias":
+    case "Declaration":
       return _getWeight(ast.type)
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
@@ -995,7 +1229,7 @@ export const _getParameter = (
 
 const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
-    case "TypeAlias":
+    case "Declaration":
       return _keyof(ast.type)
     case "NeverKeyword":
     case "AnyKeyword":
@@ -1027,7 +1261,7 @@ export const _getPropertySignatures = (
   ast: AST
 ): ReadonlyArray<PropertySignature> => {
   switch (ast._tag) {
-    case "TypeAlias":
+    case "Declaration":
       return _getPropertySignatures(ast.type)
     case "Tuple":
       return ast.elements.map((element, i) =>

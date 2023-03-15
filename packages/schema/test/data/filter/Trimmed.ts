@@ -8,7 +8,7 @@ const schema = pipe(S.string, S.trimmed())
 
 describe.concurrent("trimmed", () => {
   it("property tests", () => {
-    Util.property(schema)
+    Util.roundtrip(schema)
   })
 
   it("Guard", () => {
@@ -62,7 +62,7 @@ describe.concurrent("trimmed", () => {
   })
 
   it("Pretty", () => {
-    const pretty = Pretty.pretty(schema)
+    const pretty = Pretty.to(schema)
     expect(pretty("a")).toEqual(`"a"`)
     expect(pretty("")).toEqual(`""`)
   })

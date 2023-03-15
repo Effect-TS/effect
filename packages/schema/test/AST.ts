@@ -1,9 +1,7 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as S from "@effect/schema"
 import * as AST from "@effect/schema/AST"
-import { json } from "@effect/schema/data/Json"
-import * as DataOption from "@effect/schema/data/Option"
+import * as S from "@effect/schema/Schema"
 
 describe.concurrent("AST", () => {
   it("exports", () => {
@@ -17,8 +15,8 @@ describe.concurrent("AST", () => {
   })
 
   it("isTypeAlias", () => {
-    expect(AST.isTypeAlias(DataOption.option(S.number).ast)).toEqual(true)
-    expect(AST.isTypeAlias(S.number.ast)).toEqual(false)
+    expect(AST.isDeclaration(S.optionFromSelf(S.number).ast)).toEqual(true)
+    expect(AST.isDeclaration(S.number.ast)).toEqual(false)
   })
 
   it("isTemplateLiteral", () => {
@@ -27,7 +25,7 @@ describe.concurrent("AST", () => {
   })
 
   it("isLazy", () => {
-    expect(AST.isLazy(json.ast)).toEqual(true)
+    expect(AST.isLazy(S.json.ast)).toEqual(true)
     expect(AST.isLazy(S.number.ast)).toEqual(false)
   })
 
@@ -53,7 +51,7 @@ describe.concurrent("AST", () => {
   })
 
   it("getWeight/transform/ should return the weight of type", () => {
-    expect(AST._getWeight(S.option(S.number).ast)).toEqual(7)
+    expect(AST._getWeight(S.optionFromSelf(S.number).ast)).toEqual(3)
   })
 
   it("getWeight/union/ should return the sum of the members weight", () => {
@@ -82,13 +80,6 @@ describe.concurrent("AST", () => {
       ])
     )
       .toEqual(AST.createUnion([AST.stringKeyword, AST.numberKeyword]))
-  })
-
-  it("createRecord/ TypeAlias", () => {
-    const string = AST.createTypeAlias([], AST.stringKeyword)
-    expect(AST.createRecord(string, AST.numberKeyword, true)).toEqual(AST.createTypeLiteral([], [
-      AST.createIndexSignature(AST.stringKeyword, AST.numberKeyword, true)
-    ]))
   })
 
   it("createRecord/ numeric literal", () => {
@@ -174,7 +165,7 @@ describe.concurrent("AST", () => {
   })
 
   it("keyof/ lazy", () => {
-    expect(AST.keyof(json.ast)).toEqual(S.never.ast)
+    expect(AST.keyof(S.json.ast)).toEqual(S.never.ast)
   })
 
   it("keyof/union/ symbol keys", () => {
@@ -194,6 +185,18 @@ describe.concurrent("AST", () => {
     expect(AST.keyof(
       pipe(S.struct({ [a]: S.string }), S.extend(S.record(S.symbol, S.string))).ast
     )).toEqual(S.symbol.ast)
+  })
+
+  it("keyof/ refinement", () => {
+    expect(AST.keyof(pipe(S.struct({ a: S.number }), S.filter(({ a }) => a > 0)).ast)).toEqual(
+      S.literal("a").ast
+    )
+  })
+
+  it("keyof/ transform", () => {
+    expect(AST.keyof(S.numberFromString(S.string).ast)).toEqual(
+      AST.neverKeyword
+    )
   })
 
   it("partial/refinement", () => {
@@ -386,23 +389,11 @@ describe.concurrent("AST", () => {
   })
 
   it("getPropertySignatures/ type alias", () => {
-    const schema = DataOption.parseNullable(S.number)
+    const schema = S.optionFromNullable(S.number)
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "_tag",
         S.union(S.literal("Some"), S.literal("None")).ast,
-        false,
-        true
-      ),
-      AST.createPropertySignature(
-        Symbol.for("@effect/data/Equal"),
-        S.any.ast,
-        false,
-        true
-      ),
-      AST.createPropertySignature(
-        Symbol.for("@effect/data/Hash"),
-        S.any.ast,
         false,
         true
       )

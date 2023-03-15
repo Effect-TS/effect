@@ -1,82 +1,102 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as S from "@effect/schema"
-import { parseString } from "@effect/schema/data/Number"
-import * as _ from "@effect/schema/data/Option"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
+import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = pipe(S.string, parseString)
+const NumberFromString = S.numberFromString(S.string)
 
 describe.concurrent("Option", () => {
-  it("option. property tests", () => {
-    Util.property(_.parseNullable(NumberFromString))
+  describe.concurrent("option", () => {
+    it("property tests", () => {
+      Util.roundtrip(S.option(S.number))
+    })
+
+    it("Decoder", () => {
+      const schema = S.option(NumberFromString)
+      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(O.none())), O.none())
+      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(O.some("1"))), O.some(1))
+    })
+
+    it("Encoder", () => {
+      const schema = S.option(NumberFromString)
+      Util.expectEncodingSuccess(schema, O.none(), { _tag: "None" })
+      Util.expectEncodingSuccess(schema, O.some(1), { _tag: "Some", value: "1" })
+    })
   })
 
-  it("option. Guard", () => {
-    const schema = _.option(S.number)
-    const is = P.is(schema)
-    expect(is(O.none())).toEqual(true)
-    expect(is(O.some(1))).toEqual(true)
-    expect(is(null)).toEqual(false)
-    expect(is(O.some("a"))).toEqual(false)
+  describe.concurrent("optionFromSelf", () => {
+    it("property tests", () => {
+      Util.roundtrip(S.optionFromSelf(NumberFromString))
+    })
 
-    expect(is({ _tag: "None" })).toEqual(false)
-    expect(is({ _tag: "Some", value: 1 })).toEqual(false)
+    it("Guard", () => {
+      const schema = S.optionFromSelf(S.number)
+      const is = P.is(schema)
+      expect(is(O.none())).toEqual(true)
+      expect(is(O.some(1))).toEqual(true)
+      expect(is(null)).toEqual(false)
+      expect(is(O.some("a"))).toEqual(false)
+
+      expect(is({ _tag: "None" })).toEqual(false)
+      expect(is({ _tag: "Some", value: 1 })).toEqual(false)
+    })
+
+    it("Decoder", () => {
+      const schema = S.optionFromSelf(NumberFromString)
+      Util.expectDecodingSuccess(schema, O.none(), O.none())
+      Util.expectDecodingSuccess(schema, O.some("1"), O.some(1))
+    })
+
+    it("Pretty", () => {
+      const schema = S.optionFromSelf(S.number)
+      const pretty = Pretty.to(schema)
+      expect(pretty(O.none())).toEqual("none()")
+      expect(pretty(O.some(1))).toEqual("some(1)")
+    })
   })
 
-  it("option. Decoder", () => {
-    const schema = _.option(NumberFromString)
-    Util.expectDecodingSuccess(schema, O.none(), O.none())
-    Util.expectDecodingSuccess(schema, O.some("1"), O.some(1))
-  })
+  describe.concurrent("optionFromNullable", () => {
+    it("property tests", () => {
+      Util.roundtrip(S.optionFromNullable(S.number))
+    })
 
-  it("option. Pretty", () => {
-    const schema = _.option(S.number)
-    const pretty = Pretty.pretty(schema)
-    expect(pretty(O.none())).toEqual("none()")
-    expect(pretty(O.some(1))).toEqual("some(1)")
-  })
+    it("Decoder", () => {
+      const schema = S.optionFromNullable(NumberFromString)
+      Util.expectDecodingSuccess(schema, undefined, O.none())
+      Util.expectDecodingSuccess(schema, null, O.none())
+      Util.expectDecodingSuccess(schema, "1", O.some(1))
 
-  it("parseNullable. property tests", () => {
-    Util.property(_.parseNullable(S.number))
-  })
+      expect(O.isOption(S.decode(schema)(null))).toEqual(true)
+      expect(O.isOption(S.decode(schema)("1"))).toEqual(true)
 
-  it("parseNullable. Decoder", () => {
-    const schema = _.parseNullable(NumberFromString)
-    Util.expectDecodingSuccess(schema, undefined, O.none())
-    Util.expectDecodingSuccess(schema, null, O.none())
-    Util.expectDecodingSuccess(schema, "1", O.some(1))
-
-    expect(O.isOption(S.decodeOrThrow(schema)(null))).toEqual(true)
-    expect(O.isOption(S.decodeOrThrow(schema)("1"))).toEqual(true)
-
-    Util.expectDecodingFailureTree(
-      schema,
-      {},
-      `3 error(s) found
+      Util.expectDecodingFailureTree(
+        schema,
+        {},
+        `error(s) found
 ├─ union member
 │  └─ Expected undefined, actual {}
 ├─ union member
 │  └─ Expected null, actual {}
 └─ union member
    └─ Expected string, actual {}`
-    )
+      )
+    })
+
+    it("Encoder", () => {
+      const schema = S.optionFromNullable(NumberFromString)
+      Util.expectEncodingSuccess(schema, O.none(), null)
+      Util.expectEncodingSuccess(schema, O.some(1), "1")
+    })
   })
 
-  it("parseNullable. Encoder", () => {
-    const schema = _.parseNullable(NumberFromString)
-    Util.expectEncodingSuccess(schema, O.none(), null)
-    Util.expectEncodingSuccess(schema, O.some(1), "1")
-  })
-
-  it("parseOptionals", () => {
-    expect(() => pipe(S.object, _.parseOptionals({ "b": S.number }))).toThrowError(
+  it("optionsFromOptionals", () => {
+    expect(() => pipe(S.object, S.optionsFromOptionals({ "b": S.number }))).toThrowError(
       new Error("`parseOptional` can only handle type literals")
     )
 
-    const schema = pipe(S.struct({ a: S.string }), _.parseOptionals({ b: S.number }))
+    const schema = pipe(S.struct({ a: S.string }), S.optionsFromOptionals({ b: S.number }))
     Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
     Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
     Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
@@ -85,8 +105,8 @@ describe.concurrent("Option", () => {
     Util.expectDecodingFailureTree(
       schema,
       { a: "a", b: "b" },
-      `1 error(s) found
-└─ key "b"
+      `error(s) found
+└─ ["b"]
    ├─ union member
    │  └─ Expected undefined, actual "b"
    ├─ union member

@@ -5,7 +5,6 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import * as annotations from "@effect/schema/annotation/AST"
 import * as AST from "@effect/schema/AST"
 import type * as PR from "@effect/schema/ParseResult"
 
@@ -25,7 +24,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
  * @since 1.0.0
  */
 export const formatErrors = (errors: NonEmptyReadonlyArray<PR.ParseError>): string =>
-  drawTree(make(`${errors.length} error(s) found`, errors.map(go)))
+  drawTree(make(`error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
 
@@ -78,20 +77,20 @@ const formatTemplateLiteralSpan = (span: AST.TemplateLiteralSpan): string => {
 const formatTemplateLiteral = (ast: AST.TemplateLiteral): string =>
   ast.head + ast.spans.map((span) => formatTemplateLiteralSpan(span) + span.literal).join("")
 
-const getMessage = AST.getAnnotation<annotations.Message<unknown>>(
-  annotations.MessageId
+const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(
+  AST.MessageAnnotationId
 )
 
-const getTitle = AST.getAnnotation<annotations.Title>(
-  annotations.TitleId
+const getTitle = AST.getAnnotation<AST.TitleAnnotation>(
+  AST.TitleAnnotationId
 )
 
-const getIdentifier = AST.getAnnotation<annotations.Identifier>(
-  annotations.IdentifierId
+const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(
+  AST.IdentifierAnnotationId
 )
 
-const getDescription = AST.getAnnotation<annotations.Description>(
-  annotations.DescriptionId
+const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(
+  AST.DescriptionAnnotationId
 )
 
 const getExpected = (ast: AST.AST): O.Option<string> =>
@@ -119,13 +118,13 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Union":
       return ast.types.map(formatExpected).join(" or ")
     case "Refinement":
-      return pipe(getExpected(ast), O.getOrElse(() => "refinement"))
+      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous refinement schema>"))
     case "TemplateLiteral":
       return pipe(getExpected(ast), O.getOrElse(() => formatTemplateLiteral(ast)))
     case "Tuple":
-      return pipe(getExpected(ast), O.getOrElse(() => "tuple or array"))
+      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous tuple or array schema>"))
     case "TypeLiteral":
-      return pipe(getExpected(ast), O.getOrElse(() => "type literal"))
+      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous type literal schema>"))
     case "Enums":
       return pipe(
         getExpected(ast),
@@ -134,12 +133,12 @@ export const formatExpected = (ast: AST.AST): string => {
     case "Lazy":
       return pipe(
         getExpected(ast),
-        O.getOrElse(() => "<anonymous Lazy schema>")
+        O.getOrElse(() => "<anonymous lazy schema>")
       )
-    case "TypeAlias":
+    case "Declaration":
       return pipe(
         getExpected(ast),
-        O.getOrElse(() => "<anonymous TypeAlias schema>")
+        O.getOrElse(() => "<anonymous declaration schema>")
       )
     case "Transform":
       return `a parsable value from ${formatExpected(ast.from)} to ${formatExpected(ast.to)}`
@@ -158,12 +157,22 @@ const go = (e: PR.ParseError): Tree<string> => {
           )
         )
       )
-    case "Index":
-      return make(`index ${e.index}`, e.errors.map(go))
+    case "Index": {
+      const es = e.errors.map(go)
+      if (es.length === 1 && es[0].forest.length !== 0) {
+        return make(`[${e.index}]${es[0].value}`, es[0].forest)
+      }
+      return make(`[${e.index}]`, es)
+    }
     case "Unexpected":
       return make(`is unexpected`)
-    case "Key":
-      return make(`key ${formatActual(e.key)}`, e.errors.map(go))
+    case "Key": {
+      const es = e.errors.map(go)
+      if (es.length === 1 && es[0].forest.length !== 0) {
+        return make(`[${formatActual(e.key)}]${es[0].value}`, es[0].forest)
+      }
+      return make(`[${formatActual(e.key)}]`, es)
+    }
     case "Missing":
       return make(`is missing`)
     case "UnionMember":

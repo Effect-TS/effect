@@ -1,24 +1,21 @@
-import { pipe } from "@effect/data/Function"
-import { parseString } from "@effect/schema/data/Number"
-import * as _ from "@effect/schema/data/ReadonlyMap"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = pipe(S.string, parseString)
+const NumberFromString = S.numberFromString(S.string)
 
 describe.concurrent("ReadonlyMap", () => {
-  it("readonlySet. keyof", () => {
-    expect(S.keyof(_.readonlyMap(S.number, S.string))).toEqual(S.literal("size"))
+  it("readonlyMapFromSelf. keyof", () => {
+    expect(S.keyof(S.readonlyMapFromSelf(S.number, S.string))).toEqual(S.literal("size"))
   })
 
-  it("readonlyMap. property tests", () => {
-    Util.property(_.readonlyMap(S.number, S.string))
+  it("readonlyMapFromSelf. property tests", () => {
+    Util.roundtrip(S.readonlyMapFromSelf(S.number, S.string))
   })
 
-  it("readonlyMap. decoder", () => {
-    const schema = _.readonlyMap(NumberFromString, S.string)
+  it("readonlyMapFromSelf. decoder", () => {
+    const schema = S.readonlyMapFromSelf(NumberFromString, S.string)
     Util.expectDecodingSuccess(schema, new Map(), new Map())
     Util.expectDecodingSuccess(
       schema,
@@ -38,8 +35,8 @@ describe.concurrent("ReadonlyMap", () => {
     )
   })
 
-  it("readonlyMap. encoder", () => {
-    const schema = _.readonlyMap(NumberFromString, S.string)
+  it("readonlyMapFromSelf. encoder", () => {
+    const schema = S.readonlyMapFromSelf(NumberFromString, S.string)
     Util.expectEncodingSuccess(schema, new Map(), new Map())
     Util.expectEncodingSuccess(
       schema,
@@ -48,8 +45,8 @@ describe.concurrent("ReadonlyMap", () => {
     )
   })
 
-  it("readonlyMap. guard", () => {
-    const schema = _.readonlyMap(S.number, S.string)
+  it("readonlyMapFromSelf. guard", () => {
+    const schema = S.readonlyMapFromSelf(S.number, S.string)
     const is = P.is(schema)
     expect(is(new Map())).toEqual(true)
     expect(is(new Map([[1, "a"], [2, "b"], [3, "c"]]))).toEqual(true)
@@ -63,21 +60,21 @@ describe.concurrent("ReadonlyMap", () => {
     expect(is(new Map<number, string | number>([[1, "a"], [2, "b"], [3, 1]]))).toEqual(false)
   })
 
-  it("readonlyMap. pretty", () => {
-    const schema = _.readonlyMap(S.number, S.string)
-    const pretty = Pretty.pretty(schema)
+  it("readonlyMapFromSelf. pretty", () => {
+    const schema = S.readonlyMapFromSelf(S.number, S.string)
+    const pretty = Pretty.to(schema)
     expect(pretty(new Map())).toEqual("new Map([])")
     expect(pretty(new Map([[1, "a"], [2, "b"]]))).toEqual(
       `new Map([[1, "a"], [2, "b"]])`
     )
   })
 
-  it("fromEntries. property tests", () => {
-    Util.property(_.fromEntries(S.number, S.string))
+  it("readonlyMap. property tests", () => {
+    Util.roundtrip(S.readonlyMap(S.number, S.string))
   })
 
-  it("fromEntries. decoder", () => {
-    const schema = _.fromEntries(S.number, S.string)
+  it("readonlyMap. decoder", () => {
+    const schema = S.readonlyMap(S.number, S.string)
     Util.expectDecodingSuccess(schema, [], new Map())
     Util.expectDecodingSuccess(
       schema,
@@ -88,7 +85,7 @@ describe.concurrent("ReadonlyMap", () => {
     Util.expectDecodingFailure(
       schema,
       null,
-      `Expected tuple or array, actual null`
+      `Expected <anonymous tuple or array schema>, actual null`
     )
     Util.expectDecodingFailure(
       schema,
@@ -97,8 +94,8 @@ describe.concurrent("ReadonlyMap", () => {
     )
   })
 
-  it("fromEntries. encoder", () => {
-    const schema = _.fromEntries(S.number, S.string)
+  it("readonlyMap. encoder", () => {
+    const schema = S.readonlyMap(S.number, S.string)
     Util.expectEncodingSuccess(schema, new Map(), [])
     Util.expectEncodingSuccess(schema, new Map([[1, "a"], [2, "b"], [3, "c"]]), [[1, "a"], [
       2,

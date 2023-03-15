@@ -1,22 +1,12 @@
-import * as String from "@effect/schema/data/String"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("trim", () => {
-  it("exports", () => {
-    expect(String.TrimmedTypeId).exist
-    expect(String.PatternTypeId).exist
-    expect(String.StartsWithTypeId).exist
-    expect(String.EndsWithTypeId).exist
-    expect(String.IncludesTypeId).exist
-    expect(String.UUIDTypeId).exist
-  })
-
-  const schema = String.trim(S.string)
+  const schema = S.trim(S.string)
 
   it("property tests", () => {
-    Util.property(schema)
+    Util.roundtrip(schema)
   })
 
   it("Guard", () => {
@@ -40,9 +30,25 @@ describe.concurrent("trim", () => {
   it("Encoder", () => {
     Util.expectEncodingSuccess(schema, "a", "a")
     Util.expectEncodingSuccess(schema, "", "")
-    Util.expectEncodingSuccess(schema, " a", "a")
-    Util.expectEncodingSuccess(schema, "a ", "a")
-    Util.expectEncodingSuccess(schema, " a ", "a")
-    Util.expectEncodingSuccess(schema, " ", "")
+    Util.expectEncodingFailure(
+      schema,
+      " a",
+      `Expected a string with no leading or trailing whitespace, actual " a"`
+    )
+    Util.expectEncodingFailure(
+      schema,
+      "a ",
+      `Expected a string with no leading or trailing whitespace, actual "a "`
+    )
+    Util.expectEncodingFailure(
+      schema,
+      " a ",
+      `Expected a string with no leading or trailing whitespace, actual " a "`
+    )
+    Util.expectEncodingFailure(
+      schema,
+      " ",
+      `Expected a string with no leading or trailing whitespace, actual " "`
+    )
   })
 })

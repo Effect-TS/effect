@@ -1,13 +1,13 @@
-import { UUID } from "@effect/schema/data/String"
+import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("UUID", () => {
   it("property tests", () => {
-    Util.property(UUID)
+    Util.roundtrip(S.UUID)
   })
 
   it("Decoder", () => {
-    const schema = UUID
+    const schema = S.UUID
     Util.expectDecodingSuccess(schema, "123e4567-e89b-12d3-a456-426614174000")
     Util.expectDecodingFailure(
       schema,

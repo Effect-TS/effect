@@ -1,17 +1,10 @@
 import { pipe } from "@effect/data/Function"
-import * as A from "@effect/schema/data/ReadonlyArray"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("ReadonlyArray", () => {
-  it("exports", () => {
-    expect(A.MinItemsId).exist
-    expect(A.MaxItemsId).exist
-    expect(A.ItemsCountId).exist
-  })
-
   it("minItems", () => {
-    const schema = pipe(S.array(S.number), A.minItems(2))
+    const schema = pipe(S.array(S.number), S.minItems(2))
 
     Util.expectDecodingFailure(
       schema,
@@ -24,7 +17,7 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("maxItems", () => {
-    const schema = pipe(S.array(S.number), A.maxItems(2))
+    const schema = pipe(S.array(S.number), S.maxItems(2))
 
     Util.expectDecodingFailure(
       schema,
@@ -37,7 +30,7 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("items", () => {
-    const schema = pipe(S.array(S.number), A.itemsCount(2))
+    const schema = pipe(S.array(S.number), S.itemsCount(2))
 
     Util.expectDecodingFailure(
       schema,

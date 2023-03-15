@@ -2,40 +2,117 @@
  * @since 1.0.0
  */
 
+import * as B from "@effect/data/Bigint"
 import type { Brand } from "@effect/data/Brand"
 import { RefinedConstructorsTypeId } from "@effect/data/Brand"
+import type { Chunk } from "@effect/data/Chunk"
+import * as C from "@effect/data/Chunk"
+import * as D from "@effect/data/Data"
 import * as E from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
+import type { Either } from "@effect/data/Either"
+import * as Equal from "@effect/data/Equal"
+import { dual, pipe } from "@effect/data/Function"
+import * as N from "@effect/data/Number"
 import type { Option } from "@effect/data/Option"
+import * as O from "@effect/data/Option"
+import { isDate } from "@effect/data/Predicate"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as A from "@effect/schema/annotation/AST"
+import type { Arbitrary } from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import type { ParseOptions } from "@effect/schema/AST"
-import * as DataDate from "@effect/schema/data/Date"
-import * as N from "@effect/schema/data/Number"
-import * as DataObject from "@effect/schema/data/Object"
-import * as DataOption from "@effect/schema/data/Option"
-import * as SRA from "@effect/schema/data/ReadonlyArray"
-import * as S from "@effect/schema/data/String"
-import { formatErrors } from "@effect/schema/formatter/Tree"
 import * as I from "@effect/schema/internal/common"
 import * as P from "@effect/schema/Parser"
 import type { ParseResult } from "@effect/schema/ParseResult"
+import * as PR from "@effect/schema/ParseResult"
+import type { Pretty } from "@effect/schema/Pretty"
+import { formatErrors } from "@effect/schema/TreeFormatter"
 
 /**
  * @category model
  * @since 1.0.0
  */
-export interface Schema<A> {
-  readonly A: (_: A) => A
+export interface Schema<From, To = From> {
+  readonly From: (_: From) => From
+  readonly To: (_: To) => To
   readonly ast: AST.AST
 }
 
 /**
  * @since 1.0.0
  */
-export type Infer<S extends { readonly A: (_: any) => any }> = Parameters<S["A"]>[0]
+export type From<S extends { readonly From: (_: any) => any }> = Parameters<S["From"]>[0]
+
+/**
+ * @since 1.0.0
+ */
+export type To<S extends { readonly To: (_: any) => any }> = Parameters<S["To"]>[0]
+
+/**
+ * @since 1.0.0
+ */
+export const from = <I, A>(schema: Schema<I, A>): Schema<I> => make(AST.getFrom(schema.ast))
+
+/**
+ * @since 1.0.0
+ */
+export const to = <I, A>(schema: Schema<I, A>): Schema<A> => make(AST.getTo(schema.ast))
+
+/* c8 ignore start */
+export {
+  /**
+   * @since 1.0.0
+   */
+  asserts,
+  /**
+   * @since 1.0.0
+   */
+  decode,
+  /**
+   * @since 1.0.0
+   */
+  decodeEither,
+  /**
+   * @since 1.0.0
+   */
+  decodeOption,
+  /**
+   * @since 1.0.0
+   */
+  encode,
+  /**
+   * @since 1.0.0
+   */
+  encodeEither,
+  /**
+   * @since 1.0.0
+   */
+  encodeOption,
+  /**
+   * @since 1.0.0
+   */
+  is,
+  /**
+   * @since 1.0.0
+   */
+  validate,
+  /**
+   * @since 1.0.0
+   */
+  validateEither,
+  /**
+   * @since 1.0.0
+   */
+  validateOption
+} from "@effect/schema/Parser"
+
+export type {
+  /**
+   * @since 1.0.0
+   */
+  ToAsserts
+} from "@effect/schema/Parser"
+/* c8 ignore end */
 
 // ---------------------------------------------
 // constructors
@@ -45,24 +122,27 @@ export type Infer<S extends { readonly A: (_: any) => any }> = Parameters<S["A"]
  * @category constructors
  * @since 1.0.0
  */
-export const make: <A>(ast: AST.AST) => Schema<A> = I.makeSchema
+export const make: <I, A>(ast: AST.AST) => Schema<I, A> = I.makeSchema
+
+const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
+  make(AST.createLiteral(value))
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const literal: <Literals extends ReadonlyArray<AST.LiteralValue>>(
+export const literal = <Literals extends ReadonlyArray<AST.LiteralValue>>(
   ...literals: Literals
-) => Schema<Literals[number]> = I.literal
+): Schema<Literals[number]> => union(...literals.map((literal) => makeLiteral(literal)))
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const uniqueSymbol: <S extends symbol>(
+export const uniqueSymbol = <S extends symbol>(
   symbol: S,
   annotations?: AST.Annotated["annotations"]
-) => Schema<S> = I.uniqueSymbol
+): Schema<S> => make(AST.createUniqueSymbol(symbol, annotations))
 
 /**
  * @category constructors
@@ -80,15 +160,6 @@ export const enums = <A extends { [x: string]: string | number }>(
   )
 
 /**
- * @category constructors
- * @since 1.0.0
- */
-export const instanceOf: <A extends abstract new(...args: any) => any>(
-  constructor: A,
-  annotationOptions?: AnnotationOptions<object>
-) => Schema<InstanceType<A>> = DataObject.instanceOf
-
-/**
  * @since 1.0.0
  */
 export type Join<T> = T extends [infer Head, ...infer Tail]
@@ -102,7 +173,7 @@ export type Join<T> = T extends [infer Head, ...infer Tail]
  */
 export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
   ...[head, ...tail]: T
-): Schema<Join<{ [K in keyof T]: Infer<T[K]> }>> => {
+): Schema<Join<{ [K in keyof T]: To<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
   for (const span of tail) {
     types = pipe(
@@ -161,227 +232,20 @@ const getTemplateLiterals = (
   @category combinators
   @since 1.0.0
 */
-export const typeAlias: (
+export const declare = (
   typeParameters: ReadonlyArray<Schema<any>>,
   type: Schema<any>,
+  decode: (
+    ...typeParameters: ReadonlyArray<Schema<any>>
+  ) => (input: unknown, options?: ParseOptions) => ParseResult<any>,
   annotations?: AST.Annotated["annotations"]
-) => Schema<any> = I.typeAlias
-
-// ---------------------------------------------
-// filters
-// ---------------------------------------------
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const minLength: <A extends string>(
-  minLength: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.minLength
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const maxLength: <A extends string>(
-  maxLength: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.maxLength
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const length = <A extends string>(
-  length: number,
-  annotationOptions?: AnnotationOptions<A>
-) =>
-  (self: Schema<A>): Schema<A> => minLength(length, annotationOptions)(maxLength<A>(length)(self))
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const nonEmpty = <A extends string>(
-  annotationOptions?: AnnotationOptions<A>
-): (self: Schema<A>) => Schema<A> => minLength(1, annotationOptions)
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const startsWith: <A extends string>(
-  startsWith: string,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.startsWith
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const endsWith: <A extends string>(
-  endsWith: string,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.endsWith
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const includes: <A extends string>(
-  searchString: string,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.includes
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const pattern: <A extends string>(
-  regex: RegExp,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.pattern
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const lessThan: <A extends number>(
-  max: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.lessThan
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const lessThanOrEqualTo: <A extends number>(
-  max: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.lessThanOrEqualTo
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const greaterThan: <A extends number>(
-  min: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.greaterThan
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const greaterThanOrEqualTo: <A extends number>(
-  min: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.greaterThanOrEqualTo
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const between: <A extends number>(
-  min: number,
-  max: number,
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.between
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const int: <A extends number>(
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.int
-
-/**
- * Note. This combinator does not make any transformations, it only validates.
- * If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
- *
- * @category filters
- * @since 1.0.0
- */
-export const trimmed: <A extends string>(
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = S.trimmed
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const nonNaN: <A extends number>(
-  annotationOptions?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.nonNaN
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const finite: <A extends number>(
-  options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.finite
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const positive: <A extends number>(
-  options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.positive
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const negative: <A extends number>(
-  options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.negative
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const nonNegative: <A extends number>(
-  options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.nonNegative
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const nonPositive: <A extends number>(
-  options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.nonPositive
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const maxItems: <A>(
-  n: number,
-  options?: AnnotationOptions<ReadonlyArray<A>>
-) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.maxItems
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const minItems: <A>(
-  n: number,
-  options?: AnnotationOptions<ReadonlyArray<A>>
-) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.minItems
-
-/**
- * @category filters
- * @since 1.0.0
- */
-export const itemsCount: <A>(
-  n: number,
-  options?: AnnotationOptions<ReadonlyArray<A>>
-) => (self: Schema<ReadonlyArray<A>>) => Schema<ReadonlyArray<A>> = SRA.itemsCount
+): Schema<any> =>
+  make(AST.createDeclaration(
+    typeParameters.map((tp) => tp.ast),
+    type.ast,
+    (...typeParameters) => decode(...typeParameters.map(make)),
+    annotations
+  ))
 
 // ---------------------------------------------
 // combinators
@@ -391,36 +255,46 @@ export const itemsCount: <A>(
  * @category combinators
  * @since 1.0.0
  */
-export const union: <Members extends ReadonlyArray<Schema<any>>>(
+export const union = <Members extends ReadonlyArray<Schema<any>>>(
   ...members: Members
-) => Schema<Infer<Members[number]>> = I.union
+): Schema<From<Members[number]>, To<Members[number]>> =>
+  make(AST.createUnion(members.map((m) => m.ast)))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nullable: <A>(self: Schema<A>) => Schema<A | null> = I.nullable
+export const nullable = <From, To>(self: Schema<From, To>): Schema<From | null, To | null> =>
+  union(_null, self)
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const keyof = <A>(schema: Schema<A>): Schema<keyof A> => make(AST.keyof(schema.ast))
+export const keyof = <I, A>(schema: Schema<I, A>): Schema<keyof A> => make(AST.keyof(schema.ast))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const tuple: <Elements extends ReadonlyArray<Schema<any>>>(
+export const tuple = <Elements extends ReadonlyArray<Schema<any>>>(
   ...elements: Elements
-) => Schema<{ readonly [K in keyof Elements]: Infer<Elements[K]> }> = I.tuple
+): Schema<
+  { readonly [K in keyof Elements]: From<Elements[K]> },
+  { readonly [K in keyof Elements]: To<Elements[K]> }
+> =>
+  make(
+    AST.createTuple(elements.map((schema) => AST.createElement(schema.ast, false)), O.none(), true)
+  )
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const rest = <R>(rest: Schema<R>) =>
-  <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, ...Array<R>]> => {
+export const rest = <IR, R>(rest: Schema<IR, R>) =>
+  <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+    self: Schema<I, A>
+  ): Schema<readonly [...I, ...Array<IR>], readonly [...A, ...Array<R>]> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendRestElement(self.ast, rest.ast))
     }
@@ -431,8 +305,10 @@ export const rest = <R>(rest: Schema<R>) =>
  * @category combinators
  * @since 1.0.0
  */
-export const element = <E>(element: Schema<E>) =>
-  <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E]> => {
+export const element = <IE, E>(element: Schema<IE, E>) =>
+  <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+    self: Schema<I, A>
+  ): Schema<readonly [...I, IE], readonly [...A, E]> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendElement(self.ast, AST.createElement(element.ast, false)))
     }
@@ -443,8 +319,10 @@ export const element = <E>(element: Schema<E>) =>
  * @category combinators
  * @since 1.0.0
  */
-export const optionalElement = <E>(element: Schema<E>) =>
-  <A extends ReadonlyArray<any>>(self: Schema<A>): Schema<readonly [...A, E?]> => {
+export const optionalElement = <IE, E>(element: Schema<IE, E>) =>
+  <I extends ReadonlyArray<any>, A extends ReadonlyArray<any>>(
+    self: Schema<I, A>
+  ): Schema<readonly [...I, IE?], readonly [...A, E?]> => {
     if (AST.isTuple(self.ast)) {
       return make(AST.appendElement(self.ast, AST.createElement(element.ast, true)))
     }
@@ -455,15 +333,16 @@ export const optionalElement = <E>(element: Schema<E>) =>
  * @category combinators
  * @since 1.0.0
  */
-export const array: <A>(item: Schema<A>) => Schema<ReadonlyArray<A>> = I.array
+export const array = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, ReadonlyArray<A>> =>
+  make(AST.createTuple([], O.some([item.ast]), true))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const nonEmptyArray = <A>(
-  item: Schema<A>
-): Schema<readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
+export const nonEmptyArray = <I, A>(
+  item: Schema<I, A>
+): Schema<readonly [I, ...Array<I>], readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
 
 /**
  * @since 1.0.0
@@ -473,13 +352,11 @@ export type Spread<A> = {
 } extends infer B ? B : never
 
 /**
- * @category symbol
  * @since 1.0.0
  */
 export const OptionalSchemaId = Symbol.for("@effect/schema/Schema/OptionalSchema")
 
 /**
- * @category symbol
  * @since 1.0.0
  */
 export type OptionalSchemaId = typeof OptionalSchemaId
@@ -487,16 +364,23 @@ export type OptionalSchemaId = typeof OptionalSchemaId
 /**
  * @since 1.0.0
  */
-export interface OptionalSchema<A> {
-  readonly A: (_: A) => A
+export interface OptionalSchema<From, To = From> {
+  readonly From: (_: From) => From
+  readonly To: (_: To) => To
   readonly _id: OptionalSchemaId
 }
 
+const isOptionalSchema = <I, A>(schema: object): schema is OptionalSchema<I, A> =>
+  "_id" in schema && schema["_id"] === OptionalSchemaId
+
 /**
- * @category combinators
  * @since 1.0.0
  */
-export const optional: <A>(schema: Schema<A>) => OptionalSchema<A> = I.optional
+export const optional = <I, A>(schema: Schema<I, A>): OptionalSchema<I, A> => {
+  const out: any = make(schema.ast)
+  out["_id"] = OptionalSchemaId
+  return out
+}
 
 /**
  * @since 1.0.0
@@ -509,21 +393,40 @@ export type OptionalKeys<T> = {
  * @category combinators
  * @since 1.0.0
  */
-export const struct: <Fields extends Record<PropertyKey, Schema<any> | OptionalSchema<any>>>(
+export const struct = <Fields extends Record<PropertyKey, Schema<any> | OptionalSchema<any>>>(
   fields: Fields
-) => Schema<
+): Schema<
   Spread<
-    & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: Infer<Fields[K]> }
-    & { readonly [K in OptionalKeys<Fields>]?: Infer<Fields[K]> }
+    & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: From<Fields[K]> }
+    & { readonly [K in OptionalKeys<Fields>]?: From<Fields[K]> }
+  >,
+  Spread<
+    & { readonly [K in Exclude<keyof Fields, OptionalKeys<Fields>>]: To<Fields[K]> }
+    & { readonly [K in OptionalKeys<Fields>]?: To<Fields[K]> }
   >
-> = I.struct
+> =>
+  make(
+    AST.createTypeLiteral(
+      Reflect.ownKeys(fields).map((key) =>
+        AST.createPropertySignature(
+          key,
+          (fields[key] as any).ast,
+          isOptionalSchema(fields[key]),
+          true
+        )
+      ),
+      []
+    )
+  )
 
 /**
  * @category combinators
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (self: Schema<A>): Schema<{ readonly [P in Keys[number]]: A[P] }> =>
+  <I extends Record<keyof A, any>>(
+    self: Schema<I, A>
+  ): Schema<{ readonly [P in Keys[number]]: I[P] }, { readonly [P in Keys[number]]: A[P] }> =>
     make(AST.pick(self.ast, keys))
 
 /**
@@ -531,8 +434,12 @@ export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  (self: Schema<A>): Schema<{ readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }> =>
-    make(AST.omit(self.ast, keys))
+  <I extends Record<keyof A, any>>(
+    self: Schema<I, A>
+  ): Schema<
+    { readonly [P in Exclude<keyof A, Keys[number]>]: I[P] },
+    { readonly [P in Exclude<keyof A, Keys[number]>]: A[P] }
+  > => make(AST.omit(self.ast, keys))
 
 /**
  * Returns an object containing all property signatures of a given schema.
@@ -544,7 +451,7 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  * @param schema - The schema to extract property signatures from.
  *
  * @example
- * import * as S from "@effect/schema"
+ * import * as S from "@effect/schema/Schema"
  *
  * const Person = S.struct({
  *   name: S.string,
@@ -558,7 +465,9 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
  *
  * @since 1.0.0
  */
-export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: Schema<A[K]> } => {
+export const getPropertySignatures = <I extends Record<keyof A, any>, A>(
+  schema: Schema<I, A>
+): { [K in keyof A]: Schema<I[K], A[K]> } => {
   const out: Record<PropertyKey, Schema<any>> = {}
   const propertySignatures = AST._getPropertySignatures(schema.ast)
   for (const propertySignature of propertySignatures) {
@@ -571,7 +480,9 @@ export const getPropertySignatures = <A>(schema: Schema<A>): { [K in keyof A]: S
  * @category model
  * @since 1.0.0
  */
-export interface BrandSchema<A extends Brand<any>> extends Schema<A>, Brand.Constructor<A> {}
+export interface BrandSchema<From, To extends Brand<any>>
+  extends Schema<From, To>, Brand.Constructor<To>
+{}
 
 /**
  * Returns a nominal branded schema by applying a brand to a given schema.
@@ -584,11 +495,11 @@ export interface BrandSchema<A extends Brand<any>> extends Schema<A>, Brand.Cons
  * @param brand - The brand to apply.
  *
  * @example
- * import * as S from "@effect/schema"
+ * import * as S from "@effect/schema/Schema"
  * import { pipe } from "@effect/data/Function"
  *
  * const Int = pipe(S.number, S.int(), S.brand("Int"))
- * type Int = S.Infer<typeof Int> // number & Brand<"Int">
+ * type Int = S.To<typeof Int> // number & Brand<"Int">
  *
  * @category combinators
  * @since 1.0.0
@@ -597,43 +508,48 @@ export const brand = <B extends string, A>(
   brand: B,
   options?: AnnotationOptions<A>
 ) =>
-  (self: Schema<A>): BrandSchema<A & Brand<B>> => {
-    const annotations = I.toAnnotations(options)
-    annotations[A.BrandId] = [...getBrands(self.ast), brand]
+  <I>(self: Schema<I, A>): BrandSchema<I, A & Brand<B>> => {
+    const annotations = toAnnotations(options)
+    annotations[AST.BrandAnnotationId] = [...getBrands(self.ast), brand]
     const ast = AST.mergeAnnotations(self.ast, annotations)
-    const schema: Schema<A & Brand<B>> = make(ast)
-    const decodeOrThrow = P.decodeOrThrow(schema)
-    const getOption = P.getOption(schema)
+    const schema = make(ast)
     const decode = P.decode(schema)
+    const decodeOption = P.decodeOption(schema)
+    const decodeEither = P.decodeEither(schema)
     const is = P.is(schema)
-    const out: any = Object.assign((input: unknown) => decodeOrThrow(input), {
+    const out: any = Object.assign((input: unknown) => decode(input), {
       [RefinedConstructorsTypeId]: RefinedConstructorsTypeId,
       ast,
-      option: (input: unknown) => getOption(input),
+      option: (input: unknown) => decodeOption(input),
       either: (input: unknown) =>
-        E.mapLeft(decode(input), (errors) => [{ meta: input, message: formatErrors(errors) }]),
+        E.mapLeft(
+          decodeEither(input),
+          (errors) => [{ meta: input, message: formatErrors(errors) }]
+        ),
       refine: (input: unknown): input is A & Brand<B> => is(input)
     })
     return out
   }
 
 const getBrands = (ast: AST.AST): Array<string> =>
-  (ast.annotations[A.BrandId] as Array<string> | undefined) || []
+  (ast.annotations[AST.BrandAnnotationId] as Array<string> | undefined) || []
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const partial = <A>(self: Schema<A>): Schema<Partial<A>> => make(AST.partial(self.ast))
+export const partial = <I, A>(self: Schema<I, A>): Schema<Partial<I>, Partial<A>> =>
+  make(AST.partial(self.ast))
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const record: <K extends string | symbol, V>(
+export const record = <K extends string | symbol, I, A>(
   key: Schema<K>,
-  value: Schema<V>
-) => Schema<{ readonly [k in K]: V }> = I.record
+  value: Schema<I, A>
+): Schema<{ readonly [k in K]: I }, { readonly [k in K]: A }> =>
+  make(AST.createRecord(key.ast, value.ast, true))
 
 const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
   x.propertySignatures.some((px) => y.propertySignatures.some((py) => px.name === py.name))
@@ -675,8 +591,8 @@ const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST
  * @category combinators
  * @since 1.0.0
  */
-export const extend = <B>(that: Schema<B>) =>
-  <A>(self: Schema<A>): Schema<Spread<A & B>> =>
+export const extend = <IB, B>(that: Schema<IB, B>) =>
+  <I, A>(self: Schema<I, A>): Schema<Spread<I & IB>, Spread<A & B>> =>
     make(
       intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],
@@ -688,24 +604,60 @@ export const extend = <B>(that: Schema<B>) =>
  * @category combinators
  * @since 1.0.0
  */
-export const lazy: <A>(
-  f: () => Schema<A>,
+export const lazy = <I, A = I>(
+  f: () => Schema<I, A>,
   annotations?: AST.Annotated["annotations"]
-) => Schema<A> = I.lazy
+): Schema<I, A> => make(AST.createLazy(() => f().ast, annotations))
 
 /**
- * @category combinators
  * @since 1.0.0
  */
 export type AnnotationOptions<A> = {
-  typeId?: A.Type | { id: A.Type; params: unknown }
-  message?: A.Message<A>
-  identifier?: A.Identifier
-  title?: A.Title
-  description?: A.Description
-  examples?: A.Examples
-  documentation?: A.Documentation
-  jsonSchema?: A.JSONSchema
+  typeId?: AST.TypeAnnotation | { id: AST.TypeAnnotation; params: unknown }
+  message?: AST.MessageAnnotation<A>
+  identifier?: AST.IdentifierAnnotation
+  title?: AST.TitleAnnotation
+  description?: AST.DescriptionAnnotation
+  examples?: AST.ExamplesAnnotation
+  documentation?: AST.DocumentationAnnotation
+  jsonSchema?: AST.JSONSchemaAnnotation
+}
+
+const toAnnotations = <A>(
+  options?: AnnotationOptions<A>
+): AST.Annotated["annotations"] => {
+  const annotations: AST.Annotated["annotations"] = {}
+  if (options?.typeId !== undefined) {
+    const typeId = options?.typeId
+    if (typeof typeId === "object") {
+      annotations[AST.TypeAnnotationId] = typeId.id
+      annotations[typeId.id] = typeId.params
+    } else {
+      annotations[AST.TypeAnnotationId] = typeId
+    }
+  }
+  if (options?.message !== undefined) {
+    annotations[AST.MessageAnnotationId] = options?.message
+  }
+  if (options?.identifier !== undefined) {
+    annotations[AST.IdentifierAnnotationId] = options?.identifier
+  }
+  if (options?.title !== undefined) {
+    annotations[AST.TitleAnnotationId] = options?.title
+  }
+  if (options?.description !== undefined) {
+    annotations[AST.DescriptionAnnotationId] = options?.description
+  }
+  if (options?.examples !== undefined) {
+    annotations[AST.ExamplesAnnotationId] = options?.examples
+  }
+  if (options?.documentation !== undefined) {
+    annotations[AST.DocumentationAnnotationId] = options?.documentation
+  }
+  if (options?.jsonSchema !== undefined) {
+    annotations[AST.JSONSchemaAnnotationId] = options?.jsonSchema
+  }
+  return annotations
 }
 
 /**
@@ -714,17 +666,25 @@ export type AnnotationOptions<A> = {
  */
 export function filter<A, B extends A>(
   refinement: Refinement<A, B>,
-  annotationOptions?: AnnotationOptions<A>
-): (self: Schema<A>) => Schema<B>
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, B>
 export function filter<A>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>
-): (self: Schema<A>) => Schema<A>
+): <I>(self: Schema<I, A>) => Schema<I, A>
 export function filter<A>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>
-): (self: Schema<A>) => Schema<A> {
-  return I.filter(predicate, options)
+): <I>(self: Schema<I, A>) => Schema<I, A> {
+  return (from) => {
+    const ast = AST.createRefinement(
+      from.ast,
+      (a: A) => predicate(a) ? PR.success(a) : PR.failure(PR.type(ast, a)),
+      false,
+      toAnnotations(options)
+    )
+    return make(ast)
+  }
 }
 
 /**
@@ -734,11 +694,24 @@ export function filter<A>(
   @category combinators
   @since 1.0.0
  */
-export const transformOrFail: <A, B>(
-  to: Schema<B>,
+export const transformEither: {
+  <B, A>(
+    to: Schema<any, B>,
+    decode: (input: A, options?: ParseOptions) => ParseResult<B>,
+    encode: (input: B, options?: ParseOptions) => ParseResult<A>
+  ): <I>(self: Schema<I, A>) => Schema<I, B>
+  <I, A, B>(
+    self: Schema<I, A>,
+    to: Schema<any, B>,
+    decode: (input: A, options?: ParseOptions) => ParseResult<B>,
+    encode: (input: B, options?: ParseOptions) => ParseResult<A>
+  ): Schema<I, B>
+} = dual(4, <I, A, B>(
+  self: Schema<I, A>,
+  to: Schema<any, B>,
   decode: (input: A, options?: ParseOptions) => ParseResult<B>,
   encode: (input: B, options?: ParseOptions) => ParseResult<A>
-) => (self: Schema<A>) => Schema<B> = I.transformOrFail
+): Schema<I, B> => make(AST.createTransform(self.ast, to.ast, decode, encode, false)))
 
 /**
   Create a new `Schema` by transforming the input and output of an existing `Schema`
@@ -747,11 +720,22 @@ export const transformOrFail: <A, B>(
   @category combinators
   @since 1.0.0
 */
-export const transform: <A, B>(
-  to: Schema<B>,
-  f: (a: A) => B,
-  g: (b: B) => A
-) => (self: Schema<A>) => Schema<B> = I.transform
+export const transform: {
+  <B, A>(
+    to: Schema<any, B>,
+    ab: (a: A) => B,
+    ba: (b: B) => A
+  ): <I>(self: Schema<I, A>) => Schema<I, B>
+  <I, A, B>(self: Schema<I, A>, to: Schema<any, B>, ab: (a: A) => B, ba: (b: B) => A): Schema<I, B>
+} = dual(
+  4,
+  <I, A, B>(
+    self: Schema<I, A>,
+    to: Schema<any, B>,
+    ab: (a: A) => B,
+    ba: (b: B) => A
+  ): Schema<I, B> => transformEither(self, to, (a) => PR.success(ab(a)), (b) => PR.success(ba(b)))
+)
 
 /**
  * Attaches a property signature with the specified key and value to the schema.
@@ -763,7 +747,7 @@ export const transform: <A, B>(
  * @param value - The value of the property to add to the schema.
  *
  * @example
- * import * as S from "@effect/schema"
+ * import * as S from "@effect/schema/Schema"
  * import { pipe } from "@effect/data/Function"
  *
  * const Circle = S.struct({ radius: S.number })
@@ -773,7 +757,7 @@ export const transform: <A, B>(
  *   pipe(Square, S.attachPropertySignature("kind", "square"))
  * )
  *
- * assert.deepStrictEqual(S.decodeOrThrow(Shape)({ radius: 10 }), {
+ * assert.deepStrictEqual(S.decode(Shape)({ radius: 10 }), {
  *   kind: "circle",
  *   radius: 10
  * })
@@ -785,14 +769,12 @@ export const attachPropertySignature = <K extends PropertyKey, V extends AST.Lit
   key: K,
   value: V
 ) =>
-  <A extends object>(schema: Schema<A>): Schema<Spread<A & { readonly [k in K]: V }>> =>
-    pipe(
+  <I, A extends object>(schema: Schema<I, A>): Schema<I, Spread<A & { readonly [k in K]: V }>> =>
+    transform<I, A, any>(
       schema,
-      transform<A, any>(
-        pipe(schema, extend(struct({ [key]: literal(value) }))),
-        (a) => ({ ...a, [key]: value }),
-        ({ [key]: _key, ...rest }) => rest
-      )
+      pipe(schema, extend(struct({ [key]: literal(value) }))),
+      (a) => ({ ...a, [key]: value }),
+      ({ [key]: _key, ...rest }) => rest
     )
 
 // ---------------------------------------------
@@ -800,65 +782,69 @@ export const attachPropertySignature = <K extends PropertyKey, V extends AST.Lit
 // ---------------------------------------------
 
 /**
- * @category annotations
+ * @category combinators
  * @since 1.0.0
  */
-export const annotations: (
-  annotations: AST.Annotated["annotations"]
-) => <A>(self: Schema<A>) => Schema<A> = I.annotations
+export const annotations = (annotations: AST.Annotated["annotations"]) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> => make(AST.mergeAnnotations(self.ast, annotations))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const message = (message: A.Message<unknown>) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.MessageId, message))
+export const message = (message: AST.MessageAnnotation<unknown>) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.MessageAnnotationId, message))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const identifier = (identifier: A.Identifier) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.IdentifierId, identifier))
+export const identifier = (identifier: AST.IdentifierAnnotation) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.IdentifierAnnotationId, identifier))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const title = (title: A.Title) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.TitleId, title))
+export const title = (title: AST.TitleAnnotation) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.TitleAnnotationId, title))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const description = (description: A.Description) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.DescriptionId, description))
+export const description = (description: AST.DescriptionAnnotation) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.DescriptionAnnotationId, description))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const examples = (examples: A.Examples) =>
-  <A>(self: Schema<A>): Schema<A> => make(AST.setAnnotation(self.ast, A.ExamplesId, examples))
+export const examples = (examples: AST.ExamplesAnnotation) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.ExamplesAnnotationId, examples))
 
 /**
  * @category annotations
  * @since 1.0.0
  */
-export const documentation = (documentation: A.Documentation) =>
-  <A>(self: Schema<A>): Schema<A> =>
-    make(AST.setAnnotation(self.ast, A.DocumentationId, documentation))
+export const documentation = (documentation: AST.DocumentationAnnotation) =>
+  <I, A>(self: Schema<I, A>): Schema<I, A> =>
+    make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
 
 // ---------------------------------------------
 // data
 // ---------------------------------------------
 
-const _undefined: Schema<undefined> = I._undefined
+const _undefined: Schema<undefined> = make(AST.undefinedKeyword)
 
-const _void: Schema<void> = I._void
+const _void: Schema<void> = make(AST.voidKeyword)
 
-const _null: Schema<null> = I._null
+const _null: Schema<null> = make(AST.createLiteral(null))
 
 export {
   /**
@@ -882,84 +868,1506 @@ export {
  * @category primitives
  * @since 1.0.0
  */
-export const never: Schema<never> = I.never
+export const never: Schema<never> = make(AST.neverKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const unknown: Schema<unknown> = I.unknown
+export const unknown: Schema<unknown> = make(AST.unknownKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const any: Schema<any> = I.any
+export const any: Schema<any> = make(AST.anyKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const string: Schema<string> = I.string
+export const string: Schema<string> = make(AST.stringKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const number: Schema<number> = I.number
+export const number: Schema<number> = make(AST.numberKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const boolean: Schema<boolean> = I.boolean
+export const boolean: Schema<boolean> = make(AST.booleanKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const bigint: Schema<bigint> = I.bigint
+export const bigint: Schema<bigint> = make(AST.bigIntKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const symbol: Schema<symbol> = I.symbol
+export const symbol: Schema<symbol> = make(AST.symbolKeyword)
 
 /**
  * @category primitives
  * @since 1.0.0
  */
-export const object: Schema<object> = I.object
+export const object: Schema<object> = make(AST.objectKeyword)
+
+// ---------------------------------------------
+// data/Bigint
+// ---------------------------------------------
 
 /**
- * @category primitives
  * @since 1.0.0
  */
-export const date: Schema<Date> = DataDate.date
+export const GreaterThanBigintTypeId = "@effect/schema/GreaterThanBigintTypeId"
 
 /**
- * Transforms a `string` into a `string` with no leading or trailing whitespace.
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThanBigint = <A extends bigint>(
+  min: bigint,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a > min, {
+        typeId: GreaterThanBigintTypeId,
+        description: `a bigint greater than ${min}n`,
+        jsonSchema: { exclusiveMinimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const GreaterThanOrEqualToBigintTypeId = "@effect/schema/GreaterThanOrEqualToBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualToBigint = <A extends bigint>(
+  min: bigint,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a >= min, {
+        typeId: GreaterThanOrEqualToBigintTypeId,
+        description: `a bigint greater than or equal to ${min}n`,
+        jsonSchema: { minimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const LessThanBigintTypeId = "@effect/schema/LessThanBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThanBigint = <A extends bigint>(
+  max: bigint,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a < max, {
+        typeId: LessThanBigintTypeId,
+        description: `a bigint less than ${max}n`,
+        jsonSchema: { exclusiveMaximum: max },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const LessThanOrEqualToBigintTypeId = "@effect/schema/LessThanOrEqualToBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualToBigint = <A extends bigint>(
+  max: bigint,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a <= max, {
+        typeId: LessThanOrEqualToBigintTypeId,
+        description: `a bigint less than or equal to ${max}n`,
+        jsonSchema: { maximum: max },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const BetweenBigintTypeId = "@effect/schema/BetweenBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const betweenBigint = <A extends bigint>(
+  min: bigint,
+  max: bigint,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a >= min && a <= max, {
+        typeId: BetweenBigintTypeId,
+        description: `a bigint between ${min}n and ${max}n`,
+        jsonSchema: { maximum: max, minimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const PositiveBigintTypeId = "@effect/schema/PositiveBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const positiveBigint = <A extends bigint>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  greaterThanBigint(0n, {
+    typeId: PositiveBigintTypeId,
+    description: "a positive bigint",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NegativeBigintTypeId = "@effect/schema/NegativeBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const negativeBigint = <A extends bigint>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  lessThanBigint(0n, {
+    typeId: NegativeBigintTypeId,
+    description: "a negative bigint",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NonNegativeBigintTypeId = "@effect/schema/NonNegativeBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNegativeBigint = <A extends bigint>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  greaterThanOrEqualToBigint(0n, {
+    typeId: NonNegativeBigintTypeId,
+    description: "a non-negative bigint",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NonPositiveBigintTypeId = "@effect/schema/NonPositiveBigintTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonPositiveBigint = <A extends bigint>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  lessThanOrEqualToBigint(0n, {
+    typeId: NonPositiveBigintTypeId,
+    description: "a non-positive bigint",
+    ...options
+  })
+
+/**
+ * Clamps a bigint between a minimum and a maximum value.
  *
  * @category parsers
  * @since 1.0.0
  */
-export const trim = (item: Schema<string>): Schema<string> => S.trim(item)
+export const clampBigint = <A extends bigint>(min: bigint, max: bigint) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    transform(
+      self,
+      pipe(self, betweenBigint(min, max)),
+      (self) => B.clamp(self, min, max) as A,
+      (self) => B.clamp(self, min, max) as A
+    )
+
+// ---------------------------------------------
+// data/Brand
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const BrandTypeId = "@effect/schema/BrandTypeId"
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
+export const fromBrand = <C extends Brand<string>>(
+  constructor: Brand.Constructor<C>,
+  options?: AnnotationOptions<Brand.Unbranded<C>>
+) =>
+  <I, A extends Brand.Unbranded<C>>(self: Schema<I, A>): Schema<I, A & C> =>
+    pipe(
+      self,
+      filter<A, A & C>(
+        (x): x is A & C => constructor.refine(x),
+        {
+          typeId: BrandTypeId,
+          message: (a) =>
+            (constructor.either(a) as E.Left<Brand.BrandErrors>).left.map((v) => v.message)
+              .join(", "),
+          ...options
+        }
+      )
+    )
+
+// ---------------------------------------------
+// data/Chunk
+// ---------------------------------------------
+
+const chunkArbitrary = <A>(item: Arbitrary<A>): Arbitrary<Chunk<A>> =>
+  (fc) => fc.array(item(fc)).map(C.fromIterable)
+
+const chunkPretty = <A>(item: Pretty<A>): Pretty<Chunk<A>> =>
+  (c) => `Chunk(${C.toReadonlyArray(c).map(item).join(", ")})`
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk<I>, Chunk<A>> => {
+  const schema = declare(
+    [item],
+    struct({
+      _id: uniqueSymbol(Symbol.for("@effect/data/Chunk")),
+      length: number
+    }),
+    <A>(item: Schema<A>) => {
+      const items = P.decodeEither(array(item))
+      return (u, options) =>
+        !C.isChunk(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          E.map(items(C.toReadonlyArray(u), options), C.fromIterable)
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Chunk",
+      [I.PrettyHookId]: chunkPretty,
+      [I.ArbitraryHookId]: chunkArbitrary
+    }
+  )
+  return schema
+}
 
 /**
  * @category parsers
  * @since 1.0.0
  */
-export const option: <A>(value: Schema<A>) => Schema<Option<A>> = DataOption.parseNullable
+export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk<A>> =>
+  transform(array(item), chunkFromSelf(item), C.fromIterable, C.toReadonlyArray)
+
+// ---------------------------------------------
+// data/Data
+// ---------------------------------------------
+
+const toData = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(a: A): D.Data<A> =>
+  Array.isArray(a) ? D.array(a) : D.struct(a)
+
+const dataArbitrary = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+  item: Arbitrary<A>
+): Arbitrary<D.Data<A>> => (fc) => item(fc).map(toData)
+
+const dataPretty = <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+  item: Pretty<A>
+): Pretty<D.Data<A>> => (d) => `Data(${item(d)})`
 
 /**
- * Restricts the value to be within the range specified by the minimum and maximum values.
- *
+ * @category combinators
+ * @since 1.0.0
+ */
+export const dataFromSelf = <
+  I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
+  A extends Readonly<Record<string, any>> | ReadonlyArray<any>
+>(
+  item: Schema<I, A>
+): Schema<D.Data<I>, D.Data<A>> => {
+  const schema = declare(
+    [item],
+    item,
+    <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
+      item: Schema<A>
+    ) => {
+      const decode = P.decodeEither(item)
+      return (u, options) =>
+        !Equal.isEqual(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          E.map(decode(u, options), toData)
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Data",
+      [I.PrettyHookId]: dataPretty,
+      [I.ArbitraryHookId]: dataArbitrary
+    }
+  )
+  return schema
+}
+
+/**
  * @category parsers
  * @since 1.0.0
  */
-export const clamp: <A extends number>(
+export const data = <
+  I extends Readonly<Record<string, any>> | ReadonlyArray<any>,
+  A extends Readonly<Record<string, any>> | ReadonlyArray<any>
+>(
+  item: Schema<I, A>
+): Schema<I, D.Data<A>> =>
+  transform(
+    item,
+    dataFromSelf(item),
+    toData,
+    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) as any
+  )
+
+// ---------------------------------------------
+// data/Date
+// ---------------------------------------------
+
+const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
+
+const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const date: Schema<Date> = declare(
+  [],
+  struct({}),
+  () => (u) => !isDate(u) ? PR.failure(PR.type(date.ast, u)) : PR.success(u),
+  {
+    [AST.IdentifierAnnotationId]: "Date",
+    [I.PrettyHookId]: datePretty,
+    [I.ArbitraryHookId]: dateArbitrary
+  }
+)
+
+/**
+  Transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+
+  @category parsers
+  @since 1.0.0
+*/
+export const dateFromString = <I>(self: Schema<I, string>): Schema<I, Date> => {
+  const schema: Schema<I, Date> = transformEither(
+    self,
+    date,
+    (s) => {
+      const n = Date.parse(s)
+      return isNaN(n)
+        ? PR.failure(PR.type(schema.ast, s))
+        : PR.success(new Date(n))
+    },
+    (n) => PR.success(n.toISOString())
+  )
+  return schema
+}
+
+// ---------------------------------------------
+// data/Either
+// ---------------------------------------------
+
+const eitherArbitrary = <E, A>(
+  left: Arbitrary<E>,
+  right: Arbitrary<A>
+): Arbitrary<Either<E, A>> => (fc) => fc.oneof(left(fc).map(E.left), right(fc).map(E.right))
+
+const eitherPretty = <E, A>(left: Pretty<E>, right: Pretty<A>): Pretty<Either<E, A>> =>
+  E.match(
+    (e) => `left(${left(e)})`,
+    (a) => `right(${right(a)})`
+  )
+
+const eitherInline = <IE, E, IA, A>(left: Schema<IE, E>, right: Schema<IA, A>) =>
+  union(
+    struct({
+      _tag: literal("Left"),
+      left
+    }),
+    struct({
+      _tag: literal("Right"),
+      right
+    })
+  )
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const eitherFromSelf = <IE, E, IA, A>(
+  left: Schema<IE, E>,
+  right: Schema<IA, A>
+): Schema<Either<IE, IA>, Either<E, A>> => {
+  const schema = declare(
+    [left, right],
+    eitherInline(left, right),
+    <E, A>(
+      left: Schema<E>,
+      right: Schema<A>
+    ) => {
+      const decodeLeft = P.decodeEither(left)
+      const decodeRight = P.decodeEither(right)
+      return (u, options) =>
+        !E.isEither(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          E.isLeft(u) ?
+          E.map(decodeLeft(u.left, options), E.left) :
+          E.map(decodeRight(u.right, options), E.right)
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Either",
+      [I.PrettyHookId]: eitherPretty,
+      [I.ArbitraryHookId]: eitherArbitrary
+    }
+  )
+  return schema
+}
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const either = <IE, E, IA, A>(
+  left: Schema<IE, E>,
+  right: Schema<IA, A>
+): Schema<
+  { readonly _tag: "Left"; readonly left: IE } | { readonly _tag: "Right"; readonly right: IA },
+  Either<E, A>
+> =>
+  transform(
+    eitherInline(left, right),
+    eitherFromSelf(left, right),
+    (a) => a._tag === "Left" ? E.left(a.left) : E.right(a.right),
+    E.match(
+      (left) => ({ _tag: "Left" as const, left }),
+      (right) => ({ _tag: "Right" as const, right })
+    )
+  )
+
+// ---------------------------------------------
+// data/Json
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export type JsonArray = ReadonlyArray<Json>
+
+/**
+ * @since 1.0.0
+ */
+export type JsonObject = { readonly [key: string]: Json }
+
+/**
+ * @since 1.0.0
+ */
+export type Json =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonArray
+  | JsonObject
+
+const arbitraryJson: Arbitrary<Json> = (fc) => fc.jsonValue().map((json) => json as Json)
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const json: Schema<Json> = lazy(() =>
+  union(
+    _null,
+    string,
+    number,
+    boolean,
+    array(json),
+    record(string, json)
+  ), {
+  [I.ArbitraryHookId]: () => arbitraryJson
+})
+
+// ---------------------------------------------
+// data/Number
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const FiniteTypeId = "@effect/schema/FiniteTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const finite = <A extends number>(options?: AnnotationOptions<A>) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => Number.isFinite(a), {
+        typeId: FiniteTypeId,
+        description: "a finite number",
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const GreaterThanTypeId = "@effect/schema/GreaterThanTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThan = <A extends number>(
+  min: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a > min, {
+        typeId: GreaterThanTypeId,
+        description: `a number greater than ${min}`,
+        jsonSchema: { exclusiveMinimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const GreaterThanOrEqualToTypeId = "@effect/schema/GreaterThanOrEqualToTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const greaterThanOrEqualTo = <A extends number>(
+  min: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a >= min, {
+        typeId: GreaterThanOrEqualToTypeId,
+        description: `a number greater than or equal to ${min}`,
+        jsonSchema: { minimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const MultipleOfTypeId = "@effect/schema/MultipleOfTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const multipleOf = <A extends number>(
+  divisor: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => N.remainder(a, divisor) === 0, {
+        typeId: MultipleOfTypeId,
+        description: `a number divisible by ${divisor}`,
+        jsonSchema: { multipleOf: Math.abs(divisor) }, // spec requires positive divisor
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const IntTypeId = "@effect/schema/IntTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const int = <A extends number>(options?: AnnotationOptions<A>) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => Number.isInteger(a), {
+        typeId: IntTypeId,
+        description: "integer",
+        jsonSchema: { type: "integer" },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const LessThanTypeId = "@effect/schema/LessThanTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThan = <A extends number>(max: number, options?: AnnotationOptions<A>) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a < max, {
+        typeId: LessThanTypeId,
+        description: `a number less than ${max}`,
+        jsonSchema: { exclusiveMaximum: max },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const LessThanOrEqualToTypeId = "@effect/schema/LessThanOrEqualToTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const lessThanOrEqualTo = <A extends number>(
+  max: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a <= max, {
+        typeId: LessThanOrEqualToTypeId,
+        description: `a number less than or equal to ${max}`,
+        jsonSchema: { maximum: max },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const BetweenTypeId = "@effect/schema/BetweenTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const between = <A extends number>(
   min: number,
   max: number,
   options?: AnnotationOptions<A>
-) => (self: Schema<A>) => Schema<A> = N.clamp
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => a >= min && a <= max, {
+        typeId: BetweenTypeId,
+        description: `a number between ${min} and ${max}`,
+        jsonSchema: { maximum: max, minimum: min },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const NonNaNTypeId = "@effect/schema/NonNaNTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNaN = <A extends number>(options?: AnnotationOptions<A>) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => !Number.isNaN(a), {
+        typeId: NonNaNTypeId,
+        description: "a number NaN excluded",
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const PositiveTypeId = "@effect/schema/PositiveTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const positive = <A extends number>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  greaterThan(0, {
+    typeId: PositiveTypeId,
+    description: "a positive number",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NegativeTypeId = "@effect/schema/NegativeTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const negative = <A extends number>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  lessThan(0, {
+    typeId: NegativeTypeId,
+    description: "a negative number",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NonNegativeTypeId = "@effect/schema/NonNegativeTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonNegative = <A extends number>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  greaterThanOrEqualTo(0, {
+    typeId: NonNegativeTypeId,
+    description: "a non-negative number",
+    ...options
+  })
+
+/**
+ * @since 1.0.0
+ */
+export const NonPositiveTypeId = "@effect/schema/NonPositiveTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonPositive = <A extends number>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> =>
+  lessThanOrEqualTo(0, {
+    typeId: NonPositiveTypeId,
+    description: "a non-positive number",
+    ...options
+  })
+
+/**
+ * Clamps a number between a minimum and a maximum value.
+ *
+ * @category parsers
+ * @since 1.0.0
+ */
+export const clamp = <A extends number>(min: number, max: number) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    transform(
+      self,
+      pipe(self, between<A>(min, max)),
+      (self) => N.clamp(self, min, max) as A,
+      (self) => N.clamp(self, min, max) as A
+    )
+
+/**
+  Transforms a `string` into a `number` by parsing the string using `parseFloat`.
+
+  The following special string values are supported: "NaN", "Infinity", "-Infinity".
+
+  @category parsers
+  @since 1.0.0
+*/
+export const numberFromString = <I>(self: Schema<I, string>): Schema<I, number> => {
+  const schema: Schema<I, number> = transformEither(
+    self,
+    number,
+    (s) => {
+      if (s === "NaN") {
+        return PR.success(NaN)
+      }
+      if (s === "Infinity") {
+        return PR.success(Infinity)
+      }
+      if (s === "-Infinity") {
+        return PR.success(-Infinity)
+      }
+      const n = parseFloat(s)
+      return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
+    },
+    (n) => PR.success(String(n))
+  )
+  return schema
+}
+
+// ---------------------------------------------
+// data/Object
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const InstanceOfTypeId = "@effect/schema/InstanceOfTypeId"
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const instanceOf = <A extends abstract new(...args: any) => any>(
+  constructor: A,
+  options?: AnnotationOptions<object>
+): Schema<InstanceType<A>, InstanceType<A>> => {
+  const schema = declare(
+    [],
+    struct({}),
+    () =>
+      (input) =>
+        input instanceof constructor ? PR.success(input) : PR.failure(PR.type(schema.ast, input)),
+    {
+      [AST.TypeAnnotationId]: InstanceOfTypeId,
+      [InstanceOfTypeId]: { constructor },
+      [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
+      ...options
+    }
+  )
+  return schema
+}
+
+// ---------------------------------------------
+// data/Option
+// ---------------------------------------------
+
+const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option<A>> =>
+  (fc) => fc.oneof(fc.constant(O.none()), value(fc).map(O.some))
+
+const optionPretty = <A>(value: Pretty<A>): Pretty<Option<A>> =>
+  O.match(
+    () => "none()",
+    (a) => `some(${value(a)})`
+  )
+
+const optionInline = <I, A>(value: Schema<I, A>) =>
+  union(
+    struct({
+      _tag: literal("None")
+    }),
+    struct({
+      _tag: literal("Some"),
+      value
+    })
+  )
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const optionFromSelf = <I, A>(value: Schema<I, A>): Schema<Option<I>, Option<A>> => {
+  const schema = declare(
+    [value],
+    optionInline(value),
+    <A>(value: Schema<A>) => {
+      const decodeValue = P.decodeEither(value)
+      return (u, options) =>
+        !O.isOption(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          O.isNone(u) ?
+          PR.success(O.none()) :
+          E.map(decodeValue(u.value, options), O.some)
+    },
+    {
+      [AST.IdentifierAnnotationId]: "Option",
+      [I.PrettyHookId]: optionPretty,
+      [I.ArbitraryHookId]: optionArbitrary
+    }
+  )
+  return schema
+}
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const option = <I, A>(
+  value: Schema<I, A>
+): Schema<{ readonly _tag: "None" } | { readonly _tag: "Some"; readonly value: I }, Option<A>> =>
+  transform(
+    optionInline(value),
+    optionFromSelf(value),
+    (a) => a._tag === "None" ? O.none() : O.some(a.value),
+    O.match(() => ({ _tag: "None" as const }), (value) => ({ _tag: "Some" as const, value }))
+  )
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const optionFromNullable = <I, A>(
+  value: Schema<I, A>
+): Schema<I | null | undefined, Option<A>> =>
+  transform(union(_undefined, _null, value), optionFromSelf(value), O.fromNullable, O.getOrNull)
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<any>>>(
+  fields: Fields
+) =>
+  <I, A extends object>(
+    schema: Schema<I, A>
+  ): Schema<
+    Spread<I & { readonly [K in keyof Fields]?: From<Fields[K]> }>,
+    Spread<A & { readonly [K in keyof Fields]: Option<To<Fields[K]>> }>
+  > => {
+    if (AST.isTypeLiteral(schema.ast)) {
+      const propertySignatures = schema.ast.propertySignatures
+      const ownKeys = Reflect.ownKeys(fields)
+      const from = AST.createTypeLiteral(
+        propertySignatures.concat(
+          ownKeys.map((key) =>
+            AST.createPropertySignature(
+              key,
+              AST.createUnion([_undefined.ast, _null.ast, fields[key].ast]),
+              true,
+              true
+            )
+          )
+        ),
+        schema.ast.indexSignatures
+      )
+      const to = AST.createTypeLiteral(
+        propertySignatures.concat(
+          ownKeys.map((key) =>
+            AST.createPropertySignature(
+              key,
+              optionFromSelf(fields[key]).ast,
+              true,
+              true
+            )
+          )
+        ),
+        schema.ast.indexSignatures
+      )
+      const out = AST.createTransform(from, to, (o: any) => {
+        const out = { ...o }
+        for (const key of ownKeys) {
+          out[key] = O.fromNullable(o[key])
+        }
+        return PR.success(out)
+      }, (o) => {
+        const out = { ...o }
+        for (const key of ownKeys) {
+          if (O.isSome(o[key])) {
+            out[key] = o[key].value
+          } else {
+            delete out[key]
+          }
+        }
+        return PR.success(out)
+      }, false)
+      return make(out)
+    }
+    throw new Error("`parseOptional` can only handle type literals")
+  }
+
+// ---------------------------------------------
+// data/ReadonlyArray
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const MinItemsTypeId = "@effect/schema/MinItemsTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const minItems = <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) =>
+  <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
+    pipe(
+      self,
+      filter((a): a is ReadonlyArray<A> => a.length >= n, {
+        typeId: MinItemsTypeId,
+        description: `an array of at least ${n} items`,
+        jsonSchema: { minItems: n },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const MaxItemsTypeId = "@effect/schema/MaxItemsTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const maxItems = <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) =>
+  <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
+    pipe(
+      self,
+      filter((a): a is ReadonlyArray<A> => a.length <= n, {
+        typeId: MaxItemsTypeId,
+        description: `an array of at most ${n} items`,
+        jsonSchema: { maxItems: n },
+        ...options
+      })
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const ItemsCountTypeId = "@effect/schema/ItemsCountTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const itemsCount = <A>(
+  n: number,
+  options?: AnnotationOptions<ReadonlyArray<A>>
+) =>
+  <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
+    pipe(
+      self,
+      filter((a): a is ReadonlyArray<A> => a.length === n, {
+        typeId: ItemsCountTypeId,
+        description: `an array of exactly ${n} items`,
+        jsonSchema: { minItems: n, maxItems: n },
+        ...options
+      })
+    )
+
+// ---------------------------------------------
+// data/ReadonlyMap
+// ---------------------------------------------
+
+const isMap = (u: unknown): u is Map<unknown, unknown> => u instanceof Map
+
+const readonlyMapArbitrary = <K, V>(
+  key: Arbitrary<K>,
+  value: Arbitrary<V>
+): Arbitrary<ReadonlyMap<K, V>> =>
+  (fc) => fc.array(fc.tuple(key(fc), value(fc))).map((as) => new Map(as))
+
+const readonlyMapPretty = <K, V>(
+  key: Pretty<K>,
+  value: Pretty<V>
+): Pretty<ReadonlyMap<K, V>> =>
+  (map) =>
+    `new Map([${
+      Array.from(map.entries())
+        .map(([k, v]) => `[${key(k)}, ${value(v)}]`)
+        .join(", ")
+    }])`
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const readonlyMapFromSelf = <IK, K, IV, V>(
+  key: Schema<IK, K>,
+  value: Schema<IV, V>
+): Schema<ReadonlyMap<IK, IV>, ReadonlyMap<K, V>> => {
+  const schema = declare(
+    [key, value],
+    struct({
+      size: number
+    }),
+    <K, V>(
+      key: Schema<K>,
+      value: Schema<V>
+    ) => {
+      const items = P.decodeEither(array(tuple(key, value)))
+      return (u, options) =>
+        !isMap(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          E.map(items(Array.from(u.entries()), options), (as) => new Map(as))
+    },
+    {
+      [AST.IdentifierAnnotationId]: "ReadonlyMap",
+      [I.PrettyHookId]: readonlyMapPretty,
+      [I.ArbitraryHookId]: readonlyMapArbitrary
+    }
+  )
+  return schema
+}
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const readonlyMap = <IK, K, IV, V>(
+  key: Schema<IK, K>,
+  value: Schema<IV, V>
+): Schema<ReadonlyArray<readonly [IK, IV]>, ReadonlyMap<K, V>> =>
+  transform(
+    array(tuple(key, value)),
+    readonlyMapFromSelf(key, value),
+    (as) => new Map(as),
+    (map) => Array.from(map.entries())
+  )
+
+// ---------------------------------------------
+// data/ReadonlySet
+// ---------------------------------------------
+
+const isSet = (u: unknown): u is Set<unknown> => u instanceof Set
+
+const readonlySetArbitrary = <A>(item: Arbitrary<A>): Arbitrary<ReadonlySet<A>> =>
+  (fc) => fc.array(item(fc)).map((as) => new Set(as))
+
+const readonlySetPretty = <A>(item: Pretty<A>): Pretty<ReadonlySet<A>> =>
+  (set) => `new Set([${Array.from(set.values()).map((a) => item(a)).join(", ")}])`
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const readonlySetFromSelf = <I, A>(
+  item: Schema<I, A>
+): Schema<ReadonlySet<I>, ReadonlySet<A>> => {
+  const schema = declare(
+    [item],
+    struct({
+      size: number
+    }),
+    <A>(item: Schema<A>) => {
+      const items = P.decodeEither(array(item))
+      return (u, options) =>
+        !isSet(u) ?
+          PR.failure(PR.type(schema.ast, u)) :
+          E.map(items(Array.from(u.values()), options), (as) => new Set(as))
+    },
+    {
+      [AST.IdentifierAnnotationId]: "ReadonlySet",
+      [I.PrettyHookId]: readonlySetPretty,
+      [I.ArbitraryHookId]: readonlySetArbitrary
+    }
+  )
+  return schema
+}
+
+/**
+ * @category parsers
+ * @since 1.0.0
+ */
+export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, ReadonlySet<A>> =>
+  transform(
+    array(item),
+    readonlySetFromSelf(item),
+    (as) => new Set(as),
+    (set) => Array.from(set)
+  )
+
+// ---------------------------------------------
+// data/String
+// ---------------------------------------------
+
+/**
+ * @since 1.0.0
+ */
+export const TrimmedTypeId = "@effect/schema/TrimmedTypeId"
+
+const trimmedRegex = /^\S.*\S$|^\S$|^$/
+
+/**
+ * Verifies that a string contains no leading or trailing whitespaces.
+ *
+ * Note. This combinator does not make any transformations, it only validates.
+ * If what you were looking for was a combinator to trim strings, then check out the `trim` combinator.
+ *
+ * @category filters
+ * @since 1.0.0
+ */
+export const trimmed = <A extends string>(options?: AnnotationOptions<A>) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter((a): a is A => trimmedRegex.test(a), {
+        typeId: TrimmedTypeId,
+        description: "a string with no leading or trailing whitespace",
+        jsonSchema: {
+          type: "string",
+          pattern: trimmedRegex.source
+        },
+        ...options
+      })
+    )
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const maxLength = <A extends string>(
+  maxLength: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter(
+        (a): a is A => a.length <= maxLength,
+        {
+          description: `a string at most ${maxLength} character(s) long`,
+          jsonSchema: { maxLength },
+          ...options
+        }
+      )
+    )
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const minLength = <A extends string>(
+  minLength: number,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter(
+        (a): a is A => a.length >= minLength,
+        {
+          description: `a string at least ${minLength} character(s) long`,
+          jsonSchema: { minLength },
+          ...options
+        }
+      )
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const PatternTypeId = "@effect/schema/PatternTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const pattern = <A extends string>(
+  regex: RegExp,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> => {
+    const pattern = regex.source
+    return pipe(
+      self,
+      filter(
+        (a): a is A => {
+          // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
+          regex.lastIndex = 0
+          return regex.test(a)
+        },
+        {
+          typeId: { id: PatternTypeId, params: { regex } },
+          description: `a string matching the pattern ${pattern}`,
+          jsonSchema: { pattern },
+          ...options
+        }
+      )
+    )
+  }
+
+/**
+ * @since 1.0.0
+ */
+export const StartsWithTypeId = "@effect/schema/StartsWithTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const startsWith = <A extends string>(
+  startsWith: string,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter(
+        (a): a is A => a.startsWith(startsWith),
+        {
+          typeId: { id: StartsWithTypeId, params: { startsWith } },
+          description: `a string starting with ${JSON.stringify(startsWith)}`,
+          jsonSchema: { pattern: `^${startsWith}` },
+          ...options
+        }
+      )
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const EndsWithTypeId = "@effect/schema/EndsWithTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const endsWith = <A extends string>(
+  endsWith: string,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter(
+        (a): a is A => a.endsWith(endsWith),
+        {
+          typeId: { id: EndsWithTypeId, params: { endsWith } },
+          description: `a string ending with ${JSON.stringify(endsWith)}`,
+          jsonSchema: { pattern: `^.*${endsWith}$` },
+          ...options
+        }
+      )
+    )
+
+/**
+ * @since 1.0.0
+ */
+export const IncludesTypeId = "@effect/schema/IncludesTypeId"
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const includes = <A extends string>(
+  searchString: string,
+  options?: AnnotationOptions<A>
+) =>
+  <I>(self: Schema<I, A>): Schema<I, A> =>
+    pipe(
+      self,
+      filter(
+        (a): a is A => a.includes(searchString),
+        {
+          typeId: { id: IncludesTypeId, params: { includes: searchString } },
+          description: `a string including ${JSON.stringify(searchString)}`,
+          jsonSchema: { pattern: `.*${searchString}.*` },
+          ...options
+        }
+      )
+    )
+
+/**
+ * The `trim` parser allows removing whitespaces from the beginning and end of a string.
+ *
+ * @category parsers
+ * @since 1.0.0
+ */
+export const trim = <I>(self: Schema<I, string>): Schema<I, string> =>
+  transform(
+    self,
+    pipe(self, trimmed()),
+    (s) => s.trim(),
+    (s) => s.trim()
+  )
+
+/**
+ * @since 1.0.0
+ */
+export const UUIDTypeId = "@effect/schema/UUIDTypeId"
+
+const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/i
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const UUID: Schema<string> = pipe(
+  string,
+  pattern(uuidRegex, {
+    typeId: UUIDTypeId
+  }),
+  annotations({
+    [I.ArbitraryHookId]: (): Arbitrary<string> => (fc) => fc.uuid()
+  })
+)
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const length = <A extends string>(
+  length: number,
+  options?: AnnotationOptions<A>
+) => <I>(self: Schema<I, A>): Schema<I, A> => minLength(length, options)(maxLength<A>(length)(self))
+
+/**
+ * @category filters
+ * @since 1.0.0
+ */
+export const nonEmpty = <A extends string>(
+  options?: AnnotationOptions<A>
+): <I>(self: Schema<I, A>) => Schema<I, A> => minLength(1, options)

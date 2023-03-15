@@ -1,28 +1,10 @@
 import { pipe } from "@effect/data/Function"
-import * as N from "@effect/schema/data/Number"
-import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Number", () => {
-  it("exports", () => {
-    expect(N.FiniteTypeId).exist
-    expect(N.MultipleOfTypeId).exist
-    expect(N.IntTypeId).exist
-    expect(N.NonNaNTypeId).exist
-    expect(N.GreaterThanTypeId).exist
-    expect(N.GreaterThanOrEqualToTypeId).exist
-    expect(N.LessThanTypeId).exist
-    expect(N.LessThanOrEqualToTypeId).exist
-    expect(N.BetweenTypeId).exist
-    expect(N.PositiveTypeId).exist
-    expect(N.NegativeTypeId).exist
-    expect(N.NonNegativeTypeId).exist
-    expect(N.NonPositiveTypeId).exist
-  })
-
   it("clamp", () => {
-    const schema = pipe(S.number, N.clamp(-1, 1))
+    const schema = pipe(S.number, S.clamp(-1, 1))
 
     Util.expectDecodingSuccess(schema, 3, 1)
     Util.expectDecodingSuccess(schema, 0, 0)
@@ -30,7 +12,7 @@ describe.concurrent("Number", () => {
   })
 
   it("between", () => {
-    const schema = pipe(S.number, N.between(-1, 1))
+    const schema = pipe(S.number, S.between(-1, 1))
 
     Util.expectDecodingFailure(schema, -2, "Expected a number between -1 and 1, actual -2")
     Util.expectDecodingSuccess(schema, 0, 0)
@@ -39,7 +21,7 @@ describe.concurrent("Number", () => {
   })
 
   it("positive", () => {
-    const schema = pipe(S.number, N.positive())
+    const schema = pipe(S.number, S.positive())
 
     Util.expectDecodingFailure(schema, -1, "Expected a positive number, actual -1")
     Util.expectDecodingFailure(schema, 0, "Expected a positive number, actual 0")
@@ -47,7 +29,7 @@ describe.concurrent("Number", () => {
   })
 
   it("negative", () => {
-    const schema = pipe(S.number, N.negative())
+    const schema = pipe(S.number, S.negative())
 
     Util.expectEncodingSuccess(schema, -1, -1)
     Util.expectDecodingFailure(schema, 0, "Expected a negative number, actual 0")
@@ -55,7 +37,7 @@ describe.concurrent("Number", () => {
   })
 
   it("nonNegative", () => {
-    const schema = pipe(S.number, N.nonNegative())
+    const schema = pipe(S.number, S.nonNegative())
 
     Util.expectEncodingFailure(schema, -1, "Expected a non-negative number, actual -1")
     Util.expectDecodingSuccess(schema, 0, 0)
@@ -63,24 +45,18 @@ describe.concurrent("Number", () => {
   })
 
   it("nonPositive", () => {
-    const schema = pipe(S.number, N.nonPositive())
+    const schema = pipe(S.number, S.nonPositive())
 
     Util.expectEncodingSuccess(schema, -1, -1)
     Util.expectDecodingSuccess(schema, 0, 0)
     Util.expectDecodingFailure(schema, 1, "Expected a non-positive number, actual 1")
   })
 
-  describe.concurrent("parseString", () => {
-    const schema = N.parseString(S.string)
+  describe.concurrent("numberFromString", () => {
+    const schema = S.numberFromString(S.string)
 
     it("property tests", () => {
-      Util.property(schema)
-    })
-
-    it("Guard", () => {
-      const is = P.is(schema)
-      expect(is(1)).toEqual(true)
-      expect(is("a")).toEqual(false)
+      Util.roundtrip(schema)
     })
 
     it("Decoder", () => {
@@ -103,7 +79,7 @@ describe.concurrent("Number", () => {
     })
 
     it("example", () => {
-      const schema = N.parseString(S.string) // converts string schema to number schema
+      const schema = S.numberFromString(S.string) // converts string schema to number schema
 
       // success cases
       Util.expectDecodingSuccess(schema, "1", 1)
