@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.2.1
+
+### Patch Changes
+
+- [#155](https://github.com/Effect-TS/schema/pull/155) [`0b86081`](https://github.com/Effect-TS/schema/commit/0b860818820d9b22ca17946175379c2334ec6a5a) Thanks [@gcanti](https://github.com/gcanti)! - fix attachPropertySignature bug ref #153
+
 ## 0.2.0
 
 ### Minor Changes
