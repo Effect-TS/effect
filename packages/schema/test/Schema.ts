@@ -571,4 +571,22 @@ describe.concurrent("Schema", () => {
       })
     ).toEqual({ sideLength: 10 })
   })
+
+  it("attachPropertySignature/ with a transformation", () => {
+    const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean) })
+    const To = S.struct({ radius: S.number, _isVisible: S.boolean })
+
+    const Circle = pipe(
+      S.transformEither(From, To, S.decodeEither(To), ({ _isVisible, ...rest }) => E.right(rest)),
+      S.attachPropertySignature("_tag", "Circle")
+    )
+    expect(S.decode(Circle)({ radius: 10, _isVisible: true })).toEqual({
+      _tag: "Circle",
+      _isVisible: true,
+      radius: 10
+    })
+    expect(S.encode(Circle)({ _tag: "Circle", radius: 10, _isVisible: true })).toEqual({
+      radius: 10
+    })
+  })
 })
