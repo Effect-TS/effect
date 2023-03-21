@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.3.1
+
+### Patch Changes
+
+- [#169](https://github.com/Effect-TS/schema/pull/169) [`6b0a45f`](https://github.com/Effect-TS/schema/commit/6b0a45f5fb33bbc9db7175573544903ab65d2e07) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Add back missing commits from wrong rebase.
+
 ## 0.3.0
 
 ### Minor Changes
