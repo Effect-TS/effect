@@ -13,16 +13,16 @@ describe.concurrent("Option", () => {
       Util.roundtrip(S.option(S.number))
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.option(NumberFromString)
-      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(O.none())), O.none())
-      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(O.some("1"))), O.some(1))
+      await Util.expectParseSuccess(schema, JSON.parse(JSON.stringify(O.none())), O.none())
+      await Util.expectParseSuccess(schema, JSON.parse(JSON.stringify(O.some("1"))), O.some(1))
     })
 
-    it("Encoder", () => {
+    it("Encoder", async () => {
       const schema = S.option(NumberFromString)
-      Util.expectEncodingSuccess(schema, O.none(), { _tag: "None" })
-      Util.expectEncodingSuccess(schema, O.some(1), { _tag: "Some", value: "1" })
+      await Util.expectEncodeSuccess(schema, O.none(), { _tag: "None" })
+      await Util.expectEncodeSuccess(schema, O.some(1), { _tag: "Some", value: "1" })
     })
   })
 
@@ -43,10 +43,10 @@ describe.concurrent("Option", () => {
       expect(is({ _tag: "Some", value: 1 })).toEqual(false)
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.optionFromSelf(NumberFromString)
-      Util.expectDecodingSuccess(schema, O.none(), O.none())
-      Util.expectDecodingSuccess(schema, O.some("1"), O.some(1))
+      await Util.expectParseSuccess(schema, O.none(), O.none())
+      await Util.expectParseSuccess(schema, O.some("1"), O.some(1))
     })
 
     it("Pretty", () => {
@@ -62,16 +62,16 @@ describe.concurrent("Option", () => {
       Util.roundtrip(S.optionFromNullable(S.number))
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.optionFromNullable(NumberFromString)
-      Util.expectDecodingSuccess(schema, undefined, O.none())
-      Util.expectDecodingSuccess(schema, null, O.none())
-      Util.expectDecodingSuccess(schema, "1", O.some(1))
+      await Util.expectParseSuccess(schema, undefined, O.none())
+      await Util.expectParseSuccess(schema, null, O.none())
+      await Util.expectParseSuccess(schema, "1", O.some(1))
 
       expect(O.isOption(S.decode(schema)(null))).toEqual(true)
       expect(O.isOption(S.decode(schema)("1"))).toEqual(true)
 
-      Util.expectDecodingFailureTree(
+      await Util.expectParseFailureTree(
         schema,
         {},
         `error(s) found
@@ -84,25 +84,25 @@ describe.concurrent("Option", () => {
       )
     })
 
-    it("Encoder", () => {
+    it("Encoder", async () => {
       const schema = S.optionFromNullable(NumberFromString)
-      Util.expectEncodingSuccess(schema, O.none(), null)
-      Util.expectEncodingSuccess(schema, O.some(1), "1")
+      await Util.expectEncodeSuccess(schema, O.none(), null)
+      await Util.expectEncodeSuccess(schema, O.some(1), "1")
     })
   })
 
-  it("optionsFromOptionals", () => {
+  it("optionsFromOptionals", async () => {
     expect(() => pipe(S.object, S.optionsFromOptionals({ "b": S.number }))).toThrowError(
       new Error("`parseOptional` can only handle type literals")
     )
 
     const schema = pipe(S.struct({ a: S.string }), S.optionsFromOptionals({ b: S.number }))
-    Util.expectDecodingSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
-    Util.expectDecodingSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
+    await Util.expectParseSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
+    await Util.expectParseSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
+    await Util.expectParseSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
+    await Util.expectParseSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
-    Util.expectDecodingFailureTree(
+    await Util.expectParseFailureTree(
       schema,
       { a: "a", b: "b" },
       `error(s) found
@@ -115,7 +115,7 @@ describe.concurrent("Option", () => {
       └─ Expected number, actual "b"`
     )
 
-    Util.expectEncodingSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
-    Util.expectEncodingSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
+    await Util.expectEncodeSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
+    await Util.expectEncodeSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
   })
 })

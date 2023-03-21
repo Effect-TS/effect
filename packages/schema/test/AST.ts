@@ -132,7 +132,8 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [ab.ast, a.ast],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
 
@@ -143,7 +144,8 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [ab.ast, a.ast],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
   })
@@ -339,7 +341,8 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
 
@@ -352,7 +355,8 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
 
@@ -365,7 +369,8 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
 
@@ -378,7 +383,8 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.booleanKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {}
+        annotations: {},
+        hasTransformation: false
       })
     })
   })

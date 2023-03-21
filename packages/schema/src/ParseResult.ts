@@ -2,23 +2,44 @@
  * @since 1.0.0
  */
 
-import type { Either, Left, Right } from "@effect/data/Either"
 import * as E from "@effect/data/Either"
+import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
+import { failureOption } from "@effect/io/Cause"
+import * as Debug from "@effect/io/Debug"
+import * as Effect from "@effect/io/Effect"
+import * as Exit from "@effect/io/Exit"
+import { isExit } from "@effect/io/Exit"
 import type * as AST from "@effect/schema/AST"
 
 /**
  * @since 1.0.0
  */
-export type ParseResult<A> = Either<NonEmptyReadonlyArray<ParseError>, A>
+export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
 
 /**
- * `ParseError` is a type that represents the different types of errors that can occur when decoding a value.
+ * @since 1.0.0
+ */
+export interface ParseError {
+  readonly _tag: "ParseError"
+  readonly errors: NonEmptyReadonlyArray<ParseErrors>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const parseError = (errors: NonEmptyReadonlyArray<ParseErrors>): ParseError => ({
+  _tag: "ParseError",
+  errors
+})
+
+/**
+ * `ParseErrors` is a type that represents the different types of errors that can occur when decoding a value.
  *
  * @category model
  * @since 1.0.0
  */
-export type ParseError =
+export type ParseErrors =
   | Type
   | Index
   | Key
@@ -40,16 +61,18 @@ export interface Type {
   readonly _tag: "Type"
   readonly expected: AST.AST
   readonly actual: unknown
+  readonly message: O.Option<string>
 }
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const type = (expected: AST.AST, actual: unknown): Type => ({
+export const type = (expected: AST.AST, actual: unknown, message?: string): Type => ({
   _tag: "Type",
   expected,
-  actual
+  actual,
+  message: O.fromNullable(message)
 })
 
 /**
@@ -64,7 +87,7 @@ export const type = (expected: AST.AST, actual: unknown): Type => ({
 export interface Index {
   readonly _tag: "Index"
   readonly index: number
-  readonly errors: NonEmptyReadonlyArray<ParseError>
+  readonly errors: NonEmptyReadonlyArray<ParseErrors>
 }
 
 /**
@@ -73,7 +96,7 @@ export interface Index {
  */
 export const index = (
   index: number,
-  errors: NonEmptyReadonlyArray<ParseError>
+  errors: NonEmptyReadonlyArray<ParseErrors>
 ): Index => ({
   _tag: "Index",
   index,
@@ -93,7 +116,7 @@ export const index = (
 export interface Key {
   readonly _tag: "Key"
   readonly key: PropertyKey
-  readonly errors: NonEmptyReadonlyArray<ParseError>
+  readonly errors: NonEmptyReadonlyArray<ParseErrors>
 }
 
 /**
@@ -102,7 +125,7 @@ export interface Key {
  */
 export const key = (
   key: PropertyKey,
-  errors: NonEmptyReadonlyArray<ParseError>
+  errors: NonEmptyReadonlyArray<ParseErrors>
 ): Key => ({
   _tag: "Key",
   key,
@@ -155,7 +178,7 @@ export const unexpected = (
  */
 export interface UnionMember {
   readonly _tag: "UnionMember"
-  readonly errors: NonEmptyReadonlyArray<ParseError>
+  readonly errors: NonEmptyReadonlyArray<ParseErrors>
 }
 
 /**
@@ -163,7 +186,7 @@ export interface UnionMember {
  * @since 1.0.0
  */
 export const unionMember = (
-  errors: NonEmptyReadonlyArray<ParseError>
+  errors: NonEmptyReadonlyArray<ParseErrors>
 ): UnionMember => ({
   _tag: "UnionMember",
   errors
@@ -173,32 +196,103 @@ export const unionMember = (
  * @category constructors
  * @since 1.0.0
  */
-export const success: <A>(a: A) => ParseResult<A> = E.right
+export const success: <A>(a: A) => ParseResult<A> = (a) => Exit.succeed(a)
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const failure = (e: ParseError): ParseResult<never> => E.left([e])
+export const failure = (e: ParseErrors): ParseResult<never> => Exit.fail(parseError([e]))
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const failures = (
-  es: NonEmptyReadonlyArray<ParseError>
-): ParseResult<never> => E.left(es)
+  es: NonEmptyReadonlyArray<ParseErrors>
+): ParseResult<never> => Exit.fail(parseError(es))
+
+const untrace = <E, A>(self: Effect.Effect<never, E, A>): Effect.Effect<never, E, A> => {
+  // TODO: find a way to detect Traced
+  const s: any = self
+  return s["_tag"] === "Traced" ? s["i0"] : s
+}
 
 /**
- * @category guards
+ * @category optimisation
  * @since 1.0.0
  */
-export const isSuccess: <A>(self: ParseResult<A>) => self is Right<A> = E.isRight
+export const either = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, A> | undefined => {
+  const untraced = untrace(self)
+  if (isExit(untraced)) {
+    if (untraced._tag === "Success") {
+      return E.right(untraced.value as A)
+    } else {
+      const failure = failureOption(untraced.cause)
+      if (failure._tag === "Some") {
+        return E.left(failure.value as E)
+      }
+    }
+  }
+}
 
 /**
- * @category guards
+ * @category optimisation
  * @since 1.0.0
  */
-export const isFailure: <A>(
-  self: ParseResult<A>
-) => self is Left<NonEmptyReadonlyArray<ParseError>> = E.isLeft
+export const eitherSync = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, A> => {
+  const untraced = untrace(self)
+  if (isExit(untraced)) {
+    if (untraced._tag === "Success") {
+      return E.right(untraced.value as A)
+    } else {
+      const failure = failureOption(untraced.cause)
+      if (failure._tag === "Some") {
+        return E.left(failure.value as E)
+      }
+    }
+  }
+  return Debug.untraced(() => Effect.runSyncEither(self))
+}
+
+/**
+ * @category optimisation
+ * @since 1.0.0
+ */
+export const flatMap = Debug.methodWithTrace((trace, restore) =>
+  <E, E1, A, B>(
+    self: Effect.Effect<never, E, A>,
+    f: (self: A) => Effect.Effect<never, E1, B>
+  ): Effect.Effect<never, E | E1, B> => {
+    const e = either(self)
+    if (e) {
+      if (E.isRight(e)) {
+        return restore(f)(e.right)
+      } else {
+        return Exit.fail(e.left)
+      }
+    }
+    return Effect.flatMap(self, restore(f)).traced(trace)
+  }
+)
+
+/**
+ * @category optimisation
+ * @since 1.0.0
+ */
+export const map = Debug.methodWithTrace((trace, restore) =>
+  <E, A, B>(
+    self: Effect.Effect<never, E, A>,
+    f: (self: A) => B
+  ): Effect.Effect<never, E, B> => {
+    const e = either(self)
+    if (e) {
+      if (E.isRight(e)) {
+        return Exit.succeed(restore(f)(e.right))
+      } else {
+        return Exit.fail(e.left)
+      }
+    }
+    return Effect.map(self, restore(f)).traced(trace)
+  }
+)

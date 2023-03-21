@@ -14,27 +14,27 @@ describe.concurrent("ReadonlySet", () => {
     Util.roundtrip(S.readonlySetFromSelf(S.number))
   })
 
-  it("readonlySetFromSelf. decoder", () => {
+  it("readonlySetFromSelf. decoder", async () => {
     const schema = S.readonlySetFromSelf(NumberFromString)
-    Util.expectDecodingSuccess(schema, new Set(), new Set())
-    Util.expectDecodingSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
+    await Util.expectParseSuccess(schema, new Set(), new Set())
+    await Util.expectParseSuccess(schema, new Set(["1", "2", "3"]), new Set([1, 2, 3]))
 
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       null,
       `Expected ReadonlySet, actual null`
     )
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       new Set(["1", "a", "3"]),
-      `/1 Expected a parsable value from string to number, actual "a"`
+      `/1 Expected string -> number, actual "a"`
     )
   })
 
-  it("readonlySetFromSelf. encoder", () => {
+  it("readonlySetFromSelf. encoder", async () => {
     const schema = S.readonlySetFromSelf(NumberFromString)
-    Util.expectEncodingSuccess(schema, new Set(), new Set())
-    Util.expectEncodingSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
+    await Util.expectEncodeSuccess(schema, new Set(), new Set())
+    await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), new Set(["1", "2", "3"]))
   })
 
   it("readonlySetFromSelf. guard", () => {
@@ -61,22 +61,22 @@ describe.concurrent("ReadonlySet", () => {
     Util.roundtrip(S.readonlySet(S.number))
   })
 
-  it("readonlySet. decoder", () => {
+  it("readonlySet. decoder", async () => {
     const schema = S.readonlySet(S.number)
-    Util.expectDecodingSuccess(schema, [], new Set([]))
-    Util.expectDecodingSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
+    await Util.expectParseSuccess(schema, [], new Set([]))
+    await Util.expectParseSuccess(schema, [1, 2, 3], new Set([1, 2, 3]))
 
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       null,
-      `Expected <anonymous tuple or array schema>, actual null`
+      `Expected a generic array, actual null`
     )
-    Util.expectDecodingFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
+    await Util.expectParseFailure(schema, [1, "a"], `/1 Expected number, actual "a"`)
   })
 
-  it("readonlySet. encoder", () => {
+  it("readonlySet. encoder", async () => {
     const schema = S.readonlySet(S.number)
-    Util.expectEncodingSuccess(schema, new Set(), [])
-    Util.expectEncodingSuccess(schema, new Set([1, 2, 3]), [1, 2, 3])
+    await Util.expectEncodeSuccess(schema, new Set(), [])
+    await Util.expectEncodeSuccess(schema, new Set([1, 2, 3]), [1, 2, 3])
   })
 })

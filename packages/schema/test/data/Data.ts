@@ -18,28 +18,28 @@ describe.concurrent("Data", () => {
     Util.roundtrip(S.dataFromSelf(S.array(S.number)))
   })
 
-  it("dataFromSelf. decoder", () => {
+  it("dataFromSelf. decoder", async () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
-    Util.expectDecodingSuccess(
+    await Util.expectParseSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
     )
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       { a: "ok", b: 0 },
       "Expected Data, actual {\"a\":\"ok\",\"b\":0}"
     )
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       Data.struct({ a: "ok", b: "0" }),
       "/b Expected number, actual \"0\""
     )
   })
 
-  it("dataFromSelf. encoder", () => {
+  it("dataFromSelf. encoder", async () => {
     const schema = S.dataFromSelf(S.struct({ a: S.string, b: S.number }))
-    Util.expectEncodingSuccess(
+    await Util.expectEncodeSuccess(
       schema,
       Data.struct({ a: "ok", b: 0 }),
       Data.struct({ a: "ok", b: 0 })
@@ -65,22 +65,22 @@ describe.concurrent("Data", () => {
     Util.roundtrip(S.data(S.array(S.number)))
   })
 
-  it("data. decoder", () => {
+  it("data. decoder", async () => {
     const schema = S.data(S.struct({ a: S.string, b: S.number }))
-    Util.expectDecodingSuccess(
+    await Util.expectParseSuccess(
       schema,
       { a: "ok", b: 0 },
       Data.struct({ a: "ok", b: 0 })
     )
-    Util.expectDecodingFailure(
+    await Util.expectParseFailure(
       schema,
       { a: "ok", b: "0" },
       "/b Expected number, actual \"0\""
     )
   })
 
-  it("data. encoder", () => {
+  it("data. encoder", async () => {
     const schema = S.data(S.struct({ a: S.string, b: S.number }))
-    Util.expectEncodingSuccess(schema, Data.struct({ a: "ok", b: 0 }), { a: "ok", b: 0 })
+    await Util.expectEncodeSuccess(schema, Data.struct({ a: "ok", b: 0 }), { a: "ok", b: 0 })
   })
 })

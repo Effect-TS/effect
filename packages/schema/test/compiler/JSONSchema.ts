@@ -178,7 +178,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
           // ---------------------------------------------
           // handle post rest elements
           // ---------------------------------------------
-          // const tail = RA.tailNonEmpty(rest.value) // TODO
+          // const tail = RA.tailNonEmpty(rest.value)
         }
 
         return output
@@ -219,7 +219,6 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         // handle index signatures
         // ---------------------------------------------
         if (indexSignatures.length > 0) {
-          // TODO: handle key validation
           output.additionalProperties = { allOf: indexSignatures }
         }
 
@@ -240,7 +239,7 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         )
       }
     }
-    throw new Error(`TODO: unhandled ${ast._tag}`)
+    throw new Error(`unhandled ${ast._tag}`)
   }
 
   return go(schema.ast)

@@ -326,7 +326,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
           )
         )
       case "Lazy":
-        throw new Error("Unhandled schema: TODO")
+        throw new Error("Unhandled schema")
       case "Enums": {
         const id = pipe(
           getIdentifier(ast),
@@ -351,8 +351,6 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
           [typeNode, [declaration]]
         )
       }
-      case "Refinement":
-        return go(ast.from)
       case "TemplateLiteral": {
         const spans: Array<ts.TemplateLiteralTypeSpan> = []
         for (let i = 0; i < ast.spans.length; i++) {
@@ -371,6 +369,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
           ))
         )
       }
+      case "Refinement":
       case "Transform":
         return go(ast.to)
     }

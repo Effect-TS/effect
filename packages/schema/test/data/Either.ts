@@ -25,10 +25,10 @@ describe.concurrent("Either", () => {
       expect(is({ _tag: "Left", left: "a" })).toEqual(false)
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.eitherFromSelf(S.string, NumberFromString)
-      Util.expectDecodingSuccess(schema, E.left("a"), E.left("a"))
-      Util.expectDecodingSuccess(schema, E.right("1"), E.right(1))
+      await Util.expectParseSuccess(schema, E.left("a"), E.left("a"))
+      await Util.expectParseSuccess(schema, E.right("1"), E.right(1))
     })
 
     it("Pretty", () => {
@@ -44,16 +44,24 @@ describe.concurrent("Either", () => {
       Util.roundtrip(S.either(S.string, S.number))
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.either(S.string, NumberFromString)
-      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(E.left("a"))), E.left("a"))
-      Util.expectDecodingSuccess(schema, JSON.parse(JSON.stringify(E.right("1"))), E.right(1))
+      await Util.expectParseSuccess(
+        schema,
+        JSON.parse(JSON.stringify(E.left("a"))),
+        E.left("a")
+      )
+      await Util.expectParseSuccess(
+        schema,
+        JSON.parse(JSON.stringify(E.right("1"))),
+        E.right(1)
+      )
     })
 
-    it("Encoder", () => {
+    it("Encoder", async () => {
       const schema = S.either(S.string, NumberFromString)
-      Util.expectEncodingSuccess(schema, E.left("a"), { _tag: "Left", left: "a" })
-      Util.expectEncodingSuccess(schema, E.right(1), { _tag: "Right", right: "1" })
+      await Util.expectEncodeSuccess(schema, E.left("a"), { _tag: "Left", left: "a" })
+      await Util.expectEncodeSuccess(schema, E.right(1), { _tag: "Right", right: "1" })
     })
   })
 })

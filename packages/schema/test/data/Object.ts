@@ -13,11 +13,11 @@ describe.concurrent("Object", () => {
       expect(is({})).toEqual(false)
     })
 
-    it("Decoder", () => {
+    it("Decoder", async () => {
       const schema = S.instanceOf(Set)
-      Util.expectDecodingSuccess(schema, new Set())
-      Util.expectDecodingFailure(schema, 1, `Expected an instance of Set, actual 1`)
-      Util.expectDecodingFailure(schema, {}, `Expected an instance of Set, actual {}`)
+      await Util.expectParseSuccess(schema, new Set())
+      await Util.expectParseFailure(schema, 1, `Expected an instance of Set, actual 1`)
+      await Util.expectParseFailure(schema, {}, `Expected an instance of Set, actual {}`)
     })
 
     it("Pretty", () => {

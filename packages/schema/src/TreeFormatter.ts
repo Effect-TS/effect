@@ -6,13 +6,13 @@ import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
-import type * as PR from "@effect/schema/ParseResult"
+import type { ParseErrors } from "@effect/schema/ParseResult"
 
 interface Forest<A> extends ReadonlyArray<Tree<A>> {}
 
 interface Tree<A> {
-  value: A
-  forest: Forest<A>
+  readonly value: A
+  readonly forest: Forest<A>
 }
 
 const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
@@ -23,7 +23,7 @@ const make = <A>(value: A, forest: Forest<A> = []): Tree<A> => ({
 /**
  * @since 1.0.0
  */
-export const formatErrors = (errors: NonEmptyReadonlyArray<PR.ParseError>): string =>
+export const formatErrors = (errors: NonEmptyReadonlyArray<ParseErrors>): string =>
   drawTree(make(`error(s) found`, errors.map(go)))
 
 const drawTree = (tree: Tree<string>): string => tree.value + draw("\n", tree.forest)
@@ -117,8 +117,6 @@ export const formatExpected = (ast: AST.AST): string => {
       return pipe(getExpected(ast), O.getOrElse(() => formatActual(ast.symbol)))
     case "Union":
       return ast.types.map(formatExpected).join(" or ")
-    case "Refinement":
-      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous refinement schema>"))
     case "TemplateLiteral":
       return pipe(getExpected(ast), O.getOrElse(() => formatTemplateLiteral(ast)))
     case "Tuple":
@@ -140,18 +138,23 @@ export const formatExpected = (ast: AST.AST): string => {
         getExpected(ast),
         O.getOrElse(() => "<anonymous declaration schema>")
       )
+    case "Refinement":
     case "Transform":
-      return `a parsable value from ${formatExpected(ast.from)} to ${formatExpected(ast.to)}`
+      return pipe(
+        getExpected(ast),
+        O.getOrElse(() => `${formatExpected(ast.from)} -> ${formatExpected(ast.to)}`)
+      )
   }
 }
 
-const go = (e: PR.ParseError): Tree<string> => {
+const go = (e: ParseErrors): Tree<string> => {
   switch (e._tag) {
     case "Type":
       return make(
         pipe(
           getMessage(e.expected),
           O.map((f) => f(e.actual)),
+          O.orElse(() => e.message),
           O.getOrElse(() =>
             `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
           )

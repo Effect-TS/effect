@@ -15,11 +15,11 @@ describe.concurrent("lessThan", () => {
     expect(is(-1)).toEqual(true)
   })
 
-  it("Decoder", () => {
+  it("Decoder", async () => {
     const schema = S.lessThan(0)(S.number)
-    Util.expectDecodingSuccess(schema, -1)
-    Util.expectDecodingFailure(schema, 0, `Expected a number less than 0, actual 0`)
-    Util.expectDecodingFailure(schema, 1, `Expected a number less than 0, actual 1`)
+    await Util.expectParseSuccess(schema, -1)
+    await Util.expectParseFailure(schema, 0, `Expected a number less than 0, actual 0`)
+    await Util.expectParseFailure(schema, 1, `Expected a number less than 0, actual 1`)
   })
 
   it("Pretty", () => {

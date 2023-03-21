@@ -8,19 +8,21 @@ import { RefinedConstructorsTypeId } from "@effect/data/Brand"
 import type { Chunk } from "@effect/data/Chunk"
 import * as C from "@effect/data/Chunk"
 import * as D from "@effect/data/Data"
-import * as E from "@effect/data/Either"
 import type { Either } from "@effect/data/Either"
+import * as E from "@effect/data/Either"
 import * as Equal from "@effect/data/Equal"
-import { dual, pipe } from "@effect/data/Function"
+import { dual, identity, pipe } from "@effect/data/Function"
 import * as N from "@effect/data/Number"
 import type { Option } from "@effect/data/Option"
 import * as O from "@effect/data/Option"
-import { isDate } from "@effect/data/Predicate"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
+import { isDate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
+import { untracedMethod } from "@effect/io/Debug"
+import * as Effect from "@effect/io/Effect"
 import type { Arbitrary } from "@effect/schema/Arbitrary"
-import * as AST from "@effect/schema/AST"
 import type { ParseOptions } from "@effect/schema/AST"
+import * as AST from "@effect/schema/AST"
 import * as I from "@effect/schema/internal/common"
 import * as P from "@effect/schema/Parser"
 import type { ParseResult } from "@effect/schema/ParseResult"
@@ -58,6 +60,11 @@ export const from = <I, A>(schema: Schema<I, A>): Schema<I> => make(AST.getFrom(
  */
 export const to = <I, A>(schema: Schema<I, A>): Schema<A> => make(AST.getTo(schema.ast))
 
+/**
+ * @since 1.0.0
+ */
+export const reverse = <I, A>(schema: Schema<I, A>): Schema<A, I> => make(AST.reverse(schema.ast))
+
 /* c8 ignore start */
 export {
   /**
@@ -71,6 +78,10 @@ export {
   /**
    * @since 1.0.0
    */
+  decodeEffect,
+  /**
+   * @since 1.0.0
+   */
   decodeEither,
   /**
    * @since 1.0.0
@@ -79,7 +90,15 @@ export {
   /**
    * @since 1.0.0
    */
+  decodePromise,
+  /**
+   * @since 1.0.0
+   */
   encode,
+  /**
+   * @since 1.0.0
+   */
+  encodeEffect,
   /**
    * @since 1.0.0
    */
@@ -91,7 +110,31 @@ export {
   /**
    * @since 1.0.0
    */
+  encodePromise,
+  /**
+   * @since 1.0.0
+   */
   is,
+  /**
+   * @since 1.0.0
+   */
+  parse,
+  /**
+   * @since 1.0.0
+   */
+  parseEffect,
+  /**
+   * @since 1.0.0
+   */
+  parseEither,
+  /**
+   * @since 1.0.0
+   */
+  parseOption,
+  /**
+   * @since 1.0.0
+   */
+  parsePromise,
   /**
    * @since 1.0.0
    */
@@ -99,11 +142,19 @@ export {
   /**
    * @since 1.0.0
    */
+  validateEffect,
+  /**
+   * @since 1.0.0
+   */
   validateEither,
   /**
    * @since 1.0.0
    */
-  validateOption
+  validateOption,
+  /**
+   * @since 1.0.0
+   */
+  validatePromise
 } from "@effect/schema/Parser"
 
 export type {
@@ -513,18 +564,18 @@ export const brand = <B extends string, A>(
     annotations[AST.BrandAnnotationId] = [...getBrands(self.ast), brand]
     const ast = AST.mergeAnnotations(self.ast, annotations)
     const schema = make(ast)
-    const decode = P.decode(schema)
-    const decodeOption = P.decodeOption(schema)
-    const decodeEither = P.decodeEither(schema)
+    const validate = P.validate(schema)
+    const validateOption = P.validateOption(schema)
+    const validateEither = P.validateEither(schema)
     const is = P.is(schema)
-    const out: any = Object.assign((input: unknown) => decode(input), {
+    const out: any = Object.assign((input: unknown) => validate(input), {
       [RefinedConstructorsTypeId]: RefinedConstructorsTypeId,
       ast,
-      option: (input: unknown) => decodeOption(input),
+      option: (input: unknown) => validateOption(input),
       either: (input: unknown) =>
         E.mapLeft(
-          decodeEither(input),
-          (errors) => [{ meta: input, message: formatErrors(errors) }]
+          validateEither(input),
+          (e) => [{ meta: input, message: formatErrors(e.errors) }]
         ),
       refine: (input: unknown): input is A & Brand<B> => is(input)
     })
@@ -557,11 +608,11 @@ const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral)
 const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
   x.indexSignatures.some((ix) =>
     y.indexSignatures.some((iy) => {
-      const bx = AST._getParameter(ix.parameter)
-      const by = AST._getParameter(iy.parameter)
+      const keyofx = AST._getParameterKeyof(ix.parameter)
+      const keyofy = AST._getParameterKeyof(iy.parameter)
       // there cannot be two string index signatures or two symbol index signatures at the same time
-      return (AST.isStringKeyword(bx) && AST.isStringKeyword(by)) ||
-        (AST.isSymbolKeyword(bx) && AST.isSymbolKeyword(by))
+      return (AST.isStringKeyword(keyofx) && AST.isStringKeyword(keyofy)) ||
+        (AST.isSymbolKeyword(keyofx) && AST.isSymbolKeyword(keyofy))
     })
   )
 
@@ -676,11 +727,13 @@ export function filter<A>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>
 ): <I>(self: Schema<I, A>) => Schema<I, A> {
-  return (from) => {
+  return (self) => {
+    const decode = (a: A) => predicate(a) ? PR.success(a) : PR.failure(PR.type(ast, a))
     const ast = AST.createRefinement(
-      from.ast,
-      (a: A) => predicate(a) ? PR.success(a) : PR.failure(PR.type(ast, a)),
-      false,
+      self.ast,
+      AST.getTo(self.ast),
+      decode,
+      decode,
       toAnnotations(options)
     )
     return make(ast)
@@ -694,24 +747,70 @@ export function filter<A>(
   @category combinators
   @since 1.0.0
  */
+export const transformEffect: {
+  <I2, A2, A1>(
+    to: Schema<I2, A2>,
+    decode: (a1: A1, options?: ParseOptions) => ParseResult<I2>,
+    encode: (i2: I2, options?: ParseOptions) => ParseResult<A1>
+  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
+  <I1, A1, I2, A2>(
+    from: Schema<I1, A1>,
+    to: Schema<I2, A2>,
+    decode: (a1: A1, options?: ParseOptions) => ParseResult<I2>,
+    encode: (i2: I2, options?: ParseOptions) => ParseResult<A1>
+  ): Schema<I1, A2>
+} = dual(4, <I1, A1, I2, A2>(
+  from: Schema<I1, A1>,
+  to: Schema<I2, A2>,
+  decode: (a1: A1, options?: ParseOptions) => ParseResult<I2>,
+  encode: (i2: I2, options?: ParseOptions) => ParseResult<A1>
+): Schema<I1, A2> => make(AST.createTransform(from.ast, to.ast, decode, encode)))
+
+/**
+  Create a new `Schema` by transforming the input and output of an existing `Schema`
+  using the provided decoding functions.
+
+  @category combinators
+  @since 1.0.0
+ */
 export const transformEither: {
-  <B, A>(
-    to: Schema<any, B>,
-    decode: (input: A, options?: ParseOptions) => ParseResult<B>,
-    encode: (input: B, options?: ParseOptions) => ParseResult<A>
-  ): <I>(self: Schema<I, A>) => Schema<I, B>
-  <I, A, B>(
-    self: Schema<I, A>,
-    to: Schema<any, B>,
-    decode: (input: A, options?: ParseOptions) => ParseResult<B>,
-    encode: (input: B, options?: ParseOptions) => ParseResult<A>
-  ): Schema<I, B>
-} = dual(4, <I, A, B>(
-  self: Schema<I, A>,
-  to: Schema<any, B>,
-  decode: (input: A, options?: ParseOptions) => ParseResult<B>,
-  encode: (input: B, options?: ParseOptions) => ParseResult<A>
-): Schema<I, B> => make(AST.createTransform(self.ast, to.ast, decode, encode, false)))
+  <I2, A2, A1>(
+    to: Schema<I2, A2>,
+    decode: (
+      a1: A1,
+      options?: ParseOptions
+    ) => E.Either<PR.ParseError, I2>,
+    encode: (
+      i2: I2,
+      options?: ParseOptions
+    ) => E.Either<PR.ParseError, A1>
+  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
+  <I1, A1, I2, A2>(
+    from: Schema<I1, A1>,
+    to: Schema<I2, A2>,
+    decode: (
+      a1: A1,
+      options?: ParseOptions
+    ) => E.Either<PR.ParseError, I2>,
+    encode: (
+      i2: I2,
+      options?: ParseOptions
+    ) => E.Either<PR.ParseError, A1>
+  ): Schema<I1, A2>
+} = dual(4, <I1, A1, I2, A2>(
+  from: Schema<I1, A1>,
+  to: Schema<I2, A2>,
+  decode: (
+    a1: A1,
+    options?: ParseOptions
+  ) => E.Either<PR.ParseError, I2>,
+  encode: (i2: I2, options?: ParseOptions) => E.Either<PR.ParseError, A1>
+): Schema<I1, A2> =>
+  make(
+    AST.createTransform(from.ast, to.ast, (i, o) =>
+      Effect.fromEither(decode(i, o)), (i, o) =>
+      Effect.fromEither(encode(i, o)))
+  ))
 
 /**
   Create a new `Schema` by transforming the input and output of an existing `Schema`
@@ -721,20 +820,26 @@ export const transformEither: {
   @since 1.0.0
 */
 export const transform: {
-  <B, A>(
-    to: Schema<any, B>,
-    ab: (a: A) => B,
-    ba: (b: B) => A
-  ): <I>(self: Schema<I, A>) => Schema<I, B>
-  <I, A, B>(self: Schema<I, A>, to: Schema<any, B>, ab: (a: A) => B, ba: (b: B) => A): Schema<I, B>
+  <I2, A2, A1>(
+    to: Schema<I2, A2>,
+    decode: (a1: A1) => I2,
+    encode: (i2: I2) => A1
+  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
+  <I1, A1, I2, A2>(
+    from: Schema<I1, A1>,
+    to: Schema<I2, A2>,
+    decode: (a1: A1) => I2,
+    encode: (i2: I2) => A1
+  ): Schema<I1, A2>
 } = dual(
   4,
-  <I, A, B>(
-    self: Schema<I, A>,
-    to: Schema<any, B>,
-    ab: (a: A) => B,
-    ba: (b: B) => A
-  ): Schema<I, B> => transformEither(self, to, (a) => PR.success(ab(a)), (b) => PR.success(ba(b)))
+  <I1, A1, I2, A2>(
+    from: Schema<I1, A1>,
+    to: Schema<I2, A2>,
+    decode: (a1: A1) => I2,
+    encode: (i2: I2) => A1
+  ): Schema<I1, A2> =>
+    transformEffect(from, to, (a) => PR.success(decode(a)), (b) => PR.success(encode(b)))
 )
 
 /**
@@ -770,7 +875,7 @@ export const attachPropertySignature = <K extends PropertyKey, V extends AST.Lit
   value: V
 ) =>
   <I, A extends object>(schema: Schema<I, A>): Schema<I, Spread<A & { readonly [k in K]: V }>> =>
-    transform<I, A, any>(
+    transform<I, A, any, any>(
       schema,
       pipe(to(schema), extend(struct({ [key]: literal(value) }))),
       (a) => ({ ...a, [key]: value }),
@@ -1125,9 +1230,9 @@ export const clampBigint = <A extends bigint>(min: bigint, max: bigint) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
-      pipe(self, betweenBigint(min, max)),
+      pipe(self, to, betweenBigint(min, max)),
       (self) => B.clamp(self, min, max) as A,
-      (self) => B.clamp(self, min, max) as A
+      identity
     )
 
 // ---------------------------------------------
@@ -1147,20 +1252,26 @@ export const fromBrand = <C extends Brand<string>>(
   constructor: Brand.Constructor<C>,
   options?: AnnotationOptions<Brand.Unbranded<C>>
 ) =>
-  <I, A extends Brand.Unbranded<C>>(self: Schema<I, A>): Schema<I, A & C> =>
-    pipe(
-      self,
-      filter<A, A & C>(
-        (x): x is A & C => constructor.refine(x),
-        {
-          typeId: BrandTypeId,
-          message: (a) =>
-            (constructor.either(a) as E.Left<Brand.BrandErrors>).left.map((v) => v.message)
-              .join(", "),
-          ...options
-        }
-      )
+  <I, A extends Brand.Unbranded<C>>(self: Schema<I, A>): Schema<I, A & C> => {
+    const decode = untracedMethod(() =>
+      (a: A): ParseResult<C> =>
+        Effect.fromEither(
+          E.mapLeft(
+            constructor.either(a),
+            (brandErrors) =>
+              PR.parseError([PR.type(ast, a, brandErrors.map((v) => v.message).join(", "))])
+          )
+        )
     )
+    const ast = AST.createRefinement(
+      self.ast,
+      AST.getTo(self.ast),
+      decode,
+      decode,
+      toAnnotations({ typeId: BrandTypeId, ...options })
+    )
+    return make(ast)
+  }
 
 // ---------------------------------------------
 // data/Chunk
@@ -1184,11 +1295,11 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk<I>, Chunk<
       length: number
     }),
     <A>(item: Schema<A>) => {
-      const items = P.decodeEither(array(item))
+      const parse = P.parseEffect(array(item))
       return (u, options) =>
         !C.isChunk(u) ?
           PR.failure(PR.type(schema.ast, u)) :
-          E.map(items(C.toReadonlyArray(u), options), C.fromIterable)
+          PR.map(parse(C.toReadonlyArray(u), options), C.fromIterable)
     },
     {
       [AST.IdentifierAnnotationId]: "Chunk",
@@ -1204,7 +1315,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk<I>, Chunk<
  * @since 1.0.0
  */
 export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk<A>> =>
-  transform(array(item), chunkFromSelf(item), C.fromIterable, C.toReadonlyArray)
+  transform(array(item), to(chunkFromSelf(item)), C.fromIterable, C.toReadonlyArray)
 
 // ---------------------------------------------
 // data/Data
@@ -1237,11 +1348,11 @@ export const dataFromSelf = <
     <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
       item: Schema<A>
     ) => {
-      const decode = P.decodeEither(item)
+      const parse = P.parseEffect(item)
       return (u, options) =>
         !Equal.isEqual(u) ?
           PR.failure(PR.type(schema.ast, u)) :
-          E.map(decode(u, options), toData)
+          PR.map(parse(u, options), toData)
     },
     {
       [AST.IdentifierAnnotationId]: "Data",
@@ -1264,7 +1375,7 @@ export const data = <
 ): Schema<I, D.Data<A>> =>
   transform(
     item,
-    dataFromSelf(item),
+    to(dataFromSelf(item)),
     toData,
     (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) as any
   )
@@ -1298,20 +1409,17 @@ export const date: Schema<Date> = declare(
   @category parsers
   @since 1.0.0
 */
-export const dateFromString = <I>(self: Schema<I, string>): Schema<I, Date> => {
-  const schema: Schema<I, Date> = transformEither(
-    self,
-    date,
-    (s) => {
-      const n = Date.parse(s)
-      return isNaN(n)
-        ? PR.failure(PR.type(schema.ast, s))
-        : PR.success(new Date(n))
-    },
-    (n) => PR.success(n.toISOString())
-  )
-  return schema
-}
+export const dateFromString: Schema<string, Date> = transformEffect(
+  string,
+  date,
+  (s) => {
+    const n = Date.parse(s)
+    return isNaN(n)
+      ? PR.failure(PR.type(dateFromString.ast, s))
+      : PR.success(new Date(n))
+  },
+  (n) => PR.success(n.toISOString())
+)
 
 // ---------------------------------------------
 // data/Either
@@ -1355,14 +1463,14 @@ export const eitherFromSelf = <IE, E, IA, A>(
       left: Schema<E>,
       right: Schema<A>
     ) => {
-      const decodeLeft = P.decodeEither(left)
-      const decodeRight = P.decodeEither(right)
+      const parseLeft = P.parseEffect(left)
+      const parseRight = P.parseEffect(right)
       return (u, options) =>
         !E.isEither(u) ?
           PR.failure(PR.type(schema.ast, u)) :
           E.isLeft(u) ?
-          E.map(decodeLeft(u.left, options), E.left) :
-          E.map(decodeRight(u.right, options), E.right)
+          PR.map(parseLeft(u.left, options), E.left) :
+          PR.map(parseRight(u.right, options), E.right)
     },
     {
       [AST.IdentifierAnnotationId]: "Either",
@@ -1386,7 +1494,7 @@ export const either = <IE, E, IA, A>(
 > =>
   transform(
     eitherInline(left, right),
-    eitherFromSelf(left, right),
+    to(eitherFromSelf(left, right)),
     (a) => a._tag === "Left" ? E.left(a.left) : E.right(a.right),
     E.match(
       (left) => ({ _tag: "Left" as const, left }),
@@ -1726,9 +1834,9 @@ export const clamp = <A extends number>(min: number, max: number) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
-      pipe(self, between<A>(min, max)),
+      pipe(self, to, between<A>(min, max)),
       (self) => N.clamp(self, min, max) as A,
-      (self) => N.clamp(self, min, max) as A
+      identity
     )
 
 /**
@@ -1740,7 +1848,7 @@ export const clamp = <A extends number>(min: number, max: number) =>
   @since 1.0.0
 */
 export const numberFromString = <I>(self: Schema<I, string>): Schema<I, number> => {
-  const schema: Schema<I, number> = transformEither(
+  const schema: Schema<I, number> = transformEffect(
     self,
     number,
     (s) => {
@@ -1827,13 +1935,13 @@ export const optionFromSelf = <I, A>(value: Schema<I, A>): Schema<Option<I>, Opt
     [value],
     optionInline(value),
     <A>(value: Schema<A>) => {
-      const decodeValue = P.decodeEither(value)
+      const parse = P.parseEffect(value)
       return (u, options) =>
         !O.isOption(u) ?
           PR.failure(PR.type(schema.ast, u)) :
           O.isNone(u) ?
           PR.success(O.none()) :
-          E.map(decodeValue(u.value, options), O.some)
+          PR.map(parse(u.value, options), O.some)
     },
     {
       [AST.IdentifierAnnotationId]: "Option",
@@ -1853,7 +1961,7 @@ export const option = <I, A>(
 ): Schema<{ readonly _tag: "None" } | { readonly _tag: "Some"; readonly value: I }, Option<A>> =>
   transform(
     optionInline(value),
-    optionFromSelf(value),
+    to(optionFromSelf(value)),
     (a) => a._tag === "None" ? O.none() : O.some(a.value),
     O.match(() => ({ _tag: "None" as const }), (value) => ({ _tag: "Some" as const, value }))
   )
@@ -1865,7 +1973,7 @@ export const option = <I, A>(
 export const optionFromNullable = <I, A>(
   value: Schema<I, A>
 ): Schema<I | null | undefined, Option<A>> =>
-  transform(union(_undefined, _null, value), optionFromSelf(value), O.fromNullable, O.getOrNull)
+  transform(union(_undefined, _null, value), to(optionFromSelf(value)), O.fromNullable, O.getOrNull)
 
 /**
  * @category parsers
@@ -1925,7 +2033,7 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
           }
         }
         return PR.success(out)
-      }, false)
+      })
       return make(out)
     }
     throw new Error("`parseOptional` can only handle type literals")
@@ -2047,11 +2155,11 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
       key: Schema<K>,
       value: Schema<V>
     ) => {
-      const items = P.decodeEither(array(tuple(key, value)))
+      const parse = P.parseEffect(array(tuple(key, value)))
       return (u, options) =>
         !isMap(u) ?
           PR.failure(PR.type(schema.ast, u)) :
-          E.map(items(Array.from(u.entries()), options), (as) => new Map(as))
+          PR.map(parse(Array.from(u.entries()), options), (as) => new Map(as))
     },
     {
       [AST.IdentifierAnnotationId]: "ReadonlyMap",
@@ -2072,7 +2180,7 @@ export const readonlyMap = <IK, K, IV, V>(
 ): Schema<ReadonlyArray<readonly [IK, IV]>, ReadonlyMap<K, V>> =>
   transform(
     array(tuple(key, value)),
-    readonlyMapFromSelf(key, value),
+    to(readonlyMapFromSelf(key, value)),
     (as) => new Map(as),
     (map) => Array.from(map.entries())
   )
@@ -2102,11 +2210,11 @@ export const readonlySetFromSelf = <I, A>(
       size: number
     }),
     <A>(item: Schema<A>) => {
-      const items = P.decodeEither(array(item))
+      const parse = P.parseEffect(array(item))
       return (u, options) =>
         !isSet(u) ?
           PR.failure(PR.type(schema.ast, u)) :
-          E.map(items(Array.from(u.values()), options), (as) => new Set(as))
+          PR.map(parse(Array.from(u.values()), options), (as) => new Set(as))
     },
     {
       [AST.IdentifierAnnotationId]: "ReadonlySet",
@@ -2124,7 +2232,7 @@ export const readonlySetFromSelf = <I, A>(
 export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, ReadonlySet<A>> =>
   transform(
     array(item),
-    readonlySetFromSelf(item),
+    to(readonlySetFromSelf(item)),
     (as) => new Set(as),
     (set) => Array.from(set)
   )
@@ -2329,9 +2437,9 @@ export const includes = <A extends string>(
 export const trim = <I>(self: Schema<I, string>): Schema<I, string> =>
   transform(
     self,
-    pipe(self, trimmed()),
+    pipe(to(self), trimmed()),
     (s) => s.trim(),
-    (s) => s.trim()
+    identity
   )
 
 /**
