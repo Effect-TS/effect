@@ -48,6 +48,10 @@ describe.concurrent("Schema", () => {
     expect(S.OptionalSchemaId).exist
     expect(S.nullable).exist
 
+    expect(S.parseResult).exist
+    expect(S.decodeResult).exist
+    expect(S.validateResult).exist
+    expect(S.encodeResult).exist
     expect(S.parsePromise).exist
     expect(S.decodePromise).exist
     expect(S.validatePromise).exist

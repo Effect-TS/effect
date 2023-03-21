@@ -94,6 +94,10 @@ export {
   /**
    * @since 1.0.0
    */
+  decodeResult,
+  /**
+   * @since 1.0.0
+   */
   encode,
   /**
    * @since 1.0.0
@@ -111,6 +115,10 @@ export {
    * @since 1.0.0
    */
   encodePromise,
+  /**
+   * @since 1.0.0
+   */
+  encodeResult,
   /**
    * @since 1.0.0
    */
@@ -138,6 +146,10 @@ export {
   /**
    * @since 1.0.0
    */
+  parseResult,
+  /**
+   * @since 1.0.0
+   */
   validate,
   /**
    * @since 1.0.0
@@ -154,7 +166,11 @@ export {
   /**
    * @since 1.0.0
    */
-  validatePromise
+  validatePromise,
+  /**
+   * @since 1.0.0
+   */
+  validateResult
 } from "@effect/schema/Parser"
 
 export type {
@@ -1295,7 +1311,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk<I>, Chunk<
       length: number
     }),
     <A>(item: Schema<A>) => {
-      const parse = P.parseEffect(array(item))
+      const parse = P.parseResult(array(item))
       return (u, options) =>
         !C.isChunk(u) ?
           PR.failure(PR.type(schema.ast, u)) :
@@ -1348,7 +1364,7 @@ export const dataFromSelf = <
     <A extends Readonly<Record<string, any>> | ReadonlyArray<any>>(
       item: Schema<A>
     ) => {
-      const parse = P.parseEffect(item)
+      const parse = P.parseResult(item)
       return (u, options) =>
         !Equal.isEqual(u) ?
           PR.failure(PR.type(schema.ast, u)) :
@@ -1463,8 +1479,8 @@ export const eitherFromSelf = <IE, E, IA, A>(
       left: Schema<E>,
       right: Schema<A>
     ) => {
-      const parseLeft = P.parseEffect(left)
-      const parseRight = P.parseEffect(right)
+      const parseLeft = P.parseResult(left)
+      const parseRight = P.parseResult(right)
       return (u, options) =>
         !E.isEither(u) ?
           PR.failure(PR.type(schema.ast, u)) :
@@ -1935,7 +1951,7 @@ export const optionFromSelf = <I, A>(value: Schema<I, A>): Schema<Option<I>, Opt
     [value],
     optionInline(value),
     <A>(value: Schema<A>) => {
-      const parse = P.parseEffect(value)
+      const parse = P.parseResult(value)
       return (u, options) =>
         !O.isOption(u) ?
           PR.failure(PR.type(schema.ast, u)) :
@@ -2155,7 +2171,7 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
       key: Schema<K>,
       value: Schema<V>
     ) => {
-      const parse = P.parseEffect(array(tuple(key, value)))
+      const parse = P.parseResult(array(tuple(key, value)))
       return (u, options) =>
         !isMap(u) ?
           PR.failure(PR.type(schema.ast, u)) :
@@ -2210,7 +2226,7 @@ export const readonlySetFromSelf = <I, A>(
       size: number
     }),
     <A>(item: Schema<A>) => {
-      const parse = P.parseEffect(array(item))
+      const parse = P.parseResult(array(item))
       return (u, options) =>
         !isSet(u) ?
           PR.failure(PR.type(schema.ast, u)) :

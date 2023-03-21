@@ -5,17 +5,19 @@
 import * as E from "@effect/data/Either"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import { failureOption } from "@effect/io/Cause"
 import * as Debug from "@effect/io/Debug"
 import * as Effect from "@effect/io/Effect"
-import * as Exit from "@effect/io/Exit"
-import { isExit } from "@effect/io/Exit"
 import type * as AST from "@effect/schema/AST"
 
 /**
  * @since 1.0.0
  */
-export interface ParseResult<A> extends Effect.Effect<never, ParseError, A> {}
+export type IO<E, A> = Effect.Effect<never, E, A> | E.Either<E, A>
+
+/**
+ * @since 1.0.0
+ */
+export type ParseResult<A> = IO<ParseError, A>
 
 /**
  * @since 1.0.0
@@ -196,13 +198,13 @@ export const unionMember = (
  * @category constructors
  * @since 1.0.0
  */
-export const success: <A>(a: A) => ParseResult<A> = (a) => Exit.succeed(a)
+export const success: <A>(a: A) => ParseResult<A> = E.right
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const failure = (e: ParseErrors): ParseResult<never> => Exit.fail(parseError([e]))
+export const failure = (e: ParseErrors): ParseResult<never> => E.left(parseError([e]))
 
 /**
  * @category constructors
@@ -210,29 +212,15 @@ export const failure = (e: ParseErrors): ParseResult<never> => Exit.fail(parseEr
  */
 export const failures = (
   es: NonEmptyReadonlyArray<ParseErrors>
-): ParseResult<never> => Exit.fail(parseError(es))
-
-const untrace = <E, A>(self: Effect.Effect<never, E, A>): Effect.Effect<never, E, A> => {
-  // TODO: find a way to detect Traced
-  const s: any = self
-  return s["_tag"] === "Traced" ? s["i0"] : s
-}
+): ParseResult<never> => E.left(parseError(es))
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const either = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, A> | undefined => {
-  const untraced = untrace(self)
-  if (isExit(untraced)) {
-    if (untraced._tag === "Success") {
-      return E.right(untraced.value as A)
-    } else {
-      const failure = failureOption(untraced.cause)
-      if (failure._tag === "Some") {
-        return E.left(failure.value as E)
-      }
-    }
+export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefined => {
+  if (!Effect.isEffect(self)) {
+    return self
   }
 }
 
@@ -240,19 +228,22 @@ export const either = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, A> |
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherSync = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, A> => {
-  const untraced = untrace(self)
-  if (isExit(untraced)) {
-    if (untraced._tag === "Success") {
-      return E.right(untraced.value as A)
-    } else {
-      const failure = failureOption(untraced.cause)
-      if (failure._tag === "Some") {
-        return E.left(failure.value as E)
-      }
-    }
+export const eitherOrRunSyncEither = <E, A>(self: IO<E, A>): E.Either<E, A> => {
+  if (Effect.isEffect(self)) {
+    return Debug.untraced(() => Effect.runSyncEither(self))
   }
-  return Debug.untraced(() => Effect.runSyncEither(self))
+  return self
+}
+
+/**
+ * @category optimisation
+ * @since 1.0.0
+ */
+export const effect: <E, A>(self: IO<E, A>) => Effect.Effect<never, E, A> = (self) => {
+  if (Effect.isEffect(self)) {
+    return self
+  }
+  return Effect.fromEither(self)
 }
 
 /**
@@ -261,18 +252,17 @@ export const eitherSync = <E, A>(self: Effect.Effect<never, E, A>): E.Either<E, 
  */
 export const flatMap = Debug.methodWithTrace((trace, restore) =>
   <E, E1, A, B>(
-    self: Effect.Effect<never, E, A>,
-    f: (self: A) => Effect.Effect<never, E1, B>
-  ): Effect.Effect<never, E | E1, B> => {
-    const e = either(self)
-    if (e) {
-      if (E.isRight(e)) {
-        return restore(f)(e.right)
-      } else {
-        return Exit.fail(e.left)
-      }
+    self: IO<E, A>,
+    f: (self: A) => IO<E1, B>
+  ): IO<E | E1, B> => {
+    if (Effect.isEffect(self)) {
+      return Effect.flatMap(self, (a) => effect(restore(f)(a))).traced(trace)
     }
-    return Effect.flatMap(self, restore(f)).traced(trace)
+    if (E.isRight(self)) {
+      return restore(f)(self.right)
+    } else {
+      return E.left(self.left)
+    }
   }
 )
 
@@ -282,17 +272,16 @@ export const flatMap = Debug.methodWithTrace((trace, restore) =>
  */
 export const map = Debug.methodWithTrace((trace, restore) =>
   <E, A, B>(
-    self: Effect.Effect<never, E, A>,
+    self: IO<E, A>,
     f: (self: A) => B
-  ): Effect.Effect<never, E, B> => {
-    const e = either(self)
-    if (e) {
-      if (E.isRight(e)) {
-        return Exit.succeed(restore(f)(e.right))
-      } else {
-        return Exit.fail(e.left)
-      }
+  ): IO<E, B> => {
+    if (Effect.isEffect(self)) {
+      return Effect.map(self, restore(f)).traced(trace)
     }
-    return Effect.map(self, restore(f)).traced(trace)
+    if (E.isRight(self)) {
+      return E.right(restore(f)(self.right))
+    } else {
+      return self
+    }
   }
 )

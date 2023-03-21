@@ -8,7 +8,7 @@ import * as Effect from "@effect/io/Effect"
 import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
-import type * as PR from "@effect/schema/ParseResult"
+import * as PR from "@effect/schema/ParseResult"
 import type { Schema } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
@@ -19,7 +19,7 @@ const sleep = Effect.sleep(Duration.millis(10))
 const goDecode = (
   decode: (input: any, options?: ParseOptions) => PR.ParseResult<any>
 ): (input: any, options?: ParseOptions) => PR.ParseResult<any> =>
-  (input, options) => Effect.flatMap(sleep, () => decode(input, options))
+  (input, options) => PR.flatMap(sleep, () => decode(input, options))
 
 let skip = false
 

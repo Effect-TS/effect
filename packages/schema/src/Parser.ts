@@ -23,7 +23,7 @@ const get = (ast: AST.AST) => {
   const parser = go(ast)
   return (input: unknown, options?: ParseOptions) => {
     const result = parser(input, options)
-    const resultComputed = PR.eitherSync(result)
+    const resultComputed = PR.eitherOrRunSyncEither(result)
     if (E.isLeft(resultComputed)) {
       throw new Error(formatErrors(resultComputed.left.errors))
     }
@@ -34,28 +34,35 @@ const get = (ast: AST.AST) => {
 const getOption = (ast: AST.AST) => {
   const parser = go(ast)
   return (input: unknown, options?: ParseOptions) =>
-    O.fromEither(PR.eitherSync(parser(input, options)))
+    O.fromEither(PR.eitherOrRunSyncEither(parser(input, options)))
 }
 
 const getEither = (ast: AST.AST) => {
   const parser = go(ast)
-  return (input: unknown, options?: ParseOptions) => PR.eitherSync(parser(input, options))
+  return (input: unknown, options?: ParseOptions) =>
+    PR.eitherOrRunSyncEither(parser(input, options))
 }
 
 const getPromise = (ast: AST.AST) => {
   const parser = go(ast)
-  return (input: unknown, options?: ParseOptions) => Effect.runPromise(parser(input, options))
+  return (input: unknown, options?: ParseOptions) =>
+    Effect.runPromise(PR.effect(parser(input, options)))
+}
+
+const getEffect = (ast: AST.AST) => {
+  const parser = go(ast)
+  return (input: unknown, options?: ParseOptions) => PR.effect(parser(input, options))
 }
 
 /**
- * @category decoding
+ * @category parsing
  * @since 1.0.0
  */
 export const parse = <_, A>(schema: Schema<_, A>): (i: unknown, options?: ParseOptions) => A =>
   get(schema.ast)
 
 /**
- * @category decoding
+ * @category parsing
  * @since 1.0.0
  */
 export const parseOption = <_, A>(
@@ -63,7 +70,7 @@ export const parseOption = <_, A>(
 ): (i: unknown, options?: ParseOptions) => Option<A> => getOption(schema.ast)
 
 /**
- * @category decoding
+ * @category parsing
  * @since 1.0.0
  */
 export const parseEither = <_, A>(
@@ -71,7 +78,15 @@ export const parseEither = <_, A>(
 ): (i: unknown, options?: ParseOptions) => E.Either<PR.ParseError, A> => getEither(schema.ast)
 
 /**
- * @category decoding
+ * @category parsing
+ * @since 1.0.0
+ */
+export const parseResult = <_, A>(
+  schema: Schema<_, A>
+): (i: unknown, options?: ParseOptions) => PR.ParseResult<A> => go(schema.ast)
+
+/**
+ * @category parsing
  * @since 1.0.0
  */
 export const parsePromise = <_, A>(
@@ -79,12 +94,13 @@ export const parsePromise = <_, A>(
 ): (i: unknown, options?: ParseOptions) => Promise<A> => getPromise(schema.ast)
 
 /**
- * @category decoding
+ * @category parsing
  * @since 1.0.0
  */
 export const parseEffect = <_, A>(
   schema: Schema<_, A>
-): (i: unknown, options?: ParseOptions) => PR.ParseResult<A> => go(schema.ast)
+): (i: unknown, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, A> =>
+  getEffect(schema.ast)
 
 /**
  * @category decoding
@@ -112,6 +128,14 @@ export const decodeEither: <I, A>(
  * @category decoding
  * @since 1.0.0
  */
+export const decodeResult: <_, A>(
+  schema: Schema<_, A>
+) => (i: unknown, options?: ParseOptions | undefined) => ParseResult<A> = parseResult
+
+/**
+ * @category decoding
+ * @since 1.0.0
+ */
 export const decodePromise: <I, A>(
   schema: Schema<I, A>
 ) => (i: I, options?: ParseOptions) => Promise<A> = parsePromise
@@ -122,7 +146,8 @@ export const decodePromise: <I, A>(
  */
 export const decodeEffect: <_, A>(
   schema: Schema<_, A>
-) => (i: unknown, options?: ParseOptions | undefined) => ParseResult<A> = parseEffect
+) => (i: unknown, options?: ParseOptions | undefined) => Effect.Effect<never, PR.ParseError, A> =
+  parseEffect
 
 /**
  * @category validation
@@ -153,6 +178,14 @@ export const validateEither = <_, A>(
  * @category validation
  * @since 1.0.0
  */
+export const validateResult = <_, A>(
+  schema: Schema<_, A>
+): (a: unknown, options?: ParseOptions) => PR.ParseResult<A> => go(AST.getTo(schema.ast))
+
+/**
+ * @category validation
+ * @since 1.0.0
+ */
 export const validatePromise = <_, A>(
   schema: Schema<_, A>
 ): (i: unknown, options?: ParseOptions) => Promise<A> => getPromise(AST.getTo(schema.ast))
@@ -163,7 +196,8 @@ export const validatePromise = <_, A>(
  */
 export const validateEffect = <_, A>(
   schema: Schema<_, A>
-): (a: unknown, options?: ParseOptions) => PR.ParseResult<A> => go(AST.getTo(schema.ast))
+): (a: unknown, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, A> =>
+  getEffect(AST.getTo(schema.ast))
 
 /**
  * @category validation
@@ -221,6 +255,14 @@ export const encodeEither = <I, A>(
  * @category encoding
  * @since 1.0.0
  */
+export const encodeResult = <I, A>(
+  schema: Schema<I, A>
+): (a: A, options?: ParseOptions) => PR.ParseResult<I> => go(AST.reverse(schema.ast))
+
+/**
+ * @category encoding
+ * @since 1.0.0
+ */
 export const encodePromise = <I, A>(
   schema: Schema<I, A>
 ): (a: A, options?: ParseOptions) => Promise<I> => getPromise(AST.reverse(schema.ast))
@@ -231,10 +273,8 @@ export const encodePromise = <I, A>(
  */
 export const encodeEffect = <I, A>(
   schema: Schema<I, A>
-) => {
-  const parser = go(AST.reverse(schema.ast))
-  return (a: A, options?: ParseOptions): PR.ParseResult<I> => parser(a, options)
-}
+): (a: A, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, I> =>
+  getEffect(AST.reverse(schema.ast))
 
 interface Parser<I, A> {
   (i: I, options?: ParseOptions): ParseResult<A>
@@ -325,7 +365,8 @@ const go = I.memoize(untracedMethod(() =>
             es: typeof es
             output: typeof output
           }
-          const queue: Array<(_: State) => PR.ParseResult<void>> = []
+          let queue: Array<(_: State) => Effect.Effect<never, PR.ParseError, void>> | undefined =
+            undefined
 
           // ---------------------------------------------
           // handle elements
@@ -339,7 +380,7 @@ const go = I.memoize(untracedMethod(() =>
             } else {
               const parser = elements[i]
               const te = parser(input[i], options)
-              const t = PR.either(te)
+              const t = PR.eitherOrUndefined(te)
               if (t) {
                 if (E.isLeft(t)) {
                   // the input element is present but is not valid
@@ -355,10 +396,13 @@ const go = I.memoize(untracedMethod(() =>
               } else {
                 const nk = stepKey++
                 const index = i
+                if (!queue) {
+                  queue = []
+                }
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(te), (t) => {
+                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
                         if (E.isLeft(t)) {
                           // the input element is present but is not valid
                           const e = PR.index(index, t.left.errors)
@@ -366,7 +410,7 @@ const go = I.memoize(untracedMethod(() =>
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.failures(mutableAppend(sortByIndex(es), e))
+                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
                           }
                         }
                         output.push([nk, t.right])
@@ -385,7 +429,7 @@ const go = I.memoize(untracedMethod(() =>
             const tail = RA.tailNonEmpty(rest.value)
             for (; i < len - tail.length; i++) {
               const te = head(input[i], options)
-              const t = PR.either(te)
+              const t = PR.eitherOrUndefined(te)
               if (t) {
                 if (E.isLeft(t)) {
                   const e = PR.index(i, t.left.errors)
@@ -401,17 +445,20 @@ const go = I.memoize(untracedMethod(() =>
               } else {
                 const nk = stepKey++
                 const index = i
+                if (!queue) {
+                  queue = []
+                }
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(te), (t) => {
+                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
                         if (E.isLeft(t)) {
                           const e = PR.index(index, t.left.errors)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.failures(mutableAppend(sortByIndex(es), e))
+                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
                           }
                         } else {
                           output.push([nk, t.right])
@@ -431,7 +478,7 @@ const go = I.memoize(untracedMethod(() =>
                 continue
               } else {
                 const te = tail[j](input[i], options)
-                const t = PR.either(te)
+                const t = PR.eitherOrUndefined(te)
                 if (t) {
                   if (E.isLeft(t)) {
                     // the input element is present but is not valid
@@ -447,10 +494,13 @@ const go = I.memoize(untracedMethod(() =>
                 } else {
                   const nk = stepKey++
                   const index = i
+                  if (!queue) {
+                    queue = []
+                  }
                   queue.push(
                     untracedMethod(() =>
                       ({ es, output }: State) =>
-                        Effect.flatMap(Effect.either(te), (t) => {
+                        Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
                           if (E.isLeft(t)) {
                             // the input element is present but is not valid
                             const e = PR.index(index, t.left.errors)
@@ -458,7 +508,7 @@ const go = I.memoize(untracedMethod(() =>
                               es.push([nk, e])
                               return Effect.unit()
                             } else {
-                              return PR.failures(mutableAppend(sortByIndex(es), e))
+                              return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
                             }
                           }
                           output.push([nk, t.right])
@@ -478,20 +528,22 @@ const go = I.memoize(untracedMethod(() =>
             RA.isNonEmptyArray(es) ?
               PR.failures(sortByIndex(es)) :
               PR.success(sortByIndex(output))
-          return queue.length > 0 ?
-            untraced(() =>
+          if (queue && queue.length > 0) {
+            const cqueue = queue
+            return untraced(() =>
               Effect.suspend(() => {
                 const state: State = {
                   es: Array.from(es),
                   output: Array.from(output)
                 }
                 return Effect.flatMap(
-                  Effect.forEachDiscard(queue, (f) => f(state)),
-                  () => computeResult(state)
+                  Effect.forEachDiscard(cqueue, (f) => f(state)),
+                  () => PR.effect(computeResult(state))
                 )
               })
-            ) :
-            computeResult({ output, es })
+            )
+          }
+          return computeResult({ output, es })
         }
       }
       case "TypeLiteral": {
@@ -555,7 +607,9 @@ const go = I.memoize(untracedMethod(() =>
             es: typeof es
             output: typeof output
           }
-          const queue: Array<(state: State) => PR.ParseResult<void>> = []
+          let queue:
+            | Array<(state: State) => Effect.Effect<never, PR.ParseError, void>>
+            | undefined = undefined
 
           for (let i = 0; i < propertySignaturesTypes.length; i++) {
             const ps = ast.propertySignatures[i]
@@ -563,7 +617,7 @@ const go = I.memoize(untracedMethod(() =>
             const name = ps.name
             if (Object.prototype.hasOwnProperty.call(input, name)) {
               const te = parser(input[name], options)
-              const t = PR.either(te)
+              const t = PR.eitherOrUndefined(te)
               if (t) {
                 if (E.isLeft(t)) {
                   // the input key is present but is not valid
@@ -579,10 +633,13 @@ const go = I.memoize(untracedMethod(() =>
               } else {
                 const nk = stepKey++
                 const index = name
+                if (!queue) {
+                  queue = []
+                }
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(te), (t) => {
+                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
                         if (E.isLeft(t)) {
                           // the input key is present but is not valid
                           const e = PR.key(index, t.left.errors)
@@ -590,7 +647,7 @@ const go = I.memoize(untracedMethod(() =>
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.failures(mutableAppend(sortByIndex(es), e))
+                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
                           }
                         }
                         output[index] = t.right
@@ -617,7 +674,7 @@ const go = I.memoize(untracedMethod(() =>
                 // ---------------------------------------------
                 // handle keys
                 // ---------------------------------------------
-                const t = PR.either(te)
+                const t = PR.eitherOrUndefined(te)
                 if (t) {
                   if (E.isLeft(t)) {
                     const e = PR.key(key, t.left.errors)
@@ -635,7 +692,7 @@ const go = I.memoize(untracedMethod(() =>
                 // handle values
                 // ---------------------------------------------
                 const tve = type(input[key], options)
-                const tv = PR.either(tve)
+                const tv = PR.eitherOrUndefined(tve)
                 if (tv) {
                   if (E.isLeft(tv)) {
                     const e = PR.key(key, tv.left.errors)
@@ -651,11 +708,14 @@ const go = I.memoize(untracedMethod(() =>
                 } else {
                   const nk = stepKey++
                   const index = key
+                  if (!queue) {
+                    queue = []
+                  }
                   queue.push(
                     untracedMethod(() =>
                       ({ es, output }: State) =>
                         Effect.flatMap(
-                          Effect.either(tve),
+                          Effect.either(PR.effect(tve)),
                           (tv) => {
                             if (E.isLeft(tv)) {
                               const e = PR.key(index, tv.left.errors)
@@ -663,7 +723,7 @@ const go = I.memoize(untracedMethod(() =>
                                 es.push([nk, e])
                                 return Effect.unit()
                               } else {
-                                return PR.failures(mutableAppend(sortByIndex(es), e))
+                                return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
                               }
                             } else {
                               output[key] = tv.right
@@ -684,20 +744,22 @@ const go = I.memoize(untracedMethod(() =>
             RA.isNonEmptyArray(es) ?
               PR.failures(sortByIndex(es)) :
               PR.success(output)
-          return queue.length > 0 ?
-            untraced(() =>
+          if (queue && queue.length > 0) {
+            const cqueue = queue
+            return untraced(() =>
               Effect.suspend(() => {
                 const state: State = {
                   es: Array.from(es),
                   output: Object.assign({}, output)
                 }
                 return Effect.flatMap(
-                  Effect.forEachDiscard(queue, (f) => f(state)),
-                  () => computeResult(state)
+                  Effect.forEachDiscard(cqueue, (f) => f(state)),
+                  () => PR.effect(computeResult(state))
                 )
               })
-            ) :
-            computeResult({ es, output })
+            )
+          }
+          return computeResult({ es, output })
         }
       }
       case "Union": {
@@ -746,12 +808,12 @@ const go = I.memoize(untracedMethod(() =>
             candidates = candidates.concat(searchTree.otherwise)
           }
 
-          const queue: Array<(state: State) => PR.ParseResult<unknown>> = []
-          const finalResult: { ref: any } = {
-            ref: undefined
-          }
+          let queue:
+            | Array<(state: State) => Effect.Effect<never, PR.ParseError, unknown>>
+            | undefined = undefined
+
           type State = {
-            finalResult: typeof finalResult
+            finalResult?: any
             es: typeof es
           }
 
@@ -760,7 +822,7 @@ const go = I.memoize(untracedMethod(() =>
             // the members of a union are ordered based on which one should be decoded first,
             // therefore if one member has added a task, all subsequent members must
             // also add a task to the queue even if they are synchronous
-            const t = queue.length === 0 ? PR.either(te) : undefined
+            const t = !queue || queue.length === 0 ? PR.eitherOrUndefined(te) : undefined
             if (t) {
               if (E.isRight(t)) {
                 return PR.success(t.right)
@@ -769,18 +831,21 @@ const go = I.memoize(untracedMethod(() =>
               }
             } else {
               const nk = stepKey++
+              if (!queue) {
+                queue = []
+              }
               queue.push(
                 untracedMethod(() =>
-                  ({ es, finalResult }) =>
+                  (state) =>
                     Effect.suspend(() => {
-                      if (finalResult.ref) {
+                      if ("finalResult" in state) {
                         return Effect.unit()
                       } else {
-                        return Effect.flatMap(Effect.either(te), (t) => {
+                        return Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
                           if (E.isRight(t)) {
-                            finalResult.ref = PR.success(t.right)
+                            state.finalResult = PR.success(t.right)
                           } else {
-                            es.push([nk, PR.unionMember(t.left.errors)])
+                            state.es.push([nk, PR.unionMember(t.left.errors)])
                           }
                           return Effect.unit()
                         })
@@ -794,31 +859,30 @@ const go = I.memoize(untracedMethod(() =>
           // ---------------------------------------------
           // compute output
           // ---------------------------------------------
-          const computeResult = ({ es }: State) =>
+          const computeResult = (es: State["es"]) =>
             RA.isNonEmptyArray(es) ?
               PR.failures(sortByIndex(es)) :
               // this should never happen
               PR.failure(PR.type(AST.neverKeyword, input))
 
-          return queue.length > 0 ?
-            untraced(() =>
+          if (queue && queue.length > 0) {
+            const cqueue = queue
+            return untraced(() =>
               Effect.suspend(() => {
-                const state: State = {
-                  es: Array.from(es),
-                  finalResult: { ref: finalResult.ref }
-                }
+                const state: State = { es: Array.from(es) }
                 return Effect.flatMap(
-                  Effect.forEachDiscard(queue, (f) => f(state)),
+                  Effect.forEachDiscard(cqueue, (f) => f(state)),
                   () => {
-                    if (state.finalResult.ref) {
-                      return state.finalResult.ref
+                    if ("finalResult" in state) {
+                      return PR.effect(state.finalResult)
                     }
-                    return computeResult(state)
+                    return PR.effect(computeResult(state.es))
                   }
                 )
               })
-            ) :
-            computeResult({ es, finalResult })
+            )
+          }
+          return computeResult(es)
         }
       }
       case "Lazy": {
