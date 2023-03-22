@@ -219,7 +219,9 @@ export const failures = (
  * @since 1.0.0
  */
 export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefined => {
-  if (!Effect.isEffect(self)) {
+  // @ts-expect-error
+  if (self["_tag"] === "Left" || self["_tag"] === "Right") {
+    // @ts-expect-error
     return self
   }
 }
@@ -229,10 +231,13 @@ export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefi
  * @since 1.0.0
  */
 export const eitherOrRunSyncEither = <E, A>(self: IO<E, A>): E.Either<E, A> => {
-  if (Effect.isEffect(self)) {
-    return Debug.untraced(() => Effect.runSyncEither(self))
+  // @ts-expect-error
+  if (self["_tag"] === "Left" || self["_tag"] === "Right") {
+    // @ts-expect-error
+    return self
   }
-  return self
+  // @ts-expect-error
+  return Debug.untraced(() => Effect.runSyncEither(self))
 }
 
 /**
@@ -250,38 +255,45 @@ export const effect: <E, A>(self: IO<E, A>) => Effect.Effect<never, E, A> = (sel
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = Debug.methodWithTrace((trace, restore) =>
-  <E, E1, A, B>(
-    self: IO<E, A>,
-    f: (self: A) => IO<E1, B>
-  ): IO<E | E1, B> => {
-    if (Effect.isEffect(self)) {
-      return Effect.flatMap(self, (a) => effect(restore(f)(a))).traced(trace)
-    }
-    if (E.isRight(self)) {
-      return restore(f)(self.right)
-    } else {
-      return E.left(self.left)
-    }
+export const flatMap = <E, E1, A, B>(
+  self: IO<E, A>,
+  f: (self: A) => IO<E1, B>
+): IO<E | E1, B> => {
+  // @ts-expect-error
+  if (self["_tag"] === "Left") {
+    // @ts-expect-error
+    return self
   }
-)
+  // @ts-expect-error
+  if (self["_tag"] === "Right") {
+    // @ts-expect-error
+    return f(self.right)
+  }
+  // @ts-expect-error
+  return Debug.bodyWithTrace((trace, restore) =>
+    // @ts-expect-error
+    Effect.flatMap(self, (a) => effect(restore(f)(a))).traced(trace)
+  )
+}
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const map = Debug.methodWithTrace((trace, restore) =>
-  <E, A, B>(
-    self: IO<E, A>,
-    f: (self: A) => B
-  ): IO<E, B> => {
-    if (Effect.isEffect(self)) {
-      return Effect.map(self, restore(f)).traced(trace)
-    }
-    if (E.isRight(self)) {
-      return E.right(restore(f)(self.right))
-    } else {
-      return self
-    }
+export const map = <E, A, B>(
+  self: IO<E, A>,
+  f: (self: A) => B
+): IO<E, B> => {
+  // @ts-expect-error
+  if (self["_tag"] === "Left") {
+    // @ts-expect-error
+    return self
   }
-)
+  // @ts-expect-error
+  if (self["_tag"] === "Right") {
+    // @ts-expect-error
+    return E.right(f(self.right))
+  }
+  // @ts-expect-error
+  return Debug.bodyWithTrace((trace, restore) => Effect.map(self, restore(f)).traced(trace))
+}
