@@ -48,6 +48,7 @@ export type ParseErrors =
   | Missing
   | Unexpected
   | UnionMember
+  | Forbidden
 
 /**
  * The `Type` variant of the `ParseError` type represents an error that occurs when the `actual` value is not of the expected type.
@@ -67,6 +68,16 @@ export interface Type {
 }
 
 /**
+ * The `Forbidden` variant of the `ParseError` type represents an error that occurs when an Effect is encounter but disallowed from execution.
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface Forbidden {
+  readonly _tag: "Forbidden"
+}
+
+/**
  * @category constructors
  * @since 1.0.0
  */
@@ -76,6 +87,14 @@ export const type = (expected: AST.AST, actual: unknown, message?: string): Type
   actual,
   message: O.fromNullable(message)
 })
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const forbidden: Forbidden = {
+  _tag: "Forbidden"
+}
 
 /**
  * The `Index` decode error indicates that there was an error at a specific index in an array or tuple.
@@ -224,20 +243,6 @@ export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefi
     // @ts-expect-error
     return self
   }
-}
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
-export const eitherOrRunSyncEither = <E, A>(self: IO<E, A>): E.Either<E, A> => {
-  // @ts-expect-error
-  if (self["_tag"] === "Left" || self["_tag"] === "Right") {
-    // @ts-expect-error
-    return self
-  }
-  // @ts-expect-error
-  return Debug.untraced(() => Effect.runSyncEither(self))
 }
 
 /**

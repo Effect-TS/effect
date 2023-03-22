@@ -249,6 +249,8 @@ const formatDecodeError = (e: PR.ParseErrors): string => {
           `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
         )
       )
+    case "Forbidden":
+      return "is forbidden"
     case "Index":
       return `/${e.index} ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
     case "Key":

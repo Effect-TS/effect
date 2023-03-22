@@ -19,7 +19,6 @@ import type { Predicate, Refinement } from "@effect/data/Predicate"
 import { isDate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import { untracedMethod } from "@effect/io/Debug"
-import * as Effect from "@effect/io/Effect"
 import type { Arbitrary } from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
@@ -821,12 +820,7 @@ export const transformEither: {
     options?: ParseOptions
   ) => E.Either<PR.ParseError, I2>,
   encode: (i2: I2, options?: ParseOptions) => E.Either<PR.ParseError, A1>
-): Schema<I1, A2> =>
-  make(
-    AST.createTransform(from.ast, to.ast, (i, o) =>
-      Effect.fromEither(decode(i, o)), (i, o) =>
-      Effect.fromEither(encode(i, o)))
-  ))
+): Schema<I1, A2> => make(AST.createTransform(from.ast, to.ast, decode, encode)))
 
 /**
   Create a new `Schema` by transforming the input and output of an existing `Schema`
@@ -1271,12 +1265,10 @@ export const fromBrand = <C extends Brand<string>>(
   <I, A extends Brand.Unbranded<C>>(self: Schema<I, A>): Schema<I, A & C> => {
     const decode = untracedMethod(() =>
       (a: A): ParseResult<C> =>
-        Effect.fromEither(
-          E.mapLeft(
-            constructor.either(a),
-            (brandErrors) =>
-              PR.parseError([PR.type(ast, a, brandErrors.map((v) => v.message).join(", "))])
-          )
+        E.mapLeft(
+          constructor.either(a),
+          (brandErrors) =>
+            PR.parseError([PR.type(ast, a, brandErrors.map((v) => v.message).join(", "))])
         )
     )
     const ast = AST.createRefinement(

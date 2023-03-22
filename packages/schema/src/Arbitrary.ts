@@ -8,7 +8,7 @@ import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
 import * as I from "@effect/schema/internal/common"
-import { eitherOrRunSyncEither } from "@effect/schema/ParseResult"
+import { eitherOrUndefined } from "@effect/schema/ParseResult"
 import type { Schema } from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
 
@@ -208,7 +208,16 @@ const go = I.memoize((ast: AST.AST): Arbitrary<any> => {
       return pipe(
         getHook(ast),
         O.match(
-          () => (fc) => to(fc).filter((a) => E.isRight(eitherOrRunSyncEither(ast.decode(a)))),
+          () =>
+            (fc) =>
+              to(fc).filter((a) => {
+                const computed = eitherOrUndefined(ast.decode(a))
+                if (computed) {
+                  return E.isRight(computed)
+                } else {
+                  return false
+                }
+              }),
           (handler) => handler(to)
         )
       )
