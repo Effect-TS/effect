@@ -12,6 +12,20 @@ describe.concurrent("AST", () => {
     expect(AST.isBigIntKeyword).exist
     expect(AST.isTransform).exist
     expect(AST.isRefinement).exist
+    expect(AST.isNeverKeyword).exist
+  })
+
+  it("createIndexSignature/ should throw on unsupported ASTs", () => {
+    expect(() => AST.createIndexSignature(AST.booleanKeyword, AST.stringKeyword, true))
+      .toThrowError(
+        new Error(
+          `An index signature parameter type must be 'string', 'symbol', a template literal type or a refinement of the previous types`
+        )
+      )
+  })
+
+  it("_getParameterKeyof/ should return never on unsupported ASTs", () => {
+    expect(AST._getParameterKeyof(pipe(S.number, S.greaterThan(1)).ast)).toEqual(AST.neverKeyword)
   })
 
   it("isTypeAlias", () => {

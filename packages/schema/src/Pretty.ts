@@ -123,9 +123,12 @@ export const match: AST.Match<Pretty<any>> = {
   "TypeLiteral": (ast, go) => {
     const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type))
     const indexSignatureTypes = ast.indexSignatures.map((is) => go(is.type))
+    const expectedKeys: any = {}
+    for (let i = 0; i < propertySignaturesTypes.length; i++) {
+      expectedKeys[ast.propertySignatures[i].name] = null
+    }
     return (input: { readonly [x: PropertyKey]: unknown }) => {
       const output: Array<string> = []
-      const expectedKeys: any = {}
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
@@ -138,7 +141,6 @@ export const match: AST.Match<Pretty<any>> = {
         output.push(
           `${getPrettyPropertyKey(name)}: ${propertySignaturesTypes[i](input[name])}`
         )
-        expectedKeys[name] = null
       }
       // ---------------------------------------------
       // handle index signatures
@@ -168,8 +170,8 @@ export const match: AST.Match<Pretty<any>> = {
   },
   "Lazy": (ast, go) => {
     const f = () => go(ast.f())
-    const get = I.memoize<typeof f, Pretty<any>>(f)
-    return (a) => get(f)(a)
+    const get = I.memoize<void, Pretty<any>>(f)
+    return (a) => get()(a)
   },
   "Refinement": (ast, go) => go(ast.from),
   "Transform": (ast, go) => go(ast.to)

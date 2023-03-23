@@ -59,7 +59,7 @@ const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
 >(ArbitraryHookId)
 
-const go = I.memoize((ast: AST.AST): Arbitrary<any> => {
+const go = (ast: AST.AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration":
       return pipe(
@@ -190,8 +190,8 @@ const go = I.memoize((ast: AST.AST): Arbitrary<any> => {
         O.match(
           () => {
             const f = () => go(ast.f())
-            const get = I.memoize<typeof f, Arbitrary<any>>(f)
-            return (fc) => fc.constant(null).chain(() => get(f)(fc))
+            const get = I.memoize<void, Arbitrary<any>>(f)
+            return (fc) => fc.constant(null).chain(() => get()(fc))
           },
           (handler) => handler()
         )
@@ -223,4 +223,4 @@ const go = I.memoize((ast: AST.AST): Arbitrary<any> => {
       )
     }
   }
-})
+}

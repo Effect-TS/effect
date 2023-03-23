@@ -232,7 +232,7 @@ export const expectEncodeFailure = async <I, A>(
   }
 }
 
-const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseErrors>): string => {
+export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseErrors>): string => {
   return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 }
 
