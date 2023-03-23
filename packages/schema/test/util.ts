@@ -14,7 +14,7 @@ import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
 
-const sleep = Effect.sleep(Duration.millis(10))
+export const sleep = Effect.sleep(Duration.millis(10))
 
 const goDecode = (
   decode: (input: any, options?: ParseOptions) => PR.ParseResult<any>

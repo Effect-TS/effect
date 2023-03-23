@@ -1,16 +1,25 @@
 import * as E from "@effect/data/Either"
+import { pipe } from "@effect/data/Function"
+import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const expectForbidden = <I, A>(
+const expectMessage = <I, A>(
   schema: S.Schema<I, A>,
   u: unknown,
   message: string
 ) => {
-  const eschema = Util.effectifySchema(schema, "all")
-  expect(E.mapLeft(S.parseEither(eschema)(u), (e) => Util.formatAll(e.errors))).toEqual(
+  expect(E.mapLeft(S.parseEither(schema)(u), (e) => Util.formatAll(e.errors))).toEqual(
     E.left(message)
   )
+}
+
+export const expectForbidden = <I, A>(
+  schema: S.Schema<I, A>,
+  u: unknown,
+  message: string
+) => {
+  expectMessage(Util.effectifySchema(schema, "all"), u, message)
 }
 
 describe.concurrent("Forbidden", () => {
@@ -40,9 +49,30 @@ describe.concurrent("Forbidden", () => {
 
   it("declaration", () => {
     const schema = S.declare([], S.number, () => S.parseEffect(S.number))
-    expectForbidden(
+    expectMessage(
       schema,
       1,
+      "is forbidden"
+    )
+  })
+
+  it("transform", () => {
+    const schema = pipe(
+      S.transformEither(
+        S.string,
+        S.transformEffect(
+          S.string,
+          S.string,
+          (s) => PR.flatMap(Util.sleep, () => PR.success(s)),
+          (s) => PR.flatMap(Util.sleep, () => PR.success(s))
+        ),
+        E.right,
+        E.right
+      )
+    )
+    expectMessage(
+      schema,
+      "a",
       "is forbidden"
     )
   })

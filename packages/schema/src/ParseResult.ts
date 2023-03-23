@@ -238,10 +238,9 @@ export const failures = (
  * @since 1.0.0
  */
 export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefined => {
-  // @ts-expect-error
-  if (self["_tag"] === "Left" || self["_tag"] === "Right") {
-    // @ts-expect-error
-    return self
+  const s: any = self
+  if (s["_tag"] === "Left" || s["_tag"] === "Right") {
+    return s
   }
 }
 
@@ -264,15 +263,12 @@ export const flatMap = <E, E1, A, B>(
   self: IO<E, A>,
   f: (self: A) => IO<E1, B>
 ): IO<E | E1, B> => {
-  // @ts-expect-error
-  if (self["_tag"] === "Left") {
-    // @ts-expect-error
-    return self
+  const s: any = self
+  if (s["_tag"] === "Left") {
+    return s
   }
-  // @ts-expect-error
-  if (self["_tag"] === "Right") {
-    // @ts-expect-error
-    return f(self.right)
+  if (s["_tag"] === "Right") {
+    return f(s.right)
   }
   // @ts-expect-error
   return Debug.bodyWithTrace((trace, restore) =>
@@ -289,15 +285,12 @@ export const map = <E, A, B>(
   self: IO<E, A>,
   f: (self: A) => B
 ): IO<E, B> => {
-  // @ts-expect-error
-  if (self["_tag"] === "Left") {
-    // @ts-expect-error
-    return self
+  const s: any = self
+  if (s["_tag"] === "Left") {
+    return s
   }
-  // @ts-expect-error
-  if (self["_tag"] === "Right") {
-    // @ts-expect-error
-    return E.right(f(self.right))
+  if (s["_tag"] === "Right") {
+    return E.right(f(s.right))
   }
   // @ts-expect-error
   return Debug.bodyWithTrace((trace, restore) => Effect.map(self, restore(f)).traced(trace))
