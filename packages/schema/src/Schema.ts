@@ -762,7 +762,7 @@ export function filter<A>(
   @category combinators
   @since 1.0.0
  */
-export const transformEffect: {
+export const transformResult: {
   <I2, A2, A1>(
     to: Schema<I2, A2>,
     decode: (a1: A1, options?: ParseOptions) => ParseResult<I2>,
@@ -779,47 +779,6 @@ export const transformEffect: {
   to: Schema<I2, A2>,
   decode: (a1: A1, options?: ParseOptions) => ParseResult<I2>,
   encode: (i2: I2, options?: ParseOptions) => ParseResult<A1>
-): Schema<I1, A2> => make(AST.createTransform(from.ast, to.ast, decode, encode)))
-
-/**
-  Create a new `Schema` by transforming the input and output of an existing `Schema`
-  using the provided decoding functions.
-
-  @category combinators
-  @since 1.0.0
- */
-export const transformEither: {
-  <I2, A2, A1>(
-    to: Schema<I2, A2>,
-    decode: (
-      a1: A1,
-      options?: ParseOptions
-    ) => E.Either<PR.ParseError, I2>,
-    encode: (
-      i2: I2,
-      options?: ParseOptions
-    ) => E.Either<PR.ParseError, A1>
-  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
-  <I1, A1, I2, A2>(
-    from: Schema<I1, A1>,
-    to: Schema<I2, A2>,
-    decode: (
-      a1: A1,
-      options?: ParseOptions
-    ) => E.Either<PR.ParseError, I2>,
-    encode: (
-      i2: I2,
-      options?: ParseOptions
-    ) => E.Either<PR.ParseError, A1>
-  ): Schema<I1, A2>
-} = dual(4, <I1, A1, I2, A2>(
-  from: Schema<I1, A1>,
-  to: Schema<I2, A2>,
-  decode: (
-    a1: A1,
-    options?: ParseOptions
-  ) => E.Either<PR.ParseError, I2>,
-  encode: (i2: I2, options?: ParseOptions) => E.Either<PR.ParseError, A1>
 ): Schema<I1, A2> => make(AST.createTransform(from.ast, to.ast, decode, encode)))
 
 /**
@@ -849,7 +808,7 @@ export const transform: {
     decode: (a1: A1) => I2,
     encode: (i2: I2) => A1
   ): Schema<I1, A2> =>
-    transformEither(from, to, (a) => E.right(decode(a)), (b) => E.right(encode(b)))
+    transformResult(from, to, (a) => E.right(decode(a)), (b) => E.right(encode(b)))
 )
 
 /**
@@ -1417,7 +1376,7 @@ export const date: Schema<Date> = declare(
   @category parsers
   @since 1.0.0
 */
-export const dateFromString: Schema<string, Date> = transformEffect(
+export const dateFromString: Schema<string, Date> = transformResult(
   string,
   date,
   (s) => {
@@ -1856,7 +1815,7 @@ export const clamp = <A extends number>(min: number, max: number) =>
   @since 1.0.0
 */
 export const numberFromString = <I>(self: Schema<I, string>): Schema<I, number> => {
-  const schema: Schema<I, number> = transformEffect(
+  const schema: Schema<I, number> = transformResult(
     self,
     number,
     (s) => {

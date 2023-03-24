@@ -591,7 +591,7 @@ describe.concurrent("Schema", () => {
     const To = S.struct({ radius: S.number, _isVisible: S.boolean })
 
     const Circle = pipe(
-      S.transformEither(From, To, S.parseEither(To), ({ _isVisible, ...rest }) => E.right(rest)),
+      S.transformResult(From, To, S.parseEither(To), ({ _isVisible, ...rest }) => E.right(rest)),
       S.attachPropertySignature("_tag", "Circle")
     )
     expect(S.decode(Circle)({ radius: 10, _isVisible: true })).toEqual({

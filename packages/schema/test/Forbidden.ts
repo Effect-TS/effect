@@ -58,9 +58,9 @@ describe.concurrent("Forbidden", () => {
 
   it("transform", () => {
     const schema = pipe(
-      S.transformEither(
+      S.transformResult(
         S.string,
-        S.transformEffect(
+        S.transformResult(
           S.string,
           S.string,
           (s) => PR.flatMap(Util.sleep, () => PR.success(s)),
