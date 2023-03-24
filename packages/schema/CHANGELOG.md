@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.5.0
+
+### Minor Changes
+
+- [#178](https://github.com/Effect-TS/schema/pull/178) [`f60341f`](https://github.com/Effect-TS/schema/commit/f60341f1c626145455c3ccd89c34b42905853bb5) Thanks [@gcanti](https://github.com/gcanti)! - merge transformEither and transformEffect into transformResult
+
 ## 0.4.0
 
 ### Minor Changes
