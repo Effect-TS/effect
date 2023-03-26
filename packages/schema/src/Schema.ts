@@ -1955,59 +1955,62 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
     Spread<I & { readonly [K in keyof Fields]?: From<Fields[K]> }>,
     Spread<A & { readonly [K in keyof Fields]: Option<To<Fields[K]>> }>
   > => {
-    if (AST.isTypeLiteral(schema.ast)) {
-      const propertySignatures = schema.ast.propertySignatures
+    const ast = schema.ast
+    if (AST.isTypeLiteral(ast) || AST.isTransform(ast)) {
       const ownKeys = I.ownKeys(fields)
-      if (propertySignatures.some((px) => ownKeys.some((name) => px.name === name))) {
-        throw new Error("`optionsFromOptionals` cannot handle overlapping property signatures")
-      }
-
-      const from = AST.createTypeLiteral(
-        propertySignatures.concat(
-          ownKeys.map((key) =>
-            AST.createPropertySignature(
-              key,
-              fields[key].ast,
-              true,
-              true
-            )
-          )
-        ),
-        schema.ast.indexSignatures
-      )
-      const to = AST.createTypeLiteral(
-        propertySignatures.concat(
-          ownKeys.map((key) =>
-            AST.createPropertySignature(
-              key,
-              optionFromSelf(fields[key]).ast,
-              false,
-              true
-            )
-          )
-        ),
-        schema.ast.indexSignatures
-      )
-      const out = AST.createTransform(from, to, (o: any) => {
-        const out = { ...o }
-        for (const key of ownKeys) {
-          out[key] = O.fromNullable(o[key])
+      const len = ownKeys.length
+      const from = AST.getFrom(schema.ast)
+      const to = AST.getTo(schema.ast)
+      if (AST.isTypeLiteral(from) && AST.isTypeLiteral(to)) {
+        if (
+          (from.propertySignatures.some((px) => ownKeys.some((name) => px.name === name))) ||
+          (to.propertySignatures.some((px) => ownKeys.some((name) => px.name === name)))
+        ) {
+          throw new Error("`optionsFromOptionals` cannot handle overlapping property signatures")
         }
-        return PR.success(out)
-      }, (o) => {
-        const out = { ...o }
-        for (const key of ownKeys) {
-          if (O.isSome(o[key])) {
-            out[key] = o[key].value
-          } else {
-            delete out[key]
+        const decode = AST.isTypeLiteral(ast) ? PR.success : ast.decode
+        const encode = AST.isTypeLiteral(ast) ? PR.success : ast.encode
+        const from2 = AST.createTypeLiteral(
+          from.propertySignatures.concat(
+            ownKeys.map((key) => AST.createPropertySignature(key, fields[key].ast, true, true))
+          ),
+          from.indexSignatures
+        )
+        const to2 = AST.createTypeLiteral(
+          to.propertySignatures.concat(
+            ownKeys.map((key) =>
+              AST.createPropertySignature(key, optionFromSelf(fields[key]).ast, false, true)
+            )
+          ),
+          to.indexSignatures
+        )
+        const out = AST.createTransform(from2, to2, (input) => {
+          const o = { ...input }
+          const n: any = {}
+          for (let i = 0; i < len; i++) {
+            const key = ownKeys[i]
+            delete o[key]
+            n[key] = O.fromNullable(input[key])
           }
-        }
-        return PR.success(out)
-      })
-      return make(out)
+          return PR.map(decode(o), (o) => ({ ...o, ...n }))
+        }, (a) => {
+          const o = { ...a }
+          const n: any = {}
+          for (let i = 0; i < len; i++) {
+            const key = ownKeys[i]
+            delete o[key]
+            if (O.isSome(a[key])) {
+              n[key] = a[key].value
+            }
+          }
+          return PR.map(encode(o), (o) => ({ ...o, ...n }))
+        })
+        return make(out)
+      }
     }
-    throw new Error("`optionsFromOptionals` can only handle type literals")
+    throw new Error(
+      "`optionsFromOptionals` can only handle type literals or transformations between type literals"
+    )
   }
 
 // ---------------------------------------------
