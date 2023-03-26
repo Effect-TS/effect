@@ -93,8 +93,12 @@ describe.concurrent("Option", () => {
 
   it("optionsFromOptionals", async () => {
     expect(() => pipe(S.object, S.optionsFromOptionals({ "b": S.number }))).toThrowError(
-      new Error("`parseOptional` can only handle type literals")
+      new Error("`optionsFromOptionals` can only handle type literals")
     )
+    expect(() => pipe(S.struct({ a: S.number }), S.optionsFromOptionals({ a: S.number })))
+      .toThrowError(
+        new Error("`optionsFromOptionals` cannot handle overlapping property signatures")
+      )
 
     const schema = pipe(S.struct({ a: S.string }), S.optionsFromOptionals({ b: S.number }))
     await Util.expectParseSuccess(schema, { a: "a" }, { a: "a", b: O.none() })

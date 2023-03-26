@@ -1958,6 +1958,10 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
     if (AST.isTypeLiteral(schema.ast)) {
       const propertySignatures = schema.ast.propertySignatures
       const ownKeys = I.ownKeys(fields)
+      if (propertySignatures.some((px) => ownKeys.some((name) => px.name === name))) {
+        throw new Error("`optionsFromOptionals` cannot handle overlapping property signatures")
+      }
+
       const from = AST.createTypeLiteral(
         propertySignatures.concat(
           ownKeys.map((key) =>
@@ -2003,7 +2007,7 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
       })
       return make(out)
     }
-    throw new Error("`parseOptional` can only handle type literals")
+    throw new Error("`optionsFromOptionals` can only handle type literals")
   }
 
 // ---------------------------------------------
