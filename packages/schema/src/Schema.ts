@@ -1963,7 +1963,7 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
           ownKeys.map((key) =>
             AST.createPropertySignature(
               key,
-              AST.createUnion([_undefined.ast, _null.ast, fields[key].ast]),
+              fields[key].ast,
               true,
               true
             )
@@ -1977,7 +1977,7 @@ export const optionsFromOptionals = <Fields extends Record<PropertyKey, Schema<a
             AST.createPropertySignature(
               key,
               optionFromSelf(fields[key]).ast,
-              true,
+              false,
               true
             )
           )

@@ -98,22 +98,15 @@ describe.concurrent("Option", () => {
 
     const schema = pipe(S.struct({ a: S.string }), S.optionsFromOptionals({ b: S.number }))
     await Util.expectParseSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
-    await Util.expectParseSuccess(schema, { a: "a", b: undefined }, { a: "a", b: O.none() })
-    await Util.expectParseSuccess(schema, { a: "a", b: null }, { a: "a", b: O.none() })
     await Util.expectParseSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
 
-    await Util.expectParseFailureTree(
+    await Util.expectParseFailure(
       schema,
-      { a: "a", b: "b" },
-      `error(s) found
-└─ ["b"]
-   ├─ union member
-   │  └─ Expected undefined, actual "b"
-   ├─ union member
-   │  └─ Expected null, actual "b"
-   └─ union member
-      └─ Expected number, actual "b"`
+      { a: "a", b: undefined },
+      "/b Expected number, actual undefined"
     )
+    await Util.expectParseFailure(schema, { a: "a", b: null }, "/b Expected number, actual null")
+    await Util.expectParseFailure(schema, { a: "a", b: "b" }, `/b Expected number, actual "b"`)
 
     await Util.expectEncodeSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
     await Util.expectEncodeSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
