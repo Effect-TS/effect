@@ -570,7 +570,7 @@ export interface BrandSchema<From, To extends Brand<any>>
  * @category combinators
  * @since 1.0.0
  */
-export const brand = <B extends string, A>(
+export const brand = <B extends string | symbol, A>(
   brand: B,
   options?: AnnotationOptions<A>
 ) =>
@@ -1217,7 +1217,7 @@ export const BrandTypeId = "@effect/schema/BrandTypeId"
  * @category combinators
  * @since 1.0.0
  */
-export const fromBrand = <C extends Brand<string>>(
+export const fromBrand = <C extends Brand<string | symbol>>(
   constructor: Brand.Constructor<C>,
   options?: AnnotationOptions<Brand.Unbranded<C>>
 ) =>

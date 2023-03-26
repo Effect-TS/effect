@@ -77,6 +77,26 @@ describe.concurrent("Schema", () => {
     })
   })
 
+  it("brand/symbol annotations", () => {
+    const A = Symbol.for("A")
+    const B = Symbol.for("B")
+    const Branded = pipe(
+      S.string,
+      S.numberFromString,
+      S.int(),
+      S.brand(A),
+      S.brand(B, {
+        description: "a B brand"
+      })
+    )
+    expect(Branded.ast.annotations).toEqual({
+      [AST.TypeAnnotationId]: "@effect/schema/IntTypeId",
+      [AST.BrandAnnotationId]: [A, B],
+      [AST.DescriptionAnnotationId]: "a B brand",
+      [AST.JSONSchemaAnnotationId]: { type: "integer" }
+    })
+  })
+
   it("brand/ ()", () => {
     const Int = pipe(S.string, S.numberFromString, S.int(), S.brand("Int"))
     expect(Int(1)).toEqual(1)
