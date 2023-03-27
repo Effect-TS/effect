@@ -162,6 +162,30 @@ describe.concurrent("AST", () => {
         hasTransformation: false
       })
     })
+
+    it("struct({}) should go in last position in a union", () => {
+      const a = S.object
+      const b = S.struct({})
+      const schema = S.union(b, a)
+      expect(schema.ast).toEqual({
+        _tag: "Union",
+        types: [a.ast, b.ast],
+        annotations: {},
+        hasTransformation: false
+      })
+    })
+
+    it("object precedence should be low", () => {
+      const a = S.tuple()
+      const b = S.object
+      const schema = S.union(b, a)
+      expect(schema.ast).toEqual({
+        _tag: "Union",
+        types: [a.ast, b.ast],
+        annotations: {},
+        hasTransformation: false
+      })
+    })
   })
 
   it("keyof/ never", () => {

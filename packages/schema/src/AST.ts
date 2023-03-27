@@ -1209,8 +1209,10 @@ export const _getWeight = (ast: AST): number => {
       return _getWeight(ast.type)
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
-    case "TypeLiteral":
-      return ast.propertySignatures.length + ast.indexSignatures.length
+    case "TypeLiteral": {
+      const out = ast.propertySignatures.length + ast.indexSignatures.length
+      return out === 0 ? -2 : out
+    }
     case "Union":
       return ast.types.reduce((n, member) => n + _getWeight(member), 0)
     case "Lazy":
@@ -1218,6 +1220,11 @@ export const _getWeight = (ast: AST): number => {
     case "Refinement":
     case "Transform":
       return _getWeight(ast.to)
+    case "ObjectKeyword":
+      return -1
+    case "UnknownKeyword":
+    case "AnyKeyword":
+      return -2
     default:
       return 0
   }
