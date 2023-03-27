@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.7.1
+
+### Patch Changes
+
+- [#190](https://github.com/Effect-TS/schema/pull/190) [`c52da9a`](https://github.com/Effect-TS/schema/commit/c52da9a6b2d249e2c823bbe8f4f7aaa51bd975a3) Thanks [@gcanti](https://github.com/gcanti)! - struct({}) should go in last position in a union
+
 ## 0.7.0
 
 ### Minor Changes
