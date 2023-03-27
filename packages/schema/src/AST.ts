@@ -1020,7 +1020,7 @@ export const partial = (ast: AST): AST => {
       return createLazy(() => partial(ast.f()))
     case "Refinement":
     case "Transform":
-      return partial(ast.to)
+      throw new Error("`partial` cannot handle refinements or transformations")
     default:
       return ast
   }
@@ -1344,8 +1344,9 @@ export const _getPropertySignatures = (
     case "Lazy":
       return _getPropertySignatures(ast.f())
     case "Refinement":
+      return _getPropertySignatures(ast.from)
     case "Transform":
-      return _getPropertySignatures(ast.to)
+      throw new Error("cannot compute property signatures for transformations")
     default:
       return []
   }

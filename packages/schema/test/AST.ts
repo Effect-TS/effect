@@ -215,24 +215,6 @@ describe.concurrent("AST", () => {
     )
   })
 
-  it("partial/refinement", () => {
-    const schema = pipe(
-      S.struct({ a: S.string, b: S.string }),
-      S.filter(({ a, b }) => a === b),
-      S.partial
-    )
-    expect(schema.ast).toEqual(S.struct({ a: S.optional(S.string), b: S.optional(S.string) }).ast)
-  })
-
-  it("partial/transform", () => {
-    const schema = pipe(
-      S.string,
-      S.transform(S.struct({ a: S.string }), (a) => ({ a }), ({ a }) => a),
-      S.partial
-    )
-    expect(schema.ast).toEqual(S.struct({ a: S.optional(S.string) }).ast)
-  })
-
   it("partial/tuple/ e", () => {
     // type A = [string]
     // type B = Partial<A>
@@ -403,13 +385,13 @@ describe.concurrent("AST", () => {
     })
   })
 
-  it("getPropertySignatures/ string", () => {
+  it("_getPropertySignatures/ string", () => {
     const schema = S.string
     expect(AST._getPropertySignatures(schema.ast)).toEqual([])
   })
 
-  it("getPropertySignatures/ type alias", () => {
-    const schema = S.optionFromNullable(S.number)
+  it("_getPropertySignatures/ declaration", () => {
+    const schema = S.optionFromSelf(S.number)
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(
         "_tag",
@@ -420,18 +402,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/ Refinement", () => {
-    const schema = pipe(
-      S.struct({ a: S.string, b: S.string }),
-      S.filter(({ a, b }) => a === b)
-    )
-    expect(AST._getPropertySignatures(schema.ast)).toEqual([
-      AST.createPropertySignature("a", S.string.ast, false, true),
-      AST.createPropertySignature("b", S.string.ast, false, true)
-    ])
-  })
-
-  it("getPropertySignatures/ tuple", () => {
+  it("_getPropertySignatures/ tuple", () => {
     const schema = S.tuple(S.string, S.number)
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature(0, S.string.ast, false, true),
@@ -439,7 +410,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/struct string keys", () => {
+  it("_getPropertySignatures/struct string keys", () => {
     const schema = S.struct({ a: S.string, b: S.number })
     expect(AST._getPropertySignatures(schema.ast)).toEqual([
       AST.createPropertySignature("a", S.string.ast, false, true),
@@ -447,7 +418,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/struct symbol keys", () => {
+  it("_getPropertySignatures/struct symbol keys", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
     const schema = S.struct({ [a]: S.string, [b]: S.number })
@@ -457,7 +428,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/union required property signatures", () => {
+  it("_getPropertySignatures/union required property signatures", () => {
     const schema = S.union(
       S.struct({ a: S.string, b: S.number }),
       S.struct({ a: S.boolean, c: S.boolean })
@@ -472,7 +443,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/union optional property signatures", () => {
+  it("_getPropertySignatures/union optional property signatures", () => {
     const schema = S.union(
       S.struct({ a: S.string, b: S.number }),
       S.struct({ c: S.boolean, a: S.optional(S.boolean) })
@@ -487,7 +458,7 @@ describe.concurrent("AST", () => {
     ])
   })
 
-  it("getPropertySignatures/ lazy", () => {
+  it("_getPropertySignatures/ lazy", () => {
     interface Category {
       readonly name: string
       readonly categories: ReadonlyArray<Category>
@@ -507,5 +478,23 @@ describe.concurrent("AST", () => {
         true
       )
     ])
+  })
+
+  it("_getPropertySignatures/Refinement", () => {
+    const schema = pipe(
+      S.struct({ a: S.string, b: S.string }),
+      S.filter(({ a, b }) => a === b)
+    )
+    expect(AST._getPropertySignatures(schema.ast)).toEqual([
+      AST.createPropertySignature("a", S.string.ast, false, true),
+      AST.createPropertySignature("b", S.string.ast, false, true)
+    ])
+  })
+
+  it("_getPropertySignatures/Transform", () => {
+    const schema = S.optionFromNullable(S.number)
+    expect(() => AST._getPropertySignatures(schema.ast)).toThrowError(
+      new Error("cannot compute property signatures for transformations")
+    )
   })
 })
