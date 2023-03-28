@@ -340,12 +340,12 @@ describe.concurrent("is", () => {
       const schema = S.struct({ a: S.number })
       const is = P.is(schema)
       expect(is({ a: 1 })).toEqual(true)
+      expect(is({ a: 1, b: "b" })).toEqual(true)
 
       expect(is(null)).toEqual(false)
       expect(is({})).toEqual(false)
       expect(is({ a: undefined })).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
-      expect(is({ a: 1, b: "b" })).toEqual(false)
     })
 
     it("required property signature with undefined", () => {
@@ -353,11 +353,11 @@ describe.concurrent("is", () => {
       const is = P.is(schema)
       expect(is({ a: 1 })).toEqual(true)
       expect(is({ a: undefined })).toEqual(true)
+      expect(is({ a: 1, b: "b" })).toEqual(true)
 
       expect(is(null)).toEqual(false)
       expect(is({})).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
-      expect(is({ a: 1, b: "b" })).toEqual(false)
     })
 
     it("optional property signature", () => {
@@ -365,10 +365,10 @@ describe.concurrent("is", () => {
       const is = P.is(schema)
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)
+      expect(is({ a: 1, b: "b" })).toEqual(true)
 
       expect(is(null)).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
-      expect(is({ a: 1, b: "b" })).toEqual(false)
       expect(is({ a: undefined })).toEqual(false)
     })
 
@@ -378,9 +378,9 @@ describe.concurrent("is", () => {
       expect(is({})).toEqual(true)
       expect(is({ a: 1 })).toEqual(true)
       expect(is({ a: undefined })).toEqual(true)
+      expect(is({ a: 1, b: "b" })).toEqual(true)
 
       expect(is(null)).toEqual(false)
-      expect(is({ a: 1, b: "b" })).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
     })
   })
@@ -616,10 +616,11 @@ describe.concurrent("is", () => {
     const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
     const schema = pipe(base, S.pick("a", "b"))
     const is = P.is(schema)
-    expect(is(null)).toEqual(false)
     expect(is({ a: "a", b: 1 })).toEqual(true)
-    expect(is({ a: "a", b: 1, c: true })).toEqual(false)
-    expect(is({ a: "a", b: 1, c: "a" })).toEqual(false)
+    expect(is({ a: "a", b: 1, c: "a" })).toEqual(true)
+
+    expect(is(null)).toEqual(false)
+    expect(is({ a: "a", b: 1, c: true })).toEqual(true)
   })
 
   describe.concurrent("omit", () => {
@@ -628,11 +629,11 @@ describe.concurrent("is", () => {
       const schema = pipe(base, S.omit("c"))
       const is = P.is(schema)
       expect(is({ a: "a", b: 1 })).toEqual(true)
+      expect(is({ a: "a", b: 1, c: true })).toEqual(true)
+      expect(is({ a: "a", b: 1, c: "a" })).toEqual(true)
 
       expect(is(null)).toEqual(false)
       expect(is({ a: "a" })).toEqual(false)
-      expect(is({ a: "a", b: 1, c: true })).toEqual(false)
-      expect(is({ a: "a", b: 1, c: "a" })).toEqual(false)
       expect(is({ b: 1 })).toEqual(false)
     })
 
@@ -642,11 +643,11 @@ describe.concurrent("is", () => {
       const schema = pipe(base, S.omit("c"))
       const is = P.is(schema)
       expect(is({ [a]: "a", b: 1 })).toEqual(true)
+      expect(is({ [a]: "a", b: 1, c: "a" })).toEqual(true)
+      expect(is({ [a]: "a", b: 1, c: true })).toEqual(true)
 
       expect(is(null)).toEqual(false)
       expect(is({ [a]: "a" })).toEqual(false)
-      expect(is({ [a]: "a", b: 1, c: "a" })).toEqual(false)
-      expect(is({ [a]: "a", b: 1, c: true })).toEqual(false)
       expect(is({ b: 1 })).toEqual(false)
     })
   })

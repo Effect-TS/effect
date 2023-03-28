@@ -4,6 +4,20 @@ import * as S from "@effect/schema/Schema";
 declare const NumberFromString: S.Schema<string, number>
 
 // ---------------------------------------------
+// From
+// ---------------------------------------------
+
+// // $ExpectType never
+// export type FromNever = S.From<typeof S.never>
+
+// ---------------------------------------------
+// To
+// ---------------------------------------------
+
+// // $ExpectType never
+// export type ToNever = S.To<typeof S.never>
+
+// ---------------------------------------------
 // Primitives
 // ---------------------------------------------
 

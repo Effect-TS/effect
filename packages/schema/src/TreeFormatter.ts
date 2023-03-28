@@ -161,7 +161,7 @@ const go = (e: ParseErrors): Tree<string> => {
         )
       )
     case "Forbidden":
-      return make("Effect is forbidden from execution")
+      return make("is forbidden")
     case "Index": {
       const es = e.errors.map(go)
       if (es.length === 1 && es[0].forest.length !== 0) {

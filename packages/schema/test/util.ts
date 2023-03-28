@@ -120,6 +120,18 @@ export const roundtrip = <I, A>(schema: Schema<I, A>) => {
   }
 }
 
+export const onExcessPropertyIgnore: ParseOptions = {
+  onExcessProperty: "ignore"
+}
+
+export const onExcessPropertyError: ParseOptions = {
+  onExcessProperty: "error"
+}
+
+export const allErrors: ParseOptions = {
+  errors: "all"
+}
+
 export const expectParseSuccess = async <I, A>(
   schema: Schema<I, A>,
   u: unknown,

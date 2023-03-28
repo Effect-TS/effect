@@ -368,7 +368,7 @@ const go = untracedMethod(() =>
           if (!Array.isArray(input)) {
             return PR.failure(PR.type(unknownArray, input))
           }
-          const allErrors = options?.allErrors
+          const allErrors = options?.errors === "all"
           const es: Array<[number, PR.ParseErrors]> = []
           let stepKey = 0
           // ---------------------------------------------
@@ -384,11 +384,11 @@ const go = untracedMethod(() =>
               return PR.failure(e)
             }
           }
+
           // ---------------------------------------------
-          // handle unexpected indexes
+          // handle excess indexes
           // ---------------------------------------------
-          const isUnexpectedAllowed = options?.isUnexpectedAllowed
-          if (!isUnexpectedAllowed && O.isNone(ast.rest)) {
+          if (O.isNone(ast.rest)) {
             for (let i = ast.elements.length; i <= len - 1; i++) {
               const e = PR.index(i, [PR.unexpected(input[i])])
               if (allErrors) {
@@ -603,7 +603,7 @@ const go = untracedMethod(() =>
           if (!P.isRecord(input)) {
             return PR.failure(PR.type(unknownRecord, input))
           }
-          const allErrors = options?.allErrors
+          const allErrors = options?.errors === "all"
           const es: Array<[number, PR.ParseErrors]> = []
           let stepKey = 0
           // ---------------------------------------------
@@ -626,10 +626,10 @@ const go = untracedMethod(() =>
           }
 
           // ---------------------------------------------
-          // handle unexpected keys
+          // handle excess properties
           // ---------------------------------------------
-          const isUnexpectedAllowed = options?.isUnexpectedAllowed
-          if (!isUnexpectedAllowed && indexSignatures.length === 0) {
+          const onExcessPropertyError = options?.onExcessProperty === "error"
+          if (onExcessPropertyError && indexSignatures.length === 0) {
             for (const key of I.ownKeys(input)) {
               if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
                 const e = PR.key(key, [PR.unexpected(input[key])])
