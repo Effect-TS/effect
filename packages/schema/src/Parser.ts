@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 
+import { untraced, untracedMethod } from "@effect/data/Debug"
 import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import type { Option } from "@effect/data/Option"
@@ -9,7 +10,6 @@ import * as O from "@effect/data/Option"
 import * as P from "@effect/data/Predicate"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as RA from "@effect/data/ReadonlyArray"
-import { untraced, untracedMethod } from "@effect/io/Debug"
 import * as Effect from "@effect/io/Effect"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"

@@ -2,10 +2,10 @@
  * @since 1.0.0
  */
 
+import * as Debug from "@effect/data/Debug"
 import * as E from "@effect/data/Either"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import * as Debug from "@effect/io/Debug"
 import * as Effect from "@effect/io/Effect"
 import type * as AST from "@effect/schema/AST"
 
