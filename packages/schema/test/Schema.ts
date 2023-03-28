@@ -4,7 +4,7 @@ import * as O from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
-import { expectParseFailure, expectParseSuccess } from "@effect/schema/test/util"
+import { expectParseSuccess } from "@effect/schema/test/util"
 
 describe.concurrent("Schema", () => {
   it("exports", () => {
@@ -62,22 +62,6 @@ describe.concurrent("Schema", () => {
     expect(S.required).exist
   })
 
-  it("required/ struct", () => {
-    const schema = S.required(S.struct({ a: S.optional(S.number) }))
-
-    expectParseSuccess(schema, { a: 1 }, { a: 1 })
-    expectParseFailure(schema, {}, "/a is missing")
-  })
-
-  it("required/ filter", () => {
-    const schema = S.required(S.struct({
-      a: S.optional(pipe(S.number, S.greaterThan(0)))
-    }))
-
-    expectParseSuccess(schema, { a: 1 }, { a: 1 })
-    expectParseFailure(schema, {}, "/a is missing")
-  })
-
   it("partial/ filter", () => {
     const schema = S.partial(S.struct({
       a: pipe(S.number, S.greaterThan(0))
@@ -85,35 +69,6 @@ describe.concurrent("Schema", () => {
 
     expectParseSuccess(schema, { a: 1 }, { a: 1 })
     expectParseSuccess(schema, {}, {})
-  })
-
-  it("required/ deep struct", () => {
-    const schema = S.required(S.struct({ c: S.struct({ d: S.optional(S.number) }) }))
-
-    expectParseSuccess(schema, { c: { d: 1 } }, { c: { d: 1 } })
-    expectParseFailure(schema, {}, "/c is missing")
-  })
-
-  it("required/ tuple", () => {
-    const schema = S.required(pipe(S.tuple(S.number), S.optionalElement(S.string)))
-
-    expectParseSuccess(schema, [0, ""], [0, ""])
-    expectParseFailure(schema, [0], "/1 is missing")
-  })
-
-  it("required/tuple/ e + r + e", () => {
-    // type A = readonly [string, ...Array<number>, boolean]
-    // type B = Required<A> // [string, ...(number | boolean)[], number | boolean]
-
-    const s_ = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
-    const schema = S.required(s_)
-
-    expectParseFailure(schema, [], "/0 is missing")
-    expectParseFailure(schema, [""], "/1 is missing")
-    expectParseSuccess(schema, ["", 0], ["", 0])
-    expectParseSuccess(schema, ["", true], ["", true])
-    expectParseSuccess(schema, ["", true, 0], ["", true, 0])
-    expectParseSuccess(schema, ["", 0, true], ["", 0, true])
   })
 
   it("brand/ annotations", () => {

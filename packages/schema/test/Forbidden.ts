@@ -41,7 +41,7 @@ describe.concurrent("Forbidden", () => {
 
   it("union", () => {
     expectForbidden(
-      S.union(S.string, S.string),
+      S.union(S.string, S.number),
       { a: "a" },
       "union member: is forbidden, union member: is forbidden"
     )

@@ -611,8 +611,9 @@ export const partial = <I, A>(self: Schema<I, A>): Schema<Partial<I>, Partial<A>
  * @category combinators
  * @since 1.0.0
  */
-export const required = <I, A>(self: Schema<I, A>): Schema<Required<I>, Required<A>> =>
-  make(AST.required(self.ast))
+export const required = <I, A>(
+  self: Schema<I, A>
+): Schema<Spread<Required<I>>, Spread<Required<A>>> => make(AST.required(self.ast))
 
 /**
  * @category combinators
