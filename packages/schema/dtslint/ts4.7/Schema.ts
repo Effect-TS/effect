@@ -280,6 +280,16 @@ S.partial(S.struct({ a: S.string,  b: S.number }));
 S.partial(S.struct({ a: S.string,  b: NumberFromString }));
 
 // ---------------------------------------------
+// Required
+// ---------------------------------------------
+
+// $ExpectType Schema<Required<{ readonly a: string; readonly b: number; }>, Required<{ readonly a: string; readonly b: number; }>>
+S.required(S.struct({ a: S.optional(S.string),  b: S.optional(S.number) }));
+
+// $ExpectType Schema<Required<{ readonly a: string; readonly b: string; }>, Required<{ readonly a: string; readonly b: number; }>>
+S.required(S.struct({ a: S.optional(S.string),  b: NumberFromString }));
+
+// ---------------------------------------------
 // Records
 // ---------------------------------------------
 

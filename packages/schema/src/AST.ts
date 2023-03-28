@@ -1026,6 +1026,56 @@ export const partial = (ast: AST): AST => {
   }
 }
 
+/**
+ * Equivalent at runtime to the built-in TypeScript utility type `Required`.
+ *
+ * @since 1.0.0
+ */
+export const required = (ast: AST): AST => {
+  switch (ast._tag) {
+    case "Tuple": {
+      const restElement = pipe(
+        ast.rest,
+        O.map((rest) => createUnion(rest))
+      )
+
+      return createTuple(
+        [
+          ...ast.elements.map((e) => createElement(e.type, false)),
+          ...(O.isSome(restElement) ? [createElement(restElement.value, false)] : [])
+        ],
+        pipe(
+          ast.rest,
+          O.map((rest) => [createUnion(rest)])
+        ),
+        ast.isReadonly
+      )
+    }
+    case "TypeLiteral":
+      return createTypeLiteral(
+        ast.propertySignatures.map((f) =>
+          createPropertySignature(
+            f.name,
+            f.type,
+            false,
+            f.isReadonly,
+            f.annotations
+          )
+        ),
+        ast.indexSignatures
+      )
+    case "Union":
+      return createUnion(ast.types.map((member) => required(member)))
+    case "Lazy":
+      return createLazy(() => required(ast.f()))
+    case "Refinement":
+    case "Transform":
+      return required(ast.to)
+    default:
+      return ast
+  }
+}
+
 // -------------------------------------------------------------------------------------
 // compiler harness
 // -------------------------------------------------------------------------------------

@@ -282,6 +282,71 @@ describe.concurrent("AST", () => {
     )
   })
 
+  it("required/refinement", () => {
+    const schema = pipe(
+      S.struct({ a: S.optional(S.string), b: S.optional(S.string) }),
+      S.filter(({ a, b }) => a === b),
+      S.required
+    )
+    expect(schema.ast).toEqual(S.struct({ a: S.string, b: S.string }).ast)
+  })
+
+  it("required/transform", () => {
+    const schema = pipe(
+      S.string,
+      S.transform(S.struct({ a: S.optional(S.string) }), (a) => ({ a }), ({ a }) => a || ""),
+      S.required
+    )
+    expect(schema.ast).toEqual(S.struct({ a: S.string }).ast)
+  })
+
+  it("required/tuple/ e", () => {
+    // type A = [string]
+    // type B = Required<A>
+    const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
+    expect(AST.required(tuple)).toEqual(
+      AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
+    )
+  })
+
+  it("required/tuple/ e + r", () => {
+    // type A = readonly [string, ...Array<number>]
+    // type B = Required<A>
+    const tuple = AST.createTuple(
+      [AST.createElement(AST.stringKeyword, false)],
+      O.some([AST.numberKeyword]),
+      true
+    )
+    expect(AST.required(tuple)).toEqual(
+      AST.createTuple(
+        [AST.createElement(AST.stringKeyword, false), AST.createElement(AST.numberKeyword, false)],
+        O.some([AST.createUnion([AST.numberKeyword])]),
+        true
+      )
+    )
+  })
+
+  it("required/tuple/ e + r + e", () => {
+    // type A = readonly [string, ...Array<number>, boolean]
+    // type B = Required<A> // [string, ...(number | boolean)[], number | boolean]
+    const tuple = AST.createTuple(
+      [AST.createElement(AST.stringKeyword, false)],
+      O.some([AST.numberKeyword, AST.booleanKeyword]),
+      true
+    )
+
+    expect(AST.required(tuple)).toEqual(
+      AST.createTuple(
+        [
+          AST.createElement(AST.stringKeyword, false),
+          AST.createElement(AST.createUnion([AST.numberKeyword, AST.booleanKeyword]), false)
+        ],
+        O.some([AST.createUnion([AST.numberKeyword, AST.booleanKeyword])]),
+        true
+      )
+    )
+  })
+
   it("appendRestElement/ should add a rest element", () => {
     const tuple = AST.createTuple([AST.createElement(AST.stringKeyword, false)], O.none(), true)
     const actual = AST.appendRestElement(tuple, AST.numberKeyword)
