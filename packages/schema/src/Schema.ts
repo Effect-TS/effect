@@ -604,7 +604,7 @@ const getBrands = (ast: AST.AST): Array<string> =>
  * @category combinators
  * @since 1.0.0
  */
-export const partial = <I, A>(self: Schema<I, A>): Schema<Partial<I>, Partial<A>> =>
+export const partial = <I, A>(self: Schema<I, A>): Schema<Spread<Partial<I>>, Spread<Partial<A>>> =>
   make(AST.partial(self.ast))
 
 /**

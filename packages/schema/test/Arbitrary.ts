@@ -275,54 +275,6 @@ describe.concurrent("Arbitrary", () => {
     propertyTo(schema)
   })
 
-  describe.concurrent("partial", () => {
-    it("struct", () => {
-      const schema = pipe(S.struct({ a: S.number }), S.partial)
-      propertyTo(schema)
-    })
-
-    it("tuple", () => {
-      const schema = S.partial(S.tuple(S.string, S.number))
-      propertyTo(schema)
-    })
-
-    it("array", () => {
-      const schema = pipe(S.array(S.number), S.partial)
-      propertyTo(schema)
-    })
-
-    it("union", () => {
-      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
-      propertyTo(schema)
-    })
-  })
-
-  describe.concurrent("nullables", () => {
-    it("nullable (1)", () => {
-      /* Schema<{ readonly a: number | null; }> */
-      const schema = S.struct({ a: S.union(S.number, S.literal(null)) })
-      propertyTo(schema)
-    })
-
-    it("nullable (2)", () => {
-      /* Schema<{ readonly a: number | null | undefined; }> */
-      const schema = S.struct({ a: S.union(S.number, S.literal(null), S.undefined) })
-      propertyTo(schema)
-    })
-
-    it("nullable (3)", () => {
-      /*Schema<{ readonly a?: number | null | undefined; }> */
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null))) })
-      propertyTo(schema)
-    })
-
-    it("nullable (4)", () => {
-      /* Schema<{ readonly a?: number | null | undefined; }> */
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null), S.undefined)) })
-      propertyTo(schema)
-    })
-  })
-
   it("minLength", () => {
     const schema = pipe(S.string, S.minLength(1))
     propertyTo(schema)

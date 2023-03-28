@@ -585,7 +585,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("optional elements", () => {
-      const schema = S.partial(S.tuple(S.string, S.number))
+      const schema = pipe(S.tuple(), S.optionalElement(S.string), S.optionalElement(S.number))
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`readonly [
     string?,

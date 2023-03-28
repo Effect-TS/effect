@@ -978,18 +978,16 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
  *
  * @since 1.0.0
  */
-export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return createTypeLiteral(_getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
-}
+export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
+  createTypeLiteral(_getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
  *
  * @since 1.0.0
  */
-export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral => {
-  return createTypeLiteral(_getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
-}
+export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
+  createTypeLiteral(_getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
@@ -1018,9 +1016,12 @@ export const partial = (ast: AST): AST => {
       return createUnion(ast.types.map((member) => partial(member)))
     case "Lazy":
       return createLazy(() => partial(ast.f()))
+    case "Declaration":
+      throw new Error("`partial` cannot handle declarations")
     case "Refinement":
+      throw new Error("`partial` cannot handle refinements")
     case "Transform":
-      throw new Error("`partial` cannot handle refinements or transformations")
+      throw new Error("`partial` cannot handle transformations")
     default:
       return ast
   }
@@ -1048,13 +1049,7 @@ export const required = (ast: AST): AST => {
     case "TypeLiteral":
       return createTypeLiteral(
         ast.propertySignatures.map((f) =>
-          createPropertySignature(
-            f.name,
-            f.type,
-            false,
-            f.isReadonly,
-            f.annotations
-          )
+          createPropertySignature(f.name, f.type, false, f.isReadonly, f.annotations)
         ),
         ast.indexSignatures
       )

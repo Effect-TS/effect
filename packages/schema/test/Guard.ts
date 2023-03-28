@@ -700,43 +700,6 @@ describe.concurrent("is", () => {
     })
   })
 
-  describe.concurrent("partial", () => {
-    it("struct", () => {
-      const schema = S.partial(S.struct({ a: S.number }))
-      const is = P.is(schema)
-      expect(is({ a: 1 })).toEqual(true)
-      expect(is({})).toEqual(true)
-      expect(is({ a: undefined })).toEqual(false)
-    })
-
-    it("tuple", () => {
-      const schema = S.partial(S.tuple(S.string, S.number))
-      const is = P.is(schema)
-      expect(is([])).toEqual(true)
-      expect(is(["a"])).toEqual(true)
-      expect(is(["a", 1])).toEqual(true)
-    })
-
-    it("array", () => {
-      const schema = S.partial(S.array(S.number))
-      const is = P.is(schema)
-      expect(is([])).toEqual(true)
-      expect(is([1])).toEqual(true)
-      expect(is([undefined])).toEqual(true)
-      expect(is(["a"])).toEqual(false)
-    })
-
-    it("union", () => {
-      const schema = S.partial(S.union(S.string, S.array(S.number)))
-      const is = P.is(schema)
-      expect(is("a")).toEqual(true)
-      expect(is([])).toEqual(true)
-      expect(is([1])).toEqual(true)
-      expect(is([undefined])).toEqual(true)
-      expect(is(["a"])).toEqual(false)
-    })
-  })
-
   it("nonEmpty", () => {
     const schema = pipe(S.string, S.nonEmpty())
     const is = P.is(schema)
@@ -744,59 +707,5 @@ describe.concurrent("is", () => {
     expect(is("aa")).toEqual(true)
 
     expect(is("")).toEqual(false)
-  })
-
-  describe.concurrent("nullables", () => {
-    it("nullable (1)", () => {
-      /* Schema<{ readonly a: number | null; }> */
-      const schema = S.struct({ a: S.union(S.number, S.literal(null)) })
-      const is = P.is(schema)
-      expect(is({})).toBe(false)
-      expect(is({ a: null })).toBe(true)
-      expect(is({ a: undefined })).toBe(false)
-      expect(is({ a: 1 })).toBe(true)
-    })
-
-    it("nullable (2)", () => {
-      /* Schema<{ readonly a: number | null | undefined; }> */
-      const schema = S.struct({ a: S.union(S.number, S.literal(null), S.undefined) })
-      const is = P.is(schema)
-      expect(is({})).toBe(false)
-      expect(is({ a: null })).toBe(true)
-      expect(is({ a: undefined })).toBe(true)
-      expect(is({ a: 1 })).toBe(true)
-    })
-
-    it("nullable (3)", () => {
-      /* Schema<{ readonly a?: number | null; }> */
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null))) })
-      const is = P.is(schema)
-      expect(is({})).toBe(true)
-      expect(is({ a: null })).toBe(true)
-      expect(is({ a: undefined })).toBe(false)
-      expect(is({ a: 1 })).toBe(true)
-    })
-
-    it("nullable (4)", () => {
-      /* Schema<{ readonly a?: number | null | undefined; }> */
-      const schema = S.struct({ a: S.optional(S.union(S.number, S.literal(null), S.undefined)) })
-      const is = P.is(schema)
-      expect(is({})).toBe(true)
-      expect(is({ a: null })).toBe(true)
-      expect(is({ a: undefined })).toBe(true)
-      expect(is({ a: 1 })).toBe(true)
-    })
-  })
-
-  it("partial/lazy", () => {
-    type A = {
-      readonly a: ReadonlyArray<A>
-    }
-    // type B = Partial<A>
-    const schema: S.Schema<A> = S.lazy(() => S.struct({ a: S.array(schema) }))
-    const partial = S.partial(schema)
-    const is = P.is(partial)
-    expect(is({})).toBe(true)
-    expect(is({ a: [] })).toBe(true)
   })
 })

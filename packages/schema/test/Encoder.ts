@@ -299,36 +299,6 @@ describe.concurrent("Encoder", () => {
     await Util.expectEncodeSuccess(schema, { a: "a", c: 1 }, { a: "a", c: 1 })
   })
 
-  describe.concurrent("partial", async () => {
-    it("struct", async () => {
-      const schema = pipe(S.struct({ a: S.number }), S.partial)
-      await Util.expectEncodeSuccess(schema, {}, {})
-      await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
-    })
-
-    it("tuple", async () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.partial)
-      await Util.expectEncodeSuccess(schema, [], [])
-      await Util.expectEncodeSuccess(schema, ["a"], ["a"])
-      await Util.expectEncodeSuccess(schema, ["a", 1], ["a", 1])
-    })
-
-    it("array", async () => {
-      const schema = pipe(S.array(S.number), S.partial)
-      await Util.expectEncodeSuccess(schema, [], [])
-      await Util.expectEncodeSuccess(schema, [1], [1])
-      await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-    })
-
-    it("union", async () => {
-      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
-      await Util.expectEncodeSuccess(schema, "a", "a")
-      await Util.expectEncodeSuccess(schema, [], [])
-      await Util.expectEncodeSuccess(schema, [1], [1])
-      await Util.expectEncodeSuccess(schema, [undefined], [undefined])
-    })
-  })
-
   it("lazy", async () => {
     interface A {
       readonly a: number

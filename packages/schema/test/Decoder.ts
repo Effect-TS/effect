@@ -622,7 +622,7 @@ describe.concurrent("Decoder", () => {
   })
 
   it("struct/ should not add optional keys", async () => {
-    const schema = S.partial(S.struct({ a: S.string, b: S.number }))
+    const schema = S.struct({ a: S.optional(S.string), b: S.optional(S.number) })
     await Util.expectParseSuccess(schema, {})
   })
 
@@ -942,65 +942,6 @@ describe.concurrent("Decoder", () => {
     }
 
     await Util.expectParseSuccess(Operation, input)
-  })
-
-  it("partial/ struct", async () => {
-    const schema = S.partial(S.struct({ a: S.number }))
-    await Util.expectParseSuccess(schema, {})
-    await Util.expectParseSuccess(schema, { a: 1 })
-
-    await Util.expectParseFailure(
-      schema,
-      { a: undefined },
-      `/a Expected number, actual undefined`
-    )
-  })
-
-  it("partial/ tuple", async () => {
-    const schema = S.partial(S.tuple(S.string, S.number))
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, ["a"])
-    await Util.expectParseSuccess(schema, ["a", 1])
-  })
-
-  it("partial/ array", async () => {
-    const schema = S.partial(S.array(S.number))
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, [1])
-    await Util.expectParseSuccess(schema, [undefined])
-
-    await Util.expectParseFailureTree(
-      schema,
-      ["a"],
-      `error(s) found
-└─ [0]
-   ├─ union member
-   │  └─ Expected number, actual "a"
-   └─ union member
-      └─ Expected undefined, actual "a"`
-    )
-  })
-
-  it("partial/ union", async () => {
-    const schema = S.partial(S.union(S.string, S.array(S.number)))
-    await Util.expectParseSuccess(schema, "a")
-    await Util.expectParseSuccess(schema, [])
-    await Util.expectParseSuccess(schema, [1])
-    await Util.expectParseSuccess(schema, [undefined])
-
-    await Util.expectParseFailureTree(
-      schema,
-      ["a"],
-      `error(s) found
-├─ union member
-│  └─ [0]
-│     ├─ union member
-│     │  └─ Expected number, actual "a"
-│     └─ union member
-│        └─ Expected undefined, actual "a"
-└─ union member
-   └─ Expected string, actual ["a"]`
-    )
   })
 
   it("omit/ baseline", async () => {

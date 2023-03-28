@@ -168,7 +168,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("struct/ should not output optional property signatures", () => {
-    const schema = S.partial(S.struct({ a: S.number }))
+    const schema = S.struct({ a: S.optional(S.number) })
     const pretty = P.to(schema)
     expect(pretty({})).toEqual("{}")
     expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
@@ -265,7 +265,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ optional elements", () => {
-    const schema = S.partial(S.tuple(S.string, S.number))
+    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.optionalElement(S.number))
     const pretty = P.to(schema)
     expect(pretty([])).toEqual(`[]`)
     expect(pretty(["a"])).toEqual(`["a"]`)
@@ -382,40 +382,6 @@ describe.concurrent("Pretty", () => {
     expect(pretty({ a: "a", as: [] })).toEqual(
       `{ "a": "a", "as": [] }`
     )
-  })
-
-  describe.concurrent("partial", () => {
-    it("struct", () => {
-      const schema = pipe(S.struct({ a: S.number }), S.partial)
-      const pretty = P.to(schema)
-      expect(pretty({})).toEqual("{}")
-      expect(pretty({ a: 1 })).toEqual(`{ "a": 1 }`)
-    })
-
-    it("tuple", () => {
-      const schema = pipe(S.tuple(S.string, S.number), S.partial)
-      const pretty = P.to(schema)
-      expect(pretty([])).toEqual("[]")
-      expect(pretty(["a"])).toEqual(`["a"]`)
-    })
-
-    it("array", () => {
-      const schema = pipe(S.array(S.number), S.partial)
-      const pretty = P.to(schema)
-      expect(pretty([])).toEqual("[]")
-      expect(pretty([1])).toEqual("[1]")
-      expect(pretty([1])).toEqual("[1]")
-      expect(pretty([undefined])).toEqual("[undefined]")
-    })
-
-    it("union", () => {
-      const schema = pipe(S.union(S.string, S.array(S.number)), S.partial)
-      const pretty = P.to(schema)
-      expect(pretty("a")).toEqual(`"a"`)
-      expect(pretty([])).toEqual("[]")
-      expect(pretty([1])).toEqual("[1]")
-      expect(pretty([undefined])).toEqual("[undefined]")
-    })
   })
 
   it("Transform", () => {

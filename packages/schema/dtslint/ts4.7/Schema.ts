@@ -273,10 +273,10 @@ pipe(NumberFromString, S.int(), S.brand('Int'))
 // Partial
 // ---------------------------------------------
 
-// $ExpectType Schema<Partial<{ readonly a: string; readonly b: number; }>, Partial<{ readonly a: string; readonly b: number; }>>
+// $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; }>
 S.partial(S.struct({ a: S.string,  b: S.number }));
 
-// $ExpectType Schema<Partial<{ readonly a: string; readonly b: string; }>, Partial<{ readonly a: string; readonly b: number; }>>
+// $ExpectType Schema<{ readonly a?: string; readonly b?: string; }, { readonly a?: string; readonly b?: number; }>
 S.partial(S.struct({ a: S.string,  b: NumberFromString }));
 
 // ---------------------------------------------

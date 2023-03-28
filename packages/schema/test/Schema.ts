@@ -4,7 +4,6 @@ import * as O from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
-import { expectParseSuccess } from "@effect/schema/test/util"
 
 describe.concurrent("Schema", () => {
   it("exports", () => {
@@ -60,15 +59,6 @@ describe.concurrent("Schema", () => {
 
     expect(S.partial).exist
     expect(S.required).exist
-  })
-
-  it("partial/ filter", () => {
-    const schema = S.partial(S.struct({
-      a: pipe(S.number, S.greaterThan(0))
-    }))
-
-    expectParseSuccess(schema, { a: 1 }, { a: 1 })
-    expectParseSuccess(schema, {}, {})
   })
 
   it("brand/ annotations", () => {
