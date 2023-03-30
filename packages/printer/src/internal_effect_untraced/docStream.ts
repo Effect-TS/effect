@@ -81,7 +81,7 @@ const protoEqual = {
     isDocStream(that) &&
     that._tag === "LineStream" &&
     Equal.equals(self.stream, that.stream),
-  PUshAnnotationStream: (self: DocStream.PushAnnotationStream<any>, that: unknown) =>
+  PushAnnotationStream: (self: DocStream.PushAnnotationStream<any>, that: unknown) =>
     isDocStream(that) &&
     that._tag === "PushAnnotationStream" &&
     Equal.equals(self.annotation, that.annotation) &&
