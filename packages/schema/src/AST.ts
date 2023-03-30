@@ -1404,7 +1404,7 @@ export const _getPropertySignatures = (
     case "Lazy":
       return _getPropertySignatures(ast.f())
     case "Refinement":
-      return _getPropertySignatures(ast.to)
+      throw new Error("cannot compute property signatures for refinements")
     case "Transform":
       throw new Error("cannot compute property signatures for transformations")
     default:

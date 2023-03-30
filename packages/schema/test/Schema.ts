@@ -144,21 +144,6 @@ describe.concurrent("Schema", () => {
     expect(PositiveInt.refine(1.2)).toEqual(false)
   })
 
-  it("getPropertySignatures", () => {
-    const Name = pipe(S.string, S.identifier("name"))
-    const Age = pipe(S.number, S.identifier("age"))
-    const schema = pipe(
-      S.struct({
-        name: Name,
-        age: Age
-      }),
-      S.filter(({ name }) => name === name.toLowerCase())
-    )
-    const shape = S.getPropertySignatures(schema)
-    expect(shape.name).toStrictEqual(Name)
-    expect(shape.age).toStrictEqual(Age)
-  })
-
   it("title", () => {
     expect(pipe(S.string, S.title("MyString")).ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "MyString"
