@@ -42,12 +42,12 @@ export interface Schema<From, To = From> {
 /**
  * @since 1.0.0
  */
-export type From<S extends { readonly From: (_: any) => any }> = Parameters<S["From"]>[0]
+export type From<S extends { readonly From: (..._: any) => any }> = Parameters<S["From"]>[0]
 
 /**
  * @since 1.0.0
  */
-export type To<S extends { readonly To: (_: any) => any }> = Parameters<S["To"]>[0]
+export type To<S extends { readonly To: (..._: any) => any }> = Parameters<S["To"]>[0]
 
 /**
  * @since 1.0.0
