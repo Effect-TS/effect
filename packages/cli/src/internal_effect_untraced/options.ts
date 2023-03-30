@@ -183,7 +183,14 @@ const helpDocMap: {
     const helpDoc = helpDocMap[self.options._tag](self.options as any)
     return doc.mapDescriptionList(helpDoc, (span, block) => [
       span,
-      doc.sequence(block, doc.p(`This setting is optional. (Defaults to: '${JSON.stringify(self.default)}')`))
+      doc.sequence(
+        block,
+        doc.p(
+          Option.isOption(self.default) ?
+            "This setting is optional." :
+            `This setting is optional. (Defaults to: '${JSON.stringify(self.default)}')`
+        )
+      )
     ])
   },
   Zip: (self) => {
