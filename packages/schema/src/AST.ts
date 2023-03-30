@@ -1334,7 +1334,7 @@ export const _getParameterKeyof = (
     case "TemplateLiteral":
       return ast
     case "Refinement":
-      return _getParameterKeyof(ast.from)
+      return _getParameterKeyof(ast.to)
   }
   return neverKeyword
 }
@@ -1404,7 +1404,7 @@ export const _getPropertySignatures = (
     case "Lazy":
       return _getPropertySignatures(ast.f())
     case "Refinement":
-      return _getPropertySignatures(ast.from)
+      return _getPropertySignatures(ast.to)
     case "Transform":
       throw new Error("cannot compute property signatures for transformations")
     default:

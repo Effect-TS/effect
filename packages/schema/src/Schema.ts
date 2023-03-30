@@ -413,9 +413,7 @@ export const nonEmptyArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export type Spread<A> = {
-  [K in keyof A]: A[K]
-} extends infer B ? B : never
+export type Spread<A> = { [K in keyof A]: A[K] } & {}
 
 /**
  * @since 1.0.0
@@ -738,14 +736,14 @@ const toAnnotations = <A>(
  * @category combinators
  * @since 1.0.0
  */
-export function filter<A, B extends A>(
+export function filter<C extends A, B extends A, A = C>(
   refinement: Refinement<A, B>,
   options?: AnnotationOptions<A>
-): <I>(self: Schema<I, A>) => Schema<I, B>
-export function filter<A>(
+): <I>(self: Schema<I, C>) => Schema<I, Spread<C & B>>
+export function filter<B extends A, A = B>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>
-): <I>(self: Schema<I, A>) => Schema<I, A>
+): <I>(self: Schema<I, B>) => Schema<I, B>
 export function filter<A>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>
