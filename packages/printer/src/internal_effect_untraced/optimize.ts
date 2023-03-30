@@ -14,18 +14,18 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
   switch (self._tag) {
     case "FlatAlt": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => optimizeSafe(self.left, depth)),
-        Effect.suspendSucceed(() => optimizeSafe(self.right, depth)),
+        Effect.suspend(() => optimizeSafe(self.left, depth)),
+        Effect.suspend(() => optimizeSafe(self.right, depth)),
         (left, right) => _doc.flatAlt(left, right)
       )
     }
     case "Cat": {
       // Empty documents
       if (_doc.isEmpty(self.left)) {
-        return Effect.suspendSucceed(() => optimizeSafe(self.right, depth))
+        return Effect.suspend(() => optimizeSafe(self.right, depth))
       }
       if (_doc.isEmpty(self.right)) {
-        return Effect.suspendSucceed(() => optimizeSafe(self.left, depth))
+        return Effect.suspend(() => optimizeSafe(self.left, depth))
       }
       // String documents
       if (_doc.isChar(self.left) && _doc.isChar(self.right)) {
@@ -45,7 +45,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.right.left
         const right = self.right.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(self.left, left), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
           (inner) => optimizeSafe(_doc.cat(right, inner), depth)
         )
       }
@@ -53,7 +53,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.right.left
         const right = self.right.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(self.left, left), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
           (inner) => optimizeSafe(_doc.cat(inner, right), depth)
         )
       }
@@ -61,7 +61,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.right.left
         const right = self.right.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(self.left, left), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
           (inner) => optimizeSafe(_doc.cat(inner, right), depth)
         )
       }
@@ -69,7 +69,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.right.left
         const right = self.right.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(self.left, left), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(self.left, left), depth)),
           (inner) => optimizeSafe(_doc.cat(inner, right), depth)
         )
       }
@@ -77,7 +77,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.left.left
         const right = self.left.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(right, self.right), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(right, self.right), depth)),
           (inner) => optimizeSafe(_doc.cat(left, inner), depth)
         )
       }
@@ -85,13 +85,13 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
         const left = self.left.left
         const right = self.left.right
         return Effect.flatMap(
-          Effect.suspendSucceed(() => optimizeSafe(_doc.cat(right, self.right), depth)),
+          Effect.suspend(() => optimizeSafe(_doc.cat(right, self.right), depth)),
           (inner) => optimizeSafe(_doc.cat(left, inner), depth)
         )
       }
       return Effect.zipWith(
-        Effect.suspendSucceed(() => optimizeSafe(self.left, depth)),
-        Effect.suspendSucceed(() => optimizeSafe(self.right, depth)),
+        Effect.suspend(() => optimizeSafe(self.left, depth)),
+        Effect.suspend(() => optimizeSafe(self.right, depth)),
         (left, right) => _doc.cat(left, right)
       )
     }
@@ -107,20 +107,20 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
       }
       if (_doc.isNest(self.doc)) {
         const doc = self.doc
-        return Effect.suspendSucceed(() => optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth))
+        return Effect.suspend(() => optimizeSafe(_doc.nest(doc.doc, self.indent + doc.indent), depth))
       }
       if (self.indent === 0) {
-        return Effect.suspendSucceed(() => optimizeSafe(self.doc, depth))
+        return Effect.suspend(() => optimizeSafe(self.doc, depth))
       }
       return Effect.map(
-        Effect.suspendSucceed(() => optimizeSafe(self.doc, depth)),
+        Effect.suspend(() => optimizeSafe(self.doc, depth)),
         (doc) => _doc.nest(doc, self.indent)
       )
     }
     case "Union": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => optimizeSafe(self.left, depth)),
-        Effect.suspendSucceed(() => optimizeSafe(self.right, depth)),
+        Effect.suspend(() => optimizeSafe(self.left, depth)),
+        Effect.suspend(() => optimizeSafe(self.right, depth)),
         (left, right) => _doc.union(left, right)
       )
     }
@@ -147,7 +147,7 @@ const optimizeSafe = <A>(self: Doc.Doc<A>, depth: Optimize.Optimize.Depth): Effe
     }
     case "Annotated": {
       return Effect.map(
-        Effect.suspendSucceed(() => optimizeSafe(self.doc, depth)),
+        Effect.suspend(() => optimizeSafe(self.doc, depth)),
         (doc) => _doc.annotate(doc, self.annotation)
       )
     }

@@ -53,25 +53,25 @@ const wadlerLeijenSafe = <A>(
           return Effect.succeed(docStream.failed)
         }
         case "Empty": {
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options))
         }
         case "Char": {
           const char = x.document.char
           return Effect.map(
-            Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc + 1, x.pipeline, fits, options)),
+            Effect.suspend(() => wadlerLeijenSafe(nl, cc + 1, x.pipeline, fits, options)),
             docStream.char(char)
           )
         }
         case "Text": {
           const text = x.document.text
           return Effect.map(
-            Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc + text.length, x.pipeline, fits, options)),
+            Effect.suspend(() => wadlerLeijenSafe(nl, cc + text.length, x.pipeline, fits, options)),
             docStream.text(text)
           )
         }
         case "Line": {
           return Effect.map(
-            Effect.suspendSucceed(() => wadlerLeijenSafe(x.indent, x.indent, x.pipeline, fits, options)),
+            Effect.suspend(() => wadlerLeijenSafe(x.indent, x.indent, x.pipeline, fits, options)),
             (stream) =>
               docStream.line(
                 stream,
@@ -81,44 +81,44 @@ const wadlerLeijenSafe = <A>(
         }
         case "FlatAlt": {
           const layoutPipeline = pipeline.cons(x.indent, x.document.left, x.pipeline)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "Cat": {
           const inner = pipeline.cons(x.indent, x.document.right, x.pipeline)
           const outer = pipeline.cons(x.indent, x.document.left, inner)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, outer, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, outer, fits, options))
         }
         case "Nest": {
           const indent = x.indent + x.document.indent
           const layoutPipeline = pipeline.cons(indent, x.document.doc, x.pipeline)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "Union": {
           const leftPipeline = pipeline.cons(x.indent, x.document.left, x.pipeline)
           const rightPipeline = pipeline.cons(x.indent, x.document.right, x.pipeline)
           return Effect.zipWith(
-            Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, leftPipeline, fits, options)),
+            Effect.suspend(() => wadlerLeijenSafe(nl, cc, leftPipeline, fits, options)),
             wadlerLeijenSafe(nl, cc, rightPipeline, fits, options),
             (left, right) => selectNicer(fits, nl, cc, left, right)
           )
         }
         case "Column": {
           const layoutPipeline = pipeline.cons(x.indent, x.document.react(cc), x.pipeline)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "WithPageWidth": {
           const layoutPipeline = pipeline.cons(x.indent, x.document.react(options.pageWidth), x.pipeline)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "Nesting": {
           const layoutPipeline = pipeline.cons(x.indent, x.document.react(x.indent), x.pipeline)
-          return Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
+          return Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options))
         }
         case "Annotated": {
           const annotation = x.document.annotation
           const layoutPipeline = pipeline.cons(x.indent, x.document.doc, pipeline.undoAnnotation(x.pipeline))
           return Effect.map(
-            Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options)),
+            Effect.suspend(() => wadlerLeijenSafe(nl, cc, layoutPipeline, fits, options)),
             (stream) => docStream.pushAnnotation(annotation)(stream)
           )
         }
@@ -126,7 +126,7 @@ const wadlerLeijenSafe = <A>(
     }
     case "UndoAnnotation":
       return Effect.map(
-        Effect.suspendSucceed(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options)),
+        Effect.suspend(() => wadlerLeijenSafe(nl, cc, x.pipeline, fits, options)),
         docStream.popAnnotation
       )
   }
@@ -176,49 +176,49 @@ const compactSafe = <A>(
       return Effect.succeed(DocStream.failed)
     }
     case "Empty": {
-      return Effect.suspendSucceed(() => compactSafe(tail, i))
+      return Effect.suspend(() => compactSafe(tail, i))
     }
     case "Char": {
       return Effect.map(
-        Effect.suspendSucceed(() => compactSafe(tail, i + 1)),
+        Effect.suspend(() => compactSafe(tail, i + 1)),
         DocStream.char(head.char)
       )
     }
     case "Text": {
       return Effect.map(
-        Effect.suspendSucceed(() => compactSafe(tail, i + head.text.length)),
+        Effect.suspend(() => compactSafe(tail, i + head.text.length)),
         DocStream.text(head.text)
       )
     }
     case "Line": {
       return Effect.map(
-        Effect.suspendSucceed(() => compactSafe(tail, 0)),
+        Effect.suspend(() => compactSafe(tail, 0)),
         DocStream.line(0)
       )
     }
     case "FlatAlt": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.left, tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.left, tail), i))
     }
     case "Cat": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.left, List.cons(head.right, tail)), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.left, List.cons(head.right, tail)), i))
     }
     case "Nest": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.doc, tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.doc, tail), i))
     }
     case "Union": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.right, tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.right, tail), i))
     }
     case "Column": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.react(i), tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.react(i), tail), i))
     }
     case "WithPageWidth": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.react(pageWidth.unbounded), tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.react(pageWidth.unbounded), tail), i))
     }
     case "Nesting": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.react(0), tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.react(0), tail), i))
     }
     case "Annotated": {
-      return Effect.suspendSucceed(() => compactSafe(List.cons(head.doc, tail), i))
+      return Effect.suspend(() => compactSafe(List.cons(head.doc, tail), i))
     }
   }
 }

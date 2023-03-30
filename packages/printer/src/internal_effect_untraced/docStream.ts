@@ -236,19 +236,19 @@ const alterAnnotationSafe = <A, B>(
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, stack)),
+        Effect.suspend(() => alterAnnotationSafe(self.stream, f, stack)),
         char(self.char)
       )
     }
     case "TextStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, stack)),
+        Effect.suspend(() => alterAnnotationSafe(self.stream, f, stack)),
         text(self.text)
       )
     }
     case "LineStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, stack)),
+        Effect.suspend(() => alterAnnotationSafe(self.stream, f, stack)),
         line(self.indentation)
       )
     }
@@ -256,11 +256,11 @@ const alterAnnotationSafe = <A, B>(
       const altered = f(self.annotation)
       if (Option.isSome(altered)) {
         return Effect.map(
-          Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))),
+          Effect.suspend(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, DontRemove))),
           pushAnnotation(altered.value)
         )
       }
-      return Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, Remove)))
+      return Effect.suspend(() => alterAnnotationSafe(self.stream, f, List.prepend(stack, Remove)))
     }
     case "PopAnnotationStream": {
       if (List.isNil(stack)) {
@@ -271,11 +271,11 @@ const alterAnnotationSafe = <A, B>(
       }
       if (stack.head === DontRemove) {
         return Effect.map(
-          Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, stack.tail)),
+          Effect.suspend(() => alterAnnotationSafe(self.stream, f, stack.tail)),
           popAnnotation
         )
       }
-      return Effect.suspendSucceed(() => alterAnnotationSafe(self.stream, f, stack.tail))
+      return Effect.suspend(() => alterAnnotationSafe(self.stream, f, stack.tail))
     }
     default: {
       return Effect.succeed(self as unknown as DocStream.DocStream<B>)
@@ -296,30 +296,30 @@ const reAnnotateSafe = <A, B>(
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => reAnnotateSafe(self.stream, f)),
+        Effect.suspend(() => reAnnotateSafe(self.stream, f)),
         char(self.char)
       )
     }
     case "TextStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => reAnnotateSafe(self.stream, f)),
+        Effect.suspend(() => reAnnotateSafe(self.stream, f)),
         text(self.text)
       )
     }
     case "LineStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => reAnnotateSafe(self.stream, f)),
+        Effect.suspend(() => reAnnotateSafe(self.stream, f)),
         line(self.indentation)
       )
     }
     case "PushAnnotationStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => reAnnotateSafe(self.stream, f)),
+        Effect.suspend(() => reAnnotateSafe(self.stream, f)),
         pushAnnotation(f(self.annotation))
       )
     }
     case "PopAnnotationStream": {
-      return Effect.suspendSucceed(() => reAnnotateSafe(self.stream, f))
+      return Effect.suspend(() => reAnnotateSafe(self.stream, f))
     }
     default: {
       return Effect.succeed(self as unknown as DocStream.DocStream<B>)
@@ -335,25 +335,25 @@ const unAnnotateSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<never, n
   switch (self._tag) {
     case "CharStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => unAnnotateSafe(self.stream)),
+        Effect.suspend(() => unAnnotateSafe(self.stream)),
         char(self.char)
       )
     }
     case "TextStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => unAnnotateSafe(self.stream)),
+        Effect.suspend(() => unAnnotateSafe(self.stream)),
         text(self.text)
       )
     }
     case "LineStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => unAnnotateSafe(self.stream)),
+        Effect.suspend(() => unAnnotateSafe(self.stream)),
         line(self.indentation)
       )
     }
     case "PushAnnotationStream":
     case "PopAnnotationStream": {
-      return Effect.suspendSucceed(() => unAnnotateSafe(self.stream))
+      return Effect.suspend(() => unAnnotateSafe(self.stream))
     }
     default: {
       return Effect.succeed(self as unknown as DocStream.DocStream<never>)
@@ -378,22 +378,22 @@ const foldMapSafe = <A, M>(
 ): Effect.Effect<never, never, M> => {
   switch (self._tag) {
     case "CharStream": {
-      return Effect.suspendSucceed(() => foldMapSafe(self.stream, M, f))
+      return Effect.suspend(() => foldMapSafe(self.stream, M, f))
     }
     case "TextStream": {
-      return Effect.suspendSucceed(() => foldMapSafe(self.stream, M, f))
+      return Effect.suspend(() => foldMapSafe(self.stream, M, f))
     }
     case "LineStream": {
-      return Effect.suspendSucceed(() => foldMapSafe(self.stream, M, f))
+      return Effect.suspend(() => foldMapSafe(self.stream, M, f))
     }
     case "PushAnnotationStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => foldMapSafe(self.stream, M, f)),
+        Effect.suspend(() => foldMapSafe(self.stream, M, f)),
         (that) => M.combine(f(self.annotation), that)
       )
     }
     case "PopAnnotationStream": {
-      return Effect.suspendSucceed(() => foldMapSafe(self.stream, M, f))
+      return Effect.suspend(() => foldMapSafe(self.stream, M, f))
     }
     default: {
       return Effect.succeed(M.empty)

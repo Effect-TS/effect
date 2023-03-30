@@ -546,17 +546,17 @@ const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, never, Doc.Doc<A
       return Effect.succeed(fail)
     case "Cat":
       return Effect.zipWith(
-        Effect.suspendSucceed(() => flattenSafe(self.left)),
-        Effect.suspendSucceed(() => flattenSafe(self.right)),
+        Effect.suspend(() => flattenSafe(self.left)),
+        Effect.suspend(() => flattenSafe(self.right)),
         (left, right) => cat(left, right)
       )
     case "FlatAlt":
-      return Effect.suspendSucceed(() => flattenSafe(self.right))
+      return Effect.suspend(() => flattenSafe(self.right))
     case "Union":
-      return Effect.suspendSucceed(() => flattenSafe(self.left))
+      return Effect.suspend(() => flattenSafe(self.left))
     case "Nest":
       return Effect.map(
-        Effect.suspendSucceed(() => flattenSafe(self.doc)),
+        Effect.suspend(() => flattenSafe(self.doc)),
         nest(self.indent)
       )
     case "Column":
@@ -573,7 +573,7 @@ const flattenSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, never, Doc.Doc<A
       )
     case "Annotated":
       return Effect.map(
-        Effect.suspendSucceed(() => flattenSafe(self.doc)),
+        Effect.suspend(() => flattenSafe(self.doc)),
         annotate(self.annotation)
       )
     default:
@@ -598,8 +598,8 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, ne
     }
     case "Cat": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => changesUponFlatteningSafe(self.left)),
-        Effect.suspendSucceed(() => changesUponFlatteningSafe(self.right)),
+        Effect.suspend(() => changesUponFlatteningSafe(self.left)),
+        Effect.suspend(() => changesUponFlatteningSafe(self.right)),
         (left, right) => {
           if (_flatten.isNeverFlat(left) || _flatten.isNeverFlat(right)) {
             return _flatten.neverFlat
@@ -622,7 +622,7 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, ne
     }
     case "Nest": {
       return Effect.map(
-        Effect.suspendSucceed(() => changesUponFlatteningSafe(self.doc)),
+        Effect.suspend(() => changesUponFlatteningSafe(self.doc)),
         _flatten.map(nest(self.indent))
       )
     }
@@ -640,7 +640,7 @@ const changesUponFlatteningSafe = <A>(self: Doc.Doc<A>): Effect.Effect<never, ne
     }
     case "Annotated": {
       return Effect.map(
-        Effect.suspendSucceed(() => changesUponFlatteningSafe(self.doc)),
+        Effect.suspend(() => changesUponFlatteningSafe(self.doc)),
         _flatten.map(annotate(self.annotation))
       )
     }
@@ -679,28 +679,28 @@ const alterAnnotationsSafe = <A, B>(
   switch (self._tag) {
     case "Cat": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => alterAnnotationsSafe(self.left, f)),
+        Effect.suspend(() => alterAnnotationsSafe(self.left, f)),
         alterAnnotationsSafe(self.right, f),
         (left, right) => cat(left, right)
       )
     }
     case "FlatAlt": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => alterAnnotationsSafe(self.left, f)),
+        Effect.suspend(() => alterAnnotationsSafe(self.left, f)),
         alterAnnotationsSafe(self.right, f),
         (left, right) => flatAlt(left, right)
       )
     }
     case "Union": {
       return Effect.zipWith(
-        Effect.suspendSucceed(() => alterAnnotationsSafe(self.left, f)),
+        Effect.suspend(() => alterAnnotationsSafe(self.left, f)),
         alterAnnotationsSafe(self.right, f),
         (left, right) => union(left, right)
       )
     }
     case "Nest": {
       return Effect.map(
-        Effect.suspendSucceed(() => alterAnnotationsSafe(self.doc, f)),
+        Effect.suspend(() => alterAnnotationsSafe(self.doc, f)),
         nest(self.indent)
       )
     }

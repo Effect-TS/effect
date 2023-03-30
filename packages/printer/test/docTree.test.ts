@@ -158,7 +158,7 @@ describe.concurrent("DocTree", () => {
           }
           case "AnnotationTree": {
             return Effect.map(
-              Effect.suspendSucceed(() => renderTreeSafe(tree.tree)),
+              Effect.suspend(() => renderTreeSafe(tree.tree)),
               (content) => encloseInTag(content, tree.annotation)
             )
           }
@@ -170,11 +170,11 @@ describe.concurrent("DocTree", () => {
 
             return Chunk.reduce(
               Chunk.drop(tree.trees, 1),
-              Effect.suspendSucceed(() => renderTreeSafe(head)),
+              Effect.suspend(() => renderTreeSafe(head)),
               (acc, tree) =>
                 Effect.zipWith(
                   acc,
-                  Effect.suspendSucceed(() => renderTreeSafe(tree)),
+                  Effect.suspend(() => renderTreeSafe(tree)),
                   (left, right) => left + right
                 )
             )

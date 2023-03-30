@@ -202,7 +202,7 @@ const alterAnnotationsSafe = <A, B>(
     case "AnnotationTree": {
       return Chunk.reduceRight(
         Chunk.fromIterable(f(self.annotation)),
-        Effect.suspendSucceed(() => alterAnnotationsSafe(self.tree, f)),
+        Effect.suspend(() => alterAnnotationsSafe(self.tree, f)),
         (acc, b) => Effect.map(acc, annotation(b))
       )
     }
@@ -248,7 +248,7 @@ const foldMapSafe = <A, M>(
     }
     case "AnnotationTree": {
       return Effect.map(
-        Effect.suspendSucceed(() => foldMapSafe(self.tree, M, f)),
+        Effect.suspend(() => foldMapSafe(self.tree, M, f)),
         (that) => M.combine(f(self.annotation), that)
       )
     }
@@ -312,7 +312,7 @@ const renderSimplyDecoratedSafe = <A, M>(
     }
     case "AnnotationTree": {
       return Effect.map(
-        Effect.suspendSucceed(() => renderSimplyDecoratedSafe(self.tree, M, renderText, renderAnnotation)),
+        Effect.suspend(() => renderSimplyDecoratedSafe(self.tree, M, renderText, renderAnnotation)),
         (out) => renderAnnotation(self.annotation, out)
       )
     }
@@ -324,11 +324,11 @@ const renderSimplyDecoratedSafe = <A, M>(
       const tail = Chunk.drop(self.trees, 1)
       return Chunk.reduce(
         tail,
-        Effect.suspendSucceed(() => renderSimplyDecoratedSafe(head, M, renderText, renderAnnotation)),
+        Effect.suspend(() => renderSimplyDecoratedSafe(head, M, renderText, renderAnnotation)),
         (acc, tree) =>
           Effect.zipWith(
             acc,
-            Effect.suspendSucceed(() => renderSimplyDecoratedSafe(tree, M, renderText, renderAnnotation)),
+            Effect.suspend(() => renderSimplyDecoratedSafe(tree, M, renderText, renderAnnotation)),
             M.combine
           )
       )

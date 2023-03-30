@@ -23,13 +23,13 @@ const renderSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<never, never
     }
     case "CharStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream)),
+        Effect.suspend(() => renderSafe(self.stream)),
         (rest) => self.char + rest
       )
     }
     case "TextStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream)),
+        Effect.suspend(() => renderSafe(self.stream)),
         (rest) => self.text + rest
       )
     }
@@ -39,13 +39,13 @@ const renderSafe = <A>(self: DocStream.DocStream<A>): Effect.Effect<never, never
         indent = indent += " "
       }
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream)),
+        Effect.suspend(() => renderSafe(self.stream)),
         (rest) => indent + rest
       )
     }
     case "PopAnnotationStream":
     case "PushAnnotationStream": {
-      return Effect.suspendSucceed(() => renderSafe(self.stream))
+      return Effect.suspend(() => renderSafe(self.stream))
     }
   }
 }

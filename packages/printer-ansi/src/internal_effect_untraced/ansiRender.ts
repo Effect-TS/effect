@@ -54,13 +54,13 @@ const renderSafe = (
     }
     case "CharStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream, stack)),
+        Effect.suspend(() => renderSafe(self.stream, stack)),
         (rest) => self.char + rest
       )
     }
     case "TextStream": {
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream, stack)),
+        Effect.suspend(() => renderSafe(self.stream, stack)),
         (rest) => self.text + rest
       )
     }
@@ -70,7 +70,7 @@ const renderSafe = (
         indent = indent += " "
       }
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream, stack)),
+        Effect.suspend(() => renderSafe(self.stream, stack)),
         (rest) => indent + rest
       )
     }
@@ -78,7 +78,7 @@ const renderSafe = (
       const currentStyle = unsafePeek(stack)
       const nextStyle = ansiStyle.Monoid.combine(self.annotation, currentStyle)
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream, List.cons(self.annotation, stack))),
+        Effect.suspend(() => renderSafe(self.stream, List.cons(self.annotation, stack))),
         (rest) => ansiStyle.stringify(nextStyle) + rest
       )
     }
@@ -86,7 +86,7 @@ const renderSafe = (
       const [, styles] = unsafePop(stack)
       const nextStyle = unsafePeek(styles)
       return Effect.map(
-        Effect.suspendSucceed(() => renderSafe(self.stream, styles)),
+        Effect.suspend(() => renderSafe(self.stream, styles)),
         (rest) => ansiStyle.stringify(nextStyle) + rest
       )
     }
