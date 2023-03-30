@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.8.1
+
+### Patch Changes
+
+- [#199](https://github.com/Effect-TS/schema/pull/199) [`143a6a4`](https://github.com/Effect-TS/schema/commit/143a6a49f011bd5d46d15b9431c7f4e8daeacc79) Thanks [@gcanti](https://github.com/gcanti)! - improve filter signature
+
 ## 0.8.0
 
 ### Minor Changes
