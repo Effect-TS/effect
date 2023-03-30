@@ -41,4 +41,4 @@ export const layer: Layer.Layer<never, never, Console> = Layer.sync(Console, () 
  * @category accessors
  */
 export const log = (text: string): Effect.Effect<Console, never, void> =>
-  Effect.serviceWithEffect(Console, (console) => console.log(text))
+  Effect.flatMap(Console, (console) => console.log(text))

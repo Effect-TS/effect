@@ -26,7 +26,7 @@ export interface CliConfig {
  * @since 1.0.0
  * @category context
  */
-export const Tag: Context.Tag<CliConfig> = internal.Tag
+export const CliConfig: Context.Tag<CliConfig, CliConfig> = internal.Tag
 
 /**
  * @since 1.0.0
