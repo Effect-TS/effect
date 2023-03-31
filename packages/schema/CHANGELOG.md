@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.9.0
+
+### Minor Changes
+
+- [#206](https://github.com/Effect-TS/schema/pull/206) [`39da1cb`](https://github.com/Effect-TS/schema/commit/39da1cb794d7218674c14542d2c3b3a8f386d03b) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update effect/data and effect/io
+
 ## 0.8.3
 
 ### Patch Changes
