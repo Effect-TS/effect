@@ -46,6 +46,7 @@ export type Instruction =
   | Map
   | OrElse
   | KeyValueMap
+  | Variadic
   | WithDefault
   | ZipWith
 
@@ -85,6 +86,15 @@ export interface KeyValueMap extends
 {}
 
 /** @internal */
+export interface Variadic extends
+  Op<"Variadic", {
+    readonly options: Single
+    readonly min: Option.Option<number>
+    readonly max: Option.Option<number>
+  }>
+{}
+
+/** @internal */
 export interface WithDefault extends
   Op<"WithDefault", {
     readonly options: Instruction
@@ -118,6 +128,24 @@ export const alias = dual<
     op.description = original.description
     return op
   }))
+
+/** @internal */
+export const atLeast = dual<
+  (times: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
+  <A>(self: Options.Options<A>, times: number) => Options.Options<Chunk.Chunk<A>>
+>(2, (self, times) => variadic(self, Option.some(times), Option.none()))
+
+/** @internal */
+export const atMost = dual<
+  (times: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
+  <A>(self: Options.Options<A>, times: number) => Options.Options<Chunk.Chunk<A>>
+>(2, (self, times) => variadic(self, Option.none(), Option.some(times)))
+
+/** @internal */
+export const between = dual<
+  (min: number, max: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
+  <A>(self: Options.Options<A>, min: number, max: number) => Options.Options<Chunk.Chunk<A>>
+>(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)))
 
 const defaultBooleanOptions = {
   ifPresent: true,
@@ -179,6 +207,7 @@ const helpDocMap: {
     return doc.sequence(left, right)
   },
   KeyValueMap: (self) => helpDocMap[self.argumentOption._tag](self.argumentOption as any),
+  Variadic: (self) => helpDocMap[self.options._tag](self.options as any),
   WithDefault: (self) => {
     const helpDoc = helpDocMap[self.options._tag](self.options as any)
     return doc.mapDescriptionList(helpDoc, (span, block) => [
@@ -215,6 +244,7 @@ const isBoolMap: {
   Map: (self) => isBoolMap[self.value._tag](self.value as any),
   OrElse: () => false,
   KeyValueMap: () => false,
+  Variadic: () => false,
   WithDefault: (self) => isBoolMap[self.options._tag](self.options as any),
   Zip: () => false
 }
@@ -315,6 +345,14 @@ export const orElseEither = dual<
 })
 
 /** @internal */
+export const repeat = <A>(self: Options.Options<A>): Options.Options<Chunk.Chunk<A>> =>
+  variadic(self, Option.none(), Option.none())
+
+/** @internal */
+export const repeat1 = <A>(self: Options.Options<A>): Options.Options<Chunk.NonEmptyChunk<A>> =>
+  variadic(self, Option.some(1), Option.none()) as any
+
+/** @internal */
 export const text = (name: string): Options.Options<string> => single(name, Chunk.empty(), primitive.text)
 
 const uidMap: {
@@ -325,6 +363,7 @@ const uidMap: {
   Map: (self) => uidMap[self.value._tag](self.value as any),
   OrElse: (self) => combineUids(self.left, self.right),
   KeyValueMap: (self) => uidMap[self.argumentOption._tag](self.argumentOption as any),
+  Variadic: (self) => uidMap[self.options._tag](self.options as any),
   WithDefault: (self) => uidMap[self.options._tag](self.options as any),
   Zip: (self) => combineUids(self.left, self.right)
 }
@@ -354,6 +393,7 @@ const usageMap: {
     return _usage.alternation(left, right)
   },
   KeyValueMap: (self) => usageMap[self.argumentOption._tag](self.argumentOption as any),
+  Variadic: (self) => _usage.optional(usageMap[self.options._tag](self.options as any)),
   WithDefault: (self) => _usage.optional(usageMap[self.options._tag](self.options as any)),
   Zip: (self) => {
     const left = usageMap[self.left._tag](self.left as any)
@@ -458,6 +498,38 @@ const validateMap: {
       validateMap[self.argumentOption._tag](self.argumentOption as any, args, config),
       (tuple) => processKeyValueMapArg(self, tuple[0], tuple[1], config)
     ),
+  Variadic: (self, args, config) => {
+    const min = Option.getOrElse(self.min, () => 0)
+    const max = Option.getOrElse(self.max, () => Infinity)
+    const loop = (
+      args: ReadonlyArray<string>,
+      acc: Chunk.Chunk<unknown>
+    ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, Chunk.Chunk<unknown>]> =>
+      Effect.matchEffect(
+        validateMap[self.options._tag](self.options as any, args, config),
+        (error) => {
+          if (!validationError.isMissingValue(error)) {
+            return Effect.fail(error)
+          } else if (acc.length < min) {
+            return Effect.fail(validationError.missingValue(
+              doc.p(span.error(`Expected at least ${min} value(s) for option: '${singleFullName(self.options)}'`))
+            ))
+          }
+
+          return Effect.succeed([args, acc])
+        },
+        (tuple) => {
+          acc = Chunk.append(acc, tuple[1])
+          if (acc.length > max) {
+            return Effect.fail(validationError.extraneousValue(
+              doc.p(span.error(`Expected at most ${max} value(s) for option: '${singleFullName(self.options)}'`))
+            ))
+          }
+          return loop(tuple[0], acc)
+        }
+      )
+    return loop(args, Chunk.empty())
+  },
   WithDefault: (self, args, config) =>
     Effect.catchSome(
       validateMap[self.options._tag](self.options as any, args, config),
@@ -506,6 +578,19 @@ export const validate = Debug.dualWithTrace<
       args,
       config
     ).traced(trace))
+
+const variadic = <A>(
+  self: Options.Options<A>,
+  min: Option.Option<number>,
+  max: Option.Option<number>
+): Options.Options<Chunk.Chunk<A>> => {
+  const op = Object.create(proto)
+  op._tag = "Variadic"
+  op.options = self
+  op.min = min
+  op.max = max
+  return op
+}
 
 /** @internal */
 export const withDefault = dual<
@@ -636,6 +721,7 @@ const singleModifierMap: {
   Map: (self, f) => mapOrFail(modifySingle(self.value, f), self.f),
   OrElse: (self, f) => orElseEither(modifySingle(self.left, f), modifySingle(self.right, f)),
   KeyValueMap: (self, f) => keyValueMapFromOption(f(self.argumentOption)),
+  Variadic: (self, f) => variadic(f(self.options), self.min, self.max),
   WithDefault: (self, f) => withDefault(modifySingle(self.options, f), self.default),
   Zip: (self, f) => zip(modifySingle(self.left, f), modifySingle(self.right, f))
 }
@@ -662,25 +748,42 @@ const processKeyValueMapArg = (
   first: string,
   config: CliConfig.CliConfig
 ): readonly [ReadonlyArray<string>, HashMap.HashMap<string, string>] => {
+  const [remaining, chunk] = processVariadicArg(repeat(self.argumentOption) as any, input, first, config)
+  const createMapEntry = (input: string): readonly [string, string] =>
+    input.split("=").slice(0, 2) as unknown as readonly [string, string]
+  return [remaining, HashMap.fromIterable(Chunk.map(chunk, createMapEntry))]
+}
+
+const processVariadicArg = (
+  self: Variadic,
+  input: ReadonlyArray<string>,
+  first: string,
+  config: CliConfig.CliConfig
+): readonly [ReadonlyArray<string>, Chunk.Chunk<string>] => {
+  const max = Option.getOrElse(self.max, () => Infinity)
   const makeFullName = (s: string): string => s.length === 1 ? `-${s}` : `--${s}`
   const supports = (s: string, config: CliConfig.CliConfig): boolean => {
     const argumentNames = Chunk.prepend(
-      Chunk.map(self.argumentOption.aliases, makeFullName),
-      makeFullName(self.argumentOption.name)
+      Chunk.map(self.options.aliases, makeFullName),
+      makeFullName(self.options.name)
     )
     return config.isCaseSensitive
       ? Chunk.elem(argumentNames, s)
       : Chunk.some(argumentNames, (name) => name.toLowerCase() === s.toLowerCase())
   }
-  const createMapEntry = (input: string): readonly [string, string] =>
-    input.split("=").slice(0, 2) as unknown as readonly [string, string]
-  const createMap = (input: ReadonlyArray<string>): HashMap.HashMap<string, string> =>
-    HashMap.fromIterable(RA.map(RA.filter(input, (s) => !s.startsWith("-")), createMapEntry))
+
+  const createChunk = (input: ReadonlyArray<string>): Chunk.Chunk<string> =>
+    Chunk.fromIterable(RA.filter(input, (s) => !s.startsWith("-")))
+
   const tuple = RA.span(RA.fromIterable(input), (s) => !s.startsWith("-") || supports(s, config))
   const remaining = tuple[1]
-  const firstEntry = createMapEntry(first)
-  const map = HashMap.set(createMap(tuple[0]), firstEntry[0], firstEntry[1])
-  return [remaining, map]
+
+  let chunk = Chunk.prepend(createChunk(tuple[0]), first)
+  if (max < Infinity) {
+    chunk = Chunk.take(chunk, max)
+  }
+
+  return [remaining, chunk]
 }
 
 const processSingleArg = (

@@ -13,6 +13,10 @@ export const isValidationError = (u: unknown): u is ValidationError.ValidationEr
   typeof u === "object" && u != null && ValidationErrorTypeId in u
 
 /** @internal */
+export const isExtraneousValue = (validationError: ValidationError.ValidationError): boolean =>
+  validationError.type === "ExtraneousValue"
+
+/** @internal */
 export const isInvalidValue = (validationError: ValidationError.ValidationError): boolean =>
   validationError.type === "InvalidValue"
 
@@ -41,6 +45,10 @@ export const make = (
   type,
   error
 })
+
+/** @internal */
+export const extraneousValue = (error: HelpDoc.HelpDoc): ValidationError.ValidationError =>
+  make("ExtraneousValue", error)
 
 /** @internal */
 export const invalidValue = (error: HelpDoc.HelpDoc): ValidationError.ValidationError => make("InvalidValue", error)

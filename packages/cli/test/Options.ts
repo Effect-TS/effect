@@ -4,6 +4,7 @@ import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
 import * as it from "@effect/cli/test/utils/extend"
 import * as ValidationError from "@effect/cli/ValidationError"
+import * as Chunk from "@effect/data/Chunk"
 import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
@@ -347,5 +348,56 @@ describe.concurrent("Options", () => {
       const args = ["-d", "key1=v1", "key2=v2", "--verbose"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([["--verbose"], HashMap.make(["key1", "v1"], ["key2", "v2"])])
+    }))
+
+  it.effect("variadic - invalid integer", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.alias(Options.repeat1(Options.integer("defs")), "d")
+      const args = ["-d", "1", "-d", "v2", "-d", "3", "--verbose"]
+      const error = yield* $(Effect.flip(Options.validate(option, args, config)))
+      expect(error).toEqual(ValidationError.invalidValue(HelpDoc.p(
+        `"v2" is not a integer`
+      )))
+    }))
+
+  it.effect("variadic - missing value", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.alias(Options.repeat1(Options.integer("defs")), "d")
+      const args = ["--verbose"]
+      const error = yield* $(Effect.flip(Options.validate(option, args, config)))
+      expect(error).toEqual(ValidationError.missingValue(HelpDoc.p(Span.error(
+        "Expected at least 1 value(s) for option: '--defs'"
+      ))))
+    }))
+
+  it.effect("variadic - extraneous value", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.alias(Options.atMost(Options.integer("defs"), 2), "d")
+      const args = ["-d", "1", "-d", "2", "-d", "3", "--verbose"]
+      const error = yield* $(Effect.flip(Options.validate(option, args, config)))
+      expect(error).toEqual(ValidationError.extraneousValue(HelpDoc.p(Span.error(
+        "Expected at most 2 value(s) for option: '--defs'"
+      ))))
+    }))
+
+  it.effect("variadic - integers", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.alias(Options.repeat1(Options.integer("defs")), "d")
+      const args = ["-d", "1", "-d", "2", "-d", "3", "--verbose"]
+      const result = yield* $(Options.validate(option, args, config))
+      expect(result).toEqual([["--verbose"], Chunk.make(1, 2, 3)])
+    }))
+
+  it.effect("variadic - integers atMost 2", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.alias(Options.atMost(Options.integer("defs"), 2), "d")
+      const args = ["-d", "1", "-d", "2", "--verbose"]
+      const result = yield* $(Options.validate(option, args, config))
+      expect(result).toEqual([["--verbose"], Chunk.make(1, 2)])
     }))
 })

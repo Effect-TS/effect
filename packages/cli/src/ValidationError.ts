@@ -42,6 +42,7 @@ export declare namespace ValidationError {
    * @category models
    */
   export type Type =
+    | "ExtraneousValue"
     | "InvalidValue"
     | "MissingValue"
     | "CommandMismatch"
@@ -54,6 +55,12 @@ export declare namespace ValidationError {
  * @category refinements
  */
 export const isValidationError: (u: unknown) => u is ValidationError = internal.isValidationError
+
+/**
+ * @since 1.0.0
+ * @category refinements
+ */
+export const isExtraneousValue: (validationError: ValidationError) => boolean = internal.isExtraneousValue
 
 /**
  * @since 1.0.0
@@ -90,6 +97,12 @@ export const isInvalidArgument: (validationError: ValidationError) => boolean = 
  * @category constructors
  */
 export const make: (type: ValidationError.Type, error: HelpDoc) => ValidationError = internal.make
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const extraneousValue: (error: HelpDoc) => ValidationError = internal.extraneousValue
 
 /**
  * @since 1.0.0

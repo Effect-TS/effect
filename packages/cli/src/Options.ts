@@ -6,6 +6,7 @@ import type { HelpDoc } from "@effect/cli/HelpDoc"
 import * as internal from "@effect/cli/internal_effect_untraced/options"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
+import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
 import type { Either } from "@effect/data/Either"
 import type { HashMap } from "@effect/data/HashMap"
 import type { Option } from "@effect/data/Option"
@@ -88,6 +89,33 @@ export const all: {
     args: T
   ): Options<Readonly<{ [K in keyof T]: [T[K]] extends [Options<infer A>] ? A : never }>>
 } = internal.all
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const atLeast: {
+  (times: 0): <A>(self: Options<A>) => Options<Chunk<A>>
+  <A>(self: Options<A>, times: number): Options<Chunk<A>>
+} = internal.atLeast
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const atMost: {
+  (times: number): <A>(self: Options<A>) => Options<Chunk<A>>
+  <A>(self: Options<A>, times: number): Options<Chunk<A>>
+} = internal.atMost
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const between: {
+  (min: number, max: number): <A>(self: Options<A>) => Options<Chunk<A>>
+  <A>(self: Options<A>, min: number, max: number): Options<Chunk<A>>
+} = internal.between
 
 /**
  * @since 1.0.0
@@ -221,6 +249,18 @@ export const orElseEither: {
   <A>(that: Options<A>): <B>(self: Options<B>) => Options<Either<B, A>>
   <A, B>(self: Options<A>, that: Options<B>): Options<Either<B, A>>
 } = internal.orElseEither
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const repeat: <A>(self: Options<A>) => Options<Chunk<A>> = internal.repeat
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const repeat1: <A>(self: Options<A>) => Options<NonEmptyChunk<A>> = internal.repeat1
 
 /**
  * @since 1.0.0
