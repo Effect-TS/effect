@@ -96,7 +96,9 @@ export const all: {
  */
 export const atLeast: {
   (times: 0): <A>(self: Options<A>) => Options<Chunk<A>>
-  <A>(self: Options<A>, times: number): Options<Chunk<A>>
+  (times: number): <A>(self: Options<A>) => Options<NonEmptyChunk<A>>
+  <A>(self: Options<A>, times: 0): Options<Chunk<A>>
+  <A>(self: Options<A>, times: number): Options<NonEmptyChunk<A>>
 } = internal.atLeast
 
 /**
@@ -113,8 +115,10 @@ export const atMost: {
  * @category combinators
  */
 export const between: {
-  (min: number, max: number): <A>(self: Options<A>) => Options<Chunk<A>>
-  <A>(self: Options<A>, min: number, max: number): Options<Chunk<A>>
+  (min: 0, max: number): <A>(self: Options<A>) => Options<Chunk<A>>
+  (min: number, max: number): <A>(self: Options<A>) => Options<NonEmptyChunk<A>>
+  <A>(self: Options<A>, min: 0, max: number): Options<Chunk<A>>
+  <A>(self: Options<A>, min: number, max: number): Options<NonEmptyChunk<A>>
 } = internal.between
 
 /**

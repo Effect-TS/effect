@@ -5,7 +5,7 @@ import type { HelpDoc } from "@effect/cli/HelpDoc"
 import * as internal from "@effect/cli/internal_effect_untraced/args"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
-import type { Chunk } from "@effect/data/Chunk"
+import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
 import type { Either } from "@effect/data/Either"
 import type { Option } from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
@@ -68,8 +68,10 @@ export const addDescription: {
  * @category combinators
  */
 export const atLeast: {
-  (times: number): <A>(self: Args<A>) => Args<Chunk<A>>
-  <A>(self: Args<A>, times: number): Args<Chunk<A>>
+  (times: 0): <A>(self: Args<A>) => Args<Chunk<A>>
+  (times: number): <A>(self: Args<A>) => Args<NonEmptyChunk<A>>
+  <A>(self: Args<A>, times: 0): Args<Chunk<A>>
+  <A>(self: Args<A>, times: number): Args<NonEmptyChunk<A>>
 } = internal.atLeast
 
 /**
@@ -86,8 +88,10 @@ export const atMost: {
  * @category combinators
  */
 export const between: {
-  (min: number, max: number): <A>(self: Args<A>) => Args<Chunk<A>>
-  <A>(self: Args<A>, min: number, max: number): Args<Chunk<A>>
+  (min: 0, max: number): <A>(self: Args<A>) => Args<Chunk<A>>
+  (min: number, max: number): <A>(self: Args<A>) => Args<NonEmptyChunk<A>>
+  <A>(self: Args<A>, min: 0, max: number): Args<Chunk<A>>
+  <A>(self: Args<A>, min: number, max: number): Args<NonEmptyChunk<A>>
 } = internal.between
 
 /**
@@ -210,7 +214,7 @@ export const repeat: <A>(self: Args<A>) => Args<Chunk<A>> = internal.repeat
  * @since 1.0.0
  * @category combinators
  */
-export const repeat1: <A>(self: Args<A>) => Args<Chunk<A>> = internal.repeat1
+export const repeat1: <A>(self: Args<A>) => Args<NonEmptyChunk<A>> = internal.repeat1
 
 /**
  * Creates a text argument.

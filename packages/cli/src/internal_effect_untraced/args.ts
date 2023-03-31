@@ -152,9 +152,15 @@ export const all: {
 
 /** @internal */
 export const atLeast = dual<
-  (times: number) => <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>,
-  <A>(self: Args.Args<A>, times: number) => Args.Args<Chunk.Chunk<A>>
->(2, (self, times) => variadic(self, Option.some(times), Option.none()))
+  {
+    (times: 0): <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>
+    (times: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.NonEmptyChunk<A>>
+  },
+  {
+    <A>(self: Args.Args<A>, times: 0): Args.Args<Chunk.Chunk<A>>
+    <A>(self: Args.Args<A>, times: number): Args.Args<Chunk.NonEmptyChunk<A>>
+  }
+>(2, (self, times) => variadic(self, Option.some(times), Option.none()) as any)
 
 /** @internal */
 export const atMost = dual<
@@ -164,9 +170,15 @@ export const atMost = dual<
 
 /** @internal */
 export const between = dual<
-  (min: number, max: number) => <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>,
-  <A>(self: Args.Args<A>, min: number, max: number) => Args.Args<Chunk.Chunk<A>>
->(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)))
+  {
+    (min: 0, max: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.Chunk<A>>
+    (min: number, max: number): <A>(self: Args.Args<A>) => Args.Args<Chunk.NonEmptyChunk<A>>
+  },
+  {
+    <A>(self: Args.Args<A>, min: 0, max: number): Args.Args<Chunk.Chunk<A>>
+    <A>(self: Args.Args<A>, min: number, max: number): Args.Args<Chunk.NonEmptyChunk<A>>
+  }
+>(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)) as any)
 
 /** @internal */
 export const boolean = (config: Args.Args.ArgsConfig = {}): Args.Args<boolean> =>
@@ -297,7 +309,7 @@ export const none: Args.Args<void> = (() => {
 export const repeat = <A>(self: Args.Args<A>): Args.Args<Chunk.Chunk<A>> => variadic(self, Option.none(), Option.none())
 
 /** @internal */
-export const repeat1 = <A>(self: Args.Args<A>): Args.Args<Chunk.Chunk<A>> =>
+export const repeat1 = <A>(self: Args.Args<A>): Args.Args<Chunk.NonEmptyChunk<A>> =>
   map(variadic(self, Option.some(1), Option.none()), (chunk) => {
     if (Chunk.isNonEmpty(chunk)) {
       return chunk

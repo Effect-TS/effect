@@ -131,9 +131,15 @@ export const alias = dual<
 
 /** @internal */
 export const atLeast = dual<
-  (times: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
-  <A>(self: Options.Options<A>, times: number) => Options.Options<Chunk.Chunk<A>>
->(2, (self, times) => variadic(self, Option.some(times), Option.none()))
+  {
+    (times: 0): <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>
+    (times: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.NonEmptyChunk<A>>
+  },
+  {
+    <A>(self: Options.Options<A>, times: 0): Options.Options<Chunk.Chunk<A>>
+    <A>(self: Options.Options<A>, times: number): Options.Options<Chunk.NonEmptyChunk<A>>
+  }
+>(2, (self, times) => variadic(self, Option.some(times), Option.none()) as any)
 
 /** @internal */
 export const atMost = dual<
@@ -143,9 +149,15 @@ export const atMost = dual<
 
 /** @internal */
 export const between = dual<
-  (min: number, max: number) => <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>,
-  <A>(self: Options.Options<A>, min: number, max: number) => Options.Options<Chunk.Chunk<A>>
->(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)))
+  {
+    (min: 0, max: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.Chunk<A>>
+    (min: number, max: number): <A>(self: Options.Options<A>) => Options.Options<Chunk.NonEmptyChunk<A>>
+  },
+  {
+    <A>(self: Options.Options<A>, min: 0, max: number): Options.Options<Chunk.Chunk<A>>
+    <A>(self: Options.Options<A>, min: number, max: number): Options.Options<Chunk.NonEmptyChunk<A>>
+  }
+>(3, (self, min, max) => variadic(self, Option.some(min), Option.some(max)) as any)
 
 const defaultBooleanOptions = {
   ifPresent: true,
