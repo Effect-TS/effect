@@ -739,7 +739,7 @@ const toAnnotations = <A>(
 export function filter<C extends A, B extends A, A = C>(
   refinement: Refinement<A, B>,
   options?: AnnotationOptions<A>
-): <I>(self: Schema<I, C>) => Schema<I, Spread<C & B>>
+): <I>(self: Schema<I, C>) => Schema<I, C & B>
 export function filter<B extends A, A = B>(
   predicate: Predicate<A>,
   options?: AnnotationOptions<A>

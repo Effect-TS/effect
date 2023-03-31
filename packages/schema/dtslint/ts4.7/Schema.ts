@@ -1,3 +1,4 @@
+import { Brand } from "@effect/data/Brand";
 import { pipe } from "@effect/data/Function";
 import * as S from "@effect/schema/Schema";
 
@@ -439,7 +440,7 @@ pipe(FromFilter, S.filter(predicateFilter1))
 
 const FromRefinement = S.struct({ a: S.optional(S.string), b: S.optional(S.number) })
 
-// $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b: number; }>
+// $ExpectType Schema<{ readonly a?: string; readonly b?: number; }, { readonly a?: string; readonly b?: number; } & { readonly b: number; }>
 pipe(FromRefinement, S.filter(S.is(S.struct({ b: S.number }))))
 
 const LiteralFilter = S.literal('a', 'b')
@@ -456,5 +457,8 @@ pipe(LiteralFilter, S.filter(S.is(S.literal('c'))))
 
 declare const UnionFilter: S.Schema<{ readonly a: string } | { readonly b: string }>
 
-// $ExpectType Schema<{ readonly a: string; } | { readonly b: string; }, { readonly a: string; readonly b: string; } | { readonly b: string; }>
+// $ExpectType Schema<{ readonly a: string; } | { readonly b: string; }, ({ readonly a: string; } | { readonly b: string; }) & { readonly b: string; }>
 pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
+
+// $ExpectType Schema<number, number & Brand<"MyNumber">>
+pipe(S.number, S.filter((n): n is number & Brand<"MyNumber"> => n > 0))
