@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.8.3
+
+### Patch Changes
+
+- [#204](https://github.com/Effect-TS/schema/pull/204) [`c40237c`](https://github.com/Effect-TS/schema/commit/c40237cde61597272b376dcb3e784d72867c9c60) Thanks [@gcanti](https://github.com/gcanti)! - remove Spread from filter return type
+
 ## 0.8.2
 
 ### Patch Changes
