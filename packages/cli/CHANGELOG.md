@@ -1,5 +1,17 @@
 # @effect/cli
 
+## 0.2.0
+
+### Minor Changes
+
+- [#289](https://github.com/Effect-TS/cli/pull/289) [`39c90e9`](https://github.com/Effect-TS/cli/commit/39c90e9b70bfb8a34a82e34811ca48279c3f0326) Thanks [@tim-smart](https://github.com/tim-smart)! - add variadic Options
+
+### Patch Changes
+
+- [#288](https://github.com/Effect-TS/cli/pull/288) [`9b14798`](https://github.com/Effect-TS/cli/commit/9b14798ee6ad1bf0e12d3b907195ffd6d79397e7) Thanks [@tim-smart](https://github.com/tim-smart)! - improve optional message if default is Option
+
+- [#292](https://github.com/Effect-TS/cli/pull/292) [`e15ef09`](https://github.com/Effect-TS/cli/commit/e15ef0943a002165c4109a0b8178e55c48cef3a6) Thanks [@tim-smart](https://github.com/tim-smart)! - update /printer
+
 ## 0.1.0
 
 ### Minor Changes
