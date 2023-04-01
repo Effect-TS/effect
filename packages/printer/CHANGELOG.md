@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.4.0
+
+### Minor Changes
+
+- [#386](https://github.com/Effect-TS/printer/pull/386) [`4d286f8`](https://github.com/Effect-TS/printer/commit/4d286f82541ea0ac11d01e38300470062f38ad36) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 0.3.0
 
 ### Minor Changes
