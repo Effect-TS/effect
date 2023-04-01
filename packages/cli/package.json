@@ -56,14 +56,14 @@
     }
   },
   "dependencies": {
-    "@effect/data": "~0.7.4",
-    "@effect/io": "^0.15.1",
-    "@effect/printer": "^0.3.0",
-    "@effect/printer-ansi": "^0.3.0"
+    "@effect/data": "~0.9.1",
+    "@effect/io": "^0.16.2",
+    "@effect/printer": "^0.4.0",
+    "@effect/printer-ansi": "^0.4.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
-    "@babel/core": "^7.21.3",
+    "@babel/core": "^7.21.4",
     "@babel/plugin-transform-modules-commonjs": "^7.21.2",
     "@changesets/changelog-github": "^0.4.8",
     "@changesets/cli": "^2.26.1",
