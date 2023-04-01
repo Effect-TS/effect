@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- [#295](https://github.com/Effect-TS/cli/pull/295) [`dfb0b05`](https://github.com/Effect-TS/cli/commit/dfb0b05fde9bbf3b4de43fab45112cd343033ea3) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#293](https://github.com/Effect-TS/cli/pull/293) [`f702bb9`](https://github.com/Effect-TS/cli/commit/f702bb9d1a38b1b632fb3461e0d8b335d2c63c79) Thanks [@tim-smart](https://github.com/tim-smart)! - non empty chunks for more than one element
+
 ## 0.2.0
 
 ### Minor Changes
