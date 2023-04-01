@@ -56,8 +56,8 @@
     }
   },
   "dependencies": {
-    "@effect/data": "^0.7.4",
-    "@effect/io": "^0.15.1",
+    "@effect/data": "^0.9.1",
+    "@effect/io": "^0.16.2",
     "@effect/printer": "*"
   },
   "config": {
