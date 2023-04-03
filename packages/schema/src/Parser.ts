@@ -46,13 +46,13 @@ const getEither = (ast: AST.AST) => {
 const getPromise = (ast: AST.AST) => {
   const parser = go(ast)
   return (input: unknown, options?: ParseOptions) =>
-    Effect.runPromise(PR.effect(parser(input, { ...options, isEffectAllowed: true })))
+    Effect.runPromise(parser(input, { ...options, isEffectAllowed: true }))
 }
 
 const getEffect = (ast: AST.AST) => {
   const parser = go(ast)
   return (input: unknown, options?: ParseOptions) =>
-    PR.effect(parser(input, { ...options, isEffectAllowed: true }))
+    parser(input, { ...options, isEffectAllowed: true })
 }
 
 /**
@@ -443,7 +443,7 @@ const go = untracedMethod(() =>
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
+                      Effect.flatMap(Effect.either(te), (t) => {
                         if (E.isLeft(t)) {
                           // the input element is present but is not valid
                           const e = PR.index(index, t.left.errors)
@@ -451,7 +451,7 @@ const go = untracedMethod(() =>
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
+                            return PR.failures(mutableAppend(sortByIndex(es), e))
                           }
                         }
                         output.push([nk, t.right])
@@ -492,14 +492,14 @@ const go = untracedMethod(() =>
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
+                      Effect.flatMap(Effect.either(te), (t) => {
                         if (E.isLeft(t)) {
                           const e = PR.index(index, t.left.errors)
                           if (allErrors) {
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
+                            return PR.failures(mutableAppend(sortByIndex(es), e))
                           }
                         } else {
                           output.push([nk, t.right])
@@ -541,7 +541,7 @@ const go = untracedMethod(() =>
                   queue.push(
                     untracedMethod(() =>
                       ({ es, output }: State) =>
-                        Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
+                        Effect.flatMap(Effect.either(te), (t) => {
                           if (E.isLeft(t)) {
                             // the input element is present but is not valid
                             const e = PR.index(index, t.left.errors)
@@ -549,7 +549,7 @@ const go = untracedMethod(() =>
                               es.push([nk, e])
                               return Effect.unit()
                             } else {
-                              return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
+                              return PR.failures(mutableAppend(sortByIndex(es), e))
                             }
                           }
                           output.push([nk, t.right])
@@ -579,7 +579,7 @@ const go = untracedMethod(() =>
                 }
                 return Effect.flatMap(
                   Effect.forEachDiscard(cqueue, (f) => f(state)),
-                  () => PR.effect(computeResult(state))
+                  () => computeResult(state)
                 )
               })
             )
@@ -683,7 +683,7 @@ const go = untracedMethod(() =>
                 queue.push(
                   untracedMethod(() =>
                     ({ es, output }: State) =>
-                      Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
+                      Effect.flatMap(Effect.either(te), (t) => {
                         if (E.isLeft(t)) {
                           // the input key is present but is not valid
                           const e = PR.key(index, t.left.errors)
@@ -691,7 +691,7 @@ const go = untracedMethod(() =>
                             es.push([nk, e])
                             return Effect.unit()
                           } else {
-                            return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
+                            return PR.failures(mutableAppend(sortByIndex(es), e))
                           }
                         }
                         output[index] = t.right
@@ -760,7 +760,7 @@ const go = untracedMethod(() =>
                     untracedMethod(() =>
                       ({ es, output }: State) =>
                         Effect.flatMap(
-                          Effect.either(PR.effect(tve)),
+                          Effect.either(tve),
                           (tv) => {
                             if (E.isLeft(tv)) {
                               const e = PR.key(index, tv.left.errors)
@@ -768,7 +768,7 @@ const go = untracedMethod(() =>
                                 es.push([nk, e])
                                 return Effect.unit()
                               } else {
-                                return PR.effect(PR.failures(mutableAppend(sortByIndex(es), e)))
+                                return PR.failures(mutableAppend(sortByIndex(es), e))
                               }
                             } else {
                               output[key] = tv.right
@@ -799,7 +799,7 @@ const go = untracedMethod(() =>
                 }
                 return Effect.flatMap(
                   Effect.forEachDiscard(cqueue, (f) => f(state)),
-                  () => PR.effect(computeResult(state))
+                  () => computeResult(state)
                 )
               })
             )
@@ -886,7 +886,7 @@ const go = untracedMethod(() =>
                       if ("finalResult" in state) {
                         return Effect.unit()
                       } else {
-                        return Effect.flatMap(Effect.either(PR.effect(te)), (t) => {
+                        return Effect.flatMap(Effect.either(te), (t) => {
                           if (E.isRight(t)) {
                             state.finalResult = PR.success(t.right)
                           } else {
@@ -919,9 +919,9 @@ const go = untracedMethod(() =>
                   Effect.forEachDiscard(cqueue, (f) => f(state)),
                   () => {
                     if ("finalResult" in state) {
-                      return PR.effect(state.finalResult)
+                      return state.finalResult
                     }
-                    return PR.effect(computeResult(state.es))
+                    return computeResult(state.es)
                   }
                 )
               })

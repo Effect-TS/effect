@@ -248,17 +248,6 @@ export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefi
  * @category optimisation
  * @since 1.0.0
  */
-export const effect: <E, A>(self: IO<E, A>) => Effect.Effect<never, E, A> = (self) => {
-  if (Effect.isEffect(self)) {
-    return self
-  }
-  return Effect.fromEither(self)
-}
-
-/**
- * @category optimisation
- * @since 1.0.0
- */
 export const flatMap = <E, E1, A, B>(
   self: IO<E, A>,
   f: (self: A) => IO<E1, B>
@@ -270,10 +259,8 @@ export const flatMap = <E, E1, A, B>(
   if (s["_tag"] === "Right") {
     return f(s.right)
   }
-  // @ts-expect-error
   return Debug.bodyWithTrace((trace, restore) =>
-    // @ts-expect-error
-    Effect.flatMap(self, (a) => effect(restore(f)(a))).traced(trace)
+    Effect.flatMap(self, (a) => restore(f)(a)).traced(trace)
   )
 }
 
@@ -292,6 +279,5 @@ export const map = <E, A, B>(
   if (s["_tag"] === "Right") {
     return E.right(f(s.right))
   }
-  // @ts-expect-error
   return Debug.bodyWithTrace((trace, restore) => Effect.map(self, restore(f)).traced(trace))
 }

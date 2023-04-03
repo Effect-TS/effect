@@ -48,7 +48,11 @@ describe.concurrent("Forbidden", () => {
   })
 
   it("declaration", () => {
-    const schema = S.declare([], S.number, () => S.parseEffect(S.number))
+    const schema = S.declare(
+      [],
+      S.number,
+      () => S.parseEffect(Util.effectifySchema(S.number, "all"))
+    )
     expectMessage(
       schema,
       1,
