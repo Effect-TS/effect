@@ -413,7 +413,9 @@ export const nonEmptyArray = <I, A>(
 /**
  * @since 1.0.0
  */
-export type Spread<A> = { [K in keyof A]: A[K] } & {}
+export type Spread<A> = {
+  [K in keyof A]: A[K]
+} extends infer B ? B : never
 
 /**
  * @since 1.0.0
