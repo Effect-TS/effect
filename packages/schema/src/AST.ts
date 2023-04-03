@@ -161,6 +161,7 @@ export const DocumentationAnnotationId = "@effect/schema/DocumentationAnnotation
 // ---------------------------------------------
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface Annotated {
@@ -168,6 +169,7 @@ export interface Annotated {
 }
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export interface HasTransformation {
@@ -231,6 +233,7 @@ export const createDeclaration = (
 export const isDeclaration = (ast: AST): ast is Declaration => ast._tag === "Declaration"
 
 /**
+ * @category model
  * @since 1.0.0
  */
 export type LiteralValue = string | number | boolean | null | bigint
