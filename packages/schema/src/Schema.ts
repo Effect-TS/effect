@@ -1423,17 +1423,20 @@ export const date: Schema<Date> = declare(
   @category date
   @since 1.0.0
 */
-export const dateFromString: Schema<string, Date> = transformResult(
-  string,
-  date,
-  (s) => {
-    const n = Date.parse(s)
-    return isNaN(n)
-      ? PR.failure(PR.type(dateFromString.ast, s))
-      : PR.success(new Date(n))
-  },
-  (n) => PR.success(n.toISOString())
-)
+export const dateFromString = <I>(self: Schema<I, string>): Schema<I, Date> => {
+  const schema: Schema<I, Date> = transformResult(
+    self,
+    date,
+    (s) => {
+      const n = Date.parse(s)
+      return isNaN(n)
+        ? PR.failure(PR.type(schema.ast, s))
+        : PR.success(new Date(n))
+    },
+    (n) => PR.success(n.toISOString())
+  )
+  return schema
+}
 
 // ---------------------------------------------
 // data/Either
