@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.9.1
+
+### Patch Changes
+
+- [#209](https://github.com/Effect-TS/schema/pull/209) [`5affbf6`](https://github.com/Effect-TS/schema/commit/5affbf63671a3d16702fd67d1db36b65d031c17b) Thanks [@gcanti](https://github.com/gcanti)! - fix Spread definition
+
 ## 0.9.0
 
 ### Minor Changes
