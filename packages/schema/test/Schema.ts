@@ -59,6 +59,12 @@ describe.concurrent("Schema", () => {
 
     expect(S.partial).exist
     expect(S.required).exist
+
+    expect(S.numberFromString).exist
+    expect(S.dateFromString).exist
+    expect(S.trim).exist
+    expect(S.clamp).exist
+    expect(S.clampBigint).exist
   })
 
   it("brand/ annotations", () => {
@@ -337,7 +343,7 @@ describe.concurrent("Schema", () => {
         S.record(S.string, S.number),
         S.extend(S.record(S.string, S.boolean))
       )
-    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+    ).toThrowError(new Error("Duplicate index signature for type `string`"))
   })
 
   it(`extend/overlapping index signatures/ symbol`, () => {
@@ -346,7 +352,7 @@ describe.concurrent("Schema", () => {
         S.record(S.symbol, S.number),
         S.extend(S.record(S.symbol, S.boolean))
       )
-    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+    ).toThrowError(new Error("Duplicate index signature for type `symbol`"))
   })
 
   it("extend/overlapping index signatures/ refinements", () => {
@@ -355,7 +361,7 @@ describe.concurrent("Schema", () => {
         S.record(S.string, S.number),
         S.extend(S.record(pipe(S.string, S.minLength(2)), S.boolean))
       )
-    ).toThrowError(new Error("`extend` cannot handle overlapping index signatures"))
+    ).toThrowError(new Error("Duplicate index signature for type `string`"))
   })
 
   it(`extend/ struct with union of structs`, () => {
@@ -407,7 +413,7 @@ describe.concurrent("Schema", () => {
         S.struct({ a: S.literal("a") }),
         S.extend(S.struct({ a: S.string }))
       )
-    ).toThrowError(new Error("`extend` cannot handle overlapping property signatures"))
+    ).toThrowError(new Error("Duplicate property signature `a`"))
     expect(() =>
       pipe(
         S.struct({ a: S.literal("a") }),
@@ -418,7 +424,7 @@ describe.concurrent("Schema", () => {
           )
         )
       )
-    ).toThrowError(new Error("`extend` cannot handle overlapping property signatures"))
+    ).toThrowError(new Error("Duplicate property signature `a`"))
   })
 
   describe.concurrent("experimental", () => {

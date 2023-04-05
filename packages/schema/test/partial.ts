@@ -2,7 +2,7 @@ import { identity, pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = S.numberFromString(S.string)
+const NumberFromString = S.NumberFromString
 
 describe.concurrent("partial", () => {
   it("struct", async () => {

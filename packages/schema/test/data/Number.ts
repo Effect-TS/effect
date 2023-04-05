@@ -53,7 +53,7 @@ describe.concurrent("Number", () => {
   })
 
   describe.concurrent("numberFromString", () => {
-    const schema = S.numberFromString(S.string)
+    const schema = S.NumberFromString
 
     it("property tests", () => {
       Util.roundtrip(schema)
@@ -79,7 +79,7 @@ describe.concurrent("Number", () => {
     })
 
     it("example", async () => {
-      const schema = S.numberFromString(S.string) // converts string schema to number schema
+      const schema = S.NumberFromString // converts string schema to number schema
 
       // success cases
       await Util.expectParseSuccess(schema, "1", 1)

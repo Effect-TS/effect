@@ -5,7 +5,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const NumberFromString = S.numberFromString(S.string)
+const NumberFromString = S.NumberFromString
 
 describe.concurrent("Option", () => {
   describe.concurrent("option", () => {
@@ -71,16 +71,10 @@ describe.concurrent("Option", () => {
       expect(O.isOption(S.decode(schema)(null))).toEqual(true)
       expect(O.isOption(S.decode(schema)("1"))).toEqual(true)
 
-      await Util.expectParseFailureTree(
+      await Util.expectParseFailure(
         schema,
         {},
-        `error(s) found
-├─ union member
-│  └─ Expected undefined, actual {}
-├─ union member
-│  └─ Expected null, actual {}
-└─ union member
-   └─ Expected string, actual {}`
+        `union member: Expected undefined, actual {}, union member: Expected null, actual {}, union member: Expected string, actual {}`
       )
     })
 

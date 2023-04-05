@@ -21,12 +21,12 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("to", () => {
-    const schema = S.numberFromString(S.string)
+    const schema = S.NumberFromString
     propertyTo(schema)
   })
 
   it("from", () => {
-    const NumberFromString = S.numberFromString(S.string)
+    const NumberFromString = S.NumberFromString
     const schema = S.struct({
       a: NumberFromString,
       b: S.tuple(NumberFromString),
@@ -38,7 +38,7 @@ describe.concurrent("Arbitrary", () => {
   })
 
   it("from/ lazy", () => {
-    const NumberFromString = S.numberFromString(S.string)
+    const NumberFromString = S.NumberFromString
     interface I {
       readonly a: string | I
     }

@@ -4,14 +4,14 @@ import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Decoder", () => {
   it("from", async () => {
-    const schema = S.from(S.numberFromString(S.string))
+    const schema = S.from(S.NumberFromString)
     await Util.expectParseSuccess(schema, "a")
     await Util.expectParseFailure(schema, null, "Expected string, actual null")
     await Util.expectParseFailure(schema, 1, "Expected string, actual 1")
   })
 
   it("to", async () => {
-    const schema = S.to(S.numberFromString(S.string))
+    const schema = S.to(S.NumberFromString)
     await Util.expectParseSuccess(schema, 1)
     await Util.expectParseFailure(schema, null, "Expected number, actual null")
     await Util.expectParseFailure(schema, "a", `Expected number, actual "a"`)

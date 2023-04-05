@@ -24,59 +24,8 @@ describe.concurrent("AST", () => {
       )
   })
 
-  it("_getParameterKeyof/ should return never on unsupported ASTs", () => {
-    expect(AST._getParameterKeyof(pipe(S.number, S.greaterThan(1)).ast)).toEqual(AST.neverKeyword)
-  })
-
-  it("isTypeAlias", () => {
-    expect(AST.isDeclaration(S.optionFromSelf(S.number).ast)).toEqual(true)
-    expect(AST.isDeclaration(S.number.ast)).toEqual(false)
-  })
-
-  it("isTemplateLiteral", () => {
-    expect(AST.isTemplateLiteral(S.templateLiteral(S.literal("a"), S.string).ast)).toEqual(true)
-    expect(AST.isTemplateLiteral(S.number.ast)).toEqual(false)
-  })
-
-  it("isLazy", () => {
-    expect(AST.isLazy(S.json.ast)).toEqual(true)
-    expect(AST.isLazy(S.number.ast)).toEqual(false)
-  })
-
-  it("isTransform", () => {
-    expect(AST.isTransform(pipe(S.string, S.trim).ast)).toEqual(true)
-    expect(AST.isTransform(S.number.ast)).toEqual(false)
-  })
-
   it("createTemplateLiteral/ should return a literal if there are no template literal spans", () => {
     expect(AST.createTemplateLiteral("a", [])).toEqual(AST.createLiteral("a"))
-  })
-
-  it("getCardinality/ never", () => {
-    expect(AST._getCardinality(AST.neverKeyword)).toEqual(0)
-  })
-
-  it("getCardinality/ object", () => {
-    expect(AST._getCardinality(AST.objectKeyword)).toEqual(4)
-  })
-
-  it("getCardinality/ refinement", () => {
-    expect(AST._getCardinality(pipe(S.string, S.nonEmpty()).ast)).toEqual(3)
-  })
-
-  it("getWeight/transform/ should return the weight of type", () => {
-    expect(AST._getWeight(S.optionFromSelf(S.number).ast)).toEqual(3)
-  })
-
-  it("getWeight/union/ should return the sum of the members weight", () => {
-    expect(AST._getWeight(S.union(S.struct({ a: S.string }), S.struct({ b: S.number })).ast))
-      .toEqual(2)
-  })
-
-  it("getWeight/refinement/ should return the weight of the from type", () => {
-    expect(AST._getWeight(pipe(S.array(S.string), S.filter((as) => as.length === 2)).ast)).toEqual(
-      1
-    )
   })
 
   it("union/ should remove never from members", () => {
@@ -146,8 +95,7 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [ab.ast, a.ast],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -158,8 +106,7 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [ab.ast, a.ast],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -170,8 +117,7 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [a.ast, b.ast],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -182,8 +128,7 @@ describe.concurrent("AST", () => {
       expect(schema.ast).toEqual({
         _tag: "Union",
         types: [a.ast, b.ast],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
   })
@@ -227,15 +172,19 @@ describe.concurrent("AST", () => {
     )).toEqual(S.symbol.ast)
   })
 
+  it("keyof/ tuple", () => {
+    expect(() => AST.keyof(S.tuple(S.string).ast))
+      .toThrowError(new Error("`keyof` cannot handle tuples / arrays"))
+  })
+
   it("keyof/ refinement", () => {
-    expect(AST.keyof(pipe(S.struct({ a: S.number }), S.filter(({ a }) => a > 0)).ast)).toEqual(
-      S.literal("a").ast
-    )
+    expect(() => AST.keyof(pipe(S.struct({ a: S.number }), S.filter(({ a }) => a > 0)).ast))
+      .toThrowError(new Error("`keyof` cannot handle refinements"))
   })
 
   it("keyof/ transform", () => {
-    expect(AST.keyof(S.numberFromString(S.string).ast)).toEqual(
-      AST.neverKeyword
+    expect(() => AST.keyof(S.NumberFromString.ast)).toThrowError(
+      new Error("`keyof` cannot handle transformations")
     )
   })
 
@@ -361,8 +310,7 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -375,8 +323,7 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -389,8 +336,7 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.stringKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
 
@@ -403,8 +349,7 @@ describe.concurrent("AST", () => {
           AST.createPropertySignature("a", AST.booleanKeyword, false, true)
         ],
         indexSignatures: [],
-        annotations: {},
-        hasTransformation: false
+        annotations: {}
       })
     })
   })

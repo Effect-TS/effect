@@ -10,13 +10,13 @@ describe.concurrent("Pretty", () => {
   })
 
   it("to", () => {
-    const schema = S.numberFromString(S.string)
+    const schema = S.NumberFromString
     const pretty = P.to(schema)
     expect(pretty(1)).toEqual(`1`)
   })
 
   it("from", () => {
-    const schema = S.numberFromString(S.string)
+    const schema = S.NumberFromString
     const pretty = P.from(schema)
     expect(pretty("a")).toEqual(`"a"`)
   })

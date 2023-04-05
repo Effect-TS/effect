@@ -370,6 +370,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
         )
       }
       case "Refinement":
+        return go(ast.from)
       case "Transform":
         return go(ast.to)
     }

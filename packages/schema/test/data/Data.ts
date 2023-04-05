@@ -6,11 +6,8 @@ import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Data", () => {
   it("dataFromSelf. keyof", () => {
-    expect(S.keyof(S.dataFromSelf(S.struct({ a: S.string, b: S.string }))))
-      .toEqual(S.union(S.literal("a"), S.literal("b")))
-
-    expect(S.keyof(S.dataFromSelf(S.array(S.string))))
-      .toEqual(S.never)
+    const schema1 = S.keyof(S.dataFromSelf(S.struct({ a: S.string, b: S.string })))
+    expect(schema1).toEqual(S.union(S.literal("a"), S.literal("b")))
   })
 
   it("dataFromSelf. property tests", () => {

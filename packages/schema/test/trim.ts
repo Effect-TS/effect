@@ -1,15 +1,16 @@
+import { pipe } from "@effect/data/Function"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("trim", () => {
-  const schema = S.trim(S.string)
-
   it("property tests", () => {
+    const schema = S.Trim
     Util.roundtrip(schema)
   })
 
   it("Guard", () => {
+    const schema = S.Trim
     const is = P.is(schema)
     expect(is("a")).toEqual(true)
     expect(is("")).toEqual(true)
@@ -19,17 +20,33 @@ describe.concurrent("trim", () => {
     expect(is(" ")).toEqual(false)
   })
 
-  it("Decoder", async () => {
+  it("decoding", async () => {
+    const schema = pipe(S.string, S.minLength(1), S.trim)
     await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, "", "")
     await Util.expectParseSuccess(schema, "a ", "a")
     await Util.expectParseSuccess(schema, " a ", "a")
-    await Util.expectParseSuccess(schema, " ", "")
+
+    await Util.expectParseFailure(
+      schema,
+      "  ",
+      `Expected a string at least 1 character(s) long, actual ""`
+    )
+    await Util.expectParseFailure(
+      schema,
+      "",
+      `Expected a string at least 1 character(s) long, actual ""`
+    )
   })
 
-  it("Encoder", async () => {
+  it("encoding", async () => {
+    const schema = pipe(S.string, S.minLength(1), S.trim)
     await Util.expectEncodeSuccess(schema, "a", "a")
-    await Util.expectEncodeSuccess(schema, "", "")
+
+    await Util.expectEncodeFailure(
+      schema,
+      "",
+      `Expected a string at least 1 character(s) long, actual ""`
+    )
     await Util.expectEncodeFailure(
       schema,
       " a",

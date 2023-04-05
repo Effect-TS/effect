@@ -139,6 +139,10 @@ export const formatExpected = (ast: AST.AST): string => {
         O.getOrElse(() => "<anonymous declaration schema>")
       )
     case "Refinement":
+      return pipe(
+        getExpected(ast),
+        O.getOrElse(() => "<anonymous refinement schema>")
+      )
     case "Transform":
       return pipe(
         getExpected(ast),

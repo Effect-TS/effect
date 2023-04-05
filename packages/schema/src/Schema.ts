@@ -653,31 +653,11 @@ export const record = <K extends string | symbol, I, A>(
 ): Schema<{ readonly [k in K]: I }, { readonly [k in K]: A }> =>
   make(AST.createRecord(key.ast, value.ast, true))
 
-const isOverlappingPropertySignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
-  x.propertySignatures.some((px) => y.propertySignatures.some((py) => px.name === py.name))
-
-const isOverlappingIndexSignatures = (x: AST.TypeLiteral, y: AST.TypeLiteral): boolean =>
-  x.indexSignatures.some((ix) =>
-    y.indexSignatures.some((iy) => {
-      const keyofx = AST._getParameterKeyof(ix.parameter)
-      const keyofy = AST._getParameterKeyof(iy.parameter)
-      // there cannot be two string index signatures or two symbol index signatures at the same time
-      return (AST.isStringKeyword(keyofx) && AST.isStringKeyword(keyofy)) ||
-        (AST.isSymbolKeyword(keyofx) && AST.isSymbolKeyword(keyofy))
-    })
-  )
-
 const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST.AST>) => {
   if (xs.every(AST.isTypeLiteral) && ys.every(AST.isTypeLiteral)) {
     return AST.createUnion(
       xs.flatMap((x) =>
         ys.map((y) => {
-          if (isOverlappingPropertySignatures(x, y)) {
-            throw new Error("`extend` cannot handle overlapping property signatures")
-          }
-          if (isOverlappingIndexSignatures(x, y)) {
-            throw new Error("`extend` cannot handle overlapping index signatures")
-          }
           return AST.createTypeLiteral(
             x.propertySignatures.concat(y.propertySignatures),
             x.indexSignatures.concat(y.indexSignatures)
@@ -783,9 +763,8 @@ export function filter<A>(
     const decode = (a: A) => predicate(a) ? PR.success(a) : PR.failure(PR.type(ast, a))
     const ast = AST.createRefinement(
       self.ast,
-      AST.getTo(self.ast),
       decode,
-      decode,
+      false,
       toAnnotations(options)
     )
     return make(ast)
@@ -1241,12 +1220,12 @@ export const nonPositiveBigint = <A extends bigint>(
  * @category bigint
  * @since 1.0.0
  */
-export const clampBigint = <A extends bigint>(min: bigint, max: bigint) =>
-  <I>(self: Schema<I, A>): Schema<I, A> =>
+export const clampBigint = (min: bigint, max: bigint) =>
+  <I, A extends bigint>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
       pipe(self, to, betweenBigint(min, max)),
-      (self) => B.clamp(self, min, max) as A,
+      (self) => B.clamp(self, min, max) as A, // this is safe because `pipe(self, to, betweenBigint(min, max))` will check its input anyway
       identity
     )
 
@@ -1279,9 +1258,8 @@ export const fromBrand = <C extends Brand<string | symbol>>(
     )
     const ast = AST.createRefinement(
       self.ast,
-      AST.getTo(self.ast),
       decode,
-      decode,
+      false,
       toAnnotations({ typeId: BrandTypeId, ...options })
     )
     return make(ast)
@@ -1418,12 +1396,12 @@ export const date: Schema<Date> = declare(
 )
 
 /**
-  Transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+  This combinator transforms a `string` into a `Date` by parsing the string using `Date.parse`.
 
   @category date
   @since 1.0.0
 */
-export const dateFromString = <I>(self: Schema<I, string>): Schema<I, Date> => {
+export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> => {
   const schema: Schema<I, Date> = transformResult(
     self,
     date,
@@ -1433,10 +1411,18 @@ export const dateFromString = <I>(self: Schema<I, string>): Schema<I, Date> => {
         ? PR.failure(PR.type(schema.ast, s))
         : PR.success(new Date(n))
     },
-    (n) => PR.success(n.toISOString())
+    (n) => PR.success(n.toISOString() as A) // this is safe because `self` will check its input anyway
   )
   return schema
 }
+
+/**
+ * This schema transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+ *
+ * @category date
+ * @since 1.0.0
+ */
+export const DateFromString: Schema<string, Date> = dateFromString(string)
 
 // ---------------------------------------------
 // data/Either
@@ -1863,24 +1849,24 @@ export const nonPositive = <A extends number>(
  * @category number
  * @since 1.0.0
  */
-export const clamp = <A extends number>(min: number, max: number) =>
-  <I>(self: Schema<I, A>): Schema<I, A> =>
+export const clamp = (min: number, max: number) =>
+  <I, A extends number>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
-      pipe(self, to, between<A>(min, max)),
-      (self) => N.clamp(self, min, max) as A,
+      pipe(self, to, between(min, max)),
+      (self) => N.clamp(self, min, max) as A, // this is safe because `pipe(self, to, between(min, max))` will check its input anyway
       identity
     )
 
 /**
-  Transforms a `string` into a `number` by parsing the string using `parseFloat`.
+  This combinator transforms a `string` into a `number` by parsing the string using `parseFloat`.
 
   The following special string values are supported: "NaN", "Infinity", "-Infinity".
 
   @category number
   @since 1.0.0
 */
-export const numberFromString = <I>(self: Schema<I, string>): Schema<I, number> => {
+export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, number> => {
   const schema: Schema<I, number> = transformResult(
     self,
     number,
@@ -1897,10 +1883,20 @@ export const numberFromString = <I>(self: Schema<I, string>): Schema<I, number> 
       const n = parseFloat(s)
       return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
     },
-    (n) => PR.success(String(n))
+    (n) => PR.success(String(n) as A) // this is safe because `self` will check its input anyway
   )
   return schema
 }
+
+/**
+ * This schema transforms a `string` into a `number` by parsing the string using `parseFloat`.
+ *
+ * The following special string values are supported: "NaN", "Infinity", "-Infinity".
+ *
+ * @category number
+ * @since 1.0.0
+ */
+export const NumberFromString: Schema<string, number> = numberFromString(string)
 
 // ---------------------------------------------
 // data/Object
@@ -2478,18 +2474,26 @@ export const includes = <A extends string>(
     )
 
 /**
- * The `trim` parser allows removing whitespaces from the beginning and end of a string.
+ * This combinator allows removing whitespaces from the beginning and end of a string.
  *
  * @category string
  * @since 1.0.0
  */
-export const trim = <I>(self: Schema<I, string>): Schema<I, string> =>
+export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
   transform(
     self,
     pipe(to(self), trimmed()),
-    (s) => s.trim(),
+    (s) => s.trim() as A, // this is safe because `pipe(to(self), trimmed())` will check its input anyway
     identity
   )
+
+/**
+ * This schema allows removing whitespaces from the beginning and end of a string.
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const Trim: Schema<string, string> = trim(string)
 
 /**
  * @category type id
