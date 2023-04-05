@@ -305,6 +305,13 @@ export const undefinedKeyword: UndefinedKeyword = {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isUndefinedKeyword = (ast: AST): ast is UndefinedKeyword =>
+  ast._tag === "UndefinedKeyword"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -322,6 +329,12 @@ export const voidKeyword: VoidKeyword = {
     [TitleAnnotationId]: "void"
   }
 }
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isVoidKeyword = (ast: AST): ast is VoidKeyword => ast._tag === "VoidKeyword"
 
 /**
  * @category model
@@ -543,6 +556,12 @@ export const objectKeyword: ObjectKeyword = {
 }
 
 /**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isObjectKeyword = (ast: AST): ast is ObjectKeyword => ast._tag === "ObjectKeyword"
+
+/**
  * @category model
  * @since 1.0.0
  */
@@ -558,6 +577,12 @@ export interface Enums extends Annotated {
 export const createEnums = (
   enums: ReadonlyArray<readonly [string, string | number]>
 ): Enums => ({ _tag: "Enums", enums, annotations: {} })
+
+/**
+ * @category guards
+ * @since 1.0.0
+ */
+export const isEnum = (ast: AST): ast is Enums => ast._tag === "Enums"
 
 /**
  * @since 1.0.0
