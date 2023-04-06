@@ -56,10 +56,10 @@
     }
   },
   "dependencies": {
-    "@effect/data": "~0.10.2",
-    "@effect/io": "^0.17.0",
-    "@effect/printer": "^0.5.0",
-    "@effect/printer-ansi": "^0.5.0"
+    "@effect/data": "~0.11.4",
+    "@effect/io": "^0.19.1",
+    "@effect/printer": "^0.6.1",
+    "@effect/printer-ansi": "^0.6.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.21.0",
@@ -80,8 +80,8 @@
     "@types/jest": "^29.5.0",
     "@types/node": "^18.15.11",
     "@types/prettier": "2.7.2",
-    "@typescript-eslint/eslint-plugin": "^5.57.0",
-    "@typescript-eslint/parser": "^5.57.0",
+    "@typescript-eslint/eslint-plugin": "^5.57.1",
+    "@typescript-eslint/parser": "^5.57.1",
     "@vitejs/plugin-react": "^3.1.0",
     "@vitest/coverage-c8": "^0.29.8",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
@@ -90,9 +90,9 @@
     "docs-ts": "0.6.10",
     "error-stack-parser": "^2.1.4",
     "eslint": "^8.37.0",
-    "eslint-import-resolver-typescript": "^3.5.4",
+    "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-codegen": "0.17.0",
-    "eslint-plugin-deprecation": "^1.4.0",
+    "eslint-plugin-deprecation": "^1.4.1",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
