@@ -600,24 +600,6 @@ const go = untracedMethod(() =>
           const allErrors = options?.errors === "all"
           const es: Array<[number, PR.ParseErrors]> = []
           let stepKey = 0
-          // ---------------------------------------------
-          // handle missing keys
-          // ---------------------------------------------
-          for (let i = 0; i < propertySignaturesTypes.length; i++) {
-            const ps = ast.propertySignatures[i]
-            const name = ps.name
-            if (!Object.prototype.hasOwnProperty.call(input, name)) {
-              if (!ps.isOptional) {
-                const e = PR.key(name, [PR.missing])
-                if (allErrors) {
-                  es.push([stepKey++, e])
-                  continue
-                } else {
-                  return PR.failure(e)
-                }
-              }
-            }
-          }
 
           // ---------------------------------------------
           // handle excess properties
@@ -693,6 +675,19 @@ const go = untracedMethod(() =>
                       })
                   )
                 )
+              }
+            } else {
+              // ---------------------------------------------
+              // handle missing keys
+              // ---------------------------------------------
+              if (!ps.isOptional) {
+                const e = PR.key(name, [PR.missing])
+                if (allErrors) {
+                  es.push([stepKey++, e])
+                  continue
+                } else {
+                  return PR.failure(e)
+                }
               }
             }
           }
