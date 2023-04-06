@@ -56,8 +56,8 @@
     }
   },
   "dependencies": {
-    "@effect/data": "^0.11.1",
-    "@effect/io": "^0.19.0"
+    "@effect/data": "^0.11.4",
+    "@effect/io": "^0.19.1"
   },
   "config": {
     "side": [],
