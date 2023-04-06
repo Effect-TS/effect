@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- [#299](https://github.com/Effect-TS/cli/pull/299) [`06267a8`](https://github.com/Effect-TS/cli/commit/06267a864e4636bf5ff79f2abecc47940954db5f) Thanks [@IMax153](https://github.com/IMax153)! - update dependencies
+
 ## 0.4.0
 
 ### Minor Changes
