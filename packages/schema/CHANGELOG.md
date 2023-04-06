@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.11.1
+
+### Patch Changes
+
+- [#224](https://github.com/Effect-TS/schema/pull/224) [`6bf7243`](https://github.com/Effect-TS/schema/commit/6bf72435faa12a74c630a2e20792d18b36c471d1) Thanks [@gcanti](https://github.com/gcanti)! - move missing keys checks to improve perfs
+
 ## 0.11.0
 
 ### Minor Changes
