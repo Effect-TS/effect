@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.12.1
+
+### Patch Changes
+
+- [#229](https://github.com/Effect-TS/schema/pull/229) [`3ab5df0`](https://github.com/Effect-TS/schema/commit/3ab5df06f8d8b85e94f8f597569c27f8abc6cc00) Thanks [@gcanti](https://github.com/gcanti)! - add missing Forbidden handling
+
 ## 0.12.0
 
 ### Minor Changes
