@@ -106,8 +106,8 @@
     "zod": "^3.21.4"
   },
   "dependencies": {
-    "@effect/data": "^0.11.1",
-    "@effect/io": "^0.19.0",
+    "@effect/data": "^0.12.2",
+    "@effect/io": "^0.20.0",
     "fast-check": "^3.8.0"
   },
   "pnpm": {
