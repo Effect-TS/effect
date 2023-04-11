@@ -313,7 +313,8 @@ const go = untracedMethod(() =>
               options
             )
         } else {
-          return (a, options) => PR.flatMap(ast.decode(a, options), (i2) => to(i2, options))
+          return (a, options) =>
+            handleForbidden(PR.flatMap(ast.decode(a, options), (i2) => to(i2, options)), options)
         }
       }
       case "Declaration": {

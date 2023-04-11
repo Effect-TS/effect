@@ -94,7 +94,11 @@ const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(
 )
 
 const getExpected = (ast: AST.AST): O.Option<string> =>
-  pipe(getIdentifier(ast), O.orElse(() => getTitle(ast)), O.orElse(() => getDescription(ast)))
+  pipe(
+    getIdentifier(ast),
+    O.orElse(() => getTitle(ast)),
+    O.orElse(() => getDescription(ast))
+  )
 
 /** @internal */
 export const formatExpected = (ast: AST.AST): string => {
@@ -110,43 +114,34 @@ export const formatExpected = (ast: AST.AST): string => {
     case "UnknownKeyword":
     case "VoidKeyword":
     case "NeverKeyword":
-      return pipe(getExpected(ast), O.getOrElse(() => ast._tag))
+      return O.getOrElse(getExpected(ast), () => ast._tag)
     case "Literal":
-      return pipe(getExpected(ast), O.getOrElse(() => formatActual(ast.literal)))
+      return O.getOrElse(getExpected(ast), () => formatActual(ast.literal))
     case "UniqueSymbol":
-      return pipe(getExpected(ast), O.getOrElse(() => formatActual(ast.symbol)))
+      return O.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
     case "Union":
       return ast.types.map(formatExpected).join(" or ")
     case "TemplateLiteral":
-      return pipe(getExpected(ast), O.getOrElse(() => formatTemplateLiteral(ast)))
+      return O.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":
-      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous tuple or array schema>"))
+      return O.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
     case "TypeLiteral":
-      return pipe(getExpected(ast), O.getOrElse(() => "<anonymous type literal schema>"))
+      return O.getOrElse(getExpected(ast), () => "<anonymous type literal schema>")
     case "Enums":
-      return pipe(
+      return O.getOrElse(
         getExpected(ast),
-        O.getOrElse(() => ast.enums.map((_, value) => JSON.stringify(value)).join(" | "))
+        () => ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
       )
     case "Lazy":
-      return pipe(
-        getExpected(ast),
-        O.getOrElse(() => "<anonymous lazy schema>")
-      )
+      return O.getOrElse(getExpected(ast), () => "<anonymous lazy schema>")
     case "Declaration":
-      return pipe(
-        getExpected(ast),
-        O.getOrElse(() => "<anonymous declaration schema>")
-      )
+      return O.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
     case "Refinement":
-      return pipe(
-        getExpected(ast),
-        O.getOrElse(() => "<anonymous refinement schema>")
-      )
+      return O.getOrElse(getExpected(ast), () => "<anonymous refinement schema>")
     case "Transform":
-      return pipe(
+      return O.getOrElse(
         getExpected(ast),
-        O.getOrElse(() => `${formatExpected(ast.from)} -> ${formatExpected(ast.to)}`)
+        () => `${formatExpected(ast.from)} -> ${formatExpected(ast.to)}`
       )
   }
 }
