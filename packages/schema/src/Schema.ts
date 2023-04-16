@@ -985,12 +985,16 @@ export const attachPropertySignature = <K extends PropertyKey, V extends AST.Lit
   value: V
 ) =>
   <I, A extends object>(schema: Schema<I, A>): Schema<I, Spread<A & { readonly [k in K]: V }>> =>
-    transform<I, A, any, any>(
-      schema,
-      pipe(to(schema), extend(struct({ [key]: literal(value) }))),
-      (a) => ({ ...a, [key]: value }),
-      ({ [key]: _key, ...rest }) => rest
-    )
+    make(AST.createTransformByPropertySignatureTransformations(
+      schema.ast,
+      pipe(to(schema), extend(struct({ [key]: literal(value) }))).ast,
+      [AST.createPropertySignatureTransformation(
+        key,
+        key,
+        () => O.some(value),
+        () => O.none()
+      )]
+    ))
 
 // ---------------------------------------------
 // annotations
