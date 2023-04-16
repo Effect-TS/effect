@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.13.1
+
+### Patch Changes
+
+- [#234](https://github.com/Effect-TS/schema/pull/234) [`9ed0ee2`](https://github.com/Effect-TS/schema/commit/9ed0ee25d0287ca72a2584278bab67643d332009) Thanks [@gcanti](https://github.com/gcanti)! - attachPropertySignature as PropertySignatureTransformation
+
 ## 0.13.0
 
 ### Minor Changes
