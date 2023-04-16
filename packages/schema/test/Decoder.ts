@@ -974,39 +974,6 @@ describe.concurrent("Decoder", () => {
     await Util.expectParseSuccess(Operation, input)
   })
 
-  it("omit/ baseline", async () => {
-    const base = S.struct({ a: S.string, b: S.number, c: S.boolean })
-    const schema = pipe(base, S.omit("c"))
-    await Util.expectParseSuccess(schema, { a: "a", b: 1 })
-
-    await Util.expectParseFailure(
-      schema,
-      null,
-      "Expected a generic object, actual null"
-    )
-    await Util.expectParseFailure(schema, { a: "a" }, `/b is missing`)
-    await Util.expectParseFailure(schema, { b: 1 }, "/a is missing")
-  })
-
-  it("omit/ involving a symbol", async () => {
-    const a = Symbol.for("@effect/schema/test/a")
-    const base = S.struct({ [a]: S.string, b: S.number, c: S.boolean })
-    const schema = pipe(base, S.omit("c"))
-    await Util.expectParseSuccess(schema, { [a]: "a", b: 1 })
-
-    await Util.expectParseFailure(
-      schema,
-      null,
-      "Expected a generic object, actual null"
-    )
-    await Util.expectParseFailure(schema, { [a]: "a" }, `/b is missing`)
-    await Util.expectParseFailure(
-      schema,
-      { b: 1 },
-      `/Symbol(@effect/schema/test/a) is missing`
-    )
-  })
-
   it("maxLength", async () => {
     const schema = pipe(S.string, S.maxLength(1))
     await Util.expectParseSuccess(schema, "")

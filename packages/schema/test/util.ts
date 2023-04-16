@@ -14,16 +14,19 @@ import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
 
+const doEffectify = true
+const doRoundtrip = true
+
 export const sleep = Effect.sleep(Duration.millis(10))
 
-const goDecode = (
+const effectifyDecode = (
   decode: (input: any, options?: ParseOptions) => PR.ParseResult<any>
 ): (input: any, options?: ParseOptions) => PR.ParseResult<any> =>
   (input, options) => PR.flatMap(sleep, () => decode(input, options))
 
 let skip = false
 
-const go = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
+const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
   if (mode === "semi") {
     skip = !skip
     if (!skip) {
@@ -33,61 +36,64 @@ const go = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
   switch (ast._tag) {
     case "Declaration":
       return AST.createDeclaration(
-        ast.typeParameters.map((ast) => go(ast, mode)),
+        ast.typeParameters.map((ast) => effectifyAST(ast, mode)),
         ast.type,
         ast.decode,
         ast.annotations
       )
     case "Tuple":
       return AST.createTuple(
-        ast.elements.map((e) => AST.createElement(go(e.type, mode), e.isOptional)),
-        O.map(ast.rest, RA.mapNonEmpty((ast) => go(ast, mode))),
+        ast.elements.map((e) => AST.createElement(effectifyAST(e.type, mode), e.isOptional)),
+        O.map(ast.rest, RA.mapNonEmpty((ast) => effectifyAST(ast, mode))),
         ast.isReadonly,
         ast.annotations
       )
     case "TypeLiteral":
       return AST.createTypeLiteral(
-        ast.propertySignatures.map((p) => ({ ...p, type: go(p.type, mode) })),
+        ast.propertySignatures.map((p) => ({ ...p, type: effectifyAST(p.type, mode) })),
         ast.indexSignatures.map((is) =>
-          AST.createIndexSignature(is.parameter, go(is.type, mode), is.isReadonly)
+          AST.createIndexSignature(is.parameter, effectifyAST(is.type, mode), is.isReadonly)
         ),
         ast.annotations
       )
     case "Union":
-      return AST.createUnion(ast.types.map((ast) => go(ast, mode)), ast.annotations)
+      return AST.createUnion(ast.types.map((ast) => effectifyAST(ast, mode)), ast.annotations)
     case "Lazy":
-      return AST.createLazy(() => go(ast.f(), mode), ast.annotations)
+      return AST.createLazy(() => effectifyAST(ast.f(), mode), ast.annotations)
     case "Refinement":
       return AST.createRefinement(
-        go(ast.from, mode),
-        goDecode(ast.decode),
+        effectifyAST(ast.from, mode),
+        effectifyDecode(ast.decode),
         ast.isReversed,
         ast.annotations
       )
     case "Transform":
-      return AST.createTransform(
-        go(ast.from, mode),
-        go(ast.to, mode),
-        goDecode(ast.decode),
-        goDecode(ast.encode),
+      return AST._createTransform(
+        effectifyAST(ast.from, mode),
+        effectifyAST(ast.to, mode),
+        effectifyDecode(ast.decode),
+        effectifyDecode(ast.encode),
+        ast.propertySignatureTransformations,
         ast.annotations
       )
   }
   const decode = S.decodeEffect(S.make(ast))
-  return AST.createTransform(
+  return AST._createTransform(
     ast,
     ast,
     (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
-    (a, options) => Effect.flatMap(sleep, () => decode(a, options))
+    (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
+    []
   )
 }
 
-export const effectifySchema = <I, A>(schema: Schema<I, A>, mode: "all" | "semi"): Schema<I, A> =>
-  S.make(go(schema.ast, mode))
-
-const doEffectify = true
+export const effectify = <I, A>(schema: Schema<I, A>, mode: "all" | "semi"): Schema<I, A> =>
+  S.make(effectifyAST(schema.ast, mode))
 
 export const roundtrip = <I, A>(schema: Schema<I, A>) => {
+  if (!doRoundtrip) {
+    return
+  }
   const to = S.to(schema)
   const arb = A.to(to)
   const is = S.is(to)
@@ -106,13 +112,13 @@ export const roundtrip = <I, A>(schema: Schema<I, A>) => {
     return is(roundtrip.right)
   }))
   if (doEffectify) {
-    // const effect = effectifySchema(schema, "semi")
-    // fc.assert(fc.asyncProperty(arb(fc), async (a) => {
-    //   const roundtrip = await Effect.runPromiseEither(
-    //     PR.flatMap(S.encodeEffect(effect)(a), S.decodeEffect(effect))
-    //   )
-    //   return E.isRight(roundtrip)
-    // }))
+    const effect = effectify(schema, "semi")
+    fc.assert(fc.asyncProperty(arb(fc), async (a) => {
+      const roundtrip = await Effect.runPromiseEither(
+        PR.flatMap(S.encodeEffect(effect)(a), S.decodeEffect(effect))
+      )
+      return E.isRight(roundtrip)
+    }))
   }
 }
 
@@ -138,11 +144,11 @@ export const expectParseSuccess = async <I, A>(
   expect(parseEitherResult).toStrictEqual(E.right(a))
   if (doEffectify) {
     const parseEffectResult = await Effect.runPromiseEither(
-      S.parseEffect(effectifySchema(schema, "all"))(u, options)
+      S.parseEffect(effectify(schema, "all"))(u, options)
     )
     expect(parseEffectResult).toStrictEqual(parseEitherResult)
     const semiParseEffectResult = await Effect.runPromiseEither(
-      S.parseEffect(effectifySchema(schema, "semi"))(u, options)
+      S.parseEffect(effectify(schema, "semi"))(u, options)
     )
     expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
   }
@@ -158,12 +164,12 @@ export const expectParseFailure = async <I, A>(
   expect(parseEitherResult).toStrictEqual(E.left(message))
   if (doEffectify) {
     const parseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectifySchema(schema, "all"))(u, options)),
+      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "all"))(u, options)),
       (e) => formatAll(e.errors)
     )
     expect(parseEffectResult).toStrictEqual(parseEitherResult)
     const semiParseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectifySchema(schema, "semi"))(u, options)),
+      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "semi"))(u, options)),
       (e) => formatAll(e.errors)
     )
     expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
@@ -183,12 +189,12 @@ export const expectParseFailureTree = async <I, A>(
   expect(parseEitherResult).toEqual(E.left(message))
   if (doEffectify) {
     const parseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectifySchema(schema, "all"))(u, options)),
+      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "all"))(u, options)),
       (e) => formatErrors(e.errors)
     )
     expect(parseEffectResult).toStrictEqual(parseEitherResult)
     const semiParseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectifySchema(schema, "semi"))(u, options)),
+      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "semi"))(u, options)),
       (e) => formatErrors(e.errors)
     )
     expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
@@ -205,11 +211,11 @@ export const expectEncodeSuccess = async <I, A>(
   expect(encodeEitherResult).toStrictEqual(E.right(o))
   if (doEffectify) {
     const encodeEffectResult = await Effect.runPromiseEither(
-      S.encodeEffect(effectifySchema(schema, "all"))(a, options)
+      S.encodeEffect(effectify(schema, "all"))(a, options)
     )
     expect(encodeEffectResult).toStrictEqual(encodeEitherResult)
     const randomEncodeEffectResult = await Effect.runPromiseEither(
-      S.encodeEffect(effectifySchema(schema, "semi"))(a, options)
+      S.encodeEffect(effectify(schema, "semi"))(a, options)
     )
     expect(randomEncodeEffectResult).toStrictEqual(encodeEitherResult)
   }
@@ -228,12 +234,12 @@ export const expectEncodeFailure = async <I, A>(
   expect(encodeEitherResult).toStrictEqual(E.left(message))
   if (doEffectify) {
     const encodeEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.encodeEffect(effectifySchema(schema, "all"))(a, options)),
+      await Effect.runPromiseEither(S.encodeEffect(effectify(schema, "all"))(a, options)),
       (e) => formatAll(e.errors)
     )
     expect(encodeEffectResult).toStrictEqual(encodeEitherResult)
     const randomEncodeEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.encodeEffect(effectifySchema(schema, "semi"))(a, options)),
+      await Effect.runPromiseEither(S.encodeEffect(effectify(schema, "semi"))(a, options)),
       (e) => formatAll(e.errors)
     )
     expect(randomEncodeEffectResult).toStrictEqual(encodeEitherResult)

@@ -43,20 +43,14 @@ const draw = (indentation: string, forest: Forest<string>): string => {
 
 /** @internal */
 export const formatActual = (actual: unknown): string => {
-  if (actual === undefined) {
-    return "undefined"
-  }
-  if (actual === null) {
-    return "null"
-  }
-  if (typeof actual === "number") {
+  if (
+    actual === undefined || actual === null || typeof actual === "number" ||
+    typeof actual === "symbol" || actual instanceof Date
+  ) {
     return String(actual)
   }
   if (typeof actual === "bigint") {
     return String(actual) + "n"
-  }
-  if (typeof actual === "symbol") {
-    return String(actual)
   }
   try {
     return JSON.stringify(actual)

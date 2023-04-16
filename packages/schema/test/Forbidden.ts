@@ -20,7 +20,7 @@ export const expectForbidden = <I, A>(
   u: unknown,
   message: string
 ) => {
-  expectMessage(Util.effectifySchema(schema, "all"), u, message)
+  expectMessage(Util.effectify(schema, "all"), u, message)
 }
 
 describe.concurrent("Forbidden", () => {
@@ -52,7 +52,7 @@ describe.concurrent("Forbidden", () => {
     const schema = S.declare(
       [],
       S.number,
-      () => S.parseEffect(Util.effectifySchema(S.number, "all"))
+      () => S.parseEffect(Util.effectify(S.number, "all"))
     )
     expectMessage(
       schema,
@@ -97,7 +97,7 @@ describe.concurrent("Forbidden", () => {
   })
 
   it("refinement/ reversed", () => {
-    const schema = pipe(Util.effectifySchema(S.string, "all"), S.filter(() => true))
+    const schema = pipe(Util.effectify(S.string, "all"), S.filter(() => true))
     expectMessage(
       S.reverse(schema),
       "a",

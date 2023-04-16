@@ -4,7 +4,7 @@ import * as _ from "@effect/schema/TreeFormatter"
 
 describe.concurrent("TreeFormatter", async () => {
   it("formatErrors/ forbidden", async () => {
-    const schema = Util.effectifySchema(S.struct({ a: S.string }), "all")
+    const schema = Util.effectify(S.struct({ a: S.string }), "all")
     expect(() => S.parse(schema)({ a: "a" })).toThrowError(
       new Error(`error(s) found
 └─ ["a"]

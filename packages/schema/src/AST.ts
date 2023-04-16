@@ -7,10 +7,11 @@ import * as Number from "@effect/data/Number"
 import { isNumber } from "@effect/data/Number"
 import type { Option } from "@effect/data/Option"
 import * as O from "@effect/data/Option"
+import { isString, isSymbol } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import { isString } from "@effect/data/String"
 import * as Order from "@effect/data/typeclass/Order"
 import type { ParseResult } from "@effect/schema/ParseResult"
+import * as PR from "@effect/schema/ParseResult"
 
 // -------------------------------------------------------------------------------------
 // model
@@ -692,7 +693,7 @@ export const createIndexSignature = (
   type: AST,
   isReadonly: boolean
 ): IndexSignature => {
-  if (isNeverKeyword(_getParameterType(parameter))) {
+  if (isNeverKeyword(getParameterBaseAST(parameter))) {
     throw new Error(
       "An index signature parameter type must be 'string', 'symbol', a template literal type or a refinement of the previous types"
     )
@@ -724,7 +725,7 @@ export const createTypeLiteral = (
   for (let i = 0; i < propertySignatures.length; i++) {
     const name = propertySignatures[i].name
     if (name in keys) {
-      throw new Error(`Duplicate property signature \`${String(name)}\``)
+      throw new Error(`Duplicate property signature ${String(name)}`)
     }
     keys[name] = null
   }
@@ -734,7 +735,7 @@ export const createTypeLiteral = (
     symbol: false
   }
   for (let i = 0; i < indexSignatures.length; i++) {
-    const parameter = _getParameterType(indexSignatures[i].parameter)
+    const parameter = getParameterBaseAST(indexSignatures[i].parameter)
     if (isStringKeyword(parameter)) {
       if (parameters.string) {
         throw new Error("Duplicate index signature for type `string`")
@@ -868,6 +869,40 @@ export interface ParseOptions {
 }
 
 /**
+ * Represents a `PropertySignature -> PropertySignature` transformation
+ *
+ * The semantic of `decode` is:
+ * - `none()` represents the absence of the key/value pair
+ * - `some(value)` represents the presence of the key/value pair
+ *
+ * The semantic of `encode` is:
+ * - `none()` you don't want to output the key/value pair
+ * - `some(value)` you want to output the key/value pair
+ *
+ * @category model
+ * @since 1.0.0
+ */
+export interface PropertySignatureTransformation {
+  readonly from: PropertyKey
+  readonly to: PropertyKey
+  readonly decode: (o: Option<any>) => Option<any>
+  readonly encode: (o: Option<any>) => Option<any>
+}
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const createPropertySignatureTransformation = (
+  from: PropertyKey,
+  to: PropertyKey,
+  decode: (o: Option<any>) => Option<any>,
+  encode: (o: Option<any>) => Option<any>
+): PropertySignatureTransformation => ({ from, to, decode, encode })
+
+/**
+ * If `propertySignatureTransformations.length > 0` then `decode` / `encode` are derived.
+ *
  * @category model
  * @since 1.0.0
  */
@@ -877,7 +912,26 @@ export interface Transform extends Annotated {
   readonly to: AST
   readonly decode: (input: any, options?: ParseOptions) => ParseResult<any>
   readonly encode: (input: any, options?: ParseOptions) => ParseResult<any>
+  readonly propertySignatureTransformations: ReadonlyArray<PropertySignatureTransformation>
 }
+
+/** @internal */
+export const _createTransform = (
+  from: AST,
+  to: AST,
+  decode: Transform["decode"],
+  encode: Transform["encode"],
+  propertySignatureTransformations: ReadonlyArray<PropertySignatureTransformation>,
+  annotations: Annotated["annotations"] = {}
+): Transform => ({
+  _tag: "Transform",
+  from,
+  to,
+  decode,
+  encode,
+  propertySignatureTransformations,
+  annotations
+})
 
 /**
  * @category constructors
@@ -889,7 +943,54 @@ export const createTransform = (
   decode: Transform["decode"],
   encode: Transform["encode"],
   annotations: Annotated["annotations"] = {}
-): Transform => ({ _tag: "Transform", from, to, decode, encode, annotations })
+): Transform => _createTransform(from, to, decode, encode, [], annotations)
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const createTransformByPropertySignatureTransformations = (
+  from: AST,
+  to: AST,
+  propertySignatureTransformations: ReadonlyArray<PropertySignatureTransformation>,
+  annotations: Annotated["annotations"] = {}
+): Transform =>
+  _createTransform(
+    from,
+    to,
+    (input: any) => {
+      for (let i = 0; i < propertySignatureTransformations.length; i++) {
+        const t = propertySignatureTransformations[i]
+        const name = t.from
+        const from = Object.prototype.hasOwnProperty.call(input, name) ?
+          O.some(input[name]) :
+          O.none()
+        delete input[name]
+        const to = t.decode(from)
+        if (O.isSome(to)) {
+          input[t.to] = to.value
+        }
+      }
+      return PR.success(input)
+    },
+    (input: any) => {
+      for (let i = 0; i < propertySignatureTransformations.length; i++) {
+        const t = propertySignatureTransformations[i]
+        const name = t.to
+        const from = Object.prototype.hasOwnProperty.call(input, name) ?
+          O.some(input[name]) :
+          O.none()
+        delete input[name]
+        const to = t.encode(from)
+        if (O.isSome(to)) {
+          input[t.from] = to.value
+        }
+      }
+      return PR.success(input)
+    },
+    propertySignatureTransformations,
+    annotations
+  )
 
 /**
  * @category guards
@@ -973,6 +1074,21 @@ export const appendElement = (
 export const keyof = (ast: AST): AST => createUnion(_keyof(ast))
 
 /**
+ * @since 1.0.0
+ */
+export const getPropertySignatures = (
+  ast: AST
+): ReadonlyArray<PropertySignature> => {
+  switch (ast._tag) {
+    case "TypeLiteral":
+      return ast.propertySignatures
+    case "Lazy":
+      return getPropertySignatures(ast.f())
+  }
+  throw new Error(`getPropertySignatures: unsupported schema (${ast._tag})`)
+}
+
+/**
  * Create a record with the specified key type and value type.
  *
  * @since 1.0.0
@@ -1015,7 +1131,7 @@ export const createRecord = (key: AST, value: AST, isReadonly: boolean): TypeLit
  * @since 1.0.0
  */
 export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  createTypeLiteral(_getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
+  createTypeLiteral(getPropertySignatures(ast).filter((ps) => keys.includes(ps.name)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Omit`.
@@ -1023,7 +1139,7 @@ export const pick = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
  * @since 1.0.0
  */
 export const omit = (ast: AST, keys: ReadonlyArray<PropertyKey>): TypeLiteral =>
-  createTypeLiteral(_getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
+  createTypeLiteral(getPropertySignatures(ast).filter((ps) => !keys.includes(ps.name)), [])
 
 /**
  * Equivalent at runtime to the built-in TypeScript utility type `Partial`.
@@ -1239,20 +1355,24 @@ export const reverse = (ast: AST): AST => {
     case "Refinement":
       return createRefinement(ast.from, ast.decode, !ast.isReversed, ast.annotations)
     case "Transform":
-      return createTransform(reverse(ast.to), reverse(ast.from), ast.encode, ast.decode)
+      return _createTransform(
+        reverse(ast.to),
+        reverse(ast.from),
+        ast.encode,
+        ast.decode,
+        ast.propertySignatureTransformations.map((t) =>
+          createPropertySignatureTransformation(t.to, t.from, t.encode, t.decode)
+        )
+      )
   }
   return ast
 }
 
-// -------------------------------------------------------------------------------------
-// internal
-// -------------------------------------------------------------------------------------
-
 /** @internal */
-export const _getCardinality = (ast: AST): number => {
+export const getCardinality = (ast: AST): number => {
   switch (ast._tag) {
     case "Declaration":
-      return _getCardinality(ast.type)
+      return getCardinality(ast.type)
     case "NeverKeyword":
       return 0
     case "Literal":
@@ -1278,14 +1398,14 @@ export const _getCardinality = (ast: AST): number => {
 }
 
 const sortPropertySignatures = RA.sort(
-  pipe(Number.Order, Order.contramap((ps: PropertySignature) => _getCardinality(ps.type)))
+  pipe(Number.Order, Order.contramap((ps: PropertySignature) => getCardinality(ps.type)))
 )
 
 /** @internal */
-export const _getWeight = (ast: AST): number => {
+export const getWeight = (ast: AST): number => {
   switch (ast._tag) {
     case "Declaration":
-      return _getWeight(ast.type)
+      return getWeight(ast.type)
     case "Tuple":
       return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
     case "TypeLiteral": {
@@ -1293,12 +1413,12 @@ export const _getWeight = (ast: AST): number => {
       return out === 0 ? -2 : out
     }
     case "Union":
-      return ast.types.reduce((n, member) => n + _getWeight(member), 0)
+      return ast.types.reduce((n, member) => n + getWeight(member), 0)
     case "Lazy":
       return 10
     case "Refinement":
     case "Transform":
-      return _getWeight(ast.from)
+      return getWeight(ast.from)
     case "ObjectKeyword":
       return -1
     case "UnknownKeyword":
@@ -1309,7 +1429,7 @@ export const _getWeight = (ast: AST): number => {
   }
 }
 
-const sortUnionMembers = RA.sort(Order.reverse(Order.contramap(Number.Order, _getWeight)))
+const sortUnionMembers = RA.sort(Order.reverse(Order.contramap(Number.Order, getWeight)))
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   let out = pipe(
@@ -1358,7 +1478,7 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   return out
 }
 
-const _getParameterType = (
+const getParameterBaseAST = (
   ast: AST
 ): StringKeyword | SymbolKeyword | TemplateLiteral | NeverKeyword => {
   switch (ast._tag) {
@@ -1367,83 +1487,23 @@ const _getParameterType = (
     case "TemplateLiteral":
       return ast
     case "Refinement":
-      return _getParameterType(ast.from)
+      return getParameterBaseAST(ast.from)
+    default:
+      return neverKeyword
   }
-  return neverKeyword
 }
 
 const _keyof = (ast: AST): ReadonlyArray<AST> => {
   switch (ast._tag) {
     case "Declaration":
       return _keyof(ast.type)
-    case "NeverKeyword":
-    case "AnyKeyword":
-      return [stringKeyword, numberKeyword, symbolKeyword]
-    case "StringKeyword":
-      return [createLiteral("length")]
     case "TypeLiteral":
       return ast.propertySignatures.map((p): AST =>
-        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
-      ).concat(ast.indexSignatures.map((is) => _getParameterType(is.parameter)))
-    case "Union": {
-      return _getPropertySignatures(ast).map((p): AST =>
-        typeof p.name === "symbol" ? createUniqueSymbol(p.name) : createLiteral(p.name)
-      )
-    }
+        isSymbol(p.name) ? createUniqueSymbol(p.name) : createLiteral(p.name)
+      ).concat(ast.indexSignatures.map((is) => getParameterBaseAST(is.parameter)))
     case "Lazy":
       return _keyof(ast.f())
-    case "Tuple":
-      throw new Error("`keyof` cannot handle tuples / arrays")
-    case "Refinement":
-      throw new Error("`keyof` cannot handle refinements")
-    case "Transform":
-      throw new Error("`keyof` cannot handle transformations")
     default:
-      return []
-  }
-}
-
-/** @internal */
-export const _getPropertySignatures = (
-  ast: AST
-): ReadonlyArray<PropertySignature> => {
-  switch (ast._tag) {
-    case "Declaration":
-      return _getPropertySignatures(ast.type)
-    case "Tuple":
-      return ast.elements.map((element, i) =>
-        createPropertySignature(i, element.type, element.isOptional, ast.isReadonly)
-      )
-    case "TypeLiteral":
-      return ast.propertySignatures
-    case "Union": {
-      const propertySignatures = ast.types.map(_getPropertySignatures)
-      return pipe(
-        propertySignatures[0],
-        RA.filterMap(({ name }) => {
-          if (propertySignatures.every((ps) => ps.some((p) => p.name === name))) {
-            const members = pipe(
-              propertySignatures,
-              RA.flatMap((ps) => ps.filter((p) => p.name === name))
-            )
-            return O.some(createPropertySignature(
-              name,
-              createUnion(members.map((p) => p.type)),
-              members.some((p) => p.isOptional),
-              members.some((p) => p.isReadonly)
-            ))
-          }
-          return O.none()
-        })
-      )
-    }
-    case "Lazy":
-      return _getPropertySignatures(ast.f())
-    case "Refinement":
-      throw new Error("cannot compute property signatures for refinements")
-    case "Transform":
-      throw new Error("cannot compute property signatures for transformations")
-    default:
-      return []
+      throw new Error(`keyof: unsupported schema (${ast._tag})`)
   }
 }

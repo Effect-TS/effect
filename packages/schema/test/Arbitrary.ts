@@ -3,13 +3,21 @@ import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import * as fc from "fast-check"
 
+const doProperty = true
+
 export const propertyTo = <I, A>(schema: S.Schema<I, A>) => {
+  if (!doProperty) {
+    return
+  }
   const arbitrary = A.to(schema)
   const is = S.is(schema)
   fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
 }
 
 export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
+  if (!doProperty) {
+    return
+  }
   const arbitrary = A.from(schema)
   const is = S.is(S.from(schema))
   fc.assert(fc.property(arbitrary(fc), (a) => is(a)))

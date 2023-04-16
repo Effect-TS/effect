@@ -256,10 +256,12 @@ const property = <A>(schema: Schema<A>) => {
   }))
 }
 
+const ajv = new Ajv({ strict: false })
+
 export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
   const is = P.is(schema)
   const jsonschema = jsonSchemaFor(schema)
-  const validate = new Ajv({ strict: false }).compile(jsonschema)
+  const validate = ajv.compile(jsonschema)
   expect(is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(true)
 }
@@ -267,7 +269,7 @@ export const assertTrue = <A>(schema: Schema<A>, input: unknown) => {
 export const assertFalse = <A>(schema: Schema<A>, input: unknown) => {
   const is = P.is(schema)
   const jsonschema = jsonSchemaFor(schema)
-  const validate = new Ajv({ strict: false }).compile(jsonschema)
+  const validate = ajv.compile(jsonschema)
   expect(is(input)).toEqual(validate(input))
   expect(validate(input)).toEqual(false)
 }

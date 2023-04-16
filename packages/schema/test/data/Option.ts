@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
@@ -82,66 +81,6 @@ describe.concurrent("Option", () => {
       const schema = S.optionFromNullable(NumberFromString)
       await Util.expectEncodeSuccess(schema, O.none(), null)
       await Util.expectEncodeSuccess(schema, O.some(1), "1")
-    })
-  })
-
-  it("optionsFromOptionals", async () => {
-    expect(() => pipe(S.object, S.optionsFromOptionals({ "b": S.number }))).toThrowError(
-      new Error(
-        "`optionsFromOptionals` can only handle type literals or transformations between type literals"
-      )
-    )
-    expect(() => pipe(S.struct({ a: S.number }), S.optionsFromOptionals({ a: S.number })))
-      .toThrowError(
-        new Error("`optionsFromOptionals` cannot handle overlapping property signatures")
-      )
-
-    const schema = pipe(S.struct({ a: S.string }), S.optionsFromOptionals({ b: S.number }))
-    await Util.expectParseSuccess(schema, { a: "a" }, { a: "a", b: O.none() })
-    await Util.expectParseSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1) })
-
-    await Util.expectParseFailure(
-      schema,
-      { a: "a", b: undefined },
-      "/b Expected number, actual undefined"
-    )
-    await Util.expectParseFailure(schema, { a: "a", b: null }, "/b Expected number, actual null")
-    await Util.expectParseFailure(schema, { a: "a", b: "b" }, `/b Expected number, actual "b"`)
-
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.none() }, { a: "a" })
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.some(1) }, { a: "a", b: 1 })
-  })
-
-  it("optionsFromOptionals/ should be composable", async () => {
-    const schema = pipe(
-      S.struct({ a: S.string }),
-      S.optionsFromOptionals({ b: S.number }),
-      S.optionsFromOptionals({ c: S.boolean })
-    )
-    await Util.expectParseSuccess(schema, { a: "a" }, { a: "a", b: O.none(), c: O.none() })
-    await Util.expectParseSuccess(schema, { a: "a", b: 1 }, { a: "a", b: O.some(1), c: O.none() })
-    await Util.expectParseSuccess(schema, { a: "a", c: true }, {
-      a: "a",
-      b: O.none(),
-      c: O.some(true)
-    })
-    await Util.expectParseSuccess(schema, { a: "a", b: 1, c: true }, {
-      a: "a",
-      b: O.some(1),
-      c: O.some(true)
-    })
-    await Util.expectParseFailure(schema, { a: "a", b: null }, "/b Expected number, actual null")
-    await Util.expectParseFailure(schema, { a: "a", c: null }, "/c Expected boolean, actual null")
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.none(), c: O.none() }, { a: "a" })
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.some(1), c: O.none() }, { a: "a", b: 1 })
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.none(), c: O.some(true) }, {
-      a: "a",
-      c: true
-    })
-    await Util.expectEncodeSuccess(schema, { a: "a", b: O.some(1), c: O.some(true) }, {
-      a: "a",
-      b: 1,
-      c: true
     })
   })
 })

@@ -586,12 +586,12 @@ const go = untracedMethod(() =>
         if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
           return fromRefinement(ast, P.isNotNullable)
         }
-        const propertySignaturesTypes = ast.propertySignatures.map((f) => go(f.type, isBoundary))
+        const propertySignatures = ast.propertySignatures.map((ps) => go(ps.type, isBoundary))
         const indexSignatures = ast.indexSignatures.map((is) =>
           [go(is.parameter, isBoundary), go(is.type, isBoundary)] as const
         )
         const expectedKeys: any = {}
-        for (let i = 0; i < propertySignaturesTypes.length; i++) {
+        for (let i = 0; i < propertySignatures.length; i++) {
           expectedKeys[ast.propertySignatures[i].name] = null
         }
         return (input: unknown, options) => {
@@ -632,9 +632,9 @@ const go = untracedMethod(() =>
             | Array<(state: State) => Effect.Effect<never, PR.ParseError, void>>
             | undefined = undefined
 
-          for (let i = 0; i < propertySignaturesTypes.length; i++) {
+          for (let i = 0; i < propertySignatures.length; i++) {
             const ps = ast.propertySignatures[i]
-            const parser = propertySignaturesTypes[i]
+            const parser = propertySignatures[i]
             const name = ps.name
             if (Object.prototype.hasOwnProperty.call(input, name)) {
               const te = parser(input[name], options)

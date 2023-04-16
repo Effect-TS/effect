@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
@@ -131,61 +130,6 @@ describe.concurrent("AST", () => {
         annotations: {}
       })
     })
-  })
-
-  it("keyof/ never", () => {
-    expect(AST.keyof(S.never.ast)).toEqual(S.union(S.string, S.number, S.symbol).ast)
-  })
-
-  it("keyof/ any", () => {
-    expect(AST.keyof(S.any.ast)).toEqual(S.union(S.string, S.number, S.symbol).ast)
-  })
-
-  it("keyof/ string", () => {
-    expect(AST.keyof(S.string.ast)).toEqual(S.literal("length").ast)
-  })
-
-  it("keyof/ number", () => {
-    expect(AST.keyof(S.number.ast)).toEqual(AST.neverKeyword)
-  })
-
-  it("keyof/ lazy", () => {
-    expect(AST.keyof(S.json.ast)).toEqual(S.never.ast)
-  })
-
-  it("keyof/union/ symbol keys", () => {
-    const a = Symbol.for("@effect/schema/test/a")
-    expect(AST.keyof(S.union(S.struct({ [a]: S.string }), S.struct({ [a]: S.number })).ast))
-      .toEqual(AST.createUniqueSymbol(a))
-  })
-
-  it("keyof/ should unify string literals with string", () => {
-    expect(AST.keyof(
-      pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string))).ast
-    )).toEqual(S.string.ast)
-  })
-
-  it("keyof/ should unify symbol literals with symbol", () => {
-    const a = Symbol.for("@effect/schema/test/a")
-    expect(AST.keyof(
-      pipe(S.struct({ [a]: S.string }), S.extend(S.record(S.symbol, S.string))).ast
-    )).toEqual(S.symbol.ast)
-  })
-
-  it("keyof/ tuple", () => {
-    expect(() => AST.keyof(S.tuple(S.string).ast))
-      .toThrowError(new Error("`keyof` cannot handle tuples / arrays"))
-  })
-
-  it("keyof/ refinement", () => {
-    expect(() => AST.keyof(pipe(S.struct({ a: S.number }), S.filter(({ a }) => a > 0)).ast))
-      .toThrowError(new Error("`keyof` cannot handle refinements"))
-  })
-
-  it("keyof/ transform", () => {
-    expect(() => AST.keyof(S.NumberFromString.ast)).toThrowError(
-      new Error("`keyof` cannot handle transformations")
-    )
   })
 
   it("partial/tuple/ e", () => {
