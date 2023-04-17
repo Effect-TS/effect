@@ -1576,13 +1576,17 @@ export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<
   return schema
 }
 
-/**
- * A schema that transforms a `string` into a valid `Date`.
- *
- * @category Date
- * @since 1.0.0
- */
-export const date: Schema<string, Date> = dateFromString(string)
+const _Date: Schema<string, Date> = dateFromString(string)
+
+export {
+  /**
+   * A schema that transforms a `string` into a valid `Date`.
+   *
+   * @category Date
+   * @since 1.0.0
+   */
+  _Date as Date
+}
 
 // ---------------------------------------------
 // data/Either
