@@ -2,34 +2,34 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-describe.concurrent("date", () => {
+describe.concurrent("DateFromSelf", () => {
   it("keyof", () => {
-    expect(S.keyof(S.date)).toEqual(S.never)
+    expect(S.keyof(S.DateFromSelf)).toEqual(S.never)
   })
 
   it("property tests", () => {
-    Util.roundtrip(S.date)
+    Util.roundtrip(S.DateFromSelf)
   })
 
   it("Decoder", async () => {
-    await Util.expectParseSuccess(S.date, new Date(), new Date())
+    await Util.expectParseSuccess(S.DateFromSelf, new Date(), new Date())
 
-    await Util.expectParseFailure(S.date, null, `Expected Date, actual null`)
+    await Util.expectParseFailure(S.DateFromSelf, null, `Expected Date, actual null`)
   })
 
   it("Encoder", async () => {
     const now = new Date()
-    await Util.expectEncodeSuccess(S.date, now, now)
+    await Util.expectEncodeSuccess(S.DateFromSelf, now, now)
   })
 
   it("Pretty", () => {
-    const pretty = Pretty.to(S.date)
+    const pretty = Pretty.to(S.DateFromSelf)
     expect(pretty(new Date(0))).toEqual("new Date(\"1970-01-01T00:00:00.000Z\")")
   })
 })
 
-describe.concurrent("DateFromString", () => {
-  const schema = S.DateFromString
+describe.concurrent("date", () => {
+  const schema = S.date
 
   it("property tests", () => {
     Util.roundtrip(schema)

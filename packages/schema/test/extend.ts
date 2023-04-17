@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 describe.concurrent("extend", () => {
   it(`struct with defaults extend struct`, async () => {
     const schema = pipe(
-      S.struct({ a: S.optional(S.string, { to: "default", value: () => "" }), b: S.string }),
+      S.struct({ a: S.optional.withDefault(S.string, () => ""), b: S.string }),
       S.extend(S.struct({ c: S.number }))
     )
     await Util.expectParseSuccess(schema, { b: "b", c: 1 }, { a: "", b: "b", c: 1 })
@@ -15,7 +15,7 @@ describe.concurrent("extend", () => {
     const schema = pipe(
       S.struct({ a: S.number }),
       S.extend(
-        S.struct({ b: S.string, c: S.optional(S.string, { to: "default", value: () => "" }) })
+        S.struct({ b: S.string, c: S.optional.withDefault(S.string, () => "") })
       )
     )
     await Util.expectParseSuccess(schema, { a: 1, b: "b" }, { a: 1, b: "b", c: "" })
@@ -23,9 +23,9 @@ describe.concurrent("extend", () => {
 
   it(`struct with defaults extend struct with defaults `, async () => {
     const schema = pipe(
-      S.struct({ a: S.optional(S.string, { to: "default", value: () => "" }), b: S.string }),
+      S.struct({ a: S.optional.withDefault(S.string, () => ""), b: S.string }),
       S.extend(
-        S.struct({ c: S.optional(S.number, { to: "default", value: () => 0 }), d: S.boolean })
+        S.struct({ c: S.optional.withDefault(S.number, () => 0), d: S.boolean })
       )
     )
     await Util.expectParseSuccess(schema, { b: "b", d: true }, { a: "", b: "b", c: 0, d: true })
@@ -35,22 +35,22 @@ describe.concurrent("extend", () => {
     const schema = pipe(
       S.union(
         S.struct({
-          a: S.optional(S.string, { to: "default", value: () => "a" }),
+          a: S.optional.withDefault(S.string, () => "a"),
           b: S.string
         }),
         S.struct({
-          c: S.optional(S.string, { to: "default", value: () => "c" }),
+          c: S.optional.withDefault(S.string, () => "c"),
           d: S.string
         })
       ),
       S.extend(
         S.union(
           S.struct({
-            e: S.optional(S.string, { to: "default", value: () => "e" }),
+            e: S.optional.withDefault(S.string, () => "e"),
             f: S.string
           }),
           S.struct({
-            g: S.optional(S.string, { to: "default", value: () => "g" }),
+            g: S.optional.withDefault(S.string, () => "g"),
             h: S.string
           })
         )

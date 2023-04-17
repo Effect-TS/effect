@@ -7,22 +7,22 @@ describe.concurrent("dev", () => {
     const schema = pipe(
       S.union(
         S.struct({
-          a: S.optional(S.string, { to: "default", value: () => "a" }),
+          a: S.optional.withDefault(S.string, () => "a"),
           b: S.string
         }),
         S.struct({
-          c: S.optional(S.string, { to: "default", value: () => "c" }),
+          c: S.optional.withDefault(S.string, () => "c"),
           d: S.string
         })
       ),
       S.extend(
         S.union(
           S.struct({
-            e: S.optional(S.string, { to: "default", value: () => "e" }),
+            e: S.optional.withDefault(S.string, () => "e"),
             f: S.string
           }),
           S.struct({
-            g: S.optional(S.string, { to: "default", value: () => "g" }),
+            g: S.optional.withDefault(S.string, () => "g"),
             h: S.string
           })
         )

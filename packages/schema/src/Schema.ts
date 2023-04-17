@@ -476,27 +476,29 @@ const isPropertySignature = <I, A>(
   schema: object
 ): schema is PropertySignature<I, A> => "_id" in schema && schema["_id"] === PropertySignatureId
 
-/**
- * @since 1.0.0
- */
-export function optional<I, A>(
-  schema: Schema<I, A>,
-  options: { readonly to: "default"; readonly value: LazyArg<A> }
-): PropertySignature<I, A, false>
-export function optional<I, A>(
-  schema: Schema<I, A>,
-  options: { readonly to: "Option" }
-): PropertySignature<I, Option<A>, false>
-export function optional<I, A>(schema: Schema<I, A>): PropertySignature<I, A, true>
-export function optional<I, A>(
+const _optional = <I, A>(
   schema: Schema<I, A>,
   options?: { readonly to: "Option" } | { readonly to: "default"; readonly value: LazyArg<A> }
-): PropertySignature<I, A, boolean> {
+): PropertySignature<I, A, boolean> => {
   const out: any = make(schema.ast)
   out["_id"] = PropertySignatureId
   out["options"] = options
   return out
 }
+
+/**
+ * @since 1.0.0
+ */
+export const optional: {
+  <I, A>(schema: Schema<I, A>): PropertySignature<I, A, true>
+  toOption: <I, A>(schema: Schema<I, A>) => PropertySignature<I, O.Option<A>, false>
+  withDefault: {
+    <A>(value: LazyArg<A>): <I>(schema: Schema<I, A>) => PropertySignature<I, A, false>
+    <I, A>(schema: Schema<I, A>, value: LazyArg<A>): PropertySignature<I, A, false>
+  }
+} = (<I, A>(schema: Schema<I, A>) => _optional(schema)) as any
+optional.toOption = (schema) => _optional(schema, { to: "Option" }) as any
+optional.withDefault = dual(2, (schema, value) => _optional(schema, { to: "default", value }))
 
 /**
  * @since 1.0.0
@@ -1512,15 +1514,14 @@ const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
 
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
-// TODO: rename to DateFromSelf
 /**
  * @category Date
  * @since 1.0.0
  */
-export const date: Schema<Date> = declare(
+export const DateFromSelf: Schema<Date> = declare(
   [],
   struct({}),
-  () => (u) => !isDate(u) ? PR.failure(PR.type(date.ast, u)) : PR.success(u),
+  () => (u) => !isDate(u) ? PR.failure(PR.type(DateFromSelf.ast, u)) : PR.success(u),
   {
     [AST.IdentifierAnnotationId]: "Date",
     [I.PrettyHookId]: datePretty,
@@ -1557,10 +1558,10 @@ export const validDate = (options?: AnnotationOptions<Date>) =>
  * @category Date
  * @since 1.0.0
  */
-export const ValidDateFromSelf = pipe(date, validDate())
+export const ValidDateFromSelf = pipe(DateFromSelf, validDate())
 
 /**
-  This combinator that transforms a `string` into a `Date`.
+  A combinator that transforms a `string` into a valid `Date`.
 
   @category Date
   @since 1.0.0
@@ -1575,14 +1576,13 @@ export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<
   return schema
 }
 
-// TODO: rename to Date
 /**
- * This schema that transforms a `string` into a `Date`.
+ * A schema that transforms a `string` into a valid `Date`.
  *
  * @category Date
  * @since 1.0.0
  */
-export const DateFromString: Schema<string, Date> = dateFromString(string)
+export const date: Schema<string, Date> = dateFromString(string)
 
 // ---------------------------------------------
 // data/Either

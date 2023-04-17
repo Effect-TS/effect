@@ -244,25 +244,37 @@ S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean) });
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c?: number; }>
 S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString) });
 
+// piping
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }>
+S.struct({ a: pipe(S.string, S.optional) })
+
 // ---------------------------------------------
-// optional - default
+// optional.withDefault
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c: boolean; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean, { to: 'default', value: () => false }) });
+S.struct({ a: S.string, b: S.number, c: S.optional.withDefault(S.boolean, () => false) });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c: number; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString, { to: 'default', value: () => 0 }) });
+S.struct({ a: S.string, b: S.number, c: S.optional.withDefault(NumberFromString, () => 0) });
+
+// piping
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a: string; }>
+S.struct({ a: pipe(S.string, S.optional.withDefault(() => '')) })
 
 // ---------------------------------------------
-// optional - Option
+// optional.toOption
 // ---------------------------------------------
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: boolean; }, { readonly a: string; readonly b: number; readonly c: Option<boolean>; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean, { to: 'Option' }) });
+S.struct({ a: S.string, b: S.number, c: S.optional.toOption(S.boolean) });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c: Option<number>; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString, { to: 'Option' }) });
+S.struct({ a: S.string, b: S.number, c: S.optional.toOption(NumberFromString) });
+
+// piping
+// $ExpectType Schema<{ readonly a?: string; }, { readonly a: Option<string>; }>
+S.struct({ a: pipe(S.string, S.optional.toOption) })
 
 // ---------------------------------------------
 // pick
