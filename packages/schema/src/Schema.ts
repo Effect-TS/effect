@@ -466,7 +466,10 @@ export interface PropertySignature<From, To = From, ToIsOptional extends boolean
   readonly To: (_: To) => To
   readonly ToIsOptional: ToIsOptional
   readonly _id: PropertySignatureId
-  readonly options?: { to: "Option" } | { to: "default"; value: () => unknown }
+  readonly options?: { readonly to: "Option" } | {
+    readonly to: "default"
+    readonly value: LazyArg<unknown>
+  }
 }
 
 const isPropertySignature = <I, A>(
@@ -478,16 +481,16 @@ const isPropertySignature = <I, A>(
  */
 export function optional<I, A>(
   schema: Schema<I, A>,
-  options: { to: "default"; value: LazyArg<A> }
+  options: { readonly to: "default"; readonly value: LazyArg<A> }
 ): PropertySignature<I, A, false>
 export function optional<I, A>(
   schema: Schema<I, A>,
-  options: { to: "Option" }
+  options: { readonly to: "Option" }
 ): PropertySignature<I, Option<A>, false>
-export function optional<I, A>(schema: Schema<I, A>): PropertySignature<I, A>
+export function optional<I, A>(schema: Schema<I, A>): PropertySignature<I, A, true>
 export function optional<I, A>(
   schema: Schema<I, A>,
-  options?: { to: "Option" } | { to: "default"; value: LazyArg<A> }
+  options?: { readonly to: "Option" } | { readonly to: "default"; readonly value: LazyArg<A> }
 ): PropertySignature<I, A, boolean> {
   const out: any = make(schema.ast)
   out["_id"] = PropertySignatureId
@@ -1509,8 +1512,9 @@ const dateArbitrary = (): Arbitrary<Date> => (fc) => fc.date()
 
 const datePretty = (): Pretty<Date> => (date) => `new Date(${JSON.stringify(date)})`
 
+// TODO: rename to DateFromSelf
 /**
- * @category constructors
+ * @category Date
  * @since 1.0.0
  */
 export const date: Schema<Date> = declare(
@@ -1528,48 +1532,54 @@ export const date: Schema<Date> = declare(
  * @category type id
  * @since 1.0.0
  */
-export const IsValidDateTypeId = "@effect/schema/IsValidDateTypeId"
+export const ValidDateTypeId = "@effect/schema/ValidDateTypeId"
 
 /**
- * @category date
+ * A filter excluding invalid dates (e.g. `new Date("fail")`).
+ *
+ * @category Date
  * @since 1.0.0
  */
-export const isValidDate = (options?: AnnotationOptions<Date>) =>
+export const validDate = (options?: AnnotationOptions<Date>) =>
   <I>(self: Schema<I, Date>): Schema<I, Date> =>
     pipe(
       self,
       filter((a) => !isNaN(a.getTime()), {
-        typeId: IsValidDateTypeId,
+        typeId: ValidDateTypeId,
         description: "a valid Date",
         ...options
       })
     )
 
 /**
-  This combinator transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+ * A schema representing valid dates, e.g. `new Date("fail")` even if an instance of `Date` is excluded.
+ *
+ * @category Date
+ * @since 1.0.0
+ */
+export const ValidDateFromSelf = pipe(date, validDate())
 
-  @category date
+/**
+  This combinator that transforms a `string` into a `Date`.
+
+  @category Date
   @since 1.0.0
 */
 export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> => {
   const schema: Schema<I, Date> = transformResult(
     self,
-    isValidDate()(date),
-    (s) => {
-      const date = new Date(s)
-      return isNaN(date.getTime())
-        ? PR.failure(PR.type(schema.ast, s))
-        : PR.success(date)
-    },
+    ValidDateFromSelf,
+    (s) => PR.success(new Date(s)),
     (n) => PR.success(n.toISOString() as A) // this is safe because `self` will check its input anyway
   )
   return schema
 }
 
+// TODO: rename to Date
 /**
- * This schema transforms a `string` into a `Date` by parsing the string using `Date.parse`.
+ * This schema that transforms a `string` into a `Date`.
  *
- * @category date
+ * @category Date
  * @since 1.0.0
  */
 export const DateFromString: Schema<string, Date> = dateFromString(string)
