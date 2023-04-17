@@ -51,17 +51,22 @@ describe.concurrent("Date", () => {
       await Util.expectParseFailure(
         schema,
         "a",
-        `Expected string -> Date, actual "a"`
+        `Expected string -> a valid Date, actual "a"`
       )
       await Util.expectParseFailure(
         schema,
         "a1",
-        `Expected string -> Date, actual "a1"`
+        `Expected string -> a valid Date, actual "a1"`
       )
     })
 
     it("Encoder", async () => {
       await Util.expectEncodeSuccess(schema, new Date(0), "1970-01-01T00:00:00.000Z")
+      await Util.expectEncodeFailure(
+        schema,
+        new Date("fail"),
+        "Expected a valid Date, actual Invalid Date"
+      )
     })
 
     it("example", async () => {
@@ -76,7 +81,7 @@ describe.concurrent("Date", () => {
       await Util.expectParseFailure(
         schema,
         "a",
-        `Expected string -> Date, actual "a"`
+        `Expected string -> a valid Date, actual "a"`
       )
     })
   })

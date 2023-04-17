@@ -1525,6 +1525,27 @@ export const date: Schema<Date> = declare(
 )
 
 /**
+ * @category type id
+ * @since 1.0.0
+ */
+export const IsValidDateTypeId = "@effect/schema/IsValidDateTypeId"
+
+/**
+ * @category date
+ * @since 1.0.0
+ */
+export const isValidDate = (options?: AnnotationOptions<Date>) =>
+  <I>(self: Schema<I, Date>): Schema<I, Date> =>
+    pipe(
+      self,
+      filter((a) => !isNaN(a.getTime()), {
+        typeId: IsValidDateTypeId,
+        description: "a valid Date",
+        ...options
+      })
+    )
+
+/**
   This combinator transforms a `string` into a `Date` by parsing the string using `Date.parse`.
 
   @category date
@@ -1533,12 +1554,12 @@ export const date: Schema<Date> = declare(
 export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> => {
   const schema: Schema<I, Date> = transformResult(
     self,
-    date,
+    isValidDate()(date),
     (s) => {
-      const n = Date.parse(s)
-      return isNaN(n)
+      const date = new Date(s)
+      return isNaN(date.getTime())
         ? PR.failure(PR.type(schema.ast, s))
-        : PR.success(new Date(n))
+        : PR.success(date)
     },
     (n) => PR.success(n.toISOString() as A) // this is safe because `self` will check its input anyway
   )
