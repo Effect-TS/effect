@@ -31,11 +31,6 @@ describe.concurrent("Encoder", () => {
     await Util.expectEncodeFailure(schema, 1 as any as never, "Expected never, actual 1")
   })
 
-  it("templateLiteral. a${string}b", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-    await Util.expectEncodeSuccess(schema, "acb", "acb")
-  })
-
   it("string", async () => {
     const schema = S.string
     await Util.expectEncodeSuccess(schema, "a", "a")

@@ -59,7 +59,8 @@ const getHook = AST.getAnnotation<
   (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
 >(ArbitraryHookId)
 
-const go = (ast: AST.AST): Arbitrary<any> => {
+/** @internal */
+export const go = (ast: AST.AST): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration":
       return pipe(
@@ -211,7 +212,10 @@ const go = (ast: AST.AST): Arbitrary<any> => {
             (fc) =>
               from(fc).filter((a) => {
                 const eu = eitherOrUndefined(ast.decode(a))
-                return eu ? E.isRight(eu) : false
+                if (eu) {
+                  return E.isRight(eu)
+                }
+                throw new Error("cannot build an Arbitrary for effectful refinements")
               }),
           (handler) => handler(from)
         )

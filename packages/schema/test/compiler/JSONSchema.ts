@@ -384,16 +384,6 @@ describe("jsonSchemaFor", () => {
     property(schema)
   })
 
-  it.skip("tuple. r + e", () => {
-    const schema = pipe(S.array(S.string), S.element(S.number))
-    property(schema)
-  })
-
-  it.skip("tuple. e + r + e", () => {
-    const schema = pipe(S.tuple(S.string), S.rest(S.number), S.element(S.boolean))
-    property(schema)
-  })
-
   it("struct. empty", () => {
     const schema = S.struct({})
     property(schema)

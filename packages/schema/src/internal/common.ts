@@ -25,7 +25,7 @@ export const makeSchema = <I, A>(ast: AST.AST): S.Schema<I, A> => ({ ast }) as a
 /** @internal */
 export const getKeysForIndexSignature = (
   input: { readonly [x: PropertyKey]: unknown },
-  parameter: AST.AST
+  parameter: AST.Parameter
 ): ReadonlyArray<string> | ReadonlyArray<symbol> => {
   switch (parameter._tag) {
     case "StringKeyword":
@@ -34,10 +34,8 @@ export const getKeysForIndexSignature = (
     case "SymbolKeyword":
       return Object.getOwnPropertySymbols(input)
     case "Refinement":
-    case "Transform":
       return getKeysForIndexSignature(input, parameter.from)
   }
-  return []
 }
 
 // ---------------------------------------------

@@ -19,7 +19,7 @@ const doRoundtrip = true
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
-const effectifyDecode = (
+export const effectifyDecode = (
   decode: (input: any, options?: ParseOptions) => PR.ParseResult<any>
 ): (input: any, options?: ParseOptions) => PR.ParseResult<any> =>
   (input, options) => PR.flatMap(sleep, () => decode(input, options))

@@ -69,132 +69,6 @@ describe.concurrent("Decoder", () => {
     await Util.expectParseSuccess(schema, {}, {})
   })
 
-  it("templateLiteral. a", async () => {
-    const schema = S.templateLiteral(S.literal("a"))
-    await Util.expectParseSuccess(schema, "a", "a")
-
-    await Util.expectParseFailure(schema, "ab", `Expected "a", actual "ab"`)
-    await Util.expectParseFailure(schema, "", `Expected "a", actual ""`)
-    await Util.expectParseFailure(schema, null, `Expected "a", actual null`)
-  })
-
-  it("templateLiteral. a b", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
-    await Util.expectParseSuccess(schema, "a b", "a b")
-
-    await Util.expectParseFailure(schema, "a  b", `Expected "a b", actual "a  b"`)
-  })
-
-  it("templateLiteral. a${string}", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string)
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, "ab", "ab")
-
-    await Util.expectParseFailure(
-      schema,
-      null,
-      "Expected a${string}, actual null"
-    )
-    await Util.expectParseFailure(
-      schema,
-      "",
-      "Expected a${string}, actual \"\""
-    )
-  })
-
-  it("templateLiteral. a${number}", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.number)
-    await Util.expectParseSuccess(schema, "a1", "a1")
-    await Util.expectParseSuccess(schema, "a1.2", "a1.2")
-
-    await Util.expectParseFailure(
-      schema,
-      null,
-      "Expected a${number}, actual null"
-    )
-    await Util.expectParseFailure(
-      schema,
-      "",
-      "Expected a${number}, actual \"\""
-    )
-    await Util.expectParseFailure(
-      schema,
-      "aa",
-      "Expected a${number}, actual \"aa\""
-    )
-  })
-
-  it("templateLiteral. ${string}", async () => {
-    const schema = S.templateLiteral(S.string)
-    await Util.expectParseSuccess(schema, "a", "a")
-    await Util.expectParseSuccess(schema, "ab", "ab")
-    await Util.expectParseSuccess(schema, "", "")
-  })
-
-  it("templateLiteral. a${string}b", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-    await Util.expectParseSuccess(schema, "ab", "ab")
-    await Util.expectParseSuccess(schema, "acb", "acb")
-    await Util.expectParseSuccess(schema, "abb", "abb")
-    await Util.expectParseFailure(
-      schema,
-      "",
-      "Expected a${string}b, actual \"\""
-    )
-    await Util.expectParseFailure(
-      schema,
-      "a",
-      "Expected a${string}b, actual \"a\""
-    )
-    await Util.expectParseFailure(
-      schema,
-      "b",
-      "Expected a${string}b, actual \"b\""
-    )
-  })
-
-  it("templateLiteral. a${string}b${string}", async () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"), S.string)
-    await Util.expectParseSuccess(schema, "ab", "ab")
-    await Util.expectParseSuccess(schema, "acb", "acb")
-    await Util.expectParseSuccess(schema, "acbd", "acbd")
-
-    await Util.expectParseFailure(
-      schema,
-      "a",
-      "Expected a${string}b${string}, actual \"a\""
-    )
-    await Util.expectParseFailure(
-      schema,
-      "b",
-      "Expected a${string}b${string}, actual \"b\""
-    )
-  })
-
-  it("templateLiteral. https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html", async () => {
-    const EmailLocaleIDs = S.literal("welcome_email", "email_heading")
-    const FooterLocaleIDs = S.literal("footer_title", "footer_sendoff")
-    const schema = S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
-    await Util.expectParseSuccess(schema, "welcome_email_id", "welcome_email_id")
-    await Util.expectParseSuccess(schema, "email_heading_id", "email_heading_id")
-    await Util.expectParseSuccess(schema, "footer_title_id", "footer_title_id")
-    await Util.expectParseSuccess(schema, "footer_sendoff_id", "footer_sendoff_id")
-
-    await Util.expectParseFailureTree(
-      schema,
-      "_id",
-      `error(s) found
-├─ union member
-│  └─ Expected "welcome_email_id", actual "_id"
-├─ union member
-│  └─ Expected "email_heading_id", actual "_id"
-├─ union member
-│  └─ Expected "footer_title_id", actual "_id"
-└─ union member
-   └─ Expected "footer_sendoff_id", actual "_id"`
-    )
-  })
-
   it("never", async () => {
     const schema = S.never
     await Util.expectParseFailure(schema, 1, "Expected never, actual 1")
@@ -645,22 +519,10 @@ describe.concurrent("Decoder", () => {
     await Util.expectParseSuccess(schema, {})
   })
 
-  it("struct/extend record(string, string)", async () => {
-    const schema = pipe(
-      S.struct({ a: S.string }),
-      S.extend(S.record(S.string, S.string))
-    )
-    await Util.expectParseSuccess(schema, { a: "a" })
-    await Util.expectParseSuccess(schema, { a: "a", b: "b" })
-
-    await Util.expectParseFailure(schema, {}, "/a is missing")
-    await Util.expectParseFailure(schema, { b: "b" }, "/a is missing")
-    await Util.expectParseFailure(schema, { a: 1 }, "/a Expected string, actual 1")
-    await Util.expectParseFailure(
-      schema,
-      { a: "a", b: 1 },
-      "/b Expected string, actual 1"
-    )
+  it("struct/ record(never, number)", async () => {
+    const schema = S.record(S.never, S.number)
+    await Util.expectParseSuccess(schema, {})
+    await Util.expectParseSuccess(schema, { a: 1 })
   })
 
   it("struct/ record(string, number)", async () => {

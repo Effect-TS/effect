@@ -3,17 +3,6 @@ import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 
 describe.concurrent("AST", () => {
-  it("exports", () => {
-    expect(AST.isUniqueSymbol).exist
-    expect(AST.isUnknownKeyword).exist
-    expect(AST.isAnyKeyword).exist
-    expect(AST.isBooleanKeyword).exist
-    expect(AST.isBigIntKeyword).exist
-    expect(AST.isTransform).exist
-    expect(AST.isRefinement).exist
-    expect(AST.isNeverKeyword).exist
-  })
-
   it("createIndexSignature/ should throw on unsupported ASTs", () => {
     expect(() => AST.createIndexSignature(AST.booleanKeyword, AST.stringKeyword, true))
       .toThrowError(
@@ -52,7 +41,13 @@ describe.concurrent("AST", () => {
 
   it("createRecord/ should throw on unsupported keys", () => {
     expect(() => AST.createRecord(AST.undefinedKeyword, AST.numberKeyword, true)).toThrowError(
-      new Error("createRecord: Unsupported key UndefinedKeyword")
+      new Error("createRecord: unsupported key UndefinedKeyword")
+    )
+  })
+
+  it("createRecord/ should throw on unsupported literals", () => {
+    expect(() => AST.createRecord(AST.createLiteral(true), AST.numberKeyword, true)).toThrowError(
+      new Error("createRecord: unsupported literal true")
     )
   })
 

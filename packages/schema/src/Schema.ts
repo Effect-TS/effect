@@ -319,7 +319,7 @@ const getTemplateLiterals = (
     case "Union":
       return pipe(ast.types, RA.flatMap(getTemplateLiterals))
     default:
-      throw new Error(`Unsupported template literal span ${ast._tag}`)
+      throw new Error(`templateLiteral: unsupported template literal span ${ast._tag}`)
   }
 }
 
@@ -891,7 +891,7 @@ export function filter<A>(
 ): <I>(self: Schema<I, A>) => Schema<I, A> {
   return (self) => {
     const decode = (a: A) => predicate(a) ? PR.success(a) : PR.failure(PR.type(ast, a))
-    const ast = AST.createRefinement(
+    const ast: AST.Refinement = AST.createRefinement(
       self.ast,
       decode,
       false,
@@ -1571,7 +1571,7 @@ export const validDate = (options?: AnnotationOptions<Date>) =>
     )
 
 /**
- * A schema representing valid dates, e.g. `new Date("fail")` even if an instance of `Date` is excluded.
+ * A schema representing valid dates, e.g. `new Date("fail")` is excluded, even though it is an instance of `Date`.
  *
  * @category Date
  * @since 1.0.0

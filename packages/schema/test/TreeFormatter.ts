@@ -2,8 +2,18 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 import * as _ from "@effect/schema/TreeFormatter"
 
-describe.concurrent("TreeFormatter", async () => {
-  it("formatErrors/ forbidden", async () => {
+describe.concurrent("formatExpected", () => {
+  it("lazy", () => {
+    type A = readonly [number, A | null]
+    const schema: S.Schema<A> = S.lazy<A>(
+      () => S.tuple(S.number, S.union(schema, S.literal(null)))
+    )
+    expect(_.formatExpected(schema.ast)).toEqual("<anonymous lazy schema>")
+  })
+})
+
+describe.concurrent("formatErrors", () => {
+  it("forbidden", async () => {
     const schema = Util.effectify(S.struct({ a: S.string }), "all")
     expect(() => S.parse(schema)({ a: "a" })).toThrowError(
       new Error(`error(s) found
@@ -12,7 +22,7 @@ describe.concurrent("TreeFormatter", async () => {
     )
   })
 
-  it("formatErrors/ missing", async () => {
+  it("missing", async () => {
     const schema = S.struct({ a: S.string })
     await Util.expectParseFailureTree(
       schema,
@@ -23,7 +33,7 @@ describe.concurrent("TreeFormatter", async () => {
     )
   })
 
-  it("formatErrors/ excess property", async () => {
+  it("excess property", async () => {
     const schema = S.struct({ a: S.string })
     await Util.expectParseFailureTree(
       schema,
@@ -35,7 +45,7 @@ describe.concurrent("TreeFormatter", async () => {
     )
   })
 
-  it("formatErrors/ should collapse trees that have a branching factor of 1", async () => {
+  it("should collapse trees that have a branching factor of 1", async () => {
     const schema = S.struct({
       a: S.struct({ b: S.struct({ c: S.array(S.struct({ d: S.string })) }) })
     })
@@ -65,8 +75,10 @@ describe.concurrent("TreeFormatter", async () => {
       Util.allErrors
     )
   })
+})
 
-  it("formatActual/ catch", () => {
+describe.concurrent("formatActual", () => {
+  it("should handle unexpected errors", () => {
     const circular: any = { a: null }
     circular.a = circular
     expect(_.formatActual(circular)).toEqual("[object Object]")

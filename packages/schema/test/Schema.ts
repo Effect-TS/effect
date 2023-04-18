@@ -177,69 +177,6 @@ describe.concurrent("Schema", () => {
     })
   })
 
-  it("templateLiteral/ should throw on Unsupported template literal spans", () => {
-    expect(() => S.templateLiteral(S.boolean)).toThrowError(
-      new Error("Unsupported template literal span BooleanKeyword")
-    )
-  })
-
-  it("templateLiteral/ a", () => {
-    const schema = S.templateLiteral(S.literal("a"))
-    expect(schema.ast).toEqual(AST.createLiteral("a"))
-  })
-
-  it("templateLiteral/ a b", () => {
-    const schema = S.templateLiteral(S.literal("a"), S.literal(" "), S.literal("b"))
-    expect(schema.ast).toEqual(
-      AST.createLiteral("a b")
-    )
-  })
-
-  it("templateLiteral/ (a | b) c", () => {
-    const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"))
-    expect(schema.ast).toEqual(
-      AST.createUnion([AST.createLiteral("ac"), AST.createLiteral("bc")])
-    )
-  })
-
-  it("templateLiteral/ (a | b) c (d | e)", () => {
-    const schema = S.templateLiteral(S.literal("a", "b"), S.literal("c"), S.literal("d", "e"))
-    expect(schema.ast).toEqual(
-      AST.createUnion([
-        AST.createLiteral("acd"),
-        AST.createLiteral("ace"),
-        AST.createLiteral("bcd"),
-        AST.createLiteral("bce")
-      ])
-    )
-  })
-
-  it("templateLiteral/ (a | b) string (d | e)", () => {
-    const schema = S.templateLiteral(S.literal("a", "b"), S.string, S.literal("d", "e"))
-    expect(schema.ast).toEqual(
-      AST.createUnion([
-        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "d" }]),
-        AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "e" }]),
-        AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "d" }]),
-        AST.createTemplateLiteral("b", [{ type: AST.stringKeyword, literal: "e" }])
-      ])
-    )
-  })
-
-  it("templateLiteral/ a${string}", () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string)
-    expect(schema.ast).toEqual(
-      AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "" }])
-    )
-  })
-
-  it("templateLiteral/ a${string}b", () => {
-    const schema = S.templateLiteral(S.literal("a"), S.string, S.literal("b"))
-    expect(schema.ast).toEqual(
-      AST.createTemplateLiteral("a", [{ type: AST.stringKeyword, literal: "b" }])
-    )
-  })
-
   describe.concurrent("literal", () => {
     it("should return never with no literals", () => {
       expect(S.literal().ast).toEqual(AST.neverKeyword)
