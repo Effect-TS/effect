@@ -461,7 +461,7 @@ export type PropertySignatureId = typeof PropertySignatureId
 /**
  * @since 1.0.0
  */
-export interface PropertySignature<From, To = From, ToIsOptional extends boolean = true> {
+export interface PropertySignature<From, To = From, ToIsOptional extends boolean = boolean> {
   readonly From: (_: From) => From
   readonly To: (_: To) => To
   readonly ToIsOptional: ToIsOptional
@@ -504,7 +504,8 @@ optional.withDefault = dual(2, (schema, value) => _optional(schema, { to: "defau
  * @since 1.0.0
  */
 export type OptionalKeys<Fields, ToIsOptional extends boolean> = {
-  [K in keyof Fields]: Fields[K] extends PropertySignature<any, any, ToIsOptional> ? K
+  [K in keyof Fields]: Fields[K] extends
+    PropertySignature<any, any, ToIsOptional> | PropertySignature<never, never, ToIsOptional> ? K
     : never
 }[keyof Fields]
 
@@ -513,7 +514,13 @@ export type OptionalKeys<Fields, ToIsOptional extends boolean> = {
  * @since 1.0.0
  */
 export const struct = <
-  Fields extends Record<PropertyKey, Schema<any> | PropertySignature<any, any, boolean>>
+  Fields extends Record<
+    PropertyKey,
+    | Schema<any>
+    | Schema<never>
+    | PropertySignature<any>
+    | PropertySignature<never>
+  >
 >(
   fields: Fields
 ): Schema<

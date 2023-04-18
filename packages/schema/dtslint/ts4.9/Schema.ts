@@ -234,6 +234,9 @@ export type MyModelFrom = S.From<typeof MyModel>
 // $ExpectType { readonly a: string; readonly b: number; }
 export type MyModelTo = S.To<typeof MyModel>
 
+// $ExpectType Schema<{ readonly a: never; }, { readonly a: never; }>
+S.struct({ a: S.never })
+
 // ---------------------------------------------
 // optional
 // ---------------------------------------------
@@ -247,6 +250,9 @@ S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString) });
 // piping
 // $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }>
 S.struct({ a: pipe(S.string, S.optional) })
+
+// $ExpectType Schema<{ readonly a?: never; }, { readonly a?: never; }>
+ S.struct({ a: S.optional(S.never) })
 
 // ---------------------------------------------
 // optional.withDefault

@@ -25,6 +25,12 @@ describe.concurrent("optional", () => {
     await Util.expectEncodeSuccess(schema, { a: O.none() }, {})
   })
 
+  it("never", async () => {
+    const schema = S.struct({ a: S.optional(S.never), b: S.number })
+    await Util.expectParseSuccess(schema, { b: 1 })
+    await Util.expectParseFailure(schema, { a: "a", b: 1 }, `/a Expected never, actual "a"`)
+  })
+
   it("all", async () => {
     const schema = S.struct({
       a: S.boolean,
