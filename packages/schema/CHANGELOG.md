@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.14.1
+
+### Patch Changes
+
+- [#245](https://github.com/Effect-TS/schema/pull/245) [`6a7d7be`](https://github.com/Effect-TS/schema/commit/6a7d7be5a94139846e32d26667a24c662a306f84) Thanks [@gcanti](https://github.com/gcanti)! - add `never` handling to struct API
+
 ## 0.14.0
 
 ### Minor Changes
