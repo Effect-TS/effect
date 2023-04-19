@@ -13,7 +13,7 @@ export const zShell: ShellType.ShellType = {
 }
 
 /** @internal */
-export const shellOption: Options.Options<ShellType.ShellType> = options.choice("shell-type", [
+export const shellOption: Options.Options<ShellType.ShellType> = options.choiceWithValue("shell-type", [
   ["sh", bash],
   ["bash", bash],
   ["zsh", zShell]

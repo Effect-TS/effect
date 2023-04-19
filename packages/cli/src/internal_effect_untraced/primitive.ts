@@ -131,15 +131,11 @@ const validationMap: {
       }
       return Effect.fail(`${JSON.stringify(value.value)} cannot be recognized as valid boolean`)
     }
-    return Effect.orElseFail(
-      Effect.fromOption(self.defaultValue),
-      () => "Missing default value for boolean parameter"
-    )
+    return Effect.orElseFail(self.defaultValue, () => "Missing default value for boolean parameter")
   },
   Choice: (self: Primitive.Choice<any>, value: Option.Option<string>) =>
     pipe(
-      Effect.fromOption(value),
-      Effect.orElseFail(() => "Choice options do not have a default value"),
+      Effect.orElseFail(value, () => "Choice options do not have a default value"),
       Effect.flatMap((value) => {
         const found = self.choices.find((tuple) => tuple[0] === value)
         return found === undefined
@@ -195,8 +191,7 @@ const attempt = <E, A>(
   typeName: string
 ): Effect.Effect<never, string, A> =>
   pipe(
-    Effect.fromOption(option),
-    Effect.orElseFail(() => `${typeName} options do not have a default value`),
+    Effect.orElseFail(option, () => `${typeName} options do not have a default value`),
     Effect.flatMap((value) =>
       Effect.orElseFail(
         parse(value),

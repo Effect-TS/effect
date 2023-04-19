@@ -180,10 +180,21 @@ export const boolean = (name: string, options: Options.Options.BooleanOptionConf
 }
 
 /** @internal */
-export const choice = <A, C extends RA.NonEmptyReadonlyArray<readonly [string, A]>>(
+export const choice = <A extends string, C extends RA.NonEmptyReadonlyArray<A>>(
   name: string,
   choices: C
-): Options.Options<A> => single(name, Chunk.empty(), primitive.choice(choices))
+): Options.Options<C[number]> =>
+  single(
+    name,
+    Chunk.empty(),
+    primitive.choice(RA.mapNonEmpty(choices, (choice) => [choice, choice] as const))
+  )
+
+/** @internal */
+export const choiceWithValue = <C extends RA.NonEmptyReadonlyArray<readonly [string, any]>>(
+  name: string,
+  choices: C
+): Options.Options<C[number][1]> => single(name, Chunk.empty(), primitive.choice(choices))
 
 /** @internal */
 export const date = (name: string): Options.Options<Date> => single(name, Chunk.empty(), primitive.date)

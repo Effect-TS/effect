@@ -128,13 +128,59 @@ export const between: {
 export const boolean: (name: string, options?: Options.BooleanOptionConfig) => Options<boolean> = internal.boolean
 
 /**
+ * Constructs command-line `Options` that represent a choice between several
+ * inputs. The input will be mapped to it's associated value during parsing.
+ *
+ * @example
+ * import * as Options from "@effect/cli/Options"
+ *
+ * export const animal: Options.Options<"dog" | "cat"> = Options.choice(
+ *   "animal",
+ *   ["dog", "cat"]
+ * )
+ *
  * @since 1.0.0
  * @category constructors
  */
-export const choice: <A, C extends NonEmptyReadonlyArray<readonly [string, A]>>(
+export const choice: <A extends string, C extends NonEmptyReadonlyArray<A>>(
   name: string,
   choices: C
-) => Options<A> = internal.choice
+) => Options<C[number]> = internal.choice
+
+/**
+ * Constructs command-line `Options` that represent a choice between several
+ * inputs. The input will be mapped to it's associated value during parsing.
+ *
+ * @example
+ * import * as Options from "@effect/cli/Options"
+ * import * as Data from "@effect/data/Data"
+ *
+ * export type Animal = Dog | Cat
+ *
+ * export interface Dog extends Data.Case {
+ *   readonly _tag: "Dog"
+ * }
+ *
+ * export const Dog = Data.tagged<Dog>("Dog")
+ *
+ * export interface Cat extends Data.Case {
+ *   readonly _tag: "Cat"
+ * }
+ *
+ * export const Cat = Data.tagged<Cat>("Cat")
+ *
+ * export const animal: Options.Options<Animal> = Options.choiceWithValue("animal", [
+ *   ["dog", Dog()],
+ *   ["cat", Cat()],
+ * ])
+ *
+ * @since 1.0.0
+ * @category constructors
+ */
+export const choiceWithValue: <C extends NonEmptyReadonlyArray<readonly [string, any]>>(
+  name: string,
+  choices: C
+) => Options<C[number][1]> = internal.choiceWithValue
 
 /**
  * @since 1.0.0

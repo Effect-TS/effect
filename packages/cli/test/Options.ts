@@ -5,6 +5,7 @@ import * as Options from "@effect/cli/Options"
 import * as it from "@effect/cli/test/utils/extend"
 import * as ValidationError from "@effect/cli/ValidationError"
 import * as Chunk from "@effect/data/Chunk"
+import * as Data from "@effect/data/Data"
 import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
@@ -399,5 +400,50 @@ describe.concurrent("Options", () => {
       const args = ["-d", "1", "-d", "2", "--verbose"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([["--verbose"], Chunk.make(1, 2)])
+    }))
+
+  it.effect("choice", () =>
+    Effect.gen(function*($) {
+      const config = CliConfig.defaultConfig
+      const option = Options.choice("animal", ["cat", "dog"])
+      const args1 = ["--animal", "cat"]
+      const args2 = ["--animal", "dog"]
+      const result1 = yield* $(Options.validate(option, args1, config))
+      const result2 = yield* $(Options.validate(option, args2, config))
+      expect(result1).toEqual([[], "cat"])
+      expect(result2).toEqual([[], "dog"])
+    }))
+
+  it.effect("choiceWithValue", () =>
+    Effect.gen(function*($) {
+      type Animal = Dog | Cat
+
+      interface Dog extends Data.Case {
+        readonly _tag: "Dog"
+      }
+
+      const Dog = Data.tagged<Dog>("Dog")
+
+      interface Cat extends Data.Case {
+        readonly _tag: "Cat"
+      }
+
+      const Cat = Data.tagged<Cat>("Cat")
+
+      const cat = Cat()
+      const dog = Dog()
+
+      const option: Options.Options<Animal> = Options.choiceWithValue("animal", [
+        ["dog", dog],
+        ["cat", cat]
+      ])
+
+      const config = CliConfig.defaultConfig
+      const args1 = ["--animal", "cat"]
+      const args2 = ["--animal", "dog"]
+      const result1 = yield* $(Options.validate(option, args1, config))
+      const result2 = yield* $(Options.validate(option, args2, config))
+      expect(result1).toEqual([[], cat])
+      expect(result2).toEqual([[], dog])
     }))
 })
