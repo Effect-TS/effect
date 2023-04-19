@@ -8,17 +8,14 @@ import * as Schema from "@effect/schema/Schema"
 /** @internal */
 export const decode = <I, A>(schema: Schema.Schema<I, A>) => {
   const decode = Schema.parseEither(schema)
-  return (input: unknown): Either.Either<RpcDecodeFailure, A> => {
-    return pipe(
+  return (input: unknown): Either.Either<RpcDecodeFailure, A> =>
+    Either.mapLeft(
       decode(input),
-      Either.mapLeft(
-        (error): RpcDecodeFailure => ({
-          _tag: "RpcDecodeFailure",
-          errors: error.errors,
-        }),
-      ),
+      (error): RpcDecodeFailure => ({
+        _tag: "RpcDecodeFailure",
+        errors: error.errors,
+      }),
     )
-  }
 }
 
 /** @internal */

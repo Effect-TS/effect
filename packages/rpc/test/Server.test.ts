@@ -114,27 +114,27 @@ describe("Server", () => {
     )
     expect(result.length).toEqual(9)
 
-    expect(result[0]).toEqual({ _tag: "Right", right: "Hello, John!" })
-    expect(result[1]._tag === "Left" && result[1].left._tag).toEqual(
+    expect(result[0]).toEqual({ _tag: "Success", value: "Hello, John!" })
+    expect(result[1]._tag === "Error" && result[1].error._tag).toEqual(
       "RpcDecodeFailure",
     )
-    expect(result[2]._tag === "Left" && result[2].left._tag).toEqual(
+    expect(result[2]._tag === "Error" && result[2].error._tag).toEqual(
       "SomeError",
     )
-    expect(result[3]._tag === "Left" && result[3].left._tag).toEqual(
+    expect(result[3]._tag === "Error" && result[3].error._tag).toEqual(
       "SomeError",
     )
-    expect(result[4]._tag === "Right" && result[4].right).toEqual(
+    expect(result[4]._tag === "Success" && result[4].value).toEqual(
       date.toISOString(),
     )
-    expect(result[5]._tag === "Right" && result[5].right).toEqual(
+    expect(result[5]._tag === "Success" && result[5].value).toEqual(
       date.toISOString(),
     )
-    expect(result[6]._tag === "Left" && result[6].left._tag).toEqual(
+    expect(result[6]._tag === "Error" && result[6].error._tag).toEqual(
       "RpcDecodeFailure",
     )
-    expect(result[7]._tag === "Right" && result[7].right).toEqual(11)
-    expect(result[8]._tag === "Right" && result[8].right).toEqual({
+    expect(result[7]._tag === "Success" && result[7].value).toEqual(11)
+    expect(result[8]._tag === "Success" && result[8].value).toEqual({
       id: 1,
       body: "hello",
     })

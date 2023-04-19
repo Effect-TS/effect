@@ -44,6 +44,6 @@ describe("Server", () => {
       }),
     )
 
-    expect(result).toEqual([{ _tag: "Right", right: { "x-foo": "bar" } }])
+    expect(result).toEqual([{ _tag: "Success", value: { "x-foo": "bar" } }])
   })
 })

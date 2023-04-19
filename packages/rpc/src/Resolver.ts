@@ -64,9 +64,30 @@ export namespace RpcRequest {
  * @category models
  * @since 1.0.0
  */
-export type RpcResponse =
-  | { _tag: "Left"; left: RpcError }
-  | { _tag: "Right"; right: unknown }
+export type RpcResponse = RpcResponse.Error | RpcResponse.Success
+
+/**
+ * @since 1.0.0
+ */
+export namespace RpcResponse {
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Error {
+    readonly _tag: "Error"
+    error: RpcError
+  }
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Success {
+    readonly _tag: "Success"
+    value: unknown
+  }
+}
 
 /**
  * @category constructors
@@ -75,5 +96,5 @@ export type RpcResponse =
 export const make: <R>(
   send: (
     requests: ReadonlyArray<RpcRequest>,
-  ) => Effect.Effect<R, RpcTransportError, ReadonlyArray<unknown>>,
+  ) => Effect.Effect<R, RpcTransportError, ReadonlyArray<RpcResponse>>,
 ) => RpcResolver<R> = internal.make

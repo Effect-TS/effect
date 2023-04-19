@@ -1,7 +1,7 @@
 import * as Either from "@effect/data/Either"
-import { identity, pipe } from "@effect/data/Function"
+import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
-import type { RpcEncodeFailure, RpcNotFound } from "@effect/rpc/Error"
+import type { RpcEncodeFailure, RpcError, RpcNotFound } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type {
   RpcRequestSchema,
@@ -32,13 +32,6 @@ const schemaHandlersMap = <H extends RpcHandlers>(
     }
     return { ...acc, [`${prefix}${method}`]: definition }
   }, {})
-
-const encodeResponse = Schema.encode(
-  Schema.either(
-    Schema.unknown,
-    Schema.unknown,
-  ) as unknown as Schema.Schema<RpcResponse>,
-)
 
 /** @internal */
 export const handleSingleRequest = <R extends RpcRouter.Base>(
@@ -90,10 +83,31 @@ export const handleSingleRequest = <R extends RpcRouter.Base>(
           Effect.catchAll((_) =>
             Effect.succeed(Either.flatMap(codecs.error(_), Either.left)),
           ),
-        )
+        ) as Effect.Effect<
+          RpcHandlers.Services<R["handlers"]>,
+          never,
+          Either.Either<RpcError, unknown>
+        >
       }),
-      Either.match((_) => Effect.succeed(Either.left(_)), identity as any),
-      Effect.map(encodeResponse),
+      Either.match(
+        (error) =>
+          Effect.succeed({
+            _tag: "Error",
+            error,
+          } satisfies RpcResponse),
+        Effect.map(
+          Either.match(
+            (error): RpcResponse => ({
+              _tag: "Error",
+              error,
+            }),
+            (value): RpcResponse => ({
+              _tag: "Success",
+              value,
+            }),
+          ),
+        ),
+      ),
       Tracer.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
         parent: {
           _tag: "ExternalSpan",
