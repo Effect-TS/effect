@@ -1,7 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type * as Either from "@effect/data/Either"
 import type * as Effect from "@effect/io/Effect"
 import type * as Request from "@effect/io/Request"
 import type * as Resolver from "@effect/io/RequestResolver"
@@ -65,7 +64,9 @@ export namespace RpcRequest {
  * @category models
  * @since 1.0.0
  */
-export type RpcResponse = Either.Either<RpcError, unknown>
+export type RpcResponse =
+  | { _tag: "Left"; left: RpcError }
+  | { _tag: "Right"; right: unknown }
 
 /**
  * @category constructors

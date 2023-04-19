@@ -33,6 +33,13 @@ const schemaHandlersMap = <H extends RpcHandlers>(
     return { ...acc, [`${prefix}${method}`]: definition }
   }, {})
 
+const encodeResponse = Schema.encode(
+  Schema.either(
+    Schema.unknown,
+    Schema.unknown,
+  ) as unknown as Schema.Schema<RpcResponse>,
+)
+
 /** @internal */
 export const handleSingleRequest = <R extends RpcRouter.Base>(
   router: R,
@@ -86,6 +93,7 @@ export const handleSingleRequest = <R extends RpcRouter.Base>(
         )
       }),
       Either.match((_) => Effect.succeed(Either.left(_)), identity as any),
+      Effect.map(encodeResponse),
       Tracer.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
         parent: {
           _tag: "ExternalSpan",

@@ -114,7 +114,7 @@ describe("Server", () => {
     )
     expect(result.length).toEqual(9)
 
-    expect(result[0]).toEqual(Either.right("Hello, John!"))
+    expect(result[0]).toEqual({ _tag: "Right", right: "Hello, John!" })
     expect(result[1]._tag === "Left" && result[1].left._tag).toEqual(
       "RpcDecodeFailure",
     )
