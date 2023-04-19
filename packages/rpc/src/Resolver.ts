@@ -96,5 +96,5 @@ export namespace RpcResponse {
 export const make: <R>(
   send: (
     requests: ReadonlyArray<RpcRequest>,
-  ) => Effect.Effect<R, RpcTransportError, ReadonlyArray<RpcResponse>>,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
 ) => RpcResolver<R> = internal.make

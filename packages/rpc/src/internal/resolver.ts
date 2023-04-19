@@ -29,7 +29,7 @@ const decodeResponses = decodeEffect(Schema.array(RpcResponse))
 export const make = <R>(
   send: (
     requests: ReadonlyArray<resolver.RpcRequest>,
-  ) => Effect.Effect<R, RpcTransportError, ReadonlyArray<unknown>>,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
 ): resolver.RpcResolver<R> =>
   Resolver.makeBatched<resolver.RpcRequest>()((requests) =>
     pipe(
