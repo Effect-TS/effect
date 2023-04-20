@@ -1,15 +1,20 @@
+import { Tag } from "@effect/data/Context"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
+import type * as Request from "@effect/io/Request"
 import * as Tracer from "@effect/io/Tracer"
-import type { Rpc, RpcClient, RpcClientOptions } from "@effect/rpc/Client"
+import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
-import type { RpcResolver } from "@effect/rpc/Resolver"
+import type { RpcRequest, RpcResolver } from "@effect/rpc/Resolver"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import { RpcServiceId } from "@effect/rpc/Schema"
 import * as codec from "@effect/rpc/internal/codec"
 import * as resolverInternal from "@effect/rpc/internal/resolver"
 import * as schema from "@effect/rpc/internal/schema"
 import * as Schema from "@effect/schema/Schema"
+
+/** @internal */
+export const RpcCache = Tag<client.RpcCache, Request.Cache<RpcRequest>>()
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   const map = schema.methodClientCodecs(schemas)
@@ -24,15 +29,12 @@ const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   }
 }
 
-const makeRecursive = <
-  S extends RpcService.DefinitionWithId,
-  T extends RpcResolver<any>,
->(
+const makeRecursive = <S extends RpcService.DefinitionWithId>(
   schemas: S,
-  transport: T,
-  options: RpcClientOptions,
+  transport: RpcResolver<never>,
+  options: client.RpcClientOptions,
   prefix = "",
-): RpcClient<S, T extends RpcResolver<infer R> ? R : never> =>
+): client.RpcClient<S> =>
   Object.entries(schemas).reduce(
     (acc, [method, codec]) => ({
       ...acc,
@@ -45,46 +47,36 @@ const makeRecursive = <
   )
 
 /** @internal */
-export const make = <
-  S extends RpcService.DefinitionWithId,
-  T extends RpcResolver<any>,
->(
+export const make = <S extends RpcService.DefinitionWithId>(
   schemas: S,
-  transport: T,
-  options: RpcClientOptions = {},
-): RpcClient<S, T extends RpcResolver<infer R> ? R : never> =>
+  transport: RpcResolver<never>,
+  options: client.RpcClientOptions = {},
+): client.RpcClient<S> =>
   ({
     ...makeRecursive(schemas, transport, options),
     _schemas: schemas,
     _unsafeDecode: unsafeDecode(schemas),
   } as any)
 
-const makeRpc = <S extends RpcSchema.Any, TR>(
-  resolver: RpcResolver<TR>,
+const makeRpc = <S extends RpcSchema.Any>(
+  resolver: RpcResolver<never>,
   schema: S,
   method: string,
-  { spanPrefix = "RpcClient" }: RpcClientOptions,
-): Rpc<S, TR> => {
+  { spanPrefix = "RpcClient" }: client.RpcClientOptions,
+): client.Rpc<S> => {
   const parseError = codec.decodeEffect(
     "error" in schema ? Schema.union(RpcError, schema.error) : RpcError,
   )
   const parseOutput = codec.decodeEffect(schema.output)
 
-  const parseResponse = (self: Effect.Effect<any, any, unknown>) =>
-    pipe(
-      Effect.flatMap(self, parseOutput),
-      Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
-      Tracer.withSpan(`${spanPrefix}.${method}`),
-    )
-
   if ("input" in schema) {
     const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)
 
     return ((input: any) =>
-      pipe(
-        encodeInput(input),
-        Effect.flatMap((input) =>
-          Effect.flatMap(Tracer.Span, (span) =>
+      Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+        pipe(
+          encodeInput(input),
+          Effect.flatMap((input) =>
             Effect.request(
               resolverInternal.RpcRequest({
                 _tag: method,
@@ -94,15 +86,17 @@ const makeRpc = <S extends RpcSchema.Any, TR>(
                 traceId: span.traceId,
               }),
               resolver,
+              Effect.serviceOption(RpcCache),
             ),
           ),
+          Effect.flatMap(parseOutput),
+          Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
         ),
-        parseResponse,
       )) as any
   }
 
-  return parseResponse(
-    Effect.flatMap(Tracer.Span, (span) =>
+  return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+    pipe(
       Effect.request(
         resolverInternal.RpcRequest({
           _tag: method,
@@ -111,7 +105,10 @@ const makeRpc = <S extends RpcSchema.Any, TR>(
           traceId: span.traceId,
         }),
         resolver,
+        Effect.serviceOption(RpcCache),
       ),
+      Effect.flatMap(parseOutput),
+      Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
     ),
   ) as any
 }

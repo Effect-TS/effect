@@ -12,7 +12,7 @@ import * as internal from "@effect/rpc/internal/resolver"
  * @since 1.0.0
  */
 export interface RpcResolver<R>
-  extends Resolver.RequestResolver<R, RpcRequest> {}
+  extends Resolver.RequestResolver<RpcRequest, R> {}
 
 /**
  * @category models

@@ -1,14 +1,16 @@
+import * as Chunk from "@effect/data/Chunk"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as RpcHttp from "@effect/rpc-http"
-import { schema } from "@effect/rpc-http/examples/schema"
+import { UserId, schema } from "@effect/rpc-http/examples/schema"
 import * as Server from "@effect/rpc/Server"
 import * as Http from "node:http"
 import type { Readable } from "node:stream"
 
 // Implement the RPC server router
 const router = Server.router(schema, {
-  greet: (name) => Effect.succeed(`Hello, ${name}!`),
+  getUserIds: Effect.succeed(Chunk.map(Chunk.range(1, 100), UserId)),
+  getUser: (id) => Effect.succeed({ id, name: `User ${id}` }),
 })
 
 // Create the HTTP handler, which takes the http request details and returns
@@ -23,6 +25,9 @@ const server = Http.createServer((req, res) => {
       // First we need the JSON body parsed
       bodyToString(req),
       Effect.flatMap(parseJson),
+      Effect.tap((body) =>
+        Effect.log(`Got batch of ${(body as any).length} requests`),
+      ),
       Effect.flatMap((body) =>
         // Pass it to the handler
         handler({
