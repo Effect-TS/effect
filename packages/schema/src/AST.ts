@@ -165,8 +165,14 @@ export const DocumentationAnnotationId = "@effect/schema/DocumentationAnnotation
  * @category model
  * @since 1.0.0
  */
+export interface Annotations extends Record<string | symbol, unknown> {}
+
+/**
+ * @category model
+ * @since 1.0.0
+ */
 export interface Annotated {
-  readonly annotations: Record<string | symbol, unknown>
+  readonly annotations: Annotations
 }
 
 /**

@@ -5,7 +5,7 @@ import * as Util from "@effect/schema/test/util"
 describe.concurrent("optional", () => {
   it("default", async () => {
     const schema = S.struct({
-      a: S.optional.withDefault(S.NumberFromString, () => 0)
+      a: S.optional(S.NumberFromString).withDefault(() => 0)
     })
     await Util.expectParseSuccess(schema, {}, { a: 0 })
     await Util.expectParseSuccess(schema, { a: "1" }, { a: 1 })
@@ -16,7 +16,7 @@ describe.concurrent("optional", () => {
   })
 
   it("Option", async () => {
-    const schema = S.struct({ a: S.optional.toOption(S.NumberFromString) })
+    const schema = S.struct({ a: S.optional(S.NumberFromString).toOption() })
     await Util.expectParseSuccess(schema, {}, { a: O.none() })
     await Util.expectParseSuccess(schema, { a: "1" }, { a: O.some(1) })
     await Util.expectParseFailure(schema, { a: "a" }, `/a Expected string -> number, actual "a"`)
@@ -35,8 +35,8 @@ describe.concurrent("optional", () => {
     const schema = S.struct({
       a: S.boolean,
       b: S.optional(S.NumberFromString),
-      c: S.optional.withDefault(S.Trim, () => "-"),
-      d: S.optional.toOption(S.Date)
+      c: S.optional(S.Trim).withDefault(() => "-"),
+      d: S.optional(S.Date).toOption()
     })
     await Util.expectParseSuccess(schema, { a: true }, { a: true, c: "-", d: O.none() })
     await Util.expectParseSuccess(schema, { a: true, b: "1" }, {

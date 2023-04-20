@@ -45,7 +45,6 @@ describe.concurrent("Schema", () => {
     expect(S.IncludesTypeId).exist
     expect(S.UUIDTypeId).exist
 
-    expect(S.PropertySignatureId).exist
     expect(S.nullable).exist
 
     expect(S.parseResult).exist
