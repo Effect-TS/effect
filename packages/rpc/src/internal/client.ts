@@ -73,7 +73,7 @@ const makeRpc = <S extends RpcSchema.Any>(
     const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)
 
     return ((input: any) =>
-      Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+      useSpan(`${spanPrefix}.${method}`, (span) =>
         pipe(
           encodeInput(input),
           Effect.flatMap((input) =>
@@ -95,7 +95,7 @@ const makeRpc = <S extends RpcSchema.Any>(
       )) as any
   }
 
-  return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+  return useSpan(`${spanPrefix}.${method}`, (span) =>
     pipe(
       Effect.request(
         resolverInternal.RpcRequest({
@@ -111,4 +111,19 @@ const makeRpc = <S extends RpcSchema.Any>(
       Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
     ),
   ) as any
+}
+
+function useSpan<R, E, A>(
+  name: string,
+  evaluate: (span: Tracer.Span) => Effect.Effect<R, E, A>,
+): Effect.Effect<R, E, A> {
+  return Effect.flatMap(
+    Tracer.useSpan(name, (span) => Effect.step(evaluate(span))),
+    (res) => {
+      if (res._tag === "Blocked") {
+        return Effect.blocked(res.i0, res.i1)
+      }
+      return res
+    },
+  )
 }

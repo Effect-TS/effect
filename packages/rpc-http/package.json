@@ -51,7 +51,7 @@
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.14.1"
+    "@effect/schema": "^0.15.0"
   },
   "config": {
     "side": [],
