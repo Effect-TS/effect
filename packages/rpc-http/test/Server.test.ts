@@ -1,9 +1,9 @@
 import * as Effect from "@effect/io/Effect"
-import * as S from "@effect/schema/Schema"
-import * as RS from "@effect/rpc/Schema"
-import * as Server from "@effect/rpc/Server"
 import * as _ from "@effect/rpc-http/Server"
-import { describe, it, expect } from "vitest"
+import * as Router from "@effect/rpc/Router"
+import * as RS from "@effect/rpc/Schema"
+import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 const schema = RS.make({
   greet: {
@@ -17,7 +17,7 @@ const schema = RS.make({
   },
 })
 
-const router = Server.router(schema, {
+const router = Router.make(schema, {
   greet: (name) => Effect.succeed(`Hello, ${name}!`),
 
   headers: Effect.map(_.HttpRequest, (request) =>

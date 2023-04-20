@@ -15,13 +15,13 @@ export const RpcNotFound = Schema.struct({
 })
 
 /**
- * @category models
+ * @category schemas
  * @since 1.0.0
  */
 export interface RpcNotFound extends Schema.To<typeof RpcNotFound> {}
 
 /**
- * @category constructors
+ * @category schemas
  * @since 1.0.0
  */
 export const RpcDecodeFailure = Schema.struct({
@@ -39,7 +39,7 @@ export interface RpcDecodeFailure {
 }
 
 /**
- * @category constructors
+ * @category schemas
  * @since 1.0.0
  */
 export const RpcTransportError = Schema.struct({
@@ -64,7 +64,7 @@ export interface RpcEncodeFailure {
 }
 
 /**
- * @category constructors
+ * @category schemas
  * @since 1.0.0
  */
 export const RpcEncodeFailure = Schema.struct({
@@ -83,7 +83,7 @@ export type RpcError =
   | RpcTransportError
 
 /**
- * @category constructors
+ * @category schemas
  * @since 1.0.0
  */
 export const RpcError = Schema.union(

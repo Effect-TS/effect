@@ -16,17 +16,16 @@ const requestProto: Request.Request<any, any> = {
     _A: (_: never) => _,
   },
   [Hash.symbol](this: resolver.RpcRequest) {
-    return Hash.structure({
-      _tag: this._tag,
-      input: this.input,
-    })
+    return this.hash
   },
   [Equal.symbol](this: resolver.RpcRequest, that: resolver.RpcRequest) {
-    return (
-      Equal.equals(this._tag, that._tag) && Equal.equals(this.input, that.input)
-    )
+    return this.hash === that.hash
   },
 }
+
+/** @internal */
+export const requestHash = (method: string, input: unknown): number =>
+  pipe(Hash.string(method), Hash.combine(Hash.hash(input)), Hash.optimize)
 
 /** @internal */
 export const RpcRequest: Request.Request.Constructor<

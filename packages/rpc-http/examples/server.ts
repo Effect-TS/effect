@@ -3,12 +3,12 @@ import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as RpcHttp from "@effect/rpc-http"
 import { UserId, schema } from "@effect/rpc-http/examples/schema"
-import * as Server from "@effect/rpc/Server"
+import * as Router from "@effect/rpc/Router"
 import * as Http from "node:http"
 import type { Readable } from "node:stream"
 
 // Implement the RPC server router
-const router = Server.router(schema, {
+const router = Router.make(schema, {
   getUserIds: Effect.succeed(Chunk.map(Chunk.range(1, 100), UserId)),
   getUser: (id) => Effect.succeed({ id, name: `User ${id}` }),
 })

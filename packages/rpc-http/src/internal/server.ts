@@ -1,7 +1,7 @@
 import { Tag } from "@effect/data/Context"
 import * as Effect from "@effect/io/Effect"
 import type * as server from "@effect/rpc-http/Server"
-import type { RpcRouter } from "@effect/rpc/Server"
+import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
 
 /** @internal */

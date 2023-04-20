@@ -2,6 +2,7 @@ import * as Effect from "@effect/io/Effect"
 import * as Either from "@effect/data/Either"
 import * as S from "@effect/schema/Schema"
 import * as RS from "@effect/rpc/Schema"
+import * as Router from "@effect/rpc/Router"
 import * as _ from "@effect/rpc/Server"
 import { describe, it, expect } from "vitest"
 import { pipe } from "@effect/data/Function"
@@ -55,7 +56,7 @@ const schema = RS.make({
   posts,
 })
 
-const router = _.router(schema, {
+const router = Router.make(schema, {
   greet: (name) => Effect.succeed(`Hello, ${name}!`),
 
   fail: (_) =>
@@ -82,7 +83,7 @@ const router = _.router(schema, {
 
   refined: (n) => Effect.succeed(n),
 
-  posts: _.router(posts, {
+  posts: Router.make(posts, {
     create: (post) =>
       Effect.succeed({
         id: 1,

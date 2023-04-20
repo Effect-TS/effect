@@ -2,6 +2,7 @@ import { pipe } from "@effect/data/Function"
 import * as Chunk from "@effect/data/Chunk"
 import * as Effect from "@effect/io/Effect"
 import * as Client from "@effect/rpc/Client"
+import * as Router from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
 import * as RpcSchema from "@effect/rpc/Schema"
 import * as Schema from "@effect/schema/Schema"
@@ -34,7 +35,7 @@ const posts = RpcSchema.make({
 })
 
 // Post service router
-const postsRouter = Server.router(posts, {
+const postsRouter = Router.make(posts, {
   create: (post) =>
     Effect.succeed({
       ...post,
@@ -67,7 +68,7 @@ const schema = RpcSchema.make({
 })
 
 // Root service router
-const router = Server.router(schema, {
+const router = Router.make(schema, {
   greet: (name) => Effect.succeed(`Hello ${name}!`),
   currentTime: Effect.sync(() => new Date()),
   posts: postsRouter,

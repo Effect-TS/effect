@@ -1,23 +1,19 @@
 import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
+import * as Tracer from "@effect/io/Tracer"
 import type { RpcEncodeFailure, RpcError, RpcNotFound } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
+import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type {
   RpcRequestSchema,
   RpcSchema,
   RpcService,
 } from "@effect/rpc/Schema"
-import type {
-  RpcHandler,
-  RpcHandlers,
-  RpcRouter,
-  RpcUndecodedClient,
-} from "@effect/rpc/Server"
+import type { RpcUndecodedClient } from "@effect/rpc/Server"
 import * as codec from "@effect/rpc/internal/codec"
 import { inputEncodeMap, methodCodecs } from "@effect/rpc/internal/schema"
 import * as Schema from "@effect/schema/Schema"
-import * as Tracer from "@effect/io/Tracer"
 
 const schemaHandlersMap = <H extends RpcHandlers>(
   handlers: H,

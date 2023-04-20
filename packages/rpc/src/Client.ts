@@ -42,7 +42,7 @@ type RpcClientRpcs<S extends RpcService.DefinitionWithId> = {
 }
 
 /**
- * @category cache
+ * @category tags
  * @since 1.0.0
  */
 export interface RpcCache {
@@ -50,7 +50,7 @@ export interface RpcCache {
 }
 
 /**
- * @category cache
+ * @category tags
  * @since 1.0.0
  */
 export const RpcCache: Tag<RpcCache, Cache<RpcRequest>> = internal.RpcCache

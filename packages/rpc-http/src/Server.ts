@@ -6,7 +6,7 @@ import type { Effect } from "@effect/io/Effect"
 import type { Span } from "@effect/io/Tracer"
 import * as internal from "@effect/rpc-http/internal/server"
 import type { RpcResponse } from "@effect/rpc/Resolver"
-import type { RpcHandlers, RpcRouter } from "@effect/rpc/Server"
+import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 
 /**
  * @category models

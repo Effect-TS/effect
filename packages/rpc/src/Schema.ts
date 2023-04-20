@@ -93,7 +93,7 @@ export namespace RpcService {
   }
 
   /**
-   * @category models
+   * @category utils
    * @since 1.0.0
    */
   export type Methods<S extends DefinitionWithId, P extends string = ``> = {
@@ -105,7 +105,7 @@ export namespace RpcService {
   }[keyof S]
 
   /**
-   * @category models
+   * @category utils
    * @since 1.0.0
    */
   export type Validate<
@@ -142,6 +142,7 @@ export namespace RpcService {
   }
 
   /**
+   * @category utils
    * @since 1.0.0
    */
   export type Simplify<T extends RpcService.Definition> = T extends infer S
@@ -175,7 +176,7 @@ export const make = makeWith<"Schema.Json", Schema.Json>()
  */
 export namespace RpcRequestSchema {
   /**
-   * @category models
+   * @category utils
    * @since 1.0.0
    */
   export type From<S extends RpcService.Definition, P extends string = ""> = {
@@ -212,7 +213,7 @@ export namespace RpcRequestSchema {
   }[keyof S]
 
   /**
-   * @category models
+   * @category utils
    * @since 1.0.0
    */
   export type To<S extends RpcService.Definition, P extends string = ""> = {

@@ -3,6 +3,7 @@ import * as Option from "@effect/data/Option"
 import * as S from "@effect/schema/Schema"
 import * as RS from "@effect/rpc/Schema"
 import * as Server from "@effect/rpc/Server"
+import * as Router from "@effect/rpc/Router"
 import * as _ from "@effect/rpc/Client"
 import * as DataSource from "@effect/rpc/Resolver"
 import { describe, it, expect } from "vitest"
@@ -50,7 +51,7 @@ const schema = RS.make({
   posts,
 })
 
-const router = Server.router(
+const router = Router.make(
   schema,
   {
     greet: (name) => Effect.succeed(`Hello, ${name}!`),
@@ -65,7 +66,7 @@ const router = Server.router(
           () => "",
         )} > ${_.name}`,
     ),
-    posts: Server.router(posts, {
+    posts: Router.make(posts, {
       create: (post) =>
         Effect.succeed({
           id: 1,

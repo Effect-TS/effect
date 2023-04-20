@@ -72,8 +72,9 @@ const makeRpc = <S extends RpcSchema.Any>(
   if ("input" in schema) {
     const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)
 
-    return ((input: any) =>
-      Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+    return ((input: any) => {
+      const hash = resolverInternal.requestHash(method, input)
+      return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
         pipe(
           encodeInput(input),
           Effect.flatMap((input) =>
@@ -81,6 +82,7 @@ const makeRpc = <S extends RpcSchema.Any>(
               resolverInternal.RpcRequest({
                 _tag: method,
                 input,
+                hash,
                 spanName: span.name,
                 spanId: span.spanId,
                 traceId: span.traceId,
@@ -92,14 +94,18 @@ const makeRpc = <S extends RpcSchema.Any>(
           Effect.flatMap(parseOutput),
           Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
         ),
-      )) as any
+      )
+    }) as any
   }
+
+  const hash = resolverInternal.requestHash(method, undefined)
 
   return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
     pipe(
       Effect.request(
         resolverInternal.RpcRequest({
           _tag: method,
+          hash,
           spanName: span.name,
           spanId: span.spanId,
           traceId: span.traceId,
