@@ -47,7 +47,7 @@
   "sideEffects": [],
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.24.0",
+    "@effect/io": "^0.24.3",
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
