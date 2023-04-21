@@ -1,5 +1,5 @@
 {
-  "name": "@effect/rpc-http",
+  "name": "@effect/rpc-http-node",
   "version": "0.0.0",
   "description": "",
   "publishConfig": {
@@ -48,14 +48,15 @@
   "dependencies": {
     "@effect/data": "^0.12.2",
     "@effect/io": "^0.24.3",
-    "@effect/rpc": "workspace:*"
+    "@effect/rpc": "workspace:*",
+    "@effect/rpc-http": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/schema": "^0.15.0"
   },
   "config": {
     "side": [],
     "modules": [],
     "global": []
-  },
-  "devDependencies": {
-    "@effect/schema": "^0.15.0"
   }
 }
