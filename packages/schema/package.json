@@ -107,7 +107,7 @@
   },
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.24.2",
+    "@effect/io": "^0.25.0",
     "fast-check": "^3.8.0"
   },
   "pnpm": {
