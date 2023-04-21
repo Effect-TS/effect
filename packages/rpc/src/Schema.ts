@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { RpcRequest } from "@effect/rpc/Resolver"
+import * as internal from "@effect/rpc/internal/schema"
 import * as Schema from "@effect/schema/Schema"
 
 /**
@@ -58,7 +59,7 @@ export namespace RpcSchema {
 /**
  * @since 1.0.0
  */
-export const RpcServiceId = Symbol.for("@effect/rpc/Schema/RpcServiceId")
+export const RpcServiceId: unique symbol = internal.RpcServiceId
 
 /**
  * @since 1.0.0
@@ -68,9 +69,7 @@ export type RpcServiceId = typeof RpcServiceId
 /**
  * @since 1.0.0
  */
-export const RpcServiceErrorId = Symbol.for(
-  "@effect/rpc/Schema/RpcServiceErrorId",
-)
+export const RpcServiceErrorId: unique symbol = internal.RpcServiceErrorId
 
 /**
  * @since 1.0.0
@@ -113,6 +112,14 @@ export namespace RpcService {
    * @since 1.0.0
    */
   export type Errors<S extends DefinitionWithId> = Schema.To<
+    S[RpcServiceErrorId]
+  >
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type ErrorsFrom<S extends DefinitionWithId> = Schema.From<
     S[RpcServiceErrorId]
   >
 
@@ -183,25 +190,13 @@ export namespace RpcService {
  * @since 1.0.0
  */
 export const makeWith =
-  <VL extends string, V>(): {
-    <S extends RpcService.Definition>(schema: S): RpcService.Simplify<
-      RpcService.Validate<VL, V, S>,
-      never,
-      never
-    >
-
-    <S extends RpcService.Definition, EI extends V, E>(
-      schema: S,
-      options: { serviceErrors: Schema.Schema<EI, E> },
-    ): RpcService.Simplify<RpcService.Validate<VL, V, S>, EI, E>
-  } =>
+  <VL extends string, V>() =>
   <S extends RpcService.Definition>(
     schema: S,
-    options?: { serviceErrors: Schema.Schema<any, any> },
-  ): any => ({
+  ): RpcService.Simplify<RpcService.Validate<VL, V, S>, never, never> => ({
     ...(schema as any),
     [RpcServiceId]: RpcServiceId,
-    [RpcServiceErrorId]: options?.serviceErrors ?? Schema.never,
+    [RpcServiceErrorId]: Schema.never,
   })
 
 /**
@@ -211,6 +206,32 @@ export const makeWith =
  * @since 1.0.0
  */
 export const make = makeWith<"Schema.Json", Schema.Json>()
+
+/**
+ * Add a service level error, which can then be used with `Router.provideServiceEffect`.
+ *
+ * @category combinators
+ * @since 1.0.0
+ */
+export const withServiceError: {
+  <EI extends Schema.Json, E>(error: Schema.Schema<EI, E>): <
+    S extends RpcService.DefinitionWithId,
+  >(
+    self: S,
+  ) => RpcService.WithId<
+    S,
+    EI | RpcService.ErrorsFrom<S>,
+    E | RpcService.Errors<S>
+  >
+  <S extends RpcService.DefinitionWithId, EI extends Schema.Json, E>(
+    self: S,
+    error: Schema.Schema<EI, E>,
+  ): RpcService.WithId<
+    S,
+    EI | RpcService.ErrorsFrom<S>,
+    E | RpcService.Errors<S>
+  >
+} = internal.withServiceError
 
 /**
  * @since 1.0.0

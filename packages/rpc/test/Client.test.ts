@@ -17,16 +17,14 @@ const SomeError = S.struct({
 })
 interface SomeError extends S.To<typeof SomeError> {}
 
-const posts = RS.make(
-  {
+const posts = RS.withServiceError(
+  RS.make({
     create: {
       input: S.struct({ body: S.string }),
       output: S.struct({ id: S.number, body: S.string }),
     },
-  },
-  {
-    serviceErrors: SomeError,
-  },
+  }),
+  SomeError,
 )
 
 const schema = RS.make({

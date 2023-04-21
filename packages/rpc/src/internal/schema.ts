@@ -1,9 +1,19 @@
+import { dual } from "@effect/data/Function"
 import type * as Effect from "@effect/io/Effect"
 import type { RpcEncodeFailure } from "@effect/rpc/Error"
-import type { RpcService } from "@effect/rpc/Schema"
-import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
+import type * as schema from "@effect/rpc/Schema"
 import { decode, encode, encodeEffect } from "@effect/rpc/internal/codec"
 import * as Schema from "@effect/schema/Schema"
+
+/** @internal */
+export const RpcServiceId: schema.RpcServiceId = Symbol.for(
+  "@effect/rpc/Schema/RpcService",
+) as schema.RpcServiceId
+
+/** @internal */
+export const RpcServiceErrorId: schema.RpcServiceErrorId = Symbol.for(
+  "@effect/rpc/Schema/RpcServiceErrorId",
+) as schema.RpcServiceErrorId
 
 /** @internal */
 export const schemasToUnion = (
@@ -19,7 +29,7 @@ export const schemasToUnion = (
 }
 
 /** @internal */
-export const methodCodecs = <S extends RpcService.DefinitionWithId>(
+export const methodCodecs = <S extends schema.RpcService.DefinitionWithId>(
   schemas: S,
   serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
@@ -60,7 +70,9 @@ export const methodCodecs = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const methodClientCodecs = <S extends RpcService.DefinitionWithId>(
+export const methodClientCodecs = <
+  S extends schema.RpcService.DefinitionWithId,
+>(
   schemas: S,
   serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
@@ -101,7 +113,7 @@ export const methodClientCodecs = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const inputEncodeMap = <S extends RpcService.DefinitionWithId>(
+export const inputEncodeMap = <S extends schema.RpcService.DefinitionWithId>(
   schemas: S,
   prefix = "",
 ): Record<
@@ -123,3 +135,40 @@ export const inputEncodeMap = <S extends RpcService.DefinitionWithId>(
       [`${prefix}${method}`]: encodeEffect(Schema.to(schema.input)),
     }
   }, {})
+
+/** @internal */
+export const withServiceError: {
+  <EI extends Schema.Json, E>(error: Schema.Schema<EI, E>): <
+    S extends schema.RpcService.DefinitionWithId,
+  >(
+    self: S,
+  ) => schema.RpcService.WithId<
+    S,
+    schema.RpcService.ErrorsFrom<S> | EI,
+    schema.RpcService.Errors<S> | E
+  >
+  <S extends schema.RpcService.DefinitionWithId, EI extends Schema.Json, E>(
+    self: S,
+    error: Schema.Schema<EI, E>,
+  ): schema.RpcService.WithId<
+    S,
+    schema.RpcService.ErrorsFrom<S> | EI,
+    schema.RpcService.Errors<S> | E
+  >
+} = dual(
+  2,
+  <S extends schema.RpcService.DefinitionWithId, EI extends Schema.Json, E>(
+    self: S,
+    error: Schema.Schema<EI, E>,
+  ): schema.RpcService.WithId<
+    S,
+    schema.RpcService.ErrorsFrom<S> | EI,
+    schema.RpcService.Errors<S> | E
+  > => ({
+    ...self,
+    [RpcServiceErrorId]: schemasToUnion([
+      self[RpcServiceErrorId] as any,
+      error,
+    ]),
+  }),
+)

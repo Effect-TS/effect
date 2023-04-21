@@ -30,14 +30,14 @@ const posts = RS.make({
   },
 })
 
-const schema = RS.make(
-  {
+const schema = RS.withServiceError(
+  RS.make({
     getCount: {
       output: S.tuple(S.number, S.number),
     },
     posts,
-  },
-  { serviceErrors: SomeError },
+  }),
+  SomeError,
 )
 
 const router = _.make(schema, {
