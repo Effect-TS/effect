@@ -1,13 +1,27 @@
 import type * as Effect from "@effect/io/Effect"
 import type { RpcEncodeFailure } from "@effect/rpc/Error"
 import type { RpcService } from "@effect/rpc/Schema"
-import { RpcServiceId } from "@effect/rpc/Schema"
+import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import { decode, encode, encodeEffect } from "@effect/rpc/internal/codec"
 import * as Schema from "@effect/schema/Schema"
 
 /** @internal */
+export const schemasToUnion = (
+  schemas: ReadonlyArray<Schema.Schema<any>>,
+): Schema.Schema<any> => {
+  schemas = schemas.filter((s) => s !== (Schema.never as any))
+
+  return schemas.length === 0
+    ? (Schema.never as any)
+    : schemas.length === 1
+    ? schemas[0]
+    : Schema.union(...schemas)
+}
+
+/** @internal */
 export const methodCodecs = <S extends RpcService.DefinitionWithId>(
   schemas: S,
+  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
 ): Record<
   string,
@@ -16,28 +30,39 @@ export const methodCodecs = <S extends RpcService.DefinitionWithId>(
     output: ReturnType<typeof encode>
     error: ReturnType<typeof encode>
   }
-> =>
-  Object.entries(schemas).reduce((acc, [method, schema]) => {
+> => {
+  serviceErrors = [
+    ...serviceErrors,
+    schemas[RpcServiceErrorId] as Schema.Schema<any>,
+  ]
+
+  return Object.entries(schemas).reduce((acc, [method, schema]) => {
     if (RpcServiceId in schema) {
       return {
         ...acc,
-        ...methodCodecs(schema, `${prefix}${method}.`),
+        ...methodCodecs(schema, serviceErrors, `${prefix}${method}.`),
       }
     }
+
+    const errorSchemas = schema.error
+      ? [schema.error, ...serviceErrors]
+      : serviceErrors
 
     return {
       ...acc,
       [`${prefix}${method}`]: {
         input: "input" in schema ? decode(schema.input) : undefined,
         output: encode(schema.output),
-        error: encode(schema.error ?? Schema.never),
+        error: encode(schemasToUnion(errorSchemas)),
       },
     }
   }, {})
+}
 
 /** @internal */
 export const methodClientCodecs = <S extends RpcService.DefinitionWithId>(
   schemas: S,
+  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
 ): Record<
   string,
@@ -46,24 +71,34 @@ export const methodClientCodecs = <S extends RpcService.DefinitionWithId>(
     output: ReturnType<typeof decode>
     error: ReturnType<typeof decode>
   }
-> =>
-  Object.entries(schemas).reduce((acc, [method, schema]) => {
+> => {
+  serviceErrors = [
+    ...serviceErrors,
+    schemas[RpcServiceErrorId] as Schema.Schema<any>,
+  ]
+
+  return Object.entries(schemas).reduce((acc, [method, schema]) => {
     if (RpcServiceId in schema) {
       return {
         ...acc,
-        ...methodCodecs(schema, `${prefix}${method}.`),
+        ...methodClientCodecs(schema, serviceErrors, `${prefix}${method}.`),
       }
     }
+
+    const errorSchemas = schema.error
+      ? [schema.error, ...serviceErrors]
+      : serviceErrors
 
     return {
       ...acc,
       [`${prefix}${method}`]: {
         input: "input" in schema ? encode(schema.input) : undefined,
         output: decode(schema.output),
-        error: decode(schema.error ?? Schema.never),
+        error: decode(schemasToUnion(errorSchemas)),
       },
     }
   }, {})
+}
 
 /** @internal */
 export const inputEncodeMap = <S extends RpcService.DefinitionWithId>(

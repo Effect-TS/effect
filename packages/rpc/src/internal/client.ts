@@ -7,17 +7,17 @@ import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResolver } from "@effect/rpc/Resolver"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
-import { RpcServiceId } from "@effect/rpc/Schema"
+import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import * as codec from "@effect/rpc/internal/codec"
 import * as resolverInternal from "@effect/rpc/internal/resolver"
-import * as schema from "@effect/rpc/internal/schema"
-import * as Schema from "@effect/schema/Schema"
+import * as schemaInternal from "@effect/rpc/internal/schema"
+import type * as Schema from "@effect/schema/Schema"
 
 /** @internal */
 export const RpcCache = Tag<client.RpcCache, Request.Cache<RpcRequest>>()
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
-  const map = schema.methodClientCodecs(schemas)
+  const map = schemaInternal.methodClientCodecs(schemas)
 
   return (method: RpcService.Methods<S>, output: unknown) => {
     const result = map[method as string].output(output)
@@ -33,18 +33,37 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
   schemas: S,
   transport: RpcResolver<never>,
   options: client.RpcClientOptions,
+  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
-): client.RpcClient<S> =>
-  Object.entries(schemas).reduce(
+): client.RpcClient<S> => {
+  serviceErrors = [
+    ...serviceErrors,
+    schemas[RpcServiceErrorId] as Schema.Schema<any>,
+  ]
+
+  return Object.entries(schemas).reduce(
     (acc, [method, codec]) => ({
       ...acc,
       [method]:
         RpcServiceId in codec
-          ? makeRecursive(codec, transport, options, `${prefix}${method}.`)
-          : makeRpc(transport, codec, `${prefix}${method}`, options),
+          ? makeRecursive(
+              codec,
+              transport,
+              options,
+              serviceErrors,
+              `${prefix}${method}.`,
+            )
+          : makeRpc(
+              transport,
+              serviceErrors,
+              codec,
+              `${prefix}${method}`,
+              options,
+            ),
     }),
     {} as any,
   )
+}
 
 /** @internal */
 export const make = <S extends RpcService.DefinitionWithId>(
@@ -60,12 +79,17 @@ export const make = <S extends RpcService.DefinitionWithId>(
 
 const makeRpc = <S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,
+  serviceErrors: ReadonlyArray<Schema.Schema<any>>,
   schema: S,
   method: string,
   { spanPrefix = "RpcClient" }: client.RpcClientOptions,
-): client.Rpc<S> => {
+): client.Rpc<S, never> => {
+  const errorSchemas =
+    "error" in schema
+      ? [RpcError, schema.error, ...serviceErrors]
+      : [RpcError, ...serviceErrors]
   const parseError = codec.decodeEffect(
-    "error" in schema ? Schema.union(RpcError, schema.error) : RpcError,
+    schemaInternal.schemasToUnion(errorSchemas),
   )
   const parseOutput = codec.decodeEffect(schema.output)
 

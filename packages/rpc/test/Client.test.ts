@@ -8,18 +8,26 @@ import * as _ from "@effect/rpc/Client"
 import * as DataSource from "@effect/rpc/Resolver"
 import { describe, it, expect } from "vitest"
 import * as Tracer from "@effect/io/Tracer"
+import { typeEquals } from "@effect/rpc/test/utils"
+import type { RpcError } from "@effect/rpc/Error"
 
 const SomeError = S.struct({
   _tag: S.literal("SomeError"),
   message: S.string,
 })
+interface SomeError extends S.To<typeof SomeError> {}
 
-const posts = RS.make({
-  create: {
-    input: S.struct({ body: S.string }),
-    output: S.struct({ id: S.number, body: S.string }),
+const posts = RS.make(
+  {
+    create: {
+      input: S.struct({ body: S.string }),
+      output: S.struct({ id: S.number, body: S.string }),
+    },
   },
-})
+  {
+    serviceErrors: SomeError,
+  },
+)
 
 const schema = RS.make({
   greet: {
@@ -115,5 +123,17 @@ describe("Client", () => {
     expect(await Effect.runPromise(clientWithPrefix.currentSpanName)).toEqual(
       "CustomClient.currentSpanName > CustomServer.currentSpanName",
     )
+  })
+
+  it("nested service errors", () => {
+    typeEquals(client.posts.create)<
+      (input: {
+        readonly body: string
+      }) => Effect.Effect<
+        never,
+        SomeError | RpcError,
+        { readonly id: number; readonly body: string }
+      >
+    >() satisfies true
   })
 })

@@ -38,13 +38,21 @@ const provideHandlerEffect = (
 
 /** @internal */
 export const provideServiceEffect: {
-  <T extends Tag<any, any>, R, E>(
+  <
+    Router extends RpcRouter.Base,
+    T extends Tag<any, any>,
+    R,
+    E extends RpcService.Errors<Router["schema"]>,
+  >(
     tag: T,
     effect: Effect.Effect<R, E, Tag.Service<T>>,
-  ): <Router extends RpcRouter.Base>(
-    self: Router,
-  ) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
-  <Router extends RpcRouter.Base, T extends Tag<any, any>, R, E>(
+  ): (self: Router) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
+  <
+    Router extends RpcRouter.Base,
+    T extends Tag<any, any>,
+    R,
+    E extends RpcService.Errors<Router["schema"]>,
+  >(
     self: Router,
     tag: T,
     effect: Effect.Effect<R, E, Tag.Service<T>>,

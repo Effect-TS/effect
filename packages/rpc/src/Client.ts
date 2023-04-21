@@ -16,7 +16,7 @@ import type { Cache } from "@effect/io/Request"
  * @category models
  * @since 1.0.0
  */
-export type Rpc<C extends RpcSchema.Any> = C extends RpcSchema.IO<
+export type Rpc<C extends RpcSchema.Any, SE> = C extends RpcSchema.IO<
   infer _IE,
   infer E,
   infer _II,
@@ -24,20 +24,20 @@ export type Rpc<C extends RpcSchema.Any> = C extends RpcSchema.IO<
   infer _IO,
   infer O
 >
-  ? (input: I) => Effect<never, RpcError | E, O>
+  ? (input: I) => Effect<never, RpcError | SE | E, O>
   : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
-  ? (input: I) => Effect<never, RpcError, O>
+  ? (input: I) => Effect<never, RpcError | SE, O>
   : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O>
-  ? Effect<never, RpcError | E, O>
+  ? Effect<never, RpcError | SE | E, O>
   : C extends RpcSchema.NoInputNoError<infer _IO, infer O>
-  ? Effect<never, RpcError, O>
+  ? Effect<never, RpcError | SE, O>
   : never
 
-type RpcClientRpcs<S extends RpcService.DefinitionWithId> = {
+type RpcClientRpcs<S extends RpcService.DefinitionWithId, SE = never> = {
   [K in keyof S]: S[K] extends RpcService.DefinitionWithId
-    ? RpcClientRpcs<S[K]>
+    ? RpcClientRpcs<S[K], SE | RpcService.Errors<S>>
     : S[K] extends RpcSchema.Any
-    ? Rpc<S[K]>
+    ? Rpc<S[K], SE | RpcService.Errors<S>>
     : never
 }
 

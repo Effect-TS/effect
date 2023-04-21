@@ -68,13 +68,25 @@ export type RpcServiceId = typeof RpcServiceId
 /**
  * @since 1.0.0
  */
+export const RpcServiceErrorId = Symbol.for(
+  "@effect/rpc/Schema/RpcServiceErrorId",
+)
+
+/**
+ * @since 1.0.0
+ */
+export type RpcServiceErrorId = typeof RpcServiceErrorId
+
+/**
+ * @since 1.0.0
+ */
 export namespace RpcService {
   /**
    * @category models
    * @since 1.0.0
    */
   export interface Definition
-    extends Record<string, RpcSchema.Any | WithId<any>> {}
+    extends Record<string, RpcSchema.Any | WithId<any, any, any>> {}
 
   /**
    * @category models
@@ -82,15 +94,27 @@ export namespace RpcService {
    */
   export interface DefinitionWithId extends Definition {
     readonly [RpcServiceId]: RpcServiceId
+    readonly [RpcServiceErrorId]:
+      | Schema.Schema<any, any>
+      | Schema.Schema<never, never>
   }
 
   /**
    * @category models
    * @since 1.0.0
    */
-  export type WithId<S extends RpcService.Definition> = S & {
+  export type WithId<S extends RpcService.Definition, EI, E> = S & {
     readonly [RpcServiceId]: RpcServiceId
+    readonly [RpcServiceErrorId]: Schema.Schema<EI, E>
   }
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type Errors<S extends DefinitionWithId> = Schema.To<
+    S[RpcServiceErrorId]
+  >
 
   /**
    * @category utils
@@ -138,15 +162,19 @@ export namespace RpcService {
       ? [IO] extends [V]
         ? S[K]
         : `schema input does not extend ${VL}`
-      : never
+      : S[K]
   }
 
   /**
    * @category utils
    * @since 1.0.0
    */
-  export type Simplify<T extends RpcService.Definition> = T extends infer S
-    ? RpcService.WithId<{ [K in Exclude<keyof S, RpcServiceId>]: S[K] }>
+  export type Simplify<
+    T extends RpcService.Definition,
+    EI,
+    E,
+  > = T extends infer S
+    ? RpcService.WithId<{ [K in Exclude<keyof S, RpcServiceId>]: S[K] }, EI, E>
     : never
 }
 
@@ -155,12 +183,25 @@ export namespace RpcService {
  * @since 1.0.0
  */
 export const makeWith =
-  <VL extends string, V>() =>
+  <VL extends string, V>(): {
+    <S extends RpcService.Definition>(schema: S): RpcService.Simplify<
+      RpcService.Validate<VL, V, S>,
+      never,
+      never
+    >
+
+    <S extends RpcService.Definition, EI extends V, E>(
+      schema: S,
+      options: { serviceErrors: Schema.Schema<EI, E> },
+    ): RpcService.Simplify<RpcService.Validate<VL, V, S>, EI, E>
+  } =>
   <S extends RpcService.Definition>(
     schema: S,
-  ): RpcService.Simplify<RpcService.Validate<VL, V, S>> => ({
+    options?: { serviceErrors: Schema.Schema<any, any> },
+  ): any => ({
     ...(schema as any),
     [RpcServiceId]: RpcServiceId,
+    [RpcServiceErrorId]: options?.serviceErrors ?? Schema.never,
   })
 
 /**
