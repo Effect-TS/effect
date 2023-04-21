@@ -1,4 +1,4 @@
-import { dual } from "@effect/data/Function"
+import { dual, identity } from "@effect/data/Function"
 import type * as Effect from "@effect/io/Effect"
 import type { RpcEncodeFailure } from "@effect/rpc/Error"
 import type * as schema from "@effect/rpc/Schema"
@@ -29,88 +29,63 @@ export const schemasToUnion = (
 }
 
 /** @internal */
-export const methodCodecs = <S extends schema.RpcService.DefinitionWithId>(
-  schemas: S,
-  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
-  prefix = "",
-): Record<
-  string,
-  {
-    input?: ReturnType<typeof decode>
-    output: ReturnType<typeof encode>
-    error: ReturnType<typeof encode>
-  }
-> => {
-  serviceErrors = [
-    ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<any>,
-  ]
+export const methodSchemaTransform =
+  <A>(
+    f: (schema: {
+      input?: Schema.Schema<any>
+      output: Schema.Schema<any>
+      error: Schema.Schema<any>
+    }) => A,
+  ) =>
+  <S extends schema.RpcService.DefinitionWithId>(
+    schemas: S,
+    serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
+    prefix = "",
+  ): Record<string, A> => {
+    serviceErrors = [
+      ...serviceErrors,
+      schemas[RpcServiceErrorId] as Schema.Schema<any>,
+    ]
 
-  return Object.entries(schemas).reduce((acc, [method, schema]) => {
-    if (RpcServiceId in schema) {
+    return Object.entries(schemas).reduce((acc, [method, schema]) => {
+      if (RpcServiceId in schema) {
+        return {
+          ...acc,
+          ...methodCodecs(schema, serviceErrors, `${prefix}${method}.`),
+        }
+      }
+
+      const errorSchemas = schema.error
+        ? [schema.error, ...serviceErrors]
+        : serviceErrors
+
       return {
         ...acc,
-        ...methodCodecs(schema, serviceErrors, `${prefix}${method}.`),
+        [`${prefix}${method}`]: f({
+          input: "input" in schema ? schema.input : undefined,
+          output: schema.output,
+          error: schemasToUnion(errorSchemas),
+        }),
       }
-    }
-
-    const errorSchemas = schema.error
-      ? [schema.error, ...serviceErrors]
-      : serviceErrors
-
-    return {
-      ...acc,
-      [`${prefix}${method}`]: {
-        input: "input" in schema ? decode(schema.input) : undefined,
-        output: encode(schema.output),
-        error: encode(schemasToUnion(errorSchemas)),
-      },
-    }
-  }, {})
-}
+    }, {})
+  }
 
 /** @internal */
-export const methodClientCodecs = <
-  S extends schema.RpcService.DefinitionWithId,
->(
-  schemas: S,
-  serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
-  prefix = "",
-): Record<
-  string,
-  {
-    input?: ReturnType<typeof encode>
-    output: ReturnType<typeof decode>
-    error: ReturnType<typeof decode>
-  }
-> => {
-  serviceErrors = [
-    ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<any>,
-  ]
+export const methodSchemas = methodSchemaTransform(identity)
 
-  return Object.entries(schemas).reduce((acc, [method, schema]) => {
-    if (RpcServiceId in schema) {
-      return {
-        ...acc,
-        ...methodClientCodecs(schema, serviceErrors, `${prefix}${method}.`),
-      }
-    }
+/** @internal */
+export const methodCodecs = methodSchemaTransform((schema) => ({
+  input: schema.input ? decode(schema.input) : undefined,
+  output: encode(schema.output),
+  error: encode(schema.error),
+}))
 
-    const errorSchemas = schema.error
-      ? [schema.error, ...serviceErrors]
-      : serviceErrors
-
-    return {
-      ...acc,
-      [`${prefix}${method}`]: {
-        input: "input" in schema ? encode(schema.input) : undefined,
-        output: decode(schema.output),
-        error: decode(schemasToUnion(errorSchemas)),
-      },
-    }
-  }, {})
-}
+/** @internal */
+export const methodClientCodecs = methodSchemaTransform((schema) => ({
+  input: schema.input ? encode(schema.input) : undefined,
+  output: decode(schema.output),
+  error: decode(schema.error),
+}))
 
 /** @internal */
 export const inputEncodeMap = <S extends schema.RpcService.DefinitionWithId>(

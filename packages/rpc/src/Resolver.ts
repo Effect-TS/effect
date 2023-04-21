@@ -5,6 +5,7 @@ import type * as Effect from "@effect/io/Effect"
 import type * as Request from "@effect/io/Request"
 import type * as Resolver from "@effect/io/RequestResolver"
 import type { RpcError, RpcTransportError } from "@effect/rpc/Error"
+import type { RpcSchema } from "@effect/rpc/Schema"
 import * as internal from "@effect/rpc/internal/resolver"
 
 /**
@@ -18,9 +19,11 @@ export interface RpcResolver<R>
  * @category models
  * @since 1.0.0
  */
-export interface RpcRequest
-  extends Request.Request<RpcError, unknown>,
-    RpcRequest.Fields {}
+export interface RpcRequest extends Request.Request<RpcError, unknown> {
+  readonly payload: RpcRequest.Payload
+  readonly hash: number
+  readonly schema: RpcSchema.Any
+}
 
 /**
  * @since 1.0.0
@@ -40,10 +43,9 @@ export namespace RpcRequest {
    * @category models
    * @since 1.0.0
    */
-  export interface Fields extends Tracing {
+  export interface Payload extends Tracing {
     readonly _tag: string
     readonly input?: unknown
-    readonly hash: number
   }
 
   /**
@@ -99,6 +101,34 @@ export namespace RpcResponse {
  */
 export const make: <R>(
   send: (
-    requests: ReadonlyArray<RpcRequest>,
+    requests: ReadonlyArray<RpcRequest.Payload>,
   ) => Effect.Effect<R, RpcTransportError, unknown>,
 ) => RpcResolver<R> = internal.make
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeWithSchema: <R>(
+  send: (
+    requests: ReadonlyArray<RpcRequest>,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
+) => RpcResolver<R> = internal.makeWithSchema
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeSingle: <R>(
+  send: (
+    request: RpcRequest.Payload,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
+) => RpcResolver<R> = internal.makeSingle
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeSingleWithSchema: <R>(
+  send: (request: RpcRequest) => Effect.Effect<R, RpcTransportError, unknown>,
+) => RpcResolver<R> = internal.makeSingleWithSchema

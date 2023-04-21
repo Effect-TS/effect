@@ -46,10 +46,11 @@ const RpcResponse: Schema.Schema<resolver.RpcResponse> = Schema.union(
   }),
 )
 
+const decodeResponse = decodeEffect(RpcResponse)
 const decodeResponses = decodeEffect(Schema.array(RpcResponse))
 
 /** @internal */
-export const make = <R>(
+export const makeWithSchema = <R>(
   send: (
     requests: ReadonlyArray<resolver.RpcRequest>,
   ) => Effect.Effect<R, RpcTransportError, unknown>,
@@ -74,3 +75,37 @@ export const make = <R>(
       ),
     ),
   )
+
+/** @internal */
+export const make = <R>(
+  send: (
+    requests: ReadonlyArray<resolver.RpcRequest.Payload>,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
+): resolver.RpcResolver<R> =>
+  makeWithSchema((requests) => send(requests.map((_) => _.payload)))
+
+/** @internal */
+export const makeSingleWithSchema = <R>(
+  send: (
+    request: resolver.RpcRequest,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
+): resolver.RpcResolver<R> =>
+  Resolver.fromFunctionEffect<R, resolver.RpcRequest>((request) =>
+    pipe(
+      send(request),
+      Effect.flatMap(decodeResponse),
+      Effect.flatMap((response) =>
+        response._tag === "Success"
+          ? Effect.succeed(response.value)
+          : Effect.fail(response.error),
+      ),
+    ),
+  )
+
+/** @internal */
+export const makeSingle = <R>(
+  send: (
+    request: resolver.RpcRequest.Payload,
+  ) => Effect.Effect<R, RpcTransportError, unknown>,
+): resolver.RpcResolver<R> =>
+  makeSingleWithSchema((request) => send(request.payload))

@@ -6,7 +6,11 @@ import type { Span } from "@effect/io/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
 import type { RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
-import type { RpcRequestSchema, RpcService } from "@effect/rpc/Schema"
+import type {
+  RpcRequestSchema,
+  RpcService,
+  RpcSchema,
+} from "@effect/rpc/Schema"
 import * as internal from "@effect/rpc/internal/server"
 
 /**
@@ -34,6 +38,34 @@ export const handlerRaw: <R extends RpcRouter.Base>(
 ) => Req extends { _tag: infer M }
   ? RpcHandler.FromMethod<R["handlers"], M, Span, RpcEncodeFailure>
   : never = internal.handlerRaw as any
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const handleSingle: <R extends RpcRouter.Base>(
+  router: R,
+) => (
+  request: unknown,
+) => Effect<
+  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+  never,
+  RpcResponse
+> = internal.handleSingle as any
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const handleSingleWithSchema: <R extends RpcRouter.Base>(
+  router: R,
+) => (
+  request: unknown,
+) => Effect<
+  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+  never,
+  readonly [RpcResponse, RpcSchema.Any]
+> = internal.handleSingleWithSchema as any
 
 /**
  * @category models

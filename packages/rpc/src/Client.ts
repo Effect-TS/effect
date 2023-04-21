@@ -16,7 +16,7 @@ import type { Cache } from "@effect/io/Request"
  * @category models
  * @since 1.0.0
  */
-export type Rpc<C extends RpcSchema.Any, SE> = C extends RpcSchema.IO<
+export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
   infer _IE,
   infer E,
   infer _II,
@@ -24,20 +24,20 @@ export type Rpc<C extends RpcSchema.Any, SE> = C extends RpcSchema.IO<
   infer _IO,
   infer O
 >
-  ? (input: I) => Effect<never, RpcError | SE | E, O>
+  ? (input: I) => Effect<R, RpcError | SE | E, O>
   : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
-  ? (input: I) => Effect<never, RpcError | SE, O>
+  ? (input: I) => Effect<R, RpcError | SE, O>
   : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O>
-  ? Effect<never, RpcError | SE | E, O>
+  ? Effect<R, RpcError | SE | E, O>
   : C extends RpcSchema.NoInputNoError<infer _IO, infer O>
-  ? Effect<never, RpcError | SE, O>
+  ? Effect<R, RpcError | SE, O>
   : never
 
-type RpcClientRpcs<S extends RpcService.DefinitionWithId, SE = never> = {
+type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never> = {
   [K in keyof S]: S[K] extends RpcService.DefinitionWithId
-    ? RpcClientRpcs<S[K], SE | RpcService.Errors<S>>
+    ? RpcClientRpcs<S[K], R, SE | RpcService.Errors<S>>
     : S[K] extends RpcSchema.Any
-    ? Rpc<S[K], SE | RpcService.Errors<S>>
+    ? Rpc<S[K], R, SE | RpcService.Errors<S>>
     : never
 }
 
@@ -61,17 +61,19 @@ export const RpcCache: Tag<RpcCache, Cache<RpcRequest>> = internal.RpcCache
  * @category models
  * @since 1.0.0
  */
-export type RpcClient<S extends RpcService.DefinitionWithId> =
-  RpcClientRpcs<S> & {
-    _schemas: S
-    _unsafeDecode: <
-      M extends RpcService.Methods<S>,
-      O extends UndecodedRpcResponse<M, any>,
-    >(
-      method: M,
-      output: O,
-    ) => O extends UndecodedRpcResponse<M, infer O> ? O : never
-  }
+export type RpcClient<S extends RpcService.DefinitionWithId, R> = RpcClientRpcs<
+  S,
+  R
+> & {
+  _schemas: S
+  _unsafeDecode: <
+    M extends RpcService.Methods<S>,
+    O extends UndecodedRpcResponse<M, any>,
+  >(
+    method: M,
+    output: O,
+  ) => O extends UndecodedRpcResponse<M, infer O> ? O : never
+}
 /**
  * @category models
  * @since 1.0.0
@@ -86,8 +88,14 @@ export interface RpcClientOptions {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <S extends RpcService.DefinitionWithId>(
+export const make: <
+  S extends RpcService.DefinitionWithId,
+  Resolver extends RpcResolver<never> | Effect<any, never, RpcResolver<never>>,
+>(
   schemas: S,
-  transport: RpcResolver<never>,
+  resolver: Resolver,
   options?: RpcClientOptions,
-) => RpcClient<S> = internal.make
+) => RpcClient<
+  S,
+  [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never
+> = internal.make

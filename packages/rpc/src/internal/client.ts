@@ -35,7 +35,7 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
   options: client.RpcClientOptions,
   serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
   prefix = "",
-): client.RpcClient<S> => {
+): client.RpcClient<S, never> => {
   serviceErrors = [
     ...serviceErrors,
     schemas[RpcServiceErrorId] as Schema.Schema<any>,
@@ -66,13 +66,23 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const make = <S extends RpcService.DefinitionWithId>(
+export const make = <
+  S extends RpcService.DefinitionWithId,
+  Resolver extends
+    | RpcResolver<never>
+    | Effect.Effect<any, never, RpcResolver<never>>,
+>(
   schemas: S,
-  transport: RpcResolver<never>,
+  resolver: Resolver,
   options: client.RpcClientOptions = {},
-): client.RpcClient<S> =>
+): client.RpcClient<
+  S,
+  [Resolver] extends [Effect.Effect<any, any, any>]
+    ? Effect.Effect.Context<Resolver>
+    : never
+> =>
   ({
-    ...makeRecursive(schemas, transport, options),
+    ...makeRecursive(schemas, resolver as any, options),
     _schemas: schemas,
     _unsafeDecode: unsafeDecode(schemas),
   } as any)
@@ -83,7 +93,7 @@ const makeRpc = <S extends RpcSchema.Any>(
   schema: S,
   method: string,
   { spanPrefix = "RpcClient" }: client.RpcClientOptions,
-): client.Rpc<S, never> => {
+): client.Rpc<S, never, never> => {
   const errorSchemas =
     "error" in schema
       ? [RpcError, schema.error, ...serviceErrors]
@@ -104,12 +114,15 @@ const makeRpc = <S extends RpcSchema.Any>(
           Effect.flatMap((input) =>
             Effect.request(
               resolverInternal.RpcRequest({
-                _tag: method,
-                input,
+                payload: {
+                  _tag: method,
+                  input,
+                  spanName: span.name,
+                  spanId: span.spanId,
+                  traceId: span.traceId,
+                },
                 hash,
-                spanName: span.name,
-                spanId: span.spanId,
-                traceId: span.traceId,
+                schema,
               }),
               resolver,
               Effect.serviceOption(RpcCache),
@@ -128,11 +141,14 @@ const makeRpc = <S extends RpcSchema.Any>(
     pipe(
       Effect.request(
         resolverInternal.RpcRequest({
-          _tag: method,
+          payload: {
+            _tag: method,
+            spanName: span.name,
+            spanId: span.spanId,
+            traceId: span.traceId,
+          },
           hash,
-          spanName: span.name,
-          spanId: span.spanId,
-          traceId: span.traceId,
+          schema,
         }),
         resolver,
         Effect.serviceOption(RpcCache),
