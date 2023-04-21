@@ -1,0 +1,66 @@
+{
+  "name": "@effect/rpc-nextjs",
+  "version": "0.0.0",
+  "description": "",
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effect-ts/rpc.git"
+  },
+  "homepage": "https://github.com/effect-ts/rpc",
+  "exports": {
+    ".": {
+      "require": "./build/cjs/index.js"
+    },
+    "./*": {
+      "require": "./build/cjs/*.js"
+    },
+    "./examples/*": {
+      "require": "./build/examples/*.js"
+    }
+  },
+  "scripts": {
+    "example": "ts-node --project tsconfig.examples.json",
+    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
+    "release": "pnpm run build && changeset publish",
+    "clean": "rimraf build dist",
+    "build": "pnpm build-all && pnpm build-pack",
+    "build-cjs": "babel build/esm --config-file ../../.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
+    "build-mjs": "babel build/esm --config-file ../../.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
+    "build-post": "build-utils pack-v4",
+    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
+    "build-all": "tsc -b tsconfig.json",
+    "build-watch": "tsc -b tsconfig.json --watch",
+    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
+    "docs": "docs-ts",
+    "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "tc": "tsc --noEmit",
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "keywords": [],
+  "author": "Effect contributors",
+  "license": "MIT",
+  "sideEffects": [],
+  "dependencies": {
+    "@effect/data": "^0.12.2",
+    "@effect/io": "^0.24.3",
+    "@effect/rpc": "workspace:*",
+    "@effect/rpc-http": "workspace:*"
+  },
+  "devDependencies": {
+    "@effect/schema": "^0.15.0",
+    "next": "^13.3.0"
+  },
+  "config": {
+    "side": [],
+    "modules": [],
+    "global": []
+  },
+  "peerDependencies": {
+    "next": "^13.3"
+  }
+}
