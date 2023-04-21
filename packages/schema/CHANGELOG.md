@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.16.0
+
+### Minor Changes
+
+- [#249](https://github.com/Effect-TS/schema/pull/249) [`ccee34e`](https://github.com/Effect-TS/schema/commit/ccee34ef87e9f0879ec674feaac1854ecb327614) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest effect/io
+
 ## 0.15.0
 
 ### Minor Changes
