@@ -10,7 +10,7 @@ import * as Chunk from "@effect/data/Chunk"
 // TODO: test more than one worker
 const ResolverLive = Resolver.WebWorkerResolverLive(
   () => new Worker(new URL("./e2e/worker.ts", import.meta.url)),
-  { size: Effect.succeed(1) },
+  { size: Effect.succeed(1), workerPermits: 10 },
 )
 
 const client = Client.make(schema)

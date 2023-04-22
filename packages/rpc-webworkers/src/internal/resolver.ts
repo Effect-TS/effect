@@ -6,6 +6,7 @@ import * as Layer from "@effect/io/Layer"
 import * as Pool from "@effect/io/Pool"
 import type * as WWResolver from "@effect/rpc-webworkers/Resolver"
 import * as schema from "@effect/rpc-webworkers/Schema"
+import * as WW from "@effect/rpc-webworkers/internal/worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
 
@@ -17,64 +18,60 @@ export const WebWorkerResolver = Tag<
 
 const defaultSize = Effect.sync(() => navigator.hardwareConcurrency)
 
-const makeWorker = (evaluate: LazyArg<Worker>) =>
-  Effect.acquireRelease(Effect.sync(evaluate), (worker) =>
-    Effect.sync(() => worker.terminate()),
-  )
-
 /** @internal */
 export const WebWorkerResolverLive = (
   evaluate: LazyArg<Worker>,
-  { size = defaultSize }: { size?: Effect.Effect<never, never, number> } = {},
+  {
+    size = defaultSize,
+    workerPermits = 1,
+  }: {
+    size?: Effect.Effect<never, never, number>
+    workerPermits?: number
+  } = {},
 ) =>
   Layer.scoped(
     WebWorkerResolver,
     pipe(
-      Effect.flatMap(size, (size) => Pool.make(makeWorker(evaluate), size)),
+      Effect.flatMap(size, (size) =>
+        Pool.make(makeWorker(evaluate, workerPermits), size),
+      ),
       Effect.map(make),
+    ),
+  )
+
+const makeWorker = (evaluate: LazyArg<Worker>, permits: number) =>
+  pipe(
+    WW.make<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>(
+      evaluate,
+      {
+        permits,
+        onError: (error) => ({ _tag: "RpcTransportError", error }),
+        payload: (request) => request.payload,
+        transferables: (request) =>
+          "input" in request.schema
+            ? schema.getTransferables(
+                request.schema.input,
+                request.payload.input,
+              )
+            : [],
+      },
+    ),
+    Effect.tap((worker) =>
+      pipe(
+        worker.run,
+        Effect.retryWhile(() => true),
+        Effect.forkScoped,
+      ),
     ),
   )
 
 /** @internal */
 export const make = (
-  pool: Pool.Pool<never, Worker>,
+  pool: Pool.Pool<
+    never,
+    WW.WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+  >,
 ): Resolver.RpcResolver<never> =>
   Resolver.makeSingleWithSchema((request) =>
-    pipe(
-      pool.get(),
-      Effect.flatMap((worker) =>
-        pipe(
-          Effect.asyncInterrupt<never, RpcTransportError, unknown>((resume) => {
-            const controller = new AbortController()
-            const signal = controller.signal
-
-            const onError = (error: ErrorEvent) => {
-              resume(Effect.fail({ _tag: "RpcTransportError", error }))
-            }
-            worker.addEventListener("error", onError, { once: true, signal })
-            worker.addEventListener(
-              "message",
-              (event) => {
-                worker.removeEventListener("error", onError)
-                resume(Effect.succeed(event.data))
-              },
-              { once: true, signal },
-            )
-
-            const transfer =
-              "input" in request.schema
-                ? schema.getTransferables(
-                    request.schema.input,
-                    request.payload.input,
-                  )
-                : []
-            worker.postMessage(request.payload, { transfer })
-
-            return Effect.sync(() => controller.abort())
-          }),
-          Effect.tapErrorCause(() => pool.invalidate(worker)),
-        ),
-      ),
-      Effect.scoped,
-    ),
+    Effect.flatMap(Effect.scoped(pool.get()), (worker) => worker.send(request)),
   )

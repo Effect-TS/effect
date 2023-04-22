@@ -7,7 +7,29 @@ import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type { Pool } from "@effect/io/Pool"
 import * as internal from "@effect/rpc-webworkers/internal/resolver"
+import type { WebWorker } from "@effect/rpc-webworkers/internal/worker"
+import type { RpcTransportError } from "@effect/rpc/Error"
 import type * as Resolver from "@effect/rpc/Resolver"
+
+export {
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  WebWorker,
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  WebWorkerOptions,
+
+  /**
+   * @category constructors
+   * @since 1.0.0
+   */
+  make as makeWorker,
+} from "@effect/rpc-webworkers/internal/worker"
 
 /**
  * @category tags
@@ -32,7 +54,13 @@ export const WebWorkerResolver: Tag<
  */
 export const WebWorkerResolverLive: (
   evaluate: LazyArg<Worker>,
-  { size }?: { size?: Effect.Effect<never, never, number> },
+  {
+    size,
+    workerPermits,
+  }?: {
+    size?: Effect.Effect<never, never, number>
+    workerPermits?: number
+  },
 ) => Layer.Layer<never, never, WebWorkerResolver> =
   internal.WebWorkerResolverLive
 
@@ -40,5 +68,9 @@ export const WebWorkerResolverLive: (
  * @category constructors
  * @since 1.0.0
  */
-export const make: (pool: Pool<never, Worker>) => Resolver.RpcResolver<never> =
-  internal.make
+export const make: (
+  pool: Pool<
+    never,
+    WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+  >,
+) => Resolver.RpcResolver<never> = internal.make

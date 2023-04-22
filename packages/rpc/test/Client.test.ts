@@ -1,15 +1,15 @@
-import * as Effect from "@effect/io/Effect"
 import * as Option from "@effect/data/Option"
-import * as S from "@effect/schema/Schema"
+import * as Effect from "@effect/io/Effect"
+import * as Tracer from "@effect/io/Tracer"
+import * as _ from "@effect/rpc/Client"
+import type { RpcError } from "@effect/rpc/Error"
+import * as DataSource from "@effect/rpc/Resolver"
+import * as Router from "@effect/rpc/Router"
 import * as RS from "@effect/rpc/Schema"
 import * as Server from "@effect/rpc/Server"
-import * as Router from "@effect/rpc/Router"
-import * as _ from "@effect/rpc/Client"
-import * as DataSource from "@effect/rpc/Resolver"
-import { describe, it, expect } from "vitest"
-import * as Tracer from "@effect/io/Tracer"
 import { typeEquals } from "@effect/rpc/test/utils"
-import type { RpcError } from "@effect/rpc/Error"
+import * as S from "@effect/schema/Schema"
+import { describe, expect, it } from "vitest"
 
 const SomeError = S.struct({
   _tag: S.literal("SomeError"),
