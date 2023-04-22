@@ -5,7 +5,7 @@ import type { Option } from "@effect/data/Option"
 import type { Effect } from "@effect/io/Effect"
 import type { Span } from "@effect/io/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
-import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
+import type { RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type {
   RpcRequestSchema,
@@ -61,12 +61,12 @@ export const handleSingle: <R extends RpcRouter.Base>(
 export const handleSingleWithSchema: <R extends RpcRouter.Base>(
   router: R,
 ) => (
-  request: RpcRequest.Payload,
+  request: unknown,
 ) => Effect<
   Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
   never,
   readonly [RpcResponse, Option<RpcSchema.Base>]
-> = internal.handleSingleWithSchema
+> = internal.handleSingleWithSchema as any
 
 /**
  * @category models
@@ -115,3 +115,31 @@ export const makeUndecodedClient: <
   handlers: H,
   options: RpcRouter.Options,
 ) => RpcUndecodedClient<H> = internal.makeUndecodedClient
+
+/**
+ * @category utils
+ * @since 1.0.0
+ */
+export interface RpcServer {
+  (request: unknown): Effect<never, never, ReadonlyArray<RpcResponse>>
+}
+
+/**
+ * @category utils
+ * @since 1.0.0
+ */
+export interface RpcServerSingle {
+  (request: unknown): Effect<never, never, RpcResponse>
+}
+
+/**
+ * @category utils
+ * @since 1.0.0
+ */
+export interface RpcServerSingleWithSchema {
+  (request: unknown): Effect<
+    never,
+    never,
+    readonly [RpcResponse, Option<RpcSchema.Base>]
+  >
+}

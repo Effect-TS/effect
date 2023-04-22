@@ -24,4 +24,4 @@ export interface RpcWorkerHandler<R extends RpcRouter.Base> {
  */
 export const make: <Router extends RpcRouter.Base>(
   router: Router,
-) => RpcWorkerHandler<Router> = internal.make
+) => RpcWorkerHandler<Router> = internal.make as any

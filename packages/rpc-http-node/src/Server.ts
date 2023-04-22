@@ -7,6 +7,7 @@ import type { Span } from "@effect/io/Tracer"
 import type { HttpRequest } from "@effect/rpc-http/Server"
 import * as Server from "@effect/rpc-http/Server"
 import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
+import type { RpcServer } from "@effect/rpc/Server"
 import type { IncomingMessage, ServerResponse } from "node:http"
 import type { Readable } from "node:stream"
 
@@ -37,7 +38,7 @@ export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
 export function make<R extends RpcRouter.Base>(
   router: R,
 ): RpcNodeHttpHandler<R> {
-  const handler = Server.make(router)
+  const handler = Server.make(router) as unknown as RpcServer
 
   return function handleRequestResponse(
     request: IncomingMessage,

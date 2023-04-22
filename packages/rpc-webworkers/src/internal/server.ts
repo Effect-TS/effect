@@ -11,7 +11,10 @@ import type { RpcRequest } from "@effect/rpc/Resolver"
 export const make = <Router extends RpcRouter.Base>(
   router: Router,
 ): RpcWorkerHandler<Router> => {
-  const handler = Server.handleSingleWithSchema(router)
+  const handler = Server.handleSingleWithSchema(
+    router,
+  ) as unknown as Server.RpcServerSingleWithSchema
+
   return (message) => {
     const [id, request] = message.data as [number, RpcRequest.Payload]
     return Effect.flatMap(handler(request), ([response, schema]) =>
@@ -26,6 +29,6 @@ export const make = <Router extends RpcRouter.Base>(
         )
         return self.postMessage([id, response], { transfer })
       }),
-    )
+    ) as any
   }
 }

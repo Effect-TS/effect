@@ -101,7 +101,7 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type Services<H extends RpcHandlers> = {
-    [M in keyof H]: H[M] extends RpcRouter.Base
+    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
       ? Services<H[M]["handlers"]>
       : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O>
       ? R
@@ -113,7 +113,7 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type Error<H extends RpcHandlers> = {
-    [M in keyof H]: H[M] extends RpcRouter.Base
+    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
       ? Services<H[M]["handlers"]>
       : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O>
       ? E

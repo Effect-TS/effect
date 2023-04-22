@@ -41,4 +41,4 @@ export interface RpcHttpHandler<R extends RpcRouter.Base> {
  * @since 1.0.0
  */
 export const make: <R extends RpcRouter.Base>(router: R) => RpcHttpHandler<R> =
-  internal.make
+  internal.make as any
