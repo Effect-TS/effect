@@ -100,27 +100,25 @@ export namespace RpcHandlers {
    * @category handlers utils
    * @since 1.0.0
    */
-  export type Services<H extends RpcHandlers> = H[keyof H] extends RpcHandler<
-    infer R,
-    any,
-    any,
-    any
-  >
-    ? R
-    : never
+  export type Services<H extends RpcHandlers> = {
+    [M in keyof H]: H[M] extends RpcRouter.Base
+      ? Services<H[M]["handlers"]>
+      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O>
+      ? R
+      : never
+  }[keyof H]
 
   /**
    * @category handlers utils
    * @since 1.0.0
    */
-  export type Error<H extends RpcHandlers> = H[keyof H] extends RpcHandler<
-    any,
-    infer E,
-    any,
-    any
-  >
-    ? E
-    : never
+  export type Error<H extends RpcHandlers> = {
+    [M in keyof H]: H[M] extends RpcRouter.Base
+      ? Services<H[M]["handlers"]>
+      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O>
+      ? E
+      : never
+  }[keyof H]
 
   /**
    * @category handlers utils

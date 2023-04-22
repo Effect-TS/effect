@@ -1,3 +1,4 @@
+import { Tag } from "@effect/data/Context"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Tracer from "@effect/io/Tracer"
@@ -10,12 +11,25 @@ import * as Server from "@effect/rpc/Server"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
 import { describe, expect, it } from "vitest"
+import * as RR from "@effect/io/RequestResolver"
+import * as Context from "@effect/data/Context"
+import { pipe } from "@effect/data/Function"
 
 const SomeError = S.struct({
   _tag: S.literal("SomeError"),
   message: S.string,
 })
 interface SomeError extends S.To<typeof SomeError> {}
+
+const makeCounter = () => {
+  let count = 0
+
+  return {
+    get: Effect.sync(() => count++),
+  } as const
+}
+interface Counter extends ReturnType<typeof makeCounter> {}
+const Counter = Tag<Counter>()
 
 const posts = RS.withServiceError(
   RS.make({
@@ -54,6 +68,11 @@ const schema = RS.make({
     output: S.string,
   },
 
+  getCount: {
+    input: S.string,
+    output: S.number,
+  },
+
   posts,
 })
 
@@ -72,6 +91,7 @@ const router = Router.make(
           () => "",
         )} > ${_.name}`,
     ),
+    getCount: (_) => Effect.flatMap(Counter, (_) => _.get),
     posts: Router.make(posts, {
       create: (post) =>
         Effect.succeed({
@@ -84,8 +104,12 @@ const router = Router.make(
 )
 
 const handler = Server.handler(router)
-const client = _.make(schema, DataSource.make(handler))
-const clientWithPrefix = _.make(schema, DataSource.make(handler), {
+const resolver = pipe(
+  DataSource.make(handler),
+  RR.provideContext(Context.make(Counter, makeCounter())),
+)
+const client = _.make(schema, resolver)
+const clientWithPrefix = _.make(schema, resolver, {
   spanPrefix: "CustomClient",
 })
 
@@ -133,5 +157,14 @@ describe("Client", () => {
         { readonly id: number; readonly body: string }
       >
     >() satisfies true
+  })
+
+  it("caching", () => {
+    expect(Effect.runSync(client.getCount("a"))).toEqual(0)
+    expect(Effect.runSync(client.getCount("a"))).toEqual(0)
+    expect(Effect.runSync(client.getCount("b"))).toEqual(1)
+    expect(
+      Effect.runSync(Effect.withRequestCaching(client.getCount("a"), "off")),
+    ).toEqual(2)
   })
 })

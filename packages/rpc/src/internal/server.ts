@@ -136,7 +136,7 @@ export const handleSingleWithSchema = <R extends RpcRouter.Base>(
     Effect.map(handle(request), (response) => [
       response,
       Option.fromNullable(schemaMap[request._tag]),
-    ])
+    ]) as any
 }
 
 /** @internal */
@@ -169,9 +169,11 @@ export const handler = <R extends RpcRouter.Base>(
   never,
   ReadonlyArray<RpcResponse>
 >) => {
-  const handler = handleSingle(router)
+  const handler = handleSingle(router) as unknown as (
+    _: unknown,
+  ) => Effect.Effect<unknown, unknown, unknown>
 
-  return (u) =>
+  return (u): any =>
     Array.isArray(u)
       ? Effect.allPar(u.map(handler))
       : Effect.die(new Error("expected an array of requests"))
