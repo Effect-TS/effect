@@ -12,11 +12,9 @@
   },
   "homepage": "https://github.com/effect-ts/rpc",
   "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
-    },
     "./*": {
-      "require": "./build/cjs/*.js"
+      "require": "./build/cjs/*.js",
+      "import": "./build/mjs/*.mjs"
     },
     "./examples/*": {
       "require": "./build/examples/*.js"

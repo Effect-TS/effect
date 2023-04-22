@@ -1,0 +1,21 @@
+{
+  "name": "webworkers-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.2",
+    "vite": "^4.3.0"
+  },
+  "dependencies": {
+    "@effect/data": "^0.12.2",
+    "@effect/io": "^0.25.0",
+    "@effect/rpc-webworkers": "workspace:^",
+    "@effect/schema": "^0.16.0"
+  }
+}

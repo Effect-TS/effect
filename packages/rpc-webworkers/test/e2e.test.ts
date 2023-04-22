@@ -8,7 +8,7 @@ import { schema } from "./e2e/schema"
 import * as Chunk from "@effect/data/Chunk"
 
 // TODO: test more than one worker
-const ResolverLive = Resolver.WebWorkerResolverLive(
+const ResolverLive = Resolver.makeLayer(
   () => new Worker(new URL("./e2e/worker.ts", import.meta.url)),
   { size: Effect.succeed(1), workerPermits: 10 },
 )

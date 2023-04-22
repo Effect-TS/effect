@@ -19,7 +19,7 @@ export const WebWorkerResolver = Tag<
 const defaultSize = Effect.sync(() => navigator.hardwareConcurrency)
 
 /** @internal */
-export const WebWorkerResolverLive = (
+export const makeEffect = (
   evaluate: LazyArg<Worker>,
   {
     size = defaultSize,
@@ -29,15 +29,21 @@ export const WebWorkerResolverLive = (
     workerPermits?: number
   } = {},
 ) =>
-  Layer.scoped(
-    WebWorkerResolver,
-    pipe(
-      Effect.flatMap(size, (size) =>
-        Pool.make(makeWorker(evaluate, workerPermits), size),
-      ),
-      Effect.map(make),
+  pipe(
+    Effect.flatMap(size, (size) =>
+      Pool.make(makeWorker(evaluate, workerPermits), size),
     ),
+    Effect.map(make),
   )
+
+/** @internal */
+export const makeLayer = (
+  evaluate: LazyArg<Worker>,
+  options?: {
+    size?: Effect.Effect<never, never, number>
+    workerPermits?: number
+  },
+) => Layer.scoped(WebWorkerResolver, makeEffect(evaluate, options))
 
 const makeWorker = (evaluate: LazyArg<Worker>, permits: number) =>
   pipe(
@@ -69,7 +75,11 @@ const makeWorker = (evaluate: LazyArg<Worker>, permits: number) =>
 export const make = (
   pool: Pool.Pool<
     never,
-    WW.WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+    WWResolver.WebWorker<
+      RpcTransportError,
+      Resolver.RpcRequest,
+      Resolver.RpcResponse
+    >
   >,
 ): Resolver.RpcResolver<never> =>
   Resolver.makeSingleWithSchema((request) =>

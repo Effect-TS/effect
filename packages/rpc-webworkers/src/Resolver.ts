@@ -6,30 +6,37 @@ import type { LazyArg } from "@effect/data/Function"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type { Pool } from "@effect/io/Pool"
+import type { Scope } from "@effect/io/Scope"
 import * as internal from "@effect/rpc-webworkers/internal/resolver"
-import type { WebWorker } from "@effect/rpc-webworkers/internal/worker"
+import * as worker from "@effect/rpc-webworkers/internal/worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import type * as Resolver from "@effect/rpc/Resolver"
 
-export {
-  /**
-   * @category models
-   * @since 1.0.0
-   */
-  WebWorker,
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface WebWorker<E, I, O> {
+  readonly run: Effect.Effect<never, E, never>
+  readonly send: (request: I) => Effect.Effect<never, E, O>
+}
 
-  /**
-   * @category models
-   * @since 1.0.0
-   */
-  WebWorkerOptions,
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface WebWorkerOptions<E, I> {
+  readonly payload: (value: I) => unknown
+  readonly transferables: (value: I) => Array<Transferable>
+  readonly onError: (error: ErrorEvent) => E
+  readonly permits: number
+}
 
-  /**
-   * @category constructors
-   * @since 1.0.0
-   */
-  make as makeWorker,
-} from "@effect/rpc-webworkers/internal/worker"
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeWorker = worker.make
 
 /**
  * @category tags
@@ -49,20 +56,29 @@ export const WebWorkerResolver: Tag<
 > = internal.WebWorkerResolver
 
 /**
- * @category layers
+ * @category constructors
  * @since 1.0.0
  */
-export const WebWorkerResolverLive: (
+export const makeEffect: (
   evaluate: LazyArg<Worker>,
-  {
-    size,
-    workerPermits,
-  }?: {
+  options?: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
   },
-) => Layer.Layer<never, never, WebWorkerResolver> =
-  internal.WebWorkerResolverLive
+) => Effect.Effect<Scope, never, Resolver.RpcResolver<never>> =
+  internal.makeEffect
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeLayer: (
+  evaluate: LazyArg<Worker>,
+  options?: {
+    size?: Effect.Effect<never, never, number>
+    workerPermits?: number
+  },
+) => Layer.Layer<never, never, WebWorkerResolver> = internal.makeLayer
 
 /**
  * @category constructors

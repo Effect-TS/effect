@@ -4,20 +4,10 @@ import * as Deferred from "@effect/io/Deferred"
 import * as Effect from "@effect/io/Effect"
 import type { Exit } from "@effect/io/Exit"
 import * as Queue from "@effect/io/Queue"
-
-/** @internal */
-export interface WebWorker<E, I, O> {
-  readonly run: Effect.Effect<never, E, never>
-  readonly send: (request: I) => Effect.Effect<never, E, O>
-}
-
-/** @internal */
-export interface WebWorkerOptions<E, I> {
-  readonly payload: (value: I) => unknown
-  readonly transferables: (value: I) => Array<Transferable>
-  readonly onError: (error: ErrorEvent) => E
-  readonly permits: number
-}
+import type {
+  WebWorker,
+  WebWorkerOptions,
+} from "@effect/rpc-webworkers/Resolver"
 
 /** @internal */
 export const make = <E, I, O>(
