@@ -15,16 +15,16 @@
     "url": "https://github.com/effect-ts/schema/issues"
   },
   "homepage": "https://github.com/effect-ts/schema",
-  "description": "Functional programming in TypeScript",
+  "description": "Modeling the schema of data structures as first-class values",
   "tags": [
     "typescript",
-    "algebraic-data-types",
-    "functional-programming"
+    "schema",
+    "validation"
   ],
   "keywords": [
     "typescript",
-    "algebraic-data-types",
-    "functional-programming"
+    "schema",
+    "validation"
   ],
   "scripts": {
     "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
@@ -73,7 +73,6 @@
     "@types/glob": "^8.1.0",
     "@types/jest": "^29.5.0",
     "@types/node": "^18.15.11",
-    "@types/prettier": "2.7.2",
     "@types/rimraf": "4.0.5",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
