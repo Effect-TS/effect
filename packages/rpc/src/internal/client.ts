@@ -1,20 +1,15 @@
-import { Tag } from "@effect/data/Context"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
-import type * as Request from "@effect/io/Request"
 import * as Tracer from "@effect/io/Tracer"
 import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
-import type { RpcRequest, RpcResolver } from "@effect/rpc/Resolver"
+import type { RpcResolver } from "@effect/rpc/Resolver"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import * as codec from "@effect/rpc/internal/codec"
 import * as resolverInternal from "@effect/rpc/internal/resolver"
 import * as schemaInternal from "@effect/rpc/internal/schema"
 import type * as Schema from "@effect/schema/Schema"
-
-/** @internal */
-export const RpcCache = Tag<client.RpcCache, Request.Cache<RpcRequest>>()
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   const map = schemaInternal.methodClientCodecs(schemas)
@@ -107,7 +102,7 @@ const makeRpc = <S extends RpcSchema.Any>(
     const encodeInput = codec.encodeEffect(schema.input as Schema.Schema<any>)
 
     return ((input: any) => {
-      const hash = resolverInternal.requestHash(method, input)
+      const hash = resolverInternal.requestHash(method, input, spanPrefix)
       return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
         pipe(
           encodeInput(input),
@@ -125,7 +120,6 @@ const makeRpc = <S extends RpcSchema.Any>(
                 schema,
               }),
               resolver,
-              Effect.serviceOption(RpcCache),
             ),
           ),
           Effect.flatMap(parseOutput),
@@ -135,7 +129,7 @@ const makeRpc = <S extends RpcSchema.Any>(
     }) as any
   }
 
-  const hash = resolverInternal.requestHash(method, undefined)
+  const hash = resolverInternal.requestHash(method, undefined, spanPrefix)
 
   return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
     pipe(
@@ -151,7 +145,6 @@ const makeRpc = <S extends RpcSchema.Any>(
           schema,
         }),
         resolver,
-        Effect.serviceOption(RpcCache),
       ),
       Effect.flatMap(parseOutput),
       Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),

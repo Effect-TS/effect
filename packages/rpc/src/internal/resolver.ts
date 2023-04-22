@@ -24,8 +24,17 @@ const requestProto: Request.Request<any, any> = {
 }
 
 /** @internal */
-export const requestHash = (method: string, input: unknown): number =>
-  pipe(Hash.string(method), Hash.combine(Hash.hash(input)), Hash.optimize)
+export const requestHash = (
+  method: string,
+  input: unknown,
+  spanPrefix: string,
+): number =>
+  pipe(
+    Hash.string(method),
+    Hash.combine(Hash.string(spanPrefix)),
+    Hash.combine(Hash.hash(input)),
+    Hash.optimize,
+  )
 
 /** @internal */
 export const RpcRequest: Request.Request.Constructor<
