@@ -34,7 +34,7 @@ export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
   : never
 
 type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never> = {
-  [K in keyof S]: S[K] extends RpcService.DefinitionWithId
+  readonly [K in keyof S]: S[K] extends RpcService.DefinitionWithId
     ? RpcClientRpcs<S[K], R, SE | RpcService.Errors<S>>
     : S[K] extends RpcSchema.Any
     ? Rpc<S[K], R, SE | RpcService.Errors<S>>

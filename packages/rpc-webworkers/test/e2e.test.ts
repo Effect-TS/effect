@@ -1,17 +1,17 @@
 import "@vitest/web-worker"
-import { describe, it, expect } from "vitest"
-import * as Resolver from "@effect/rpc-webworkers/Resolver"
-import * as Client from "@effect/rpc/Client"
-import { schema } from "./e2e/schema"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
+import * as Client from "@effect/rpc-webworkers/Client"
+import * as Resolver from "@effect/rpc-webworkers/Resolver"
+import { describe, expect, it } from "vitest"
+import { schema } from "./e2e/schema"
 
 const ResolverLive = Resolver.WebWorkerResolverLive(
   () => new Worker(new URL("./e2e/worker.ts", import.meta.url)),
   { size: Effect.succeed(4) },
 )
 
-const client = Client.make(schema, Resolver.WebWorkerResolver)
+const client = Client.make(schema)
 
 describe("e2e", () => {
   it("works", () =>

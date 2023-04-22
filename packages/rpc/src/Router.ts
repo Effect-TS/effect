@@ -86,7 +86,10 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type FromService<S extends RpcService.DefinitionWithId> = {
-    [K in Extract<keyof S, string>]: S[K] extends RpcService.DefinitionWithId
+    readonly [K in Extract<
+      keyof S,
+      string
+    >]: S[K] extends RpcService.DefinitionWithId
       ? { handlers: FromService<S[K]> }
       : S[K] extends RpcSchema.Any
       ? RpcHandler.FromSchema<S[K]>
@@ -124,7 +127,7 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type Map<H extends RpcHandlers, XR, E2, P extends string = ""> = {
-    [K in keyof H]: K extends string
+    readonly [K in keyof H]: K extends string
       ? H[K] extends { handlers: RpcHandlers }
         ? Map<H[K]["handlers"], XR, E2, `${P}${K}.`>
         : H[K] extends RpcHandler.IO<infer R, infer E, infer _I, infer O>
@@ -179,7 +182,7 @@ export namespace RpcRouter {
   export type Provide<Router extends Base, XR, PR, PE> = RpcRouter<
     Router["schema"],
     {
-      [M in keyof Router["handlers"]]: Router["handlers"][M] extends Base
+      readonly [M in keyof Router["handlers"]]: Router["handlers"][M] extends Base
         ? Provide<Router["handlers"][M], XR, PR, PE>
         : Router["handlers"][M] extends RpcHandler.IO<
             infer R,

@@ -1,10 +1,11 @@
 /**
  * @since 1.0.0
  */
+import type { Option } from "@effect/data/Option"
 import type { Effect } from "@effect/io/Effect"
 import type { Span } from "@effect/io/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
-import type { RpcResponse } from "@effect/rpc/Resolver"
+import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type {
   RpcRequestSchema,
@@ -60,12 +61,12 @@ export const handleSingle: <R extends RpcRouter.Base>(
 export const handleSingleWithSchema: <R extends RpcRouter.Base>(
   router: R,
 ) => (
-  request: unknown,
+  request: RpcRequest.Payload,
 ) => Effect<
   Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
   never,
-  readonly [RpcResponse, RpcSchema.Any]
-> = internal.handleSingleWithSchema as any
+  readonly [RpcResponse, Option<RpcSchema.Base>]
+> = internal.handleSingleWithSchema
 
 /**
  * @category models
@@ -81,7 +82,9 @@ export interface UndecodedRpcResponse<M, O> {
  * @since 1.0.0
  */
 export type RpcUndecodedClient<H extends RpcHandlers, P extends string = ""> = {
-  [K in Extract<keyof H, string>]: H[K] extends { handlers: RpcHandlers }
+  readonly [K in Extract<keyof H, string>]: H[K] extends {
+    handlers: RpcHandlers
+  }
     ? RpcUndecodedClient<H[K]["handlers"], `${P}${K}.`>
     : H[K] extends RpcHandler.IO<infer R, infer E, infer I, infer O>
     ? (

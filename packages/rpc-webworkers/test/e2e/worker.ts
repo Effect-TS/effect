@@ -1,6 +1,6 @@
 import * as Effect from "@effect/io/Effect"
 import * as Server from "@effect/rpc-webworkers/Server"
-import * as Router from "@effect/rpc/Router"
+import * as Router from "@effect/rpc-webworkers/Router"
 import { schema } from "./schema"
 
 const router = Router.make(schema, {

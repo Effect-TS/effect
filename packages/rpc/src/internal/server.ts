@@ -1,5 +1,6 @@
 import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
+import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Tracer from "@effect/io/Tracer"
 import type { RpcEncodeFailure, RpcError, RpcNotFound } from "@effect/rpc/Error"
@@ -34,16 +35,15 @@ const schemaHandlersMap = <H extends RpcHandlers>(
   }, {})
 
 /** @internal */
-export const handleSingleWithSchema = <R extends RpcRouter.Base>(
+export const handleSingle = <R extends RpcRouter.Base>(
   router: R,
 ): ((
   request: RpcRequest.Payload,
 ) => Effect.Effect<
   Exclude<RpcHandlers.Services<R["handlers"]>, Tracer.Span>,
   never,
-  readonly [RpcResponse, RpcSchema.Any]
+  RpcResponse
 >) => {
-  const schemasMap = methodSchemas(router.schema)
   const codecsMap = methodCodecs(router.schema)
   const handlerMap = schemaHandlersMap(router.handlers)
 
@@ -109,7 +109,6 @@ export const handleSingleWithSchema = <R extends RpcRouter.Base>(
           ),
         ),
       ),
-      Effect.map((response) => [response, schemasMap[request._tag]] as const),
       Tracer.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
         parent: {
           _tag: "ExternalSpan",
@@ -122,17 +121,22 @@ export const handleSingleWithSchema = <R extends RpcRouter.Base>(
 }
 
 /** @internal */
-export const handleSingle = <R extends RpcRouter.Base>(
+export const handleSingleWithSchema = <R extends RpcRouter.Base>(
   router: R,
 ): ((
   request: RpcRequest.Payload,
 ) => Effect.Effect<
   Exclude<RpcHandlers.Services<R["handlers"]>, Tracer.Span>,
   never,
-  RpcResponse
+  readonly [RpcResponse, Option.Option<RpcSchema.Base>]
 >) => {
-  const handle = handleSingleWithSchema(router)
-  return (request) => Effect.map(handle(request), ([response]) => response)
+  const handle = handleSingle(router)
+  const schemaMap = methodSchemas(router.schema)
+  return (request) =>
+    Effect.map(handle(request), (response) => [
+      response,
+      Option.fromNullable(schemaMap[request._tag]),
+    ])
 }
 
 /** @internal */

@@ -1,9 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
-import * as Resolver from "@effect/rpc-http-node/Resolver"
+import * as Client from "@effect/rpc-http-node/Client"
+import * as Router from "@effect/rpc-http-node/Router"
 import * as _ from "@effect/rpc-http-node/Server"
-import * as Client from "@effect/rpc/Client"
-import * as Router from "@effect/rpc/Router"
 import * as RpcSchema from "@effect/rpc/Schema"
 import * as S from "@effect/schema/Schema"
 import * as Http from "node:http"
@@ -37,10 +36,7 @@ describe("Server", () => {
       ),
       Effect.map((server) => {
         const port = (server.address() as any).port as number
-        return Client.make(
-          schema,
-          Resolver.make({ url: `http://127.0.0.1:${port}` }),
-        )
+        return Client.make(schema, { url: `http://127.0.0.1:${port}` })
       }),
       Effect.flatMap((client) => client.greet("World")),
       Effect.tap((greeting) =>

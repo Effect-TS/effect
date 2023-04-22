@@ -54,6 +54,16 @@ export namespace RpcSchema {
     | NoError<any, any, any, any>
     | NoInput<any, any, any, any>
     | NoInputNoError<any, any>
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface Base {
+    readonly input?: Schema.Schema<any>
+    readonly output: Schema.Schema<any>
+    readonly error: Schema.Schema<any>
+  }
 }
 
 /**
@@ -144,7 +154,7 @@ export namespace RpcService {
     V,
     S extends RpcService.Definition,
   > = {
-    [K in keyof S]: S[K] extends DefinitionWithId
+    readonly [K in keyof S]: S[K] extends DefinitionWithId
       ? Validate<VL, V, S[K]>
       : S[K] extends RpcSchema.IO<
           infer IE,
@@ -181,7 +191,11 @@ export namespace RpcService {
     EI,
     E,
   > = T extends infer S
-    ? RpcService.WithId<{ [K in Exclude<keyof S, RpcServiceId>]: S[K] }, EI, E>
+    ? RpcService.WithId<
+        { readonly [K in Exclude<keyof S, RpcServiceId>]: S[K] },
+        EI,
+        E
+      >
     : never
 }
 
@@ -242,7 +256,7 @@ export namespace RpcRequestSchema {
    * @since 1.0.0
    */
   export type From<S extends RpcService.Definition, P extends string = ""> = {
-    [K in keyof S]: K extends string
+    readonly [K in keyof S]: K extends string
       ? S[K] extends RpcService.DefinitionWithId
         ? To<S[K], `${P}${K}.`>
         : S[K] extends RpcSchema.IO<
@@ -279,7 +293,7 @@ export namespace RpcRequestSchema {
    * @since 1.0.0
    */
   export type To<S extends RpcService.Definition, P extends string = ""> = {
-    [K in keyof S]: K extends string
+    readonly [K in keyof S]: K extends string
       ? S[K] extends RpcService.DefinitionWithId
         ? To<S[K], `${P}${K}.`>
         : S[K] extends RpcSchema.IO<

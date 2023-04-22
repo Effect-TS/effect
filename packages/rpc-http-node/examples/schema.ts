@@ -1,4 +1,4 @@
-import * as RS from "@effect/rpc/Schema"
+import * as RS from "@effect/rpc-http-node/Schema"
 import * as S from "@effect/schema/Schema"
 import { pipe } from "@effect/data/Function"
 // @ts-ignore

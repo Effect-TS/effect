@@ -1,8 +1,8 @@
 import * as Chunk from "@effect/data/Chunk"
 import * as Effect from "@effect/io/Effect"
+import * as Router from "@effect/rpc-http-node/Router"
 import * as Server from "@effect/rpc-http-node/Server"
 import { UserId, schema } from "@effect/rpc-http-node/examples/schema"
-import * as Router from "@effect/rpc/Router"
 import * as Http from "node:http"
 
 // Implement the RPC server router

@@ -48,13 +48,6 @@ export const make = (
             const controller = new AbortController()
             const signal = controller.signal
 
-            const transfer =
-              "input" in request.schema
-                ? schema.getTransferables(
-                    request.schema.input,
-                    request.payload.input,
-                  )
-                : []
             const onError = (error: ErrorEvent) => {
               resume(Effect.fail({ _tag: "RpcTransportError", error }))
             }
@@ -68,6 +61,13 @@ export const make = (
               { once: true, signal },
             )
 
+            const transfer =
+              "input" in request.schema
+                ? schema.getTransferables(
+                    request.schema.input,
+                    request.payload.input,
+                  )
+                : []
             worker.postMessage(request.payload, { transfer })
 
             return Effect.sync(() => controller.abort())
