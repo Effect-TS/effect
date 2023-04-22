@@ -12,8 +12,12 @@ export const make = <Router extends RpcRouter.Base>(
   return (message) =>
     Effect.flatMap(handler(message.data), ([response, schema]) =>
       Effect.sync(() => {
-        const transfer = getTransferables(schema.output, response)
-        return postMessage(response, { transfer })
+        const transfer = schema
+          ? response._tag === "Success"
+            ? getTransferables(schema.output, response.value)
+            : getTransferables((schema as any).error, response.error)
+          : []
+        return self.postMessage(response, { transfer })
       }),
     )
 }

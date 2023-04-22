@@ -51,7 +51,8 @@
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.15.0"
+    "@effect/schema": "^0.15.0",
+    "@vitest/web-worker": "^0.30.1"
   },
   "config": {
     "side": [],
