@@ -7,20 +7,34 @@ import * as Queue from "@effect/io/Queue"
 import type {
   WebWorker,
   WebWorkerOptions,
+  WebWorkerQueue,
 } from "@effect/rpc-webworkers/Resolver"
+
+const defaultQueue = <E, I, O>() =>
+  Effect.map(
+    Queue.unbounded<readonly [I, Deferred.Deferred<E, O>]>(),
+    (queue): WebWorkerQueue<E, I, O> => ({
+      offer: (_) => Queue.offer(queue, _),
+      take: Queue.take(queue),
+    }),
+  )
 
 /** @internal */
 export const make = <E, I, O>(
   evaluate: LazyArg<Worker>,
-  { onError, payload, permits, transferables }: WebWorkerOptions<E, I>,
+  {
+    makeQueue = defaultQueue(),
+    onError,
+    payload,
+    permits,
+    transferables,
+  }: WebWorkerOptions<E, I, O>,
 ): Effect.Effect<never, never, WebWorker<E, I, O>> =>
   Effect.gen(function* ($) {
     let idCounter = 0
 
     const semaphore = yield* $(Effect.makeSemaphore(permits))
-    const outbound = yield* $(
-      Queue.unbounded<readonly [I, Deferred.Deferred<E, O>]>(),
-    )
+    const outbound = yield* $(makeQueue)
     const requestMap = new Map<number, Deferred.Deferred<E, O>>()
 
     const handleExit = (exit: Exit<E, O>) =>
@@ -40,7 +54,7 @@ export const make = <E, I, O>(
 
     const postMessages = (worker: Worker) =>
       pipe(
-        Queue.take(outbound),
+        outbound.take,
         Effect.flatMap(([request, deferred]) =>
           Effect.sync(() => {
             const id = idCounter++
@@ -59,7 +73,7 @@ export const make = <E, I, O>(
         Deferred.make<E, O>(),
         Effect.flatMap((deferred) =>
           Effect.zipRight(
-            Queue.offer(outbound, [request, deferred]),
+            outbound.offer([request, deferred]),
             Deferred.await(deferred),
           ),
         ),

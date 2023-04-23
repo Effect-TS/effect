@@ -3,6 +3,7 @@
  */
 import type { Tag } from "@effect/data/Context"
 import type { LazyArg } from "@effect/data/Function"
+import type { Deferred } from "@effect/io/Deferred"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type { Pool } from "@effect/io/Pool"
@@ -25,11 +26,28 @@ export interface WebWorker<E, I, O> {
  * @category models
  * @since 1.0.0
  */
-export interface WebWorkerOptions<E, I> {
+export interface WebWorkerQueue<E, I, O> {
+  readonly offer: (
+    item: readonly [request: I, deferred: Deferred<E, O>],
+  ) => Effect.Effect<never, never, void>
+
+  readonly take: Effect.Effect<
+    never,
+    never,
+    readonly [request: I, deferred: Deferred<E, O>]
+  >
+}
+
+/**
+ * @category models
+ * @since 1.0.0
+ */
+export interface WebWorkerOptions<E, I, O> {
   readonly payload: (value: I) => unknown
   readonly transferables: (value: I) => Array<Transferable>
   readonly onError: (error: ErrorEvent) => E
   readonly permits: number
+  readonly makeQueue?: Effect.Effect<never, never, WebWorkerQueue<E, I, O>>
 }
 
 /**
@@ -38,7 +56,7 @@ export interface WebWorkerOptions<E, I> {
  */
 export const makeWorker: <E, I, O>(
   evaluate: LazyArg<Worker>,
-  options: WebWorkerOptions<E, I>,
+  options: WebWorkerOptions<E, I, O>,
 ) => Effect.Effect<never, never, WebWorker<E, I, O>> = worker.make
 
 /**
@@ -87,9 +105,18 @@ export interface WebWorkerPoolConstructor {
 export const makeEffect: (
   evaluate: LazyArg<Worker>,
   options?: {
-    size?: Effect.Effect<never, never, number> | undefined
-    workerPermits?: number | undefined
-    makePool?: WebWorkerPoolConstructor | undefined
+    size?: Effect.Effect<never, never, number>
+    workerPermits?: number
+    makePool?: WebWorkerPoolConstructor
+    makeWorkerQueue?: Effect.Effect<
+      never,
+      never,
+      WebWorkerQueue<
+        RpcTransportError,
+        Resolver.RpcRequest,
+        Resolver.RpcResponse
+      >
+    >
   },
 ) => Effect.Effect<Scope, never, Resolver.RpcResolver<never>> =
   internal.makeEffect
@@ -103,7 +130,16 @@ export const makeLayer: (
   options?: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
-    makePool?: WebWorkerPoolConstructor | undefined
+    makePool?: WebWorkerPoolConstructor
+    makeWorkerQueue?: Effect.Effect<
+      never,
+      never,
+      WebWorkerQueue<
+        RpcTransportError,
+        Resolver.RpcRequest,
+        Resolver.RpcResponse
+      >
+    >
   },
 ) => Layer.Layer<never, never, WebWorkerResolver> = internal.makeLayer
 

@@ -23,17 +23,27 @@ export const makeEffect = (
   evaluate: LazyArg<Worker>,
   {
     makePool = Pool.make,
+    makeWorkerQueue,
     size = defaultSize,
     workerPermits = 1,
   }: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WWResolver.WebWorkerPoolConstructor
+    makeWorkerQueue?: Effect.Effect<
+      never,
+      never,
+      WWResolver.WebWorkerQueue<
+        RpcTransportError,
+        Resolver.RpcRequest,
+        Resolver.RpcResponse
+      >
+    >
   } = {},
 ) =>
   pipe(
     Effect.flatMap(size, (size) =>
-      makePool(makeWorker(evaluate, workerPermits), size),
+      makePool(makeWorker(evaluate, workerPermits, makeWorkerQueue), size),
     ),
     Effect.map(make),
   )
@@ -45,15 +55,37 @@ export const makeLayer = (
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WWResolver.WebWorkerPoolConstructor
+    makeWorkerQueue?: Effect.Effect<
+      never,
+      never,
+      WWResolver.WebWorkerQueue<
+        RpcTransportError,
+        Resolver.RpcRequest,
+        Resolver.RpcResponse
+      >
+    >
   },
 ) => Layer.scoped(WebWorkerResolver, makeEffect(evaluate, options))
 
-const makeWorker = (evaluate: LazyArg<Worker>, permits: number) =>
+const makeWorker = (
+  evaluate: LazyArg<Worker>,
+  permits: number,
+  makeQueue?: Effect.Effect<
+    never,
+    never,
+    WWResolver.WebWorkerQueue<
+      RpcTransportError,
+      Resolver.RpcRequest,
+      Resolver.RpcResponse
+    >
+  >,
+) =>
   pipe(
     WW.make<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>(
       evaluate,
       {
         permits,
+        makeQueue,
         onError: (error) => ({ _tag: "RpcTransportError", error }),
         payload: (request) => request.payload,
         transferables: (request) =>
