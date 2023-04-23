@@ -77,6 +77,23 @@ export const WebWorkerResolver: Tag<
 > = internal.WebWorkerResolver
 
 /**
+ * @category tags
+ * @since 1.0.0
+ */
+export interface RpcWorkerQueue {
+  readonly _: unique symbol
+}
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const RpcWorkerQueue: Tag<
+  RpcWorkerQueue,
+  WebWorkerQueue<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+> = internal.RpcWorkerQueue
+
+/**
  * @category models
  * @since 1.0.0
  */
@@ -108,15 +125,6 @@ export const makeEffect: (
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WebWorkerPoolConstructor
-    makeWorkerQueue?: Effect.Effect<
-      never,
-      never,
-      WebWorkerQueue<
-        RpcTransportError,
-        Resolver.RpcRequest,
-        Resolver.RpcResponse
-      >
-    >
   },
 ) => Effect.Effect<Scope, never, Resolver.RpcResolver<never>> =
   internal.makeEffect
@@ -131,15 +139,6 @@ export const makeLayer: (
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WebWorkerPoolConstructor
-    makeWorkerQueue?: Effect.Effect<
-      never,
-      never,
-      WebWorkerQueue<
-        RpcTransportError,
-        Resolver.RpcRequest,
-        Resolver.RpcResponse
-      >
-    >
   },
 ) => Layer.Layer<never, never, WebWorkerResolver> = internal.makeLayer
 

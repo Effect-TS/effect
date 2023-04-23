@@ -10,7 +10,8 @@ import type {
   WebWorkerQueue,
 } from "@effect/rpc-webworkers/Resolver"
 
-const defaultQueue = <E, I, O>() =>
+/** @internal */
+export const defaultQueue = <E, I, O>() =>
   Effect.map(
     Queue.unbounded<readonly [I, Deferred.Deferred<E, O>]>(),
     (queue): WebWorkerQueue<E, I, O> => ({
@@ -55,7 +56,7 @@ export const make = <E, I, O>(
     const postMessages = (worker: Worker) =>
       pipe(
         outbound.take,
-        Effect.flatMap(([request, deferred]) =>
+        Effect.tap(([request, deferred]) =>
           Effect.sync(() => {
             const id = idCounter++
             requestMap.set(id, deferred)
@@ -65,19 +66,17 @@ export const make = <E, I, O>(
             )
           }),
         ),
+        Effect.tap(([, deferred]) => Effect.ignore(Deferred.await(deferred))),
+        semaphore.withPermits(1),
         Effect.forever,
       )
 
     const send = (request: I) =>
-      pipe(
-        Deferred.make<E, O>(),
-        Effect.flatMap((deferred) =>
-          Effect.zipRight(
-            outbound.offer([request, deferred]),
-            Deferred.await(deferred),
-          ),
+      Effect.flatMap(Deferred.make<E, O>(), (deferred) =>
+        Effect.zipRight(
+          outbound.offer([request, deferred]),
+          Deferred.await(deferred),
         ),
-        semaphore.withPermits(1),
       )
 
     const run = Effect.acquireUseRelease(

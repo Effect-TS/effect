@@ -1,4 +1,5 @@
 import { Tag } from "@effect/data/Context"
+import * as Option from "@effect/data/Option"
 import type { LazyArg } from "@effect/data/Function"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
@@ -16,34 +17,46 @@ export const WebWorkerResolver = Tag<
   Resolver.RpcResolver<never>
 >()
 
+/** @internal */
+export const RpcWorkerQueue = Tag<
+  WWResolver.RpcWorkerQueue,
+  WWResolver.WebWorkerQueue<
+    RpcTransportError,
+    Resolver.RpcRequest,
+    Resolver.RpcResponse
+  >
+>()
+
 const defaultSize = Effect.sync(() => navigator.hardwareConcurrency)
+
+const getQueue = Effect.flatMap(
+  Effect.serviceOption(RpcWorkerQueue),
+  Option.match(
+    WW.defaultQueue<
+      RpcTransportError,
+      Resolver.RpcRequest,
+      Resolver.RpcResponse
+    >,
+    Effect.succeed,
+  ),
+)
 
 /** @internal */
 export const makeEffect = (
   evaluate: LazyArg<Worker>,
   {
     makePool = Pool.make,
-    makeWorkerQueue,
     size = defaultSize,
     workerPermits = 1,
   }: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WWResolver.WebWorkerPoolConstructor
-    makeWorkerQueue?: Effect.Effect<
-      never,
-      never,
-      WWResolver.WebWorkerQueue<
-        RpcTransportError,
-        Resolver.RpcRequest,
-        Resolver.RpcResponse
-      >
-    >
   } = {},
 ) =>
   pipe(
     Effect.flatMap(size, (size) =>
-      makePool(makeWorker(evaluate, workerPermits, makeWorkerQueue), size),
+      makePool(makeWorker(evaluate, workerPermits, getQueue), size),
     ),
     Effect.map(make),
   )
@@ -55,15 +68,6 @@ export const makeLayer = (
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
     makePool?: WWResolver.WebWorkerPoolConstructor
-    makeWorkerQueue?: Effect.Effect<
-      never,
-      never,
-      WWResolver.WebWorkerQueue<
-        RpcTransportError,
-        Resolver.RpcRequest,
-        Resolver.RpcResponse
-      >
-    >
   },
 ) => Layer.scoped(WebWorkerResolver, makeEffect(evaluate, options))
 
