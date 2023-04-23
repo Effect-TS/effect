@@ -26,19 +26,15 @@ describe("e2e", () => {
       Effect.runPromise,
     ))
 
-  it(
-    "100x",
-    () =>
-      pipe(
-        Effect.allPar(
-          Chunk.map(Chunk.range(1, 100), () =>
-            client.getBinary(new Uint8Array([1, 2, 3])),
-          ),
+  it("100x", () =>
+    pipe(
+      Effect.allPar(
+        Chunk.map(Chunk.range(1, 100), () =>
+          client.getBinary(new Uint8Array([1, 2, 3])),
         ),
-        Effect.tap((_) => Effect.sync(() => expect(_.length).toEqual(100))),
-        Effect.provideLayer(ResolverLive),
-        Effect.runPromise,
       ),
-    30000,
-  )
+      Effect.tap((_) => Effect.sync(() => expect(_.length).toEqual(100))),
+      Effect.provideLayer(ResolverLive),
+      Effect.runPromise,
+    ))
 })

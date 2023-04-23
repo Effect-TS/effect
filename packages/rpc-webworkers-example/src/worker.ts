@@ -5,10 +5,7 @@ import * as Effect from "@effect/io/Effect"
 
 const router = Router.make(schema, {
   getBinary: (_) => Effect.succeed(_),
+  crash: Effect.die("boom"),
 })
 
-const handler = Server.make(router)
-
-self.onmessage = (event) => {
-  Effect.runFork(handler(event))
-}
+Effect.runPromise(Server.make(router))

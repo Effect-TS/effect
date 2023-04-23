@@ -10,4 +10,7 @@ export const schema = Schema.make({
     input: uint8Array,
     output: uint8Array,
   },
+  crash: {
+    output: S.string,
+  },
 })

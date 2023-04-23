@@ -19,9 +19,27 @@ export interface RpcWorkerHandler<R extends RpcRouter.Base> {
 }
 
 /**
+ * @category models
+ * @since 1.0.0
+ */
+export type RpcWorker<R extends RpcRouter.Base> = Effect<
+  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+  never,
+  never
+>
+
+/**
  * @category constructors
  * @since 1.0.0
  */
 export const make: <Router extends RpcRouter.Base>(
   router: Router,
-) => RpcWorkerHandler<Router> = internal.make as any
+) => RpcWorker<Router> = internal.make as any
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeHandler: <Router extends RpcRouter.Base>(
+  router: Router,
+) => RpcWorkerHandler<Router> = internal.makeHandler as any

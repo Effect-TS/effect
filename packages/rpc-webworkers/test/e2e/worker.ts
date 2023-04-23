@@ -5,12 +5,8 @@ import { schema } from "./schema"
 
 const router = Router.make(schema, {
   currentDate: Effect.sync(() => new Date()),
-
   getBinary: (_) => Effect.succeed(_),
+  crash: Effect.die("boom"),
 })
 
-const handler = Server.make(router)
-
-self.onmessage = (e) => {
-  Effect.runFork(handler(e))
-}
+Effect.runPromise(Server.make(router))

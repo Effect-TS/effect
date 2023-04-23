@@ -32,6 +32,9 @@ pipe(
   ),
   Effect.allPar,
   Effect.tap((_) => Effect.sync(() => console.log(_))),
+  Effect.zipLeft(
+    Effect.catchAll(client.crash, (e) => Effect.sync(() => console.log(e))),
+  ),
   // Sleep so you can see the spawned workers in dev tools
   Effect.zipLeft(Effect.sleep(Duration.seconds(120))),
   Effect.provideLayer(ResolverLive),
