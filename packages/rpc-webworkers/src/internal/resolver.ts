@@ -22,16 +22,18 @@ const defaultSize = Effect.sync(() => navigator.hardwareConcurrency)
 export const makeEffect = (
   evaluate: LazyArg<Worker>,
   {
+    makePool = Pool.make,
     size = defaultSize,
     workerPermits = 1,
   }: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
+    makePool?: WWResolver.WebWorkerPoolConstructor
   } = {},
 ) =>
   pipe(
     Effect.flatMap(size, (size) =>
-      Pool.make(makeWorker(evaluate, workerPermits), size),
+      makePool(makeWorker(evaluate, workerPermits), size),
     ),
     Effect.map(make),
   )
@@ -42,6 +44,7 @@ export const makeLayer = (
   options?: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
+    makePool?: WWResolver.WebWorkerPoolConstructor
   },
 ) => Layer.scoped(WebWorkerResolver, makeEffect(evaluate, options))
 

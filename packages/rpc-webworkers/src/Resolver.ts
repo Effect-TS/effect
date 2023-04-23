@@ -36,7 +36,10 @@ export interface WebWorkerOptions<E, I> {
  * @category constructors
  * @since 1.0.0
  */
-export const makeWorker = worker.make
+export const makeWorker: <E, I, O>(
+  evaluate: LazyArg<Worker>,
+  options: WebWorkerOptions<E, I>,
+) => Effect.Effect<never, never, WebWorker<E, I, O>> = worker.make
 
 /**
  * @category tags
@@ -56,14 +59,37 @@ export const WebWorkerResolver: Tag<
 > = internal.WebWorkerResolver
 
 /**
+ * @category models
+ * @since 1.0.0
+ */
+export interface WebWorkerPoolConstructor {
+  (
+    spawn: Effect.Effect<
+      Scope,
+      never,
+      WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+    >,
+    size: number,
+  ): Effect.Effect<
+    Scope,
+    never,
+    Pool<
+      never,
+      WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
+    >
+  >
+}
+
+/**
  * @category constructors
  * @since 1.0.0
  */
 export const makeEffect: (
   evaluate: LazyArg<Worker>,
   options?: {
-    size?: Effect.Effect<never, never, number>
-    workerPermits?: number
+    size?: Effect.Effect<never, never, number> | undefined
+    workerPermits?: number | undefined
+    makePool?: WebWorkerPoolConstructor | undefined
   },
 ) => Effect.Effect<Scope, never, Resolver.RpcResolver<never>> =
   internal.makeEffect
@@ -77,6 +103,7 @@ export const makeLayer: (
   options?: {
     size?: Effect.Effect<never, never, number>
     workerPermits?: number
+    makePool?: WebWorkerPoolConstructor | undefined
   },
 ) => Layer.Layer<never, never, WebWorkerResolver> = internal.makeLayer
 

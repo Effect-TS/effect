@@ -3,27 +3,38 @@ import * as Effect from "@effect/io/Effect"
 import * as Duration from "@effect/data/Duration"
 import * as Client from "@effect/rpc-webworkers/Client"
 import * as Resolver from "@effect/rpc-webworkers/Resolver"
+import * as Chunk from "@effect/data/Chunk"
 import { schema } from "./schema"
 import typescriptLogo from "./typescript.svg"
 import RpcWorker from "./worker?worker"
 import viteLogo from "/vite.svg"
 import "./style.css"
 
-const ResolverLive = Resolver.makeLayer(() => new RpcWorker(), {
-  workerPermits: 3,
-})
+let count = 1
+
+const ResolverLive = Resolver.makeLayer(
+  () => {
+    console.log("Spawning worker", count++)
+    return new RpcWorker()
+  },
+  {
+    // Set this to the number of requets per worker you want to handle
+    workerPermits: 3,
+  },
+)
 
 const client = Client.make(schema)
 
+// Send off 50 requests to the worker pool
 pipe(
-  Effect.allPar(
-    Array.from({ length: 50 }, () =>
-      client.getBinary(new Uint8Array([1, 2, 3])),
-    ),
+  Chunk.map(Chunk.range(1, 50), () =>
+    client.getBinary(new Uint8Array([1, 2, 3])),
   ),
+  Effect.allPar,
   Effect.tap((_) => Effect.sync(() => console.log(_))),
-  Effect.zipLeft(Effect.sleep(Duration.seconds(30))),
-  Effect.provideSomeLayer(ResolverLive),
+  // Sleep so you can see the spawned workers in dev tools
+  Effect.zipLeft(Effect.sleep(Duration.seconds(120))),
+  Effect.provideLayer(ResolverLive),
   Effect.runFork,
 )
 
