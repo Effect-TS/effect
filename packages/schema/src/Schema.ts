@@ -2497,6 +2497,12 @@ export const trimmed = <A extends string>(options?: AnnotationOptions<A>) =>
     )
 
 /**
+ * @category type id
+ * @since 1.0.0
+ */
+export const MaxLengthTypeId = "@effect/schema/MaxLengthTypeId"
+
+/**
  * @category string
  * @since 1.0.0
  */
@@ -2510,12 +2516,19 @@ export const maxLength = <A extends string>(
       filter(
         (a): a is A => a.length <= maxLength,
         {
+          typeId: MaxLengthTypeId,
           description: `a string at most ${maxLength} character(s) long`,
           jsonSchema: { maxLength },
           ...options
         }
       )
     )
+
+/**
+ * @category type id
+ * @since 1.0.0
+ */
+export const MinLengthTypeId = "@effect/schema/MinLengthTypeId"
 
 /**
  * @category string
@@ -2531,6 +2544,7 @@ export const minLength = <A extends string>(
       filter(
         (a): a is A => a.length >= minLength,
         {
+          typeId: MinLengthTypeId,
           description: `a string at least ${minLength} character(s) long`,
           jsonSchema: { minLength },
           ...options

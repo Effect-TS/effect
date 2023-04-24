@@ -366,4 +366,14 @@ describe.concurrent("Arbitrary", () => {
     )
     propertyTo(schema)
   })
+
+  it("between + int", () => {
+    const schema = pipe(S.number, S.between(1, 10), S.int())
+    propertyTo(schema)
+  })
+
+  it("int + between", () => {
+    const schema = pipe(S.number, S.int(), S.between(1, 10))
+    propertyTo(schema)
+  })
 })

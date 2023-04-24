@@ -5,11 +5,12 @@
 import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
+import { isNumber } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
 import * as I from "@effect/schema/internal/common"
 import { eitherOrUndefined } from "@effect/schema/ParseResult"
-import type { Schema } from "@effect/schema/Schema"
+import * as S from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
@@ -31,7 +32,7 @@ export const ArbitraryHookId = I.ArbitraryHookId
  * @since 1.0.0
  */
 export const to = <I, A>(
-  schema: Schema<I, A>
+  schema: S.Schema<I, A>
 ): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(AST.getTo(schema.ast))
 
 /**
@@ -39,7 +40,7 @@ export const to = <I, A>(
  * @since 1.0.0
  */
 export const from = <I, A>(
-  schema: Schema<I, A>
+  schema: S.Schema<I, A>
 ): (fc: typeof FastCheck) => FastCheck.Arbitrary<I> => go(AST.getFrom(schema.ast))
 
 const record = <K extends PropertyKey, V>(
@@ -60,14 +61,14 @@ const getHook = AST.getAnnotation<
 >(ArbitraryHookId)
 
 /** @internal */
-export const go = (ast: AST.AST): Arbitrary<any> => {
+export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
   switch (ast._tag) {
     case "Declaration":
       return pipe(
         getHook(ast),
         O.match(
           () => go(ast.type),
-          (handler) => handler(...ast.typeParameters.map(go))
+          (handler) => handler(...ast.typeParameters.map((p) => go(p)))
         )
       )
     case "Literal":
@@ -87,9 +88,27 @@ export const go = (ast: AST.AST): Arbitrary<any> => {
     case "AnyKeyword":
       return (fc) => fc.anything()
     case "StringKeyword":
-      return (fc) => fc.string()
+      return (fc) => {
+        if (constraints) {
+          switch (constraints._tag) {
+            case "StringConstraints":
+              return fc.string(constraints.constraints)
+          }
+        }
+        return fc.string()
+      }
     case "NumberKeyword":
-      return (fc) => fc.float()
+      return (fc) => {
+        if (constraints) {
+          switch (constraints._tag) {
+            case "NumberConstraints":
+              return fc.float(constraints.constraints)
+            case "IntegerConstraints":
+              return fc.integer(constraints.constraints)
+          }
+        }
+        return fc.float()
+      }
     case "BooleanKeyword":
       return (fc) => fc.boolean()
     case "BigIntKeyword":
@@ -110,7 +129,7 @@ export const go = (ast: AST.AST): Arbitrary<any> => {
     }
     case "Tuple": {
       const elements = ast.elements.map((e) => go(e.type))
-      const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+      const rest = pipe(ast.rest, O.map(RA.mapNonEmpty((e) => go(e))))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
@@ -182,7 +201,7 @@ export const go = (ast: AST.AST): Arbitrary<any> => {
       }
     }
     case "Union": {
-      const types = ast.types.map(go)
+      const types = ast.types.map((t) => go(t))
       return (fc) => fc.oneof(...types.map((arb) => arb(fc)))
     }
     case "Lazy":
@@ -204,7 +223,7 @@ export const go = (ast: AST.AST): Arbitrary<any> => {
       return (fc) => fc.oneof(...ast.enums.map(([_, value]) => fc.constant(value)))
     }
     case "Refinement": {
-      const from = go(ast.from)
+      const from = go(ast.from, combineConstraints(constraints, getConstraints(ast)))
       return pipe(
         getHook(ast),
         O.match(
@@ -225,3 +244,155 @@ export const go = (ast: AST.AST): Arbitrary<any> => {
       throw new Error("cannot build an Arbitrary for transformations")
   }
 }
+
+interface NumberConstraints {
+  readonly _tag: "NumberConstraints"
+  readonly constraints: FastCheck.FloatConstraints
+}
+
+interface StringConstraints {
+  readonly _tag: "StringConstraints"
+  readonly constraints: FastCheck.StringSharedConstraints
+}
+
+interface IntegerConstraints {
+  readonly _tag: "IntegerConstraints"
+  readonly constraints: FastCheck.IntegerConstraints
+}
+
+type Constraints = NumberConstraints | StringConstraints | IntegerConstraints
+
+/** @internal */
+export const getConstraints = (ast: AST.Refinement): Constraints | undefined => {
+  const TypeAnnotationId = ast.annotations[AST.TypeAnnotationId]
+  const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
+  switch (TypeAnnotationId) {
+    case S.GreaterThanTypeId:
+    case S.GreaterThanOrEqualToTypeId:
+      return {
+        _tag: "NumberConstraints",
+        constraints: { min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum }
+      }
+    case S.LessThanTypeId:
+    case S.LessThanOrEqualToTypeId:
+      return {
+        _tag: "NumberConstraints",
+        constraints: { max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum }
+      }
+    case S.PositiveTypeId:
+    case S.NonNegativeTypeId:
+      return { _tag: "NumberConstraints", constraints: { min: 0 } }
+    case S.NegativeTypeId:
+    case S.NonPositiveTypeId:
+      return { _tag: "NumberConstraints", constraints: { max: 0 } }
+    case S.IntTypeId:
+      return { _tag: "IntegerConstraints", constraints: {} }
+    case S.BetweenTypeId: {
+      const min = jsonSchema.minimum
+      const max = jsonSchema.maximum
+      const constraints: NumberConstraints["constraints"] = {}
+      if (isNumber(min)) {
+        constraints.min = min
+      }
+      if (isNumber(max)) {
+        constraints.max = max
+      }
+      return { _tag: "NumberConstraints", constraints }
+    }
+    case S.MinLengthTypeId:
+      return { _tag: "StringConstraints", constraints: { minLength: jsonSchema.minLength } }
+    case S.MaxLengthTypeId:
+      return { _tag: "StringConstraints", constraints: { maxLength: jsonSchema.maxLength } }
+  }
+}
+
+/** @internal */
+export const combineConstraints = (
+  c1: Constraints | undefined,
+  c2: Constraints | undefined
+): Constraints | undefined => {
+  if (c1 === undefined) {
+    return c2
+  }
+  if (c2 === undefined) {
+    return c1
+  }
+  switch (c1._tag) {
+    case "NumberConstraints": {
+      switch (c2._tag) {
+        case "NumberConstraints": {
+          const out: NumberConstraints = {
+            _tag: "NumberConstraints",
+            constraints: { ...c1.constraints, ...c2.constraints }
+          }
+          const min = getMax(c1.constraints.min, c2.constraints.min)
+          if (isNumber(min)) {
+            out.constraints.min = min
+          }
+          const max = getMin(c1.constraints.max, c2.constraints.max)
+          if (isNumber(max)) {
+            out.constraints.max = max
+          }
+          return out
+        }
+        case "IntegerConstraints": {
+          const out: IntegerConstraints = { ...c2 }
+          const min = getMax(c1.constraints.min, c2.constraints.min)
+          if (isNumber(min)) {
+            out.constraints.min = min
+          }
+          const max = getMin(c1.constraints.max, c2.constraints.max)
+          if (isNumber(max)) {
+            out.constraints.max = max
+          }
+          return out
+        }
+      }
+      break
+    }
+    case "StringConstraints": {
+      switch (c2._tag) {
+        case "StringConstraints": {
+          const out: StringConstraints = {
+            _tag: "StringConstraints",
+            constraints: { ...c1.constraints, ...c2.constraints }
+          }
+          const min = getMax(c1.constraints.minLength, c2.constraints.minLength)
+          if (isNumber(min)) {
+            out.constraints.minLength = min
+          }
+          const max = getMin(c1.constraints.maxLength, c2.constraints.maxLength)
+          if (isNumber(max)) {
+            out.constraints.maxLength = max
+          }
+          return out
+        }
+      }
+      break
+    }
+    case "IntegerConstraints": {
+      switch (c2._tag) {
+        case "NumberConstraints":
+        case "IntegerConstraints": {
+          const out: IntegerConstraints = { ...c1 }
+          const min = getMax(c1.constraints.min, c2.constraints.min)
+          if (isNumber(min)) {
+            out.constraints.min = min
+          }
+          const max = getMin(c1.constraints.max, c2.constraints.max)
+          if (isNumber(max)) {
+            out.constraints.max = max
+          }
+          return out
+        }
+      }
+      break
+    }
+  }
+}
+
+const getMax = (n1: number | undefined, n2: number | undefined): number | undefined =>
+  n1 === undefined ? n2 : n2 === undefined ? n1 : Math.max(n1, n2)
+
+const getMin = (n1: number | undefined, n2: number | undefined): number | undefined =>
+  n1 === undefined ? n2 : n2 === undefined ? n1 : Math.min(n1, n2)
