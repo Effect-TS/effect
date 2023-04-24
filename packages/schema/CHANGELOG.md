@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.0
+
+### Minor Changes
+
+- [#254](https://github.com/Effect-TS/schema/pull/254) [`32e987a`](https://github.com/Effect-TS/schema/commit/32e987a8a82c0770def55835b3253e8e62017241) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Update effect/io, make parsing fields of records and tuples parallel
+
 ## 0.16.0
 
 ### Minor Changes
