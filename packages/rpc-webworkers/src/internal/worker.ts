@@ -2,7 +2,7 @@ import type { LazyArg } from "@effect/data/Function"
 import { pipe } from "@effect/data/Function"
 import * as Deferred from "@effect/io/Deferred"
 import * as Effect from "@effect/io/Effect"
-import type { Exit } from "@effect/io/Exit"
+import * as Exit from "@effect/io/Exit"
 import * as Queue from "@effect/io/Queue"
 import type {
   WebWorker,
@@ -38,7 +38,7 @@ export const make = <E, I, O>(
     const outbound = yield* $(makeQueue)
     const requestMap = new Map<number, Deferred.Deferred<E, O>>()
 
-    const handleExit = (exit: Exit<E, O>) =>
+    const handleExit = (exit: Exit.Exit<E, O>) =>
       Effect.zipRight(
         Effect.forEachDiscard(requestMap.values(), Deferred.complete(exit)),
         Effect.sync(() => requestMap.clear()),
@@ -55,7 +55,13 @@ export const make = <E, I, O>(
 
     const postMessages = (worker: Worker | MessagePort) =>
       pipe(
-        outbound.take,
+        semaphore.take(1),
+        Effect.zipRight(
+          Effect.addFinalizer((exit) =>
+            Exit.isFailure(exit) ? semaphore.release(1) : Effect.unit(),
+          ),
+        ),
+        Effect.zipRight(outbound.take),
         Effect.tap(([request, deferred]) =>
           Effect.sync(() => {
             const id = idCounter++
@@ -66,8 +72,12 @@ export const make = <E, I, O>(
             )
           }),
         ),
-        Effect.tap(([, deferred]) => Effect.ignore(Deferred.await(deferred))),
-        semaphore.withPermits(1),
+        Effect.tap(([, deferred]) =>
+          Effect.fork(
+            Effect.ensuring(Deferred.await(deferred), semaphore.release(1)),
+          ),
+        ),
+        Effect.scoped,
         Effect.forever,
       )
 
