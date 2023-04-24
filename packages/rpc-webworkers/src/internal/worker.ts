@@ -49,35 +49,35 @@ export const make = <E, I, O>(
         const [id, response] = event.data
         const deferred = requestMap.get(id)
         if (!deferred) return Effect.unit()
-        requestMap.delete(id)
         return Deferred.succeed(deferred, response)
       })
 
     const postMessages = (worker: Worker | MessagePort) =>
       pipe(
         semaphore.take(1),
-        Effect.zipRight(
-          Effect.addFinalizer((exit) =>
-            Exit.isFailure(exit) ? semaphore.release(1) : Effect.unit(),
-          ),
-        ),
         Effect.zipRight(outbound.take),
-        Effect.tap(([request, deferred]) =>
+        Effect.flatMap(([request, deferred]) =>
           Effect.sync(() => {
             const id = idCounter++
             requestMap.set(id, deferred)
-            return worker.postMessage(
-              [id, payload(request)],
-              transferables(request),
-            )
+            worker.postMessage([id, payload(request)], transferables(request))
+            return [id, deferred] as const
           }),
         ),
-        Effect.tap(([, deferred]) =>
+        Effect.tap(([id, deferred]) =>
           Effect.fork(
-            Effect.ensuring(Deferred.await(deferred), semaphore.release(1)),
+            Effect.ensuring(
+              Deferred.await(deferred),
+              Effect.zipRight(
+                semaphore.release(1),
+                Effect.sync(() => requestMap.delete(id)),
+              ),
+            ),
           ),
         ),
-        Effect.scoped,
+        Effect.onExit((exit) =>
+          Exit.isFailure(exit) ? semaphore.release(1) : Effect.unit(),
+        ),
         Effect.forever,
       )
 
