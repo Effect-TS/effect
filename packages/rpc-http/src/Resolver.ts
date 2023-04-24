@@ -3,6 +3,7 @@
  */
 import * as internal from "@effect/rpc-http/internal/resolver"
 import type { RpcResolver } from "@effect/rpc/Resolver"
+import type { SchemaC } from "@effect/rpc/SchemaC"
 
 /**
  * @category models
@@ -14,7 +15,7 @@ export interface FetchResolverOptions {
 }
 
 /**
- * @category models
+ * @category errors
  * @since 1.0.0
  */
 export interface RpcFetchError {
@@ -22,6 +23,16 @@ export interface RpcFetchError {
   readonly reason: "FetchError" | "JsonDecodeError"
   readonly error: unknown
 }
+
+/**
+ * @category errors
+ * @since 1.0.0
+ */
+export const RpcFetchError: SchemaC<
+  RpcFetchError,
+  RpcFetchError,
+  { readonly reason: "FetchError" | "JsonDecodeError"; readonly error: unknown }
+> = internal.RpcFetchError
 
 /**
  * @category constructors

@@ -4,6 +4,7 @@ import * as Effect from "@effect/io/Effect"
 import * as Runtime from "@effect/io/Runtime"
 import { getTransferables } from "@effect/rpc-webworkers/Schema"
 import type { RpcWorker, RpcWorkerHandler } from "@effect/rpc-webworkers/Server"
+import { RpcTransportError } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
@@ -38,10 +39,7 @@ export const makeHandler = <Router extends RpcRouter.Base>(router: Router) => {
               id,
               {
                 _tag: "Error",
-                error: {
-                  _tag: "RpcTransportError",
-                  error,
-                },
+                error: RpcTransportError({ error }),
               } satisfies RpcResponse,
             ]),
           ),

@@ -8,7 +8,7 @@ import * as Layer from "@effect/io/Layer"
 import type * as WWResolver from "@effect/rpc-webworkers/Resolver"
 import * as schema from "@effect/rpc-webworkers/Schema"
 import * as WW from "@effect/rpc-webworkers/internal/worker"
-import type { RpcTransportError } from "@effect/rpc/Error"
+import { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
 import type { Scope } from "@effect/io/Scope"
 
@@ -73,7 +73,7 @@ const makeWorker = (
       {
         permits,
         makeQueue: Effect.succeed(queue),
-        onError: (error) => ({ _tag: "RpcTransportError", error }),
+        onError: (error) => RpcTransportError({ error }),
         payload: (request) => request.payload,
         transferables: (request) =>
           "input" in request.schema

@@ -3,7 +3,8 @@ import { pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Tracer from "@effect/io/Tracer"
-import type { RpcEncodeFailure, RpcError, RpcNotFound } from "@effect/rpc/Error"
+import type { RpcEncodeFailure, RpcError } from "@effect/rpc/Error"
+import { RpcNotFound } from "@effect/rpc/Error"
 import type { RpcRequest, RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type {
@@ -51,21 +52,13 @@ export const handleSingle = <R extends RpcRouter.Base>(
     pipe(
       Either.Do(),
       Either.bind("codecs", () =>
-        Either.fromNullable(
-          codecsMap[request._tag],
-          (): RpcNotFound => ({
-            _tag: "RpcNotFound",
-            method: request._tag,
-          }),
+        Either.fromNullable(codecsMap[request._tag], () =>
+          RpcNotFound({ method: request._tag }),
         ),
       ),
       Either.bind("handler", () =>
-        Either.fromNullable(
-          handlerMap[request._tag],
-          (): RpcNotFound => ({
-            _tag: "RpcNotFound",
-            method: request._tag,
-          }),
+        Either.fromNullable(handlerMap[request._tag], () =>
+          RpcNotFound({ method: request._tag }),
         ),
       ),
       Either.bind("input", ({ codecs }) =>
