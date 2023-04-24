@@ -12,18 +12,33 @@ import viteLogo from "/vite.svg"
 import * as Pool from "@effect/io/Pool"
 import "./style.css"
 
-let count = 1
-
+// Create the worker pool layer
 const PoolLive = Resolver.makePoolLayer((spawn) =>
   Pool.make(
-    spawn(() => {
-      console.log("Spawning worker", count++)
+    spawn((id) => {
+      console.log("Spawning worker", id)
       return new RpcWorker()
     }, 3),
     navigator.hardwareConcurrency,
   ),
 )
+// Create the resolver layer
 const ResolverLive = Layer.provide(PoolLive, Resolver.RpcWorkerResolverLive)
+
+// Example for using shared workers
+export const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
+  Pool.make(
+    spawn((id) => {
+      console.log("Spawning shared worker", id)
+      return new SharedWorker(new URL("./worker.ts", import.meta.url), {
+        /* @vite-ignore */
+        name: `worker-${id}`,
+        type: "module",
+      })
+    }, 3),
+    navigator.hardwareConcurrency,
+  ),
+)
 
 const client = Client.make(schema)
 

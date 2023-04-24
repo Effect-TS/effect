@@ -1,4 +1,5 @@
 import { Tag } from "@effect/data/Context"
+import * as Ref from "@effect/io/Ref"
 import * as Option from "@effect/data/Option"
 import type { LazyArg } from "@effect/data/Function"
 import { pipe } from "@effect/data/Function"
@@ -33,27 +34,32 @@ const getQueue = Effect.flatMap(
 export const makePool = <R, E>(
   create: (
     spawn: (
-      evaluate: LazyArg<Worker>,
+      evaluate: (id: number) => Worker | SharedWorker,
       permits?: number,
     ) => Effect.Effect<Scope, never, WWResolver.RpcWebWorker>,
   ) => Effect.Effect<R, E, WWResolver.RpcWorkerPool>,
 ) =>
-  Effect.flatMap(getQueue, (queue) =>
-    create((evaluate, permits = 1) => makeWorker(evaluate, permits, queue)),
+  Effect.flatMap(Effect.all(getQueue, Ref.make(0)), ([queue, ref]) =>
+    create((evaluate, permits = 1) =>
+      Effect.flatMap(
+        Ref.getAndUpdate(ref, (n) => n + 1),
+        (id) => makeWorker(() => evaluate(id), permits, queue),
+      ),
+    ),
   )
 
 /** @internal */
 export const makePoolLayer = <R, E>(
   create: (
     spawn: (
-      evaluate: LazyArg<Worker>,
+      evaluate: (id: number) => Worker | SharedWorker,
       permits?: number,
     ) => Effect.Effect<Scope, never, WWResolver.RpcWebWorker>,
   ) => Effect.Effect<R, E, WWResolver.RpcWorkerPool>,
 ) => Layer.scoped(RpcWorkerPool, makePool(create))
 
 const makeWorker = (
-  evaluate: LazyArg<Worker>,
+  evaluate: LazyArg<Worker | SharedWorker>,
   permits: number,
   queue: WWResolver.WebWorkerQueue<
     RpcTransportError,

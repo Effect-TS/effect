@@ -20,16 +20,34 @@ const PoolLive = Resolver.makePoolLayer((spawn) =>
 )
 const ResolverLive = Layer.provide(PoolLive, RpcWorkerResolverLive)
 
+const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
+  Pool.make(
+    spawn(() => new SharedWorker(new URL("./e2e/worker.ts", import.meta.url))),
+    1,
+  ),
+)
+const SharedResolverLive = Layer.provide(SharedPoolLive, RpcWorkerResolverLive)
+
 const client = Client.makeWithResolver(schema, RpcResolver)
 
 describe("e2e", () => {
-  it("works", () =>
+  it("Worker", () =>
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) =>
         Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3]))),
       ),
       Effect.provideLayer(ResolverLive),
+      Effect.runPromise,
+    ))
+
+  it("SharedWorker", () =>
+    pipe(
+      client.getBinary(new Uint8Array([1, 2, 3])),
+      Effect.tap((_) =>
+        Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3]))),
+      ),
+      Effect.provideLayer(SharedResolverLive),
       Effect.runPromise,
     ))
 

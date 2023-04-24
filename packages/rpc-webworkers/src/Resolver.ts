@@ -55,7 +55,7 @@ export interface WebWorkerOptions<E, I, O> {
  * @since 1.0.0
  */
 export const makeWorker: <E, I, O>(
-  evaluate: LazyArg<Worker>,
+  evaluate: LazyArg<Worker | SharedWorker>,
   options: WebWorkerOptions<E, I, O>,
 ) => Effect.Effect<never, never, WebWorker<E, I, O>> = worker.make
 
@@ -108,7 +108,7 @@ export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> =
 export const makePool: <R, E>(
   create: (
     spawn: (
-      evaluate: LazyArg<Worker>,
+      evaluate: (id: number) => Worker | SharedWorker,
       permits?: number,
     ) => Effect.Effect<Scope, never, RpcWebWorker>,
   ) => Effect.Effect<R, E, RpcWorkerPool>,
@@ -121,7 +121,7 @@ export const makePool: <R, E>(
 export const makePoolLayer: <R, E>(
   create: (
     spawn: (
-      evaluate: LazyArg<Worker>,
+      evaluate: (id: number) => Worker | SharedWorker,
       permits?: number,
     ) => Effect.Effect<Scope, never, RpcWebWorker>,
   ) => Effect.Effect<R, E, RpcWorkerPool>,

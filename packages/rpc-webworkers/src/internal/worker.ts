@@ -22,7 +22,7 @@ export const defaultQueue = <E, I, O>() =>
 
 /** @internal */
 export const make = <E, I, O>(
-  evaluate: LazyArg<Worker>,
+  evaluate: LazyArg<Worker | SharedWorker>,
   {
     makeQueue = defaultQueue(),
     onError,
@@ -53,7 +53,7 @@ export const make = <E, I, O>(
         return Deferred.succeed(deferred, response)
       })
 
-    const postMessages = (worker: Worker) =>
+    const postMessages = (worker: Worker | MessagePort) =>
       pipe(
         outbound.take,
         Effect.tap(([request, deferred]) =>
@@ -80,32 +80,41 @@ export const make = <E, I, O>(
       )
 
     const run = Effect.acquireUseRelease(
-      Effect.sync(evaluate),
-      (worker) =>
+      Effect.map(Effect.sync(evaluate), (worker) => {
+        if (worker instanceof SharedWorker) {
+          const port = worker.port
+          port.start()
+          return [worker, port] as const
+        }
+        return [worker, worker] as const
+      }),
+      ([worker, port]) =>
         Effect.zipParRight(
           Effect.asyncInterrupt<never, E, never>((resume) => {
             const controller = new AbortController()
             const signal = controller.signal
 
-            worker.addEventListener(
+            port.addEventListener(
               "message",
-              (event) => Effect.runFork(handleMessage(event)),
+              (event) => Effect.runFork(handleMessage(event as MessageEvent)),
               { signal },
             )
             worker.addEventListener(
               "error",
-              (event) => resume(Effect.fail(onError(event))),
+              (event) => resume(Effect.fail(onError(event as ErrorEvent))),
               { signal },
             )
 
             return Effect.sync(() => controller.abort())
           }),
-          postMessages(worker),
+          postMessages(port),
         ),
-      (worker, exit) =>
+      ([worker], exit) =>
         Effect.zipRight(
           handleExit(exit),
-          Effect.sync(() => worker.terminate()),
+          worker instanceof SharedWorker
+            ? Effect.unit()
+            : Effect.sync(() => worker.terminate()),
         ),
     )
 
