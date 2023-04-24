@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.2
+
+### Patch Changes
+
+- [#258](https://github.com/Effect-TS/schema/pull/258) [`1b65e53`](https://github.com/Effect-TS/schema/commit/1b65e5348c7a93b2294e3429b4eddc78d054052e) Thanks [@mikearnaldi](https://github.com/mikearnaldi)! - Try publishing again
+
 ## 0.17.1
 
 ### Patch Changes
