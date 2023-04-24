@@ -81,7 +81,7 @@ export const make = <E, I, O>(
 
     const run = Effect.acquireUseRelease(
       Effect.map(Effect.sync(evaluate), (worker) => {
-        if (worker instanceof SharedWorker) {
+        if ("port" in worker) {
           const port = worker.port
           port.start()
           return [worker, port] as const
@@ -112,7 +112,7 @@ export const make = <E, I, O>(
       ([worker], exit) =>
         Effect.zipRight(
           handleExit(exit),
-          worker instanceof SharedWorker
+          "port" in worker
             ? Effect.unit()
             : Effect.sync(() => worker.terminate()),
         ),
