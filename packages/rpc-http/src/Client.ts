@@ -15,4 +15,4 @@ export const make = <S extends RpcService.DefinitionWithId>(
   schemas: S,
   options: Client.RpcClientOptions & Resolver.FetchResolverOptions,
 ): Client.RpcClient<S, never> =>
-  Client.make(schemas, Resolver.make(options), options)
+  Client.makeWithResolver(schemas, Resolver.make(options), options)

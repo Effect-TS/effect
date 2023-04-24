@@ -1,4 +1,5 @@
 import { pipe } from "@effect/data/Function"
+import * as Layer from "@effect/io/Layer"
 import * as Effect from "@effect/io/Effect"
 import * as Duration from "@effect/data/Duration"
 import * as Client from "@effect/rpc-webworkers/Client"
@@ -8,20 +9,21 @@ import { schema } from "./schema"
 import typescriptLogo from "./typescript.svg"
 import RpcWorker from "./worker?worker"
 import viteLogo from "/vite.svg"
+import * as Pool from "@effect/io/Pool"
 import "./style.css"
 
 let count = 1
 
-const ResolverLive = Resolver.makeLayer(
-  () => {
-    console.log("Spawning worker", count++)
-    return new RpcWorker()
-  },
-  {
-    // Set this to the number of requets per worker you want to handle
-    workerPermits: 3,
-  },
+const PoolLive = Resolver.makePoolLayer((spawn) =>
+  Pool.make(
+    spawn(() => {
+      console.log("Spawning worker", count++)
+      return new RpcWorker()
+    }, 3),
+    navigator.hardwareConcurrency,
+  ),
 )
+const ResolverLive = Layer.provide(PoolLive, Resolver.RpcWorkerResolverLive)
 
 const client = Client.make(schema)
 

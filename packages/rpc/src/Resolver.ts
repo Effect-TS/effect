@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import { Tag } from "@effect/data/Context"
 import type * as Effect from "@effect/io/Effect"
 import type * as Request from "@effect/io/Request"
 import type * as Resolver from "@effect/io/RequestResolver"
@@ -14,6 +15,14 @@ import * as internal from "@effect/rpc/internal/resolver"
  */
 export interface RpcResolver<R>
   extends Resolver.RequestResolver<RpcRequest, R> {}
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const RpcResolver = Tag<RpcResolver<never>>(
+  Symbol.for("@effect/rpc/RpcResolver"),
+)
 
 /**
  * @category models

@@ -5,15 +5,22 @@ import * as Client from "@effect/rpc-webworkers/Client"
 import * as Resolver from "@effect/rpc-webworkers/Resolver"
 import { describe, expect, it } from "vitest"
 import { schema } from "./e2e/schema"
+import * as Pool from "@effect/io/Pool"
 import * as Chunk from "@effect/data/Chunk"
+import * as Layer from "@effect/io/Layer"
+import { RpcWorkerResolverLive } from "@effect/rpc-webworkers/internal/resolver"
+import { RpcResolver } from "@effect/rpc/Resolver"
 
 // TODO: test more than one worker
-const ResolverLive = Resolver.makeLayer(
-  () => new Worker(new URL("./e2e/worker.ts", import.meta.url)),
-  { size: Effect.succeed(1), workerPermits: 10 },
+const PoolLive = Resolver.makePoolLayer((spawn) =>
+  Pool.make(
+    spawn(() => new Worker(new URL("./e2e/worker.ts", import.meta.url))),
+    1,
+  ),
 )
+const ResolverLive = Layer.provide(PoolLive, RpcWorkerResolverLive)
 
-const client = Client.make(schema)
+const client = Client.makeWithResolver(schema, RpcResolver)
 
 describe("e2e", () => {
   it("works", () =>

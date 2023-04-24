@@ -72,7 +72,18 @@ export interface RpcClientOptions {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <
+export const make: <S extends RpcService.DefinitionWithId>(
+  schemas: S,
+  options?: RpcClientOptions,
+) => RpcClient<S, RpcResolver<never>> = internal.make
+
+/**
+ * Creates an RPC client with the specified resolver
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeWithResolver: <
   S extends RpcService.DefinitionWithId,
   Resolver extends RpcResolver<never> | Effect<any, never, RpcResolver<never>>,
 >(
@@ -82,4 +93,4 @@ export const make: <
 ) => RpcClient<
   S,
   [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never
-> = internal.make
+> = internal.makeWithResolver

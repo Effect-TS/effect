@@ -60,95 +60,89 @@ export const makeWorker: <E, I, O>(
 ) => Effect.Effect<never, never, WebWorker<E, I, O>> = worker.make
 
 /**
- * @category tags
- * @since 1.0.0
- */
-export interface WebWorkerResolver {
-  readonly _: unique symbol
-}
-
-/**
- * @category tags
- * @since 1.0.0
- */
-export const WebWorkerResolver: Tag<
-  WebWorkerResolver,
-  Resolver.RpcResolver<never>
-> = internal.WebWorkerResolver
-
-/**
- * @category tags
- * @since 1.0.0
- */
-export interface RpcWorkerQueue {
-  readonly _: unique symbol
-}
-
-/**
- * @category tags
- * @since 1.0.0
- */
-export const RpcWorkerQueue: Tag<
-  RpcWorkerQueue,
-  WebWorkerQueue<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
-> = internal.RpcWorkerQueue
-
-/**
  * @category models
  * @since 1.0.0
  */
-export interface WebWorkerPoolConstructor {
-  (
-    spawn: Effect.Effect<
-      Scope,
-      never,
-      WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
-    >,
-    size: number,
-  ): Effect.Effect<
-    Scope,
-    never,
-    Pool<
-      never,
-      WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
-    >
-  >
-}
+export interface RpcWebWorker
+  extends WebWorker<
+    RpcTransportError,
+    Resolver.RpcRequest,
+    Resolver.RpcResponse
+  > {}
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export interface RpcWorkerQueue
+  extends WebWorkerQueue<
+    RpcTransportError,
+    Resolver.RpcRequest,
+    Resolver.RpcResponse
+  > {}
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const RpcWorkerQueue: Tag<RpcWorkerQueue, RpcWorkerQueue> =
+  internal.RpcWorkerQueue
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export interface RpcWorkerPool extends Pool<never, RpcWebWorker> {}
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> =
+  internal.RpcWorkerPool
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const makeEffect: (
-  evaluate: LazyArg<Worker>,
-  options?: {
-    size?: Effect.Effect<never, never, number>
-    workerPermits?: number
-    makePool?: WebWorkerPoolConstructor
-  },
-) => Effect.Effect<Scope, never, Resolver.RpcResolver<never>> =
-  internal.makeEffect
+export const makePool: <R, E>(
+  create: (
+    spawn: (
+      evaluate: LazyArg<Worker>,
+      permits?: number,
+    ) => Effect.Effect<Scope, never, RpcWebWorker>,
+  ) => Effect.Effect<R, E, RpcWorkerPool>,
+) => Effect.Effect<R, E, RpcWorkerPool> = internal.makePool
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const makeLayer: (
-  evaluate: LazyArg<Worker>,
-  options?: {
-    size?: Effect.Effect<never, never, number>
-    workerPermits?: number
-    makePool?: WebWorkerPoolConstructor
-  },
-) => Layer.Layer<never, never, WebWorkerResolver> = internal.makeLayer
+export const makePoolLayer: <R, E>(
+  create: (
+    spawn: (
+      evaluate: LazyArg<Worker>,
+      permits?: number,
+    ) => Effect.Effect<Scope, never, RpcWebWorker>,
+  ) => Effect.Effect<R, E, RpcWorkerPool>,
+) => Layer.Layer<Exclude<R, Scope>, E, RpcWorkerPool> = internal.makePoolLayer
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make: (
-  pool: Pool<
-    never,
-    WebWorker<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>
-  >,
-) => Resolver.RpcResolver<never> = internal.make
+export const make: Effect.Effect<
+  RpcWorkerPool,
+  never,
+  Resolver.RpcResolver<never>
+> = internal.make
+
+/**
+ * @category tags
+ * @since 1.0.0
+ */
+export const RpcWorkerResolverLive: Layer.Layer<
+  RpcWorkerPool,
+  never,
+  Resolver.RpcResolver<never>
+> = internal.RpcWorkerResolverLive

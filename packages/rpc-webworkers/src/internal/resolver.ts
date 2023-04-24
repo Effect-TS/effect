@@ -4,30 +4,18 @@ import type { LazyArg } from "@effect/data/Function"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
-import * as Pool from "@effect/io/Pool"
 import type * as WWResolver from "@effect/rpc-webworkers/Resolver"
 import * as schema from "@effect/rpc-webworkers/Schema"
 import * as WW from "@effect/rpc-webworkers/internal/worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import * as Resolver from "@effect/rpc/Resolver"
+import type { Scope } from "@effect/io/Scope"
 
 /** @internal */
-export const WebWorkerResolver = Tag<
-  WWResolver.WebWorkerResolver,
-  Resolver.RpcResolver<never>
->()
+export const RpcWorkerQueue = Tag<WWResolver.RpcWorkerQueue>()
 
 /** @internal */
-export const RpcWorkerQueue = Tag<
-  WWResolver.RpcWorkerQueue,
-  WWResolver.WebWorkerQueue<
-    RpcTransportError,
-    Resolver.RpcRequest,
-    Resolver.RpcResponse
-  >
->()
-
-const defaultSize = Effect.sync(() => navigator.hardwareConcurrency)
+export const RpcWorkerPool = Tag<WWResolver.RpcWorkerPool>()
 
 const getQueue = Effect.flatMap(
   Effect.serviceOption(RpcWorkerQueue),
@@ -42,54 +30,43 @@ const getQueue = Effect.flatMap(
 )
 
 /** @internal */
-export const makeEffect = (
-  evaluate: LazyArg<Worker>,
-  {
-    makePool = Pool.make,
-    size = defaultSize,
-    workerPermits = 1,
-  }: {
-    size?: Effect.Effect<never, never, number>
-    workerPermits?: number
-    makePool?: WWResolver.WebWorkerPoolConstructor
-  } = {},
+export const makePool = <R, E>(
+  create: (
+    spawn: (
+      evaluate: LazyArg<Worker>,
+      permits?: number,
+    ) => Effect.Effect<Scope, never, WWResolver.RpcWebWorker>,
+  ) => Effect.Effect<R, E, WWResolver.RpcWorkerPool>,
 ) =>
-  pipe(
-    Effect.flatMap(size, (size) =>
-      makePool(makeWorker(evaluate, workerPermits, getQueue), size),
-    ),
-    Effect.map(make),
+  Effect.flatMap(getQueue, (queue) =>
+    create((evaluate, permits = 1) => makeWorker(evaluate, permits, queue)),
   )
 
 /** @internal */
-export const makeLayer = (
-  evaluate: LazyArg<Worker>,
-  options?: {
-    size?: Effect.Effect<never, never, number>
-    workerPermits?: number
-    makePool?: WWResolver.WebWorkerPoolConstructor
-  },
-) => Layer.scoped(WebWorkerResolver, makeEffect(evaluate, options))
+export const makePoolLayer = <R, E>(
+  create: (
+    spawn: (
+      evaluate: LazyArg<Worker>,
+      permits?: number,
+    ) => Effect.Effect<Scope, never, WWResolver.RpcWebWorker>,
+  ) => Effect.Effect<R, E, WWResolver.RpcWorkerPool>,
+) => Layer.scoped(RpcWorkerPool, makePool(create))
 
 const makeWorker = (
   evaluate: LazyArg<Worker>,
   permits: number,
-  makeQueue?: Effect.Effect<
-    never,
-    never,
-    WWResolver.WebWorkerQueue<
-      RpcTransportError,
-      Resolver.RpcRequest,
-      Resolver.RpcResponse
-    >
+  queue: WWResolver.WebWorkerQueue<
+    RpcTransportError,
+    Resolver.RpcRequest,
+    Resolver.RpcResponse
   >,
 ) =>
-  pipe(
+  Effect.tap(
     WW.make<RpcTransportError, Resolver.RpcRequest, Resolver.RpcResponse>(
       evaluate,
       {
         permits,
-        makeQueue,
+        makeQueue: Effect.succeed(queue),
         onError: (error) => ({ _tag: "RpcTransportError", error }),
         payload: (request) => request.payload,
         transferables: (request) =>
@@ -101,26 +78,16 @@ const makeWorker = (
             : [],
       },
     ),
-    Effect.tap((worker) =>
-      pipe(
-        worker.run,
-        Effect.retryWhile(() => true),
-        Effect.forkScoped,
-      ),
-    ),
+    (worker) =>
+      pipe(Effect.ignoreLogged(worker.run), Effect.forever, Effect.forkScoped),
   )
 
 /** @internal */
-export const make = (
-  pool: Pool.Pool<
-    never,
-    WWResolver.WebWorker<
-      RpcTransportError,
-      Resolver.RpcRequest,
-      Resolver.RpcResponse
-    >
-  >,
-): Resolver.RpcResolver<never> =>
+export const make = Effect.map(RpcWorkerPool, (pool) =>
   Resolver.makeSingleWithSchema((request) =>
     Effect.flatMap(Effect.scoped(pool.get()), (worker) => worker.send(request)),
-  )
+  ),
+)
+
+/** @internal */
+export const RpcWorkerResolverLive = Layer.effect(Resolver.RpcResolver, make)

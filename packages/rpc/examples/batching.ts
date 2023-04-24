@@ -21,6 +21,9 @@ const router = Router.make(schema, {
   getUser: (id) => Effect.succeed({ id, name: "Tim" }),
 })
 
-const client = Client.make(schema, Resolver.make(Server.handler(router)))
+const client = Client.makeWithResolver(
+  schema,
+  Resolver.make(Server.handler(router)),
+)
 
 Effect.flatMap(client.getIds, (ids) => Effect.allPar(ids.map(client.getUser)))

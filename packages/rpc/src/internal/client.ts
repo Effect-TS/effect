@@ -3,7 +3,7 @@ import * as Effect from "@effect/io/Effect"
 import * as Tracer from "@effect/io/Tracer"
 import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
-import type { RpcResolver } from "@effect/rpc/Resolver"
+import { RpcResolver } from "@effect/rpc/Resolver"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import * as codec from "@effect/rpc/internal/codec"
@@ -61,7 +61,7 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const make = <
+export const makeWithResolver = <
   S extends RpcService.DefinitionWithId,
   Resolver extends
     | RpcResolver<never>
@@ -81,6 +81,13 @@ export const make = <
     _schemas: schemas,
     _unsafeDecode: unsafeDecode(schemas),
   } as any)
+
+/** @internal */
+export const make = <S extends RpcService.DefinitionWithId>(
+  schemas: S,
+  options: client.RpcClientOptions = {},
+): client.RpcClient<S, RpcResolver<never>> =>
+  makeWithResolver(schemas, RpcResolver, options)
 
 const makeRpc = <S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,
