@@ -573,7 +573,7 @@ const go = untracedMethod(() =>
                   output: Array.from(output)
                 }
                 return Effect.flatMap(
-                  Effect.forEachDiscard(cqueue, (f) => f(state)),
+                  Effect.forEachParDiscard(cqueue, (f) => f(state)),
                   () => computeResult(state)
                 )
               })
@@ -787,7 +787,7 @@ const go = untracedMethod(() =>
                   output: Object.assign({}, output)
                 }
                 return Effect.flatMap(
-                  Effect.forEachDiscard(cqueue, (f) => f(state)),
+                  Effect.forEachParDiscard(cqueue, (f) => f(state)),
                   () => computeResult(state)
                 )
               })
