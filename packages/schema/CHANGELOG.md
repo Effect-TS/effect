@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.1
+
+### Patch Changes
+
+- [#256](https://github.com/Effect-TS/schema/pull/256) [`162e099`](https://github.com/Effect-TS/schema/commit/162e099b33d6092eca2a14f8a1c1c73a72621361) Thanks [@gcanti](https://github.com/gcanti)! - leverage annotations (e.g. maxLength, int, between) to improve fast-check performance
+
 ## 0.17.0
 
 ### Minor Changes
