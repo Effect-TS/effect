@@ -47,12 +47,12 @@
   "sideEffects": [],
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.25.2",
+    "@effect/io": "^0.25.5",
     "@effect/rpc": "workspace:*",
     "@effect/rpc-http": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.16.0",
+    "@effect/schema": "^0.17.2",
     "next": "^13.3.1"
   },
   "config": {

@@ -9,6 +9,10 @@ export const schema = Schema.make({
     input: Schema.transferable(S.instanceOf(Uint8Array), (_) => [_.buffer]),
     output: Schema.transferable(S.instanceOf(Uint8Array), (_) => [_.buffer]),
   },
+  delayed: {
+    input: S.string,
+    output: S.string,
+  },
   crash: {
     output: S.string,
   },

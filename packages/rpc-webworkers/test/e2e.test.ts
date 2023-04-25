@@ -1,15 +1,17 @@
-import "@vitest/web-worker"
+import * as Chunk from "@effect/data/Chunk"
+import * as Cause from "@effect/io/Cause"
+import * as Duration from "@effect/data/Duration"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
+import * as Layer from "@effect/io/Layer"
+import * as Pool from "@effect/io/Pool"
 import * as Client from "@effect/rpc-webworkers/Client"
 import * as Resolver from "@effect/rpc-webworkers/Resolver"
-import { describe, expect, it } from "vitest"
-import { schema } from "./e2e/schema"
-import * as Pool from "@effect/io/Pool"
-import * as Chunk from "@effect/data/Chunk"
-import * as Layer from "@effect/io/Layer"
 import { RpcWorkerResolverLive } from "@effect/rpc-webworkers/internal/resolver"
 import { RpcResolver } from "@effect/rpc/Resolver"
+import "@vitest/web-worker"
+import { describe, expect, it } from "vitest"
+import { schema } from "./e2e/schema"
 
 // TODO: test more than one worker
 const PoolLive = Resolver.makePoolLayer((spawn) =>
@@ -62,4 +64,15 @@ describe("e2e", () => {
       Effect.provideLayer(ResolverLive),
       Effect.runPromise,
     ))
+
+  it("interruption", () => {
+    expect(() =>
+      pipe(
+        client.delayed("foo"),
+        Effect.timeoutFailCause(() => Cause.die("boom"), Duration.millis(100)),
+        Effect.provideLayer(ResolverLive),
+        Effect.runPromise,
+      ),
+    ).rejects.toEqual(new Error("boom"))
+  })
 })

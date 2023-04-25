@@ -45,11 +45,11 @@
   "sideEffects": [],
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.25.2",
+    "@effect/io": "^0.25.5",
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.16.0",
+    "@effect/schema": "^0.17.2",
     "@vitest/web-worker": "^0.30.1"
   },
   "config": {
