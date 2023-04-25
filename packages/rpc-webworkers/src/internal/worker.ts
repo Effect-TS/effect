@@ -82,11 +82,17 @@ export const make = <E, I, O>(
       )
 
     const send = (request: I) =>
-      Effect.flatMap(Deferred.make<E, O>(), (deferred) =>
-        Effect.zipRight(
-          outbound.offer([request, deferred]),
-          Deferred.await(deferred),
-        ),
+      Effect.acquireUseRelease(
+        Deferred.make<E, O>(),
+        (deferred) =>
+          Effect.zipRight(
+            outbound.offer([request, deferred]),
+            Deferred.await(deferred),
+          ),
+        (deferred) =>
+          Effect.flatMap(Deferred.isDone(deferred), (done) =>
+            done ? Effect.unit() : Deferred.interrupt(deferred),
+          ),
       )
 
     const run = Effect.acquireUseRelease(
