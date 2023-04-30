@@ -39,7 +39,6 @@ const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
 const SharedResolverLive = Layer.provide(SharedPoolLive, RpcWorkerResolverLive)
 
 const client = Client.makeWithResolver(schema, RpcResolver)
-const setupClient = Client.makeWithResolver(schemaWithSetup, RpcResolver, "Tim")
 
 describe("e2e", () => {
   it("Worker", () =>
@@ -85,14 +84,26 @@ describe("e2e", () => {
     ).rejects.toEqual(new Error("boom"))
   })
 
-  it("setup", () =>
-    pipe(
+  it("setup", async () => {
+    const channel = new MessageChannel()
+    const closedPromise = new Promise<string>((resolve) => {
+      channel.port1.onmessage = (e) => {
+        resolve(e.data)
+      }
+    })
+
+    await pipe(
       Effect.gen(function* ($) {
-        const client = yield* $(setupClient)
+        const client = yield* $(
+          Client.makeWithResolver(schemaWithSetup, RpcResolver, channel.port2),
+        )
         const name = yield* $(client.getName)
         expect(name).toEqual("Tim")
       }),
       Effect.provideLayer(SetupResolverLive),
       Effect.runPromise,
-    ))
+    )
+
+    expect(await closedPromise).toEqual("closed")
+  })
 })

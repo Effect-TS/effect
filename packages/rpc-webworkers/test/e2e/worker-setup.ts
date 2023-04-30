@@ -5,7 +5,19 @@ import * as Server from "@effect/rpc-webworkers/Server"
 import { Name, schemaWithSetup } from "./schema"
 
 const router = Router.make(schemaWithSetup, {
-  __setup: (name) => Effect.succeed(Layer.succeed(Name, { name })),
+  __setup: (port) =>
+    Layer.scoped(
+      Name,
+      Effect.gen(function* (_) {
+        yield* _(
+          Effect.addFinalizer(() =>
+            Effect.sync(() => port.postMessage("closed")),
+          ),
+        )
+        return { name: "Tim" }
+      }),
+    ),
+
   getName: Effect.map(Name, (_) => _.name),
 })
 

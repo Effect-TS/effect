@@ -5,7 +5,7 @@ import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import * as Ref from "@effect/io/Ref"
-import type { Scope } from "@effect/io/Scope"
+import { Scope } from "@effect/io/Scope"
 import * as Tracer from "@effect/io/Tracer"
 import {
   RpcNotFound,
@@ -103,12 +103,7 @@ export const handleSingle: {
                 Option.match(
                   () =>
                     pipe(
-                      effect,
-                      Effect.flatMap((_) =>
-                        Layer.isLayer(_)
-                          ? Layer.buildWithScope(_, scope)
-                          : Effect.succeed(_),
-                      ),
+                      Layer.isLayer(effect) ? Layer.build(effect) : effect,
                       Effect.tap((_) => Ref.set(contextRef, Option.some(_))),
                     ),
                   () => Effect.unit(),
@@ -116,6 +111,7 @@ export const handleSingle: {
               ),
               Effect.as(null),
               Effect.either,
+              Effect.provideService(Scope, scope),
             ) as Effect.Effect<any, never, Either.Either<RpcError, unknown>>
           }
 

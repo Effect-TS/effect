@@ -30,7 +30,7 @@ export const Name = Tag<Name>()
 
 export const schemaWithSetup = Schema.make({
   __setup: {
-    input: S.string,
+    input: Schema.transferable(S.instanceOf(MessagePort), (_) => [_]),
     output: Schema.context<Name>(),
   },
 

@@ -15,6 +15,7 @@ import type { Layer } from "@effect/io/Layer"
  */
 export type RpcHandler<R, E, I, O> =
   | RpcHandler.IO<R, E, I, O>
+  | RpcHandler.IOLayer<R, E, I, O>
   | RpcHandler.NoInput<R, E, O>
 
 /**
@@ -26,6 +27,13 @@ export namespace RpcHandler {
    * @since 1.0.0
    */
   export type IO<R, E, I, O> = (input: I) => Effect<R, E, O>
+
+  /**
+   * @category handler models
+   * @since 1.0.0
+   */
+  export type IOLayer<R, E, I, O> = (input: I) => Layer<R, E, O>
+
   /**
    * @category handler models
    * @since 1.0.0
@@ -72,11 +80,11 @@ export namespace RpcHandler {
     infer O
   >
     ? O extends Context<infer A>
-      ? IO<any, E, I, Layer<any, E, A> | Context<A>>
+      ? IO<any, E, I, Context<A>> | IOLayer<any, E, I, A>
       : never
     : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
     ? O extends Context<infer A>
-      ? IO<any, never, I, Layer<any, never, A> | Context<A>>
+      ? IO<any, never, I, Context<A>> | IOLayer<any, never, I, A>
       : never
     : never
 
@@ -127,10 +135,8 @@ export namespace RpcHandlers {
   export type Services<H extends RpcHandlers> = {
     [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
       ? Services<H[M]["handlers"]>
-      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer O>
-      ? O extends Layer<infer LR, infer _LE, infer _LA>
-        ? R | LR
-        : R
+      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O>
+      ? R
       : never
   }[keyof H]
 
@@ -141,10 +147,8 @@ export namespace RpcHandlers {
   export type Error<H extends RpcHandlers> = {
     [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
       ? Services<H[M]["handlers"]>
-      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer O>
-      ? O extends Layer<infer _LR, infer LE, infer _LA>
-        ? LE | E
-        : E
+      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O>
+      ? E
       : never
   }[keyof H]
 
@@ -237,6 +241,13 @@ export namespace RpcRouter {
             infer O
           >
         ? RpcHandler.IO<Exclude<R, XR> | PR, E | PE, I, O>
+        : Router["handlers"][M] extends RpcHandler.IOLayer<
+            infer R,
+            infer E,
+            infer I,
+            infer O
+          >
+        ? RpcHandler.IOLayer<Exclude<R, XR> | PR, E | PE, I, O>
         : Router["handlers"][M] extends RpcHandler.NoInput<
             infer R,
             infer E,
@@ -252,15 +263,20 @@ export namespace RpcRouter {
    * @since 1.0.0
    */
   export type SetupServices<R extends WithSetup> =
-    R["handlers"]["__setup"] extends RpcHandler.IO<
+    R["handlers"]["__setup"] extends RpcHandler.IOLayer<
       infer _R,
       infer _E,
       infer _I,
       infer O
     >
+      ? O
+      : R["handlers"]["__setup"] extends RpcHandler.IO<
+          infer _R,
+          infer _E,
+          infer _I,
+          infer O
+        >
       ? O extends Context<infer Env>
-        ? Env
-        : O extends Layer<infer _R, infer _E, infer Env>
         ? Env
         : never
       : never
