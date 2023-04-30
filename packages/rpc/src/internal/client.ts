@@ -127,12 +127,12 @@ export const make: {
   ): Effect.Effect<
     never,
     RpcService.SetupError<S> | RpcError,
-    client.RpcClient<S, never>
+    client.RpcClient<S, RpcResolver<never>>
   >
   <S extends RpcService.DefinitionWithoutSetup>(
     schemas: S,
     options?: client.RpcClientOptions,
-  ): client.RpcClient<S, never>
+  ): client.RpcClient<S, RpcResolver<never>>
 } = (
   schemas: any,
   initOrOptions?: unknown,

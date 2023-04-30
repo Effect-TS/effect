@@ -8,7 +8,6 @@ import * as Pool from "@effect/io/Pool"
 import * as Client from "@effect/rpc-webworkers/Client"
 import * as Resolver from "@effect/rpc-webworkers/Resolver"
 import { RpcWorkerResolverLive } from "@effect/rpc-webworkers/internal/resolver"
-import { RpcResolver } from "@effect/rpc/Resolver"
 import "@vitest/web-worker"
 import { describe, expect, it } from "vitest"
 import { schema, schemaWithSetup } from "./e2e/schema"
@@ -38,7 +37,7 @@ const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
 )
 const SharedResolverLive = Layer.provide(SharedPoolLive, RpcWorkerResolverLive)
 
-const client = Client.makeWithResolver(schema, RpcResolver)
+const client = Client.make(schema)
 
 describe("e2e", () => {
   it("Worker", () =>
@@ -94,9 +93,7 @@ describe("e2e", () => {
 
     await pipe(
       Effect.gen(function* ($) {
-        const client = yield* $(
-          Client.makeWithResolver(schemaWithSetup, RpcResolver, channel.port2),
-        )
+        const client = yield* $(Client.make(schemaWithSetup, channel.port2))
         const name = yield* $(client.getName)
         expect(name).toEqual("Tim")
       }),

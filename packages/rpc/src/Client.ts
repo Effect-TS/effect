@@ -79,16 +79,16 @@ export const make: {
   <S extends RpcService.DefinitionWithSetup>(
     schemas: S,
     init: RpcSchema.Input<S["__setup"]>,
-    options?: RpcClientOptions | undefined,
+    options?: RpcClientOptions,
   ): Effect<
     never,
     RpcError | RpcSchema.Error<S["__setup"]>,
-    RpcClient<S, never>
+    RpcClient<S, RpcResolver<never>>
   >
   <S extends RpcService.DefinitionWithoutSetup>(
     schemas: S,
-    options?: RpcClientOptions | undefined,
-  ): RpcClient<S, never>
+    options?: RpcClientOptions,
+  ): RpcClient<S, RpcResolver<never>>
 } = internal.make
 
 /**
