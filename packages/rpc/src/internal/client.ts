@@ -61,33 +61,83 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
 }
 
 /** @internal */
-export const makeWithResolver = <
-  S extends RpcService.DefinitionWithId,
-  Resolver extends
-    | RpcResolver<never>
-    | Effect.Effect<any, never, RpcResolver<never>>,
->(
-  schemas: S,
-  resolver: Resolver,
-  options: client.RpcClientOptions = {},
-): client.RpcClient<
-  S,
-  [Resolver] extends [Effect.Effect<any, any, any>]
-    ? Effect.Effect.Context<Resolver>
-    : never
-> =>
-  ({
-    ...makeRecursive(schemas, resolver as any, options),
+export const makeWithResolver: {
+  <
+    S extends RpcService.DefinitionWithSetup,
+    Resolver extends
+      | RpcResolver<never>
+      | Effect.Effect<any, never, RpcResolver<never>>,
+  >(
+    schemas: S,
+    resolver: Resolver,
+    init: RpcService.SetupInput<S>,
+    options?: client.RpcClientOptions,
+  ): Effect.Effect<
+    never,
+    RpcService.SetupError<S> | RpcError,
+    client.RpcClient<
+      S,
+      [Resolver] extends [Effect.Effect<any, any, any>]
+        ? Effect.Effect.Context<Resolver>
+        : never
+    >
+  >
+  <
+    S extends RpcService.DefinitionWithoutSetup,
+    Resolver extends
+      | RpcResolver<never>
+      | Effect.Effect<any, never, RpcResolver<never>>,
+  >(
+    schemas: S,
+    resolver: Resolver,
+    options?: client.RpcClientOptions,
+  ): client.RpcClient<
+    S,
+    [Resolver] extends [Effect.Effect<any, any, any>]
+      ? Effect.Effect.Context<Resolver>
+      : never
+  >
+} = (
+  schemas: RpcService.DefinitionWithId,
+  resolver: RpcResolver<never> | Effect.Effect<any, never, RpcResolver<never>>,
+  initOrOptions?: unknown,
+  options?: client.RpcClientOptions,
+) => {
+  const hasSetup = "__setup" in schemas
+  const opts = hasSetup ? options : (initOrOptions as client.RpcClientOptions)
+  const client: any = {
+    ...makeRecursive(schemas, resolver as any, opts ?? {}),
     _schemas: schemas,
     _unsafeDecode: unsafeDecode(schemas),
-  } as any)
+  }
+
+  if (hasSetup) {
+    return Effect.as(client.__setup(initOrOptions), client)
+  }
+
+  return client as any
+}
 
 /** @internal */
-export const make = <S extends RpcService.DefinitionWithId>(
-  schemas: S,
-  options: client.RpcClientOptions = {},
-): client.RpcClient<S, RpcResolver<never>> =>
-  makeWithResolver(schemas, RpcResolver, options)
+export const make: {
+  <S extends RpcService.DefinitionWithSetup>(
+    schemas: S,
+    init: RpcService.SetupInput<S>,
+    options?: client.RpcClientOptions,
+  ): Effect.Effect<
+    never,
+    RpcService.SetupError<S> | RpcError,
+    client.RpcClient<S, never>
+  >
+  <S extends RpcService.DefinitionWithoutSetup>(
+    schemas: S,
+    options?: client.RpcClientOptions,
+  ): client.RpcClient<S, never>
+} = (
+  schemas: any,
+  initOrOptions?: unknown,
+  options?: client.RpcClientOptions,
+) => makeWithResolver(schemas, RpcResolver, initOrOptions, options) as any
 
 const makeRpc = <S extends RpcSchema.Any>(
   resolver: RpcResolver<never>,

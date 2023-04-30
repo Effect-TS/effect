@@ -3,6 +3,7 @@
  */
 import type { Option } from "@effect/data/Option"
 import type { Effect } from "@effect/io/Effect"
+import type { Scope } from "@effect/io/Scope"
 import type { Span } from "@effect/io/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
 import type { RpcResponse } from "@effect/rpc/Resolver"
@@ -18,15 +19,29 @@ import * as internal from "@effect/rpc/internal/server"
  * @category constructors
  * @since 1.0.0
  */
-export const handler: <R extends RpcRouter.Base>(
-  router: R,
-) => (
-  requests: unknown,
-) => Effect<
-  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
-  never,
-  ReadonlyArray<RpcResponse>
-> = internal.handler
+export const handler: {
+  <R extends RpcRouter.WithSetup>(router: R): Effect<
+    Scope,
+    never,
+    (
+      request: unknown,
+    ) => Effect<
+      Exclude<
+        RpcHandlers.Services<R["handlers"]>,
+        RpcRouter.SetupServices<R> | Span
+      >,
+      never,
+      ReadonlyArray<RpcResponse>
+    >
+  >
+  <R extends RpcRouter.WithoutSetup>(router: R): (
+    request: unknown,
+  ) => Effect<
+    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    never,
+    ReadonlyArray<RpcResponse>
+  >
+} = internal.handler as any
 
 /**
  * @category constructors
@@ -44,29 +59,57 @@ export const handlerRaw: <R extends RpcRouter.Base>(
  * @category constructors
  * @since 1.0.0
  */
-export const handleSingle: <R extends RpcRouter.Base>(
-  router: R,
-) => (
-  request: unknown,
-) => Effect<
-  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
-  never,
-  RpcResponse
-> = internal.handleSingle as any
+export const handleSingle: {
+  <R extends RpcRouter.WithSetup>(router: R): Effect<
+    Scope,
+    never,
+    (
+      request: unknown,
+    ) => Effect<
+      Exclude<
+        RpcHandlers.Services<R["handlers"]>,
+        RpcRouter.SetupServices<R> | Span
+      >,
+      never,
+      RpcResponse
+    >
+  >
+  <R extends RpcRouter.WithoutSetup>(router: R): (
+    request: unknown,
+  ) => Effect<
+    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    never,
+    RpcResponse
+  >
+} = internal.handleSingle as any
 
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const handleSingleWithSchema: <R extends RpcRouter.Base>(
-  router: R,
-) => (
-  request: unknown,
-) => Effect<
-  Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
-  never,
-  readonly [RpcResponse, Option<RpcSchema.Base>]
-> = internal.handleSingleWithSchema as any
+export const handleSingleWithSchema: {
+  <R extends RpcRouter.WithSetup>(router: R): Effect<
+    Scope,
+    never,
+    (
+      request: unknown,
+    ) => Effect<
+      Exclude<
+        RpcHandlers.Services<R["handlers"]>,
+        RpcRouter.SetupServices<R> | Span
+      >,
+      never,
+      readonly [RpcResponse, Option<RpcSchema.Base>]
+    >
+  >
+  <R extends RpcRouter.WithoutSetup>(router: R): (
+    request: unknown,
+  ) => Effect<
+    Exclude<RpcHandlers.Services<R["handlers"]>, Span>,
+    never,
+    readonly [RpcResponse, Option<RpcSchema.Base>]
+  >
+} = internal.handleSingleWithSchema as any
 
 /**
  * @category models

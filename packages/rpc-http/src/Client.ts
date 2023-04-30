@@ -11,8 +11,12 @@ export * from "@effect/rpc/Client"
  * @category constructors
  * @since 1.0.0
  */
-export const make = <S extends RpcService.DefinitionWithId>(
+export const make = <S extends RpcService.DefinitionWithoutSetup>(
   schemas: S,
   options: Client.RpcClientOptions & Resolver.FetchResolverOptions,
 ): Client.RpcClient<S, never> =>
-  Client.makeWithResolver(schemas, Resolver.make(options), options)
+  Client.makeWithResolver(
+    schemas as any,
+    Resolver.make(options),
+    options,
+  ) as any

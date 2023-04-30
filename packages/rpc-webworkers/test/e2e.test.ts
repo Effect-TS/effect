@@ -11,7 +11,7 @@ import { RpcWorkerResolverLive } from "@effect/rpc-webworkers/internal/resolver"
 import { RpcResolver } from "@effect/rpc/Resolver"
 import "@vitest/web-worker"
 import { describe, expect, it } from "vitest"
-import { schema } from "./e2e/schema"
+import { schema, schemaWithSetup } from "./e2e/schema"
 
 // TODO: test more than one worker
 const PoolLive = Resolver.makePoolLayer((spawn) =>
@@ -22,6 +22,14 @@ const PoolLive = Resolver.makePoolLayer((spawn) =>
 )
 const ResolverLive = Layer.provide(PoolLive, RpcWorkerResolverLive)
 
+const SetupPoolLive = Resolver.makePoolLayer((spawn) =>
+  Pool.make(
+    spawn(() => new Worker(new URL("./e2e/worker-setup.ts", import.meta.url))),
+    1,
+  ),
+)
+const SetupResolverLive = Layer.provide(SetupPoolLive, RpcWorkerResolverLive)
+
 const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
   Pool.make(
     spawn(() => new SharedWorker(new URL("./e2e/worker.ts", import.meta.url))),
@@ -31,6 +39,7 @@ const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
 const SharedResolverLive = Layer.provide(SharedPoolLive, RpcWorkerResolverLive)
 
 const client = Client.makeWithResolver(schema, RpcResolver)
+const setupClient = Client.makeWithResolver(schemaWithSetup, RpcResolver, "Tim")
 
 describe("e2e", () => {
   it("Worker", () =>
@@ -75,4 +84,15 @@ describe("e2e", () => {
       ),
     ).rejects.toEqual(new Error("boom"))
   })
+
+  it("setup", () =>
+    pipe(
+      Effect.gen(function* ($) {
+        const client = yield* $(setupClient)
+        const name = yield* $(client.getName)
+        expect(name).toEqual("Tim")
+      }),
+      Effect.provideLayer(SetupResolverLive),
+      Effect.runPromise,
+    ))
 })

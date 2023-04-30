@@ -125,12 +125,10 @@ export const make = <E, I, O>(
           }),
           postMessages(port),
         ),
-      ([worker], exit) =>
+      ([, port], exit) =>
         Effect.zipRight(
           handleExit(exit),
-          "port" in worker
-            ? Effect.unit()
-            : Effect.sync(() => worker.terminate()),
+          Effect.sync(() => port.postMessage("close")),
         ),
     )
 

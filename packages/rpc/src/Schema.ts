@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type { Context } from "@effect/data/Context"
 import type { RpcRequest } from "@effect/rpc/Resolver"
 import * as internal from "@effect/rpc/internal/schema"
 import * as Schema from "@effect/schema/Schema"
@@ -64,6 +65,36 @@ export namespace RpcSchema {
     readonly output: Schema.Schema<any>
     readonly error: Schema.Schema<any>
   }
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type Input<S extends RpcSchema.Any> = S extends {
+    readonly input: Schema.Schema<infer _I, infer A>
+  }
+    ? A
+    : never
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type Error<S extends RpcSchema.Any> = S extends {
+    readonly error: Schema.Schema<infer _I, infer A>
+  }
+    ? A
+    : never
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type Output<S extends RpcSchema.Any> = S extends {
+    readonly output: Schema.Schema<infer _I, infer A>
+  }
+    ? A
+    : never
 }
 
 /**
@@ -95,7 +126,11 @@ export namespace RpcService {
    * @since 1.0.0
    */
   export interface Definition
-    extends Record<string, RpcSchema.Any | WithId<any, any, any>> {}
+    extends Record<string, RpcSchema.Any | WithId<any, any, any>> {
+    __setup?:
+      | RpcSchema.IO<any, any, any, any, Context<any>, Context<any>>
+      | RpcSchema.NoError<any, any, Context<any>, Context<any>>
+  }
 
   /**
    * @category models
@@ -106,6 +141,22 @@ export namespace RpcService {
     readonly [RpcServiceErrorId]:
       | Schema.Schema<any, any>
       | Schema.Schema<never, never>
+  }
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface DefinitionWithoutSetup extends DefinitionWithId {
+    readonly __setup?: never
+  }
+
+  /**
+   * @category models
+   * @since 1.0.0
+   */
+  export interface DefinitionWithSetup extends DefinitionWithId {
+    readonly __setup: Definition["__setup"] & {}
   }
 
   /**
@@ -137,6 +188,30 @@ export namespace RpcService {
    * @category utils
    * @since 1.0.0
    */
+  export type SetupInput<S extends DefinitionWithSetup> = RpcSchema.Input<
+    S["__setup"]
+  >
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type SetupError<S extends DefinitionWithSetup> = RpcSchema.Error<
+    S["__setup"]
+  >
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
+  export type SetupOutput<S extends DefinitionWithSetup> = RpcSchema.Output<
+    S["__setup"]
+  >
+
+  /**
+   * @category utils
+   * @since 1.0.0
+   */
   export type Methods<S extends DefinitionWithId, P extends string = ``> = {
     [M in keyof S]: M extends string
       ? S[M] extends DefinitionWithId
@@ -154,7 +229,9 @@ export namespace RpcService {
     V,
     S extends RpcService.Definition,
   > = {
-    readonly [K in keyof S]: S[K] extends DefinitionWithId
+    readonly [K in keyof S]: K extends "__setup"
+      ? S[K]
+      : S[K] extends DefinitionWithId
       ? Validate<VL, V, S[K]>
       : S[K] extends RpcSchema.IO<
           infer IE,
@@ -334,6 +411,12 @@ export namespace RpcRequestSchema {
     To<S>
   > & {}
 }
+
+/**
+ * @category constructors
+ * @since 1.0.0
+ */
+export const context = <R>(): Schema.Schema<Context<R>> => Schema.any
 
 /**
  * @category constructors

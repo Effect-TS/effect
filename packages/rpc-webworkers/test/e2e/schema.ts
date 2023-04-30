@@ -1,5 +1,9 @@
 import * as Schema from "@effect/rpc-webworkers/Schema"
 import * as S from "@effect/schema/Schema"
+import { Tag } from "@effect/data/Context"
+// @ts-ignore
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import * as Layer from "@effect/io/Layer"
 
 export const schema = Schema.make({
   currentDate: {
@@ -14,6 +18,23 @@ export const schema = Schema.make({
     output: S.string,
   },
   crash: {
+    output: S.string,
+  },
+})
+
+export interface Name {
+  readonly name: string
+}
+
+export const Name = Tag<Name>()
+
+export const schemaWithSetup = Schema.make({
+  __setup: {
+    input: S.string,
+    output: Schema.context<Name>(),
+  },
+
+  getName: {
     output: S.string,
   },
 })

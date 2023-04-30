@@ -2,6 +2,7 @@ import { pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Runtime from "@effect/io/Runtime"
+import type { Scope } from "@effect/io/Scope"
 import { getTransferables } from "@effect/rpc-webworkers/Schema"
 import type { RpcWorker, RpcWorkerHandler } from "@effect/rpc-webworkers/Server"
 import { RpcTransportError } from "@effect/rpc/Error"
@@ -10,43 +11,60 @@ import type { RpcRouter } from "@effect/rpc/Router"
 import * as Server from "@effect/rpc/Server"
 
 /** @internal */
-export const makeHandler = <Router extends RpcRouter.Base>(router: Router) => {
-  const handler = Server.handleSingleWithSchema(
-    router,
-  ) as unknown as Server.RpcServerSingleWithSchema
+export const makeHandler: {
+  <R extends RpcRouter.WithSetup>(router: R): Effect.Effect<
+    Scope,
+    never,
+    (port: MessagePort | typeof globalThis) => RpcWorkerHandler<R>
+  >
+  <R extends RpcRouter.WithoutSetup>(router: R): (
+    port: MessagePort | typeof globalThis,
+  ) => RpcWorkerHandler<R>
+} = (router: RpcRouter.Base) => {
+  const handler = Server.handleSingleWithSchema(router) as unknown
 
-  return (port: MessagePort | typeof globalThis): RpcWorkerHandler<Router> => {
-    return (message) => {
-      const [id, request] = message.data as [number, RpcRequest.Payload]
-      return pipe(
-        handler(request),
-        Effect.flatMap(([response, schema]) =>
-          Effect.sync(() => {
-            const transfer = pipe(
-              Option.map(schema, (schema) =>
-                response._tag === "Success"
-                  ? getTransferables(schema.output, response.value)
-                  : getTransferables(schema.error, response.error),
-              ),
-              Option.getOrUndefined,
-            )
-            return port.postMessage([id, response], { transfer })
-          }),
-        ),
-        Effect.catchAllDefect((error) =>
-          Effect.sync(() =>
-            port.postMessage([
-              id,
-              {
-                _tag: "Error",
-                error: RpcTransportError({ error }),
-              } satisfies RpcResponse,
-            ]),
+  const run =
+    (handler: Server.RpcServerSingleWithSchema) =>
+    (
+      port: MessagePort | typeof globalThis,
+    ): RpcWorkerHandler<RpcRouter.Base> => {
+      return (message) => {
+        const [id, request] = message.data as [number, RpcRequest.Payload]
+        return pipe(
+          handler(request),
+          Effect.flatMap(([response, schema]) =>
+            Effect.sync(() => {
+              const transfer = pipe(
+                Option.map(schema, (schema) =>
+                  response._tag === "Success"
+                    ? getTransferables(schema.output, response.value)
+                    : getTransferables(schema.error, response.error),
+                ),
+                Option.getOrUndefined,
+              )
+              return port.postMessage([id, response], { transfer })
+            }),
           ),
-        ),
-      ) as any
+          Effect.catchAllDefect((error) =>
+            Effect.sync(() =>
+              port.postMessage([
+                id,
+                {
+                  _tag: "Error",
+                  error: RpcTransportError({ error }),
+                } satisfies RpcResponse,
+              ]),
+            ),
+          ),
+        ) as any
+      }
     }
+
+  if (Effect.isEffect(handler)) {
+    return Effect.map(handler as any, run)
   }
+
+  return run(handler as any) as any
 }
 
 /** @internal */
@@ -55,48 +73,58 @@ export const make = <Router extends RpcRouter.Base>(
 ): RpcWorker<Router> => {
   const handler = makeHandler(router)
 
-  return pipe(
-    Effect.runtime<any>(),
-    Effect.flatMap((runtime) =>
-      Effect.asyncInterrupt<never, never, never>(() => {
-        const controller = new AbortController()
-        const runFork = Runtime.runFork(runtime)
+  const run = (
+    handler: (
+      port: MessagePort | typeof globalThis,
+    ) => RpcWorkerHandler<RpcRouter.Base>,
+  ) =>
+    pipe(
+      Effect.runtime<any>(),
+      Effect.flatMap((runtime) =>
+        Effect.async<never, never, void>((resume) => {
+          const runFork = Runtime.runFork(runtime)
+          let portCount = 0
 
-        function handlePort(port: MessagePort | typeof globalThis) {
-          const portHandler = handler(port)
+          function handlePort(port: MessagePort | typeof globalThis) {
+            const portHandler = handler(port)
+            portCount++
 
-          port.addEventListener(
-            "message",
-            (event) => runFork(portHandler(event as MessageEvent) as any),
-            { signal: controller.signal },
-          )
-        }
+            port.addEventListener("message", (event) => {
+              if ((event as MessageEvent).data === "close") {
+                portCount--
+                if (portCount === 0) {
+                  resume(Effect.unit())
+                }
+              } else {
+                runFork(portHandler(event as MessageEvent) as any)
+              }
+            })
+          }
 
-        if ("postMessage" in self) {
-          handlePort(self)
-        } else {
-          // eslint-disable-next-line @typescript-eslint/no-extra-semi
-          ;(self as any).addEventListener(
-            "connect",
-            (event: MessageEvent) => {
-              const port = event.ports[0]
-              handlePort(port)
-              port.start()
-            },
-            { signal: controller.signal },
-          )
-        }
+          if ("postMessage" in self) {
+            handlePort(self)
+          } else {
+            // eslint-disable-next-line @typescript-eslint/no-extra-semi
+            ;(self as any).addEventListener(
+              "connect",
+              (event: MessageEvent) => {
+                const port = event.ports[0]
+                handlePort(port)
+                port.start()
+              },
+            )
+          }
 
-        self.addEventListener(
-          "unhandledrejection",
-          (event) => {
+          self.addEventListener("unhandledrejection", (event) => {
             throw event.reason
-          },
-          { signal: controller.signal },
-        )
+          })
+        }),
+      ),
+    ) as any
 
-        return Effect.sync(() => controller.abort())
-      }),
-    ),
-  ) as any
+  if (Effect.isEffect(handler)) {
+    return Effect.scoped(Effect.flatMap(handler as any, run)) as any
+  }
+
+  return run(handler as any)
 }

@@ -51,7 +51,11 @@ export const methodSchemaTransform =
       if (RpcServiceId in schema) {
         return {
           ...acc,
-          ...methodCodecs(schema, serviceErrors, `${prefix}${method}.`),
+          ...methodSchemaTransform(f)(
+            schema,
+            serviceErrors,
+            `${prefix}${method}.`,
+          ),
         }
       }
 

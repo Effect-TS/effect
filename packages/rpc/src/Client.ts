@@ -32,7 +32,10 @@ export type Rpc<C extends RpcSchema.Any, R, SE> = C extends RpcSchema.IO<
   : never
 
 type RpcClientRpcs<S extends RpcService.DefinitionWithId, R, SE = never> = {
-  readonly [K in keyof S]: S[K] extends RpcService.DefinitionWithId
+  readonly [K in Exclude<
+    keyof S,
+    "__setup"
+  >]: S[K] extends RpcService.DefinitionWithId
     ? RpcClientRpcs<S[K], R, SE | RpcService.Errors<S>>
     : S[K] extends RpcSchema.Any
     ? Rpc<S[K], R, SE | RpcService.Errors<S>>
@@ -72,10 +75,21 @@ export interface RpcClientOptions {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <S extends RpcService.DefinitionWithId>(
-  schemas: S,
-  options?: RpcClientOptions,
-) => RpcClient<S, RpcResolver<never>> = internal.make
+export const make: {
+  <S extends RpcService.DefinitionWithSetup>(
+    schemas: S,
+    init: RpcSchema.Input<S["__setup"]>,
+    options?: RpcClientOptions | undefined,
+  ): Effect<
+    never,
+    RpcError | RpcSchema.Error<S["__setup"]>,
+    RpcClient<S, never>
+  >
+  <S extends RpcService.DefinitionWithoutSetup>(
+    schemas: S,
+    options?: RpcClientOptions | undefined,
+  ): RpcClient<S, never>
+} = internal.make
 
 /**
  * Creates an RPC client with the specified resolver
@@ -83,14 +97,40 @@ export const make: <S extends RpcService.DefinitionWithId>(
  * @category constructors
  * @since 1.0.0
  */
-export const makeWithResolver: <
-  S extends RpcService.DefinitionWithId,
-  Resolver extends RpcResolver<never> | Effect<any, never, RpcResolver<never>>,
->(
-  schemas: S,
-  resolver: Resolver,
-  options?: RpcClientOptions,
-) => RpcClient<
-  S,
-  [Resolver] extends [Effect<any, any, any>] ? Effect.Context<Resolver> : never
-> = internal.makeWithResolver
+export const makeWithResolver: {
+  <
+    S extends RpcService.DefinitionWithSetup,
+    Resolver extends
+      | RpcResolver<never>
+      | Effect<any, never, RpcResolver<never>>,
+  >(
+    schemas: S,
+    resolver: Resolver,
+    init: RpcSchema.Input<S["__setup"]>,
+    options?: RpcClientOptions | undefined,
+  ): Effect<
+    never,
+    RpcError | RpcSchema.Error<S["__setup"]>,
+    RpcClient<
+      S,
+      [Resolver] extends [Effect<any, any, any>]
+        ? Effect.Context<Resolver>
+        : never
+    >
+  >
+  <
+    S extends RpcService.DefinitionWithoutSetup,
+    Resolver extends
+      | RpcResolver<never>
+      | Effect<any, never, RpcResolver<never>>,
+  >(
+    schemas: S,
+    resolver: Resolver,
+    options?: RpcClientOptions | undefined,
+  ): RpcClient<
+    S,
+    [Resolver] extends [Effect<any, any, any>]
+      ? Effect.Context<Resolver>
+      : never
+  >
+} = internal.makeWithResolver
