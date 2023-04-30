@@ -1,10 +1,11 @@
 import type { Tag } from "@effect/data/Context"
+import type { LazyArg } from "@effect/data/Function"
+import { dual } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
+import * as Layer from "@effect/io/Layer"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type { RpcService } from "@effect/rpc/Schema"
 import { makeUndecodedClient } from "@effect/rpc/internal/server"
-import type { LazyArg } from "@effect/data/Function"
-import { dual } from "@effect/data/Function"
 
 /** @internal */
 export const make = <
@@ -33,8 +34,16 @@ const provideHandlerEffect = (
 ) =>
   Effect.isEffect(handler)
     ? Effect.provideServiceEffect(handler, tag, effect)
-    : (input: any) =>
-        Effect.provideServiceEffect((handler as Function)(input), tag, effect)
+    : (input: any) => {
+        const effectOrLayer = (handler as Function)(input)
+        return Effect.provideServiceEffect(
+          Layer.isLayer(effectOrLayer)
+            ? Layer.build(effectOrLayer)
+            : effectOrLayer,
+          tag,
+          effect,
+        )
+      }
 
 /** @internal */
 export const provideServiceEffect: {
