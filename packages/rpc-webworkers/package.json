@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-webworkers",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "",
   "publishConfig": {
     "access": "public",

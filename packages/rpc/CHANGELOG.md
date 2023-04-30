@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.1.1
+
+### Patch Changes
+
+- [#59](https://github.com/Effect-TS/rpc/pull/59) [`c3f1506`](https://github.com/Effect-TS/rpc/commit/c3f1506c37040c377d5042cf687d1cc3a4adba9f) Thanks [@tim-smart](https://github.com/tim-smart)! - add \_\_setup method
+
 ## 0.1.0
 
 ### Minor Changes
