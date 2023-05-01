@@ -906,6 +906,7 @@ export type AnnotationOptions<A> = {
   examples?: AST.ExamplesAnnotation
   documentation?: AST.DocumentationAnnotation
   jsonSchema?: AST.JSONSchemaAnnotation
+  arbitrary?: (...args: ReadonlyArray<Arbitrary<any>>) => Arbitrary<any>
 }
 
 const toAnnotations = <A>(
@@ -941,6 +942,9 @@ const toAnnotations = <A>(
   }
   if (options?.jsonSchema !== undefined) {
     annotations[AST.JSONSchemaAnnotationId] = options?.jsonSchema
+  }
+  if (options?.arbitrary !== undefined) {
+    annotations[I.ArbitraryHookId] = options?.arbitrary
   }
   return annotations
 }
@@ -2707,10 +2711,8 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
 export const UUID: Schema<string> = pipe(
   string,
   pattern(uuidRegex, {
-    typeId: UUIDTypeId
-  }),
-  annotations({
-    [I.ArbitraryHookId]: (): Arbitrary<string> => (fc) => fc.uuid()
+    typeId: UUIDTypeId,
+    arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
   })
 )
 
