@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.3
+
+### Patch Changes
+
+- [#264](https://github.com/Effect-TS/schema/pull/264) [`4488c09`](https://github.com/Effect-TS/schema/commit/4488c0933c3286aa99a4e18aa071fab18a582ad1) Thanks [@gcanti](https://github.com/gcanti)! - add arbitrary to AnnotationOptions
+
 ## 0.17.2
 
 ### Patch Changes
