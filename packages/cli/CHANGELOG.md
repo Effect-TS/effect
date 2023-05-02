@@ -1,5 +1,15 @@
 # @effect/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- [#303](https://github.com/Effect-TS/cli/pull/303) [`9c3cf14`](https://github.com/Effect-TS/cli/commit/9c3cf1437709a13f35a127629cdd3b112edebc29) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#301](https://github.com/Effect-TS/cli/pull/301) [`bb8f3b5`](https://github.com/Effect-TS/cli/commit/bb8f3b5457586c4060b2af500bbb365b74f3c3d1) Thanks [@IMax153](https://github.com/IMax153)! - separate Options.choice and Options.choiceWithValue
+
 ## 0.4.1
 
 ### Patch Changes
