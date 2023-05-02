@@ -207,9 +207,10 @@ const alterAnnotationsSafe = <A, B>(
       )
     }
     case "ConcatTree": {
-      return Effect.map(
+      return pipe(
         Effect.forEach(self.trees, (tree) => alterAnnotationsSafe(tree, f)),
-        concat
+        Effect.map(Chunk.unsafeFromArray),
+        Effect.map(concat)
       )
     }
   }
@@ -259,8 +260,9 @@ const foldMapSafe = <A, M>(
       return Effect.map(
         Effect.forEach(self.trees, (tree) => foldMapSafe(tree, M, f)),
         (trees) => {
-          const head = Chunk.unsafeHead(trees)
-          const tail = Chunk.drop(trees, 1)
+          const chunk = Chunk.unsafeFromArray(trees)
+          const head = Chunk.unsafeHead(chunk)
+          const tail = Chunk.drop(chunk, 1)
           return Chunk.reduce(tail, head, (acc, a) => M.combine(acc, a))
         }
       )
