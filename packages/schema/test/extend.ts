@@ -3,6 +3,11 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("extend", () => {
+  it(`struct extend struct (dual)`, async () => {
+    const schema = S.extend(S.struct({ a: S.string }), S.struct({ b: S.number }))
+    await Util.expectParseSuccess(schema, { a: "a", b: 1 })
+  })
+
   it(`struct with defaults extend struct`, async () => {
     const schema = pipe(
       S.struct({ a: S.optional(S.string).withDefault(() => ""), b: S.string }),

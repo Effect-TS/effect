@@ -875,14 +875,19 @@ const intersectUnionMembers = (xs: ReadonlyArray<AST.AST>, ys: ReadonlyArray<AST
  * @category combinators
  * @since 1.0.0
  */
-export const extend = <IB, B>(that: Schema<IB, B>) =>
-  <I, A>(self: Schema<I, A>): Schema<Spread<I & IB>, Spread<A & B>> =>
+export const extend: {
+  <IB, B>(that: Schema<IB, B>): <I, A>(self: Schema<I, A>) => Schema<Spread<I & IB>, Spread<A & B>>
+  <I, A, IB, B>(self: Schema<I, A>, that: Schema<IB, B>): Schema<Spread<I & IB>, Spread<A & B>>
+} = dual(
+  2,
+  <I, A, IB, B>(self: Schema<I, A>, that: Schema<IB, B>): Schema<Spread<I & IB>, Spread<A & B>> =>
     make(
       intersectUnionMembers(
         AST.isUnion(self.ast) ? self.ast.types : [self.ast],
         AST.isUnion(that.ast) ? that.ast.types : [that.ast]
       )
     )
+)
 
 /**
  * @category combinators
