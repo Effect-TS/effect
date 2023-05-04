@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.4
+
+### Patch Changes
+
+- [#267](https://github.com/Effect-TS/schema/pull/267) [`8369823`](https://github.com/Effect-TS/schema/commit/83698237ee5098cfa4c04757b29cd9c8c71966c2) Thanks [@gcanti](https://github.com/gcanti)! - make extend dual
+
 ## 0.17.3
 
 ### Patch Changes
