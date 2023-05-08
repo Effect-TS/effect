@@ -49,4 +49,17 @@ describe.concurrent("pick", () => {
 
     await Util.expectParseFailure(schema, { as: [{ as: [] }] }, `/as /0 /a is missing`)
   })
+
+  it("struct with property signature transformations", async () => {
+    const schema = pipe(
+      S.struct({
+        a: S.optional(S.string).withDefault(() => ""),
+        b: S.NumberFromString,
+        c: S.boolean
+      }),
+      S.pick("a", "b")
+    )
+    await Util.expectParseSuccess(schema, { a: "a", b: "1" }, { a: "a", b: 1 })
+    await Util.expectParseSuccess(schema, { b: "1" }, { a: "", b: 1 })
+  })
 })

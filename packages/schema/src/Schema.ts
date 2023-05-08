@@ -663,20 +663,46 @@ export const struct = <
  * @since 1.0.0
  */
 export const pick = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  <I extends { [K in keyof A]: any }>(
+  <I extends { [K in keyof A]?: any }>(
     self: Schema<I, A>
-  ): Schema<Spread<Pick<I, Keys[number]>>, Spread<Pick<A, Keys[number]>>> =>
-    make(AST.pick(self.ast, keys))
+  ): Schema<Spread<Pick<I, Keys[number]>>, Spread<Pick<A, Keys[number]>>> => {
+    const ast = self.ast
+    if (AST.isTransform(ast) && ast.propertySignatureTransformations.length > 0) {
+      return make(
+        AST.createTransformByPropertySignatureTransformations(
+          AST.pick(ast.from, keys),
+          AST.pick(ast.to, keys),
+          ast.propertySignatureTransformations.filter((t) =>
+            (keys as ReadonlyArray<PropertyKey>).includes(t.to)
+          )
+        )
+      )
+    }
+    return make(AST.pick(ast, keys))
+  }
 
 /**
  * @category combinators
  * @since 1.0.0
  */
 export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
-  <I extends { [K in keyof A]: any }>(
+  <I extends { [K in keyof A]?: any }>(
     self: Schema<I, A>
-  ): Schema<Spread<Omit<I, Keys[number]>>, Spread<Omit<A, Keys[number]>>> =>
-    make(AST.omit(self.ast, keys))
+  ): Schema<Spread<Omit<I, Keys[number]>>, Spread<Omit<A, Keys[number]>>> => {
+    const ast = self.ast
+    if (AST.isTransform(ast) && ast.propertySignatureTransformations.length > 0) {
+      return make(
+        AST.createTransformByPropertySignatureTransformations(
+          AST.omit(ast.from, keys),
+          AST.omit(ast.to, keys),
+          ast.propertySignatureTransformations.filter((t) =>
+            !(keys as ReadonlyArray<PropertyKey>).includes(t.to)
+          )
+        )
+      )
+    }
+    return make(AST.omit(ast, keys))
+  }
 
 /**
  * Returns an object containing all property signatures of a given schema.

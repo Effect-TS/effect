@@ -302,6 +302,9 @@ pipe(S.struct({ a: S.optional(S.string),  b: S.number, c: S.boolean }), S.pick('
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a?: string; readonly b: number; }>
 pipe(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.boolean }), S.pick('a', 'b'));
 
+// $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
+pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromString, c: S.boolean }), S.pick('a', 'b'));
+
 // ---------------------------------------------
 // omit
 // ---------------------------------------------
@@ -321,6 +324,9 @@ pipe(S.struct({ a: S.optional(S.string),  b: S.number, c: S.boolean }), S.omit('
 
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a?: string; readonly b: number; }>
 pipe(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.boolean }), S.omit('c'));
+
+// $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
+pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromString, c: S.boolean }), S.omit('c'));
 
 // ---------------------------------------------
 // getPropertySignatures
