@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.17.5
+
+### Patch Changes
+
+- [#272](https://github.com/Effect-TS/schema/pull/272) [`d91a7a7`](https://github.com/Effect-TS/schema/commit/d91a7a72eb4ca28633d2b9cfc3afdd07afadd98b) Thanks [@gcanti](https://github.com/gcanti)! - pick / omit: add support for structs with property signature transformations
+
 ## 0.17.4
 
 ### Patch Changes
