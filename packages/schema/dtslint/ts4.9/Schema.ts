@@ -329,16 +329,6 @@ pipe(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.boolean }), 
 pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromString, c: S.boolean }), S.omit('c'));
 
 // ---------------------------------------------
-// getPropertySignatures
-// ---------------------------------------------
-
-// $ExpectType { readonly a: Schema<string, string>; readonly b: Schema<number, number>; }
-S.getPropertySignatures(S.struct({ a: S.string,  b: S.number }))
-
-// $ExpectType { readonly a: Schema<string, string>; readonly b: Schema<string, number>; }
-S.getPropertySignatures(S.struct({ a: S.string,  b: NumberFromString }))
-
-// ---------------------------------------------
 // brand
 // ---------------------------------------------
 

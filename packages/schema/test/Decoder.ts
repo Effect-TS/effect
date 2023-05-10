@@ -17,12 +17,6 @@ describe.concurrent("Decoder", () => {
     await Util.expectParseFailure(schema, "a", `Expected number, actual "a"`)
   })
 
-  it("reverse", async () => {
-    const schema = pipe(S.string, S.numberFromString, S.positive(), S.reverse)
-    await Util.expectParseSuccess(schema, 1, "1")
-    await Util.expectParseFailure(schema, -1, "Expected a positive number, actual -1")
-  })
-
   it("annotations/message refinement", async () => {
     const schema = pipe(
       // initial schema, a string

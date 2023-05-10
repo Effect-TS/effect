@@ -182,7 +182,7 @@ describe.concurrent("Parser", () => {
       )
     ).toEqual([])
     // simulate encoding
-    const ast = AST.reverse(
+    const ast = P.reverse(
       pipe(
         S.struct({ radius: S.number }),
         S.attachPropertySignature("kind", "circle")

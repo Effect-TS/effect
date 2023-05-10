@@ -55,17 +55,12 @@ export type To<S extends { readonly To: (..._: any) => any }> = Parameters<S["To
 /**
  * @since 1.0.0
  */
-export const from = <I, A>(schema: Schema<I, A>): Schema<I> => make(AST.getFrom(schema.ast))
+export const from = <I, A>(schema: Schema<I, A>): Schema<I> => make(AST.from(schema.ast))
 
 /**
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema<I, A>): Schema<A> => make(AST.getTo(schema.ast))
-
-/**
- * @since 1.0.0
- */
-export const reverse = <I, A>(schema: Schema<I, A>): Schema<A, I> => make(AST.reverse(schema.ast))
+export const to = <I, A>(schema: Schema<I, A>): Schema<A> => make(AST.to(schema.ast))
 
 /* c8 ignore start */
 export {
@@ -583,7 +578,7 @@ export const struct = <
             toPropertySignatures.push(
               AST.createPropertySignature(
                 key,
-                AST.getTo(field._from),
+                AST.to(field._from),
                 true,
                 true,
                 field._annotations
@@ -596,7 +591,7 @@ export const struct = <
             toPropertySignatures.push(
               AST.createPropertySignature(
                 key,
-                AST.getTo(field._from),
+                AST.to(field._from),
                 false,
                 true,
                 field._annotations
@@ -615,7 +610,7 @@ export const struct = <
             toPropertySignatures.push(
               AST.createPropertySignature(
                 key,
-                optionFromSelf(make(AST.getTo(field._from))).ast,
+                optionFromSelf(make(AST.to(field._from))).ast,
                 false,
                 true,
                 field._annotations
@@ -636,13 +631,13 @@ export const struct = <
         )
         fromPropertySignatures.push(AST.createPropertySignature(key, field._from, false, true))
         toPropertySignatures.push(
-          AST.createPropertySignature(key, AST.getTo(field._from), false, true, field._annotations)
+          AST.createPropertySignature(key, AST.to(field._from), false, true, field._annotations)
         )
       }
     } else {
       propertySignatures.push(AST.createPropertySignature(key, field.ast, false, true))
       fromPropertySignatures.push(AST.createPropertySignature(key, field.ast, false, true))
-      toPropertySignatures.push(AST.createPropertySignature(key, AST.getTo(field.ast), false, true))
+      toPropertySignatures.push(AST.createPropertySignature(key, AST.to(field.ast), false, true))
     }
   }
   if (propertySignatureTransformations.length > 0) {
@@ -703,42 +698,6 @@ export const omit = <A, Keys extends ReadonlyArray<keyof A>>(...keys: Keys) =>
     }
     return make(AST.omit(ast, keys))
   }
-
-/**
- * Returns an object containing all property signatures of a given schema.
- *
- * ```
- * Schema<A> -> { [K in keyof A]: Schema<A[K]> }
- * ```
- *
- * @param schema - The schema to extract property signatures from.
- *
- * @example
- * import * as S from "@effect/schema/Schema"
- *
- * const Person = S.struct({
- *   name: S.string,
- *   age: S.number
- * })
- *
- * const shape = S.getPropertySignatures(Person)
- *
- * assert.deepStrictEqual(shape.name, S.string)
- * assert.deepStrictEqual(shape.age, S.number)
- *
- * @since 1.0.0
- */
-export const getPropertySignatures = <I extends { [K in keyof A]: any }, A>(
-  schema: Schema<I, A>
-): { [K in keyof A]: Schema<I[K], A[K]> } => {
-  const out: Record<PropertyKey, Schema<any>> = {}
-  const propertySignatures = AST.getPropertySignatures(schema.ast)
-  for (let i = 0; i < propertySignatures.length; i++) {
-    const propertySignature = propertySignatures[i]
-    out[propertySignature.name] = make(propertySignature.type)
-  }
-  return out as any
-}
 
 /**
  * @category model

@@ -95,13 +95,4 @@ describe.concurrent("Forbidden", () => {
       "is forbidden"
     )
   })
-
-  it("refinement/ reversed", () => {
-    const schema = pipe(Util.effectify(S.string, "all"), S.filter(() => true))
-    expectMessage(
-      S.reverse(schema),
-      "a",
-      "is forbidden"
-    )
-  })
 })

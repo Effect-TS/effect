@@ -34,8 +34,7 @@ export const to = <I, A>(schema: Schema<I, A>): (a: A) => string => compile(sche
  * @category prettify
  * @since 1.0.0
  */
-export const from = <I, A>(schema: Schema<I, A>): (i: I) => string =>
-  compile(AST.getFrom(schema.ast))
+export const from = <I, A>(schema: Schema<I, A>): (i: I) => string => compile(AST.from(schema.ast))
 
 const getHook = AST.getAnnotation<(...args: ReadonlyArray<Pretty<any>>) => Pretty<any>>(
   PrettyHookId

@@ -82,7 +82,7 @@
     "benchmark": "^2.1.4",
     "concurrently": "^8.0.1",
     "cpx": "^1.5.0",
-    "docs-ts": "0.6.10",
+    "docs-ts": "^0.8.0",
     "dtslint": "github:gcanti/dtslint",
     "eslint": "^8.39.0",
     "eslint-import-resolver-typescript": "^3.5.5",
@@ -108,10 +108,5 @@
     "@effect/data": "^0.12.2",
     "@effect/io": "^0.25.2",
     "fast-check": "^3.8.1"
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "docs-ts@0.6.10": "patches/docs-ts@0.6.10.patch"
-    }
   }
 }
