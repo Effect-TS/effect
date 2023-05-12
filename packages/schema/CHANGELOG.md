@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.19.0
+
+### Minor Changes
+
+- [#277](https://github.com/Effect-TS/schema/pull/277) [`1ac3d06`](https://github.com/Effect-TS/schema/commit/1ac3d06c90dc952b0beff9a722cfaace5162bb21) Thanks [@gcanti](https://github.com/gcanti)! - remove undefined from optionFromNullable
+
 ## 0.18.0
 
 ### Minor Changes
