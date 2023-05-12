@@ -442,6 +442,16 @@ S.optionFromSelf(S.number)
 S.optionFromSelf(NumberFromString)
 
 // ---------------------------------------------
+// optionFromNullable
+// ---------------------------------------------
+
+// $ExpectType Schema<number | null, Option<number>>
+S.optionFromNullable(S.number)
+
+// $ExpectType Schema<string | null, Option<number>>
+S.optionFromNullable(NumberFromString)
+
+// ---------------------------------------------
 // instanceOf
 // ---------------------------------------------
 

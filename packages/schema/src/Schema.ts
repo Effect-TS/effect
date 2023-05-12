@@ -2250,8 +2250,8 @@ export const option = <I, A>(
  */
 export const optionFromNullable = <I, A>(
   value: Schema<I, A>
-): Schema<I | null | undefined, Option<A>> =>
-  transform(union(_undefined, _null, value), to(optionFromSelf(value)), O.fromNullable, O.getOrNull)
+): Schema<I | null, Option<A>> =>
+  transform(nullable(value), to(optionFromSelf(value)), O.fromNullable, O.getOrNull)
 
 // ---------------------------------------------
 // data/ReadonlyArray

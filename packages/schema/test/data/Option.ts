@@ -63,7 +63,6 @@ describe.concurrent("Option", () => {
 
     it("Decoder", async () => {
       const schema = S.optionFromNullable(NumberFromString)
-      await Util.expectParseSuccess(schema, undefined, O.none())
       await Util.expectParseSuccess(schema, null, O.none())
       await Util.expectParseSuccess(schema, "1", O.some(1))
 
@@ -72,8 +71,13 @@ describe.concurrent("Option", () => {
 
       await Util.expectParseFailure(
         schema,
+        undefined,
+        `union member: Expected null, actual undefined, union member: Expected string, actual undefined`
+      )
+      await Util.expectParseFailure(
+        schema,
         {},
-        `union member: Expected undefined, actual {}, union member: Expected null, actual {}, union member: Expected string, actual {}`
+        `union member: Expected null, actual {}, union member: Expected string, actual {}`
       )
     })
 
