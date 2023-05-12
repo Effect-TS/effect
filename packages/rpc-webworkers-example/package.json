@@ -10,12 +10,12 @@
   },
   "devDependencies": {
     "typescript": "^5.0.2",
-    "vite": "^4.3.0"
+    "vite": "^4.3.5"
   },
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.25.5",
+    "@effect/io": "^0.25.9",
     "@effect/rpc-webworkers": "workspace:^",
-    "@effect/schema": "^0.17.2"
+    "@effect/schema": "^0.19.0"
   }
 }

@@ -160,11 +160,10 @@ describe("Client", () => {
   })
 
   it("caching", () => {
-    expect(Effect.runSync(client.getCount("a"))).toEqual(0)
-    expect(Effect.runSync(client.getCount("a"))).toEqual(0)
+    const getA = Effect.withRequestCaching("on")(client.getCount("a"))
+    expect(Effect.runSync(getA)).toEqual(0)
+    expect(Effect.runSync(getA)).toEqual(0)
     expect(Effect.runSync(client.getCount("b"))).toEqual(1)
-    expect(
-      Effect.runSync(Effect.withRequestCaching(client.getCount("a"), "off")),
-    ).toEqual(2)
+    expect(Effect.runSync(client.getCount("a"))).toEqual(2)
   })
 })
