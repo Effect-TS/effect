@@ -1,5 +1,16 @@
 # @effect/rpc-webworkers
 
+## 0.2.0
+
+### Minor Changes
+
+- [#64](https://github.com/Effect-TS/rpc/pull/64) [`98bef67`](https://github.com/Effect-TS/rpc/commit/98bef6770efa35488f0eced160418428c52e3657) Thanks [@tim-smart](https://github.com/tim-smart)! - update deps
+
+### Patch Changes
+
+- Updated dependencies [[`98bef67`](https://github.com/Effect-TS/rpc/commit/98bef6770efa35488f0eced160418428c52e3657)]:
+  - @effect/rpc@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes
