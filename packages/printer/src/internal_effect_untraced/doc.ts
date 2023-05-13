@@ -411,8 +411,8 @@ export const nesting = <A>(react: (level: number) => Doc.Doc<A>): Doc.Doc<A> => 
 
 /** @internal */
 export const width = dual<
-  <A>(react: (width: number) => Doc.Doc<A>) => (self: Doc.Doc<A>) => Doc.Doc<A>,
-  <A>(self: Doc.Doc<A>, react: (width: number) => Doc.Doc<A>) => Doc.Doc<A>
+  <A, B>(react: (width: number) => Doc.Doc<B>) => (self: Doc.Doc<A>) => Doc.Doc<A | B>,
+  <A, B>(self: Doc.Doc<A>, react: (width: number) => Doc.Doc<B>) => Doc.Doc<A | B>
 >(2, (self, react) => column((colStart) => cat(self, column((colEnd) => react(colEnd - colStart)))))
 
 /** @internal */

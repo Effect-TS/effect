@@ -183,7 +183,7 @@ export const pretty: {
  * // The document will be rendered using the following pipeline, where the choice
  * // of layout algorithm has been left open:
  * const pageWidth = PageWidth.availablePerLine(26, 1)
- * const layoutOptions = Layout.LayoutOptions(pageWidth)
+ * const layoutOptions = Layout.options(pageWidth)
  * const dashes = Doc.text(Array.from({ length: 26 - 2 }, () => "-").join(""))
  * const hr = Doc.hcat([Doc.vbar, dashes, Doc.vbar])
  *

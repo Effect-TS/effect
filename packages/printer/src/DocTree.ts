@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-
-import type { Chunk } from "@effect/data/Chunk"
 import type { Equal } from "@effect/data/Equal"
 import type { TypeLambda } from "@effect/data/HKT"
 import type * as covariant from "@effect/data/typeclass/Covariant"
@@ -123,7 +121,7 @@ export interface AnnotationTree<A> extends DocTree.Variance<A> {
  */
 export interface ConcatTree<A> extends DocTree.Variance<A> {
   readonly _tag: "ConcatTree"
-  readonly trees: Chunk<DocTree<A>>
+  readonly trees: ReadonlyArray<DocTree<A>>
 }
 
 // -----------------------------------------------------------------------------
@@ -231,7 +229,7 @@ export const annotation: {
  * @since 1.0.0
  * @category constructors
  */
-export const concat: <A>(trees: Chunk<DocTree<A>>) => DocTree<A> = internal.concat
+export const concat: <A>(trees: ReadonlyArray<DocTree<A>>) => DocTree<A> = internal.concat
 
 // -----------------------------------------------------------------------------
 // Annotations
@@ -307,7 +305,7 @@ export const foldMap: {
  *   )
  * ])
  *
- * const tree = DocTree.treeForm(Layout.pretty(Layout.defaultLayoutOptions)(doc))
+ * const tree = DocTree.treeForm(Layout.pretty(Layout.defaultOptions)(doc))
  *
  * const rendered = pipe(
  *   tree,
@@ -343,10 +341,8 @@ export const renderSimplyDecorated: {
 /**
  * Converts a `DocStream<A>` into a `DocTree<A>`.
  *
- * @category conversions
  * @since 1.0.0
- * @tsplus static effect/printer/DocStream.Aspects treeForm
- * @tsplus getter effect/printer/DocStream treeForm
+ * @category conversions
  */
 export const treeForm: <A>(stream: DocStream.DocStream<A>) => DocTree<A> = internal.treeForm
 

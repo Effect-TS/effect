@@ -1,8 +1,8 @@
-import * as Chunk from "@effect/data/Chunk"
 import * as Equal from "@effect/data/Equal"
 import { dual, pipe } from "@effect/data/Function"
 import * as Hash from "@effect/data/Hash"
 import * as Option from "@effect/data/Option"
+import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import * as covariant from "@effect/data/typeclass/Covariant"
 import type * as invariant from "@effect/data/typeclass/Invariant"
 import type * as monoid from "@effect/data/typeclass/Monoid"
@@ -165,7 +165,7 @@ export const annotation = dual<
 })
 
 /** @internal */
-export const concat = <A>(trees: Chunk.Chunk<DocTree.DocTree<A>>): DocTree.DocTree<A> => {
+export const concat = <A>(trees: ReadonlyArray<DocTree.DocTree<A>>): DocTree.DocTree<A> => {
   const op = Object.create(proto)
   op._tag = "ConcatTree"
   op.trees = trees
@@ -200,8 +200,8 @@ const alterAnnotationsSafe = <A, B>(
       return Effect.succeed(line(self.indentation))
     }
     case "AnnotationTree": {
-      return Chunk.reduceRight(
-        Chunk.fromIterable(f(self.annotation)),
+      return ReadonlyArray.reduce(
+        ReadonlyArray.fromIterable(f(self.annotation)),
         Effect.suspend(() => alterAnnotationsSafe(self.tree, f)),
         (acc, b) => Effect.map(acc, annotation(b))
       )
@@ -209,7 +209,6 @@ const alterAnnotationsSafe = <A, B>(
     case "ConcatTree": {
       return pipe(
         Effect.forEach(self.trees, (tree) => alterAnnotationsSafe(tree, f)),
-        Effect.map(Chunk.unsafeFromArray),
         Effect.map(concat)
       )
     }
@@ -254,16 +253,15 @@ const foldMapSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (Chunk.isEmpty(self.trees)) {
+      if (ReadonlyArray.isEmptyReadonlyArray(self.trees)) {
         return Effect.succeed(M.empty)
       }
       return Effect.map(
         Effect.forEach(self.trees, (tree) => foldMapSafe(tree, M, f)),
         (trees) => {
-          const chunk = Chunk.unsafeFromArray(trees)
-          const head = Chunk.unsafeHead(chunk)
-          const tail = Chunk.drop(chunk, 1)
-          return Chunk.reduce(tail, head, (acc, a) => M.combine(acc, a))
+          const head = trees[0]
+          const tail = trees.slice(1)
+          return ReadonlyArray.reduce(tail, head, M.combine)
         }
       )
     }
@@ -319,12 +317,12 @@ const renderSimplyDecoratedSafe = <A, M>(
       )
     }
     case "ConcatTree": {
-      if (Chunk.isEmpty(self.trees)) {
+      if (ReadonlyArray.isEmptyReadonlyArray(self.trees)) {
         return Effect.succeed(M.empty)
       }
-      const head = Chunk.unsafeHead(self.trees)
-      const tail = Chunk.drop(self.trees, 1)
-      return Chunk.reduce(
+      const head = self.trees[0]
+      const tail = self.trees.slice(1)
+      return ReadonlyArray.reduce(
         tail,
         Effect.suspend(() => renderSimplyDecoratedSafe(head, M, renderText, renderAnnotation)),
         (acc, tree) =>
@@ -442,7 +440,7 @@ const mergeTrees = <A>(trees: ReadonlyArray<DocTree.DocTree<A>>): DocTree.DocTre
   }
   const head = trees[0]!
   const tail = trees.slice(1)
-  return tail.length === 0 ? head : concat(Chunk.fromIterable(trees))
+  return tail.length === 0 ? head : concat(trees)
 }
 
 const tree = <A>(
@@ -496,8 +494,8 @@ const imap = covariant.imap<DocTree.DocTree.TypeLambda>(map)
 /** @internal */
 export const getSemigroup = <A>(_: void): semigroup.Semigroup<DocTree.DocTree<A>> => {
   return {
-    combine: (self, that) => concat(Chunk.make(self, that)),
-    combineMany: (self, trees) => concat(Chunk.fromIterable([self, ...trees]))
+    combine: (self, that) => concat(ReadonlyArray.make(self, that)),
+    combineMany: (self, trees) => concat(ReadonlyArray.fromIterable([self, ...trees]))
   }
 }
 
@@ -505,9 +503,9 @@ export const getSemigroup = <A>(_: void): semigroup.Semigroup<DocTree.DocTree<A>
 export const getMonoid = <A>(_: void): monoid.Monoid<DocTree.DocTree<A>> => {
   return {
     empty,
-    combine: (self, that) => concat(Chunk.make(self, that)),
-    combineMany: (self, trees) => concat(Chunk.fromIterable([self, ...trees])),
-    combineAll: (trees) => concat(Chunk.fromIterable(trees))
+    combine: (self, that) => concat(ReadonlyArray.make(self, that)),
+    combineMany: (self, trees) => concat(ReadonlyArray.fromIterable([self, ...trees])),
+    combineAll: (trees) => concat(ReadonlyArray.fromIterable(trees))
   }
 }
 

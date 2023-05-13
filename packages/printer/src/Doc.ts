@@ -91,7 +91,7 @@ export interface DocTypeLambda extends TypeLambda {
 }
 
 /**
- * Represents a document that cannot be rendereinternal. Generally occurs when
+ * Represents a document that cannot be rendered. Generally occurs when
  * flattening a line. The layout algorithms will reject this document and choose
  * a more suitable rendering.
  *
@@ -438,11 +438,11 @@ export const string: (str: string) => Doc<never> = internal.string
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
  * import * as String from "@effect/data/String"
- * import * as assert from "assert"
  *
  * const doc = Doc.vsep([
  *   Doc.text("hello"),
- *   Doc.parens(internal.empty), // `parens` for visibility purposes only
+ *   // `parentheses` for visibility purposes only
+ *   Doc.parenthesized(Doc.empty),
  *   Doc.text("world")
  * ])
  *
@@ -451,7 +451,7 @@ export const string: (str: string) => Doc<never> = internal.string
  *                   |world`
  *
  * assert.strictEqual(
- *   Render.renderPrettyDefault(doc),
+ *   Render.prettyDefault(doc),
  *   String.stripMargin(expected)
  * )
  *
@@ -461,7 +461,7 @@ export const string: (str: string) => Doc<never> = internal.string
 export const empty: Doc<never> = internal.empty
 
 /**
- * The `fail` document is a document that cannot be rendereinternal.
+ * The `fail` document is a document that cannot be rendered.
  *
  * Generally occurs when flattening a line. The layout algorithms will reject
  * this document and choose a more suitable rendering.
@@ -553,14 +553,14 @@ export const lineBreak: Doc<never> = internal.lineBreak
  *
  * // Here we have enough space to put everything onto one line
  * assert.strictEqual(
- *   Render.pretty(80)(doc),
+ *   Render.pretty(doc, { lineWidth: 80 }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break
  * assert.strictEqual(
- *   Render.pretty(10)(Doc.group(doc)),
+ *   Render.pretty(Doc.group(doc), { lineWidth: 10 }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
@@ -590,14 +590,14 @@ export const softLine: Doc<never> = internal.softLine
  *
  * // With enough space, we get direct concatenation of documents:
  * assert.strictEqual(
- *   Render.pretty(80)(doc),
+ *   Render.pretty(doc, { lineWidth: 80 }),
  *   "ThisTextIsWayTooLong"
  * )
  *
  * // If the page width is narrowed to `10`, the layout algorithm will
  * // introduce a line break
  * assert.strictEqual(
- *   Render.pretty(10)(Doc.group(doc)),
+ *   Render.pretty(Doc.group(doc), { lineWidth: 10 }),
  *   String.stripMargin(
  *     `|ThisText
  *      |IsWayTooLong`
@@ -611,7 +611,7 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
 
 /**
  * The `hardLine` document is always laid out as a line break, regardless of
- * space or whether or not the document was `group`"einternal.
+ * space or whether or not the document was `group`"ed.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
@@ -626,7 +626,7 @@ export const softLineBreak: Doc<never> = internal.softLineBreak
  *
  * // Even with enough space, a line break is introduced
  * assert.strictEqual(
- *   Render.pretty(1000)(doc),
+ *   Render.pretty(doc, { lineWidth: 1000 }),
  *   String.stripMargin(
  *     `|lorem ipsum
  *      |dolor sit amet`
@@ -829,7 +829,7 @@ export const cat: {
  * // If the document exceeds the width of the page, the documents are rendered
  * // one above another
  * assert.strictEqual(
- *   Render.pretty(10)(doc),
+ *   Render.pretty(doc, { lineWidth: 10 }),
  *   String.stripMargin(
  *     `|Docs: lorem
  *      |ipsum
@@ -930,7 +930,7 @@ export const catWithLineBreak: {
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(1)(doc),
+ *   Render.pretty(doc, { lineWidth: 1 }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -966,7 +966,7 @@ export const catWithSoftLine: {
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(1)(doc),
+ *   Render.pretty(doc, { lineWidth: 1 }),
  *   String.stripMargin(
  *     `|a
  *      |b`
@@ -1037,7 +1037,7 @@ export const concatWith: {
 
 /**
  * The `vcat` combinator concatenates all documents in a collection vertically.
- * If the output is grouped then the line breaks are removeinternal.
+ * If the output is grouped then the line breaks are removed.
  *
  * In other words `vcat` is like `vsep`, with newlines removed instead of
  * replaced by spaces.
@@ -1068,6 +1068,7 @@ export const vcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.vcat
  * without any spacing.
  *
  * @example
+ * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
  * import * as String from "@effect/data/String"
  *
@@ -1091,7 +1092,7 @@ export const hcat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hcat
  *
  * **Note**: the use of `lineBreak` means that if `group`ed, the documents will
  * be separated with `empty` instead of newlines. See `fillSep` if you want a
- * `space` insteainternal.
+ * `space` instead.
  *
  * @since 1.0.0
  * @category concatenation
@@ -1115,14 +1116,14 @@ export const fillCat: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillCat
  * const doc: Doc.Doc<never> = Doc.hsep(Doc.words("lorem ipsum dolor sit amet"))
  *
  * assert.strictEqual(
- *   Render.pretty(80)(doc),
+ *   Render.pretty(doc, { lineWidth: 80 }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
  * // The `hsep` combinator will not introduce line breaks on its own, even when
  * // the page is too narrow
  * assert.strictEqual(
- *   Render.pretty(5)(doc),
+ *   Render.pretty(doc, { lineWidth: 5 }),
  *   "lorem ipsum dolor sit amet"
  * )
  *
@@ -1134,7 +1135,7 @@ export const hsep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.hsep
 /**
  * The `vsep` combinator concatenates all documents in a collection vertically.
  * If a `group` undoes the line breaks inserted by `vsep`, the documents are
- * separated with a space insteainternal.
+ * separated with a space instead.
  *
  * When a `vsep` is `group`ed, the documents are separated with a `space` if the
  * layoutfits the page, otherwise nothing is done. See the `sep` convenience
@@ -1220,7 +1221,7 @@ export const fillSep: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.fillSep
  *
  * // If the page width is too narrow, documents are separated by newlines
  * assert.strictEqual(
- *   Render.pretty(20)(doc),
+ *   Render.pretty(doc, { lineWidth: 20 }),
  *   String.stripMargin(
  *     `|prefix text
  *      |to
@@ -1280,13 +1281,13 @@ export const seps: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.seps
  *
  * // If it fits, then the content is put onto a single line with the `{;}` style
  * assert.strictEqual(
- *   pipe(prettyDo(statements), Render.pretty(80)),
+ *   pipe(prettyDo(statements), Render.pretty({ lineWidth: 80 })),
  *   "do { name:_ <- getArgs; let greet = \"Hello, \" <> name; putStrLn greet }"
  * )
  *
  * // When there is not enough space, the content is broken up onto multiple lines
  * assert.strictEqual(
- *   pipe(prettyDo(statements), Render.pretty(10)),
+ *   pipe(prettyDo(statements), Render.pretty({ lineWidth: 10 })),
  *   String.stripMargin(
  *     `|do name:_ <- getArgs
  *      |   let greet = "Hello, " <> name
@@ -1417,8 +1418,8 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  * const docs = [
  *   Doc.text("---"),
  *   Doc.text("------"),
- *   Doc.indent(3)(Doc.text("---")),
- *   Doc.vsep([Doc.text("---"), Doc.indent(4)(Doc.text("---"))])
+ *   Doc.indent(Doc.text("---"), 3),
+ *   Doc.vsep([Doc.text("---"), Doc.indent(Doc.text("---"), 4)])
  * ]
  *
  * const doc = Doc.align(Doc.vsep(docs.map(annotate)))
@@ -1438,8 +1439,8 @@ export const nesting: <A>(react: (level: number) => Doc<A>) => Doc<A> = internal
  * @category reactive layouts
  */
 export const width: {
-  <A>(react: (width: number) => Doc<A>): (self: Doc<A>) => Doc<A>
-  <A>(self: Doc<A>, react: (width: number) => Doc<A>): Doc<A>
+  <A, B>(react: (width: number) => Doc<B>): (self: Doc<A>) => Doc<A | B>
+  <A, B>(self: Doc<A>, react: (width: number) => Doc<B>): Doc<A | B>
 } = internal.width
 
 /**
@@ -1470,7 +1471,7 @@ export const width: {
  * const example = Doc.vsep([0, 4, 8].map((n) => Doc.indent(n)(doc)))
  *
  * assert.strictEqual(
- *   Render.pretty(32)(example),
+ *   Render.pretty(example, { lineWidth: 32 }),
  *   String.stripMargin(
  *     `|prefix [Width: 32, Ribbon Fraction: 1]
  *      |    prefix [Width: 32, Ribbon Fraction: 1]
@@ -1599,7 +1600,7 @@ export const align: <A>(self: Doc<A>) => Doc<A> = internal.align
  * ])
  *
  * assert.strictEqual(
- *   Render.pretty(24)(doc),
+ *   Render.pretty(doc, { lineWidth: 24 }),
  *   String.stripMargin(
  *     `|prefix Indenting these
  *      |           words with
@@ -1631,7 +1632,7 @@ export const hang: {
  * ])
  *
  * assert.strictEqual(
- *   Render.pretty(24)(doc),
+ *   Render.pretty(doc, { lineWidth: 24 }),
  *   String.stripMargin(
  *     `|prefix    The indent
  *      |          function
@@ -1683,7 +1684,7 @@ export const indent: {
  *
  * // Otherwise they are laid out vertically, with separators put in the front
  * assert.strictEqual(
- *   Render.pretty(10)(doc),
+ *   Render.pretty(doc, { lineWidth: 10 }),
  *   String.stripMargin(
  *     `|list [1
  *      |     ,20
@@ -1756,7 +1757,7 @@ export const tupled: <A>(docs: Iterable<Doc<A>>) => Doc<A> = internal.tupled
  * The `fill` combinator first lays out the document `x` and then appends
  * `space`s until the width of the document is equal to the specified `width`.
  * If the width of `x` is already larger than the specified `width`, nothing is
- * appendeinternal.
+ * appended.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
@@ -1805,7 +1806,7 @@ export const fill: {
  * The `fillBreak` combinator first lays out the document `x` and then appends
  * `space`s until the width of the document is equal to the specified `width`.
  * If the width of `x` is already larger than the specified `width`, the nesting
- * level is increased by the specified `width` and a `line` is appendeinternal.
+ * level is increased by the specified `width` and a `line` is appended.
  *
  * @example
  * import * as Doc from "@effect/printer/Doc"
@@ -1931,7 +1932,7 @@ export const alterAnnotations: {
  * Changes the annotation of a document. Useful for modifying documents embedded
  * with one form of annotation with a more general annotation.
  *
- * **Note** that with each invocation, the entire document tree is traverseinternal.
+ * **Note** that with each invocation, the entire document tree is traversed.
  * If possible, it is preferable to reannotate a document after producing the
  * layout using `reAnnotateS`.
  *
@@ -1946,7 +1947,7 @@ export const reAnnotate: {
 /**
  * Removes all annotations from a document.
  *
- * **Note**: with each invocation, the entire document tree is traverseinternal.
+ * **Note**: with each invocation, the entire document tree is traversed.
  * If possible, it is preferable to unannotate a document after producing the
  * layout using `unAnnotateS`.
  *
@@ -2005,6 +2006,10 @@ export const match: {
 // Instances
 // -----------------------------------------------------------------------------
 
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const map: {
   <A, B>(f: (a: A) => B): (self: Doc<A>) => Doc<B>
   <A, B>(self: Doc<A>, f: (a: A) => B): Doc<B>
@@ -2176,7 +2181,7 @@ export const words: (s: string, char?: string) => ReadonlyArray<Doc<never>> = in
  * )
  *
  * assert.strictEqual(
- *   Render.pretty(32)(doc),
+ *   Render.pretty(doc, { lineWidth: 32 }),
  *   String.stripMargin(
  *     `|Lorem ipsum dolor sit amet,
  *      |consectetur adipisicing elit,

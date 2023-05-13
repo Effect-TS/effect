@@ -1,5 +1,5 @@
-import * as Chunk from "@effect/data/Chunk"
 import { pipe } from "@effect/data/Function"
+import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import * as String from "@effect/data/String"
 import * as Effect from "@effect/io/Effect"
 import * as Doc from "@effect/printer/Doc"
@@ -166,10 +166,10 @@ describe.concurrent("DocTree", () => {
             if (tree.trees.length === 0) {
               return Effect.succeed("")
             }
-            const head = Chunk.unsafeHead(tree.trees)
-
-            return Chunk.reduce(
-              Chunk.drop(tree.trees, 1),
+            const head = tree.trees[0]
+            const tail = tree.trees.slice(1)
+            return ReadonlyArray.reduce(
+              tail,
               Effect.suspend(() => renderTreeSafe(head)),
               (acc, tree) =>
                 Effect.zipWith(
