@@ -1,5 +1,16 @@
 # @effect/printer-ansi
 
+## 0.8.0
+
+### Minor Changes
+
+- [#397](https://github.com/Effect-TS/printer/pull/397) [`84ded22`](https://github.com/Effect-TS/printer/commit/84ded22879bcd136ae7e982aade1e932e70c726f) Thanks [@IMax153](https://github.com/IMax153)! - update @effect packages
+
+### Patch Changes
+
+- Updated dependencies [[`84ded22`](https://github.com/Effect-TS/printer/commit/84ded22879bcd136ae7e982aade1e932e70c726f)]:
+  - @effect/printer@0.8.0
+
 ## 0.7.0
 
 ### Minor Changes
