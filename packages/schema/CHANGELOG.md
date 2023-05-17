@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.19.1
+
+### Patch Changes
+
+- [#280](https://github.com/Effect-TS/schema/pull/280) [`ec375dd`](https://github.com/Effect-TS/schema/commit/ec375dd23c061fedca370f73096cae9fba4b0cc1) Thanks [@gcanti](https://github.com/gcanti)! - Json should exclude NaN, +Infinity, -Infinity
+
 ## 0.19.0
 
 ### Minor Changes
