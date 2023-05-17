@@ -1784,6 +1784,38 @@ export type Json =
 const arbitraryJson: Arbitrary<Json> = (fc) => fc.jsonValue().map((json) => json as Json)
 
 /**
+ * @category type id
+ * @since 1.0.0
+ */
+export const JsonNumberTypeId = "@effect/schema/JsonNumberTypeId"
+
+/**
+ * The `JsonNumber` is a schema for representing JSON numbers. It ensures that the provided value is a valid
+ * number by filtering out `NaN` and `(+/-) Infinity`. This is useful when you want to validate and represent numbers in JSON
+ * format.
+ *
+ * @example
+ * import * as S from "@effect/schema/Schema"
+ *
+ * const is = S.is(S.JsonNumber)
+ *
+ * assert.deepStrictEqual(is(42), true)
+ * assert.deepStrictEqual(is(Number.NaN), false)
+ * assert.deepStrictEqual(is(Number.POSITIVE_INFINITY), false)
+ * assert.deepStrictEqual(is(Number.NEGATIVE_INFINITY), false)
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const JsonNumber = pipe(
+  number,
+  filter((n) => !isNaN(n) && isFinite(n), {
+    typeId: JsonNumberTypeId,
+    description: "a JSON number"
+  })
+)
+
+/**
  * @category constructors
  * @since 1.0.0
  */
@@ -1791,7 +1823,7 @@ export const json: Schema<Json> = lazy(() =>
   union(
     _null,
     string,
-    number,
+    JsonNumber,
     boolean,
     array(json),
     record(string, json)
