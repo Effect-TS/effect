@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.19.2
+
+### Patch Changes
+
+- [#282](https://github.com/Effect-TS/schema/pull/282) [`9b9c3ee`](https://github.com/Effect-TS/schema/commit/9b9c3ee9d27c20a5bcb422f6d8ec3f46b648409a) Thanks [@gcanti](https://github.com/gcanti)! - handle excess properties for records
+
 ## 0.19.1
 
 ### Patch Changes
