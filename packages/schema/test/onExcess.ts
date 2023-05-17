@@ -5,12 +5,11 @@ import * as Util from "@effect/schema/test/util"
 describe.concurrent("onExcess", () => {
   it("ignore should not change tuple behaviour", async () => {
     const schema = S.tuple(S.number)
-    await Util.expectParseFailure(schema, [1, "b"], "/1 is unexpected", Util.onExcessPropertyIgnore)
+    await Util.expectParseFailure(schema, [1, "b"], "/1 is unexpected")
     await Util.expectEncodeFailure(
       schema,
       [1, "b"] as any,
-      `/1 is unexpected`,
-      Util.onExcessPropertyIgnore
+      `/1 is unexpected`
     )
   })
 
@@ -22,8 +21,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         { a: 1, b: "b", c: true },
-        { a: 1, b: "b" },
-        Util.onExcessPropertyIgnore
+        { a: 1, b: "b" }
       )
       await Util.expectParseFailure(
         schema,
@@ -34,8 +32,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectEncodeSuccess(
         schema,
         { a: 1, b: "b" },
-        { a: 1, b: "b" },
-        Util.onExcessPropertyIgnore
+        { a: 1, b: "b" }
       )
       await Util.expectEncodeSuccess(
         schema,
@@ -52,8 +49,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseFailure(
         schema,
         [1, "b", true],
-        `union member: /2 is unexpected, union member: /1 is unexpected`,
-        Util.onExcessPropertyIgnore
+        `union member: /2 is unexpected, union member: /1 is unexpected`
       )
       await Util.expectParseFailure(
         schema,
@@ -64,8 +60,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectEncodeSuccess(
         schema,
         [1, "b"],
-        [1, "b"],
-        Util.onExcessPropertyIgnore
+        [1, "b"]
       )
       await Util.expectEncodeSuccess(
         schema,
@@ -82,8 +77,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         [{ b: 1, c: "c" }],
-        [{ b: 1 }],
-        Util.onExcessPropertyIgnore
+        [{ b: 1 }]
       )
     })
 
@@ -92,8 +86,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         [{ b: 1, c: "c" }],
-        [{ b: 1 }],
-        Util.onExcessPropertyIgnore
+        [{ b: 1 }]
       )
     })
 
@@ -103,8 +96,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         [{ b: 1, c: "c" }],
-        [{ b: 1 }],
-        Util.onExcessPropertyIgnore
+        [{ b: 1 }]
       )
     })
 
@@ -113,8 +105,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         { a: 1, b: "b" },
-        { a: 1 },
-        Util.onExcessPropertyIgnore
+        { a: 1 }
       )
     })
 
@@ -125,8 +116,7 @@ describe.concurrent("onExcess", () => {
         { a: { b: 1, c: "c" } },
         {
           a: { b: 1 }
-        },
-        Util.onExcessPropertyIgnore
+        }
       )
     })
 
@@ -135,8 +125,7 @@ describe.concurrent("onExcess", () => {
       await Util.expectParseSuccess(
         schema,
         { a: { b: 1, c: "c" } },
-        { a: { b: 1 } },
-        Util.onExcessPropertyIgnore
+        { a: { b: 1 } }
       )
     })
   })

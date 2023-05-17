@@ -1462,7 +1462,8 @@ const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   return out
 }
 
-const getParameterBase = (
+/** @internal */
+export const getParameterBase = (
   ast: Parameter
 ): StringKeyword | SymbolKeyword | TemplateLiteral => {
   switch (ast._tag) {

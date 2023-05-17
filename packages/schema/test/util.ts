@@ -122,10 +122,6 @@ export const roundtrip = <I, A>(schema: Schema<I, A>) => {
   }
 }
 
-export const onExcessPropertyIgnore: ParseOptions = {
-  onExcessProperty: "ignore"
-}
-
 export const onExcessPropertyError: ParseOptions = {
   onExcessProperty: "error"
 }

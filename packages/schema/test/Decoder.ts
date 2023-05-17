@@ -534,6 +534,18 @@ describe.concurrent("Decoder", () => {
       { a: "a" },
       `/a Expected number, actual "a"`
     )
+    const b = Symbol.for("@effect/schema/test/b")
+    await Util.expectParseFailure(
+      schema,
+      { a: 1, [b]: "b" },
+      "/Symbol(@effect/schema/test/b) is unexpected",
+      Util.onExcessPropertyError
+    )
+    await Util.expectParseSuccess(
+      schema,
+      { a: 1, [b]: "b" },
+      { a: 1 }
+    )
   })
 
   it("struct/ record(symbol, number)", async () => {
@@ -551,6 +563,17 @@ describe.concurrent("Decoder", () => {
       schema,
       { [a]: "a" },
       `/Symbol(@effect/schema/test/a) Expected number, actual "a"`
+    )
+    await Util.expectParseFailure(
+      schema,
+      { [a]: 1, b: "b" },
+      "/b is unexpected",
+      Util.onExcessPropertyError
+    )
+    await Util.expectParseSuccess(
+      schema,
+      { [a]: 1, b: "b" },
+      { [a]: 1 }
     )
   })
 
@@ -731,8 +754,7 @@ describe.concurrent("Decoder", () => {
     await Util.expectParseSuccess(
       schema,
       { a: "a", c: 1 },
-      { a: "a" },
-      Util.onExcessPropertyIgnore
+      { a: "a" }
     )
     await Util.expectParseSuccess(
       schema,

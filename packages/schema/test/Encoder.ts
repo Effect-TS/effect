@@ -313,8 +313,7 @@ describe.concurrent("Encoder", () => {
     await Util.expectEncodeSuccess(
       schema,
       { a: "a", c: 1 },
-      { a: "a" },
-      Util.onExcessPropertyIgnore
+      { a: "a" }
     )
     await Util.expectEncodeSuccess(
       schema,
