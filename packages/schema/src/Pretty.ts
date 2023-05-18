@@ -8,6 +8,7 @@ import * as AST from "@effect/schema/AST"
 import * as I from "@effect/schema/internal/common"
 import * as P from "@effect/schema/Parser"
 import type { Schema } from "@effect/schema/Schema"
+import * as S from "@effect/schema/Schema"
 import { formatActual } from "@effect/schema/TreeFormatter"
 
 /**
@@ -161,7 +162,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Union": (ast, go) => {
-    const types = ast.types.map((ast) => [P.is(I.makeSchema(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [P.is(S.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)

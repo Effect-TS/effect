@@ -3,7 +3,6 @@
  */
 
 import type * as AST from "@effect/schema/AST"
-import type * as S from "@effect/schema/Schema"
 
 // ---------------------------------------------
 // hooks
@@ -18,9 +17,6 @@ export const PrettyHookId = "@effect/schema/PrettyHookId"
 // ---------------------------------------------
 // Schema APIs
 // ---------------------------------------------
-
-/** @internal */
-export const makeSchema = <I, A>(ast: AST.AST): S.Schema<I, A> => ({ ast }) as any
 
 /** @internal */
 export const getKeysForIndexSignature = (

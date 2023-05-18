@@ -212,7 +212,7 @@ export type {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <I, A>(ast: AST.AST) => Schema<I, A> = I.makeSchema
+export const make = <I, A>(ast: AST.AST): Schema<I, A> => ({ ast }) as any
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
