@@ -254,11 +254,33 @@ describe.concurrent("Arbitrary", () => {
     propertyTo(schema)
   })
 
-  it("lazy", () => {
+  it("lazy/to tuple", () => {
     type A = readonly [number, A | null]
     const schema: S.Schema<A> = S.lazy<A>(
       () => S.tuple(S.number, S.union(schema, S.literal(null)))
     )
+    propertyTo(schema)
+  })
+
+  it("lazy/to struct", () => {
+    interface A {
+      readonly a: string
+      readonly as: ReadonlyArray<A>
+    }
+    const schema: S.Schema<A> = S.lazy(() =>
+      S.struct({
+        a: S.string,
+        as: S.array(schema)
+      })
+    )
+    propertyTo(schema)
+  })
+
+  it("lazy/to record", () => {
+    type A = {
+      [_: string]: A
+    }
+    const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
     propertyTo(schema)
   })
 

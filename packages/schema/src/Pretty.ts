@@ -169,8 +169,7 @@ export const match: AST.Match<Pretty<any>> = {
     }
   },
   "Lazy": (ast, go) => {
-    const f = () => go(ast.f())
-    const get = I.memoize<void, Pretty<any>>(f)
+    const get = I.memoizeThunk(() => go(ast.f()))
     return (a) => get()(a)
   },
   "Refinement": (ast, go) => go(ast.from),

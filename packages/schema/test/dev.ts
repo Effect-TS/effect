@@ -1,15 +1,14 @@
+import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
-import * as Util from "@effect/schema/test/util"
+import * as fc from "fast-check"
 
 describe.concurrent("dev", () => {
-  it.skip("dev", async () => {
-    const schema = S.record(S.string, S.number)
-    const b = Symbol.for("@effect/schema/test/b")
-    await Util.expectParseFailure(
-      schema,
-      { a: 1, [b]: "b" },
-      "/Symbol(@effect/schema/test/b) is unexpected",
-      Util.onExcessPropertyError
-    )
+  it.skip("lazy/ record", () => {
+    type A = {
+      [_: string]: A
+    }
+    const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
+    const arb = A.to(schema)(fc)
+    console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
   })
 })

@@ -43,14 +43,15 @@ export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
 /** @internal */
-export const memoize = <A, B>(f: (a: A) => B): (a: A) => B => {
-  const cache = new Map()
-  return (a) => {
-    if (!cache.has(a)) {
-      const b = f(a)
-      cache.set(a, b)
-      return b
+export const memoizeThunk = <A>(f: () => A): () => A => {
+  let done = false
+  let a: A
+  return () => {
+    if (done) {
+      return a
     }
-    return cache.get(a)
+    a = f()
+    done = true
+    return a
   }
 }

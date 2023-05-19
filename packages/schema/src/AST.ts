@@ -10,6 +10,7 @@ import * as O from "@effect/data/Option"
 import { isString, isSymbol } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as Order from "@effect/data/typeclass/Order"
+import { memoizeThunk } from "@effect/schema/internal/common"
 import type { ParseResult } from "@effect/schema/ParseResult"
 import * as PR from "@effect/schema/ParseResult"
 
@@ -846,7 +847,7 @@ export const createLazy = (
   annotations: Annotated["annotations"] = {}
 ): Lazy => ({
   _tag: "Lazy",
-  f,
+  f: memoizeThunk(f),
   annotations
 })
 
