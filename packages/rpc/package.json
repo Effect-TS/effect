@@ -29,7 +29,7 @@
     "build-all": "tsc -b tsconfig.json",
     "build-watch": "tsc -b tsconfig.json --watch",
     "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
-    "docs": "docs-ts",
+    "docs": "docgen",
     "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
     "tc": "tsc --noEmit",
     "test": "vitest",
@@ -40,9 +40,9 @@
   "license": "MIT",
   "sideEffects": [],
   "dependencies": {
-    "@effect/data": "^0.12.2",
-    "@effect/io": "^0.25.10",
-    "@effect/schema": "^0.19.0"
+    "@effect/data": "^0.12.4",
+    "@effect/io": "^0.26.0",
+    "@effect/schema": "^0.20.0"
   },
   "config": {
     "side": [],
