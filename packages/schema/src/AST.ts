@@ -1035,7 +1035,7 @@ export const isTransform = (ast: AST): ast is Transform => ast._tag === "Transfo
  *
  * @since 1.0.0
  */
-export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]) => ({
+export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]): AST => ({
   ...ast,
   annotations: { ...ast.annotations, ...annotations }
 })
@@ -1045,7 +1045,7 @@ export const mergeAnnotations = (ast: AST, annotations: Annotated["annotations"]
  *
  * @since 1.0.0
  */
-export const setAnnotation = (ast: AST, id: PropertyKey, value: unknown) => ({
+export const setAnnotation = (ast: AST, id: PropertyKey, value: unknown): AST => ({
   ...ast,
   annotations: { ...ast.annotations, [id]: value }
 })

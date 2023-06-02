@@ -41,7 +41,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "autofix": "pnpm lint --fix",
     "tc": "tsc --noEmit",
-    "docs": "docs-ts",
+    "docs": "docgen",
     "docs-update": "git add --force --all docs/modules || true",
     "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "test": "vitest",
@@ -66,6 +66,7 @@
     "@changesets/cli": "^2.26.1",
     "@effect-ts/build-utils": "^0.40.7",
     "@effect-ts/core": "^0.60.5",
+    "@effect/docgen": "^0.0.3",
     "@effect/language-service": "^0.0.19",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@types/benchmark": "^2.1.2",
@@ -82,7 +83,6 @@
     "benchmark": "^2.1.4",
     "concurrently": "^8.0.1",
     "cpx": "^1.5.0",
-    "docs-ts": "^0.8.0",
     "dtslint": "github:gcanti/dtslint",
     "eslint": "^8.39.0",
     "eslint-import-resolver-typescript": "^3.5.5",
@@ -106,7 +106,7 @@
   },
   "dependencies": {
     "@effect/data": "^0.12.2",
-    "@effect/io": "^0.25.2",
+    "@effect/io": "^0.26.0",
     "fast-check": "^3.8.1"
   }
 }
