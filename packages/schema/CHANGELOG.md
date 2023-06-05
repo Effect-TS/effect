@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.20.1
+
+### Patch Changes
+
+- [#297](https://github.com/Effect-TS/schema/pull/297) [`8bfddc3`](https://github.com/Effect-TS/schema/commit/8bfddc3c45a1a2bf2d1470c40569f165a2ed9ff4) Thanks [@gcanti](https://github.com/gcanti)! - numberFromString should use `Number` instead of `parseFloat`
+
 ## 0.20.0
 
 ### Minor Changes
