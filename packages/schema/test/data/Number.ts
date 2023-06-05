@@ -60,8 +60,19 @@ describe.concurrent("Number", () => {
     })
 
     it("Decoder", async () => {
+      await Util.expectParseSuccess(schema, "0", 0)
+      await Util.expectParseSuccess(schema, "-0", -0)
       await Util.expectParseSuccess(schema, "1", 1)
-      await Util.expectParseSuccess(schema, "1a", 1)
+      await Util.expectParseSuccess(schema, "1.2", 1.2)
+
+      await Util.expectParseSuccess(schema, "NaN", NaN)
+      await Util.expectParseSuccess(schema, "Infinity", Infinity)
+      await Util.expectParseSuccess(schema, "-Infinity", -Infinity)
+
+      await Util.expectParseFailure(schema, "", `Expected string -> number, actual ""`)
+      await Util.expectParseFailure(schema, " ", `Expected string -> number, actual " "`)
+      await Util.expectParseFailure(schema, "1AB", `Expected string -> number, actual "1AB"`)
+      await Util.expectParseFailure(schema, "AB1", `Expected string -> number, actual "AB1"`)
       await Util.expectParseFailure(
         schema,
         "a",

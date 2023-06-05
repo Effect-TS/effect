@@ -2139,13 +2139,17 @@ export const clamp = (min: number, max: number) =>
     )
 
 /**
-  This combinator transforms a `string` into a `number` by parsing the string using `parseFloat`.
-
-  The following special string values are supported: "NaN", "Infinity", "-Infinity".
-
-  @category number
-  @since 1.0.0
-*/
+ * This combinator transforms a `string` into a `number` by parsing the string using the `Number` function.
+ *
+ * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
+ *
+ * The following special string values are supported: "NaN", "Infinity", "-Infinity".
+ *
+ * @param self - The schema representing the input string
+ *
+ * @category number
+ * @since 1.0.0
+ */
 export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, number> => {
   const schema: Schema<I, number> = transformResult(
     self,
@@ -2160,7 +2164,10 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
       if (s === "-Infinity") {
         return PR.success(-Infinity)
       }
-      const n = parseFloat(s)
+      if (s.trim() === "") {
+        return PR.failure(PR.type(schema.ast, s))
+      }
+      const n = Number(s)
       return isNaN(n) ? PR.failure(PR.type(schema.ast, s)) : PR.success(n)
     },
     (n) => PR.success(String(n) as A) // this is safe because `self` will check its input anyway
@@ -2169,7 +2176,9 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
 }
 
 /**
- * This schema transforms a `string` into a `number` by parsing the string using `parseFloat`.
+ * This schema transforms a `string` into a `number` by parsing the string using the `Number` function.
+ *
+ * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
  *
  * The following special string values are supported: "NaN", "Infinity", "-Infinity".
  *
