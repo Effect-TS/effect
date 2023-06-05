@@ -15,5 +15,5 @@ declare const a2: A2
 declare const f: (int: A1) => void
 
 f(a1)
-// $ExpectError
+// @ts-expect-error
 f(a2)
