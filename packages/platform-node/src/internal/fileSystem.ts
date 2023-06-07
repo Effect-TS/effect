@@ -465,15 +465,15 @@ const truncate = (() => {
   return (path: string, length?: FileSystem.Size) => nodeTruncate(path, Number(length))
 })()
 
-// == utime
+// == utimes
 
-const utime = (() => {
-  const nodeUtime = effectify(
+const utimes = (() => {
+  const nodeUtimes = effectify(
     NFS.utimes,
     handleErrnoException("utime"),
     handleBadArgument("utime")
   )
-  return (path: string, atime: number | Date, mtime: number | Date) => nodeUtime(path, atime, mtime)
+  return (path: string, atime: number | Date, mtime: number | Date) => nodeUtimes(path, atime, mtime)
 })()
 
 // == writeFile
@@ -519,7 +519,7 @@ const fileSystemImpl = FileSystem.make({
   stat,
   symlink,
   truncate,
-  utime,
+  utimes,
   writeFile
 })
 

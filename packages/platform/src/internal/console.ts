@@ -52,14 +52,12 @@ const consoleImpl = Console.of({
     })
   },
   group(options) {
-    return (self) =>
-      Effect.acquireUseRelease(
-        options?.collapsed ?
-          Effect.sync(() => console.groupCollapsed(options?.label)) :
-          Effect.sync(() => console.group(options?.label)),
-        () => self,
-        () => Effect.sync(() => console.groupEnd())
-      )
+    return Effect.acquireRelease(
+      options?.collapsed ?
+        Effect.sync(() => console.groupCollapsed(options?.label)) :
+        Effect.sync(() => console.group(options?.label)),
+      () => Effect.sync(() => console.groupEnd())
+    )
   },
   info(...args) {
     return Effect.sync(() => {
@@ -77,12 +75,10 @@ const consoleImpl = Console.of({
     })
   },
   time(label) {
-    return (self) =>
-      Effect.acquireUseRelease(
-        Effect.sync(() => console.time(label)),
-        () => self,
-        () => Effect.sync(() => console.timeEnd(label))
-      )
+    return Effect.acquireRelease(
+      Effect.sync(() => console.time(label)),
+      () => Effect.sync(() => console.timeEnd(label))
+    )
   },
   timeLog(label, ...args) {
     return Effect.sync(() => {
@@ -98,6 +94,24 @@ const consoleImpl = Console.of({
     return Effect.sync(() => {
       console.warn(...args)
     })
+  },
+  withGroup(options) {
+    return (self) =>
+      Effect.acquireUseRelease(
+        options?.collapsed ?
+          Effect.sync(() => console.groupCollapsed(options?.label)) :
+          Effect.sync(() => console.group(options?.label)),
+        () => self,
+        () => Effect.sync(() => console.groupEnd())
+      )
+  },
+  withTime(label) {
+    return (self) =>
+      Effect.acquireUseRelease(
+        Effect.sync(() => console.time(label)),
+        () => self,
+        () => Effect.sync(() => console.timeEnd(label))
+      )
   }
 })
 

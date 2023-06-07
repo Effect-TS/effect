@@ -114,10 +114,10 @@ export interface SinkOptions extends OpenFileOptions {}
  * @category model
  */
 export interface StreamOptions {
-  bufferSize?: number
-  bytesToRead?: Size
-  chunkSize?: Size
-  offset?: Size
+  readonly bufferSize?: number
+  readonly bytesToRead?: Size
+  readonly chunkSize?: Size
+  readonly offset?: Size
 }
 
 /**
@@ -212,7 +212,7 @@ export interface FileSystem {
     path: string,
     length?: Size
   ) => Effect.Effect<never, PlatformError, void>
-  readonly utime: (
+  readonly utimes: (
     path: string,
     atime: Date | number,
     mtime: Date | number
