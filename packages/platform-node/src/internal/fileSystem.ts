@@ -54,7 +54,7 @@ const handleErrnoException = (method: string) =>
       reason,
       module: "FileSystem",
       method,
-      pathOrDescriptor: path.toString(),
+      pathOrDescriptor: path as string | number,
       syscall: err.syscall,
       message: err.message
     })
@@ -175,15 +175,19 @@ const removeFactory = (method: string) => {
     handleErrnoException(method),
     handleBadArgument(method)
   )
-  return (path: string, options?: FileSystem.RemoveOptions) => nodeRm(path, { recursive: options?.recursive ?? false })
+  return (path: string, options?: FileSystem.RemoveOptions) =>
+    nodeRm(
+      path,
+      { recursive: options?.recursive ?? false }
+    )
 }
 const remove = removeFactory("remove")
 
 // == makeTempDirectoryScoped
 
 const makeTempDirectoryScoped = (() => {
-  const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
-  const removeDirectory = removeFactory("makeTempDirectoryScoped")
+  const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped/make")
+  const removeDirectory = removeFactory("makeTempDirectoryScoped/remove")
   return (
     options?: FileSystem.MakeTempDirectoryOptions
   ) =>
@@ -196,7 +200,8 @@ const makeTempDirectoryScoped = (() => {
 // == makeTempFile
 
 const makeTempFileFactory = (method: string) => {
-  const makeDirectory = makeTempDirectoryFactory(method)
+  const makeDirectory = makeTempDirectoryFactory(`${method}/make`)
+  const open = openFactory(`${method}/open`)
   const randomHexString = (bytes: number) => Effect.sync(() => Crypto.randomBytes(bytes).toString("hex"))
   return (options?: FileSystem.MakeTempFileOptions) =>
     pipe(
@@ -211,7 +216,7 @@ const makeTempFile = makeTempFileFactory("makeTempFile")
 
 const makeTempFileScoped = (() => {
   const makeFile = makeTempFileFactory("makeTempFileScoped")
-  const removeFile = removeFactory("makeTempFileScoped")
+  const removeFile = removeFactory("makeTempFileScoped/remove")
   return (options?: FileSystem.MakeTempFileOptions) =>
     Effect.acquireRelease(
       makeFile(options),
@@ -221,16 +226,16 @@ const makeTempFileScoped = (() => {
 
 // == open
 
-const open = (() => {
+const openFactory = (method: string) => {
   const nodeOpen = effectify(
     NFS.open,
-    handleErrnoException("open"),
-    handleBadArgument("open")
+    handleErrnoException(method),
+    handleBadArgument(method)
   )
   const nodeClose = effectify(
     NFS.close,
-    handleErrnoException("open"),
-    handleBadArgument("open")
+    handleErrnoException(method),
+    handleBadArgument(method)
   )
 
   return (path: string, options?: FileSystem.OpenFileOptions) =>
@@ -241,7 +246,8 @@ const open = (() => {
       ),
       Effect.map((fd) => makeFile(File.Descriptor(fd)))
     )
-})()
+}
+const open = openFactory("open")
 
 const makeFile = (() => {
   const nodeReadFactory = (method: string) =>
@@ -272,7 +278,7 @@ const makeFile = (() => {
   const nodeWrite = nodeWriteFactory("write")
   const nodeWriteAll = nodeWriteFactory("writeAll")
 
-  class FileImpl {
+  class FileImpl implements Omit<File.File, File.FileTypeId> {
     readonly [File.FileTypeId] = File.FileTypeId
 
     constructor(
@@ -336,10 +342,18 @@ const makeFile = (() => {
       return Effect.flatMap(
         nodeWriteAll(this.fd, buffer),
         (bytesWritten) => {
-          if (bytesWritten === buffer.length) {
-            return Effect.unit()
+          if (bytesWritten === 0) {
+            return Effect.fail(Error.SystemError({
+              module: "FileSystem",
+              method: "writeAll",
+              reason: "WriteZero",
+              pathOrDescriptor: this.fd,
+              message: "write returned 0 bytes written"
+            }))
+          } else if (bytesWritten < buffer.length) {
+            return this.writeAll(buffer.subarray(bytesWritten))
           }
-          return this.writeAll(buffer.subarray(bytesWritten))
+          return Effect.unit()
         }
       )
     }
