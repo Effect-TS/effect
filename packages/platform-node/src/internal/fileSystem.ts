@@ -195,14 +195,27 @@ const makeTempDirectoryScoped = (() => {
 
 // == makeTempFile
 
-const makeTempFile = (() => {
-  const makeDirectory = makeTempDirectoryFactory("makeTempFile")
+const makeTempFileFactory = (method: string) => {
+  const makeDirectory = makeTempDirectoryFactory(method)
   const randomHexString = (bytes: number) => Effect.sync(() => Crypto.randomBytes(bytes).toString("hex"))
   return (options?: FileSystem.MakeTempFileOptions) =>
     pipe(
       Effect.zip(makeDirectory(options), randomHexString(6)),
       Effect.map(([directory, random]) => Path.join(directory, random)),
-      Effect.flatMap((path) => open(path, { flag: "w+" }))
+      Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" })))
+    )
+}
+const makeTempFile = makeTempFileFactory("makeTempFile")
+
+// == makeTempFileScoped
+
+const makeTempFileScoped = (() => {
+  const makeFile = makeTempFileFactory("makeTempFileScoped")
+  const removeFile = removeFactory("makeTempFileScoped")
+  return (options?: FileSystem.MakeTempFileOptions) =>
+    Effect.acquireRelease(
+      makeFile(options),
+      (file) => Effect.orDie(removeFile(file))
     )
 })()
 
@@ -509,6 +522,7 @@ const fileSystemImpl = FileSystem.make({
   makeTempDirectory,
   makeTempDirectoryScoped,
   makeTempFile,
+  makeTempFileScoped,
   open,
   readDirectory,
   readFile,

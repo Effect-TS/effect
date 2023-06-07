@@ -36,8 +36,8 @@ export const make = (impl: Omit<FileSystem, "stream" | "sink">): FileSystem => {
 const stream = (file: File, {
   bufferSize = 4,
   bytesToRead,
-  chunkSize = Size(16n * 1024n),
-  offset = Size(0n)
+  chunkSize = Size(64 * 1024),
+  offset = Size(0)
 }: StreamOptions = {}) =>
   Stream.bufferChunks(
     Stream.unfoldEffect(offset, (position) => {
