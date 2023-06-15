@@ -162,7 +162,7 @@ const makeTempDirectoryFactory = (method: string) => {
         ? Path.join(options.directory, ".")
         : OS.tmpdir()
 
-      return nodeMkdtemp(prefix ? Path.join(directory, prefix) : directory)
+      return nodeMkdtemp(prefix ? Path.join(directory, prefix) : directory + "/")
     })
 }
 const makeTempDirectory = makeTempDirectoryFactory("makeTempDirectory")
@@ -186,41 +186,14 @@ const remove = removeFactory("remove")
 // == makeTempDirectoryScoped
 
 const makeTempDirectoryScoped = (() => {
-  const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped/make")
-  const removeDirectory = removeFactory("makeTempDirectoryScoped/remove")
+  const makeDirectory = makeTempDirectoryFactory("makeTempDirectoryScoped")
+  const removeDirectory = removeFactory("makeTempDirectoryScoped")
   return (
     options?: FileSystem.MakeTempDirectoryOptions
   ) =>
     Effect.acquireRelease(
       makeDirectory(options),
       (directory) => Effect.orDie(removeDirectory(directory, { recursive: true }))
-    )
-})()
-
-// == makeTempFile
-
-const makeTempFileFactory = (method: string) => {
-  const makeDirectory = makeTempDirectoryFactory(`${method}/make`)
-  const open = openFactory(`${method}/open`)
-  const randomHexString = (bytes: number) => Effect.sync(() => Crypto.randomBytes(bytes).toString("hex"))
-  return (options?: FileSystem.MakeTempFileOptions) =>
-    pipe(
-      Effect.zip(makeDirectory(options), randomHexString(6)),
-      Effect.map(([directory, random]) => Path.join(directory, random)),
-      Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" })))
-    )
-}
-const makeTempFile = makeTempFileFactory("makeTempFile")
-
-// == makeTempFileScoped
-
-const makeTempFileScoped = (() => {
-  const makeFile = makeTempFileFactory("makeTempFileScoped")
-  const removeFile = removeFactory("makeTempFileScoped/remove")
-  return (options?: FileSystem.MakeTempFileOptions) =>
-    Effect.acquireRelease(
-      makeFile(options),
-      (file) => Effect.orDie(removeFile(file))
     )
 })()
 
@@ -360,6 +333,33 @@ const makeFile = (() => {
   }
 
   return (fd: File.File.Descriptor) => new FileImpl(fd) as File.File
+})()
+
+// == makeTempFile
+
+const makeTempFileFactory = (method: string) => {
+  const makeDirectory = makeTempDirectoryFactory(method)
+  const open = openFactory(method)
+  const randomHexString = (bytes: number) => Effect.sync(() => Crypto.randomBytes(bytes).toString("hex"))
+  return (options?: FileSystem.MakeTempFileOptions) =>
+    pipe(
+      Effect.zip(makeDirectory(options), randomHexString(6)),
+      Effect.map(([directory, random]) => Path.join(directory, random)),
+      Effect.tap((path) => Effect.scoped(open(path, { flag: "w+" })))
+    )
+}
+const makeTempFile = makeTempFileFactory("makeTempFile")
+
+// == makeTempFileScoped
+
+const makeTempFileScoped = (() => {
+  const makeFile = makeTempFileFactory("makeTempFileScoped")
+  const removeFile = removeFactory("makeTempFileScoped")
+  return (options?: FileSystem.MakeTempFileOptions) =>
+    Effect.acquireRelease(
+      makeFile(options),
+      (file) => Effect.orDie(removeFile(file))
+    )
 })()
 
 // == readDirectory
