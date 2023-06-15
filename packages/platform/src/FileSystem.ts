@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type * as Brand from "@effect/data/Brand"
+import * as Brand from "@effect/data/Brand"
 import type { Tag } from "@effect/data/Context"
+import type { Option } from "@effect/data/Option"
 import type * as Effect from "@effect/io/Effect"
 import type { Scope } from "@effect/io/Scope"
 import type { PlatformError } from "@effect/platform/Error"
-import type { File } from "@effect/platform/FileSystem/File"
 import * as internal from "@effect/platform/internal/fileSystem"
 import type { Sink } from "@effect/stream/Sink"
 import type { Stream } from "@effect/stream/Stream"
@@ -345,3 +345,111 @@ export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
  * @category constructor
  */
 export const make: (impl: Omit<FileSystem, "stream" | "sink">) => FileSystem = internal.make
+
+/**
+ * @since 1.0.0
+ * @category type id
+ */
+export const FileTypeId: unique symbol = Symbol.for(
+  "@effect/platform/FileSystem/File"
+)
+
+/**
+ * @since 1.0.0
+ * @category type id
+ */
+export type FileTypeId = typeof FileTypeId
+
+/**
+ * @since 1.0.0
+ * @category guard
+ */
+export const isFile = (u: unknown): u is File => typeof u === "object" && u !== null && FileTypeId in u
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export interface File {
+  readonly [FileTypeId]: (_: never) => unknown
+  readonly fd: File.Descriptor
+  readonly stat: Effect.Effect<never, PlatformError, File.Info>
+  readonly read: (
+    buffer: Uint8Array,
+    options?: FileReadOptions
+  ) => Effect.Effect<never, PlatformError, Size>
+  readonly readAlloc: (
+    size: Size,
+    options?: FileReadOptions
+  ) => Effect.Effect<never, PlatformError, Option<Uint8Array>>
+  readonly truncate: (
+    length?: Size
+  ) => Effect.Effect<never, PlatformError, void>
+  readonly write: (
+    buffer: Uint8Array
+  ) => Effect.Effect<never, PlatformError, Size>
+  readonly writeAll: (
+    buffer: Uint8Array
+  ) => Effect.Effect<never, PlatformError, void>
+}
+
+/**
+ * @since 1.0.0
+ */
+export namespace File {
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export type Descriptor = Brand.Branded<number, "FileDescriptor">
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export type Type =
+    | "File"
+    | "Directory"
+    | "SymbolicLink"
+    | "BlockDevice"
+    | "CharacterDevice"
+    | "FIFO"
+    | "Socket"
+    | "Unknown"
+
+  /**
+   * @since 1.0.0
+   * @category model
+   */
+  export interface Info {
+    readonly type: Type
+    readonly mtime: Option<Date>
+    readonly atime: Option<Date>
+    readonly birthtime: Option<Date>
+    readonly dev: number
+    readonly ino: Option<number>
+    readonly mode: number
+    readonly nlink: Option<number>
+    readonly uid: Option<number>
+    readonly gid: Option<number>
+    readonly rdev: Option<number>
+    readonly size: Size
+    readonly blksize: Option<Size>
+    readonly blocks: Option<number>
+  }
+}
+
+/**
+ * @since 1.0.0
+ * @category constructor
+ */
+export const FileDescriptor = Brand.nominal<File.Descriptor>()
+
+/**
+ * @since 1.0.0
+ * @category model
+ */
+export interface FileReadOptions {
+  readonly offset?: Size
+  readonly length?: Size
+}

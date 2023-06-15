@@ -1,11 +1,10 @@
-import { pipe } from "@effect/data/Function"
+import { identity, pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import { effectify } from "@effect/platform/Effectify"
 import * as Error from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
-import * as File from "@effect/platform/FileSystem/File"
 import * as Crypto from "node:crypto"
 import * as NFS from "node:fs"
 import * as OS from "node:os"
@@ -217,7 +216,7 @@ const openFactory = (method: string) => {
         nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd))
       ),
-      Effect.map((fd) => makeFile(File.Descriptor(fd)))
+      Effect.map((fd) => makeFile(FileSystem.FileDescriptor(fd)))
     )
 }
 const open = openFactory("open")
@@ -251,11 +250,11 @@ const makeFile = (() => {
   const nodeWrite = nodeWriteFactory("write")
   const nodeWriteAll = nodeWriteFactory("writeAll")
 
-  class FileImpl implements Omit<File.File, File.FileTypeId> {
-    readonly [File.FileTypeId] = File.FileTypeId
+  class FileImpl implements FileSystem.File {
+    readonly [FileSystem.FileTypeId] = identity
 
     constructor(
-      readonly fd: File.File.Descriptor
+      readonly fd: FileSystem.File.Descriptor
     ) {}
 
     get stat() {
@@ -264,7 +263,7 @@ const makeFile = (() => {
 
     read(
       buffer: Uint8Array,
-      options?: File.FileReadOptions
+      options?: FileSystem.FileReadOptions
     ) {
       return Effect.map(
         nodeRead(this.fd, {
@@ -276,7 +275,7 @@ const makeFile = (() => {
       )
     }
 
-    readAlloc(size: FileSystem.Size, options?: File.FileReadOptions | undefined) {
+    readAlloc(size: FileSystem.Size, options?: FileSystem.FileReadOptions | undefined) {
       return Effect.flatMap(
         Effect.sync(() => Buffer.allocUnsafeSlow(Number(size))),
         (buffer) =>
@@ -332,7 +331,7 @@ const makeFile = (() => {
     }
   }
 
-  return (fd: File.File.Descriptor) => new FileImpl(fd) as File.File
+  return (fd: FileSystem.File.Descriptor): FileSystem.File => new FileImpl(fd)
 })()
 
 // == makeTempFile
@@ -431,7 +430,7 @@ const rename = (() => {
 
 // == stat
 
-const makeFileInfo = (stat: NFS.Stats): File.File.Info => ({
+const makeFileInfo = (stat: NFS.Stats): FileSystem.File.Info => ({
   type: stat.isFile() ?
     "File" :
     stat.isDirectory() ?
