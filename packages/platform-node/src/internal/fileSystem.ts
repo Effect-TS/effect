@@ -87,6 +87,22 @@ const access = (() => {
   }
 })()
 
+// == copy
+
+const copy = (() => {
+  const nodeCp = effectify(
+    NFS.cp,
+    handleErrnoException("copy"),
+    handleBadArgument("copy")
+  )
+  return (fromPath: string, toPath: string, options?: FileSystem.CopyOptions) =>
+    nodeCp(fromPath, toPath, {
+      force: options?.overwrite ?? false,
+      preserveTimestamps: options?.preserveTimestamps ?? false,
+      recursive: true
+    })
+})()
+
 // == copyFile
 
 const copyFile = (() => {
@@ -527,9 +543,10 @@ const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFil
 
 const fileSystemImpl = FileSystem.make({
   access,
-  copyFile,
   chmod,
   chown,
+  copy,
+  copyFile,
   link,
   makeDirectory,
   makeTempDirectory,

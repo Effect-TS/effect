@@ -25,6 +25,16 @@ export interface FileSystem {
     options?: AccessFileOptions
   ) => Effect.Effect<never, PlatformError, void>
   /**
+   * Copy a file or directory from `fromPath` to `toPath`.
+   *
+   * Equivalent to `cp -r`.
+   */
+  readonly copy: (
+    fromPath: string,
+    toPath: string,
+    options?: CopyOptions
+  ) => Effect.Effect<never, PlatformError, void>
+  /**
    * Copy a file from `fromPath` to `toPath`.
    */
   readonly copyFile: (
@@ -263,6 +273,15 @@ export interface AccessFileOptions {
 export interface MakeDirectoryOptions {
   readonly recursive?: boolean
   readonly mode?: number
+}
+
+/**
+ * @since 1.0.0
+ * @category options
+ */
+export interface CopyOptions {
+  readonly overwrite?: boolean
+  readonly preserveTimestamps?: boolean
 }
 
 /**
