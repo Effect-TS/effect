@@ -33,7 +33,7 @@ export namespace PlatformError {
   export interface Base extends Data.Case {
     readonly [PlatformErrorTypeId]: typeof PlatformErrorTypeId
     readonly _tag: string
-    readonly module: "FileSystem"
+    readonly module: "FileSystem" | "Path"
     readonly method: string
     readonly message: string
   }
