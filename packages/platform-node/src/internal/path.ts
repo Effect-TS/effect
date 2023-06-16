@@ -31,29 +31,32 @@ const toFileUrl = (path: string): Effect.Effect<never, BadArgument, URL> =>
       })
   )
 
-const posixImpl = Path.of({
-  ...NodePath.posix,
-  fromFileUrl,
-  toFileUrl
-})
+/** @internal */
+export const layerPosix = Layer.succeed(
+  Path,
+  Path.of({
+    ...NodePath.posix,
+    fromFileUrl,
+    toFileUrl
+  })
+)
 
 /** @internal */
-export const layerPosix = Layer.succeed(Path, posixImpl)
-
-const win32Impl = Path.of({
-  ...NodePath.win32,
-  fromFileUrl,
-  toFileUrl
-})
-
-/** @internal */
-export const layerWin32 = Layer.succeed(Path, win32Impl)
-
-const pathImpl = Path.of({
-  ...NodePath,
-  fromFileUrl,
-  toFileUrl
-})
+export const layerWin32 = Layer.succeed(
+  Path,
+  Path.of({
+    ...NodePath.win32,
+    fromFileUrl,
+    toFileUrl
+  })
+)
 
 /** @internal */
-export const layer = Layer.succeed(Path, pathImpl)
+export const layer = Layer.succeed(
+  Path,
+  Path.of({
+    ...NodePath,
+    fromFileUrl,
+    toFileUrl
+  })
+)

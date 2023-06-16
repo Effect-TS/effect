@@ -9,15 +9,16 @@ import * as PathB from "path-browserify"
 /** @internal */
 export const Path = Tag<_Path>()
 
-const pathImpl = Path.of({
-  ...PathB,
-  fromFileUrl,
-  toFileUrl,
-  toNamespacedPath: identity
-})
-
 /** @internal */
-export const layer = Layer.succeed(Path, pathImpl)
+export const layer = Layer.succeed(
+  Path,
+  Path.of({
+    ...PathB,
+    fromFileUrl,
+    toFileUrl,
+    toNamespacedPath: identity
+  })
+)
 
 /**
  * The following functions are adapted from the Node.js source code:
