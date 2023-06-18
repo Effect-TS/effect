@@ -46,7 +46,7 @@
   "license": "MIT",
   "sideEffects": [],
   "dependencies": {
-    "@effect/data": "^0.12.4",
+    "@effect/data": "^0.12.7",
     "@effect/io": "^0.26.0",
     "@effect/rpc": "workspace:*"
   },
@@ -56,6 +56,6 @@
     "global": []
   },
   "devDependencies": {
-    "@effect/schema": "^0.20.0"
+    "@effect/schema": "^0.20.2"
   }
 }

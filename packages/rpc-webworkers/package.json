@@ -44,13 +44,13 @@
   "license": "MIT",
   "sideEffects": [],
   "dependencies": {
-    "@effect/data": "^0.12.4",
+    "@effect/data": "^0.12.7",
     "@effect/io": "^0.26.0",
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.20.0",
-    "@vitest/web-worker": "^0.31.4"
+    "@effect/schema": "^0.20.2",
+    "@vitest/web-worker": "^0.32.2"
   },
   "config": {
     "side": [],
