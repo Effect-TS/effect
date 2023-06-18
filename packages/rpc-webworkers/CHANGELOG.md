@@ -1,5 +1,20 @@
 # @effect/rpc-webworkers
 
+## 0.3.0
+
+### Minor Changes
+
+- [#69](https://github.com/Effect-TS/rpc/pull/69) [`3feb1e5`](https://github.com/Effect-TS/rpc/commit/3feb1e59b783a8bc06ea7ccbb2e0cef51da95439) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#67](https://github.com/Effect-TS/rpc/pull/67) [`86829c1`](https://github.com/Effect-TS/rpc/commit/86829c1f957ad56efe3d5b3e530b5f5789546427) Thanks [@tim-smart](https://github.com/tim-smart)! - update docs
+
+- [#70](https://github.com/Effect-TS/rpc/pull/70) [`fdc4970`](https://github.com/Effect-TS/rpc/commit/fdc49706df05699d02223652d63e0084f5983e0d) Thanks [@tim-smart](https://github.com/tim-smart)! - update deps
+
+- Updated dependencies [[`86829c1`](https://github.com/Effect-TS/rpc/commit/86829c1f957ad56efe3d5b3e530b5f5789546427), [`3feb1e5`](https://github.com/Effect-TS/rpc/commit/3feb1e59b783a8bc06ea7ccbb2e0cef51da95439), [`fdc4970`](https://github.com/Effect-TS/rpc/commit/fdc49706df05699d02223652d63e0084f5983e0d)]:
+  - @effect/rpc@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
