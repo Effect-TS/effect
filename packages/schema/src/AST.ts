@@ -1274,6 +1274,20 @@ export const getCompiler = <A>(match: Match<A>): Compiler<A> => {
   return compile
 }
 
+/** @internal */
+export const getToPropertySignatures = (
+  ps: ReadonlyArray<PropertySignature>
+): Array<PropertySignature> =>
+  ps.map((p) =>
+    createPropertySignature(p.name, to(p.type), p.isOptional, p.isReadonly, p.annotations)
+  )
+
+/** @internal */
+export const getToIndexSignatures = (
+  ps: ReadonlyArray<IndexSignature>
+): Array<IndexSignature> =>
+  ps.map((is) => createIndexSignature(is.parameter, to(is.type), is.isReadonly))
+
 /**
  * @since 1.0.0
  */
@@ -1295,12 +1309,8 @@ export const to = (ast: AST): AST => {
       )
     case "TypeLiteral":
       return createTypeLiteral(
-        ast.propertySignatures.map((p) =>
-          createPropertySignature(p.name, to(p.type), p.isOptional, p.isReadonly, p.annotations)
-        ),
-        ast.indexSignatures.map((is) =>
-          createIndexSignature(is.parameter, to(is.type), is.isReadonly)
-        ),
+        getToPropertySignatures(ast.propertySignatures),
+        getToIndexSignatures(ast.indexSignatures),
         ast.annotations
       )
     case "Union":
