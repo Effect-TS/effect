@@ -16,7 +16,7 @@ export const effect = (() => {
       name,
       () =>
         pipe(
-          Effect.suspendSucceed(self),
+          Effect.suspend(self),
           Effect.runPromise
         ),
       timeout
@@ -32,7 +32,7 @@ export const effect = (() => {
         name,
         () =>
           pipe(
-            Effect.suspendSucceed(self),
+            Effect.suspend(self),
             Effect.runPromise
           ),
         timeout
@@ -47,7 +47,7 @@ export const effect = (() => {
         name,
         () =>
           pipe(
-            Effect.suspendSucceed(self),
+            Effect.suspend(self),
             Effect.runPromise
           ),
         timeout
