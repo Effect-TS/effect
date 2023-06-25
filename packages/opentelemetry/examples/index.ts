@@ -2,16 +2,18 @@ import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
-import * as Tracing from "@effect/opentelemetry/Tracer"
+import * as Tracer from "@effect/opentelemetry/Tracer"
 import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base"
 
 const NodeSdkLive = NodeSdk.layer({
   traceExporter: new ConsoleSpanExporter()
 })
 
-const TracingLive = Tracing.layer({
+const TracerLive = Tracer.layer({
   name: "example"
 })
+
+const TracingLive = Layer.merge(NodeSdkLive, TracerLive)
 
 const program = pipe(
   Effect.log("Hello"),
@@ -22,7 +24,7 @@ const program = pipe(
 
 pipe(
   program,
-  Effect.provideLayer(Layer.mergeAll(NodeSdkLive, TracingLive)),
+  Effect.provideLayer(TracingLive),
   Effect.catchAllCause(Effect.logErrorCause),
   Effect.runFork
 )
