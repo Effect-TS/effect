@@ -1,10 +1,11 @@
+import { pipe } from "@effect/data/Function"
 import type { Option } from "@effect/data/Option"
 import * as Cause from "@effect/io/Cause"
 import * as Effect from "@effect/io/Effect"
 import type { Exit } from "@effect/io/Exit"
 import * as Layer from "@effect/io/Layer"
 import * as Tracer from "@effect/io/Tracer"
-import type { TracerOptions } from "@effect/opentelemetry/Tracer"
+import { Resource } from "@effect/opentelemetry/Resource"
 import * as OtelApi from "@opentelemetry/api"
 
 /** @internal */
@@ -89,26 +90,33 @@ export class OtelSpan implements Tracer.Span {
 }
 
 /** @internal */
-export const make = (options: TracerOptions) =>
-  Effect.map(
-    Effect.sync(() => OtelApi.trace.getTracer(options.name, options.version)),
-    (tracer) =>
-      Tracer.make({
-        span(name, parent, startTime) {
-          return new OtelSpan(
-            OtelApi.trace,
-            OtelApi.context,
-            tracer,
-            name,
-            parent,
-            startTime
-          )
-        }
-      })
+export const make = pipe(
+  Resource,
+  Effect.flatMap((resource) =>
+    Effect.sync(() =>
+      OtelApi.trace.getTracer(
+        resource.attributes["service.name"] as string,
+        resource.attributes["service.version"] as string
+      )
+    )
+  ),
+  Effect.map((tracer) =>
+    Tracer.make({
+      span(name, parent, startTime) {
+        return new OtelSpan(
+          OtelApi.trace,
+          OtelApi.context,
+          tracer,
+          name,
+          parent,
+          startTime
+        )
+      }
+    })
   )
+)
 
 /** @internal */
-export const layer = (options: TracerOptions) =>
-  Layer.unwrapEffect(
-    Effect.map(make(options), Effect.setTracer)
-  )
+export const layer = Layer.unwrapEffect(
+  Effect.map(make, Effect.setTracer)
+)

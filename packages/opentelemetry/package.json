@@ -58,7 +58,9 @@
   "dependencies": {
     "@effect/data": "^0.12.9",
     "@effect/io": "^0.27.1",
-    "@opentelemetry/api": "^1.4.1"
+    "@opentelemetry/api": "^1.4.1",
+    "@opentelemetry/resources": "^1.14.0",
+    "@opentelemetry/semantic-conventions": "^1.14.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.5",
