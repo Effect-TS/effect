@@ -1,25 +1,21 @@
-## Welcome to Effect [![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/Effect-TS/effect)
+# Effect
 
-Effect is an ecosystem of libraries to write highly productive, purely functional TypeScript at scale.
-
-## Intro Talk
-
-[![Introduction to Effect](https://img.youtube.com/vi/zrNr3JVUc8I/maxresdefault.jpg)](https://youtu.be/zrNr3JVUc8I)
-
-## Install
-
-```sh
-pnpm install effect
-```
-
-## TSConfig
-
-It's important to make sure 'strict' is enabled.
+Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged functional effect system with a rich standard library.
 
 ## Documentation
 
-Coming soon.
+For detailed information and usage examples, please visit the [Effect website](https://www.effect.website/).
+
+## Intro Talk
+
+Watch our introduction to Effect on YouTube:
+
+[![Introduction to Effect](https://img.youtube.com/vi/zrNr3JVUc8I/maxresdefault.jpg)](https://youtu.be/zrNr3JVUc8I)
 
 ## Get in touch
 
-Join us using discord at: [https://discord.gg/hdt7t7jpvn](https://discord.gg/hdt7t7jpvn)
+Join our community on Discord: https://discord.gg/hdt7t7jpvn
+
+## API Reference
+
+For detailed information on the Effect API, please refer to our [API Reference](https://effect-ts.github.io/effect/).
