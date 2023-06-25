@@ -30,12 +30,14 @@ export class OtelSpan implements Tracer.Span {
       ? tracer.startSpan(
         name,
         { startTime },
-        traceApi.setSpanContext(active, {
-          spanId: parent.value.spanId,
-          traceId: parent.value.traceId,
-          isRemote: parent.value._tag === "ExternalSpan",
-          traceFlags: OtelApi.TraceFlags.SAMPLED
-        })
+        parent.value instanceof OtelSpan ?
+          traceApi.setSpan(active, parent.value.span) :
+          traceApi.setSpanContext(active, {
+            spanId: parent.value.spanId,
+            traceId: parent.value.traceId,
+            isRemote: parent.value._tag === "ExternalSpan",
+            traceFlags: OtelApi.TraceFlags.SAMPLED
+          })
       )
       : tracer.startSpan(name, { startTime }, active)
     const spanContext = this.span.spanContext()

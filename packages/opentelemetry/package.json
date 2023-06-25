@@ -72,6 +72,8 @@
     "@effect/core": "^0.0.16",
     "@effect/docgen": "^0.1.1",
     "@effect/language-service": "^0.0.19",
+    "@opentelemetry/sdk-trace-base": "^1.14.0",
+    "@opentelemetry/sdk-trace-node": "^1.14.0",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@types/chai": "^4.3.5",
     "@types/node": "^20.3.1",
@@ -103,5 +105,8 @@
     "side": [],
     "modules": [],
     "global": []
+  },
+  "optionalDependencies": {
+    "@opentelemetry/sdk-node": "^0.40.0"
   }
 }
