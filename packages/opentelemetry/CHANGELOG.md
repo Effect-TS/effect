@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.1.1
+
+### Patch Changes
+
+- [#12](https://github.com/Effect-TS/opentelemetry/pull/12) [`0bc9ca2`](https://github.com/Effect-TS/opentelemetry/commit/0bc9ca2cccf252608a1a91a13554e901d345e5e1) Thanks [@tim-smart](https://github.com/tim-smart)! - add /Resource module
+
 ## 0.1.0
 
 ### Minor Changes
