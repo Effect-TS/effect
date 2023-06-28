@@ -8,9 +8,11 @@ import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base"
 
 const ResourceLive = Resource.layer({ serviceName: "example" })
 
-const NodeSdkLive = NodeSdk.layer(Effect.sync(() => ({
-  traceExporter: new ConsoleSpanExporter()
-})))
+const NodeSdkLive = NodeSdk.layer(Effect.sync(() =>
+  NodeSdk.config({
+    traceExporter: new ConsoleSpanExporter()
+  })
+))
 
 const TracingLive = Layer.provide(
   ResourceLive,

@@ -9,11 +9,23 @@ import { NodeSDK } from "@opentelemetry/sdk-node"
 
 /**
  * @since 1.0.0
+ * @category model
+ */
+export type Configuration = Partial<Omit<NodeSDKConfiguration, "resource" | "serviceName">>
+
+/**
+ * @since 1.0.0
+ * @category constructor
+ */
+export const config: (config: Configuration) => Configuration = (config: Configuration) => config
+
+/**
+ * @since 1.0.0
  * @category layer
  */
 export const layer = <R, E>(
-  config: Effect.Effect<R, E, Partial<Omit<NodeSDKConfiguration, "resource" | "serviceName">>>
-) =>
+  config: Effect.Effect<R, E, Configuration>
+): Layer.Layer<Resource | R, E, never> =>
   Layer.scopedDiscard(Effect.acquireRelease(
     Effect.flatMap(
       Effect.all(config, Resource),
