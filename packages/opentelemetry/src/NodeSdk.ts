@@ -11,15 +11,18 @@ import { NodeSDK } from "@opentelemetry/sdk-node"
  * @since 1.0.0
  * @category layer
  */
-export const layer = (config: Partial<Omit<NodeSDKConfiguration, "resource" | "serviceName">>) =>
+export const layer = <R, E>(
+  config: Effect.Effect<R, E, Partial<Omit<NodeSDKConfiguration, "resource" | "serviceName">>>
+) =>
   Layer.scopedDiscard(Effect.acquireRelease(
     Effect.flatMap(
-      Resource,
-      (resource) =>
-        Effect.tap(
-          Effect.sync(() => new NodeSDK({ ...config, resource })),
-          (sdk) => Effect.sync(() => sdk.start())
-        )
+      Effect.all(config, Resource),
+      ([config, resource]) =>
+        Effect.sync(() => {
+          const sdk = new NodeSDK({ ...config, resource })
+          sdk.start()
+          return sdk
+        })
     ),
     (sdk) => Effect.promise(() => sdk.shutdown())
   ))
