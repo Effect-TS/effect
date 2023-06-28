@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.1.3
+
+### Patch Changes
+
+- [#16](https://github.com/Effect-TS/opentelemetry/pull/16) [`fa067d9`](https://github.com/Effect-TS/opentelemetry/commit/fa067d9cfa173a18e00dc9d9d19048af26c09ef3) Thanks [@tim-smart](https://github.com/tim-smart)! - add helper for constructing NodeSdk config
+
 ## 0.1.2
 
 ### Patch Changes
