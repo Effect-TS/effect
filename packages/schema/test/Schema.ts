@@ -66,6 +66,11 @@ describe.concurrent("Schema", () => {
     expect(S.clampBigint).exist
   })
 
+  it("struct should allow a \"constructor\" field name", () => {
+    const schema = S.struct({ constructor: S.string })
+    expect(schema.ast._tag).toEqual("TypeLiteral")
+  })
+
   it("brand/ annotations", () => {
     // const Branded: S.Schema<number & Brand<"A"> & Brand<"B">>
     const Branded = pipe(

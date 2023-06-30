@@ -752,7 +752,7 @@ export const createTypeLiteral = (
   const keys: Record<PropertyKey, null> = {}
   for (let i = 0; i < propertySignatures.length; i++) {
     const name = propertySignatures[i].name
-    if (name in keys) {
+    if (Object.prototype.hasOwnProperty.call(keys, name)) {
       throw new Error(`Duplicate property signature ${String(name)}`)
     }
     keys[name] = null
