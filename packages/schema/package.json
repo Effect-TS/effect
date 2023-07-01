@@ -67,7 +67,7 @@
     "@definitelytyped/dtslint": "^0.0.163",
     "@effect-ts/build-utils": "^0.40.7",
     "@effect-ts/core": "^0.60.5",
-    "@effect/docgen": "^0.1.1",
+    "@effect/docgen": "^0.1.2",
     "@effect/language-service": "^0.0.19",
     "@repo-tooling/eslint-plugin-dprint": "^0.0.4",
     "@types/benchmark": "^2.1.2",
@@ -105,8 +105,8 @@
     "zod": "^3.21.4"
   },
   "dependencies": {
-    "@effect/data": "^0.12.9",
-    "@effect/io": "^0.27.0",
+    "@effect/data": "^0.12.10",
+    "@effect/io": "^0.28.0",
     "fast-check": "^3.10.0"
   }
 }
