@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.22.0
+
+### Minor Changes
+
+- [#314](https://github.com/Effect-TS/schema/pull/314) [`81f2529`](https://github.com/Effect-TS/schema/commit/81f2529e71da2b8dcd00c903ff72fbabbe346fca) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest deps
+
 ## 0.21.1
 
 ### Patch Changes
