@@ -1,5 +1,6 @@
+import * as Context from "@effect/data/Context"
 import { pipe } from "@effect/data/Function"
-import type { Option } from "@effect/data/Option"
+import * as Option from "@effect/data/Option"
 import * as Cause from "@effect/io/Cause"
 import * as Effect from "@effect/io/Effect"
 import type { Exit } from "@effect/io/Exit"
@@ -15,7 +16,7 @@ export class OtelSpan implements Tracer.Span {
   readonly span: OtelApi.Span
   readonly spanId: string
   readonly traceId: string
-  readonly attributes = new Map<string, string>()
+  readonly attributes = new Map<string, Tracer.AttributeValue>()
   status: Tracer.SpanStatus
 
   constructor(
@@ -23,24 +24,29 @@ export class OtelSpan implements Tracer.Span {
     contextApi: OtelApi.ContextAPI,
     tracer: OtelApi.Tracer,
     readonly name: string,
-    readonly parent: Option<Tracer.ParentSpan>,
-    startTime: number
+    readonly parent: Option.Option<Tracer.ParentSpan>,
+    readonly context: Context.Context<never>,
+    startTime: bigint
   ) {
     const active = contextApi.active()
     this.span = parent._tag === "Some"
       ? tracer.startSpan(
         name,
-        { startTime },
+        { startTime: nanosToHrTime(startTime) },
         parent.value instanceof OtelSpan ?
           traceApi.setSpan(active, parent.value.span) :
           traceApi.setSpanContext(active, {
             spanId: parent.value.spanId,
             traceId: parent.value.traceId,
             isRemote: parent.value._tag === "ExternalSpan",
-            traceFlags: OtelApi.TraceFlags.SAMPLED
+            traceFlags: Option.getOrElse(
+              extractTraceTag(parent, context, traceFlagsTag),
+              () => OtelApi.TraceFlags.SAMPLED
+            ),
+            traceState: Option.getOrUndefined(extractTraceTag(parent, context, traceStateTag))
           })
       )
-      : tracer.startSpan(name, { startTime }, active)
+      : tracer.startSpan(name, { startTime: nanosToHrTime(startTime) }, active)
     const spanContext = this.span.spanContext()
 
     this.spanId = spanContext.spanId
@@ -52,12 +58,12 @@ export class OtelSpan implements Tracer.Span {
     }
   }
 
-  attribute(key: string, value: string) {
+  attribute(key: string, value: Tracer.AttributeValue) {
     this.span.setAttribute(key, value)
     this.attributes.set(key, value)
   }
 
-  end(endTime: number, exit: Exit<unknown, unknown>) {
+  end(endTime: bigint, exit: Exit<unknown, unknown>) {
     this.status = {
       _tag: "Ended",
       endTime,
@@ -81,11 +87,11 @@ export class OtelSpan implements Tracer.Span {
         })
       }
     }
-    this.span.end(endTime)
+    this.span.end(nanosToHrTime(endTime))
   }
 
-  event(name: string, attributes?: Record<string, string>) {
-    this.span.addEvent(name, attributes)
+  event(name: string, startTime: bigint, attributes?: Record<string, Tracer.AttributeValue>) {
+    this.span.addEvent(name, attributes, nanosToHrTime(startTime))
   }
 }
 
@@ -102,13 +108,14 @@ export const make = pipe(
   ),
   Effect.map((tracer) =>
     Tracer.make({
-      span(name, parent, startTime) {
+      span(name, parent, context, startTime) {
         return new OtelSpan(
           OtelApi.trace,
           OtelApi.context,
           tracer,
           name,
           parent,
+          context,
           startTime
         )
       }
@@ -120,3 +127,63 @@ export const make = pipe(
 export const layer = Layer.unwrapEffect(
   Effect.map(make, Effect.setTracer)
 )
+
+/** @internal */
+export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
+
+/** @internal */
+export const traceStateTag = Context.Tag<OtelApi.TraceState>("@effect/opentelemetry/traceState")
+
+/** @internal */
+export const makeExternalSpan = (options: {
+  readonly name: string
+  readonly traceId: string
+  readonly spanId: string
+  readonly traceFlags?: number
+  readonly traceState?: string
+}): Tracer.ExternalSpan => {
+  let context = Context.empty()
+
+  if (options.traceFlags) {
+    context = Context.add(context, traceFlagsTag, options.traceFlags)
+  }
+
+  if (options.traceState) {
+    context = Option.match(
+      createTraceState(options.traceState),
+      () => context,
+      (traceState) => Context.add(context, traceStateTag, traceState)
+    )
+  }
+
+  return {
+    _tag: "ExternalSpan",
+    name: options.name,
+    traceId: options.traceId,
+    spanId: options.spanId,
+    context
+  }
+}
+
+const oneE9 = 1_000_000_000n
+const nanosToHrTime = (timestamp: bigint): OtelApi.HrTime => {
+  const nanos = timestamp % oneE9
+  const seconds = Number((timestamp - nanos) / oneE9)
+  return [seconds, Number(nanos)]
+}
+
+const extractTraceTag = <I, S>(
+  parent: Option.Option<Tracer.ParentSpan>,
+  context: Context.Context<never>,
+  tag: Context.Tag<I, S>
+) =>
+  Option.orElse(
+    Context.getOption(context, tag),
+    () =>
+      Option.flatMap(
+        parent,
+        (parent) => Context.getOption(parent.context, tag)
+      )
+  )
+
+const createTraceState = Option.liftThrowable(OtelApi.createTraceState)
