@@ -1,5 +1,14 @@
 # @effect/opentelemetry
 
+## 0.2.0
+
+### Minor Changes
+
+- [#18](https://github.com/Effect-TS/opentelemetry/pull/18) [`867195a`](https://github.com/Effect-TS/opentelemetry/commit/867195a3622d2678e684bc84959bbe7e3ada9c3c) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io
+
+  - adds support for nanosecond precision in timing
+  - add `makeExternalSpan` utility for creating parent spans
+
 ## 0.1.3
 
 ### Patch Changes
