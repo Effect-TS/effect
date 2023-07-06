@@ -12,7 +12,7 @@ describe.concurrent("UUID", () => {
     await Util.expectParseFailure(
       schema,
       "",
-      `Expected a string matching the pattern ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$, actual ""`
+      `Expected UUID, actual ""`
     )
   })
 })

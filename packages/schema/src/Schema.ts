@@ -2747,6 +2747,7 @@ export const UUID: Schema<string> = pipe(
   string,
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
+    title: "UUID",
     arbitrary: (): Arbitrary<string> => (fc) => fc.uuid()
   })
 )
