@@ -28,7 +28,12 @@ export const fromReadable = <E, A>(
           emit.fail(onError(err))
         })
 
-        stream.once("end", () => {
+        // The 'close' event is emitted after a process has ended and the stdio
+        // streams of a child process have been closed. This is distinct from
+        // the 'exit' event, since multiple processes might share the same
+        // stdio streams. The 'close' event will always emit after 'exit' was
+        // already emitted, or 'error' if the child failed to spawn.
+        stream.once("close", () => {
           emit.end()
         })
 
