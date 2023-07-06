@@ -107,6 +107,6 @@
   "dependencies": {
     "@effect/data": "^0.12.10",
     "@effect/io": "^0.29.0",
-    "fast-check": "^3.10.0"
+    "fast-check": "^3.11.0"
   }
 }

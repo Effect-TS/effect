@@ -44,6 +44,7 @@ describe.concurrent("Schema", () => {
     expect(S.EndsWithTypeId).exist
     expect(S.IncludesTypeId).exist
     expect(S.UUIDTypeId).exist
+    expect(S.ULIDTypeId).exist
 
     expect(S.nullable).exist
 
