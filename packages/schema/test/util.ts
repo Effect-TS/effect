@@ -1,10 +1,11 @@
 import * as Duration from "@effect/data/Duration"
-import * as E from "@effect/data/Either"
+import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
+import * as Exit from "@effect/io/Exit"
 import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
@@ -103,21 +104,22 @@ export const roundtrip = <I, A>(schema: Schema<I, A>) => {
     }
     const roundtrip = pipe(
       a,
-      S.encodeEither(schema),
-      E.flatMap(S.decodeEither(schema))
+      S.encodeEffect(schema),
+      Effect.flatMap(S.decodeEffect(schema)),
+      Effect.runSyncExit
     )
-    if (E.isLeft(roundtrip)) {
+    if (Exit.isFailure(roundtrip)) {
       return false
     }
-    return is(roundtrip.right)
+    return is(roundtrip.value)
   }))
   if (doEffectify) {
     const effect = effectify(schema, "semi")
     fc.assert(fc.asyncProperty(arb(fc), async (a) => {
-      const roundtrip = await Effect.runPromiseEither(
+      const roundtrip = await Effect.runPromiseExit(
         PR.flatMap(S.encodeEffect(effect)(a), S.decodeEffect(effect))
       )
-      return E.isRight(roundtrip)
+      return Exit.isSuccess(roundtrip)
     }))
   }
 }
@@ -136,17 +138,17 @@ export const expectParseSuccess = async <I, A>(
   a: A = u as any,
   options?: ParseOptions
 ) => {
-  const parseEitherResult = S.parseEither(schema)(u, options)
-  expect(parseEitherResult).toStrictEqual(E.right(a))
+  const either = Effect.runSync(Effect.either(S.parseEffect(schema)(u, options)))
+  expect(either).toStrictEqual(Either.right(a))
   if (doEffectify) {
-    const parseEffectResult = await Effect.runPromiseEither(
-      S.parseEffect(effectify(schema, "all"))(u, options)
+    const parseEffectResult = await Effect.runPromise(
+      Effect.either(S.parseEffect(effectify(schema, "all"))(u, options))
     )
-    expect(parseEffectResult).toStrictEqual(parseEitherResult)
-    const semiParseEffectResult = await Effect.runPromiseEither(
-      S.parseEffect(effectify(schema, "semi"))(u, options)
+    expect(parseEffectResult).toStrictEqual(either)
+    const semiParseEffectResult = await Effect.runPromise(
+      Effect.either(S.parseEffect(effectify(schema, "semi"))(u, options))
     )
-    expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
+    expect(semiParseEffectResult).toStrictEqual(either)
   }
 }
 
@@ -156,19 +158,22 @@ export const expectParseFailure = async <I, A>(
   message: string,
   options?: ParseOptions
 ) => {
-  const parseEitherResult = E.mapLeft(S.parseEither(schema)(u, options), (e) => formatAll(e.errors))
-  expect(parseEitherResult).toStrictEqual(E.left(message))
+  const either = Either.mapLeft(
+    Effect.runSync(Effect.either(S.parseEffect(schema)(u, options))),
+    (e) => formatAll(e.errors)
+  )
+  expect(either).toStrictEqual(Either.left(message))
   if (doEffectify) {
-    const parseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "all"))(u, options)),
+    const parseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parseEffect(effectify(schema, "all"))(u, options))),
       (e) => formatAll(e.errors)
     )
-    expect(parseEffectResult).toStrictEqual(parseEitherResult)
-    const semiParseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "semi"))(u, options)),
+    expect(parseEffectResult).toStrictEqual(either)
+    const semiParseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parseEffect(effectify(schema, "semi"))(u, options))),
       (e) => formatAll(e.errors)
     )
-    expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
+    expect(semiParseEffectResult).toStrictEqual(either)
   }
 }
 
@@ -178,22 +183,22 @@ export const expectParseFailureTree = async <I, A>(
   message: string,
   options?: ParseOptions
 ) => {
-  const parseEitherResult = E.mapLeft(
-    S.parseEither(schema)(u, options),
+  const either = Either.mapLeft(
+    Effect.runSync(Effect.either(S.parseEffect(schema)(u, options))),
     (e) => formatErrors(e.errors)
   )
-  expect(parseEitherResult).toEqual(E.left(message))
+  expect(either).toEqual(Either.left(message))
   if (doEffectify) {
-    const parseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "all"))(u, options)),
+    const parseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parseEffect(effectify(schema, "all"))(u, options))),
       (e) => formatErrors(e.errors)
     )
-    expect(parseEffectResult).toStrictEqual(parseEitherResult)
-    const semiParseEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.parseEffect(effectify(schema, "semi"))(u, options)),
+    expect(parseEffectResult).toStrictEqual(either)
+    const semiParseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parseEffect(effectify(schema, "semi"))(u, options))),
       (e) => formatErrors(e.errors)
     )
-    expect(semiParseEffectResult).toStrictEqual(parseEitherResult)
+    expect(semiParseEffectResult).toStrictEqual(either)
   }
 }
 
@@ -203,17 +208,17 @@ export const expectEncodeSuccess = async <I, A>(
   o: unknown,
   options?: ParseOptions
 ) => {
-  const encodeEitherResult = S.encodeEither(schema)(a, options)
-  expect(encodeEitherResult).toStrictEqual(E.right(o))
+  const either = Effect.runSync(Effect.either(S.encodeEffect(schema)(a, options)))
+  expect(either).toStrictEqual(Either.right(o))
   if (doEffectify) {
-    const encodeEffectResult = await Effect.runPromiseEither(
-      S.encodeEffect(effectify(schema, "all"))(a, options)
+    const encodeEffectResult = await Effect.runPromise(
+      Effect.either(S.encodeEffect(effectify(schema, "all"))(a, options))
     )
-    expect(encodeEffectResult).toStrictEqual(encodeEitherResult)
-    const randomEncodeEffectResult = await Effect.runPromiseEither(
-      S.encodeEffect(effectify(schema, "semi"))(a, options)
+    expect(encodeEffectResult).toStrictEqual(either)
+    const randomEncodeEffectResult = await Effect.runPromise(
+      Effect.either(S.encodeEffect(effectify(schema, "semi"))(a, options))
     )
-    expect(randomEncodeEffectResult).toStrictEqual(encodeEitherResult)
+    expect(randomEncodeEffectResult).toStrictEqual(either)
   }
 }
 
@@ -223,22 +228,22 @@ export const expectEncodeFailure = async <I, A>(
   message: string,
   options?: ParseOptions
 ) => {
-  const encodeEitherResult = E.mapLeft(
-    S.encodeEither(schema)(a, options),
+  const either = Either.mapLeft(
+    Effect.runSync(Effect.either(S.encodeEffect(schema)(a, options))),
     (e) => formatAll(e.errors)
   )
-  expect(encodeEitherResult).toStrictEqual(E.left(message))
+  expect(either).toStrictEqual(Either.left(message))
   if (doEffectify) {
-    const encodeEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.encodeEffect(effectify(schema, "all"))(a, options)),
+    const encodeEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.encodeEffect(effectify(schema, "all"))(a, options))),
       (e) => formatAll(e.errors)
     )
-    expect(encodeEffectResult).toStrictEqual(encodeEitherResult)
-    const randomEncodeEffectResult = E.mapLeft(
-      await Effect.runPromiseEither(S.encodeEffect(effectify(schema, "semi"))(a, options)),
+    expect(encodeEffectResult).toStrictEqual(either)
+    const randomEncodeEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.encodeEffect(effectify(schema, "semi"))(a, options))),
       (e) => formatAll(e.errors)
     )
-    expect(randomEncodeEffectResult).toStrictEqual(encodeEitherResult)
+    expect(randomEncodeEffectResult).toStrictEqual(either)
   }
 }
 

@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Debug from "@effect/data/Debug"
 import * as E from "@effect/data/Either"
 import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
@@ -12,12 +11,7 @@ import type * as AST from "@effect/schema/AST"
 /**
  * @since 1.0.0
  */
-export type IO<E, A> = Effect.Effect<never, E, A> | E.Either<E, A>
-
-/**
- * @since 1.0.0
- */
-export type ParseResult<A> = IO<ParseError, A>
+export type ParseResult<A> = Effect.Effect<never, ParseError, A>
 
 /**
  * @since 1.0.0
@@ -118,11 +112,7 @@ export interface Index {
 export const index = (
   index: number,
   errors: NonEmptyReadonlyArray<ParseErrors>
-): Index => ({
-  _tag: "Index",
-  index,
-  errors
-})
+): Index => ({ _tag: "Index", index, errors })
 
 /**
  * The `Key` variant of the `ParseError` type represents an error that occurs when a key in an object is invalid.
@@ -147,11 +137,7 @@ export interface Key {
 export const key = (
   key: PropertyKey,
   errors: NonEmptyReadonlyArray<ParseErrors>
-): Key => ({
-  _tag: "Key",
-  key,
-  errors
-})
+): Key => ({ _tag: "Key", key, errors })
 
 /**
  * Error that occurs when a required key or index is missing.
@@ -184,9 +170,7 @@ export interface Unexpected {
  * @category constructors
  * @since 1.0.0
  */
-export const unexpected = (
-  actual: unknown
-): Unexpected => ({
+export const unexpected = (actual: unknown): Unexpected => ({
   _tag: "Unexpected",
   actual
 })
@@ -206,9 +190,7 @@ export interface UnionMember {
  * @category constructors
  * @since 1.0.0
  */
-export const unionMember = (
-  errors: NonEmptyReadonlyArray<ParseErrors>
-): UnionMember => ({
+export const unionMember = (errors: NonEmptyReadonlyArray<ParseErrors>): UnionMember => ({
   _tag: "UnionMember",
   errors
 })
@@ -229,15 +211,16 @@ export const failure = (e: ParseErrors): ParseResult<never> => E.left(parseError
  * @category constructors
  * @since 1.0.0
  */
-export const failures = (
-  es: NonEmptyReadonlyArray<ParseErrors>
-): ParseResult<never> => E.left(parseError(es))
+export const failures = (es: NonEmptyReadonlyArray<ParseErrors>): ParseResult<never> =>
+  E.left(parseError(es))
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefined => {
+export const eitherOrUndefined = <A>(
+  self: ParseResult<A>
+): E.Either<ParseError, A> | undefined => {
   const s: any = self
   if (s["_tag"] === "Left" || s["_tag"] === "Right") {
     return s
@@ -248,10 +231,10 @@ export const eitherOrUndefined = <E, A>(self: IO<E, A>): E.Either<E, A> | undefi
  * @category optimisation
  * @since 1.0.0
  */
-export const flatMap = <E, E1, A, B>(
-  self: IO<E, A>,
-  f: (self: A) => IO<E1, B>
-): IO<E | E1, B> => {
+export const flatMap = <A, B>(
+  self: ParseResult<A>,
+  f: (self: A) => ParseResult<B>
+): ParseResult<B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -259,19 +242,14 @@ export const flatMap = <E, E1, A, B>(
   if (s["_tag"] === "Right") {
     return f(s.right)
   }
-  return Debug.bodyWithTrace((trace, restore) =>
-    Effect.flatMap(self, (a) => restore(f)(a)).traced(trace)
-  )
+  return Effect.flatMap(self, f)
 }
 
 /**
  * @category optimisation
  * @since 1.0.0
  */
-export const map = <E, A, B>(
-  self: IO<E, A>,
-  f: (self: A) => B
-): IO<E, B> => {
+export const map = <A, B>(self: ParseResult<A>, f: (self: A) => B): ParseResult<B> => {
   const s: any = self
   if (s["_tag"] === "Left") {
     return s
@@ -279,5 +257,5 @@ export const map = <E, A, B>(
   if (s["_tag"] === "Right") {
     return E.right(f(s.right))
   }
-  return Debug.bodyWithTrace((trace, restore) => Effect.map(self, restore(f)).traced(trace))
+  return Effect.map(self, f)
 }

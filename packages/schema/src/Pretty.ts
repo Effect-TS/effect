@@ -54,10 +54,10 @@ export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go) =>
     pipe(
       getHook(ast),
-      O.match(
-        () => go(ast.type),
-        (handler) => handler(...ast.typeParameters.map(go))
-      )
+      O.match({
+        onNone: () => go(ast.type),
+        onSome: (handler) => handler(...ast.typeParameters.map(go))
+      })
     ),
   "VoidKeyword": () => () => "void(0)",
   "NeverKeyword": () =>

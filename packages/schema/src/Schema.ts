@@ -8,7 +8,6 @@ import { RefinedConstructorsTypeId } from "@effect/data/Brand"
 import type { Chunk } from "@effect/data/Chunk"
 import * as C from "@effect/data/Chunk"
 import * as D from "@effect/data/Data"
-import { untracedMethod } from "@effect/data/Debug"
 import type { Either } from "@effect/data/Either"
 import * as E from "@effect/data/Either"
 import * as Equal from "@effect/data/Equal"
@@ -1470,14 +1469,13 @@ export const fromBrand = <C extends Brand<string | symbol>>(
   options?: AnnotationOptions<Brand.Unbranded<C>>
 ) =>
   <I, A extends Brand.Unbranded<C>>(self: Schema<I, A>): Schema<I, A & C> => {
-    const decode = untracedMethod(() =>
-      (a: A): ParseResult<C> =>
-        E.mapLeft(
-          constructor.either(a),
-          (brandErrors) =>
-            PR.parseError([PR.type(ast, a, brandErrors.map((v) => v.message).join(", "))])
-        )
-    )
+    const decode = (a: A): ParseResult<C> =>
+      E.mapLeft(
+        constructor.either(a),
+        (brandErrors) =>
+          PR.parseError([PR.type(ast, a, brandErrors.map((v) => v.message).join(", "))])
+      )
+
     const ast = AST.createRefinement(
       self.ast,
       decode,
@@ -1686,10 +1684,10 @@ const eitherArbitrary = <E, A>(
 ): Arbitrary<Either<E, A>> => (fc) => fc.oneof(left(fc).map(E.left), right(fc).map(E.right))
 
 const eitherPretty = <E, A>(left: Pretty<E>, right: Pretty<A>): Pretty<Either<E, A>> =>
-  E.match(
-    (e) => `left(${left(e)})`,
-    (a) => `right(${right(a)})`
-  )
+  E.match({
+    onLeft: (e) => `left(${left(e)})`,
+    onRight: (a) => `right(${right(a)})`
+  })
 
 const eitherInline = <IE, E, IA, A>(left: Schema<IE, E>, right: Schema<IA, A>) =>
   union(
@@ -1751,10 +1749,10 @@ export const either = <IE, E, IA, A>(
     eitherInline(left, right),
     to(eitherFromSelf(left, right)),
     (a) => a._tag === "Left" ? E.left(a.left) : E.right(a.right),
-    E.match(
-      (left) => ({ _tag: "Left" as const, left }),
-      (right) => ({ _tag: "Right" as const, right })
-    )
+    E.match({
+      onLeft: (left) => ({ _tag: "Left" as const, left }),
+      onRight: (right) => ({ _tag: "Right" as const, right })
+    })
   )
 
 // ---------------------------------------------
@@ -2233,10 +2231,10 @@ const optionArbitrary = <A>(value: Arbitrary<A>): Arbitrary<Option<A>> =>
   (fc) => fc.oneof(fc.constant(O.none()), value(fc).map(O.some))
 
 const optionPretty = <A>(value: Pretty<A>): Pretty<Option<A>> =>
-  O.match(
-    () => "none()",
-    (a) => `some(${value(a)})`
-  )
+  O.match({
+    onNone: () => "none()",
+    onSome: (a) => `some(${value(a)})`
+  })
 
 const optionInline = <I, A>(value: Schema<I, A>) =>
   union(
@@ -2286,7 +2284,10 @@ export const option = <I, A>(
     optionInline(value),
     to(optionFromSelf(value)),
     (a) => a._tag === "None" ? O.none() : O.some(a.value),
-    O.match(() => ({ _tag: "None" as const }), (value) => ({ _tag: "Some" as const, value }))
+    O.match({
+      onNone: () => ({ _tag: "None" as const }),
+      onSome: (value) => ({ _tag: "Some" as const, value })
+    })
   )
 
 /**

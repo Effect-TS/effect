@@ -1,14 +1,15 @@
-import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
-import * as fc from "fast-check"
+import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("dev", () => {
-  it.skip("lazy/ record", () => {
-    type A = {
-      [_: string]: A
-    }
-    const schema: S.Schema<A> = S.lazy(() => S.record(S.string, schema))
-    const arb = A.to(schema)(fc)
-    console.log(JSON.stringify(fc.sample(arb, 10), null, 2))
+  it.skip("union/optional property signatures: should return the best output", async () => {
+    const ab = S.struct({ a: S.string, b: S.optional(S.number) })
+    const ac = S.struct({ a: S.string, c: S.optional(S.number) })
+    const schema = S.union(ab, ac)
+    await Util.expectParseSuccess(
+      schema,
+      { a: "a", c: 1 },
+      { a: "a" }
+    )
   })
 })

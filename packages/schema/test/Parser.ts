@@ -53,8 +53,10 @@ describe.concurrent("Parser", () => {
 
   it("parseEffect", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromiseEither(P.parseEffect(schema)("1"))).toEqual(E.right(1))
-    expect(await Effect.runPromiseEither(P.parseEffect(schema)("a"))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.parseEffect(schema)("1")))).toEqual(
+      E.right(1)
+    )
+    expect(await Effect.runPromise(Effect.either(P.parseEffect(schema)("a")))).toEqual(
       E.left(PR.parseError([PR.type(schema.ast, "a")]))
     )
   })
@@ -88,8 +90,8 @@ describe.concurrent("Parser", () => {
 
   it("decodeEffect", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromiseEither(P.decodeEffect(schema)("1"))).toEqual(E.right(1))
-    expect(await Effect.runPromiseEither(P.decodeEffect(schema)("a"))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.decodeEffect(schema)("1")))).toEqual(E.right(1))
+    expect(await Effect.runPromise(Effect.either(P.decodeEffect(schema)("a")))).toEqual(
       E.left(PR.parseError([PR.type(schema.ast, "a")]))
     )
   })
@@ -134,8 +136,8 @@ describe.concurrent("Parser", () => {
 
   it("validateEffect", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromiseEither(P.validateEffect(schema)(1))).toEqual(E.right(1))
-    expect(await Effect.runPromiseEither(P.validateEffect(schema)("1"))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.validateEffect(schema)(1)))).toEqual(E.right(1))
+    expect(await Effect.runPromise(Effect.either(P.validateEffect(schema)("1")))).toEqual(
       E.left(PR.parseError([PR.type(S.number.ast, "1")]))
     )
   })
@@ -143,6 +145,11 @@ describe.concurrent("Parser", () => {
   it("encodeResult", () => {
     const schema = S.NumberFromString
     expect(P.encodeResult(schema)(1)).toEqual(E.right("1"))
+  })
+
+  it("encodeEither", () => {
+    const schema = S.NumberFromString
+    expect(P.encodeEither(schema)(1)).toEqual(E.right("1"))
   })
 
   it("encodePromise", async () => {

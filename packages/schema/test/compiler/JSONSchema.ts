@@ -99,10 +99,10 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
       case "Declaration":
         return pipe(
           getJSONSchemaAnnotation(ast),
-          O.match(
-            () => go(ast.type),
-            (schema) => ({ ...go(ast.type), ...schema })
-          )
+          O.match({
+            onNone: () => go(ast.type),
+            onSome: (schema) => ({ ...go(ast.type), ...schema })
+          })
         )
       case "Literal": {
         if (typeof ast.literal === "bigint") {
@@ -232,10 +232,10 @@ const jsonSchemaFor = <A>(schema: Schema<A>): JsonSchema7Type => {
         const from = go(ast.from)
         return pipe(
           getJSONSchemaAnnotation(ast),
-          O.match(
-            () => from,
-            (schema) => ({ ...from, ...schema })
-          )
+          O.match({
+            onNone: () => from,
+            onSome: (schema) => ({ ...from, ...schema })
+          })
         )
       }
     }

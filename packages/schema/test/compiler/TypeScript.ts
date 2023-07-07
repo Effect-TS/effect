@@ -1,9 +1,6 @@
 import { dual, pipe } from "@effect/data/Function"
-import type { TypeLambda } from "@effect/data/HKT"
 import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
-import type * as applicative from "@effect/data/typeclass/Applicative"
-import * as covariant from "@effect/data/typeclass/Covariant"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import ts from "typescript"
@@ -30,9 +27,9 @@ const printNodes = (
 
 type Writer<A> = readonly [A, ReadonlyArray<ts.Declaration>]
 
-interface WriterLambda extends TypeLambda {
-  readonly type: Writer<this["Target"]>
-}
+// interface WriterLambda extends TypeLambda {
+//   readonly type: Writer<this["Target"]>
+// }
 
 const map: {
   <A, B>(f: (a: A) => B): (self: Writer<A>) => Writer<B>
@@ -42,23 +39,10 @@ const map: {
   <A, B>(self: Writer<A>, f: (a: A) => B) => Writer<B>
 >(2, (self, f) => [f(self[0]), self[1]])
 
-const Applicative: applicative.Applicative<WriterLambda> = {
-  imap: covariant.imap<WriterLambda>(map),
-  map,
-  product: (self, that) => [[self[0], that[0]], self[1].concat(that[1])],
-  productMany: (self, collection) => {
-    const as = Array.from(collection)
-    return [
-      [self[0], ...as.map((a) => a[0])],
-      RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))
-    ]
-  },
-  productAll: (collection) => {
-    const as = Array.from(collection)
-    return [as.map((a) => a[0]), RA.getMonoid<ts.Declaration>().combineAll(as.map((a) => a[1]))]
-  },
-  of: (a) => [a, []]
-}
+const product = <A, B>(
+  self: Writer<A>,
+  that: Writer<B>
+): Writer<[A, B]> => [[self[0], that[0]], self[1].concat(that[1])]
 
 interface TypeScript<To> extends S.Schema<To> {
   readonly nodes: Writer<ts.TypeNode>
@@ -66,11 +50,21 @@ interface TypeScript<To> extends S.Schema<To> {
 
 const make = (ast: AST.AST, nodes: Writer<ts.TypeNode>): TypeScript<any> => ({ ast, nodes }) as any
 
-const of: <A>(a: A) => Writer<A> = Applicative.of
+const of = <A>(a: A): Writer<A> => [a, []]
 
-const traverse: <A, B>(
+const traverse = <A, B>(
   f: (a: A) => Writer<B>
-) => (self: ReadonlyArray<A>) => Writer<ReadonlyArray<B>> = RA.traverse(Applicative)
+) =>
+  (self: ReadonlyArray<A>): Writer<ReadonlyArray<B>> => {
+    const out: Array<B> = []
+    const declarations: Array<ts.Declaration> = []
+    for (const a of self) {
+      const [b, declaration] = f(a)
+      out.push(b)
+      declarations.push(...declaration)
+    }
+    return [out, declarations]
+  }
 
 const append = <B>(b: Writer<B>) =>
   <A>(
@@ -129,9 +123,9 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
       case "Declaration":
         return pipe(
           getIdentifier(ast),
-          O.match(
-            () => go(ast.type),
-            (id) =>
+          O.match({
+            onNone: () => go(ast.type),
+            onSome: (id) =>
               make(
                 ast,
                 pipe(
@@ -140,7 +134,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
                   map((typeParameters) => ts.factory.createTypeReferenceNode(id, typeParameters))
                 )
               )
-          )
+          })
         )
       case "Literal": {
         const literal = ast.literal
@@ -300,7 +294,7 @@ const typeScriptFor = <A>(schema: S.Schema<A>): TypeScript<A> => {
               ast.indexSignatures,
               traverse((indexSignature) =>
                 pipe(
-                  Applicative.product(
+                  product(
                     go(indexSignature.parameter).nodes,
                     go(indexSignature.type).nodes
                   ),
