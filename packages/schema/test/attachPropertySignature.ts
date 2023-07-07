@@ -12,22 +12,22 @@ describe.concurrent("attachPropertySignature", () => {
       pipe(Square, S.attachPropertySignature("kind", "square"))
     )
 
-    expect(S.decode(DiscriminatedShape)({ radius: 10 })).toEqual({
+    expect(S.decodeSync(DiscriminatedShape)({ radius: 10 })).toEqual({
       kind: "circle",
       radius: 10
     })
     expect(
-      S.encode(DiscriminatedShape)({
+      S.encodeSync(DiscriminatedShape)({
         kind: "circle",
         radius: 10
       })
     ).toEqual({ radius: 10 })
-    expect(S.decode(DiscriminatedShape)({ sideLength: 10 })).toEqual({
+    expect(S.decodeSync(DiscriminatedShape)({ sideLength: 10 })).toEqual({
       kind: "square",
       sideLength: 10
     })
     expect(
-      S.encode(DiscriminatedShape)({
+      S.encodeSync(DiscriminatedShape)({
         kind: "square",
         sideLength: 10
       })
@@ -52,12 +52,12 @@ describe.concurrent("attachPropertySignature", () => {
       S.transformResult(From, To, S.parseEither(To), ({ _isVisible, ...rest }) => E.right(rest)),
       S.attachPropertySignature("_tag", "Circle")
     )
-    expect(S.decode(Circle)({ radius: 10, _isVisible: true })).toEqual({
+    expect(S.decodeSync(Circle)({ radius: 10, _isVisible: true })).toEqual({
       _tag: "Circle",
       _isVisible: true,
       radius: 10
     })
-    expect(S.encode(Circle)({ _tag: "Circle", radius: 10, _isVisible: true })).toEqual({
+    expect(S.encodeSync(Circle)({ _tag: "Circle", radius: 10, _isVisible: true })).toEqual({
       radius: 10
     })
   })

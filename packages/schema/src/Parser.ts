@@ -18,7 +18,7 @@ import * as PR from "@effect/schema/ParseResult"
 import type { Schema, To } from "@effect/schema/Schema"
 import { formatErrors } from "@effect/schema/TreeFormatter"
 
-const get = (ast: AST.AST) => {
+const getSync = (ast: AST.AST) => {
   const parser = go(ast)
   return (input: unknown, options?: ParseOptions) => {
     const result = parser(input, options)
@@ -58,8 +58,8 @@ const getEffect = (ast: AST.AST) => {
  * @category parsing
  * @since 1.0.0
  */
-export const parse = <_, A>(schema: Schema<_, A>): (i: unknown, options?: ParseOptions) => A =>
-  get(schema.ast)
+export const parseSync = <_, A>(schema: Schema<_, A>): (i: unknown, options?: ParseOptions) => A =>
+  getSync(schema.ast)
 
 /**
  * @category parsing
@@ -97,7 +97,7 @@ export const parsePromise = <_, A>(
  * @category parsing
  * @since 1.0.0
  */
-export const parseEffect = <_, A>(
+export const parse = <_, A>(
   schema: Schema<_, A>
 ): (i: unknown, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, A> =>
   getEffect(schema.ast)
@@ -106,7 +106,8 @@ export const parseEffect = <_, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decode: <I, A>(schema: Schema<I, A>) => (i: I, options?: ParseOptions) => A = parse
+export const decodeSync: <I, A>(schema: Schema<I, A>) => (i: I, options?: ParseOptions) => A =
+  parseSync
 
 /**
  * @category decoding
@@ -144,18 +145,17 @@ export const decodePromise: <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeEffect: <I, A>(
+export const decode: <I, A>(
   schema: Schema<I, A>
-) => (i: I, options?: ParseOptions | undefined) => Effect.Effect<never, PR.ParseError, A> =
-  parseEffect
+) => (i: I, options?: ParseOptions | undefined) => Effect.Effect<never, PR.ParseError, A> = parse
 
 /**
  * @category validation
  * @since 1.0.0
  */
-export const validate = <_, A>(
+export const validateSync = <_, A>(
   schema: Schema<_, A>
-): (a: unknown, options?: ParseOptions) => A => get(AST.to(schema.ast))
+): (a: unknown, options?: ParseOptions) => A => getSync(AST.to(schema.ast))
 
 /**
  * @category validation
@@ -194,7 +194,7 @@ export const validatePromise = <_, A>(
  * @category validation
  * @since 1.0.0
  */
-export const validateEffect = <_, A>(
+export const validate = <_, A>(
   schema: Schema<_, A>
 ): (a: unknown, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, A> =>
   getEffect(AST.to(schema.ast))
@@ -221,7 +221,7 @@ export type ToAsserts<S extends Schema<any>> = (
  * @since 1.0.0
  */
 export const asserts = <_, A>(schema: Schema<_, A>) => {
-  const get = validate(schema)
+  const get = validateSync(schema)
   return (a: unknown, options?: ParseOptions): asserts a is A => {
     get(a, options)
   }
@@ -231,8 +231,8 @@ export const asserts = <_, A>(schema: Schema<_, A>) => {
  * @category encoding
  * @since 1.0.0
  */
-export const encode = <I, A>(schema: Schema<I, A>): (a: A, options?: ParseOptions) => I =>
-  get(reverse(schema.ast))
+export const encodeSync = <I, A>(schema: Schema<I, A>): (a: A, options?: ParseOptions) => I =>
+  getSync(reverse(schema.ast))
 
 /**
  * @category encoding
@@ -270,7 +270,7 @@ export const encodePromise = <I, A>(
  * @category encoding
  * @since 1.0.0
  */
-export const encodeEffect = <I, A>(
+export const encode = <I, A>(
   schema: Schema<I, A>
 ): (a: A, options?: ParseOptions) => Effect.Effect<never, PR.ParseError, I> =>
   getEffect(reverse(schema.ast))

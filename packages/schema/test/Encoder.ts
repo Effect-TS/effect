@@ -13,8 +13,8 @@ const Char = pipe(S.string, S.maxLength(1))
 describe.concurrent("Encoder", () => {
   it("encode", () => {
     const schema = NumberFromChar
-    expect(P.encode(schema)(1)).toEqual("1")
-    expect(() => P.encode(schema)(10)).toThrowError(
+    expect(P.encodeSync(schema)(1)).toEqual("1")
+    expect(() => P.encodeSync(schema)(10)).toThrowError(
       new Error(`error(s) found
 └─ Expected a string at most 1 character(s) long, actual "10"`)
     )

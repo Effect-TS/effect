@@ -77,11 +77,6 @@ export {
    * @category decoding
    * @since 1.0.0
    */
-  decodeEffect,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
   decodeEither,
   /**
    * @category decoding
@@ -99,15 +94,15 @@ export {
    */
   decodeResult,
   /**
-   * @category encoding
+   * @category decoding
    * @since 1.0.0
    */
-  encode,
+  decodeSync,
   /**
    * @category encoding
    * @since 1.0.0
    */
-  encodeEffect,
+  encode,
   /**
    * @category encoding
    * @since 1.0.0
@@ -129,6 +124,11 @@ export {
    */
   encodeResult,
   /**
+   * @category encoding
+   * @since 1.0.0
+   */
+  encodeSync,
+  /**
    * @category validation
    * @since 1.0.0
    */
@@ -138,11 +138,6 @@ export {
    * @since 1.0.0
    */
   parse,
-  /**
-   * @category parsing
-   * @since 1.0.0
-   */
-  parseEffect,
   /**
    * @category parsing
    * @since 1.0.0
@@ -164,15 +159,15 @@ export {
    */
   parseResult,
   /**
-   * @category validation
+   * @category parsing
    * @since 1.0.0
    */
-  validate,
+  parseSync,
   /**
    * @category validation
    * @since 1.0.0
    */
-  validateEffect,
+  validate,
   /**
    * @category validation
    * @since 1.0.0
@@ -192,7 +187,12 @@ export {
    * @category validation
    * @since 1.0.0
    */
-  validateResult
+  validateResult,
+  /**
+   * @category validation
+   * @since 1.0.0
+   */
+  validateSync
 } from "@effect/schema/Parser"
 
 export type {
@@ -735,7 +735,7 @@ export const brand = <B extends string | symbol, A>(
     annotations[AST.BrandAnnotationId] = [...getBrands(self.ast), brand]
     const ast = AST.mergeAnnotations(self.ast, annotations)
     const schema = make(ast)
-    const validate = P.validate(schema)
+    const validate = P.validateSync(schema)
     const validateOption = P.validateOption(schema)
     const validateEither = P.validateEither(schema)
     const is = P.is(schema)
@@ -1046,7 +1046,7 @@ export const transform: {
  *   pipe(Square, S.attachPropertySignature("kind", "square"))
  * )
  *
- * assert.deepStrictEqual(S.decode(Shape)({ radius: 10 }), {
+ * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
  *   kind: "circle",
  *   radius: 10
  * })

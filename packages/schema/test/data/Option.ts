@@ -66,8 +66,8 @@ describe.concurrent("Option", () => {
       await Util.expectParseSuccess(schema, null, O.none())
       await Util.expectParseSuccess(schema, "1", O.some(1))
 
-      expect(O.isOption(S.decode(schema)(null))).toEqual(true)
-      expect(O.isOption(S.decode(schema)("1"))).toEqual(true)
+      expect(O.isOption(S.decodeSync(schema)(null))).toEqual(true)
+      expect(O.isOption(S.decodeSync(schema)("1"))).toEqual(true)
 
       await Util.expectParseFailure(
         schema,

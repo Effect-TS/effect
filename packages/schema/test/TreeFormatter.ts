@@ -15,7 +15,7 @@ describe.concurrent("formatExpected", () => {
 describe.concurrent("formatErrors", () => {
   it("forbidden", async () => {
     const schema = Util.effectify(S.struct({ a: S.string }), "all")
-    expect(() => S.parse(schema)({ a: "a" })).toThrowError(
+    expect(() => S.parseSync(schema)({ a: "a" })).toThrowError(
       new Error(`error(s) found
 └─ ["a"]
    └─ is forbidden`)

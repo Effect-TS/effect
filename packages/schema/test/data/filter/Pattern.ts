@@ -18,7 +18,7 @@ describe.concurrent("pattern", () => {
       S.string,
       S.pattern(regex)
     )
-    expect(S.decode(schema)("A")).toEqual("A")
-    expect(S.decode(schema)("A")).toEqual("A")
+    expect(S.decodeSync(schema)("A")).toEqual("A")
+    expect(S.decodeSync(schema)("A")).toEqual("A")
   })
 })

@@ -35,7 +35,7 @@ describe.concurrent("Brand", () => {
       -0.5,
       "Expected -0.5 to be positive, Expected -0.5 to be an integer"
     )
-    expect(() => S.parse(schema)(-0.5)).toThrowError(
+    expect(() => S.parseSync(schema)(-0.5)).toThrowError(
       new Error(`error(s) found
 └─ Expected -0.5 to be positive, Expected -0.5 to be an integer`)
     )

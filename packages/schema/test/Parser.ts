@@ -24,10 +24,10 @@ describe.concurrent("Parser", () => {
     )
   })
 
-  it("parse", () => {
+  it("parseSync", () => {
     const schema = S.NumberFromString
-    expect(P.parse(schema)("1")).toEqual(1)
-    expect(() => P.parse(schema)("a")).toThrowError(
+    expect(P.parseSync(schema)("1")).toEqual(1)
+    expect(() => P.parseSync(schema)("a")).toThrowError(
       new Error(`error(s) found
 └─ Expected string -> number, actual "a"`)
     )
@@ -51,20 +51,20 @@ describe.concurrent("Parser", () => {
     await expect(P.parsePromise(schema)("a")).rejects.toThrow()
   })
 
-  it("parseEffect", async () => {
+  it("parse", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.parseEffect(schema)("1")))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.parse(schema)("1")))).toEqual(
       E.right(1)
     )
-    expect(await Effect.runPromise(Effect.either(P.parseEffect(schema)("a")))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.parse(schema)("a")))).toEqual(
       E.left(PR.parseError([PR.type(schema.ast, "a")]))
     )
   })
 
   it("decode", () => {
     const schema = S.NumberFromString
-    expect(P.decode(schema)("1")).toEqual(1)
-    expect(() => P.decode(schema)("a")).toThrowError(
+    expect(P.decodeSync(schema)("1")).toEqual(1)
+    expect(() => P.decodeSync(schema)("a")).toThrowError(
       new Error(`error(s) found
 └─ Expected string -> number, actual "a"`)
     )
@@ -88,18 +88,18 @@ describe.concurrent("Parser", () => {
     await expect(P.decodePromise(schema)("a")).rejects.toThrow()
   })
 
-  it("decodeEffect", async () => {
+  it("decode", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.decodeEffect(schema)("1")))).toEqual(E.right(1))
-    expect(await Effect.runPromise(Effect.either(P.decodeEffect(schema)("a")))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.decode(schema)("1")))).toEqual(E.right(1))
+    expect(await Effect.runPromise(Effect.either(P.decode(schema)("a")))).toEqual(
       E.left(PR.parseError([PR.type(schema.ast, "a")]))
     )
   })
 
-  it("validate", () => {
+  it("validateSync", () => {
     const schema = S.NumberFromString
-    expect(P.validate(schema)(1)).toEqual(1)
-    expect(() => P.validate(schema)("1")).toThrowError(
+    expect(P.validateSync(schema)(1)).toEqual(1)
+    expect(() => P.validateSync(schema)("1")).toThrowError(
       new Error(`error(s) found
 └─ Expected number, actual "1"`)
     )
@@ -134,10 +134,10 @@ describe.concurrent("Parser", () => {
     await expect(P.validatePromise(schema)("a")).rejects.toThrow()
   })
 
-  it("validateEffect", async () => {
+  it("validate", async () => {
     const schema = S.NumberFromString
-    expect(await Effect.runPromise(Effect.either(P.validateEffect(schema)(1)))).toEqual(E.right(1))
-    expect(await Effect.runPromise(Effect.either(P.validateEffect(schema)("1")))).toEqual(
+    expect(await Effect.runPromise(Effect.either(P.validate(schema)(1)))).toEqual(E.right(1))
+    expect(await Effect.runPromise(Effect.either(P.validate(schema)("1")))).toEqual(
       E.left(PR.parseError([PR.type(S.number.ast, "1")]))
     )
   })

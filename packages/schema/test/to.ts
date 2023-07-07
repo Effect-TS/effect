@@ -13,7 +13,7 @@ describe.concurrent("to", () => {
       ),
       S.to
     )
-    expect(S.parse(schema)([1, 2])).toEqual([1, 2])
+    expect(S.parseSync(schema)([1, 2])).toEqual([1, 2])
   })
 
   it("refinement", () => {

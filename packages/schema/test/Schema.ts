@@ -8,8 +8,28 @@ import * as S from "@effect/schema/Schema"
 describe.concurrent("Schema", () => {
   it("exports", () => {
     expect(S.parse).exist
+    expect(S.parseSync).exist
     expect(S.parseOption).exist
     expect(S.parseEither).exist
+    expect(S.parseResult).exist
+
+    expect(S.decode).exist
+    expect(S.decodeSync).exist
+    expect(S.decodeOption).exist
+    expect(S.decodeEither).exist
+    expect(S.decodeResult).exist
+
+    expect(S.encode).exist
+    expect(S.encodeSync).exist
+    expect(S.encodeOption).exist
+    expect(S.encodeEither).exist
+    expect(S.encodeResult).exist
+
+    expect(S.validate).exist
+    expect(S.validateSync).exist
+    expect(S.validateOption).exist
+    expect(S.validateEither).exist
+    expect(S.validateResult).exist
 
     expect(S.GreaterThanBigintTypeId).exist
     expect(S.GreaterThanOrEqualToBigintTypeId).exist
@@ -47,15 +67,6 @@ describe.concurrent("Schema", () => {
     expect(S.ULIDTypeId).exist
 
     expect(S.nullable).exist
-
-    expect(S.parseResult).exist
-    expect(S.decodeResult).exist
-    expect(S.validateResult).exist
-    expect(S.encodeResult).exist
-    expect(S.parsePromise).exist
-    expect(S.decodePromise).exist
-    expect(S.validatePromise).exist
-    expect(S.encodePromise).exist
 
     expect(S.partial).exist
     expect(S.required).exist
