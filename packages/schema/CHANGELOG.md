@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.25.0
+
+### Minor Changes
+
+- [#322](https://github.com/Effect-TS/schema/pull/322) [`5f5bcb5`](https://github.com/Effect-TS/schema/commit/5f5bcb5ba62eda9b4454a1f5ffb74d90581459de) Thanks [@tim-smart](https://github.com/tim-smart)! - rename \*Effect parser methods
+
 ## 0.24.0
 
 ### Minor Changes
