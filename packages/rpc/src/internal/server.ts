@@ -1,4 +1,4 @@
-import type { Context } from "@effect/data/Context"
+import * as Context from "@effect/data/Context"
 import * as Either from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
@@ -72,7 +72,7 @@ export const handleSingle: {
   const hasSetup = "__setup" in router.handlers
 
   const handler =
-    (contextRef?: Ref.Ref<Option.Option<Context<unknown>>>, scope?: Scope) =>
+    (contextRef?: Ref.Ref<Option.Option<Context.Context<unknown>>>, scope?: Scope) =>
     (request: RpcRequest.Payload) =>
       pipe(
         Either.Do(),
@@ -155,12 +155,13 @@ export const handleSingle: {
             ),
           ),
         ),
-        Tracer.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
+        Effect.withSpan(`${router.options.spanPrefix}.${request._tag}`, {
           parent: {
             _tag: "ExternalSpan",
             name: request.spanName,
             spanId: request.spanId,
             traceId: request.traceId,
+            context: Context.empty(),
           },
         }),
       )
@@ -335,7 +336,7 @@ export const makeUndecodedClient = <
           [method]: pipe(
             definition,
             Effect.flatMap(codec.encode(schema.output)),
-            Tracer.withSpan(`${options.spanPrefix}.undecoded.${method}`),
+            Effect.withSpan(`${options.spanPrefix}.undecoded.${method}`),
           ),
         }
       }
@@ -350,7 +351,7 @@ export const makeUndecodedClient = <
             decodeInput(input),
             Effect.flatMap(definition as RpcHandler.IO<any, any, any, any>),
             Effect.flatMap(encodeOutput),
-            Tracer.withSpan(`${options.spanPrefix}.undecoded.${method}`),
+            Effect.withSpan(`${options.spanPrefix}.undecoded.${method}`),
           ),
       }
     },

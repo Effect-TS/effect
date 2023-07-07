@@ -1,7 +1,6 @@
 import { Tag } from "@effect/data/Context"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
-import * as Tracer from "@effect/io/Tracer"
 import * as _ from "@effect/rpc/Client"
 import type { RpcError } from "@effect/rpc/Error"
 import * as DataSource from "@effect/rpc/Resolver"
@@ -76,6 +75,7 @@ const schema = RS.make({
   posts,
 })
 
+
 const router = Router.make(
   schema,
   {
@@ -83,14 +83,18 @@ const router = Router.make(
     fail: (message) => Effect.fail({ _tag: "SomeError", message }),
     failNoInput: Effect.fail({ _tag: "SomeError", message: "fail" } as const),
     encodeInput: (date) => Effect.succeed(date),
-    currentSpanName: Effect.map(
-      Tracer.Span,
-      (_) =>
-        `${Option.getOrElse(
-          Option.map(_.parent, (_) => _.name),
-          () => "",
-        )} > ${_.name}`,
-    ),
+    currentSpanName:
+      Effect.flatMap(
+        Effect.currentSpan(),
+        (maybeSpan) =>
+          Effect.match(maybeSpan,
+            () => "",
+            (_) =>
+            `${Option.getOrElse(
+              Option.map(_.parent, (_) => _.name),
+              () => "",
+            )} > ${_.name}`,
+          )),
     getCount: (_) => Effect.flatMap(Counter, (_) => _.get),
     posts: Router.make(posts, {
       create: (post) =>

@@ -1,6 +1,5 @@
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
-import * as Tracer from "@effect/io/Tracer"
 import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
 import { RpcResolver } from "@effect/rpc/Resolver"
@@ -160,7 +159,7 @@ const makeRpc = <S extends RpcSchema.Any>(
 
     return ((input: any) => {
       const hash = resolverInternal.requestHash(method, input, spanPrefix)
-      return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+      return Effect.useSpan(`${spanPrefix}.${method}`, (span) =>
         pipe(
           encodeInput(input),
           Effect.flatMap((input) =>
@@ -188,7 +187,7 @@ const makeRpc = <S extends RpcSchema.Any>(
 
   const hash = resolverInternal.requestHash(method, undefined, spanPrefix)
 
-  return Tracer.useSpan(`${spanPrefix}.${method}`, (span) =>
+  return Effect.useSpan(`${spanPrefix}.${method}`, (span) =>
     pipe(
       Effect.request(
         resolverInternal.RpcRequest({
