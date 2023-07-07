@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.3.1
+
+### Patch Changes
+
+- [#74](https://github.com/Effect-TS/rpc/pull/74) [`9e745eb`](https://github.com/Effect-TS/rpc/commit/9e745eb295c2a46a7c9e591ae4ae4c85a70e6f80) Thanks [@alex-dixon](https://github.com/alex-dixon)! - upgrade rpc deps (#73)
+
 ## 0.3.0
 
 ### Minor Changes
