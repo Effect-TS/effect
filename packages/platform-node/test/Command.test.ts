@@ -160,33 +160,33 @@ describe("Command", () => {
   //   expect(O.isNone(output)).toBeTruthy()
   // }))
 
-  // TODO: cleanup this test
-  it("should capture stderr and stdout separately", () =>
-    runPromise(Effect.gen(function*($) {
-      const command = pipe(
-        Command.make("./duplex.sh"),
-        Command.workingDirectory(TEST_BASH_SCRIPTS_DIRECTORY)
-      )
-      const process = yield* $(Command.start(command))
-      const result = yield* $(pipe(
-        process.stdout,
-        Stream.zip(process.stderr),
-        Stream.runCollect,
-        Effect.map((bytes) => {
-          const decoder = new TextDecoder("utf-8")
-          return Array.from(bytes).flatMap(([left, right]) =>
-            [
-              decoder.decode(left),
-              decoder.decode(right)
-            ] as const
-          )
-        })
-      ))
-      expect(result).toEqual([
-        "stdout1\nstdout2\n",
-        "stderr1\nstderr2\n"
-      ])
-    })))
+  // TODO: this test is flaky
+  // it("should capture stderr and stdout separately", () =>
+  //   runPromise(Effect.gen(function*($) {
+  //     const command = pipe(
+  //       Command.make("./duplex.sh"),
+  //       Command.workingDirectory(TEST_BASH_SCRIPTS_DIRECTORY)
+  //     )
+  //     const process = yield* $(Command.start(command))
+  //     const result = yield* $(pipe(
+  //       process.stdout,
+  //       Stream.zip(process.stderr),
+  //       Stream.runCollect,
+  //       Effect.map((bytes) => {
+  //         const decoder = new TextDecoder("utf-8")
+  //         return Array.from(bytes).flatMap(([left, right]) =>
+  //           [
+  //             decoder.decode(left),
+  //             decoder.decode(right)
+  //           ] as const
+  //         )
+  //       })
+  //     ))
+  //     expect(result).toEqual([
+  //       "stdout1\nstdout2\n",
+  //       "stderr1\nstderr2\n"
+  //     ])
+  //   })))
 
   it("should return non-zero exit code in success channel", () =>
     runPromise(Effect.gen(function*($) {

@@ -41,7 +41,7 @@ const stream = (file: File, {
   Stream.bufferChunks(
     Stream.unfoldEffect(offset, (position) => {
       if (bytesToRead !== undefined && bytesToRead <= position - offset) {
-        return Effect.succeedNone()
+        return Effect.succeed(Option.none())
       }
 
       const toRead = bytesToRead !== undefined && bytesToRead - (position - offset) < chunkSize

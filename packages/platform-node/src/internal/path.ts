@@ -10,26 +10,26 @@ import * as NodeUrl from "node:url"
 export const Path = Tag<_Path>()
 
 const fromFileUrl = (url: URL): Effect.Effect<never, BadArgument, string> =>
-  Effect.tryCatch(
-    () => NodeUrl.fileURLToPath(url),
-    (error) =>
+  Effect.try({
+    try: () => NodeUrl.fileURLToPath(url),
+    catch: (error) =>
       BadArgument({
         module: "Path",
         method: "fromFileUrl",
         message: `${error}`
       })
-  )
+  })
 
 const toFileUrl = (path: string): Effect.Effect<never, BadArgument, URL> =>
-  Effect.tryCatch(
-    () => NodeUrl.pathToFileURL(path),
-    (error) =>
+  Effect.try({
+    try: () => NodeUrl.pathToFileURL(path),
+    catch: (error) =>
       BadArgument({
         module: "Path",
         method: "toFileUrl",
         message: `${error}`
       })
-  )
+  })
 
 /** @internal */
 export const layerPosix = Layer.succeed(

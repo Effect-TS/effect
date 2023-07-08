@@ -30,9 +30,9 @@ export const runMain: RunMain = <E, A>(
 }
 
 const interruptAll = (id: FiberId.FiberId) =>
-  Effect.flatMap(Fiber.roots(), (roots) => {
+  Effect.flatMap(Fiber.roots, (roots) => {
     if (roots.length === 0) {
-      return Effect.unit()
+      return Effect.unit
     }
 
     return Fiber.interruptAllAs(roots, id)

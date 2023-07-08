@@ -36,11 +36,11 @@ const makeSinkWithRelease = <E, A>(
 const endWritable = (stream: Writable) =>
   Effect.async<never, never, void>((resume) => {
     if (stream.closed) {
-      resume(Effect.unit())
+      resume(Effect.unit)
       return
     }
 
-    stream.end(() => resume(Effect.unit()))
+    stream.end(() => resume(Effect.unit))
   })
 
 const write = <E, A>(stream: Writable, onError: (error: unknown) => E, encoding?: BufferEncoding) =>
@@ -50,7 +50,7 @@ const write = <E, A>(stream: Writable, onError: (error: unknown) => E, encoding?
         if (err) {
           resume(Effect.fail(onError(err)))
         } else {
-          resume(Effect.unit())
+          resume(Effect.unit)
         }
       }
 

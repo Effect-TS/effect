@@ -23,27 +23,21 @@ export const CommandExecutor = Tag<_CommandExecutor.CommandExecutor>()
 
 /** @internal */
 export const makeExecutor = (start: _CommandExecutor.CommandExecutor["start"]): _CommandExecutor.CommandExecutor => {
+  const stream: _CommandExecutor.CommandExecutor["stream"] = (command) =>
+    pipe(
+      Stream.fromEffect(start(command)),
+      Stream.flatMap((process) => process.stdout)
+    )
   const streamLines: _CommandExecutor.CommandExecutor["streamLines"] = (command, encoding) => {
     const decoder = new TextDecoder(encoding)
-    return pipe(
-      Stream.fromEffect(start(command)),
-      Stream.flatMap((process) =>
-        pipe(
-          process.stdout,
-          Stream.mapChunks(Chunk.map((bytes) => decoder.decode(bytes))),
-          Stream.splitLines
-        )
-      )
+    return Stream.splitLines(
+      Stream.mapChunks(stream(command), Chunk.map((bytes) => decoder.decode(bytes)))
     )
   }
   return {
     start,
     exitCode: (command) => Effect.flatMap(start(command), (process) => process.exitCode),
-    stream: (command) =>
-      pipe(
-        Stream.fromEffect(start(command)),
-        Stream.flatMap((process) => process.stdout)
-      ),
+    stream,
     string: (command, encoding = "utf-8") => {
       const decoder = new TextDecoder(encoding)
       return pipe(

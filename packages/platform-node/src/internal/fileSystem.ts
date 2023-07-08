@@ -293,7 +293,7 @@ const makeFile = (() => {
           } else if (bytesWritten < buffer.length) {
             return this.writeAll(buffer.subarray(bytesWritten))
           }
-          return Effect.unit()
+          return Effect.unit
         }
       )
     }
@@ -484,7 +484,7 @@ const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFil
         if (err) {
           resume(Effect.fail(handleErrnoException("FileSystem", "writeFile")(err, [path])))
         } else {
-          resume(Effect.unit())
+          resume(Effect.unit)
         }
       })
     } catch (err) {

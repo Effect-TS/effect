@@ -14,7 +14,7 @@ import * as Stream from "@effect/stream/Stream"
 import * as ChildProcess from "node:child_process"
 
 const inputToStdioOption = (stdin: Option.Option<Command.Command.Input>): "pipe" | "inherit" =>
-  Option.match(stdin, () => "inherit", () => "pipe")
+  Option.match(stdin, { onNone: () => "inherit", onSome: () => "pipe" })
 
 const outputToStdioOption = (output: Command.Command.Output): "pipe" | "inherit" =>
   typeof output === "string" ? output : "pipe"
@@ -39,7 +39,10 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
       case "StandardCommand": {
         return pipe(
           // Validate that the directory is accessible
-          Effect.forEachOption(command.cwd, (dir) => fileSystem.access(dir)),
+          Option.match(command.cwd, {
+            onNone: () => Effect.unit,
+            onSome: (dir) => fileSystem.access(dir)
+          }),
           Effect.zipRight(Effect.sync(() => globalThis.process.env)),
           Effect.flatMap((env) =>
             Effect.asyncInterrupt<never, Error.PlatformError, CommandExecutor.Process>((resume) => {
@@ -107,7 +110,7 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
                   Effect.asyncInterrupt((resume) => {
                     handle.kill(signal)
                     handle.on("exit", () => {
-                      resume(Effect.unit())
+                      resume(Effect.unit)
                     })
                     // Make sure to terminate the running process if the fiber
                     // is terminated
@@ -150,17 +153,16 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
                   handle.kill("SIGTERM")
                 }
                 handle.on("exit", () => {
-                  resume(Effect.unit())
+                  resume(Effect.unit)
                 })
               })
             })
           ),
           Effect.tap((process) =>
-            Option.match(
-              command.stdin,
-              () => Effect.unit(),
-              (stdin) => Effect.forkDaemon(Stream.run(stdin, process.stdin))
-            )
+            Option.match(command.stdin, {
+              onNone: () => Effect.unit,
+              onSome: (stdin) => Effect.forkDaemon(Stream.run(stdin, process.stdin))
+            })
           )
         )
       }

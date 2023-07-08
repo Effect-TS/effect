@@ -59,7 +59,7 @@ const flattenLoop = (self: Command.Command): Chunk.NonEmptyChunk<Command.Standar
       return Chunk.of(self)
     }
     case "PipedCommand": {
-      return Chunk.concat(
+      return Chunk.appendAll(
         flattenLoop(self.left),
         flattenLoop(self.right)
       ) as Chunk.NonEmptyChunk<Command.StandardCommand>
