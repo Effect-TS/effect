@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/printer-ansi/internal_effect_untraced/renderLayer"
+import * as internal from "@effect/printer-ansi/internal/renderLayer"
 
 // -----------------------------------------------------------------------------
 // Models

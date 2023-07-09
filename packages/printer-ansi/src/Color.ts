@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 
-import * as internal from "@effect/printer-ansi/internal_effect_untraced/color"
+import * as internal from "@effect/printer-ansi/internal/color"
 
 // -----------------------------------------------------------------------------
 // Models

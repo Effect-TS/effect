@@ -4,7 +4,7 @@
 
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
 import type { AnsiStyle } from "@effect/printer-ansi/AnsiStyle"
-import * as internal from "@effect/printer-ansi/internal_effect_untraced/ansiRender"
+import * as internal from "@effect/printer-ansi/internal/ansiRender"
 import type { Doc } from "@effect/printer/Doc"
 import type { DocStream } from "@effect/printer/DocStream"
 import type { AvailablePerLine } from "@effect/printer/PageWidth"

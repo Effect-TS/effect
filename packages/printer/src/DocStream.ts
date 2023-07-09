@@ -5,10 +5,10 @@
 import type { Equal } from "@effect/data/Equal"
 import type { TypeLambda } from "@effect/data/HKT"
 import type { Option } from "@effect/data/Option"
-import type * as covariant from "@effect/data/typeclass/Covariant"
-import type * as invariant from "@effect/data/typeclass/Invariant"
-import type * as monoid from "@effect/data/typeclass/Monoid"
-import * as internal from "@effect/printer/internal_effect_untraced/docStream"
+import * as internal from "@effect/printer/internal/docStream"
+import type * as covariant from "@effect/typeclass/Covariant"
+import type * as invariant from "@effect/typeclass/Invariant"
+import type * as monoid from "@effect/typeclass/Monoid"
 
 // -----------------------------------------------------------------------------
 // Models

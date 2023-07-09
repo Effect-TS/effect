@@ -3,11 +3,11 @@
  */
 
 import type { Option } from "@effect/data/Option"
-import type * as monoid from "@effect/data/typeclass/Monoid"
-import type * as semigroup from "@effect/data/typeclass/Semigroup"
 import type { Color } from "@effect/printer-ansi/Color"
-import * as internal from "@effect/printer-ansi/internal_effect_untraced/ansiStyle"
+import * as internal from "@effect/printer-ansi/internal/ansiStyle"
 import type { SGR } from "@effect/printer-ansi/SGR"
+import type * as monoid from "@effect/typeclass/Monoid"
+import type * as semigroup from "@effect/typeclass/Semigroup"
 
 // -----------------------------------------------------------------------------
 // Models

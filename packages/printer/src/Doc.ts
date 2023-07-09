@@ -19,13 +19,13 @@
 
 import type { Equal } from "@effect/data/Equal"
 import type { TypeLambda } from "@effect/data/HKT"
-import type * as covariant from "@effect/data/typeclass/Covariant"
-import type * as invariant from "@effect/data/typeclass/Invariant"
-import type { Monoid } from "@effect/data/typeclass/Monoid"
-import type { Semigroup } from "@effect/data/typeclass/Semigroup"
 import type { Flatten } from "@effect/printer/Flatten"
-import * as internal from "@effect/printer/internal_effect_untraced/doc"
+import * as internal from "@effect/printer/internal/doc"
 import type { PageWidth } from "@effect/printer/PageWidth"
+import type * as covariant from "@effect/typeclass/Covariant"
+import type * as invariant from "@effect/typeclass/Invariant"
+import type { Monoid } from "@effect/typeclass/Monoid"
+import type { Semigroup } from "@effect/typeclass/Semigroup"
 
 // -----------------------------------------------------------------------------
 // Models

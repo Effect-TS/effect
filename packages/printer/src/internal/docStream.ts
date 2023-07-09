@@ -3,11 +3,11 @@ import { dual, pipe } from "@effect/data/Function"
 import * as Hash from "@effect/data/Hash"
 import * as List from "@effect/data/List"
 import * as Option from "@effect/data/Option"
-import * as covariant from "@effect/data/typeclass/Covariant"
-import type * as invariant from "@effect/data/typeclass/Invariant"
-import type * as monoid from "@effect/data/typeclass/Monoid"
 import * as Effect from "@effect/io/Effect"
 import type * as DocStream from "@effect/printer/DocStream"
+import * as covariant from "@effect/typeclass/Covariant"
+import type * as invariant from "@effect/typeclass/Invariant"
+import type * as monoid from "@effect/typeclass/Monoid"
 
 // -----------------------------------------------------------------------------
 // Models

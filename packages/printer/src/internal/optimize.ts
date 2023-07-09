@@ -1,7 +1,7 @@
 import { dual } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import type * as Doc from "@effect/printer/Doc"
-import * as _doc from "@effect/printer/internal_effect_untraced/doc"
+import * as _doc from "@effect/printer/internal/doc"
 import type * as Optimize from "@effect/printer/Optimize"
 
 /** @internal */

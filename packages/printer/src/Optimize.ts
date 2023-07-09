@@ -3,7 +3,7 @@
  */
 
 import type { Doc } from "@effect/printer/Doc"
-import * as internal from "@effect/printer/internal_effect_untraced/optimize"
+import * as internal from "@effect/printer/internal/optimize"
 
 // -----------------------------------------------------------------------------
 // Models

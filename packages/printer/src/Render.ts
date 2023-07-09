@@ -4,7 +4,7 @@
 
 import type { Doc } from "@effect/printer/Doc"
 import type { DocStream } from "@effect/printer/DocStream"
-import * as internal from "@effect/printer/internal_effect_untraced/render"
+import * as internal from "@effect/printer/internal/render"
 import type { AvailablePerLine } from "@effect/printer/PageWidth"
 
 // -----------------------------------------------------------------------------

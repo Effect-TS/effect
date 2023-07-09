@@ -3,7 +3,7 @@
  */
 
 import type { Color } from "@effect/printer-ansi/Color"
-import * as internal from "@effect/printer-ansi/internal_effect_untraced/sgr"
+import * as internal from "@effect/printer-ansi/internal/sgr"
 import type { RenderLayer } from "@effect/printer-ansi/RenderLayer"
 
 // -----------------------------------------------------------------------------

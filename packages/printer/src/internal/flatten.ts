@@ -94,8 +94,3 @@ export const map = dual<
   self._tag === "Flattened"
     ? flattened(f(self.value))
     : self as unknown as Flatten.Flatten<B>)
-
-// /** @internal */
-// export const Functor: functor.Covariant<Flatten.Flatten.TypeLambda> = {
-//   map
-// }

@@ -3,7 +3,7 @@
  */
 
 import type { Equal } from "@effect/data/Equal"
-import * as internal from "@effect/printer/internal_effect_untraced/pageWidth"
+import * as internal from "@effect/printer/internal/pageWidth"
 
 // -----------------------------------------------------------------------------
 // Models

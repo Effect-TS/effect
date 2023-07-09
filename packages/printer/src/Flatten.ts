@@ -4,8 +4,8 @@
 
 import type { Equal } from "@effect/data/Equal"
 import type { TypeLambda } from "@effect/data/HKT"
-import type { Covariant as _Functor } from "@effect/data/typeclass/Covariant"
-import * as internal from "@effect/printer/internal_effect_untraced/flatten"
+import * as internal from "@effect/printer/internal/flatten"
+import type { Covariant as _Functor } from "@effect/typeclass/Covariant"
 
 /**
  * @since 1.0.0
@@ -157,13 +157,3 @@ export const map: {
   <A, B>(f: (a: A) => B): (self: Flatten<A>) => Flatten<B>
   <A, B>(self: Flatten<A>, f: (a: A) => B): Flatten<B>
 } = internal.map
-
-// -----------------------------------------------------------------------------
-// Instances
-// -----------------------------------------------------------------------------
-
-// /**
-//  * @since 1.0.0
-//  * @category instances
-//  */
-// export const Functor: _Functor<Flatten.TypeLambda> = internal.Functor
