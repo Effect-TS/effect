@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.6.0
+
+### Minor Changes
+
+- [#305](https://github.com/Effect-TS/cli/pull/305) [`51a1bda`](https://github.com/Effect-TS/cli/commit/51a1bda139217fcaefccdf0145e0cb7665906931) Thanks [@IMax153](https://github.com/IMax153)! - upgrade to @effect/data@0.13.5, @effect/io@0.31.3, and @effect/printer{-ansi}@0.9.0
+
 ## 0.5.0
 
 ### Minor Changes
