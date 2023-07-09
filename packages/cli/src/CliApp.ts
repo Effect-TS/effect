@@ -5,7 +5,7 @@ import type { Command } from "@effect/cli/Command"
 import type { Console } from "@effect/cli/Console"
 import type { HelpDoc } from "@effect/cli/HelpDoc"
 import type { Span } from "@effect/cli/HelpDoc/Span"
-import * as internal from "@effect/cli/internal_effect_untraced/cliApp"
+import * as internal from "@effect/cli/internal/cliApp"
 import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Effect } from "@effect/io/Effect"
 

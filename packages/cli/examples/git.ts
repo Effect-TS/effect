@@ -115,11 +115,10 @@ const handleGitSubcommand = (command: GitSubcommand): Effect.Effect<never, never
       return Effect.log(msg)
     }
     case "Remote": {
-      return Option.match(
-        command.subcommand,
-        () => Effect.log(`Executing 'git remote' with verbose flag set to '${command.verbose}'`),
-        handleRemoteSubcomand(command.verbose)
-      )
+      return Option.match(command.subcommand, {
+        onNone: () => Effect.log(`Executing 'git remote' with verbose flag set to '${command.verbose}'`),
+        onSome: handleRemoteSubcomand(command.verbose)
+      })
     }
   }
 }
@@ -136,11 +135,13 @@ pipe(
   Effect.sync(() => process.argv.slice(2)),
   Effect.flatMap((args) =>
     CliApp.run(cli, args, (command) =>
-      Option.match(
-        command.subcommand,
-        () => command.version ? Effect.log(`Executing 'git --version'`) : Effect.unit(),
-        handleGitSubcommand
-      ))
+      Option.match(command.subcommand, {
+        onNone: () =>
+          command.version
+            ? Effect.log(`Executing 'git --version'`)
+            : Effect.unit,
+        onSome: handleGitSubcommand
+      }))
   ),
   Effect.provideLayer(Console.layer),
   Effect.runFork

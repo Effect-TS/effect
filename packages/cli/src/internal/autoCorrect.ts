@@ -1,5 +1,5 @@
 import type * as CliConfig from "@effect/cli/CliConfig"
-import * as cliConfig from "@effect/cli/internal_effect_untraced/cliConfig"
+import * as cliConfig from "@effect/cli/internal/cliConfig"
 
 /** @internal */
 export const levensteinDistance = (

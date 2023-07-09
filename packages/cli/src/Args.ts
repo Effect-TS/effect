@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal_effect_untraced/args"
+import * as internal from "@effect/cli/internal/args"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"

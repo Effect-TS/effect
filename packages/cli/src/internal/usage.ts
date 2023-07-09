@@ -1,7 +1,7 @@
 import type * as HelpDoc from "@effect/cli/HelpDoc"
 import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as _helpDoc from "@effect/cli/internal_effect_untraced/helpDoc"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
+import * as _helpDoc from "@effect/cli/internal/helpDoc"
+import * as span from "@effect/cli/internal/helpDoc/span"
 import type * as Usage from "@effect/cli/Usage"
 import * as Chunk from "@effect/data/Chunk"
 import { dual } from "@effect/data/Function"
@@ -64,11 +64,10 @@ const spanMap: {
   Empty: () => span.text(""),
   Mixed: () => span.text("<command>"),
   Named: (self) => {
-    const acceptedValues = Option.match(
-      self.acceptedValues,
-      () => span.empty,
-      (c) => span.concat(span.space, span.text(c))
-    )
+    const acceptedValues = Option.match(self.acceptedValues, {
+      onNone: () => span.empty,
+      onSome: (c) => span.concat(span.space, span.text(c))
+    })
     const mainSpan = span.concat(span.text(Chunk.join(self.names, ", ")), acceptedValues)
     return self.names.length > 1
       ? span.concat(span.text("("), span.concat(mainSpan, span.text(")")))

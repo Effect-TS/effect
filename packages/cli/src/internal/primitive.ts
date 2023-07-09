@@ -1,5 +1,5 @@
 import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
+import * as span from "@effect/cli/internal/helpDoc/span"
 import type * as Primitive from "@effect/cli/Primitive"
 import { dual, pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"

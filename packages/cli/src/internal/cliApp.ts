@@ -4,13 +4,13 @@ import type * as Command from "@effect/cli/Command"
 import * as Console from "@effect/cli/Console"
 import type * as HelpDoc from "@effect/cli/HelpDoc"
 import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as cliConfig from "@effect/cli/internal_effect_untraced/cliConfig"
-import * as command from "@effect/cli/internal_effect_untraced/command"
-import * as commandDirective from "@effect/cli/internal_effect_untraced/commandDirective"
-import * as doc from "@effect/cli/internal_effect_untraced/helpDoc"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
-import * as _usage from "@effect/cli/internal_effect_untraced/usage"
-import * as validationError from "@effect/cli/internal_effect_untraced/validationError"
+import * as cliConfig from "@effect/cli/internal/cliConfig"
+import * as command from "@effect/cli/internal/command"
+import * as commandDirective from "@effect/cli/internal/commandDirective"
+import * as doc from "@effect/cli/internal/helpDoc"
+import * as span from "@effect/cli/internal/helpDoc/span"
+import * as _usage from "@effect/cli/internal/usage"
+import * as validationError from "@effect/cli/internal/validationError"
 import type * as ValidationError from "@effect/cli/ValidationError"
 import * as Context from "@effect/data/Context"
 import { dual, pipe } from "@effect/data/Function"
@@ -47,21 +47,19 @@ export const run = dual<
     const config = Option.getOrElse(Context.getOption(context, cliConfig.Tag), () => cliConfig.defaultConfig)
     return Effect.matchEffect(
       command.parse(self.command, [...prefixCommand(self.command), ...args], config),
-      (error) =>
-        Effect.zipRight(
-          printDocs(error),
-          Effect.fail(error)
-        ),
-      (directive) =>
-        commandDirective.isUserDefined(directive)
-          ? f(directive.value)
-          : Effect.catchSome(
-            runBuiltIn(directive.option, self),
-            (error) =>
-              validationError.isValidationError(error) ?
-                Option.some(Effect.zipRight(printDocs(error), Effect.fail(error))) :
-                Option.none()
-          )
+      {
+        onFailure: (error) => Effect.zipRight(printDocs(error), Effect.fail(error)),
+        onSuccess: (directive) =>
+          commandDirective.isUserDefined(directive)
+            ? f(directive.value)
+            : Effect.catchSome(
+              runBuiltIn(directive.option, self),
+              (error) =>
+                validationError.isValidationError(error) ?
+                  Option.some(Effect.zipRight(printDocs(error), Effect.fail(error))) :
+                  Option.none()
+            )
+      }
     )
   }))
 

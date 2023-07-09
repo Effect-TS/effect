@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { BuiltInOption } from "@effect/cli/BuiltInOption"
-import * as internal from "@effect/cli/internal_effect_untraced/commandDirective"
+import * as internal from "@effect/cli/internal/commandDirective"
 
 /**
  * @since 1.0.0

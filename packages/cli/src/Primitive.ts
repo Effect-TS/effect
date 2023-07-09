@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { Span } from "@effect/cli/HelpDoc/Span"
-import * as internal from "@effect/cli/internal_effect_untraced/primitive"
+import * as internal from "@effect/cli/internal/primitive"
 import type { Option } from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { Effect } from "@effect/io/Effect"

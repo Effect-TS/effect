@@ -1,24 +1,23 @@
 import type * as CliConfig from "@effect/cli/CliConfig"
 import type * as HelpDoc from "@effect/cli/HelpDoc"
-import * as autoCorrect from "@effect/cli/internal_effect_untraced/autoCorrect"
-import * as doc from "@effect/cli/internal_effect_untraced/helpDoc"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
-import * as primitive from "@effect/cli/internal_effect_untraced/primitive"
-import * as _usage from "@effect/cli/internal_effect_untraced/usage"
-import * as validationError from "@effect/cli/internal_effect_untraced/validationError"
+import * as autoCorrect from "@effect/cli/internal/autoCorrect"
+import * as doc from "@effect/cli/internal/helpDoc"
+import * as span from "@effect/cli/internal/helpDoc/span"
+import * as primitive from "@effect/cli/internal/primitive"
+import * as _usage from "@effect/cli/internal/usage"
+import * as validationError from "@effect/cli/internal/validationError"
 import type * as Options from "@effect/cli/Options"
 import type * as Primitive from "@effect/cli/Primitive"
 import type * as Usage from "@effect/cli/Usage"
 import type * as ValidationError from "@effect/cli/ValidationError"
 import * as Chunk from "@effect/data/Chunk"
-import * as Debug from "@effect/data/Debug"
 import * as Either from "@effect/data/Either"
 import { dual, pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
 import * as Option from "@effect/data/Option"
+import * as Order from "@effect/data/Order"
 import type { Predicate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
-import * as Order from "@effect/data/typeclass/Order"
 import * as Effect from "@effect/io/Effect"
 
 const OptionsSymbolKey = "@effect/cli/Options"
@@ -205,11 +204,10 @@ export const filterMap = dual<
   <A, B>(self: Options.Options<A>, f: (a: A) => Option.Option<B>, message: string) => Options.Options<B>
 >(3, (self, f, message) =>
   mapOrFail(self, (a) =>
-    Option.match(
-      f(a),
-      () => Either.left(validationError.invalidValue(doc.p(message))),
-      Either.right
-    )))
+    Option.match(f(a), {
+      onNone: () => Either.left(validationError.invalidValue(doc.p(message))),
+      onSome: Either.right
+    })))
 
 /** @internal */
 export const float = (name: string): Options.Options<number> => single(name, Chunk.empty(), primitive.float)
@@ -441,17 +439,15 @@ const validateMap: {
       const [rest, supported] = processSingleArg(self, args[0], args.slice(1), config)
       if (supported) {
         if (primitive.isBool(self.primitiveType)) {
-          return Effect.mapBoth(
-            primitive.validate(self.primitiveType, Option.none()),
-            (error) => validationError.invalidValue(doc.p(error)),
-            (a) => [rest, a]
-          )
+          return Effect.mapBoth(primitive.validate(self.primitiveType, Option.none()), {
+            onFailure: (error) => validationError.invalidValue(doc.p(error)),
+            onSuccess: (a) => [rest, a]
+          })
         }
-        return Effect.mapBoth(
-          primitive.validate(self.primitiveType, RA.head(rest)),
-          (error) => validationError.invalidValue(doc.p(error)),
-          (a) => [rest.slice(1), a]
-        )
+        return Effect.mapBoth(primitive.validate(self.primitiveType, RA.head(rest)), {
+          onFailure: (error) => validationError.invalidValue(doc.p(error)),
+          onSuccess: (a) => [rest.slice(1), a]
+        })
       }
       const fullName = singleFullName(self)
       const distance = autoCorrect.levensteinDistance(args[0], fullName, config)
@@ -473,49 +469,44 @@ const validateMap: {
   Map: (self, args, config) =>
     Effect.flatMap(
       validateMap[self.value._tag](self.value as any, args, config),
-      (tuple) => Either.match(self.f(tuple[1]), Effect.fail, (a) => Effect.succeed([tuple[0], a]))
+      (tuple) =>
+        Either.match(self.f(tuple[1]), {
+          onLeft: Effect.fail,
+          onRight: (a) => Effect.succeed([tuple[0], a])
+        })
     ),
   OrElse: (self, args, config) =>
-    pipe(
-      validateMap[self.left._tag](self.left as any, args, config),
-      Effect.matchEffect(
-        (error1) =>
-          pipe(
-            validateMap[self.right._tag](self.right as any, args, config),
-            Effect.matchEffect(
-              (error2) => {
-                const message = doc.sequence(error1.error, error2.error)
-                // The option is only considered "missing" if neither option was given
-                if (validationError.isMissingValue(error1) && validationError.isMissingValue(error2)) {
-                  return Effect.fail(validationError.missingValue(message))
-                }
-                return Effect.fail(validationError.invalidValue(message))
-              },
-              (tuple) => Effect.succeed([tuple[0], Either.right(tuple[1])])
-            )
-          ),
-        (tuple) =>
-          pipe(
-            validateMap[self.right._tag](self.right as any, tuple[0], config),
-            Effect.matchEffect(
-              () => Effect.succeed([tuple[0], Either.left(tuple[1])]),
-              () => {
-                const left = uid(self.left)
-                const right = uid(self.right)
-                if (Option.isNone(left) || Option.isNone(right)) {
-                  const message = "Collision between two options detected. Could not render option identifiers."
-                  const error = validationError.invalidValue(doc.p(span.error(message)))
-                  return Effect.fail(error)
-                }
-                const message = "Collision between two options detected." +
-                  ` You can only specify one of either: ['${left.value}', '${right.value}'].`
-                const error = validationError.invalidValue(doc.p(span.error(message)))
-                return Effect.fail(error)
-              }
-            )
-          )
-      )
-    ),
+    Effect.matchEffect(validateMap[self.left._tag](self.left as any, args, config), {
+      onFailure: (error1) =>
+        Effect.matchEffect(validateMap[self.right._tag](self.right as any, args, config), {
+          onFailure: (error2) => {
+            const message = doc.sequence(error1.error, error2.error)
+            // The option is only considered "missing" if neither option was given
+            if (validationError.isMissingValue(error1) && validationError.isMissingValue(error2)) {
+              return Effect.fail(validationError.missingValue(message))
+            }
+            return Effect.fail(validationError.invalidValue(message))
+          },
+          onSuccess: (tuple) => Effect.succeed([tuple[0], Either.right(tuple[1])])
+        }),
+      onSuccess: (tuple) =>
+        Effect.matchEffect(validateMap[self.right._tag](self.right as any, tuple[0], config), {
+          onFailure: () => Effect.succeed([tuple[0], Either.left(tuple[1])]),
+          onSuccess: () => {
+            const left = uid(self.left)
+            const right = uid(self.right)
+            if (Option.isNone(left) || Option.isNone(right)) {
+              const message = "Collision between two options detected. Could not render option identifiers."
+              const error = validationError.invalidValue(doc.p(span.error(message)))
+              return Effect.fail(error)
+            }
+            const message = "Collision between two options detected." +
+              ` You can only specify one of either: ['${left.value}', '${right.value}'].`
+            const error = validationError.invalidValue(doc.p(span.error(message)))
+            return Effect.fail(error)
+          }
+        })
+    }),
   KeyValueMap: (self, args, config) =>
     Effect.map(
       validateMap[self.argumentOption._tag](self.argumentOption as any, args, config),
@@ -528,9 +519,8 @@ const validateMap: {
       args: ReadonlyArray<string>,
       acc: Chunk.Chunk<unknown>
     ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, Chunk.Chunk<unknown>]> =>
-      Effect.matchEffect(
-        validateMap[self.options._tag](self.options as any, args, config),
-        (error) => {
+      Effect.matchEffect(validateMap[self.options._tag](self.options as any, args, config), {
+        onFailure: (error) => {
           if (!validationError.isMissingValue(error)) {
             return Effect.fail(error)
           } else if (acc.length < min) {
@@ -541,7 +531,7 @@ const validateMap: {
 
           return Effect.succeed([args, acc])
         },
-        (tuple) => {
+        onSuccess: (tuple) => {
           acc = Chunk.append(acc, tuple[1])
           if (acc.length > max) {
             return Effect.fail(validationError.extraneousValue(
@@ -550,7 +540,7 @@ const validateMap: {
           }
           return loop(tuple[0], acc)
         }
-      )
+      })
     return loop(args, Chunk.empty())
   },
   WithDefault: (self, args, config) =>
@@ -566,11 +556,10 @@ const validateMap: {
       validateMap[self.left._tag](self.left as any, args, config),
       Effect.catchAll(
         (error1) =>
-          Effect.matchEffect(
-            validateMap[self.right._tag](self.right as any, args, config),
-            (error2) => Effect.fail(validationError.missingValue(doc.sequence(error1.error, error2.error))),
-            () => Effect.fail(error1)
-          )
+          Effect.matchEffect(validateMap[self.right._tag](self.right as any, args, config), {
+            onFailure: (error2) => Effect.fail(validationError.missingValue(doc.sequence(error1.error, error2.error))),
+            onSuccess: () => Effect.fail(error1)
+          })
       ),
       Effect.flatMap(([args, a]) =>
         pipe(
@@ -582,7 +571,7 @@ const validateMap: {
 }
 
 /** @internal */
-export const validate = Debug.dualWithTrace<
+export const validate = dual<
   (
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
@@ -594,13 +583,7 @@ export const validate = Debug.dualWithTrace<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>
->(3, (trace) =>
-  (self, args, config) =>
-    validateMap[(self as Instruction)._tag](
-      self as any,
-      args,
-      config
-    ).traced(trace))
+>(3, (self, args, config) => validateMap[(self as Instruction)._tag](self as any, args, config))
 
 const variadic = <A>(
   self: Options.Options<A>,
@@ -791,7 +774,7 @@ const processVariadicArg = (
       makeFullName(self.options.name)
     )
     return config.isCaseSensitive
-      ? Chunk.elem(argumentNames, s)
+      ? Chunk.contains(argumentNames, s)
       : Chunk.some(argumentNames, (name) => name.toLowerCase() === s.toLowerCase())
   }
 
@@ -828,7 +811,7 @@ const processSingleArg = (
     return [remaining, false]
   }
   return config.isCaseSensitive
-    ? process((arg) => Chunk.elem(singleNames(self), arg))
+    ? process((arg) => Chunk.contains(singleNames(self), arg))
     : process((arg) => Chunk.some(singleNames(self), (name) => name.toLowerCase() === arg.toLowerCase()))
 }
 

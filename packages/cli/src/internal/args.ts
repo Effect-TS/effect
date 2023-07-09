@@ -1,15 +1,14 @@
 import type * as Args from "@effect/cli/Args"
 import type * as HelpDoc from "@effect/cli/HelpDoc"
-import * as doc from "@effect/cli/internal_effect_untraced/helpDoc"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
-import * as primitive from "@effect/cli/internal_effect_untraced/primitive"
-import * as _usage from "@effect/cli/internal_effect_untraced/usage"
-import * as validationError from "@effect/cli/internal_effect_untraced/validationError"
+import * as doc from "@effect/cli/internal/helpDoc"
+import * as span from "@effect/cli/internal/helpDoc/span"
+import * as primitive from "@effect/cli/internal/primitive"
+import * as _usage from "@effect/cli/internal/usage"
+import * as validationError from "@effect/cli/internal/validationError"
 import type * as Primitive from "@effect/cli/Primitive"
 import type * as Usage from "@effect/cli/Usage"
 import type * as ValidationError from "@effect/cli/ValidationError"
 import * as Chunk from "@effect/data/Chunk"
-import * as Debug from "@effect/data/Debug"
 import * as Either from "@effect/data/Either"
 import { dual } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
@@ -314,11 +313,10 @@ export const repeat1 = <A>(self: Args.Args<A>): Args.Args<Chunk.NonEmptyChunk<A>
     if (Chunk.isNonEmpty(chunk)) {
       return chunk
     }
-    const message = Option.match(
-      uid(self),
-      () => "An anonymous variadic argument",
-      (identifier) => `The variadic option '${identifier}' `
-    )
+    const message = Option.match(uid(self), {
+      onNone: () => "An anonymous variadic argument",
+      onSome: (identifier) => `The variadic option '${identifier}' `
+    })
     throw new Error(`${message} is not respecting the required minimum of 1`)
   })
 
@@ -365,11 +363,10 @@ const validateMap: {
   Empty: (_, args) => Effect.succeed([args, void 0]),
   Single: (self, args) => {
     if (ReadonlyArray.isNonEmptyReadonlyArray(args)) {
-      return Effect.mapBoth(
-        primitive.validate(self.primitiveType, Option.some(args[0])),
-        (text) => validationError.invalidArgument(doc.p(text)),
-        (a) => [args.slice(1), a]
-      )
+      return Effect.mapBoth(primitive.validate(self.primitiveType, Option.some(args[0])), {
+        onFailure: (text) => validationError.invalidArgument(doc.p(text)),
+        onSuccess: (a) => [args.slice(1), a]
+      })
     }
     const choices = primitive.choices(self.primitiveType)
     let message = ""
@@ -389,11 +386,10 @@ const validateMap: {
     Effect.flatMap(
       validateMap[self.value._tag](self.value as any, args),
       ([remainder, a]) =>
-        Either.match(
-          self.f(a),
-          (doc) => Effect.fail(validationError.invalidArgument(doc)),
-          (value) => Effect.succeed([remainder, value])
-        )
+        Either.match(self.f(a), {
+          onLeft: (doc) => Effect.fail(validationError.invalidArgument(doc)),
+          onRight: (value) => Effect.succeed([remainder, value])
+        })
     ),
   Variadic: (self, args) => {
     const min = Option.getOrElse(self.min, () => 0)
@@ -404,14 +400,13 @@ const validateMap: {
     ): Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, Chunk.Chunk<unknown>]> =>
       acc.length >= max
         ? Effect.succeed([args, acc])
-        : Effect.matchEffect(
-          validateMap[self.value._tag](self.value as any, args),
-          (error) =>
+        : Effect.matchEffect(validateMap[self.value._tag](self.value as any, args), {
+          onFailure: (error) =>
             acc.length >= min && ReadonlyArray.isEmptyReadonlyArray(args) ?
               Effect.succeed([args, acc]) :
               Effect.fail(error),
-          (tuple) => loop(tuple[0], Chunk.append(acc, tuple[1]))
-        )
+          onSuccess: (tuple) => loop(tuple[0], Chunk.append(acc, tuple[1]))
+        })
     return loop(args, Chunk.empty())
   },
   Zip: (self, args) =>
@@ -426,7 +421,7 @@ const validateMap: {
 }
 
 /** @internal */
-export const validate = Debug.dualWithTrace<
+export const validate = dual<
   (
     args: ReadonlyArray<string>
   ) => <A>(
@@ -436,7 +431,7 @@ export const validate = Debug.dualWithTrace<
     self: Args.Args<A>,
     args: ReadonlyArray<string>
   ) => Effect.Effect<never, ValidationError.ValidationError, readonly [ReadonlyArray<string>, A]>
->(2, (trace) => (self, args) => validateMap[(self as Instruction)._tag](self as any, args).traced(trace))
+>(2, (self, args) => validateMap[(self as Instruction)._tag](self as any, args))
 
 /** @internal */
 export const zip = dual<

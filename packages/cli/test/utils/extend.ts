@@ -1,8 +1,8 @@
 import * as Duration from "@effect/data/Duration"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
-import * as TestEnvironment from "@effect/io/internal_effect_untraced/testing/testEnvironment"
-import type * as TestServices from "@effect/io/internal_effect_untraced/testing/testServices"
+import * as TestEnvironment from "@effect/io/internal/testing/testEnvironment"
+import type * as TestServices from "@effect/io/internal/testing/testServices"
 import * as Schedule from "@effect/io/Schedule"
 import type * as Scope from "@effect/io/Scope"
 import type { TestAPI } from "vitest"
@@ -86,11 +86,11 @@ export const flakyTest = <R, E, A>(
   timeout: Duration.Duration = Duration.seconds(30)
 ) => {
   return pipe(
-    Effect.resurrect(self),
+    Effect.catchAllDefect(self, Effect.fail),
     Effect.retry(
       pipe(
         Schedule.recurs(10),
-        Schedule.compose(Schedule.elapsed()),
+        Schedule.compose(Schedule.elapsed),
         Schedule.whileOutput(Duration.lessThanOrEqualTo(timeout))
       )
     ),

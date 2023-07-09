@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import type { Span } from "@effect/cli/HelpDoc/Span"
-import * as internal from "@effect/cli/internal_effect_untraced/helpDoc"
+import * as internal from "@effect/cli/internal/helpDoc"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
 

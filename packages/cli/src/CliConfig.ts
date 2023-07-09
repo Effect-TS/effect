@@ -1,7 +1,7 @@
 /**
  * @since 1.0.0
  */
-import * as internal from "@effect/cli/internal_effect_untraced/cliConfig"
+import * as internal from "@effect/cli/internal/cliConfig"
 import type * as Context from "@effect/data/Context"
 import type * as Layer from "@effect/io/Layer"
 

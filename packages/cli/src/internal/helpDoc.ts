@@ -1,6 +1,6 @@
 import type * as HelpDoc from "@effect/cli/HelpDoc"
 import type * as Span from "@effect/cli/HelpDoc/Span"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
+import * as span from "@effect/cli/internal/helpDoc/span"
 import { dual } from "@effect/data/Function"
 import * as RA from "@effect/data/ReadonlyArray"
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"

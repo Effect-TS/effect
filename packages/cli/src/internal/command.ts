@@ -3,20 +3,19 @@ import type * as CliConfig from "@effect/cli/CliConfig"
 import type * as Command from "@effect/cli/Command"
 import type * as CommandDirective from "@effect/cli/CommandDirective"
 import type * as HelpDoc from "@effect/cli/HelpDoc"
-import * as _args from "@effect/cli/internal_effect_untraced/args"
-import * as builtInOption from "@effect/cli/internal_effect_untraced/builtInOption"
-import * as cliConfig from "@effect/cli/internal_effect_untraced/cliConfig"
-import * as commandDirective from "@effect/cli/internal_effect_untraced/commandDirective"
-import * as doc from "@effect/cli/internal_effect_untraced/helpDoc"
-import * as span from "@effect/cli/internal_effect_untraced/helpDoc/span"
-import * as options from "@effect/cli/internal_effect_untraced/options"
-import * as _usage from "@effect/cli/internal_effect_untraced/usage"
-import * as validationError from "@effect/cli/internal_effect_untraced/validationError"
+import * as _args from "@effect/cli/internal/args"
+import * as builtInOption from "@effect/cli/internal/builtInOption"
+import * as cliConfig from "@effect/cli/internal/cliConfig"
+import * as commandDirective from "@effect/cli/internal/commandDirective"
+import * as doc from "@effect/cli/internal/helpDoc"
+import * as span from "@effect/cli/internal/helpDoc/span"
+import * as options from "@effect/cli/internal/options"
+import * as _usage from "@effect/cli/internal/usage"
+import * as validationError from "@effect/cli/internal/validationError"
 import type * as Options from "@effect/cli/Options"
 import type * as Usage from "@effect/cli/Usage"
 import type * as ValidationError from "@effect/cli/ValidationError"
 import * as Chunk from "@effect/data/Chunk"
-import * as Debug from "@effect/data/Debug"
 import * as Either from "@effect/data/Either"
 import { dual, pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
@@ -225,7 +224,10 @@ const parseMap: {
         ? pipe(
           builtInOption.builtInOptions(self, usage(self), helpDoc(self)),
           options.validate(args, config),
-          Effect.mapBoth((error) => error.error, (tuple) => tuple[1]),
+          Effect.mapBoth({
+            onFailure: (error) => error.error,
+            onSuccess: (tuple) => tuple[1]
+          }),
           Effect.some,
           Effect.map(commandDirective.builtIn)
         )
@@ -283,18 +285,17 @@ const parseMap: {
           : Option.none()
     ),
   Subcommands: (self, args, config) => {
-    const helpDirectiveForChild = Effect.continueOrFail(
+    const helpDirectiveForChild = Effect.flatMap(
       parseMap[self.child._tag](
         self.child as any,
         ReadonlyArray.isEmptyReadonlyArray(args) ? [] : args.slice(1),
         config
       ),
-      () => validationError.invalidArgument(doc.empty),
       (directive) => {
         if (commandDirective.isBuiltIn(directive) && builtInOption.isShowHelp(directive.option)) {
           const availableNames = Array.from(names(self))
           const parentName = availableNames.length === 0 ? "" : availableNames[0]
-          return Option.some(commandDirective.builtIn(builtInOption.showHelp(
+          return Effect.succeed(commandDirective.builtIn(builtInOption.showHelp(
             _usage.concat(
               _usage.named(Chunk.of(parentName), Option.none()),
               directive.option.usage
@@ -302,24 +303,23 @@ const parseMap: {
             directive.option.helpDoc
           )))
         }
-        return Option.none()
+        return Effect.fail(validationError.invalidArgument(doc.empty))
       }
     )
     const helpDirectiveForParent = Effect.succeed(commandDirective.builtIn(builtInOption.showHelp(
       usage(self),
       helpDoc(self)
     )))
-    const wizardDirectiveForChild = Effect.continueOrFail(
+    const wizardDirectiveForChild = Effect.flatMap(
       parseMap[self.child._tag](
         self.child as any,
         ReadonlyArray.isEmptyReadonlyArray(args) ? [] : args.slice(1),
         config
       ),
-      () => validationError.invalidArgument(doc.empty),
       (directive) =>
         commandDirective.isBuiltIn(directive) && builtInOption.isWizard(directive.option)
-          ? Option.some(directive)
-          : Option.none()
+          ? Effect.succeed(directive)
+          : Effect.fail(validationError.invalidArgument(doc.empty))
     )
     const wizardDirectiveForParent = Effect.succeed(commandDirective.builtIn(builtInOption.wizard(self)))
     return pipe(
@@ -358,7 +358,7 @@ const parseMap: {
 }
 
 /** @internal */
-export const parse = Debug.dualWithTrace<
+export const parse = dual<
   (
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
@@ -370,7 +370,7 @@ export const parse = Debug.dualWithTrace<
     args: ReadonlyArray<string>,
     config: CliConfig.CliConfig
   ) => Effect.Effect<never, ValidationError.ValidationError, CommandDirective.CommandDirective<A>>
->(3, (trace) => (self, args, config) => parseMap[(self as Instruction)._tag](self as any, args, config).traced(trace))
+>(3, (self, args, config) => parseMap[(self as Instruction)._tag](self as any, args, config))
 
 /** @internal */
 export const subcommands = dual<

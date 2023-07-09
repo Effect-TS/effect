@@ -4,7 +4,7 @@
 
 import type { Command } from "@effect/cli/Command"
 import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal_effect_untraced/builtInOption"
+import * as internal from "@effect/cli/internal/builtInOption"
 import type { Options } from "@effect/cli/Options"
 import type { ShellType } from "@effect/cli/ShellType"
 import type { Usage } from "@effect/cli/Usage"

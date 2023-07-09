@@ -3,7 +3,7 @@
  */
 import type { CliConfig } from "@effect/cli/CliConfig"
 import type { HelpDoc } from "@effect/cli/HelpDoc"
-import * as internal from "@effect/cli/internal_effect_untraced/options"
+import * as internal from "@effect/cli/internal/options"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
