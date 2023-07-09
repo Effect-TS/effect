@@ -1,5 +1,5 @@
 import * as _ from "@effect/typeclass/FlatMap"
-import type { TypeLambda } from "@effect/typeclass/HKT"
+import type { TypeLambda } from "@effect/data/HKT"
 import { pipe } from "@effect/data/Function"
 
 interface RAW<R, E, A> {

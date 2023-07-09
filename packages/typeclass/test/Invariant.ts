@@ -1,15 +1,16 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as P from "@effect/data/Predicate"
 import * as String from "@effect/data/String"
 import * as _ from "@effect/typeclass/Invariant"
-import * as semigroup from "@effect/typeclass/Semigroup"
+import * as Semigroup from "@effect/typeclass/Semigroup"
+import * as OptionInstances from "@effect/typeclass/test/instances/Option"
+import * as PredicateInstances from "@effect/typeclass/test/instances/Predicate"
 import * as U from "./util"
 
 describe.concurrent("Invariant", () => {
   it("imapComposition", () => {
-    const imap = _.imapComposition(semigroup.Invariant, O.Invariant)
-    const S = imap(O.getOptionalMonoid(String.Semigroup), (s) => [s], ([s]) => s)
+    const imap = _.imapComposition(Semigroup.Invariant, OptionInstances.Invariant)
+    const S = imap(OptionInstances.getOptionalMonoid(Semigroup.string), (s) => [s], ([s]) => s)
     U.deepStrictEqual(S.combine(O.none(), O.none()), O.none())
     U.deepStrictEqual(S.combine(O.none(), O.some(["b"])), O.some(["b"]))
     U.deepStrictEqual(S.combine(O.some(["a"]), O.none()), O.some(["a"]))
@@ -21,13 +22,13 @@ describe.concurrent("Invariant", () => {
 
   describe.concurrent("bindTo", () => {
     it("Covariant (Option)", () => {
-      const bindTo = _.bindTo(O.Invariant)
+      const bindTo = _.bindTo(OptionInstances.Invariant)
       U.deepStrictEqual(pipe(O.none(), bindTo("a")), O.none())
       U.deepStrictEqual(pipe(O.some(1), bindTo("a")), O.some({ a: 1 }))
     })
 
     it("Contravariant (Predicate)", () => {
-      const bindTo = _.bindTo(P.Invariant)
+      const bindTo = _.bindTo(PredicateInstances.Invariant)
       const p = pipe(String.isString, bindTo("a"))
       U.deepStrictEqual(p({ a: "a" }), true)
       U.deepStrictEqual(p({ a: 1 }), false)
@@ -36,13 +37,13 @@ describe.concurrent("Invariant", () => {
 
   describe.concurrent("tupled", () => {
     it("Covariant (Option)", () => {
-      const tupled = _.tupled(O.Invariant)
+      const tupled = _.tupled(OptionInstances.Invariant)
       U.deepStrictEqual(pipe(O.none(), tupled), O.none())
       U.deepStrictEqual(pipe(O.some(1), tupled), O.some([1]))
     })
 
     it("Contravariant (Predicate)", () => {
-      const tupled = _.tupled(P.Invariant)
+      const tupled = _.tupled(PredicateInstances.Invariant)
       const p = pipe(String.isString, tupled)
       U.deepStrictEqual(p(["a"]), true)
       U.deepStrictEqual(p([1]), false)

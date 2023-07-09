@@ -86,7 +86,7 @@ export const productManyComposition = <F extends TypeLambda, G extends TypeLambd
  * @category do notation
  * @since 1.0.0
  */
-export const bindDiscard = <F extends TypeLambda>(F: SemiProduct<F>): {
+export const andThenBind = <F extends TypeLambda>(F: SemiProduct<F>): {
   <N extends string, A extends object, R2, O2, E2, B>(
     name: Exclude<N, keyof A>,
     that: Kind<F, R2, O2, E2, B>

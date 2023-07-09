@@ -1,10 +1,11 @@
 import * as O from "@effect/data/Option"
 import * as _ from "@effect/typeclass/Coproduct"
+import * as OptionInstances from "@effect/typeclass/test/instances/Option"
 import * as U from "./util"
 
 describe.concurrent("Coproduct", () => {
   it("getMonoid", () => {
-    const M = _.getMonoid(O.Alternative)<unknown, never, never, number>()
+    const M = _.getMonoid(OptionInstances.Alternative)<unknown, never, never, number>()
     U.deepStrictEqual(M.combine(O.none(), O.none()), O.none())
     U.deepStrictEqual(M.combine(O.some(1), O.none()), O.some(1))
     U.deepStrictEqual(M.combine(O.none(), O.some(2)), O.some(2))

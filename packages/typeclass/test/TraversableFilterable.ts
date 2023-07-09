@@ -1,6 +1,7 @@
 import * as E from "@effect/data/Either"
 import * as O from "@effect/data/Option"
-import * as RA from "@effect/data/ReadonlyArray"
+import * as OptionInstances from "@effect/typeclass/test/instances/Option"
+import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
 import * as _ from "@effect/typeclass/TraversableFilterable"
 import * as U from "./util"
 
@@ -10,10 +11,10 @@ describe.concurrent("TraversableFilterable", () => {
       self: ReadonlyArray<A>,
       f: (a: A) => O.Option<E.Either<B, C>>
     ) => O.Option<[ReadonlyArray<B>, ReadonlyArray<C>]> = _.traversePartitionMap({
-      ...RA.Traversable,
-      ...RA.Covariant,
-      ...RA.Filterable
-    })(O.Applicative)
+      ...ReadonlyArrayInstances.Traversable,
+      ...ReadonlyArrayInstances.Covariant,
+      ...ReadonlyArrayInstances.Filterable
+    })(OptionInstances.Applicative)
     const f = (s: string) =>
       s.length > 1 ? O.some(E.right(s)) : s.length > 0 ? O.some(E.left(s)) : O.none()
     expect(traversePartitionMap([], f)).toEqual(O.some([[], []]))
@@ -29,9 +30,9 @@ describe.concurrent("TraversableFilterable", () => {
       self: ReadonlyArray<A>,
       f: (a: A) => O.Option<O.Option<B>>
     ) => O.Option<ReadonlyArray<B>> = _.traverseFilterMap({
-      ...RA.Traversable,
-      ...RA.Filterable
-    })(O.Applicative)
+      ...ReadonlyArrayInstances.Traversable,
+      ...ReadonlyArrayInstances.Filterable
+    })(OptionInstances.Applicative)
     const f = (s: string) =>
       s.length > 1 ? O.some(O.some(s)) : s.length > 0 ? O.some(O.none()) : O.none()
     assert.deepStrictEqual(traverseFilterMap([], f), O.some([]))
@@ -47,8 +48,8 @@ describe.concurrent("TraversableFilterable", () => {
 
   it("traverseFilter", () => {
     const traverseFilter = _.traverseFilter(
-      RA.TraversableFilterable
-    )(O.Applicative)
+      ReadonlyArrayInstances.TraversableFilterable
+    )(OptionInstances.Applicative)
     const f = traverseFilter((s: string) =>
       s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none()
     )
@@ -62,8 +63,8 @@ describe.concurrent("TraversableFilterable", () => {
 
   it("traversePartition", () => {
     const traversePartition = _.traversePartition(
-      RA.TraversableFilterable
-    )(O.Applicative)
+      ReadonlyArrayInstances.TraversableFilterable
+    )(OptionInstances.Applicative)
     const f = traversePartition((s: string) =>
       s.length > 2 ? O.some(false) : s.length > 1 ? O.some(true) : O.none()
     )

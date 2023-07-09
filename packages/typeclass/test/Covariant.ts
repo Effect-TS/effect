@@ -1,12 +1,14 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as RA from "@effect/data/ReadonlyArray"
 import * as _ from "@effect/typeclass/Covariant"
+import * as OptionInstances from "@effect/typeclass/test/instances/Option"
+import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
+
 import * as U from "./util"
 
 describe.concurrent("Covariant", () => {
   it("mapComposition", () => {
-    const map = _.mapComposition(RA.Covariant, RA.Covariant)
+    const map = _.mapComposition(ReadonlyArrayInstances.Covariant, ReadonlyArrayInstances.Covariant)
     const f = (a: string) => a + "!"
     U.deepStrictEqual(map([], f), [])
     U.deepStrictEqual(map([[]], f), [[]])
@@ -20,25 +22,25 @@ describe.concurrent("Covariant", () => {
   })
 
   it("flap", () => {
-    const flap = _.flap(O.Covariant)
+    const flap = _.flap(OptionInstances.Covariant)
     U.deepStrictEqual(pipe(1, flap(O.none())), O.none())
     U.deepStrictEqual(pipe(1, flap(O.some(U.double))), O.some(2))
   })
 
   it("as", () => {
-    const as = _.as(O.Covariant)
+    const as = _.as(OptionInstances.Covariant)
     U.deepStrictEqual(pipe(O.none(), as(1)), O.none())
     U.deepStrictEqual(pipe(O.some(1), as(2)), O.some(2))
   })
 
   it("asUnit", () => {
-    const asUnit = _.asUnit(O.Covariant)
+    const asUnit = _.asUnit(OptionInstances.Covariant)
     U.deepStrictEqual(pipe(O.none(), asUnit), O.none())
     U.deepStrictEqual(pipe(O.some(1), asUnit), O.some(undefined))
   })
 
   it("let", () => {
-    const letOption = _.let(O.Covariant)
+    const letOption = _.let(OptionInstances.Covariant)
     U.deepStrictEqual(
       pipe(O.some({ a: 1, b: 2 }), letOption("c", ({ a, b }) => a + b)),
       O.some({ a: 1, b: 2, c: 3 })

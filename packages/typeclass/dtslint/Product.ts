@@ -1,4 +1,4 @@
-import * as _ from "@effect/data/typeclass/Product"
+import * as _ from "@effect/typeclass/Product"
 import type { TypeLambda } from "@effect/data/HKT"
 
 interface RAW<R, E, A> {

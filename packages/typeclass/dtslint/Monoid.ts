@@ -1,15 +1,13 @@
-import * as _ from "@effect/data/typeclass/Monoid"
-import * as Number from "@effect/data/Number"
-import * as String from "@effect/data/String"
+import * as Monoid from "@effect/typeclass/Monoid"
 
 //
 // tuple
 //
 
 // $ExpectType Monoid<readonly [string, number]>
-_.tuple(
-  String.Monoid,
-  Number.MonoidSum
+Monoid.tuple(
+  Monoid.string,
+  Monoid.numberSum
 )
 
 //
@@ -17,7 +15,7 @@ _.tuple(
 //
 
 // $ExpectType Monoid<{ readonly a: string; readonly b: number; }>
-_.struct({
-  a: String.Monoid,
-  b: Number.MonoidSum
+Monoid.struct({
+  a: Monoid.string,
+  b: Monoid.numberSum
 })

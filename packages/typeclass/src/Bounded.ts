@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import type { TypeLambda } from "@effect/data/HKT"
-import * as order from "@effect/data/typeclass/Order"
-import type { Order } from "@effect/data/typeclass/Order"
+import * as order from "@effect/data/Order"
+import type { Order } from "@effect/data/Order"
 import type { Monoid } from "@effect/typeclass/Monoid"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
@@ -12,7 +12,8 @@ import * as semigroup from "@effect/typeclass/Semigroup"
  * @category type class
  * @since 1.0.0
  */
-export interface Bounded<A> extends Order<A> {
+export interface Bounded<A> {
+  readonly compare: Order<A>
   readonly maxBound: A
   readonly minBound: A
 }
@@ -32,7 +33,7 @@ export interface BoundedTypeLambda extends TypeLambda {
  * @since 1.0.0
  */
 export const min = <A>(B: Bounded<A>): Monoid<A> =>
-  monoid.fromSemigroup(semigroup.min(B), B.maxBound)
+  monoid.fromSemigroup(semigroup.min(B.compare), B.maxBound)
 
 /**
  * `Monoid` that returns last maximum of elements.
@@ -41,14 +42,14 @@ export const min = <A>(B: Bounded<A>): Monoid<A> =>
  * @since 1.0.0
  */
 export const max = <A>(B: Bounded<A>): Monoid<A> =>
-  monoid.fromSemigroup(semigroup.max(B), B.minBound)
+  monoid.fromSemigroup(semigroup.max(B.compare), B.minBound)
 
 /**
  * @category instances
  * @since 1.0.0
  */
 export const number: Bounded<number> = {
-  compare: order.number.compare,
+  compare: order.number,
   maxBound: Infinity,
   minBound: -Infinity
 }
@@ -60,7 +61,7 @@ export const number: Bounded<number> = {
  * @since 1.0.0
  */
 export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
-  order.between(B)(B.minBound, B.maxBound)
+  order.between(B.compare)(B.minBound, B.maxBound)
 
 /**
  * Clamp a value between `minBound` and `maxBound` values.
@@ -68,7 +69,8 @@ export const between = <A>(B: Bounded<A>): (a: A) => boolean =>
  * @category utils
  * @since 1.0.0
  */
-export const clamp = <A>(B: Bounded<A>): (a: A) => A => order.clamp(B)(B.minBound, B.maxBound)
+export const clamp = <A>(B: Bounded<A>): (a: A) => A =>
+  order.clamp(B.compare)(B.minBound, B.maxBound)
 
 /**
  * Reverses the `Order` of a `Bounded` and flips `maxBound` and `minBound` values.
@@ -77,7 +79,7 @@ export const clamp = <A>(B: Bounded<A>): (a: A) => A => order.clamp(B)(B.minBoun
  * @since 1.0.0
  */
 export const reverse = <A>(B: Bounded<A>): Bounded<A> => ({
-  ...order.reverse(B),
+  compare: order.reverse(B.compare),
   minBound: B.maxBound,
   maxBound: B.minBound
 })

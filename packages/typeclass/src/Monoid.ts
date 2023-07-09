@@ -33,7 +33,8 @@ export const fromSemigroup = <A>(S: Semigroup<A>, empty: Monoid<A>["empty"]): Mo
  * @category constructors
  * @since 1.0.0
  */
-export const min = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.min(B), B.maxBound)
+export const min = <A>(B: Bounded<A>): Monoid<A> =>
+  fromSemigroup(semigroup.min(B.compare), B.maxBound)
 
 /**
  * Get a monoid where `combine` will return the maximum, based on the provided bounded order.
@@ -43,7 +44,8 @@ export const min = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.min(
  * @category constructors
  * @since 1.0.0
  */
-export const max = <A>(B: Bounded<A>): Monoid<A> => fromSemigroup(semigroup.max(B), B.minBound)
+export const max = <A>(B: Bounded<A>): Monoid<A> =>
+  fromSemigroup(semigroup.max(B.compare), B.minBound)
 
 /**
  * The dual of a `Monoid`, obtained by swapping the arguments of `combine`.

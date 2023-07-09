@@ -1,6 +1,5 @@
-import * as _ from "@effect/data/typeclass/SemiAlternative"
+import * as _ from "@effect/typeclass/SemiAlternative"
 import type { TypeLambda } from "@effect/data/HKT"
-import { pipe } from "@effect/data/Function"
 
 interface RAW<R, E, A> {
   (r: R): () => Promise<readonly [E, A]>

@@ -3,7 +3,7 @@
  */
 import { dual } from "@effect/data/Function"
 import type { TypeLambda } from "@effect/data/HKT"
-import type { Order } from "@effect/data/typeclass/Order"
+import type { Order } from "@effect/data/Order"
 import { map, reduce } from "@effect/typeclass/internal/Iterable"
 import type * as invariant from "@effect/typeclass/Invariant"
 import * as product_ from "@effect/typeclass/Product"
@@ -173,7 +173,7 @@ export const booleanEqv: Semigroup<boolean> = make((self, that) => self === that
  * @since 1.0.0
  */
 export const min = <A>(O: Order<A>): Semigroup<A> =>
-  make((self, that) => O.compare(self, that) === -1 ? self : that)
+  make((self, that) => O(self, that) === -1 ? self : that)
 
 /**
  * `Semigroup` that returns last maximum of elements.
@@ -182,7 +182,7 @@ export const min = <A>(O: Order<A>): Semigroup<A> =>
  * @since 1.0.0
  */
 export const max = <A>(O: Order<A>): Semigroup<A> =>
-  make((self, that) => O.compare(self, that) === 1 ? self : that)
+  make((self, that) => O(self, that) === 1 ? self : that)
 
 /**
  * @category constructors
@@ -218,14 +218,6 @@ export const reverse = <A>(S: Semigroup<A>): Semigroup<A> =>
  *
  * @param S - The `Semigroup` instance.
  * @param separator - The separator value.
- *
- * @example
- * import { intercalate } from "@effect/typeclass/Semigroup"
- * import { Semigroup } from "@effect/data/String"
- *
- * const S = intercalate(Semigroup, " + ")
- *
- * assert.strictEqual(S.combine('a', 'b'), 'a + b')
  *
  * @since 1.0.0
  */
