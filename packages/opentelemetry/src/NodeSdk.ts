@@ -28,7 +28,7 @@ export const layer = <R, E>(
 ): Layer.Layer<Resource | R, E, never> =>
   Layer.scopedDiscard(Effect.acquireRelease(
     Effect.flatMap(
-      Effect.all(config, Resource),
+      Effect.all([config, Resource]),
       ([config, resource]) =>
         Effect.sync(() => {
           const sdk = new NodeSDK({ ...config, resource })
