@@ -1,5 +1,15 @@
 # @effect/opentelemetry
 
+## 0.3.0
+
+### Minor Changes
+
+- [#20](https://github.com/Effect-TS/opentelemetry/pull/20) [`347904e`](https://github.com/Effect-TS/opentelemetry/commit/347904e5330b0c1ce1d809dbb4aeea1fd22f4231) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io and /data
+
+### Patch Changes
+
+- [#20](https://github.com/Effect-TS/opentelemetry/pull/20) [`347904e`](https://github.com/Effect-TS/opentelemetry/commit/347904e5330b0c1ce1d809dbb4aeea1fd22f4231) Thanks [@tim-smart](https://github.com/tim-smart)! - add supervisor for correctly setting otel context for fiber executions
+
 ## 0.2.0
 
 ### Minor Changes
