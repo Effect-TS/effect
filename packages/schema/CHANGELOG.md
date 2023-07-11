@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.26.0
+
+### Minor Changes
+
+- [#324](https://github.com/Effect-TS/schema/pull/324) [`c6749d1`](https://github.com/Effect-TS/schema/commit/c6749d170ca00a8c6849b9c207a4a0d86ca66fce) Thanks [@gcanti](https://github.com/gcanti)! - add pipe method to Schema (and upgrade deps)
+
 ## 0.25.0
 
 ### Minor Changes
