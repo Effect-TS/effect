@@ -1,5 +1,4 @@
 import * as E from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
@@ -85,8 +84,7 @@ describe.concurrent("Schema", () => {
 
   it("brand/ annotations", () => {
     // const Branded: S.Schema<number & Brand<"A"> & Brand<"B">>
-    const Branded = pipe(
-      S.string,
+    const Branded = S.string.pipe(
       S.numberFromString,
       S.int(),
       S.brand("A"),
@@ -105,8 +103,7 @@ describe.concurrent("Schema", () => {
   it("brand/symbol annotations", () => {
     const A = Symbol.for("A")
     const B = Symbol.for("B")
-    const Branded = pipe(
-      S.string,
+    const Branded = S.string.pipe(
       S.numberFromString,
       S.int(),
       S.brand(A),
@@ -123,7 +120,7 @@ describe.concurrent("Schema", () => {
   })
 
   it("brand/ ()", () => {
-    const Int = pipe(S.string, S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
     expect(Int(1)).toEqual(1)
     expect(() => Int(1.2)).toThrowError(
       new Error(`error(s) found
@@ -132,13 +129,13 @@ describe.concurrent("Schema", () => {
   })
 
   it("brand/ option", () => {
-    const Int = pipe(S.string, S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
     expect(Int.option(1)).toEqual(O.some(1))
     expect(Int.option(1.2)).toEqual(O.none())
   })
 
   it("brand/ either", () => {
-    const Int = pipe(S.string, S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
     expect(Int.either(1)).toEqual(E.right(1))
     expect(Int.either(1.2)).toEqual(E.left([{
       meta: 1.2,
@@ -148,18 +145,18 @@ describe.concurrent("Schema", () => {
   })
 
   it("brand/ refine", () => {
-    const Int = pipe(S.string, S.numberFromString, S.int(), S.brand("Int"))
+    const Int = S.string.pipe(S.numberFromString, S.int(), S.brand("Int"))
     expect(Int.refine(1)).toEqual(true)
     expect(Int.refine(1.2)).toEqual(false)
   })
 
   it("brand/ composition", () => {
-    const int = <I, A extends number>(self: S.Schema<I, A>) => pipe(self, S.int(), S.brand("Int"))
+    const int = <I, A extends number>(self: S.Schema<I, A>) => self.pipe(S.int(), S.brand("Int"))
 
     const positive = <I, A extends number>(self: S.Schema<I, A>) =>
-      pipe(self, S.positive(), S.brand("Positive"))
+      self.pipe(S.positive(), S.brand("Positive"))
 
-    const PositiveInt = pipe(S.string, S.numberFromString, int, positive)
+    const PositiveInt = S.string.pipe(S.numberFromString, int, positive)
 
     expect(PositiveInt.refine(1)).toEqual(true)
     expect(PositiveInt.refine(-1)).toEqual(false)
@@ -167,27 +164,27 @@ describe.concurrent("Schema", () => {
   })
 
   it("title", () => {
-    expect(pipe(S.string, S.title("MyString")).ast.annotations).toEqual({
+    expect(S.string.pipe(S.title("MyString")).ast.annotations).toEqual({
       [AST.TitleAnnotationId]: "MyString"
     })
   })
 
   it("description", () => {
-    expect(pipe(S.string, S.description("description")).ast.annotations).toEqual({
+    expect(S.string.pipe(S.description("description")).ast.annotations).toEqual({
       [AST.DescriptionAnnotationId]: "description",
       [AST.TitleAnnotationId]: "string"
     })
   })
 
   it("examples", () => {
-    expect(pipe(S.string, S.examples(["example"])).ast.annotations).toEqual({
+    expect(S.string.pipe(S.examples(["example"])).ast.annotations).toEqual({
       [AST.ExamplesAnnotationId]: ["example"],
       [AST.TitleAnnotationId]: "string"
     })
   })
 
   it("documentation", () => {
-    expect(pipe(S.string, S.documentation("documentation")).ast.annotations).toEqual({
+    expect(S.string.pipe(S.documentation("documentation")).ast.annotations).toEqual({
       [AST.DocumentationAnnotationId]: "documentation",
       [AST.TitleAnnotationId]: "string"
     })
@@ -246,11 +243,10 @@ describe.concurrent("Schema", () => {
           throw new Error("cannot rename")
         }
 
-      const schema = pipe(
-        S.struct({
-          a: S.string,
-          b: S.number
-        }),
+      const schema = S.struct({
+        a: S.string,
+        b: S.number
+      }).pipe(
         rename("a", "aa")
       )
       const is = P.is(schema)
@@ -317,8 +313,7 @@ describe.concurrent("Schema", () => {
   })
 
   it("filter/ annotation options", () => {
-    const schema = pipe(
-      S.string,
+    const schema = S.string.pipe(
       S.filter((s): s is string => s.length === 1, {
         typeId: "Char",
         description: "description",
@@ -346,22 +341,22 @@ describe.concurrent("Schema", () => {
   })
 
   it("rest/ should throw on unsupported schemas", () => {
-    const schema = pipe(S.tuple(), S.filter(() => true))
-    expect(() => pipe(schema, S.rest(S.number))).toThrowError(
+    const schema = S.tuple().pipe(S.filter(() => true))
+    expect(() => schema.pipe(S.rest(S.number))).toThrowError(
       new Error("`rest` is not supported on this schema")
     )
   })
 
   it("element/ should throw on unsupported schemas", () => {
-    const schema = pipe(S.tuple(), S.filter(() => true))
-    expect(() => pipe(schema, S.element(S.number))).toThrowError(
+    const schema = S.tuple().pipe(S.filter(() => true))
+    expect(() => schema.pipe(S.element(S.number))).toThrowError(
       new Error("`element` is not supported on this schema")
     )
   })
 
   it("optionalElement/ should throw on unsupported schemas", () => {
-    const schema = pipe(S.tuple(), S.filter(() => true))
-    expect(() => pipe(schema, S.optionalElement(S.number))).toThrowError(
+    const schema = S.tuple().pipe(S.filter(() => true))
+    expect(() => schema.pipe(S.optionalElement(S.number))).toThrowError(
       new Error("`optionalElement` is not supported on this schema")
     )
   })

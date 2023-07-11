@@ -1,10 +1,9 @@
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("ReadonlyArray", () => {
   it("minItems", async () => {
-    const schema = pipe(S.array(S.number), S.minItems(2))
+    const schema = S.array(S.number).pipe(S.minItems(2))
 
     await Util.expectParseFailure(
       schema,
@@ -17,7 +16,7 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("maxItems", async () => {
-    const schema = pipe(S.array(S.number), S.maxItems(2))
+    const schema = S.array(S.number).pipe(S.maxItems(2))
 
     await Util.expectParseFailure(
       schema,
@@ -30,7 +29,7 @@ describe.concurrent("ReadonlyArray", () => {
   })
 
   it("items", async () => {
-    const schema = pipe(S.array(S.number), S.itemsCount(2))
+    const schema = S.array(S.number).pipe(S.itemsCount(2))
 
     await Util.expectParseFailure(
       schema,

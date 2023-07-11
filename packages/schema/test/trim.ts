@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
@@ -21,7 +20,7 @@ describe.concurrent("trim", () => {
   })
 
   it("decoding", async () => {
-    const schema = pipe(S.string, S.minLength(1), S.trim)
+    const schema = S.string.pipe(S.minLength(1), S.trim)
     await Util.expectParseSuccess(schema, "a", "a")
     await Util.expectParseSuccess(schema, "a ", "a")
     await Util.expectParseSuccess(schema, " a ", "a")
@@ -39,7 +38,7 @@ describe.concurrent("trim", () => {
   })
 
   it("encoding", async () => {
-    const schema = pipe(S.string, S.minLength(1), S.trim)
+    const schema = S.string.pipe(S.minLength(1), S.trim)
     await Util.expectEncodeSuccess(schema, "a", "a")
 
     await Util.expectEncodeFailure(

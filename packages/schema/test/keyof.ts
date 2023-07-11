@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
@@ -32,13 +31,13 @@ describe.concurrent("keyof", () => {
   })
 
   it("should unify string literals with string", () => {
-    const schema = pipe(S.struct({ a: S.string }), S.extend(S.record(S.string, S.string)))
+    const schema = S.struct({ a: S.string }).pipe(S.extend(S.record(S.string, S.string)))
     expect(AST.keyof(schema.ast)).toEqual(S.string.ast)
   })
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = pipe(S.struct({ [a]: S.string }), S.extend(S.record(S.symbol, S.string)))
+    const schema = S.struct({ [a]: S.string }).pipe(S.extend(S.record(S.symbol, S.string)))
     expect(AST.keyof(schema.ast)).toEqual(S.symbol.ast)
   })
 

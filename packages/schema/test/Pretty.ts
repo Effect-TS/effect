@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
@@ -234,7 +233,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ optional element", () => {
-    const schema = pipe(S.tuple(), S.optionalElement(S.number))
+    const schema = S.tuple().pipe(S.optionalElement(S.number))
     const pretty = P.to(schema)
     expect(pretty([])).toEqual(`[]`)
     expect(pretty([1])).toEqual(`[1]`)
@@ -243,7 +242,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ optional element with undefined", () => {
-    const schema = pipe(S.tuple(), S.optionalElement(S.union(S.number, S.undefined)))
+    const schema = S.tuple().pipe(S.optionalElement(S.union(S.number, S.undefined)))
     const pretty = P.to(schema)
     expect(pretty([])).toEqual(`[]`)
     expect(pretty([1])).toEqual(`[1]`)
@@ -265,7 +264,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ optional elements", () => {
-    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.optionalElement(S.number))
+    const schema = S.tuple().pipe(S.optionalElement(S.string), S.optionalElement(S.number))
     const pretty = P.to(schema)
     expect(pretty([])).toEqual(`[]`)
     expect(pretty(["a"])).toEqual(`["a"]`)
@@ -280,7 +279,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ post rest element", () => {
-    const schema = pipe(S.array(S.number), S.element(S.boolean))
+    const schema = S.array(S.number).pipe(S.element(S.boolean))
     const pretty = P.to(schema)
     expect(pretty([true])).toEqual(`[true]`)
     expect(pretty([1, true])).toEqual(`[1, true]`)
@@ -289,8 +288,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ post rest elements", () => {
-    const schema = pipe(
-      S.array(S.number),
+    const schema = S.array(S.number).pipe(
       S.element(S.boolean),
       S.element(S.union(S.string, S.undefined))
     )
@@ -303,15 +301,14 @@ describe.concurrent("Pretty", () => {
   })
 
   it("tuple/ post rest elements when rest is unknown", () => {
-    const schema = pipe(S.array(S.unknown), S.element(S.boolean))
+    const schema = S.array(S.unknown).pipe(S.element(S.boolean))
     const pretty = P.to(schema)
     expect(pretty([1, "a", 2, "b", true])).toEqual(`[1, "a", 2, "b", true]`)
     expect(pretty([true])).toEqual(`[true]`)
   })
 
   it("tuple/ all", () => {
-    const schema = pipe(
-      S.tuple(S.string),
+    const schema = S.tuple(S.string).pipe(
       S.rest(S.number),
       S.element(S.boolean)
     )
@@ -385,13 +382,12 @@ describe.concurrent("Pretty", () => {
   })
 
   it("Transform", () => {
-    const pretty = P.to(pipe(S.string, S.trim))
+    const pretty = P.to(S.string.pipe(S.trim))
     expect(pretty("a")).toEqual(`"a"`)
   })
 
   it("extend/ struct + record", () => {
-    const schema = pipe(
-      S.struct({ a: S.string }),
+    const schema = S.struct({ a: S.string }).pipe(
       S.extend(S.record(S.string, S.union(S.string, S.number)))
     )
     const pretty = P.to(schema)

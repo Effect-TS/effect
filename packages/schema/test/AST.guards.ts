@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 
@@ -19,7 +18,7 @@ describe.concurrent("AST.guards", () => {
   })
 
   it("isTransform", () => {
-    expect(AST.isTransform(pipe(S.string, S.trim).ast)).toEqual(true)
+    expect(AST.isTransform(S.string.pipe(S.trim).ast)).toEqual(true)
     expect(AST.isTransform(S.number.ast)).toEqual(false)
   })
 
@@ -89,10 +88,10 @@ describe.concurrent("AST.guards", () => {
     expect(AST.isParameter(AST.symbolKeyword)).toEqual(true)
     expect(AST.isParameter(S.templateLiteral(S.string, S.literal("-"), S.string).ast))
       .toEqual(true)
-    expect(AST.isParameter(pipe(S.string, S.minLength(2)).ast)).toEqual(true)
-    expect(AST.isParameter(pipe(S.number, S.int()).ast)).toEqual(false)
+    expect(AST.isParameter(S.string.pipe(S.minLength(2)).ast)).toEqual(true)
+    expect(AST.isParameter(S.number.pipe(S.int()).ast)).toEqual(false)
     expect(AST.isParameter(S.NumberFromString.ast)).toEqual(false)
-    expect(AST.isParameter(pipe(S.NumberFromString, S.int()).ast))
+    expect(AST.isParameter(S.NumberFromString.pipe(S.int()).ast))
     expect(AST.isParameter(S.templateLiteral(S.literal("a", "b"), S.literal("c")).ast)).toEqual(
       false
     )

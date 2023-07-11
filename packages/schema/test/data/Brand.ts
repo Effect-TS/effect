@@ -1,5 +1,4 @@
 import * as B from "@effect/data/Brand"
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -28,7 +27,7 @@ describe.concurrent("Brand", () => {
   })
 
   it("refined", async () => {
-    const schema = pipe(S.number, S.fromBrand(B.all(Positive, Int)))
+    const schema = S.number.pipe(S.fromBrand(B.all(Positive, Int)))
 
     await Util.expectParseFailure(
       schema,

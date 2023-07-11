@@ -1,5 +1,4 @@
 import * as E from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
 import * as AST from "@effect/schema/AST"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
@@ -42,7 +41,7 @@ describe.concurrent("Forbidden", () => {
 
   it("union", () => {
     expectForbidden(
-      S.union(S.string, pipe(S.string, S.minLength(2))),
+      S.union(S.string, S.string.pipe(S.minLength(2))),
       "a",
       `union member: is forbidden, union member: is forbidden`
     )
@@ -62,18 +61,16 @@ describe.concurrent("Forbidden", () => {
   })
 
   it("transform", () => {
-    const schema = pipe(
+    const schema = S.transformResult(
+      S.string,
       S.transformResult(
         S.string,
-        S.transformResult(
-          S.string,
-          S.string,
-          (s) => PR.flatMap(Util.sleep, () => PR.success(s)),
-          (s) => PR.flatMap(Util.sleep, () => PR.success(s))
-        ),
-        E.right,
-        E.right
-      )
+        S.string,
+        (s) => PR.flatMap(Util.sleep, () => PR.success(s)),
+        (s) => PR.flatMap(Util.sleep, () => PR.success(s))
+      ),
+      E.right,
+      E.right
     )
     expectMessage(
       schema,

@@ -1,11 +1,9 @@
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("Refinement", () => {
   it("refinement", async () => {
-    const schema = pipe(
-      S.NumberFromString,
+    const schema = S.NumberFromString.pipe(
       S.greaterThanOrEqualTo(1),
       S.lessThanOrEqualTo(2)
     )

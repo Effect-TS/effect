@@ -360,22 +360,22 @@ describe("jsonSchemaFor", () => {
   })
 
   it("tuple. optional element", () => {
-    const schema = pipe(S.tuple(), S.optionalElement(S.number))
+    const schema = S.tuple().pipe(S.optionalElement(S.number))
     property(schema)
   })
 
   it("tuple. e + e?", () => {
-    const schema = pipe(S.tuple(S.string), S.optionalElement(S.number))
+    const schema = S.tuple(S.string).pipe(S.optionalElement(S.number))
     property(schema)
   })
 
   it("tuple. e + r", () => {
-    const schema = pipe(S.tuple(S.string), S.rest(S.number))
+    const schema = S.tuple(S.string).pipe(S.rest(S.number))
     property(schema)
   })
 
   it("tuple. e? + r", () => {
-    const schema = pipe(S.tuple(), S.optionalElement(S.string), S.rest(S.number))
+    const schema = S.tuple().pipe(S.optionalElement(S.string), S.rest(S.number))
     property(schema)
   })
 
@@ -407,54 +407,54 @@ describe("jsonSchemaFor", () => {
   })
 
   it("minLength", () => {
-    const schema = pipe(S.string, S.minLength(1))
+    const schema = S.string.pipe(S.minLength(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", minLength: 1 })
     property(schema)
   })
 
   it("maxLength", () => {
-    const schema = pipe(S.string, S.maxLength(1))
+    const schema = S.string.pipe(S.maxLength(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "string", maxLength: 1 })
     property(schema)
   })
 
   it("greaterThan", () => {
-    const schema = pipe(S.number, S.greaterThan(1))
+    const schema = S.number.pipe(S.greaterThan(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "number", exclusiveMinimum: 1 })
     property(schema)
   })
 
   it("greaterThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.greaterThanOrEqualTo(1))
+    const schema = S.number.pipe(S.greaterThanOrEqualTo(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "number", minimum: 1 })
     property(schema)
   })
 
   it("lessThan", () => {
-    const schema = pipe(S.number, S.lessThan(1))
+    const schema = S.number.pipe(S.lessThan(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "number", exclusiveMaximum: 1 })
     property(schema)
   })
 
   it("lessThanOrEqualTo", () => {
-    const schema = pipe(S.number, S.lessThanOrEqualTo(1))
+    const schema = S.number.pipe(S.lessThanOrEqualTo(1))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ type: "number", maximum: 1 })
     property(schema)
   })
 
   it("pattern", () => {
-    const schema = pipe(S.string, S.pattern(/^abb+$/))
+    const schema = S.string.pipe(S.pattern(/^abb+$/))
     const jsonSchema = jsonSchemaFor(schema)
     expect(jsonSchema).toEqual({ "pattern": "^abb+$", "type": "string" })
   })
 
   it("integer", () => {
-    property(pipe(S.number, S.int()))
+    property(S.number.pipe(S.int()))
   })
 })

@@ -1,5 +1,4 @@
 import * as E from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -8,8 +7,8 @@ describe.concurrent("attachPropertySignature", () => {
     const Circle = S.struct({ radius: S.number })
     const Square = S.struct({ sideLength: S.number })
     const DiscriminatedShape = S.union(
-      pipe(Circle, S.attachPropertySignature("kind", "circle")),
-      pipe(Square, S.attachPropertySignature("kind", "square"))
+      Circle.pipe(S.attachPropertySignature("kind", "circle")),
+      Square.pipe(S.attachPropertySignature("kind", "square"))
     )
 
     expect(S.decodeSync(DiscriminatedShape)({ radius: 10 })).toEqual({
@@ -35,8 +34,7 @@ describe.concurrent("attachPropertySignature", () => {
   })
 
   it("should be compatible with extend", async () => {
-    const schema = pipe(
-      S.struct({ a: S.string }),
+    const schema = S.struct({ a: S.string }).pipe(
       S.attachPropertySignature("_tag", "b"),
       S.extend(S.struct({ c: S.number }))
     )
@@ -48,8 +46,12 @@ describe.concurrent("attachPropertySignature", () => {
     const From = S.struct({ radius: S.number, _isVisible: S.optional(S.boolean) })
     const To = S.struct({ radius: S.number, _isVisible: S.boolean })
 
-    const Circle = pipe(
-      S.transformResult(From, To, S.parseEither(To), ({ _isVisible, ...rest }) => E.right(rest)),
+    const Circle = S.transformResult(
+      From,
+      To,
+      S.parseEither(To),
+      ({ _isVisible, ...rest }) => E.right(rest)
+    ).pipe(
       S.attachPropertySignature("_tag", "Circle")
     )
     expect(S.decodeSync(Circle)({ radius: 10, _isVisible: true })).toEqual({

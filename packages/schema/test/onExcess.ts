@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -44,7 +43,7 @@ describe.concurrent("onExcess", () => {
 
     it("tuples", async () => {
       const a = S.tuple(S.number)
-      const b = pipe(S.tuple(S.number), S.optionalElement(S.string))
+      const b = S.tuple(S.number).pipe(S.optionalElement(S.string))
       const schema = S.union(a, b)
       await Util.expectParseFailure(
         schema,
@@ -91,7 +90,7 @@ describe.concurrent("onExcess", () => {
     })
 
     it("tuple. post rest elements of a struct", async () => {
-      const schema = pipe(S.array(S.string), S.element(S.struct({ b: S.number })))
+      const schema = S.array(S.string).pipe(S.element(S.struct({ b: S.number })))
       await Util.expectParseSuccess(schema, [{ b: 1 }])
       await Util.expectParseSuccess(
         schema,

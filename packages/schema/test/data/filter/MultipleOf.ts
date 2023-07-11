@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
@@ -9,7 +8,7 @@ describe.concurrent("multipleOf", () => {
   })
 
   it("Guard", () => {
-    const schema = pipe(S.number, S.multipleOf(-.2))
+    const schema = S.number.pipe(S.multipleOf(-.2))
     const is = P.is(schema)
     expect(is(-2.8)).toEqual(true)
     expect(is(-2)).toEqual(true)

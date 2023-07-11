@@ -1,4 +1,3 @@
-import { pipe } from "@effect/data/Function"
 import * as A from "@effect/schema/Arbitrary"
 import * as S from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
@@ -26,81 +25,81 @@ const expectConstraints = <I, A>(schema: S.Schema<I, A>, constraints: Constraint
 
 describe.concurrent("Arbitrary.getConstraints", () => {
   it("GreaterThanTypeId", () => {
-    expectConstraints(pipe(S.number, S.greaterThan(0)), {
+    expectConstraints(S.number.pipe(S.greaterThan(0)), {
       _tag: "NumberConstraints",
       constraints: { min: 0 }
     })
   })
 
   it("GreaterThanOrEqualToTypeId", () => {
-    expectConstraints(pipe(S.number, S.greaterThanOrEqualTo(0)), {
+    expectConstraints(S.number.pipe(S.greaterThanOrEqualTo(0)), {
       _tag: "NumberConstraints",
       constraints: { min: 0 }
     })
   })
 
   it("LessThanTypeId", () => {
-    expectConstraints(pipe(S.number, S.lessThan(0)), {
+    expectConstraints(S.number.pipe(S.lessThan(0)), {
       _tag: "NumberConstraints",
       constraints: { max: 0 }
     })
   })
 
   it("LessThanOrEqualToTypeId", () => {
-    expectConstraints(pipe(S.number, S.lessThanOrEqualTo(0)), {
+    expectConstraints(S.number.pipe(S.lessThanOrEqualTo(0)), {
       _tag: "NumberConstraints",
       constraints: { max: 0 }
     })
   })
 
   it("PositiveTypeId", () => {
-    expectConstraints(pipe(S.number, S.positive()), {
+    expectConstraints(S.number.pipe(S.positive()), {
       _tag: "NumberConstraints",
       constraints: { min: 0 }
     })
   })
 
   it("NonNegativeTypeId", () => {
-    expectConstraints(pipe(S.number, S.nonNegative()), {
+    expectConstraints(S.number.pipe(S.nonNegative()), {
       _tag: "NumberConstraints",
       constraints: { min: 0 }
     })
   })
 
   it("NegativeTypeId", () => {
-    expectConstraints(pipe(S.number, S.negative()), {
+    expectConstraints(S.number.pipe(S.negative()), {
       _tag: "NumberConstraints",
       constraints: { max: 0 }
     })
   })
 
   it("NonPositiveTypeId", () => {
-    expectConstraints(pipe(S.number, S.nonPositive()), {
+    expectConstraints(S.number.pipe(S.nonPositive()), {
       _tag: "NumberConstraints",
       constraints: { max: 0 }
     })
   })
 
   it("IntTypeId", () => {
-    expectConstraints(pipe(S.number, S.int()), { _tag: "IntegerConstraints", constraints: {} })
+    expectConstraints(S.number.pipe(S.int()), { _tag: "IntegerConstraints", constraints: {} })
   })
 
   it("BetweenTypeId", () => {
-    expectConstraints(pipe(S.number, S.between(0, 10)), {
+    expectConstraints(S.number.pipe(S.between(0, 10)), {
       _tag: "NumberConstraints",
       constraints: { min: 0, max: 10 }
     })
   })
 
   it("MinLengthTypeId", () => {
-    expectConstraints(pipe(S.string, S.minLength(5)), {
+    expectConstraints(S.string.pipe(S.minLength(5)), {
       _tag: "StringConstraints",
       constraints: { minLength: 5 }
     })
   })
 
   it("MaxLengthTypeId", () => {
-    expectConstraints(pipe(S.string, S.maxLength(5)), {
+    expectConstraints(S.string.pipe(S.maxLength(5)), {
       _tag: "StringConstraints",
       constraints: { maxLength: 5 }
     })

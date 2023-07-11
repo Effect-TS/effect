@@ -12,10 +12,12 @@ import type { Either } from "@effect/data/Either"
 import * as E from "@effect/data/Either"
 import * as Equal from "@effect/data/Equal"
 import type { LazyArg } from "@effect/data/Function"
-import { dual, identity, pipe } from "@effect/data/Function"
+import { dual, identity } from "@effect/data/Function"
 import * as N from "@effect/data/Number"
 import type { Option } from "@effect/data/Option"
 import * as O from "@effect/data/Option"
+import type { Pipeable } from "@effect/data/Pipeable"
+import { pipeArguments } from "@effect/data/Pipeable"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
 import { isDate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
@@ -33,7 +35,7 @@ import { formatErrors } from "@effect/schema/TreeFormatter"
  * @category model
  * @since 1.0.0
  */
-export interface Schema<From, To = From> {
+export interface Schema<From, To = From> extends Pipeable {
   readonly From: (_: From) => From
   readonly To: (_: To) => To
   readonly ast: AST.AST
@@ -207,11 +209,20 @@ export type {
 // constructors
 // ---------------------------------------------
 
+class SchemaImpl<From, To> implements Schema<From, To> {
+  readonly From!: (_: From) => From
+  readonly To!: (_: To) => To
+  constructor(readonly ast: AST.AST) {}
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
 /**
  * @category constructors
  * @since 1.0.0
  */
-export const make = <I, A>(ast: AST.AST): Schema<I, A> => ({ ast }) as any
+export const make = <I, A>(ast: AST.AST): Schema<I, A> => new SchemaImpl(ast)
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
@@ -265,9 +276,9 @@ export const templateLiteral = <T extends [Schema<any>, ...Array<Schema<any>>]>(
 ): Schema<Join<{ [K in keyof T]: To<T[K]> }>> => {
   let types: ReadonlyArray<AST.TemplateLiteral | AST.Literal> = getTemplateLiterals(head.ast)
   for (const span of tail) {
-    types = pipe(
+    types = RA.flatMap(
       types,
-      RA.flatMap((a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b)))
+      (a) => getTemplateLiterals(span.ast).map((b) => combineTemplateLiterals(a, b))
     )
   }
   return make(AST.createUnion(types))
@@ -285,18 +296,20 @@ const combineTemplateLiterals = (
   if (AST.isLiteral(b)) {
     return AST.createTemplateLiteral(
       a.head,
-      pipe(
+      RA.modifyNonEmptyLast(
         a.spans,
-        RA.modifyNonEmptyLast((span) => ({ ...span, literal: span.literal + String(b.literal) }))
+        (span) => ({ ...span, literal: span.literal + String(b.literal) })
       )
     )
   }
   return AST.createTemplateLiteral(
     a.head,
-    pipe(
-      a.spans,
-      RA.modifyNonEmptyLast((span) => ({ ...span, literal: span.literal + String(b.head) })),
-      RA.appendAll(b.spans)
+    RA.appendAll(
+      RA.modifyNonEmptyLast(
+        a.spans,
+        (span) => ({ ...span, literal: span.literal + String(b.head) })
+      ),
+      b.spans
     )
   )
 }
@@ -311,7 +324,7 @@ const getTemplateLiterals = (
     case "StringKeyword":
       return [AST.createTemplateLiteral("", [{ type: ast, literal: "" }])]
     case "Union":
-      return pipe(ast.types, RA.flatMap(getTemplateLiterals))
+      return RA.flatMap(ast.types, getTemplateLiterals)
     default:
       throw new Error(`templateLiteral: unsupported template literal span ${ast._tag}`)
   }
@@ -431,7 +444,7 @@ export const array = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Readon
  */
 export const nonEmptyArray = <I, A>(
   item: Schema<I, A>
-): Schema<readonly [I, ...Array<I>], readonly [A, ...Array<A>]> => pipe(tuple(item), rest(item))
+): Schema<readonly [I, ...Array<I>], readonly [A, ...Array<A>]> => tuple(item).pipe(rest(item))
 
 /**
  * @since 1.0.0
@@ -718,9 +731,8 @@ export interface BrandSchema<From, To extends Brand<any>>
  *
  * @example
  * import * as S from "@effect/schema/Schema"
- * import { pipe } from "@effect/data/Function"
  *
- * const Int = pipe(S.number, S.int(), S.brand("Int"))
+ * const Int = S.number.pipe(S.int(), S.brand("Int"))
  * type Int = S.To<typeof Int> // number & Brand<"Int">
  *
  * @category combinators
@@ -748,7 +760,10 @@ export const brand = <B extends string | symbol, A>(
           validateEither(input),
           (e) => [{ meta: input, message: formatErrors(e.errors) }]
         ),
-      refine: (input: unknown): input is A & Brand<B> => is(input)
+      refine: (input: unknown): input is A & Brand<B> => is(input),
+      pipe() {
+        return pipeArguments(this, arguments)
+      }
     })
     return out
   }
@@ -1042,8 +1057,8 @@ export const transform: {
  * const Circle = S.struct({ radius: S.number })
  * const Square = S.struct({ sideLength: S.number })
  * const Shape = S.union(
- *   pipe(Circle, S.attachPropertySignature("kind", "circle")),
- *   pipe(Square, S.attachPropertySignature("kind", "square"))
+ *   Circle.pipe(S.attachPropertySignature("kind", "circle")),
+ *   Square.pipe(S.attachPropertySignature("kind", "square"))
  * )
  *
  * assert.deepStrictEqual(S.decodeSync(Shape)({ radius: 10 }), {
@@ -1061,7 +1076,7 @@ export const attachPropertySignature = <K extends PropertyKey, V extends AST.Lit
   <I, A extends object>(schema: Schema<I, A>): Schema<I, Spread<A & { readonly [k in K]: V }>> =>
     make(AST.createTransformByPropertySignatureTransformations(
       schema.ast,
-      pipe(to(schema), extend(struct({ [key]: literal(value) }))).ast,
+      to(schema).pipe(extend(struct({ [key]: literal(value) }))).ast,
       [AST.createPropertySignatureTransformation(
         key,
         key,
@@ -1230,8 +1245,7 @@ export const greaterThanBigint = <A extends bigint>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a > min, {
         typeId: GreaterThanBigintTypeId,
         description: `a bigint greater than ${min}n`,
@@ -1255,8 +1269,7 @@ export const greaterThanOrEqualToBigint = <A extends bigint>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a >= min, {
         typeId: GreaterThanOrEqualToBigintTypeId,
         description: `a bigint greater than or equal to ${min}n`,
@@ -1280,8 +1293,7 @@ export const lessThanBigint = <A extends bigint>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a < max, {
         typeId: LessThanBigintTypeId,
         description: `a bigint less than ${max}n`,
@@ -1305,8 +1317,7 @@ export const lessThanOrEqualToBigint = <A extends bigint>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a <= max, {
         typeId: LessThanOrEqualToBigintTypeId,
         description: `a bigint less than or equal to ${max}n`,
@@ -1331,8 +1342,7 @@ export const betweenBigint = <A extends bigint>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a >= min && a <= max, {
         typeId: BetweenBigintTypeId,
         description: `a bigint between ${min}n and ${max}n`,
@@ -1427,8 +1437,8 @@ export const clampBigint = (min: bigint, max: bigint) =>
   <I, A extends bigint>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
-      pipe(self, to, betweenBigint(min, max)),
-      (self) => B.clamp(self, min, max) as A, // this is safe because `pipe(self, to, betweenBigint(min, max))` will check its input anyway
+      self.pipe(to, betweenBigint(min, max)),
+      (self) => B.clamp(self, min, max) as A, // this is safe because `self.pipe(to, betweenBigint(min, max))` will check its input anyway
       identity
     )
 
@@ -1629,8 +1639,7 @@ export const ValidDateTypeId = "@effect/schema/ValidDateTypeId"
  */
 export const validDate = (options?: AnnotationOptions<Date>) =>
   <I>(self: Schema<I, Date>): Schema<I, Date> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a) => !isNaN(a.getTime()), {
         typeId: ValidDateTypeId,
         description: "a valid Date",
@@ -1644,7 +1653,7 @@ export const validDate = (options?: AnnotationOptions<Date>) =>
  * @category Date
  * @since 1.0.0
  */
-export const ValidDateFromSelf = pipe(DateFromSelf, validDate())
+export const ValidDateFromSelf = DateFromSelf.pipe(validDate())
 
 /**
   A combinator that transforms a `string` into a valid `Date`.
@@ -1809,8 +1818,7 @@ export const JsonNumberTypeId = "@effect/schema/JsonNumberTypeId"
  * @category constructors
  * @since 1.0.0
  */
-export const JsonNumber = pipe(
-  number,
+export const JsonNumber = number.pipe(
   filter((n) => !isNaN(n) && isFinite(n), {
     typeId: JsonNumberTypeId,
     description: "a JSON number"
@@ -1849,8 +1857,7 @@ export const FiniteTypeId = "@effect/schema/FiniteTypeId"
  */
 export const finite = <A extends number>(options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => Number.isFinite(a), {
         typeId: FiniteTypeId,
         description: "a finite number",
@@ -1873,8 +1880,7 @@ export const greaterThan = <A extends number>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a > min, {
         typeId: GreaterThanTypeId,
         description: `a number greater than ${min}`,
@@ -1898,8 +1904,7 @@ export const greaterThanOrEqualTo = <A extends number>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a >= min, {
         typeId: GreaterThanOrEqualToTypeId,
         description: `a number greater than or equal to ${min}`,
@@ -1923,8 +1928,7 @@ export const multipleOf = <A extends number>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => N.remainder(a, divisor) === 0, {
         typeId: MultipleOfTypeId,
         description: `a number divisible by ${divisor}`,
@@ -1945,8 +1949,7 @@ export const IntTypeId = "@effect/schema/IntTypeId"
  */
 export const int = <A extends number>(options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => Number.isInteger(a), {
         typeId: IntTypeId,
         description: "integer",
@@ -1967,8 +1970,7 @@ export const LessThanTypeId = "@effect/schema/LessThanTypeId"
  */
 export const lessThan = <A extends number>(max: number, options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a < max, {
         typeId: LessThanTypeId,
         description: `a number less than ${max}`,
@@ -1992,8 +1994,7 @@ export const lessThanOrEqualTo = <A extends number>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a <= max, {
         typeId: LessThanOrEqualToTypeId,
         description: `a number less than or equal to ${max}`,
@@ -2018,8 +2019,7 @@ export const between = <A extends number>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => a >= min && a <= max, {
         typeId: BetweenTypeId,
         description: `a number between ${min} and ${max}`,
@@ -2040,8 +2040,7 @@ export const NonNaNTypeId = "@effect/schema/NonNaNTypeId"
  */
 export const nonNaN = <A extends number>(options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => !Number.isNaN(a), {
         typeId: NonNaNTypeId,
         description: "a number NaN excluded",
@@ -2135,8 +2134,8 @@ export const clamp = (min: number, max: number) =>
   <I, A extends number>(self: Schema<I, A>): Schema<I, A> =>
     transform(
       self,
-      pipe(self, to, between(min, max)),
-      (self) => N.clamp(self, min, max) as A, // this is safe because `pipe(self, to, between(min, max))` will check its input anyway
+      self.pipe(to, between(min, max)),
+      (self) => N.clamp(self, min, max) as A, // this is safe because `self.pipe(to, between(min, max))` will check its input anyway
       identity
     )
 
@@ -2318,8 +2317,7 @@ export const minItems = <A>(
   options?: AnnotationOptions<ReadonlyArray<A>>
 ) =>
   <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is ReadonlyArray<A> => a.length >= n, {
         typeId: MinItemsTypeId,
         description: `an array of at least ${n} items`,
@@ -2343,8 +2341,7 @@ export const maxItems = <A>(
   options?: AnnotationOptions<ReadonlyArray<A>>
 ) =>
   <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is ReadonlyArray<A> => a.length <= n, {
         typeId: MaxItemsTypeId,
         description: `an array of at most ${n} items`,
@@ -2368,8 +2365,7 @@ export const itemsCount = <A>(
   options?: AnnotationOptions<ReadonlyArray<A>>
 ) =>
   <I>(self: Schema<I, ReadonlyArray<A>>): Schema<I, ReadonlyArray<A>> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is ReadonlyArray<A> => a.length === n, {
         typeId: ItemsCountTypeId,
         description: `an array of exactly ${n} items`,
@@ -2523,8 +2519,7 @@ const trimmedRegex = /^\S.*\S$|^\S$|^$/
  */
 export const trimmed = <A extends string>(options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter((a): a is A => trimmedRegex.test(a), {
         typeId: TrimmedTypeId,
         description: "a string with no leading or trailing whitespace",
@@ -2551,8 +2546,7 @@ export const maxLength = <A extends string>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter(
         (a): a is A => a.length <= maxLength,
         {
@@ -2579,8 +2573,7 @@ export const minLength = <A extends string>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter(
         (a): a is A => a.length >= minLength,
         {
@@ -2608,8 +2601,7 @@ export const pattern = <A extends string>(
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> => {
     const pattern = regex.source
-    return pipe(
-      self,
+    return self.pipe(
       filter(
         (a): a is A => {
           // The following line ensures that `lastIndex` is reset to `0` in case the user has specified the `g` flag
@@ -2641,8 +2633,7 @@ export const startsWith = <A extends string>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter(
         (a): a is A => a.startsWith(startsWith),
         {
@@ -2669,8 +2660,7 @@ export const endsWith = <A extends string>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter(
         (a): a is A => a.endsWith(endsWith),
         {
@@ -2697,8 +2687,7 @@ export const includes = <A extends string>(
   options?: AnnotationOptions<A>
 ) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
-    pipe(
-      self,
+    self.pipe(
       filter(
         (a): a is A => a.includes(searchString),
         {
@@ -2719,7 +2708,7 @@ export const includes = <A extends string>(
 export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
   transform(
     self,
-    pipe(to(self), trimmed()),
+    to(self).pipe(trimmed()),
     (s) => s.trim() as A, // this is safe because `pipe(to(self), trimmed())` will check its input anyway
     identity
   )
@@ -2744,8 +2733,7 @@ const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-
  * @category constructors
  * @since 1.0.0
  */
-export const UUID: Schema<string> = pipe(
-  string,
+export const UUID: Schema<string> = string.pipe(
   pattern(uuidRegex, {
     typeId: UUIDTypeId,
     title: "UUID",
@@ -2765,8 +2753,7 @@ const ulidRegex = /^[0-7][0-9A-HJKMNP-TV-Z]{25}$/i
  * @category constructors
  * @since 1.0.0
  */
-export const ULID: Schema<string> = pipe(
-  string,
+export const ULID: Schema<string> = string.pipe(
   pattern(ulidRegex, {
     typeId: ULIDTypeId,
     title: "ULID",

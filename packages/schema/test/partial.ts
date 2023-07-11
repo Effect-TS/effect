@@ -1,4 +1,4 @@
-import { identity, pipe } from "@effect/data/Function"
+import { identity } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -71,7 +71,7 @@ describe.concurrent("partial", () => {
   })
 
   it("tuple/ e + r", async () => {
-    const schema = S.partial(pipe(S.tuple(NumberFromString), S.rest(NumberFromString)))
+    const schema = S.partial(S.tuple(NumberFromString).pipe(S.rest(NumberFromString)))
     await Util.expectParseSuccess(schema, ["1"], [1])
     await Util.expectParseSuccess(schema, [], [])
     await Util.expectParseSuccess(schema, ["1", "2"], [1, 2])
@@ -111,7 +111,7 @@ describe.concurrent("partial", () => {
   })
 
   it("refinements should throw", async () => {
-    expect(() => S.partial(pipe(S.string, S.minLength(2)))).toThrowError(
+    expect(() => S.partial(S.string.pipe(S.minLength(2)))).toThrowError(
       new Error("`partial` cannot handle refinements")
     )
   })

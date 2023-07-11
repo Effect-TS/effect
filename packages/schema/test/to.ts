@@ -1,11 +1,9 @@
-import { pipe } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe.concurrent("to", () => {
   it("transform", () => {
-    const schema = pipe(
-      S.string,
+    const schema = S.string.pipe(
       S.transform(
         S.tuple(S.NumberFromString, S.NumberFromString),
         (s) => [s, s] as const,
@@ -17,8 +15,7 @@ describe.concurrent("to", () => {
   })
 
   it("refinement", () => {
-    const schema = pipe(
-      S.NumberFromString,
+    const schema = S.NumberFromString.pipe(
       S.greaterThanOrEqualTo(1),
       S.lessThanOrEqualTo(2),
       S.to
