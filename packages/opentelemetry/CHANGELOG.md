@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.3.1
+
+### Patch Changes
+
+- [#22](https://github.com/Effect-TS/opentelemetry/pull/22) [`d78883d`](https://github.com/Effect-TS/opentelemetry/commit/d78883d12471150a626698e9432a100abf730e97) Thanks [@tim-smart](https://github.com/tim-smart)! - move node-sdk to dependencies
+
 ## 0.3.0
 
 ### Minor Changes
