@@ -25,7 +25,7 @@ const program = pipe(
   Effect.withSpan("c"),
   Effect.withSpan("b"),
   Effect.withSpan("a"),
-  Effect.repeatN(10),
+  Effect.repeatN(50),
   Effect.annotateSpans("working", true)
 )
 
