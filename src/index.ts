@@ -11,6 +11,9 @@ import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Concurrency from "effect/Concurrency"
 import * as Config from "effect/Config"
+import * as ConfigError from "effect/ConfigError"
+import * as ConfigProvider from "effect/ConfigProvider"
+import * as ConfigSecret from "effect/ConfigSecret"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as DefaultServices from "effect/DefaultServices"
@@ -192,6 +195,33 @@ export {
    * ```
    */
   Config,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Config/Error.ts.html
+   * - Module: "effect/ConfigError"
+   * ```
+   */
+  ConfigError,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Config/Provider.ts.html
+   * - Module: "effect/ConfigProvider"
+   * ```
+   */
+  ConfigProvider,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Config/Secret.ts.html
+   * - Module: "effect/ConfigSecret"
+   * ```
+   */
+  ConfigSecret,
   /**
    * @since 2.0.0
    *

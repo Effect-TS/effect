@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 41
+nav_order: 44
 parent: Modules
 ---
 
@@ -22,6 +22,9 @@ Added in v2.0.0
   - [Clock](#clock)
   - [Concurrency](#concurrency)
   - [Config](#config)
+  - [ConfigError](#configerror)
+  - [ConfigProvider](#configprovider)
+  - [ConfigSecret](#configsecret)
   - [Context](#context)
   - [Data](#data)
   - [DefaultServices](#defaultservices)
@@ -253,6 +256,51 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Config.ts.html
 - Module: "effect/Config"
+```
+
+## ConfigError
+
+**Signature**
+
+```ts
+export declare const ConfigError: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Config/Error.ts.html
+- Module: "effect/ConfigError"
+```
+
+## ConfigProvider
+
+**Signature**
+
+```ts
+export declare const ConfigProvider: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Config/Provider.ts.html
+- Module: "effect/ConfigProvider"
+```
+
+## ConfigSecret
+
+**Signature**
+
+```ts
+export declare const ConfigSecret: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Config/Secret.ts.html
+- Module: "effect/ConfigSecret"
 ```
 
 ## Context
