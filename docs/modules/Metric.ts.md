@@ -1,6 +1,6 @@
 ---
 title: Metric.ts
-nav_order: 48
+nav_order: 51
 parent: Modules
 ---
 

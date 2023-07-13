@@ -1,6 +1,6 @@
 ---
 title: LoggerSpan.ts
-nav_order: 47
+nav_order: 50
 parent: Modules
 ---
 
