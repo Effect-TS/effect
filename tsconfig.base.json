@@ -25,7 +25,6 @@
     "allowJs": false,
     "checkJs": false,
     "forceConsistentCasingInFileNames": true,
-    "suppressImplicitAnyIndexErrors": true,
     "stripInternal": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
@@ -49,14 +48,7 @@
           "1002": "none"
         }
       }
-    ],
-    "transformers": [
-      {
-        "name": "./plugins/tsPlugin.ts",
-        "trace": { "exclude": ["src/**/*.ts"] }
-      }
-    ],
-    "tsPlusEnabled": false
+    ]
   },
   "include": [],
   "exclude": ["node_modules", "build", "lib"]
