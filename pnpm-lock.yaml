@@ -11,9 +11,6 @@ dependencies:
   '@effect/io':
     specifier: ^0.32.1
     version: 0.32.1
-  fast-check:
-    specifier: ^3.11.0
-    version: 3.11.0
 
 devDependencies:
   '@babel/cli':
@@ -3686,13 +3683,6 @@ packages:
     engines: {'0': node >=0.6.0}
     dev: true
 
-  /fast-check@3.11.0:
-    resolution: {integrity: sha512-H2tctb7AGfFQfz+DEr3UWhJ3s47LXsGp5g3jeJr5tHjnf4xUvpArIqiwcDmL2EXiv+auLHIpF5MqaIpIKvpxiA==}
-    engines: {node: '>=8.0.0'}
-    dependencies:
-      pure-rand: 6.0.2
-    dev: false
-
   /fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
     dev: true
@@ -6213,10 +6203,6 @@ packages:
     resolution: {integrity: sha512-rRV+zQD8tVFys26lAGR9WUuS4iUAngJScM+ZRSKtvl5tKeZ2t5bvdNFdNHBW9FWR4guGHlgmsZ1G7BSm2wTbuA==}
     engines: {node: '>=6'}
     dev: true
-
-  /pure-rand@6.0.2:
-    resolution: {integrity: sha512-6Yg0ekpKICSjPswYOuC5sku/TSWaRYlA0qsXqJgM/d/4pLPHPuTxK7Nbf7jFKzAeedUhR8C7K9Uv63FBsSo8xQ==}
-    dev: false
 
   /qs@6.5.3:
     resolution: {integrity: sha512-qxXIEh4pCGfHICj1mAJQ2/2XVZkjCDTcEgfoSQxc/fYivUZxTkk7L3bDBJSoNrEzXI17oUO5Dp07ktqE5KzczA==}
