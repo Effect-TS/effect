@@ -16,6 +16,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as DefaultServices from "effect/DefaultServices"
 import * as Deferred from "effect/Deferred"
+import * as DeterministicRandom from "effect/DeterministicRandom"
 import * as Differ from "effect/Differ"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -47,7 +48,6 @@ import * as Number from "effect/Number"
 import * as Option from "effect/Option"
 import * as Order from "effect/Order"
 import * as Ordering from "effect/Ordering"
-import * as PCGRandom from "effect/PCGRandom"
 import * as Pipeable from "effect/Pipeable"
 import * as Pool from "effect/Pool"
 import * as Predicate from "effect/Predicate"
@@ -204,6 +204,15 @@ export {
    * ```
    */
   Deferred,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Random.ts.html
+   * - Module: "@effect/data/Random"
+   * ```
+   */
+  DeterministicRandom,
   /**
    * @since 2.0.0
    *
@@ -501,15 +510,6 @@ export {
    * ```
    */
   Ordering,
-  /**
-   * @since 2.0.0
-   *
-   * ```md
-   * - Docs: https://effect-ts.github.io/data/modules/Random.ts.html
-   * - Module: "@effect/data/Random"
-   * ```
-   */
-  PCGRandom,
   /**
    * @since 2.0.0
    *
