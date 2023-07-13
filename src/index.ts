@@ -65,7 +65,6 @@ import * as Resource from "effect/Resource"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
 import * as Scheduler from "effect/Scheduler"
-import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as ScopedCache from "effect/ScopedCache"
 import * as ScopedRef from "effect/ScopedRef"
@@ -673,10 +672,6 @@ export {
    * ```
    */
   Scheduler,
-  /**
-   * @since 2.0.0
-   */
-  Schema,
   /**
    * @since 2.0.0
    *

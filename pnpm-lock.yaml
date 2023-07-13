@@ -11,9 +11,6 @@ dependencies:
   '@effect/io':
     specifier: ^0.32.1
     version: 0.32.1
-  '@effect/schema':
-    specifier: ^0.26.1
-    version: 0.26.1
   fast-check:
     specifier: ^3.11.0
     version: 3.11.0
@@ -821,14 +818,6 @@ packages:
     dependencies:
       '@tsplus/stdlib': 0.2.8
     dev: true
-
-  /@effect/schema@0.26.1:
-    resolution: {integrity: sha512-kvCLq0WJcbyIy4txniYypZzteRJYZBtzgN4PLSirl84qHc6siIEWW1KdCYaDQ5NIDrrC2FRDMy+slINYg0+2wg==}
-    dependencies:
-      '@effect/data': 0.14.1
-      '@effect/io': 0.32.1
-      fast-check: 3.11.0
-    dev: false
 
   /@esbuild/android-arm64@0.17.19:
     resolution: {integrity: sha512-KBMWvEZooR7+kzY0BtbTQn0OAYY7CsiydT63pVEaPtVYF0hXbUaOyZog37DKxK7NF3XacBJOpYT4adIJh+avxA==}
