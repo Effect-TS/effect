@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.26.1
+
+### Patch Changes
+
+- [#329](https://github.com/Effect-TS/schema/pull/329) [`d5da8bf`](https://github.com/Effect-TS/schema/commit/d5da8bf413dde42ed826ab561976f6c460687e95) Thanks [@gcanti](https://github.com/gcanti)! - make getWeight smarter
+
 ## 0.26.0
 
 ### Minor Changes
