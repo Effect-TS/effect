@@ -1393,38 +1393,64 @@ export const getCardinality = (ast: AST): number => {
 }
 
 const sortPropertySignatures = RA.sort(
-  pipe(Number.Order, Order.contramap((ps: PropertySignature) => getCardinality(ps.type)))
+  pipe(Number.Order, Order.mapInput((ps: PropertySignature) => getCardinality(ps.type)))
 )
 
+type Weight = readonly [number, number, number]
+
+const WeightOrder: Order.Order<Weight> = Order.tuple<
+  readonly [Order.Order<number>, Order.Order<number>, Order.Order<number>]
+>(Number.Order, Number.Order, Number.Order)
+
+const maxWeight = Order.max<Weight>(WeightOrder)
+
+const emptyWeight: Weight = [0, 0, 0]
+
+const maxWeightAll = (weights: ReadonlyArray<Weight>): Weight =>
+  weights.reduce(maxWeight, emptyWeight)
+
 /** @internal */
-export const getWeight = (ast: AST): number => {
+export const getWeight = (ast: AST): Weight => {
   switch (ast._tag) {
-    case "Declaration":
-      return getWeight(ast.type)
-    case "Tuple":
-      return ast.elements.length + (O.isSome(ast.rest) ? ast.rest.value.length : 0)
-    case "TypeLiteral": {
-      const out = ast.propertySignatures.length + ast.indexSignatures.length
-      return out === 0 ? -2 : out
+    case "Tuple": {
+      const y = ast.elements.length
+      const z = O.isSome(ast.rest) ? ast.rest.value.length : 0
+      return [2, y, z]
     }
-    case "Union":
-      return ast.types.reduce((n, member) => n + getWeight(member), 0)
+    case "TypeLiteral": {
+      const y = ast.propertySignatures.length
+      const z = ast.indexSignatures.length
+      return y + z === 0 ?
+        [-4, 0, 0] :
+        [4, y, z]
+    }
+    case "Declaration": {
+      const [_, y, z] = getWeight(ast.type)
+      return [6, y, z]
+    }
     case "Lazy":
-      return 10
-    case "Refinement":
+      return [8, 0, 0]
+    case "Union":
+      return maxWeightAll(ast.types.map(getWeight))
+    case "Refinement": {
+      const [x, y, z] = getWeight(ast.from)
+      return [x + 1, y, z]
+    }
     case "Transform":
       return getWeight(ast.from)
     case "ObjectKeyword":
-      return -1
+      return [-2, 0, 0]
     case "UnknownKeyword":
     case "AnyKeyword":
-      return -2
+      return [-4, 0, 0]
     default:
-      return 0
+      return emptyWeight
   }
 }
 
-const sortUnionMembers = RA.sort(Order.reverse(Order.contramap(Number.Order, getWeight)))
+const sortUnionMembers = RA.sort(
+  Order.reverse(Order.mapInput(WeightOrder, getWeight))
+)
 
 const unify = (candidates: ReadonlyArray<AST>): ReadonlyArray<AST> => {
   let out = pipe(
