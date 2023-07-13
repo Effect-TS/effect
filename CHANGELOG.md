@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.16
+
+### Patch Changes
+
+- [#1376](https://github.com/Effect-TS/effect/pull/1376) [`f356fa23d`](https://github.com/Effect-TS/effect/commit/f356fa23d8dc075781432ce336ea0ed748cf8131) Thanks [@gcanti](https://github.com/gcanti)! - add Config/\* modules
+
 ## 2.0.0-next.15
 
 ### Patch Changes
