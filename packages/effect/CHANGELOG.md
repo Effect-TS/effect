@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.15
+
+### Patch Changes
+
+- [#1374](https://github.com/Effect-TS/effect/pull/1374) [`37cb95bfd`](https://github.com/Effect-TS/effect/commit/37cb95bfd33bda273d30f62b3176bf410684ae96) Thanks [@gcanti](https://github.com/gcanti)! - remove fast-check from deps
+
 ## 2.0.0-next.14
 
 ### Patch Changes
