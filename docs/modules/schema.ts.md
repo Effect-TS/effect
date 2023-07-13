@@ -1,15 +1,16 @@
 ---
-title: schema.ts
-nav_order: 13
+title: Schema.ts
+nav_order: 64
 parent: Modules
 ---
 
-## schema overview
+## Schema overview
 
 Added in v2.0.0
 
 ```md
-- Docs: https://fp-ts.github.io/schema
+- Docs: https://effect-ts.github.io/schema/modules/Schema.ts.html
+- Module: "@effect/schema/Schema"
 ```
 
 ---
@@ -19,14 +20,9 @@ Added in v2.0.0
 - [utils](#utils)
   - [AST](#ast)
   - [Arbitrary](#arbitrary)
-  - [Codec](#codec)
-  - [DecodeError](#decodeerror)
-  - [Decoder](#decoder)
-  - [Encoder](#encoder)
-  - [Guard](#guard)
+  - [ParseResult](#parseresult)
   - [Pretty](#pretty)
-  - [Provider](#provider)
-  - [Schema](#schema)
+  - [TreeFormatter](#treeformatter)
 
 ---
 
@@ -42,6 +38,11 @@ export declare const AST: typeof AST
 
 Added in v2.0.0
 
+```md
+- Docs: https://effect-ts.github.io/schema/modules/AST.ts.html
+- Module: "@effect/schema/AST"
+```
+
 ## Arbitrary
 
 **Signature**
@@ -52,55 +53,25 @@ export declare const Arbitrary: typeof Arbitrary
 
 Added in v2.0.0
 
-## Codec
+```md
+- Docs: https://effect-ts.github.io/schema/modules/Arbitrary.ts.html
+- Module: "@effect/schema/Arbitrary"
+```
+
+## ParseResult
 
 **Signature**
 
 ```ts
-export declare const Codec: typeof Codec
+export declare const ParseResult: typeof ParseResult
 ```
 
 Added in v2.0.0
 
-## DecodeError
-
-**Signature**
-
-```ts
-export declare const DecodeError: typeof DecodeError
+```md
+- Docs: https://effect-ts.github.io/schema/modules/ParseResult.ts.html
+- Module: "@effect/schema/ParseResult"
 ```
-
-Added in v2.0.0
-
-## Decoder
-
-**Signature**
-
-```ts
-export declare const Decoder: typeof Decoder
-```
-
-Added in v2.0.0
-
-## Encoder
-
-**Signature**
-
-```ts
-export declare const Encoder: typeof Encoder
-```
-
-Added in v2.0.0
-
-## Guard
-
-**Signature**
-
-```ts
-export declare const Guard: typeof Guard
-```
-
-Added in v2.0.0
 
 ## Pretty
 
@@ -112,22 +83,22 @@ export declare const Pretty: typeof Pretty
 
 Added in v2.0.0
 
-## Provider
+```md
+- Docs: https://effect-ts.github.io/schema/modules/Pretty.ts.html
+- Module: "@effect/schema/Pretty"
+```
+
+## TreeFormatter
 
 **Signature**
 
 ```ts
-export declare const Provider: typeof Provider
+export declare const TreeFormatter: typeof TreeFormatter
 ```
 
 Added in v2.0.0
 
-## Schema
-
-**Signature**
-
-```ts
-export declare const Schema: typeof Schema
+```md
+- Docs: https://effect-ts.github.io/schema/modules/TreeFormatter.ts.html
+- Module: "@effect/schema/TreeFormatter"
 ```
-
-Added in v2.0.0

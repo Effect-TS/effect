@@ -2,56 +2,62 @@
  * @since 2.0.0
  *
  * ```md
- * - Docs: https://fp-ts.github.io/schema
+ * - Docs: https://effect-ts.github.io/schema/modules/Schema.ts.html
+ * - Module: "@effect/schema/Schema"
  * ```
  */
+import * as Arbitrary from "@effect/schema/Arbitrary"
+import * as AST from "@effect/schema/AST"
+import * as ParseResult from "@effect/schema/ParseResult"
+import * as Pretty from "@effect/schema/Pretty"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 
-import * as Arbitrary from "@fp-ts/schema/Arbitrary"
-import * as AST from "@fp-ts/schema/AST"
-
-import * as DecodeError from "@fp-ts/schema/DecodeError"
-import * as Decoder from "@fp-ts/schema/Decoder"
-import * as Encoder from "@fp-ts/schema/Encoder"
-import * as Guard from "@fp-ts/schema/Guard"
-import * as Pretty from "@fp-ts/schema/Pretty"
-import * as Provider from "@fp-ts/schema/Provider"
-import * as Schema from "@fp-ts/schema/Schema"
+export * from "@effect/schema/Schema"
 
 export {
   /**
    * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/schema/modules/Arbitrary.ts.html
+   * - Module: "@effect/schema/Arbitrary"
+   * ```
    */
   Arbitrary,
   /**
    * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/schema/modules/AST.ts.html
+   * - Module: "@effect/schema/AST"
+   * ```
    */
   AST,
   /**
    * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/schema/modules/ParseResult.ts.html
+   * - Module: "@effect/schema/ParseResult"
+   * ```
    */
-  DecodeError,
+  ParseResult,
   /**
    * @since 2.0.0
-   */
-  Decoder,
-  /**
-   * @since 2.0.0
-   */
-  Encoder,
-  /**
-   * @since 2.0.0
-   */
-  Guard,
-  /**
-   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/schema/modules/Pretty.ts.html
+   * - Module: "@effect/schema/Pretty"
+   * ```
    */
   Pretty,
   /**
    * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/schema/modules/TreeFormatter.ts.html
+   * - Module: "@effect/schema/TreeFormatter"
+   * ```
    */
-  Provider,
-  /**
-   * @since 2.0.0
-   */
-  Schema
+  TreeFormatter
 }
