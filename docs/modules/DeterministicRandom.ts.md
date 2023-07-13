@@ -1,10 +1,10 @@
 ---
-title: PCGRandom.ts
-nav_order: 46
+title: DeterministicRandom.ts
+nav_order: 14
 parent: Modules
 ---
 
-## PCGRandom overview
+## DeterministicRandom overview
 
 Added in v2.0.0
 

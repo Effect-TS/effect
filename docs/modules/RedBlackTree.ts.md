@@ -1,6 +1,6 @@
 ---
 title: RedBlackTree.ts
-nav_order: 54
+nav_order: 74
 parent: Modules
 ---
 

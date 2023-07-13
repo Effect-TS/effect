@@ -1,6 +1,6 @@
 ---
 title: KeyedPool.ts
-nav_order: 32
+nav_order: 42
 parent: Modules
 ---
 

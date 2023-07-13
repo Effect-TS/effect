@@ -1,6 +1,6 @@
 ---
 title: Ref.ts
-nav_order: 55
+nav_order: 75
 parent: Modules
 ---
 
@@ -17,40 +17,4 @@ Added in v2.0.0
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [utils](#utils)
-  - [ScopedRef](#scopedref)
-  - [SynchronizedRef](#synchronizedref)
-
 ---
-
-# utils
-
-## ScopedRef
-
-**Signature**
-
-```ts
-export declare const ScopedRef: typeof ScopedRef
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
-- Module: "@effect/io/ScopedRef"
-```
-
-## SynchronizedRef
-
-**Signature**
-
-```ts
-export declare const SynchronizedRef: typeof SynchronizedRef
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
-- Module: "@effect/io/Ref/Synchronized"
-```

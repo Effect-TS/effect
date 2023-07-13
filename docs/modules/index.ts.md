@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 31
+nav_order: 41
 parent: Modules
 ---
 
@@ -26,7 +26,13 @@ Added in v2.0.0
   - [Data](#data)
   - [DefaultServices](#defaultservices)
   - [Deferred](#deferred)
+  - [DeterministicRandom](#deterministicrandom)
   - [Differ](#differ)
+  - [DifferChunkPatch](#differchunkpatch)
+  - [DifferContextPatch](#differcontextpatch)
+  - [DifferHashMapPatch](#differhashmappatch)
+  - [DifferHashSetPatch](#differhashsetpatch)
+  - [DifferOrPatch](#differorpatch)
   - [Duration](#duration)
   - [Effect](#effect)
   - [Either](#either)
@@ -35,8 +41,12 @@ Added in v2.0.0
   - [ExecutionStrategy](#executionstrategy)
   - [Exit](#exit)
   - [Fiber](#fiber)
+  - [FiberId](#fiberid)
   - [FiberRef](#fiberref)
   - [FiberRefs](#fiberrefs)
+  - [FiberRuntimeFlags](#fiberruntimeflags)
+  - [FiberRuntimeFlagsPatch](#fiberruntimeflagspatch)
+  - [FiberStatus](#fiberstatus)
   - [Function](#function)
   - [HKT](#hkt)
   - [Hash](#hash)
@@ -47,7 +57,18 @@ Added in v2.0.0
   - [Layer](#layer)
   - [List](#list)
   - [Logger](#logger)
+  - [LoggerLevel](#loggerlevel)
+  - [LoggerSpan](#loggerspan)
   - [Metric](#metric)
+  - [MetricBoundaries](#metricboundaries)
+  - [MetricHook](#metrichook)
+  - [MetricKey](#metrickey)
+  - [MetricKeyType](#metrickeytype)
+  - [MetricLabel](#metriclabel)
+  - [MetricPair](#metricpair)
+  - [MetricPolling](#metricpolling)
+  - [MetricRegistry](#metricregistry)
+  - [MetricState](#metricstate)
   - [MutableHashMap](#mutablehashmap)
   - [MutableHashSet](#mutablehashset)
   - [MutableList](#mutablelist)
@@ -57,7 +78,6 @@ Added in v2.0.0
   - [Option](#option)
   - [Order](#order)
   - [Ordering](#ordering)
-  - [PCGRandom](#pcgrandom)
   - [Pipeable](#pipeable)
   - [Pool](#pool)
   - [Predicate](#predicate)
@@ -74,8 +94,10 @@ Added in v2.0.0
   - [Resource](#resource)
   - [Runtime](#runtime)
   - [Schedule](#schedule)
+  - [ScheduleDecision](#scheduledecision)
+  - [ScheduleInterval](#scheduleinterval)
+  - [ScheduleIntervals](#scheduleintervals)
   - [Scheduler](#scheduler)
-  - [Schema](#schema)
   - [Scope](#scope)
   - [ScopedCache](#scopedcache)
   - [ScopedRef](#scopedref)
@@ -85,6 +107,7 @@ Added in v2.0.0
   - [Struct](#struct)
   - [Supervisor](#supervisor)
   - [Symbol](#symbol)
+  - [SynchronizedRef](#synchronizedref)
   - [Tracer](#tracer)
   - [Tuple](#tuple)
   - [absurd](#absurd)
@@ -109,7 +132,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
-- Module: "@effect/data/Bigint"
+- Module: "effect/Bigint"
 ```
 
 ## Boolean
@@ -124,7 +147,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
-- Module: "@effect/data/Boolean"
+- Module: "effect/Boolean"
 ```
 
 ## Brand
@@ -139,7 +162,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
-- Module: "@effect/data/Brand"
+- Module: "effect/Brand"
 ```
 
 ## Cache
@@ -184,7 +207,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
-- Module: "@effect/data/Chunk"
+- Module: "effect/Chunk"
 ```
 
 ## Clock
@@ -244,7 +267,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Context.ts.html
-- Module: "@effect/data/Context"
+- Module: "effect/Context"
 ```
 
 ## Data
@@ -259,7 +282,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Data.ts.html
-- Module: "@effect/data/Data"
+- Module: "effect/Data"
 ```
 
 ## DefaultServices
@@ -292,6 +315,21 @@ Added in v2.0.0
 - Module: "effect/Deferred"
 ```
 
+## DeterministicRandom
+
+**Signature**
+
+```ts
+export declare const DeterministicRandom: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Random.ts.html
+- Module: "effect/Random"
+```
+
 ## Differ
 
 **Signature**
@@ -304,7 +342,82 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
-- Module: "@effect/data/Differ"
+- Module: "effect/Differ"
+```
+
+## DifferChunkPatch
+
+**Signature**
+
+```ts
+export declare const DifferChunkPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
+- Module: "effect/DifferChunkPatch"
+```
+
+## DifferContextPatch
+
+**Signature**
+
+```ts
+export declare const DifferContextPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Differ/ContextPatch.ts.html
+- Module: "effect/DifferContextPatch"
+```
+
+## DifferHashMapPatch
+
+**Signature**
+
+```ts
+export declare const DifferHashMapPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
+- Module: "effect/DifferHashMapPatch"
+```
+
+## DifferHashSetPatch
+
+**Signature**
+
+```ts
+export declare const DifferHashSetPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
+- Module: "effect/DifferHashSetPatch"
+```
+
+## DifferOrPatch
+
+**Signature**
+
+```ts
+export declare const DifferOrPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Differ/OrPatch.ts.html
+- Module: "effect/DifferOrPatch"
 ```
 
 ## Duration
@@ -319,7 +432,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
-- Module: "@effect/data/Duration"
+- Module: "effect/Duration"
 ```
 
 ## Effect
@@ -349,7 +462,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Either.ts.html
-- Module: "@effect/data/Either"
+- Module: "effect/Either"
 ```
 
 ## Equal
@@ -364,7 +477,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
-- Module: "@effect/data/Equal"
+- Module: "effect/Equal"
 ```
 
 ## Equivalence
@@ -379,7 +492,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
-- Module: "@effect/data/Equivalence"
+- Module: "effect/Equivalence"
 ```
 
 ## ExecutionStrategy
@@ -427,6 +540,21 @@ Added in v2.0.0
 - Module: "effect/Fiber"
 ```
 
+## FiberId
+
+**Signature**
+
+```ts
+export declare const FiberId: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
+- Module: "effect/FiberId"
+```
+
 ## FiberRef
 
 **Signature**
@@ -457,6 +585,51 @@ Added in v2.0.0
 - Module: "effect/FiberRefs"
 ```
 
+## FiberRuntimeFlags
+
+**Signature**
+
+```ts
+export declare const FiberRuntimeFlags: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
+- Module: "effect/FiberRuntimeFlags"
+```
+
+## FiberRuntimeFlagsPatch
+
+**Signature**
+
+```ts
+export declare const FiberRuntimeFlagsPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
+- Module: "effect/FiberRuntimeFlagsPatch"
+```
+
+## FiberStatus
+
+**Signature**
+
+```ts
+export declare const FiberStatus: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
+- Module: "effect/FiberStatus"
+```
+
 ## Function
 
 **Signature**
@@ -469,7 +642,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html
-- Module: "@effect/data/Function"
+- Module: "effect/Function"
 ```
 
 ## HKT
@@ -484,7 +657,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-- Module: "@effect/data/HKT"
+- Module: "effect/HKT"
 ```
 
 ## Hash
@@ -499,7 +672,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
-- Module: "@effect/data/Hash"
+- Module: "effect/Hash"
 ```
 
 ## HashMap
@@ -514,7 +687,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
-- Module: "@effect/data/HashMap"
+- Module: "effect/HashMap"
 ```
 
 ## HashSet
@@ -529,7 +702,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
-- Module: "@effect/data/HashSet"
+- Module: "effect/HashSet"
 ```
 
 ## Hub
@@ -589,7 +762,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/List.ts.html
-- Module: "@effect/data/List"
+- Module: "effect/List"
 ```
 
 ## Logger
@@ -607,6 +780,36 @@ Added in v2.0.0
 - Module: "effect/Logger"
 ```
 
+## LoggerLevel
+
+**Signature**
+
+```ts
+export declare const LoggerLevel: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Logger/Level.ts.html
+- Module: "effect/LoggerLevel"
+```
+
+## LoggerSpan
+
+**Signature**
+
+```ts
+export declare const LoggerSpan: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Logger/Span.ts.html
+- Module: "effect/LoggerSpan"
+```
+
 ## Metric
 
 **Signature**
@@ -622,6 +825,141 @@ Added in v2.0.0
 - Module: "effect/Metric"
 ```
 
+## MetricBoundaries
+
+**Signature**
+
+```ts
+export declare const MetricBoundaries: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
+- Module: "effect/MetricBoundaries"
+```
+
+## MetricHook
+
+**Signature**
+
+```ts
+export declare const MetricHook: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Hook.ts.html
+- Module: "effect/MetricHook"
+```
+
+## MetricKey
+
+**Signature**
+
+```ts
+export declare const MetricKey: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
+- Module: "effect/MetricKey"
+```
+
+## MetricKeyType
+
+**Signature**
+
+```ts
+export declare const MetricKeyType: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
+- Module: "effect/MetricKeyType"
+```
+
+## MetricLabel
+
+**Signature**
+
+```ts
+export declare const MetricLabel: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
+- Module: "effect/MetricLabel"
+```
+
+## MetricPair
+
+**Signature**
+
+```ts
+export declare const MetricPair: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
+- Module: "effect/MetricPair"
+```
+
+## MetricPolling
+
+**Signature**
+
+```ts
+export declare const MetricPolling: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/PollingPolling.ts.html
+- Module: "effect/MetricPolling"
+```
+
+## MetricRegistry
+
+**Signature**
+
+```ts
+export declare const MetricRegistry: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
+- Module: "effect/MetricRegistry"
+```
+
+## MetricState
+
+**Signature**
+
+```ts
+export declare const MetricState: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
+- Module: "effect/MetricState"
+```
+
 ## MutableHashMap
 
 **Signature**
@@ -634,7 +972,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
-- Module: "@effect/data/MutableHashMap"
+- Module: "effect/MutableHashMap"
 ```
 
 ## MutableHashSet
@@ -649,7 +987,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
-- Module: "@effect/data/MutableHashSet"
+- Module: "effect/MutableHashSet"
 ```
 
 ## MutableList
@@ -664,7 +1002,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
-- Module: "@effect/data/MutableList"
+- Module: "effect/MutableList"
 ```
 
 ## MutableQueue
@@ -679,7 +1017,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
-- Module: "@effect/data/MutableQueue"
+- Module: "effect/MutableQueue"
 ```
 
 ## MutableRef
@@ -694,7 +1032,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
-- Module: "@effect/data/mutable/MutableRef"
+- Module: "effect/mutable/MutableRef"
 ```
 
 ## Number
@@ -709,7 +1047,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Number.ts.html
-- Module: "@effect/data/Number"
+- Module: "effect/Number"
 ```
 
 ## Option
@@ -724,7 +1062,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Option.ts.html
-- Module: "@effect/data/Option"
+- Module: "effect/Option"
 ```
 
 ## Order
@@ -739,7 +1077,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Order.ts.html
-- Module: "@effect/data/Order"
+- Module: "effect/Order"
 ```
 
 ## Ordering
@@ -754,22 +1092,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
-- Module: "@effect/data/Ordering"
-```
-
-## PCGRandom
-
-**Signature**
-
-```ts
-export declare const PCGRandom: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Random.ts.html
-- Module: "@effect/data/Random"
+- Module: "effect/Ordering"
 ```
 
 ## Pipeable
@@ -784,7 +1107,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-- Module: "@effect/data/Pipeable"
+- Module: "effect/Pipeable"
 ```
 
 ## Pool
@@ -814,7 +1137,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
-- Module: "@effect/data/Predicate"
+- Module: "effect/Predicate"
 ```
 
 ## Queue
@@ -859,7 +1182,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
-- Module: "@effect/data/ReadonlyArray"
+- Module: "effect/ReadonlyArray"
 ```
 
 ## ReadonlyRecord
@@ -874,7 +1197,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
-- Module: "@effect/data/ReadonlyRecord"
+- Module: "effect/ReadonlyRecord"
 ```
 
 ## RedBlackTree
@@ -889,7 +1212,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
-- Module: "@effect/data/RedBlackTree"
+- Module: "effect/RedBlackTree"
 ```
 
 ## Ref
@@ -1012,6 +1335,51 @@ Added in v2.0.0
 - Module: "effect/Schedule"
 ```
 
+## ScheduleDecision
+
+**Signature**
+
+```ts
+export declare const ScheduleDecision: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
+- Module: "effect/ScheduleDecision"
+```
+
+## ScheduleInterval
+
+**Signature**
+
+```ts
+export declare const ScheduleInterval: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Schedule/Interval.ts.html
+- Module: "effect/ScheduleInterval"
+```
+
+## ScheduleIntervals
+
+**Signature**
+
+```ts
+export declare const ScheduleIntervals: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
+- Module: "effect/ScheduleIntervals"
+```
+
 ## Scheduler
 
 **Signature**
@@ -1026,16 +1394,6 @@ Added in v2.0.0
 - Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
 - Module: "effect/Scheduler"
 ```
-
-## Schema
-
-**Signature**
-
-```ts
-export declare const Schema: any
-```
-
-Added in v2.0.0
 
 ## Scope
 
@@ -1094,7 +1452,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-- Module: "@effect/data/SortedMap"
+- Module: "effect/SortedMap"
 ```
 
 ## SortedSet
@@ -1109,7 +1467,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
-- Module: "@effect/data/SortedSet"
+- Module: "effect/SortedSet"
 ```
 
 ## String
@@ -1124,7 +1482,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/String.ts.html
-- Module: "@effect/data/String"
+- Module: "effect/String"
 ```
 
 ## Struct
@@ -1139,7 +1497,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
-- Module: "@effect/data/Struct"
+- Module: "effect/Struct"
 ```
 
 ## Supervisor
@@ -1169,7 +1527,22 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-- Module: "@effect/data/Symbol"
+- Module: "effect/Symbol"
+```
+
+## SynchronizedRef
+
+**Signature**
+
+```ts
+export declare const SynchronizedRef: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
+- Module: "effect/SynchronizedRef"
 ```
 
 ## Tracer
@@ -1199,7 +1572,7 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
-- Module: "@effect/data/Tuple"
+- Module: "effect/Tuple"
 ```
 
 ## absurd
@@ -1207,14 +1580,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const absurd: <A>(_: never) => A
+export declare const absurd: any
 ```
 
 Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
-- Module: "@effect/data/Function"
+- Module: "effect/Function"
 ```
 
 ## hole
@@ -1222,14 +1595,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const hole: <T>() => T
+export declare const hole: any
 ```
 
 Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
-- Module: "@effect/data/Function"
+- Module: "effect/Function"
 ```
 
 ## identity
@@ -1237,14 +1610,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const identity: <A>(a: A) => A
+export declare const identity: any
 ```
 
 Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
-- Module: "@effect/data/Function"
+- Module: "effect/Function"
 ```
 
 ## pipe
@@ -1252,14 +1625,14 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const pipe: typeof pipe
+export declare const pipe: any
 ```
 
 Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
-- Module: "@effect/data/Function"
+- Module: "effect/Function"
 ```
 
 ## unsafeCoerce
@@ -1267,7 +1640,7 @@ Added in v2.0.0
 **Signature**
 
 ```ts
-export declare const unsafeCoerce: <A, B>(a: A) => B
+export declare const unsafeCoerce: any
 ```
 
 Added in v2.0.0

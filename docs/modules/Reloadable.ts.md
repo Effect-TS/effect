@@ -1,6 +1,6 @@
 ---
 title: Reloadable.ts
-nav_order: 56
+nav_order: 76
 parent: Modules
 ---
 

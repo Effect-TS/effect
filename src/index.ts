@@ -2,7 +2,6 @@
  * @since 2.0.0
  */
 
-import { absurd, hole, identity, pipe, unsafeCoerce } from "@effect/data/Function"
 import * as Bigint from "effect/Bigint"
 import * as Boolean from "effect/Boolean"
 import * as Brand from "effect/Brand"
@@ -18,6 +17,11 @@ import * as DefaultServices from "effect/DefaultServices"
 import * as Deferred from "effect/Deferred"
 import * as DeterministicRandom from "effect/DeterministicRandom"
 import * as Differ from "effect/Differ"
+import * as DifferChunkPatch from "effect/DifferChunkPatch"
+import * as DifferContextPatch from "effect/DifferContextPatch"
+import * as DifferHashMapPatch from "effect/DifferHashMapPatch"
+import * as DifferHashSetPatch from "effect/DifferHashSetPatch"
+import * as DifferOrPatch from "effect/DifferOrPatch"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
@@ -26,8 +30,13 @@ import * as Equivalence from "effect/Equivalence"
 import * as ExecutionStrategy from "effect/ExecutionStrategy"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
+import * as FiberRuntimeFlags from "effect/FiberRuntimeFlags"
+import * as FiberRuntimeFlagsPatch from "effect/FiberRuntimeFlagsPatch"
+import * as FiberStatus from "effect/FiberStatus"
+import { absurd, hole, identity, pipe, unsafeCoerce } from "effect/Function"
 import * as Function from "effect/Function"
 import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
@@ -38,7 +47,18 @@ import * as KeyedPool from "effect/KeyedPool"
 import * as Layer from "effect/Layer"
 import * as List from "effect/List"
 import * as Logger from "effect/Logger"
+import * as LoggerLevel from "effect/LoggerLevel"
+import * as LoggerSpan from "effect/LoggerSpan"
 import * as Metric from "effect/Metric"
+import * as MetricBoundaries from "effect/MetricBoundaries"
+import * as MetricHook from "effect/MetricHook"
+import * as MetricKey from "effect/MetricKey"
+import * as MetricKeyType from "effect/MetricKeyType"
+import * as MetricLabel from "effect/MetricLabel"
+import * as MetricPair from "effect/MetricPair"
+import * as MetricPolling from "effect/MetricPolling"
+import * as MetricRegistry from "effect/MetricRegistry"
+import * as MetricState from "effect/MetricState"
 import * as MutableHashMap from "effect/MutableHashMap"
 import * as MutableHashSet from "effect/MutableHashSet"
 import * as MutableList from "effect/MutableList"
@@ -64,6 +84,9 @@ import * as RequestResolver from "effect/RequestResolver"
 import * as Resource from "effect/Resource"
 import * as Runtime from "effect/Runtime"
 import * as Schedule from "effect/Schedule"
+import * as ScheduleDecision from "effect/ScheduleDecision"
+import * as ScheduleInterval from "effect/ScheduleInterval"
+import * as ScheduleIntervals from "effect/ScheduleIntervals"
 import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as ScopedCache from "effect/ScopedCache"
@@ -74,6 +97,7 @@ import * as String from "effect/String"
 import * as Struct from "effect/Struct"
 import * as Supervisor from "effect/Supervisor"
 import * as Symbol from "effect/Symbol"
+import * as SynchronizedRef from "effect/SynchronizedRef"
 import * as Tracer from "effect/Tracer"
 import * as Tuple from "effect/Tuple"
 
@@ -83,7 +107,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
-   * - Module: "@effect/data/Function"
+   * - Module: "effect/Function"
    * ```
    */
   absurd,
@@ -92,7 +116,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
-   * - Module: "@effect/data/Bigint"
+   * - Module: "effect/Bigint"
    * ```
    */
   Bigint,
@@ -101,7 +125,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
-   * - Module: "@effect/data/Boolean"
+   * - Module: "effect/Boolean"
    * ```
    */
   Boolean,
@@ -110,7 +134,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
-   * - Module: "@effect/data/Brand"
+   * - Module: "effect/Brand"
    * ```
    */
   Brand,
@@ -137,7 +161,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
-   * - Module: "@effect/data/Chunk"
+   * - Module: "effect/Chunk"
    * ```
    */
   Chunk,
@@ -173,7 +197,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Context.ts.html
-   * - Module: "@effect/data/Context"
+   * - Module: "effect/Context"
    * ```
    */
   Context,
@@ -182,7 +206,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Data.ts.html
-   * - Module: "@effect/data/Data"
+   * - Module: "effect/Data"
    * ```
    */
   Data,
@@ -209,7 +233,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Random.ts.html
-   * - Module: "@effect/data/Random"
+   * - Module: "effect/Random"
    * ```
    */
   DeterministicRandom,
@@ -218,7 +242,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
-   * - Module: "@effect/data/Differ"
+   * - Module: "effect/Differ"
    * ```
    */
   Differ,
@@ -226,8 +250,53 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
+   * - Module: "effect/DifferChunkPatch"
+   * ```
+   */
+  DifferChunkPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Differ/ContextPatch.ts.html
+   * - Module: "effect/DifferContextPatch"
+   * ```
+   */
+  DifferContextPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
+   * - Module: "effect/DifferHashMapPatch"
+   * ```
+   */
+  DifferHashMapPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
+   * - Module: "effect/DifferHashSetPatch"
+   * ```
+   */
+  DifferHashSetPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Differ/OrPatch.ts.html
+   * - Module: "effect/DifferOrPatch"
+   * ```
+   */
+  DifferOrPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
-   * - Module: "@effect/data/Duration"
+   * - Module: "effect/Duration"
    * ```
    */
   Duration,
@@ -245,7 +314,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Either.ts.html
-   * - Module: "@effect/data/Either"
+   * - Module: "effect/Either"
    * ```
    */
   Either,
@@ -254,7 +323,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
-   * - Module: "@effect/data/Equal"
+   * - Module: "effect/Equal"
    * ```
    */
   Equal,
@@ -263,7 +332,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
-   * - Module: "@effect/data/Equivalence"
+   * - Module: "effect/Equivalence"
    * ```
    */
   Equivalence,
@@ -298,6 +367,15 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
+   * - Module: "effect/FiberId"
+   * ```
+   */
+  FiberId,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
    * - Module: "effect/FiberRef"
    * ```
@@ -316,8 +394,35 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
+   * - Module: "effect/FiberRuntimeFlags"
+   * ```
+   */
+  FiberRuntimeFlags,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
+   * - Module: "effect/FiberRuntimeFlagsPatch"
+   * ```
+   */
+  FiberRuntimeFlagsPatch,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
+   * - Module: "effect/FiberStatus"
+   * ```
+   */
+  FiberStatus,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html
-   * - Module: "@effect/data/Function"
+   * - Module: "effect/Function"
    * ```
    */
   Function,
@@ -326,7 +431,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
-   * - Module: "@effect/data/Hash"
+   * - Module: "effect/Hash"
    * ```
    */
   Hash,
@@ -335,7 +440,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
-   * - Module: "@effect/data/HashMap"
+   * - Module: "effect/HashMap"
    * ```
    */
   HashMap,
@@ -344,7 +449,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
-   * - Module: "@effect/data/HashSet"
+   * - Module: "effect/HashSet"
    * ```
    */
   HashSet,
@@ -353,7 +458,7 @@ export {
    *
    * ```md
    * - Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-   * - Module: "@effect/data/HKT"
+   * - Module: "effect/HKT"
    * ```
    */
   HKT,
@@ -362,7 +467,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
-   * - Module: "@effect/data/Function"
+   * - Module: "effect/Function"
    * ```
    */
   hole,
@@ -380,7 +485,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
-   * - Module: "@effect/data/Function"
+   * - Module: "effect/Function"
    * ```
    */
   identity,
@@ -407,7 +512,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/List.ts.html
-   * - Module: "@effect/data/List"
+   * - Module: "effect/List"
    * ```
    */
   List,
@@ -424,6 +529,24 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Logger/Level.ts.html
+   * - Module: "effect/LoggerLevel"
+   * ```
+   */
+  LoggerLevel,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Logger/Span.ts.html
+   * - Module: "effect/LoggerSpan"
+   * ```
+   */
+  LoggerSpan,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
    * - Module: "effect/Metric"
    * ```
@@ -433,8 +556,89 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
+   * - Module: "effect/MetricBoundaries"
+   * ```
+   */
+  MetricBoundaries,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Hook.ts.html
+   * - Module: "effect/MetricHook"
+   * ```
+   */
+  MetricHook,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
+   * - Module: "effect/MetricKey"
+   * ```
+   */
+  MetricKey,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
+   * - Module: "effect/MetricKeyType"
+   * ```
+   */
+  MetricKeyType,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
+   * - Module: "effect/MetricLabel"
+   * ```
+   */
+  MetricLabel,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
+   * - Module: "effect/MetricPair"
+   * ```
+   */
+  MetricPair,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/PollingPolling.ts.html
+   * - Module: "effect/MetricPolling"
+   * ```
+   */
+  MetricPolling,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
+   * - Module: "effect/MetricRegistry"
+   * ```
+   */
+  MetricRegistry,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
+   * - Module: "effect/MetricState"
+   * ```
+   */
+  MetricState,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
-   * - Module: "@effect/data/MutableHashMap"
+   * - Module: "effect/MutableHashMap"
    * ```
    */
   MutableHashMap,
@@ -443,7 +647,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
-   * - Module: "@effect/data/MutableHashSet"
+   * - Module: "effect/MutableHashSet"
    * ```
    */
   MutableHashSet,
@@ -452,7 +656,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
-   * - Module: "@effect/data/MutableList"
+   * - Module: "effect/MutableList"
    * ```
    */
   MutableList,
@@ -461,7 +665,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
-   * - Module: "@effect/data/MutableQueue"
+   * - Module: "effect/MutableQueue"
    * ```
    */
   MutableQueue,
@@ -470,7 +674,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
-   * - Module: "@effect/data/mutable/MutableRef"
+   * - Module: "effect/mutable/MutableRef"
    * ```
    */
   MutableRef,
@@ -479,7 +683,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Number.ts.html
-   * - Module: "@effect/data/Number"
+   * - Module: "effect/Number"
    * ```
    */
   Number,
@@ -488,7 +692,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Option.ts.html
-   * - Module: "@effect/data/Option"
+   * - Module: "effect/Option"
    * ```
    */
   Option,
@@ -497,7 +701,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Order.ts.html
-   * - Module: "@effect/data/Order"
+   * - Module: "effect/Order"
    * ```
    */
   Order,
@@ -506,7 +710,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
-   * - Module: "@effect/data/Ordering"
+   * - Module: "effect/Ordering"
    * ```
    */
   Ordering,
@@ -515,7 +719,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
-   * - Module: "@effect/data/Function"
+   * - Module: "effect/Function"
    * ```
    */
   pipe,
@@ -524,7 +728,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-   * - Module: "@effect/data/Pipeable"
+   * - Module: "effect/Pipeable"
    * ```
    */
   Pipeable,
@@ -542,7 +746,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
-   * - Module: "@effect/data/Predicate"
+   * - Module: "effect/Predicate"
    * ```
    */
   Predicate,
@@ -569,7 +773,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
-   * - Module: "@effect/data/ReadonlyArray"
+   * - Module: "effect/ReadonlyArray"
    * ```
    */
   ReadonlyArray,
@@ -578,7 +782,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
-   * - Module: "@effect/data/ReadonlyRecord"
+   * - Module: "effect/ReadonlyRecord"
    * ```
    */
   ReadonlyRecord,
@@ -587,7 +791,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
-   * - Module: "@effect/data/RedBlackTree"
+   * - Module: "effect/RedBlackTree"
    * ```
    */
   RedBlackTree,
@@ -667,6 +871,33 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
+   * - Module: "effect/ScheduleDecision"
+   * ```
+   */
+  ScheduleDecision,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Interval.ts.html
+   * - Module: "effect/ScheduleInterval"
+   * ```
+   */
+  ScheduleInterval,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
+   * - Module: "effect/ScheduleIntervals"
+   * ```
+   */
+  ScheduleIntervals,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
    * - Module: "effect/Scheduler"
    * ```
@@ -704,7 +935,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-   * - Module: "@effect/data/SortedMap"
+   * - Module: "effect/SortedMap"
    * ```
    */
   SortedMap,
@@ -713,7 +944,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
-   * - Module: "@effect/data/SortedSet"
+   * - Module: "effect/SortedSet"
    * ```
    */
   SortedSet,
@@ -722,7 +953,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/String.ts.html
-   * - Module: "@effect/data/String"
+   * - Module: "effect/String"
    * ```
    */
   String,
@@ -731,7 +962,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
-   * - Module: "@effect/data/Struct"
+   * - Module: "effect/Struct"
    * ```
    */
   Struct,
@@ -749,10 +980,19 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-   * - Module: "@effect/data/Symbol"
+   * - Module: "effect/Symbol"
    * ```
    */
   Symbol,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
+   * - Module: "effect/SynchronizedRef"
+   * ```
+   */
+  SynchronizedRef,
   /**
    * @since 2.0.0
    *
@@ -767,7 +1007,7 @@ export {
    *
    * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
-   * - Module: "@effect/data/Tuple"
+   * - Module: "effect/Tuple"
    * ```
    */
   Tuple,
