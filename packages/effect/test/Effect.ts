@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 
-describe("exports", () => {
-  it("Effect", () => {
+describe("Effect", () => {
+  it("exports", () => {
     expect(Effect.succeed).exist
   })
 })
