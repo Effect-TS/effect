@@ -237,7 +237,7 @@ const makeFile = (() => {
         nodeRead(this.fd, {
           buffer,
           length: options?.length ? Number(options.length) : undefined,
-          offset: options?.offset ? Number(options.offset) : undefined
+          position: options?.offset
         }),
         FileSystem.Size
       )
@@ -251,7 +251,7 @@ const makeFile = (() => {
             nodeReadAlloc(this.fd, {
               buffer,
               length: options?.length ? Number(options.length) : undefined,
-              offset: options?.offset ? Number(options.offset) : undefined
+              position: options?.offset
             }),
             (bytesRead) => {
               if (bytesRead === 0) {
