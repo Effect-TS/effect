@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.3.1
+
+### Patch Changes
+
+- [#24](https://github.com/Effect-TS/platform/pull/24) [`8f29d2a`](https://github.com/Effect-TS/platform/commit/8f29d2a2c5681044e3a0fa13dd7d107f9fe9cfae) Thanks [@tim-smart](https://github.com/tim-smart)! - fix offset option in node file system
+
 ## 0.3.0
 
 ### Minor Changes
