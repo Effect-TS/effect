@@ -46,7 +46,8 @@
     "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "test": "vitest",
     "test-all": "npm run circular && npm run lint && npm run dtslint && vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "test-heap": "vitest run --logHeapUsage"
   },
   "exports": {
     "./*": {
