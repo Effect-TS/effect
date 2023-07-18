@@ -44,7 +44,7 @@ export const fromReadable = <E, A>(
         if (stream.readable) {
           emit.single(stream)
         }
-      }, 0)
+      }, 1)
     ),
     Stream.unwrapScoped,
     Stream.flatMap((_) => Stream.repeatEffectOption(readChunk<A>(_, chunkSize)))
