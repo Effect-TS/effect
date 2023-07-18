@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.5.0
+
+### Minor Changes
+
+- [#28](https://github.com/Effect-TS/platform/pull/28) [`f3d73f5`](https://github.com/Effect-TS/platform/commit/f3d73f587ad9b528bb1e37cf44e4928d913f56dd) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io
+
 ## 0.4.0
 
 ### Minor Changes
