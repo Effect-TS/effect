@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.5.1
+
+### Patch Changes
+
+- [#30](https://github.com/Effect-TS/platform/pull/30) [`aee2977`](https://github.com/Effect-TS/platform/commit/aee29776d9291f2ff8cf3379d5c6251a55343b51) Thanks [@tim-smart](https://github.com/tim-smart)! - set fromReadable buffer to 1
+
 ## 0.5.0
 
 ### Minor Changes
