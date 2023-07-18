@@ -1,6 +1,6 @@
 {
   "name": "effect",
-  "version": "2.0.0-next.17",
+  "version": "2.0.0-next.18",
   "publishConfig": {
     "access": "public",
     "directory": "dist"
