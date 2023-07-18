@@ -29,6 +29,6 @@ const program = pipe(
 pipe(
   program,
   Effect.provideLayer(TracingLive),
-  Effect.catchAllCause(Effect.logCause("Error")),
+  Effect.catchAllCause(Effect.logError),
   Effect.runFork
 )
