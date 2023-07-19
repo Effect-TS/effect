@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.19
+
+### Minor Changes
+
+- [#1383](https://github.com/Effect-TS/effect/pull/1383) [`d9c229a87`](https://github.com/Effect-TS/effect/commit/d9c229a87133847b596f3ed2871904bb8ad90fb2) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io and /data
+
 ## 2.0.0-next.18
 
 ### Patch Changes
