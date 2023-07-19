@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.30.0
+
+### Minor Changes
+
+- [#343](https://github.com/Effect-TS/schema/pull/343) [`6d3c7d9`](https://github.com/Effect-TS/schema/commit/6d3c7d9903e5dab27270736fbb119a44da1e78f0) Thanks [@gcanti](https://github.com/gcanti)! - remove json schema and related types
+
 ## 0.29.1
 
 ### Patch Changes
