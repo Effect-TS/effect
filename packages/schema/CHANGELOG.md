@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.29.1
+
+### Patch Changes
+
+- [#341](https://github.com/Effect-TS/schema/pull/341) [`a73a943`](https://github.com/Effect-TS/schema/commit/a73a943e3612ddfc08e591048a83c52c34862b2e) Thanks [@gcanti](https://github.com/gcanti)! - fix trimmed definition, closes #340
+
 ## 0.29.0
 
 ### Minor Changes
