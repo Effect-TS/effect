@@ -1,1 +1,1 @@
-// Minimum TypeScript Version: 4.9
+// Minimum TypeScript Version: 5.0
