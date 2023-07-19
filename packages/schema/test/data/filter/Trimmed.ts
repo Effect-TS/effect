@@ -18,6 +18,9 @@ describe.concurrent("trimmed", () => {
     expect(is(" a")).toEqual(false)
     expect(is(" a ")).toEqual(false)
     expect(is(" ")).toEqual(false)
+    expect(is("a\nb")).toEqual(true)
+    expect(is("a\nb ")).toEqual(false)
+    expect(is(" a\nb")).toEqual(false)
   })
 
   it("Decoder", async () => {

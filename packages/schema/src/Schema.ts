@@ -2506,8 +2506,6 @@ export const readonlySet = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, 
  */
 export const TrimmedTypeId = "@effect/schema/TrimmedTypeId"
 
-const trimmedRegex = /^\S.*\S$|^\S$|^$/
-
 /**
  * Verifies that a string contains no leading or trailing whitespaces.
  *
@@ -2520,13 +2518,9 @@ const trimmedRegex = /^\S.*\S$|^\S$|^$/
 export const trimmed = <A extends string>(options?: AnnotationOptions<A>) =>
   <I>(self: Schema<I, A>): Schema<I, A> =>
     self.pipe(
-      filter((a): a is A => trimmedRegex.test(a), {
+      filter((a): a is A => a === a.trim(), {
         typeId: TrimmedTypeId,
         description: "a string with no leading or trailing whitespace",
-        jsonSchema: {
-          type: "string",
-          pattern: trimmedRegex.source
-        },
         ...options
       })
     )
