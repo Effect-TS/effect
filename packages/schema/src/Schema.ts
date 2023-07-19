@@ -1769,32 +1769,6 @@ export const either = <IE, E, IA, A>(
 // ---------------------------------------------
 
 /**
- * @category model
- * @since 1.0.0
- */
-export type JsonArray = ReadonlyArray<Json>
-
-/**
- * @category model
- * @since 1.0.0
- */
-export type JsonObject = { readonly [key: string]: Json }
-
-/**
- * @category model
- * @since 1.0.0
- */
-export type Json =
-  | null
-  | boolean
-  | number
-  | string
-  | JsonArray
-  | JsonObject
-
-const arbitraryJson: Arbitrary<Json> = (fc) => fc.jsonValue().map((json) => json as Json)
-
-/**
  * @category type id
  * @since 1.0.0
  */
@@ -1824,22 +1798,6 @@ export const JsonNumber = number.pipe(
     description: "a JSON number"
   })
 )
-
-/**
- * @category constructors
- * @since 1.0.0
- */
-export const json: Schema<Json> = lazy(() =>
-  union(
-    _null,
-    string,
-    JsonNumber,
-    boolean,
-    array(json),
-    record(string, json)
-  ), {
-  [I.ArbitraryHookId]: () => arbitraryJson
-})
 
 // ---------------------------------------------
 // data/Number

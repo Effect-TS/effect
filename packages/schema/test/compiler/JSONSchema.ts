@@ -78,12 +78,24 @@ export type JsonSchema7Type =
   | JsonSchema7AllOfType
   | JsonSchema7ObjectType
 
-const isJsonArray = (u: unknown): u is S.JsonArray => Array.isArray(u) && u.every(isJson)
+type JsonArray = ReadonlyArray<Json>
 
-const isJsonObject = (u: unknown): u is S.JsonObject =>
+type JsonObject = { readonly [key: string]: Json }
+
+type Json =
+  | null
+  | boolean
+  | number
+  | string
+  | JsonArray
+  | JsonObject
+
+const isJsonArray = (u: unknown): u is JsonArray => Array.isArray(u) && u.every(isJson)
+
+const isJsonObject = (u: unknown): u is JsonObject =>
   isRecord(u) && Object.keys(u).every((key) => isJson(u[key]))
 
-export const isJson = (u: unknown): u is S.Json =>
+export const isJson = (u: unknown): u is Json =>
   u === null || typeof u === "string" || (typeof u === "number" && !isNaN(u) && isFinite(u)) ||
   typeof u === "boolean" ||
   isJsonArray(u) ||

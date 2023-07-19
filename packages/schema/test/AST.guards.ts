@@ -13,7 +13,11 @@ describe.concurrent("AST.guards", () => {
   })
 
   it("isLazy", () => {
-    expect(AST.isLazy(S.json.ast)).toEqual(true)
+    type A = readonly [number, A | null]
+    const schema: S.Schema<A> = S.lazy<A>(
+      () => S.tuple(S.number, S.union(schema, S.literal(null)))
+    )
+    expect(AST.isLazy(schema.ast)).toEqual(true)
     expect(AST.isLazy(S.number.ast)).toEqual(false)
   })
 
