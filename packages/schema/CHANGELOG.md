@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.30.1
+
+### Patch Changes
+
+- [#346](https://github.com/Effect-TS/schema/pull/346) [`68c58bf`](https://github.com/Effect-TS/schema/commit/68c58bf4de406e4df934eaea17bcff7cf1fffaea) Thanks [@gcanti](https://github.com/gcanti)! - instanceOf: fix annotations
+
 ## 0.30.0
 
 ### Minor Changes
