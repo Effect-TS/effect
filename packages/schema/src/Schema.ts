@@ -2164,6 +2164,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
   constructor: A,
   options?: AnnotationOptions<object>
 ): Schema<InstanceType<A>, InstanceType<A>> => {
+  const annotations = toAnnotations(options)
   const schema = declare(
     [],
     struct({}),
@@ -2174,7 +2175,7 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
       [AST.TypeAnnotationId]: InstanceOfTypeId,
       [InstanceOfTypeId]: { constructor },
       [AST.DescriptionAnnotationId]: `an instance of ${constructor.name}`,
-      ...options
+      ...annotations
     }
   )
   return schema

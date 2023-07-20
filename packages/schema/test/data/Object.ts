@@ -25,5 +25,12 @@ describe.concurrent("Object", () => {
       const pretty = Pretty.to(schema)
       expect(pretty(new Set())).toEqual("{}")
     })
+
+    it("Custom message", async () => {
+      const schema = S.instanceOf(Set, {
+        message: () => "This is a custom message"
+      })
+      await Util.expectParseFailure(schema, 1, `This is a custom message`)
+    })
   })
 })
