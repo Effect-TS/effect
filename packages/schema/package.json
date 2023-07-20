@@ -95,7 +95,7 @@
     "glob": "^10.3.3",
     "madge": "^6.1.0",
     "picocolors": "^1.0.0",
-    "prettier": "^3.0.0",
+    "prettier": "^2.8.8",
     "rimraf": "5.0.1",
     "ts-node": "^10.9.1",
     "tslint": "^6.1.3",

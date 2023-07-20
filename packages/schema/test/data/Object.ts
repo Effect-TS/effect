@@ -1,3 +1,4 @@
+import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
@@ -11,6 +12,11 @@ describe.concurrent("Object", () => {
       expect(is(new Set())).toEqual(true)
       expect(is(1)).toEqual(false)
       expect(is({})).toEqual(false)
+    })
+
+    it("annotations", () => {
+      const schema = S.instanceOf(Set, { description: "my description" })
+      expect(schema.ast.annotations[AST.DescriptionAnnotationId]).toEqual("my description")
     })
 
     it("Decoder", async () => {
