@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
 import * as _ from "@effect/typeclass/Covariant"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
-import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
+import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 
 import * as U from "./util"
 

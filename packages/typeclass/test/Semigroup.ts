@@ -1,6 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as Number from "@effect/data/Number"
 import * as order from "@effect/data/Order"
+import * as NumberInstances from "@effect/typeclass/data/Number"
+import * as StringInstances from "@effect/typeclass/data/String"
 import * as Semigroup from "@effect/typeclass/Semigroup"
 import * as U from "./util"
 
@@ -10,7 +12,7 @@ describe.concurrent("Semigroup", () => {
   })
 
   it("reverse", () => {
-    const S = Semigroup.reverse(Semigroup.string)
+    const S = Semigroup.reverse(StringInstances.Semigroup)
     U.deepStrictEqual(S.combine("a", "b"), "ba")
     U.deepStrictEqual(S.combineMany("a", []), "a")
     U.deepStrictEqual(S.combineMany("a", ["b"]), "ba")
@@ -25,7 +27,7 @@ describe.concurrent("Semigroup", () => {
   })
 
   it("intercalate", () => {
-    const S = pipe(Semigroup.string, Semigroup.intercalate("|"))
+    const S = pipe(StringInstances.Semigroup, Semigroup.intercalate("|"))
     U.deepStrictEqual(S.combine("a", "b"), "a|b")
     U.deepStrictEqual(S.combineMany("a", []), "a")
     U.deepStrictEqual(S.combineMany("a", ["b"]), "a|b")
@@ -41,7 +43,7 @@ describe.concurrent("Semigroup", () => {
 
     it("should return the last minimum", () => {
       type Item = { a: number }
-      const A = Semigroup.min(pipe(Number.Order, order.contramap((_: Item) => _.a)))
+      const A = Semigroup.min(pipe(Number.Order, order.mapInput((_: Item) => _.a)))
       const item: Item = { a: 1 }
       U.strictEqual(A.combineMany({ a: 2 }, [{ a: 1 }, item]), item)
       U.strictEqual(A.combineMany(item, []), item)
@@ -57,7 +59,7 @@ describe.concurrent("Semigroup", () => {
 
     it("should return the last minimum", () => {
       type Item = { a: number }
-      const S = Semigroup.max(pipe(Number.Order, order.contramap((_: Item) => _.a)))
+      const S = Semigroup.max(pipe(Number.Order, order.mapInput((_: Item) => _.a)))
       const item: Item = { a: 2 }
       U.strictEqual(S.combineMany({ a: 1 }, [{ a: 2 }, item]), item)
       U.strictEqual(S.combineMany(item, []), item)
@@ -80,7 +82,7 @@ describe.concurrent("Semigroup", () => {
 
   it("imap", () => {
     const imap = Semigroup.imap
-    const S1 = imap((s: string) => [s], ([s]) => s)(Semigroup.string)
+    const S1 = imap((s: string) => [s], ([s]) => s)(StringInstances.Semigroup)
     U.deepStrictEqual(S1.combine(["a"], ["b"]), ["ab"])
     U.deepStrictEqual(S1.combineMany(["a"], []), ["a"])
     U.deepStrictEqual(S1.combineMany(["a"], [["b"]]), ["ab"])
@@ -88,15 +90,18 @@ describe.concurrent("Semigroup", () => {
     // should handle an Iterable
     U.deepStrictEqual(S1.combineMany(["a"], new Set([["b"], ["c"]])), ["abc"])
 
-    const S2 = pipe(Semigroup.string, Semigroup.Invariant.imap((s: string) => [s], ([s]) => s))
+    const S2 = pipe(
+      StringInstances.Semigroup,
+      Semigroup.Invariant.imap((s: string) => [s], ([s]) => s)
+    )
     U.deepStrictEqual(S2.combineMany(["a"], [["b"], ["c"]]), ["abc"])
   })
 
   it("product", () => {
     const S = pipe(
       Semigroup.SemiProduct.product(
-        Semigroup.SemiProduct.product(Semigroup.string, Semigroup.numberSum),
-        Semigroup.numberMultiply
+        Semigroup.SemiProduct.product(StringInstances.Semigroup, NumberInstances.SemigroupSum),
+        NumberInstances.SemigroupMultiply
       ),
       Semigroup.imap(
         ([[a, b], c]): [string, number, number] => [a, b, c],
@@ -107,53 +112,18 @@ describe.concurrent("Semigroup", () => {
   })
 
   it("productMany", () => {
-    const S = Semigroup.SemiProduct.productMany(Semigroup.string, [
-      Semigroup.string,
-      Semigroup.string
+    const S = Semigroup.SemiProduct.productMany(StringInstances.Semigroup, [
+      StringInstances.Semigroup,
+      StringInstances.Semigroup
     ])
     U.deepStrictEqual(S.combine(["a", "b", "c"], ["d", "e", "f"]), ["ad", "be", "cf"])
   })
 
   it("productAll", () => {
-    const S = Semigroup.Product.productAll([Semigroup.string, Semigroup.string])
+    const S = Semigroup.Product.productAll([StringInstances.Semigroup, StringInstances.Semigroup])
     U.deepStrictEqual(S.combine(["a1", "b1"], ["a2", "b2"]), ["a1a2", "b1b2"])
     U.deepStrictEqual(S.combine(["a1"], ["a2", "b2"]), ["a1a2"])
     U.deepStrictEqual(S.combine(["a1", "b1"], ["a2"]), ["a1a2"])
     U.deepStrictEqual(S.combine([], []), [])
-  })
-
-  it("numberMultiply", () => {
-    const S = Semigroup.numberMultiply
-    U.deepStrictEqual(S.combine(2, 3), 6)
-    U.deepStrictEqual(S.combineMany(1, [1, 2, 3]), 6)
-    U.deepStrictEqual(S.combineMany(1, [1, 0, 3]), 0)
-    U.deepStrictEqual(S.combineMany(0, [1, 2, 3]), 0)
-  })
-
-  it("bigintMultiply", () => {
-    const S = Semigroup.bigintMultiply
-    U.deepStrictEqual(S.combine(2n, 3n), 6n)
-    U.deepStrictEqual(S.combineMany(1n, [1n, 2n, 3n]), 6n)
-    U.deepStrictEqual(S.combineMany(1n, [1n, 0n, 3n]), 0n)
-    U.deepStrictEqual(S.combineMany(0n, [1n, 2n, 3n]), 0n)
-  })
-
-  it("booleanEvery", () => {
-    const S = Semigroup.booleanEvery
-    U.deepStrictEqual(S.combine(true, true), true)
-    U.deepStrictEqual(S.combine(true, false), false)
-    U.deepStrictEqual(S.combineMany(true, [true, true, true]), true)
-    U.deepStrictEqual(S.combineMany(false, [true, true, true]), false)
-    U.deepStrictEqual(S.combineMany(true, [true, false, true]), false)
-  })
-
-  it("booleanSome", () => {
-    const S = Semigroup.booleanSome
-    U.deepStrictEqual(S.combine(true, true), true)
-    U.deepStrictEqual(S.combine(true, false), true)
-    U.deepStrictEqual(S.combine(false, false), false)
-    U.deepStrictEqual(S.combineMany(false, [false, false, false]), false)
-    U.deepStrictEqual(S.combineMany(true, [false, false, false]), true)
-    U.deepStrictEqual(S.combineMany(false, [false, true, false]), true)
   })
 })

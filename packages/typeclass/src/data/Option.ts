@@ -29,15 +29,50 @@ import type * as semiProduct from "@effect/typeclass/SemiProduct"
 import type * as traversable from "@effect/typeclass/Traversable"
 
 const of = Option.some
+
 const map = Option.map
+
 const flatMap = Option.flatMap
+
 const productAll = Option.all
+
 const coproductAll = Option.firstSomeOf
+
 const zero = Option.none
+
 const product = Option.product
+
 const productMany = Option.productMany
 
 const imap = covariant.imap<Option.OptionTypeLambda>(map)
+
+const coproduct = <A, B>(self: Option.Option<A>, that: Option.Option<B>): Option.Option<A | B> =>
+  Option.isSome(self) ? self : that
+
+const coproductMany = <A>(
+  self: Option.Option<A>,
+  collection: Iterable<Option.Option<A>>
+): Option.Option<A> => Option.isSome(self) ? self : Option.firstSomeOf(collection)
+
+const traverse = <F extends TypeLambda>(
+  F: applicative.Applicative<F>
+): {
+  <A, R, O, E, B>(
+    f: (a: A) => Kind<F, R, O, E, B>
+  ): (self: Option.Option<A>) => Kind<F, R, O, E, Option.Option<B>>
+  <A, R, O, E, B>(
+    self: Option.Option<A>,
+    f: (a: A) => Kind<F, R, O, E, B>
+  ): Kind<F, R, O, E, Option.Option<B>>
+} =>
+  dual(
+    2,
+    <A, R, O, E, B>(
+      self: Option.Option<A>,
+      f: (a: A) => Kind<F, R, O, E, B>
+    ): Kind<F, R, O, E, Option.Option<B>> =>
+      Option.isNone(self) ? F.of(Option.none()) : F.map(f(self.value), Option.some)
+  )
 
 /**
  * @category instances
@@ -149,14 +184,6 @@ export const Applicative: applicative.Applicative<Option.OptionTypeLambda> = {
   productAll
 }
 
-const coproduct = <A, B>(self: Option.Option<A>, that: Option.Option<B>): Option.Option<A | B> =>
-  Option.isSome(self) ? self : that
-
-const coproductMany = <A>(
-  self: Option.Option<A>,
-  collection: Iterable<Option.Option<A>>
-): Option.Option<A> => Option.isSome(self) ? self : Option.firstSomeOf(collection)
-
 /**
  * @category instances
  * @since 1.0.0
@@ -223,26 +250,6 @@ export const Filterable: filterable.Filterable<Option.OptionTypeLambda> = {
   partitionMap: Option.partitionMap,
   filterMap: Option.filterMap
 }
-
-const traverse = <F extends TypeLambda>(
-  F: applicative.Applicative<F>
-): {
-  <A, R, O, E, B>(
-    f: (a: A) => Kind<F, R, O, E, B>
-  ): (self: Option.Option<A>) => Kind<F, R, O, E, Option.Option<B>>
-  <A, R, O, E, B>(
-    self: Option.Option<A>,
-    f: (a: A) => Kind<F, R, O, E, B>
-  ): Kind<F, R, O, E, Option.Option<B>>
-} =>
-  dual(
-    2,
-    <A, R, O, E, B>(
-      self: Option.Option<A>,
-      f: (a: A) => Kind<F, R, O, E, B>
-    ): Kind<F, R, O, E, Option.Option<B>> =>
-      Option.isNone(self) ? F.of(Option.none()) : F.map(f(self.value), Option.some)
-  )
 
 /**
  * @category instances

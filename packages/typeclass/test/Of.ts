@@ -1,7 +1,7 @@
 import * as O from "@effect/data/Option"
 import * as RA from "@effect/data/ReadonlyArray"
+import * as OptionInstances from "@effect/typeclass/data/Option"
 import * as _ from "@effect/typeclass/Of"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
 import * as U from "./util"
 
 describe.concurrent("Of", () => {

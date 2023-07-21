@@ -2,7 +2,7 @@ import * as order from "@effect/data/Order"
 import type * as P from "@effect/data/Predicate"
 import * as S from "@effect/data/String"
 import * as _ from "@effect/typeclass/Contravariant"
-import * as PredicateInstances from "@effect/typeclass/test/instances/Predicate"
+import * as PredicateInstances from "@effect/typeclass/data/Predicate"
 import * as U from "./util"
 
 describe.concurrent("Contravariant", () => {
@@ -18,7 +18,7 @@ describe.concurrent("Contravariant", () => {
   })
 
   it("imap", () => {
-    const O = _.imap<order.OrderTypeLambda>(order.contramap)(
+    const O = _.imap<order.OrderTypeLambda>(order.mapInput)(
       (s: string) => [s],
       ([s]) => s
     )(

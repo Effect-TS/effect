@@ -1,8 +1,8 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
+import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as StringInstances from "@effect/typeclass/data/String"
 import * as _ from "@effect/typeclass/SemiApplicative"
-import * as Semigroup from "@effect/typeclass/Semigroup"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
 import * as U from "./util"
 
 describe.concurrent("SemiApplicative", () => {
@@ -33,7 +33,7 @@ describe.concurrent("SemiApplicative", () => {
 
   it("liftSemigroup", () => {
     const liftSemigroup = _.getSemigroup(OptionInstances.SemiApplicative)
-    const S = liftSemigroup(Semigroup.string)
+    const S = liftSemigroup(StringInstances.Semigroup)
     U.deepStrictEqual(S.combine(O.none(), O.none()), O.none())
     U.deepStrictEqual(S.combine(O.none(), O.some("b")), O.none())
     U.deepStrictEqual(S.combine(O.some("a"), O.none()), O.none())

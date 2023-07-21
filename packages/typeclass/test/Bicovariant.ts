@@ -1,8 +1,8 @@
 import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
 import * as _ from "@effect/typeclass/Bicovariant"
-import * as EitherInstances from "@effect/typeclass/test/instances/Either"
-import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
+import * as EitherInstances from "@effect/typeclass/data/Either"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as U from "./util"
 
 describe.concurrent("Bicovariant", () => {

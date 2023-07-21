@@ -4,14 +4,44 @@ import type { Kind, TypeLambda } from "@effect/data/HKT"
 import * as Number from "@effect/data/Number"
 import * as O from "@effect/data/Option"
 import * as P from "@effect/data/Predicate"
+import type * as Predicate from "@effect/data/Predicate"
 import * as String from "@effect/data/String"
+import * as NumberInstances from "@effect/typeclass/data/Number"
+import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as PredicateInstances from "@effect/typeclass/data/Predicate"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
+import * as StringInstances from "@effect/typeclass/data/String"
+import * as of_ from "@effect/typeclass/Of"
 import * as semiApplicative from "@effect/typeclass/SemiApplicative"
 import * as Semigroup from "@effect/typeclass/Semigroup"
 import * as _ from "@effect/typeclass/SemiProduct"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
-import * as PredicateInstances from "@effect/typeclass/test/instances/Predicate"
-import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
 import * as U from "./util"
+
+/**
+ * @category do notation
+ * @since 1.0.0
+ */
+export const Do: () => Predicate.Predicate<{}> = of_.Do(PredicateInstances.Of)
+
+/**
+ * A variant of `bind` that sequentially ignores the scope.
+ *
+ * @category do notation
+ * @since 1.0.0
+ */
+export const bindDiscard: {
+  <N extends string, A extends object, B>(
+    name: Exclude<N, keyof A>,
+    that: Predicate.Predicate<B>
+  ): (
+    self: Predicate.Predicate<A>
+  ) => Predicate.Predicate<{ readonly [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+  <A extends object, N extends string, B>(
+    self: Predicate.Predicate<A>,
+    name: Exclude<N, keyof A>,
+    that: Predicate.Predicate<B>
+  ): Predicate.Predicate<{ readonly [K in N | keyof A]: K extends keyof A ? A[K] : B }>
+} = _.andThenBind(PredicateInstances.SemiProduct)
 
 describe.concurrent("SemiProduct", () => {
   it("productMany should be equivalent to `ap`", () => {
@@ -150,9 +180,9 @@ describe.concurrent("SemiProduct", () => {
 
     it("Contravariant (Predicate)", () => {
       const p = pipe(
-        PredicateInstances.Do(),
-        PredicateInstances.bindDiscard("x", String.isString),
-        PredicateInstances.bindDiscard("y", Number.isNumber)
+        Do(),
+        bindDiscard("x", String.isString),
+        bindDiscard("y", Number.isNumber)
       )
       U.deepStrictEqual(p({ x: "a", y: 1 }), true)
       U.deepStrictEqual(p({ x: "a", y: "x" }), false)
@@ -189,7 +219,7 @@ describe.concurrent("SemiProduct", () => {
 
     it("Invariant (Semigroup)", () => {
       const nonEmptyTuple = _.nonEmptyTuple(Semigroup.SemiProduct)
-      const S = nonEmptyTuple(Semigroup.string, Semigroup.numberSum)
+      const S = nonEmptyTuple(StringInstances.Semigroup, NumberInstances.SemigroupSum)
       U.deepStrictEqual(S.combine(["a", 2], ["b", 3]), ["ab", 5])
     })
 
@@ -217,7 +247,7 @@ describe.concurrent("SemiProduct", () => {
 
     it("Invariant (Semigroup)", () => {
       const nonEmptyStruct = _.nonEmptyStruct(Semigroup.Product)
-      const S = nonEmptyStruct({ x: Semigroup.string, y: Semigroup.numberSum })
+      const S = nonEmptyStruct({ x: StringInstances.Semigroup, y: NumberInstances.SemigroupSum })
       U.deepStrictEqual(S.combine({ x: "a", y: 2 }, { x: "b", y: 3 }), { x: "ab", y: 5 })
     })
 

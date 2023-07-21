@@ -1,9 +1,9 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
+import * as NumberInstances from "@effect/typeclass/data/Number"
+import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as Foldable from "@effect/typeclass/Foldable"
-import * as Monoid from "@effect/typeclass/Monoid"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
-import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
 import * as U from "./util"
 
 describe.concurrent("Foldable", () => {
@@ -32,7 +32,7 @@ describe.concurrent("Foldable", () => {
 
   it("combineMap", () => {
     const combineMap = Foldable.combineMap(ReadonlyArrayInstances.Foldable)
-    U.deepStrictEqual(combineMap(Monoid.numberSum)([1, 2, 3], U.double), 12)
+    U.deepStrictEqual(combineMap(NumberInstances.MonoidSum)([1, 2, 3], U.double), 12)
   })
 
   it("reduceKind", () => {

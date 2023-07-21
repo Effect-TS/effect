@@ -1,4 +1,6 @@
 import * as Semigroup from "@effect/typeclass/Semigroup"
+import * as StringInstances from "@effect/typeclass/data/String"
+import * as NumberInstances from "@effect/typeclass/data/Number"
 
 //
 // tuple
@@ -6,8 +8,8 @@ import * as Semigroup from "@effect/typeclass/Semigroup"
 
 // $ExpectType Semigroup<readonly [string, number]>
 Semigroup.tuple(
-  Semigroup.string,
-  Semigroup.numberSum
+  StringInstances.Semigroup,
+  NumberInstances.SemigroupSum
 )
 
 //
@@ -16,6 +18,6 @@ Semigroup.tuple(
 
 // $ExpectType Semigroup<{ readonly a: string; readonly b: number; }>
 Semigroup.struct({
-  a: Semigroup.string,
-  b: Semigroup.numberSum
+  a: StringInstances.Semigroup,
+  b: NumberInstances.SemigroupSum
 })

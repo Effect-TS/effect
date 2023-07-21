@@ -45,16 +45,6 @@ export const max = <A>(B: Bounded<A>): Monoid<A> =>
   monoid.fromSemigroup(semigroup.max(B.compare), B.minBound)
 
 /**
- * @category instances
- * @since 1.0.0
- */
-export const number: Bounded<number> = {
-  compare: order.number,
-  maxBound: Infinity,
-  minBound: -Infinity
-}
-
-/**
  * Checks if a value is between the lower and upper limit of a bound.
  *
  * @category predicates

@@ -1,7 +1,7 @@
 import { pipe } from "@effect/data/Function"
 import * as O from "@effect/data/Option"
-import * as OptionInstances from "@effect/typeclass/test/instances/Option"
-import * as ReadonlyArrayInstances from "@effect/typeclass/test/instances/ReadonlyArray"
+import * as OptionInstances from "@effect/typeclass/data/Option"
+import * as ReadonlyArrayInstances from "@effect/typeclass/data/ReadonlyArray"
 import * as Traversable from "@effect/typeclass/Traversable"
 import * as U from "./util"
 
