@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.7.0
+
+### Minor Changes
+
+- [#307](https://github.com/Effect-TS/cli/pull/307) [`81da44d`](https://github.com/Effect-TS/cli/commit/81da44deb77c52ce203ba1716f3be972ac9a3594) Thanks [@IMax153](https://github.com/IMax153)! - upgrade to latest effect packages
+
 ## 0.6.0
 
 ### Minor Changes
