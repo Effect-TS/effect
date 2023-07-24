@@ -738,7 +738,7 @@ const singleNames = (self: Single): Chunk.Chunk<string> =>
   pipe(
     Chunk.prepend(self.aliases, self.name),
     Chunk.map(makeSingleFullName),
-    Chunk.sort(Order.contramap(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])),
+    Chunk.sort(Order.mapInput(Order.boolean, (tuple: readonly [boolean, string]) => !tuple[0])),
     Chunk.map((tuple) => tuple[1])
   )
 
@@ -784,7 +784,7 @@ const processVariadicArg = (
   const tuple = RA.span(RA.fromIterable(input), (s) => !s.startsWith("-") || supports(s, config))
   const remaining = tuple[1]
 
-  let chunk = Chunk.prepend(createChunk(tuple[0]), first)
+  let chunk: Chunk.Chunk<string> = Chunk.prepend(createChunk(tuple[0]), first)
   if (max < Infinity) {
     chunk = Chunk.take(chunk, max)
   }
