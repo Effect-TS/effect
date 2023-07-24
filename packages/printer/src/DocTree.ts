@@ -294,7 +294,7 @@ export const foldMap: {
  * import * as DocTree from "@effect/printer/DocTree"
  * import * as Layout from "@effect/printer/Layout"
  * import { identity, pipe } from "@effect/data/Function"
- * import * as Monoid from "@effect/typeclass/Monoid"
+ * import * as String from "@effect/typeclass/data/String"
  *
  * const doc: Doc.Doc<void> = Doc.hsep([
  *   Doc.text("hello"),
@@ -309,7 +309,7 @@ export const foldMap: {
  *
  * const rendered = pipe(
  *   tree,
- *   DocTree.renderSimplyDecorated(Monoid.string, identity, (_, x) => `>>>${x}<<<`)
+ *   DocTree.renderSimplyDecorated(String.Monoid, identity, (_, x) => `>>>${x}<<<`)
  * )
  *
  * assert.strictEqual(

@@ -54,9 +54,9 @@
     }
   },
   "dependencies": {
-    "@effect/data": "~0.13.5",
-    "@effect/io": "~0.31.3",
-    "@effect/typeclass": "~0.1.0"
+    "@effect/data": "~0.16.1",
+    "@effect/io": "~0.35.2",
+    "@effect/typeclass": "~0.2.0"
   },
   "config": {
     "side": [],
