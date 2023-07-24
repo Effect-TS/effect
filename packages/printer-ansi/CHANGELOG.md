@@ -1,5 +1,16 @@
 # @effect/printer-ansi
 
+## 0.10.0
+
+### Minor Changes
+
+- [#401](https://github.com/Effect-TS/printer/pull/401) [`22ceac1`](https://github.com/Effect-TS/printer/commit/22ceac17d80a02412298e09d857cf6872ac7f102) Thanks [@IMax153](https://github.com/IMax153)! - upgrade to @effect/data@0.16.1, @effect/io@0.35.2, and @effect/typeclass@0.2.0
+
+### Patch Changes
+
+- Updated dependencies [[`22ceac1`](https://github.com/Effect-TS/printer/commit/22ceac17d80a02412298e09d857cf6872ac7f102)]:
+  - @effect/printer@0.10.0
+
 ## 0.9.0
 
 ### Minor Changes
