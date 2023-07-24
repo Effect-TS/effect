@@ -1,3 +1,4 @@
+import * as Equal from "@effect/data/Equal"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -11,5 +12,17 @@ describe.concurrent("dev", () => {
       { a: "a", c: 1 },
       { a: "a" }
     )
+  })
+
+  it("data", () => {
+    const schema = S.data(S.struct({
+      name: S.string,
+      age: S.number
+    }))
+
+    const person1 = S.decode(schema)({ name: "Alice", age: 30 })
+    const person2 = S.decode(schema)({ name: "Alice", age: 30 })
+
+    expect(Equal.equals(person1, person2)).toBe(true)
   })
 })
