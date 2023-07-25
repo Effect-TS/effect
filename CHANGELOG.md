@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.20
+
+### Patch Changes
+
+- [#1385](https://github.com/Effect-TS/effect/pull/1385) [`a53697e15`](https://github.com/Effect-TS/effect/commit/a53697e1532f330d1a653332ec3fd1d74188efbf) Thanks [@tim-smart](https://github.com/tim-smart)! - add /stm, /stream and /match
+
 ## 2.0.0-next.19
 
 ### Minor Changes
