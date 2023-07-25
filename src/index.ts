@@ -96,12 +96,23 @@ import * as ScopedCache from "effect/ScopedCache"
 import * as ScopedRef from "effect/ScopedRef"
 import * as SortedMap from "effect/SortedMap"
 import * as SortedSet from "effect/SortedSet"
+import * as STM from "effect/STM"
 import * as String from "effect/String"
 import * as Struct from "effect/Struct"
 import * as Supervisor from "effect/Supervisor"
 import * as Symbol from "effect/Symbol"
 import * as SynchronizedRef from "effect/SynchronizedRef"
+import * as TArray from "effect/TArray"
+import * as TDeferred from "effect/TDeferred"
+import * as TMap from "effect/TMap"
+import * as TPriorityQueue from "effect/TPriorityQueue"
+import * as TQueue from "effect/TQueue"
 import * as Tracer from "effect/Tracer"
+import * as TRandom from "effect/TRandom"
+import * as TReentrantLock from "effect/TReentrantLock"
+import * as TRef from "effect/TRef"
+import * as TSemaphore from "effect/TSemaphore"
+import * as TSet from "effect/TSet"
 import * as Tuple from "effect/Tuple"
 
 export {
@@ -982,6 +993,15 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
+   * - Module: "@effect/stm/STM"
+   * ```
+   */
+  STM,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/String.ts.html
    * - Module: "effect/String"
    * ```
@@ -1027,11 +1047,101 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
+   * - Module: "@effect/stm/TArray"
+   * ```
+   */
+  TArray,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
+   * - Module: "@effect/stm/TDeferred"
+   * ```
+   */
+  TDeferred,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
+   * - Module: "@effect/stm/TMap"
+   * ```
+   */
+  TMap,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
+   * - Module: "@effect/stm/TPriorityQueue"
+   * ```
+   */
+  TPriorityQueue,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
+   * - Module: "@effect/stm/TQueue"
+   * ```
+   */
+  TQueue,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
    * - Module: "effect/Tracer"
    * ```
    */
   Tracer,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
+   * - Module: "@effect/stm/TRandom"
+   * ```
+   */
+  TRandom,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+   * - Module: "@effect/stm/TReentrantLock"
+   * ```
+   */
+  TReentrantLock,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
+   * - Module: "@effect/stm/TRef"
+   * ```
+   */
+  TRef,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+   * - Module: "@effect/stm/TSemaphore"
+   * ```
+   */
+  TSemaphore,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
+   * - Module: "@effect/stm/TSet"
+   * ```
+   */
+  TSet,
   /**
    * @since 2.0.0
    *
