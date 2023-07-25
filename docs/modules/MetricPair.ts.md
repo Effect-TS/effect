@@ -1,6 +1,6 @@
 ---
 title: MetricPair.ts
-nav_order: 57
+nav_order: 67
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Queue.ts
-nav_order: 73
+nav_order: 83
 parent: Modules
 ---
 

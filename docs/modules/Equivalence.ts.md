@@ -1,6 +1,6 @@
 ---
 title: Equivalence.ts
-nav_order: 28
+nav_order: 36
 parent: Modules
 ---
 
