@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.7.0
+
+### Minor Changes
+
+- [#34](https://github.com/Effect-TS/platform/pull/34) [`601d045`](https://github.com/Effect-TS/platform/commit/601d04526ad0a2e3285de509fdf86c7b6809a547) Thanks [@tim-smart](https://github.com/tim-smart)! - update /stream
+
 ## 0.6.0
 
 ### Minor Changes
