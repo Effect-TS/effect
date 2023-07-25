@@ -55,5 +55,5 @@ const stream = (file: File, {
         )
       )
     }),
-    bufferSize
+    { capacity: bufferSize }
   )
