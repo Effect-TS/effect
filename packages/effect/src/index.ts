@@ -7,6 +7,14 @@ import * as Boolean from "effect/Boolean"
 import * as Brand from "effect/Brand"
 import * as Cache from "effect/Cache"
 import * as Cause from "effect/Cause"
+import * as Channel from "effect/Channel"
+import * as ChannelChildExecutorDecision from "effect/ChannelChildExecutorDecision"
+import * as ChannelMergeDecision from "effect/ChannelMergeDecision"
+import * as ChannelMergeState from "effect/ChannelMergeState"
+import * as ChannelMergeStrategy from "effect/ChannelMergeStrategy"
+import * as ChannelSingleProducerAsyncInput from "effect/ChannelSingleProducerAsyncInput"
+import * as ChannelUpstreamPullRequest from "effect/ChannelUpstreamPullRequest"
+import * as ChannelUpstreamPullStrategy from "effect/ChannelUpstreamPullStrategy"
 import * as Chunk from "effect/Chunk"
 import * as Clock from "effect/Clock"
 import * as Concurrency from "effect/Concurrency"
@@ -41,6 +49,7 @@ import * as FiberRuntimeFlagsPatch from "effect/FiberRuntimeFlagsPatch"
 import * as FiberStatus from "effect/FiberStatus"
 import { absurd, hole, identity, pipe, unsafeCoerce } from "effect/Function"
 import * as Function from "effect/Function"
+import * as GroupBy from "effect/GroupBy"
 import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
 import * as HashSet from "effect/HashSet"
@@ -52,6 +61,7 @@ import * as List from "effect/List"
 import * as Logger from "effect/Logger"
 import * as LoggerLevel from "effect/LoggerLevel"
 import * as LoggerSpan from "effect/LoggerSpan"
+import * as Match from "effect/Match"
 import * as Metric from "effect/Metric"
 import * as MetricBoundaries from "effect/MetricBoundaries"
 import * as MetricHook from "effect/MetricHook"
@@ -94,14 +104,31 @@ import * as Scheduler from "effect/Scheduler"
 import * as Scope from "effect/Scope"
 import * as ScopedCache from "effect/ScopedCache"
 import * as ScopedRef from "effect/ScopedRef"
+import * as Sink from "effect/Sink"
 import * as SortedMap from "effect/SortedMap"
 import * as SortedSet from "effect/SortedSet"
+import * as STM from "effect/STM"
+import * as Stream from "effect/Stream"
+import * as StreamEmit from "effect/StreamEmit"
+import * as StreamHaltStrategy from "effect/StreamHaltStrategy"
 import * as String from "effect/String"
 import * as Struct from "effect/Struct"
+import * as SubscriptionRef from "effect/SubscriptionRef"
 import * as Supervisor from "effect/Supervisor"
 import * as Symbol from "effect/Symbol"
 import * as SynchronizedRef from "effect/SynchronizedRef"
+import * as Take from "effect/Take"
+import * as TArray from "effect/TArray"
+import * as TDeferred from "effect/TDeferred"
+import * as TMap from "effect/TMap"
+import * as TPriorityQueue from "effect/TPriorityQueue"
+import * as TQueue from "effect/TQueue"
 import * as Tracer from "effect/Tracer"
+import * as TRandom from "effect/TRandom"
+import * as TReentrantLock from "effect/TReentrantLock"
+import * as TRef from "effect/TRef"
+import * as TSemaphore from "effect/TSemaphore"
+import * as TSet from "effect/TSet"
 import * as Tuple from "effect/Tuple"
 
 export {
@@ -159,6 +186,78 @@ export {
    * ```
    */
   Cause,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
+   * - Module: "@effect/stream/Channel"
+   * ```
+   */
+  Channel,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
+   * - Module: "@effect/stream/Channel/ChildExecutorDecision"
+   * ```
+   */
+  ChannelChildExecutorDecision,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
+   * - Module: "@effect/stream/Channel/MergeDecision"
+   * ```
+   */
+  ChannelMergeDecision,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
+   * - Module: "@effect/stream/Channel/MergeState"
+   * ```
+   */
+  ChannelMergeState,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
+   * - Module: "@effect/stream/Channel/MergeStrategy"
+   * ```
+   */
+  ChannelMergeStrategy,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
+   * - Module: "@effect/stream/Channel/SingleProducerAsyncInput"
+   * ```
+   */
+  ChannelSingleProducerAsyncInput,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
+   * - Module: "@effect/stream/Channel/UpstreamPullRequest"
+   * ```
+   */
+  ChannelUpstreamPullRequest,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
+   * - Module: "@effect/stream/Channel/UpstreamPullStrategy"
+   * ```
+   */
+  ChannelUpstreamPullStrategy,
   /**
    * @since 2.0.0
    *
@@ -460,6 +559,15 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
+   * - Module: "@effect/stream/GroupBy"
+   * ```
+   */
+  GroupBy,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
    * - Module: "effect/Hash"
    * ```
@@ -573,6 +681,15 @@ export {
    * ```
    */
   LoggerSpan,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/match/modules/index.ts.html
+   * - Module: "@effect/match"
+   * ```
+   */
+  Match,
   /**
    * @since 2.0.0
    *
@@ -964,6 +1081,15 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
+   * - Module: "@effect/stream/Sink"
+   * ```
+   */
+  Sink,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
    * - Module: "effect/SortedMap"
    * ```
@@ -982,6 +1108,42 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
+   * - Module: "@effect/stm/STM"
+   * ```
+   */
+  STM,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
+   * - Module: "@effect/stream/Stream"
+   * ```
+   */
+  Stream,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
+   * - Module: "@effect/stream/Stream/Emit"
+   * ```
+   */
+  StreamEmit,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
+   * - Module: "@effect/stream/Stream/HaltStrategy"
+   * ```
+   */
+  StreamHaltStrategy,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/data/modules/String.ts.html
    * - Module: "effect/String"
    * ```
@@ -996,6 +1158,15 @@ export {
    * ```
    */
   Struct,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
+   * - Module: "@effect/stream/SubscriptionRef"
+   * ```
+   */
+  SubscriptionRef,
   /**
    * @since 2.0.0
    *
@@ -1027,11 +1198,110 @@ export {
    * @since 2.0.0
    *
    * ```md
+   * - Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
+   * - Module: "@effect/stream/Take"
+   * ```
+   */
+  Take,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
+   * - Module: "@effect/stm/TArray"
+   * ```
+   */
+  TArray,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
+   * - Module: "@effect/stm/TDeferred"
+   * ```
+   */
+  TDeferred,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
+   * - Module: "@effect/stm/TMap"
+   * ```
+   */
+  TMap,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
+   * - Module: "@effect/stm/TPriorityQueue"
+   * ```
+   */
+  TPriorityQueue,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
+   * - Module: "@effect/stm/TQueue"
+   * ```
+   */
+  TQueue,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
    * - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
    * - Module: "effect/Tracer"
    * ```
    */
   Tracer,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
+   * - Module: "@effect/stm/TRandom"
+   * ```
+   */
+  TRandom,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+   * - Module: "@effect/stm/TReentrantLock"
+   * ```
+   */
+  TReentrantLock,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
+   * - Module: "@effect/stm/TRef"
+   * ```
+   */
+  TRef,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+   * - Module: "@effect/stm/TSemaphore"
+   * ```
+   */
+  TSemaphore,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
+   * - Module: "@effect/stm/TSet"
+   * ```
+   */
+  TSet,
   /**
    * @since 2.0.0
    *
