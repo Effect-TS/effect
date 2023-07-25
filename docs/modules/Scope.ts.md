@@ -1,6 +1,6 @@
 ---
 title: Scope.ts
-nav_order: 90
+nav_order: 100
 parent: Modules
 ---
 

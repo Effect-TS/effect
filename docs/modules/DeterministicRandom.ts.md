@@ -1,6 +1,6 @@
 ---
 title: DeterministicRandom.ts
-nav_order: 17
+nav_order: 25
 parent: Modules
 ---
 

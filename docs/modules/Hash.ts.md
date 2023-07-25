@@ -1,6 +1,6 @@
 ---
 title: Hash.ts
-nav_order: 39
+nav_order: 48
 parent: Modules
 ---
 

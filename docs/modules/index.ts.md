@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 44
+nav_order: 53
 parent: Modules
 ---
 
@@ -18,6 +18,14 @@ Added in v2.0.0
   - [Brand](#brand)
   - [Cache](#cache)
   - [Cause](#cause)
+  - [Channel](#channel)
+  - [ChannelChildExecutorDecision](#channelchildexecutordecision)
+  - [ChannelMergeDecision](#channelmergedecision)
+  - [ChannelMergeState](#channelmergestate)
+  - [ChannelMergeStrategy](#channelmergestrategy)
+  - [ChannelSingleProducerAsyncInput](#channelsingleproducerasyncinput)
+  - [ChannelUpstreamPullRequest](#channelupstreampullrequest)
+  - [ChannelUpstreamPullStrategy](#channelupstreampullstrategy)
   - [Chunk](#chunk)
   - [Clock](#clock)
   - [Concurrency](#concurrency)
@@ -51,6 +59,7 @@ Added in v2.0.0
   - [FiberRuntimeFlagsPatch](#fiberruntimeflagspatch)
   - [FiberStatus](#fiberstatus)
   - [Function](#function)
+  - [GroupBy](#groupby)
   - [HKT](#hkt)
   - [Hash](#hash)
   - [HashMap](#hashmap)
@@ -62,6 +71,7 @@ Added in v2.0.0
   - [Logger](#logger)
   - [LoggerLevel](#loggerlevel)
   - [LoggerSpan](#loggerspan)
+  - [Match](#match)
   - [Metric](#metric)
   - [MetricBoundaries](#metricboundaries)
   - [MetricHook](#metrichook)
@@ -96,6 +106,7 @@ Added in v2.0.0
   - [RequestResolver](#requestresolver)
   - [Resource](#resource)
   - [Runtime](#runtime)
+  - [STM](#stm)
   - [Schedule](#schedule)
   - [ScheduleDecision](#scheduledecision)
   - [ScheduleInterval](#scheduleinterval)
@@ -104,13 +115,29 @@ Added in v2.0.0
   - [Scope](#scope)
   - [ScopedCache](#scopedcache)
   - [ScopedRef](#scopedref)
+  - [Sink](#sink)
   - [SortedMap](#sortedmap)
   - [SortedSet](#sortedset)
+  - [Stream](#stream)
+  - [StreamEmit](#streamemit)
+  - [StreamHaltStrategy](#streamhaltstrategy)
   - [String](#string)
   - [Struct](#struct)
+  - [SubscriptionRef](#subscriptionref)
   - [Supervisor](#supervisor)
   - [Symbol](#symbol)
   - [SynchronizedRef](#synchronizedref)
+  - [TArray](#tarray)
+  - [TDeferred](#tdeferred)
+  - [TMap](#tmap)
+  - [TPriorityQueue](#tpriorityqueue)
+  - [TQueue](#tqueue)
+  - [TRandom](#trandom)
+  - [TReentrantLock](#treentrantlock)
+  - [TRef](#tref)
+  - [TSemaphore](#tsemaphore)
+  - [TSet](#tset)
+  - [Take](#take)
   - [Tracer](#tracer)
   - [Tuple](#tuple)
   - [absurd](#absurd)
@@ -196,6 +223,126 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
 - Module: "effect/Cause"
+```
+
+## Channel
+
+**Signature**
+
+```ts
+export declare const Channel: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
+- Module: "@effect/stream/Channel"
+```
+
+## ChannelChildExecutorDecision
+
+**Signature**
+
+```ts
+export declare const ChannelChildExecutorDecision: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
+- Module: "@effect/stream/Channel/ChildExecutorDecision"
+```
+
+## ChannelMergeDecision
+
+**Signature**
+
+```ts
+export declare const ChannelMergeDecision: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
+- Module: "@effect/stream/Channel/MergeDecision"
+```
+
+## ChannelMergeState
+
+**Signature**
+
+```ts
+export declare const ChannelMergeState: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
+- Module: "@effect/stream/Channel/MergeState"
+```
+
+## ChannelMergeStrategy
+
+**Signature**
+
+```ts
+export declare const ChannelMergeStrategy: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
+- Module: "@effect/stream/Channel/MergeStrategy"
+```
+
+## ChannelSingleProducerAsyncInput
+
+**Signature**
+
+```ts
+export declare const ChannelSingleProducerAsyncInput: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
+- Module: "@effect/stream/Channel/SingleProducerAsyncInput"
+```
+
+## ChannelUpstreamPullRequest
+
+**Signature**
+
+```ts
+export declare const ChannelUpstreamPullRequest: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
+- Module: "@effect/stream/Channel/UpstreamPullRequest"
+```
+
+## ChannelUpstreamPullStrategy
+
+**Signature**
+
+```ts
+export declare const ChannelUpstreamPullStrategy: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
+- Module: "@effect/stream/Channel/UpstreamPullStrategy"
 ```
 
 ## Chunk
@@ -693,6 +840,21 @@ Added in v2.0.0
 - Module: "effect/Function"
 ```
 
+## GroupBy
+
+**Signature**
+
+```ts
+export declare const GroupBy: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
+- Module: "@effect/stream/GroupBy"
+```
+
 ## HKT
 
 **Signature**
@@ -856,6 +1018,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Logger/Span.ts.html
 - Module: "effect/LoggerSpan"
+```
+
+## Match
+
+**Signature**
+
+```ts
+export declare const Match: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/match/modules/index.ts.html
+- Module: "@effect/match"
 ```
 
 ## Metric
@@ -1368,6 +1545,21 @@ Added in v2.0.0
 - Module: "effect/Runtime"
 ```
 
+## STM
+
+**Signature**
+
+```ts
+export declare const STM: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
+- Module: "@effect/stm/STM"
+```
+
 ## Schedule
 
 **Signature**
@@ -1488,6 +1680,21 @@ Added in v2.0.0
 - Module: "effect/ScopedRef"
 ```
 
+## Sink
+
+**Signature**
+
+```ts
+export declare const Sink: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
+- Module: "@effect/stream/Sink"
+```
+
 ## SortedMap
 
 **Signature**
@@ -1518,6 +1725,51 @@ Added in v2.0.0
 - Module: "effect/SortedSet"
 ```
 
+## Stream
+
+**Signature**
+
+```ts
+export declare const Stream: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
+- Module: "@effect/stream/Stream"
+```
+
+## StreamEmit
+
+**Signature**
+
+```ts
+export declare const StreamEmit: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
+- Module: "@effect/stream/Stream/Emit"
+```
+
+## StreamHaltStrategy
+
+**Signature**
+
+```ts
+export declare const StreamHaltStrategy: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
+- Module: "@effect/stream/Stream/HaltStrategy"
+```
+
 ## String
 
 **Signature**
@@ -1546,6 +1798,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
 - Module: "effect/Struct"
+```
+
+## SubscriptionRef
+
+**Signature**
+
+```ts
+export declare const SubscriptionRef: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
+- Module: "@effect/stream/SubscriptionRef"
 ```
 
 ## Supervisor
@@ -1591,6 +1858,171 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
 - Module: "effect/SynchronizedRef"
+```
+
+## TArray
+
+**Signature**
+
+```ts
+export declare const TArray: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
+- Module: "@effect/stm/TArray"
+```
+
+## TDeferred
+
+**Signature**
+
+```ts
+export declare const TDeferred: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
+- Module: "@effect/stm/TDeferred"
+```
+
+## TMap
+
+**Signature**
+
+```ts
+export declare const TMap: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
+- Module: "@effect/stm/TMap"
+```
+
+## TPriorityQueue
+
+**Signature**
+
+```ts
+export declare const TPriorityQueue: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
+- Module: "@effect/stm/TPriorityQueue"
+```
+
+## TQueue
+
+**Signature**
+
+```ts
+export declare const TQueue: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
+- Module: "@effect/stm/TQueue"
+```
+
+## TRandom
+
+**Signature**
+
+```ts
+export declare const TRandom: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
+- Module: "@effect/stm/TRandom"
+```
+
+## TReentrantLock
+
+**Signature**
+
+```ts
+export declare const TReentrantLock: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+- Module: "@effect/stm/TReentrantLock"
+```
+
+## TRef
+
+**Signature**
+
+```ts
+export declare const TRef: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
+- Module: "@effect/stm/TRef"
+```
+
+## TSemaphore
+
+**Signature**
+
+```ts
+export declare const TSemaphore: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+- Module: "@effect/stm/TSemaphore"
+```
+
+## TSet
+
+**Signature**
+
+```ts
+export declare const TSet: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
+- Module: "@effect/stm/TSet"
+```
+
+## Take
+
+**Signature**
+
+```ts
+export declare const Take: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
+- Module: "@effect/stream/Take"
 ```
 
 ## Tracer

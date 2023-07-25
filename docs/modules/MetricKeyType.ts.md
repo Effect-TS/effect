@@ -1,6 +1,6 @@
 ---
 title: MetricKeyType.ts
-nav_order: 55
+nav_order: 65
 parent: Modules
 ---
 
