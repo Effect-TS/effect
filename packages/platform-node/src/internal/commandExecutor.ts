@@ -65,7 +65,7 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
               // If the process is assigned a process identifier, then we know it
               // was spawned successfully
               if (handle.pid) {
-                let stdin: Sink.Sink<never, Error.PlatformError, unknown, never, void> = Sink.drain()
+                let stdin: Sink.Sink<never, Error.PlatformError, unknown, never, void> = Sink.drain
 
                 if (handle.stdin !== null) {
                   stdin = fromWritable(
