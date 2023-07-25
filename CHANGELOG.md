@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.21
+
+### Patch Changes
+
+- [#1387](https://github.com/Effect-TS/effect/pull/1387) [`83401b13a`](https://github.com/Effect-TS/effect/commit/83401b13a98b4b961a3257d21feef0b5978cbf7e) Thanks [@tim-smart](https://github.com/tim-smart)! - update /stream
+
 ## 2.0.0-next.20
 
 ### Patch Changes
