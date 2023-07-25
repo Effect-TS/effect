@@ -19,7 +19,7 @@ import * as O from "@effect/data/Option"
 import type { Pipeable } from "@effect/data/Pipeable"
 import { pipeArguments } from "@effect/data/Pipeable"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
-import { isDate } from "@effect/data/Predicate"
+import { isDate, isObject } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import type { Arbitrary } from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
@@ -31,11 +31,20 @@ import * as PR from "@effect/schema/ParseResult"
 import type { Pretty } from "@effect/schema/Pretty"
 import { formatErrors } from "@effect/schema/TreeFormatter"
 
+const TypeId: unique symbol = Symbol.for("@effect/schema/Schema")
+
+/**
+ * @since 1.0.0
+ * @category symbol
+ */
+export type TypeId = typeof TypeId
+
 /**
  * @category model
  * @since 1.0.0
  */
 export interface Schema<From, To = From> extends Pipeable {
+  readonly _id: TypeId
   readonly From: (_: From) => From
   readonly To: (_: To) => To
   readonly ast: AST.AST
@@ -210,6 +219,7 @@ export type {
 // ---------------------------------------------
 
 class SchemaImpl<From, To> implements Schema<From, To> {
+  readonly _id: TypeId = TypeId
   readonly From!: (_: From) => From
   readonly To!: (_: To) => To
   constructor(readonly ast: AST.AST) {}
@@ -223,6 +233,15 @@ class SchemaImpl<From, To> implements Schema<From, To> {
  * @since 1.0.0
  */
 export const make = <I, A>(ast: AST.AST): Schema<I, A> => new SchemaImpl(ast)
+
+/**
+ * Tests if a value is a `Schema`.
+ *
+ * @category guards
+ * @since 1.0.0
+ */
+export const isSchema = (input: unknown): input is Schema<unknown, unknown> =>
+  isObject(input) && "_id" in input && input["_id"] === TypeId
 
 const makeLiteral = <Literal extends AST.LiteralValue>(value: Literal): Schema<Literal> =>
   make(AST.createLiteral(value))
@@ -753,6 +772,7 @@ export const brand = <B extends string | symbol, A>(
     const is = P.is(schema)
     const out: any = Object.assign((input: unknown) => validate(input), {
       [RefinedConstructorsTypeId]: RefinedConstructorsTypeId,
+      _id: TypeId,
       ast,
       option: (input: unknown) => validateOption(input),
       either: (input: unknown) =>

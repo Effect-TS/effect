@@ -360,4 +360,10 @@ describe.concurrent("Schema", () => {
       new Error("`optionalElement` is not supported on this schema")
     )
   })
+
+  it("isSchema", () => {
+    expect(S.isSchema(S.string)).toBe(true)
+    expect(S.isSchema(S.struct({ f: S.optional(S.string).toOption() }))).toBe(true)
+    expect(S.isSchema(S.string.pipe(S.brand("my-brand")))).toBe(true)
+  })
 })
