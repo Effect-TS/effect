@@ -1462,6 +1462,46 @@ export const clampBigint = (min: bigint, max: bigint) =>
       identity
     )
 
+/**
+ * This combinator transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
+ *
+ * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
+ *
+ * @param self - The schema representing the input string
+ *
+ * @category bigint
+ * @since 1.0.0
+ */
+export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, bigint> => {
+  const schema: Schema<I, bigint> = transformResult(
+    self,
+    bigint,
+    (s) => {
+      if (s.trim() === "") {
+        return PR.failure(PR.type(schema.ast, s))
+      }
+
+      try {
+        return PR.success(BigInt(s))
+      } catch (_) {
+        return PR.failure(PR.type(schema.ast, s))
+      }
+    },
+    (n) => PR.success(String(n) as A) // this is safe because `self` will check its input anyway
+  )
+  return schema
+}
+
+/**
+ * This schema transforms a `string` into a `bigint` by parsing the string using the `BigInt` function.
+ *
+ * It returns an error if the value can't be converted (for example when non-numeric characters are provided).
+ *
+ * @category bigint
+ * @since 1.0.0
+ */
+export const BigintFromString: Schema<string, bigint> = bigintFromString(string)
+
 // ---------------------------------------------
 // data/Boolean
 // ---------------------------------------------
