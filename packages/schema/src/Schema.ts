@@ -917,6 +917,19 @@ export const extend: {
  * @category combinators
  * @since 1.0.0
  */
+export const compose: {
+  <B, C>(bc: Schema<B, C>): <A>(ab: Schema<A, B>) => Schema<A, C>
+  <A, B, C>(ab: Schema<A, B>, bc: Schema<B, C>): Schema<A, C>
+} = dual(
+  2,
+  <A, B, C>(ab: Schema<A, B>, bc: Schema<B, C>): Schema<A, C> =>
+    transform(ab, bc, identity, identity)
+)
+
+/**
+ * @category combinators
+ * @since 1.0.0
+ */
 export const lazy = <I, A = I>(
   f: () => Schema<I, A>,
   annotations?: AST.Annotated["annotations"]
