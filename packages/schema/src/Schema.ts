@@ -21,6 +21,7 @@ import { pipeArguments } from "@effect/data/Pipeable"
 import type { Predicate, Refinement } from "@effect/data/Predicate"
 import { isDate, isObject } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
+import * as S from "@effect/data/String"
 import type { Arbitrary } from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
@@ -2733,6 +2734,26 @@ export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
  * @since 1.0.0
  */
 export const Trim: Schema<string, string> = trim(string)
+
+/**
+ * This combinator allows splitting a string into an array of strings.
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const split: {
+  (separator: string): <I>(self: Schema<I, string>) => Schema<I, ReadonlyArray<string>>
+  <I>(self: Schema<I, string>, separator: string): Schema<I, ReadonlyArray<string>>
+} = dual(
+  2,
+  <I>(self: Schema<I, string>, separator: string): Schema<I, ReadonlyArray<string>> =>
+    transform(
+      self,
+      array(string),
+      S.split(separator),
+      RA.join(separator)
+    )
+)
 
 /**
  * @category type id
