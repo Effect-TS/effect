@@ -1,5 +1,15 @@
 # @effect/schema
 
+## 0.30.4
+
+### Patch Changes
+
+- [#350](https://github.com/Effect-TS/schema/pull/350) [`00f6898`](https://github.com/Effect-TS/schema/commit/00f68980d57ecd5b8bb6568cc7e743530f79191d) Thanks [@vecerek](https://github.com/vecerek)! - Add schema for BigintFromString
+
+- [#359](https://github.com/Effect-TS/schema/pull/359) [`cb00668`](https://github.com/Effect-TS/schema/commit/cb006688e45330eee4dc4321fa2437c1ab9d2f3f) Thanks [@vecerek](https://github.com/vecerek)! - Adds combinator that splits a string into an array of strings
+
+- [#361](https://github.com/Effect-TS/schema/pull/361) [`60affeb`](https://github.com/Effect-TS/schema/commit/60affeb3a304439ca6fb4e5556afe7a6560f8b65) Thanks [@vecerek](https://github.com/vecerek)! - Adds `compose`: a combinator that composes Schema<A, B> with Schema<B, C> into Schema<A, C>.
+
 ## 0.30.3
 
 ### Patch Changes
