@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- [#309](https://github.com/Effect-TS/cli/pull/309) [`dca0f8f`](https://github.com/Effect-TS/cli/commit/dca0f8fc721b5f85ddf9bf1cf7c3d5978ac63bef) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 0.7.0
 
 ### Minor Changes
