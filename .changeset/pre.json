@@ -5,6 +5,7 @@
     "effect": "1.2.0"
   },
   "changesets": [
+    "afraid-drinks-check",
     "big-teachers-boil",
     "blue-vans-look",
     "chilly-crabs-roll",

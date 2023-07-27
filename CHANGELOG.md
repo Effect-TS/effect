@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.22
+
+### Patch Changes
+
+- [#1389](https://github.com/Effect-TS/effect/pull/1389) [`02703a5c7`](https://github.com/Effect-TS/effect/commit/02703a5c7959692d61dbea734bb84b4e4b48c10e) Thanks [@tim-smart](https://github.com/tim-smart)! - update packages
+
 ## 2.0.0-next.21
 
 ### Patch Changes
