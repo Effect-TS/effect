@@ -1,5 +1,11 @@
 # @effect/printer
 
+## 0.11.0
+
+### Minor Changes
+
+- [#403](https://github.com/Effect-TS/printer/pull/403) [`38ee0d1`](https://github.com/Effect-TS/printer/commit/38ee0d10334d6894d9941408b4c4983ada60a199) Thanks [@tim-smart](https://github.com/tim-smart)! - update /data and /io
+
 ## 0.10.0
 
 ### Minor Changes
