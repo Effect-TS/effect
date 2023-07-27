@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.9.0
+
+### Minor Changes
+
+- [#39](https://github.com/Effect-TS/platform/pull/39) [`3012e28`](https://github.com/Effect-TS/platform/commit/3012e289272d383fdae16af6b3ba396dec290b77) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 0.8.0
 
 ### Minor Changes
