@@ -32,10 +32,9 @@ export {
  */
 export const makeExternalSpan: (
   options: {
-    readonly name: string
     readonly traceId: string
     readonly spanId: string
-    readonly traceFlags?: Otel.TraceFlags
+    readonly traceFlags?: number
     readonly traceState?: string
   }
 ) => ExternalSpan = internal.makeExternalSpan

@@ -25,7 +25,6 @@ export class OtelSpan implements Tracer.Span {
   status: Tracer.SpanStatus
 
   constructor(
-    traceApi: OtelApi.TraceAPI,
     contextApi: OtelApi.ContextAPI,
     tracer: OtelApi.Tracer,
     readonly name: string,
@@ -101,7 +100,6 @@ export const make = pipe(
     Tracer.make({
       span(name, parent, context, startTime) {
         return new OtelSpan(
-          OtelApi.trace,
           OtelApi.context,
           tracer,
           name,
@@ -122,7 +120,6 @@ export const traceStateTag = Context.Tag<OtelApi.TraceState>("@effect/openteleme
 
 /** @internal */
 export const makeExternalSpan = (options: {
-  readonly name: string
   readonly traceId: string
   readonly spanId: string
   readonly traceFlags?: number
