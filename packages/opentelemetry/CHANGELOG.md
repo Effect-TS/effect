@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.7.1
+
+### Patch Changes
+
+- [#32](https://github.com/Effect-TS/opentelemetry/pull/32) [`d66c490`](https://github.com/Effect-TS/opentelemetry/commit/d66c4906a78606549bcbbc852cd36a6626473a10) Thanks [@tim-smart](https://github.com/tim-smart)! - remove name from makeExternalSpan
+
 ## 0.7.0
 
 ### Minor Changes
