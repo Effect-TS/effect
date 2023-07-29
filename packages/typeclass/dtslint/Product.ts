@@ -21,5 +21,8 @@ _.tuple(Product)(fa, fb, fc)
 // $ExpectType RAW<{ a: string; } & { b: number; } & { c: boolean; }, "a" | "b" | "c", { fa: string; fb: number; fc: boolean; }>
 _.struct(Product)({ fa, fb, fc })
 
+// $ExpectType RAW<unknown, never, []>
 _.tuple(Product)() // should allow empty tuple
+
+// $ExpectType RAW<unknown, never, {}>
 _.struct(Product)({}) // should allow empty structs
