@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.2.1
+
+### Patch Changes
+
+- [#11](https://github.com/Effect-TS/typeclass/pull/11) [`bfb24ad`](https://github.com/Effect-TS/typeclass/commit/bfb24ad64753b3500c67b50042c40bc09224f491) Thanks [@gcanti](https://github.com/gcanti)! - Product: fix tuple and struct covariant params (account for empty data structures)
+
 ## 0.2.0
 
 ### Minor Changes
