@@ -55,6 +55,7 @@
       "require": "./build/cjs/*.js"
     }
   },
+  "packageManager": "pnpm@8.6.10",
   "dependencies": {
     "@effect/data": "~0.17.0",
     "@effect/io": "^0.36.0",
