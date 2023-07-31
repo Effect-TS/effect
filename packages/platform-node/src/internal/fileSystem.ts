@@ -271,7 +271,7 @@ const makeFile = (() => {
     }
 
     truncate(length?: FileSystem.Size) {
-      return nodeTruncate(this.fd, Number(length))
+      return nodeTruncate(this.fd, length ? Number(length) : undefined)
     }
 
     write(buffer: Uint8Array) {
@@ -452,7 +452,7 @@ const truncate = (() => {
     handleErrnoException("FileSystem", "truncate"),
     handleBadArgument("truncate")
   )
-  return (path: string, length?: FileSystem.Size) => nodeTruncate(path, Number(length))
+  return (path: string, length?: FileSystem.Size) => nodeTruncate(path, length ? Number(length) : undefined)
 })()
 
 // == utimes

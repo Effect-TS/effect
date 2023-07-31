@@ -46,4 +46,21 @@ describe("FileSystem", () => {
       const error = yield* _(Effect.flip(fs.stat(dir)))
       assert(error._tag === "SystemError" && error.reason === "NotFound")
     })))
+
+  it("truncate", () =>
+    runPromise(Effect.gen(function*(_) {
+      const fs = yield* _(Fs.FileSystem)
+      const file = yield* _(fs.makeTempFile())
+
+      const text = "hello world"
+      yield* _(fs.writeFile(file, new TextEncoder().encode(text)))
+
+      const before = yield* _(fs.readFile(file), Effect.map((_) => new TextDecoder().decode(_)))
+      expect(before).toEqual(text)
+
+      yield* _(fs.truncate(file))
+
+      const after = yield* _(fs.readFile(file), Effect.map((_) => new TextDecoder().decode(_)))
+      expect(after).toEqual("")
+    })))
 })
