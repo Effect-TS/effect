@@ -33,6 +33,24 @@ describe("Tracer", () => {
         ),
         TracingLive
       ))
+
+    it.effect("withSpan links", () =>
+      Effect.gen(function*(_) {
+        const linkedSpan = yield* _(Effect.useSpanScoped("B"))
+        const span = yield* _(
+          Effect.currentSpan,
+          Effect.some,
+          Effect.withSpan("A"),
+          Effect.linkSpans(linkedSpan)
+        )
+        expect(span).instanceOf(OtelSpan)
+        const otelSpan = span as OtelSpan
+        expect(otelSpan.links.length).toBe(1)
+      }).pipe(
+        Effect.scoped,
+        Effect.provideLayer(TracingLive)
+      ))
+
     it.effect("supervisor sets context", () =>
       Effect.provideLayer(
         Effect.withSpan("ok")(

@@ -30,12 +30,21 @@ export class OtelSpan implements Tracer.Span {
     readonly name: string,
     readonly parent: Option.Option<Tracer.ParentSpan>,
     readonly context: Context.Context<never>,
+    readonly links: ReadonlyArray<Tracer.SpanLink>,
     startTime: bigint
   ) {
     const active = contextApi.active()
     this.span = tracer.startSpan(
       name,
-      { startTime: nanosToHrTime(startTime) },
+      {
+        startTime: nanosToHrTime(startTime),
+        links: links.length > 0 ?
+          links.map((link) => ({
+            context: makeSpanContext(link.span),
+            attributes: link.attributes
+          })) :
+          undefined
+      },
       parent._tag === "Some" ? populateContext(active, parent.value, context) : active
     )
     const spanContext = this.span.spanContext()
@@ -98,13 +107,14 @@ export const make = pipe(
   ),
   Effect.map((tracer) =>
     Tracer.make({
-      span(name, parent, context, startTime) {
+      span(name, parent, context, links, startTime) {
         return new OtelSpan(
           OtelApi.context,
           tracer,
           name,
           parent,
           context,
+          links,
           startTime
         )
       }
@@ -199,22 +209,24 @@ const populateContext = (
 ): OtelApi.Context =>
   span instanceof OtelSpan ?
     OtelApi.trace.setSpan(otelContext, span.span) :
-    OtelApi.trace.setSpanContext(otelContext, {
-      spanId: span.spanId,
-      traceId: span.traceId,
-      isRemote: span._tag === "ExternalSpan",
-      traceFlags: Option.getOrElse(
-        context ?
-          extractTraceTag(span, context, traceFlagsTag) :
-          Context.getOption(span.context, traceFlagsTag),
-        () => OtelApi.TraceFlags.SAMPLED
-      ),
-      traceState: Option.getOrUndefined(
-        context ?
-          extractTraceTag(span, context, traceStateTag) :
-          Context.getOption(span.context, traceStateTag)
-      )
-    })
+    OtelApi.trace.setSpanContext(otelContext, makeSpanContext(span, context))
+
+const makeSpanContext = (span: Tracer.ParentSpan, context?: Context.Context<never>): OtelApi.SpanContext => ({
+  spanId: span.spanId,
+  traceId: span.traceId,
+  isRemote: span._tag === "ExternalSpan",
+  traceFlags: Option.getOrElse(
+    context ?
+      extractTraceTag(span, context, traceFlagsTag) :
+      Context.getOption(span.context, traceFlagsTag),
+    () => OtelApi.TraceFlags.SAMPLED
+  ),
+  traceState: Option.getOrUndefined(
+    context ?
+      extractTraceTag(span, context, traceStateTag) :
+      Context.getOption(span.context, traceStateTag)
+  )
+})
 
 const extractTraceTag = <I, S>(
   parent: Tracer.ParentSpan,
