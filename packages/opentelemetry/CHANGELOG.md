@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.8.0
+
+### Minor Changes
+
+- [#35](https://github.com/Effect-TS/opentelemetry/pull/35) [`c7e4387`](https://github.com/Effect-TS/opentelemetry/commit/c7e438784bb3396e529ccd4bb751aa48e579ba2c) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io - support for links
+
 ## 0.7.1
 
 ### Patch Changes
