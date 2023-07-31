@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.8.1
+
+### Patch Changes
+
+- [#37](https://github.com/Effect-TS/opentelemetry/pull/37) [`843a017`](https://github.com/Effect-TS/opentelemetry/commit/843a017515fc0546f60a742a9b8ab860edbeac22) Thanks [@tim-smart](https://github.com/tim-smart)! - add additional info to interrupted spans
+
 ## 0.8.0
 
 ### Minor Changes
