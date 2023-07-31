@@ -345,11 +345,9 @@ const readDirectory = (() => {
 // == readFile
 
 const readFile = (path: string) =>
-  Effect.asyncInterrupt<never, Error.PlatformError, Uint8Array>((resume) => {
-    const controller = new AbortController()
-
+  Effect.async<never, Error.PlatformError, Uint8Array>((resume, signal) => {
     try {
-      NFS.readFile(path, { signal: controller.signal }, (err, data) => {
+      NFS.readFile(path, { signal }, (err, data) => {
         if (err) {
           resume(Effect.fail(handleErrnoException("FileSystem", "readFile")(err, [path])))
         } else {
@@ -359,8 +357,6 @@ const readFile = (path: string) =>
     } catch (err) {
       resume(Effect.fail(handleBadArgument("readFile")(err)))
     }
-
-    return Effect.sync(() => controller.abort())
   })
 
 // == readLink
@@ -473,11 +469,10 @@ const utimes = (() => {
 // == writeFile
 
 const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFileOptions) =>
-  Effect.asyncInterrupt<never, Error.PlatformError, void>((resume) => {
-    const controller = new AbortController()
+  Effect.async<never, Error.PlatformError, void>((resume, signal) => {
     try {
       NFS.writeFile(path, data, {
-        signal: controller.signal,
+        signal,
         flag: options?.flag,
         mode: options?.mode
       }, (err) => {
@@ -490,7 +485,6 @@ const writeFile = (path: string, data: Uint8Array, options?: FileSystem.WriteFil
     } catch (err) {
       resume(Effect.fail(handleBadArgument("writeFile")(err)))
     }
-    return Effect.sync(() => controller.abort())
   })
 
 const fileSystemImpl = FileSystem.make({

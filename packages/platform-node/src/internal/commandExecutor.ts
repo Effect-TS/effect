@@ -45,7 +45,7 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
           }),
           Effect.zipRight(Effect.sync(() => globalThis.process.env)),
           Effect.flatMap((env) =>
-            Effect.asyncInterrupt<never, Error.PlatformError, CommandExecutor.Process>((resume) => {
+            Effect.async<never, Error.PlatformError, CommandExecutor.Process>((resume) => {
               const handle = ChildProcess.spawn(command.command, command.args, {
                 stdio: [
                   inputToStdioOption(command.stdin),
@@ -74,7 +74,7 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
                   )
                 }
 
-                const exitCode: CommandExecutor.Process["exitCode"] = Effect.asyncInterrupt((resume) => {
+                const exitCode: CommandExecutor.Process["exitCode"] = Effect.async((resume) => {
                   handle.on("exit", (code, signal) => {
                     if (code !== null) {
                       resume(Effect.succeed(CommandExecutor.ExitCode(code)))
@@ -107,7 +107,7 @@ const runCommand = (fileSystem: FileSystem.FileSystem) =>
                 )
 
                 const kill: CommandExecutor.Process["kill"] = (signal = "SIGTERM") =>
-                  Effect.asyncInterrupt((resume) => {
+                  Effect.async((resume) => {
                     handle.kill(signal)
                     handle.on("exit", () => {
                       resume(Effect.unit)
