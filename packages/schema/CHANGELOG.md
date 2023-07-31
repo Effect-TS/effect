@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.32.0
+
+### Minor Changes
+
+- [#370](https://github.com/Effect-TS/schema/pull/370) [`70e4fff`](https://github.com/Effect-TS/schema/commit/70e4fff4fdc20ffe03b7c73416fdf286a218fe9c) Thanks [@tim-smart](https://github.com/tim-smart)! - update /data and /io
+
 ## 0.31.0
 
 ### Minor Changes
