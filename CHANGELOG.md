@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.23
+
+### Patch Changes
+
+- [#1393](https://github.com/Effect-TS/effect/pull/1393) [`db1f1e677`](https://github.com/Effect-TS/effect/commit/db1f1e677570045126c15b0a5158866f2233363a) Thanks [@tim-smart](https://github.com/tim-smart)! - update packages
+
 ## 2.0.0-next.22
 
 ### Patch Changes
