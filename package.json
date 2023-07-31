@@ -85,17 +85,17 @@
     "concurrently": "^8.2.0",
     "cpx": "^1.5.0",
     "error-stack-parser": "^2.1.4",
-    "eslint": "^8.45.0",
+    "eslint": "^8.46.0",
     "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-codegen": "0.17.0",
     "eslint-plugin-deprecation": "^1.5.0",
-    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-import": "^2.28.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "glob": "^10.3.3",
     "madge": "^6.1.0",
     "picocolors": "^1.0.0",
-    "prettier": "^3.0.0",
+    "prettier": "^2.8.8",
     "rimraf": "^5.0.1",
     "stackframe": "^1.3.4",
     "ts-codemod": "^4.0.4",
@@ -106,11 +106,11 @@
     "vitest": "0.33.0"
   },
   "dependencies": {
-    "@effect/data": "^0.17.0",
-    "@effect/io": "^0.36.0",
-    "@effect/match": "^0.30.0",
-    "@effect/stm": "^0.20.0",
-    "@effect/stream": "^0.32.0"
+    "@effect/data": ">=0.17.1 <0.18.0",
+    "@effect/io": ">=0.37.0 <0.38.0",
+    "@effect/match": ">=0.31.0 <0.32.0",
+    "@effect/stm": ">=0.21.0 <0.22.0",
+    "@effect/stream": ">=0.33.0 <0.34.0"
   },
   "config": {
     "side": [],
