@@ -57,10 +57,10 @@
   },
   "packageManager": "pnpm@8.6.10",
   "dependencies": {
-    "@effect/data": "~0.17.0",
-    "@effect/io": "^0.36.0",
-    "@effect/printer": "^0.11.0",
-    "@effect/printer-ansi": "^0.11.0"
+    "@effect/data": "~0.17.1",
+    "@effect/io": "^0.37.0",
+    "@effect/printer": "^0.12.0",
+    "@effect/printer-ansi": "^0.12.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.9",
@@ -83,11 +83,11 @@
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.0",
     "error-stack-parser": "^2.1.4",
-    "eslint": "^8.45.0",
+    "eslint": "^8.46.0",
     "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-codegen": "0.17.0",
     "eslint-plugin-deprecation": "^1.5.0",
-    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-import": "^2.28.0",
     "eslint-plugin-simple-import-sort": "^10.0.0",
     "eslint-plugin-sort-destructure-keys": "^1.5.0",
     "fast-check": "^3.12.0",
