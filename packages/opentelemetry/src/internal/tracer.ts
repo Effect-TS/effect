@@ -77,8 +77,10 @@ export class OtelSpan implements Tracer.Span {
     } else {
       if (Cause.isInterruptedOnly(exit.cause)) {
         this.span.setStatus({
-          code: OtelApi.SpanStatusCode.OK
+          code: OtelApi.SpanStatusCode.OK,
+          message: Cause.pretty(exit.cause)
         })
+        this.span.setAttribute("span.label", "⚠︎ Interrupted")
       } else {
         this.span.setStatus({
           code: OtelApi.SpanStatusCode.ERROR,
