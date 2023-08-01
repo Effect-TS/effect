@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.10.1
+
+### Patch Changes
+
+- [#43](https://github.com/Effect-TS/platform/pull/43) [`b92639a`](https://github.com/Effect-TS/platform/commit/b92639aad9bb4c5cd91ed191a5a45d26d048ac9a) Thanks [@fubhy](https://github.com/fubhy)! - Fixed `truncate` to support `undefined` as size.
+
 ## 0.10.0
 
 ### Minor Changes
