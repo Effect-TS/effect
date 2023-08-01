@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.3.0
+
+### Minor Changes
+
+- [#13](https://github.com/Effect-TS/typeclass/pull/13) [`d7fa1c6`](https://github.com/Effect-TS/typeclass/commit/d7fa1c60d228cb4b33226ec0ac1efd5e70ec93fe) Thanks [@gcanti](https://github.com/gcanti)! - upgrade to latest @effect/data
+
 ## 0.2.1
 
 ### Patch Changes
