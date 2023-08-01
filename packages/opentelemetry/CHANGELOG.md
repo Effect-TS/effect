@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.8.2
+
+### Patch Changes
+
+- [#39](https://github.com/Effect-TS/opentelemetry/pull/39) [`4345aa6`](https://github.com/Effect-TS/opentelemetry/commit/4345aa606b82d0690859359fb47074d365b4a729) Thanks [@tim-smart](https://github.com/tim-smart)! - set status.interrupted attribute on interruption
+
 ## 0.8.1
 
 ### Patch Changes
