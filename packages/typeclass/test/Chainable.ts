@@ -15,8 +15,8 @@ describe.concurrent("Chainable", () => {
 
   it("bind", () => {
     const bind = _.bind(OptionInstances.Chainable)
-    U.deepStrictEqual(pipe(O.Do(), bind("a", () => O.none())), O.none())
-    U.deepStrictEqual(pipe(O.Do(), bind("a", () => O.some(1))), O.some({ a: 1 }))
+    U.deepStrictEqual(pipe(O.Do, bind("a", () => O.none())), O.none())
+    U.deepStrictEqual(pipe(O.Do, bind("a", () => O.some(1))), O.some({ a: 1 }))
   })
 
   it("tap", () => {
