@@ -2,6 +2,7 @@ import { Tag } from "@effect/data/Context"
 import { pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
+import * as Error from "@effect/platform/Error"
 import type { File, FileSystem, Size as Size_, StreamOptions } from "@effect/platform/FileSystem"
 import * as Sink from "@effect/stream/Sink"
 import * as Stream from "@effect/stream/Stream"
@@ -13,9 +14,25 @@ export const tag = Tag<FileSystem>()
 export const Size = (bytes: number | bigint) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
 
 /** @internal */
-export const make = (impl: Omit<FileSystem, "stream" | "sink">): FileSystem => {
+export const make = (impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink">): FileSystem => {
   return tag.of({
     ...impl,
+    exists: (path) =>
+      pipe(
+        impl.access(path),
+        Effect.as(true),
+        Effect.catchTag("SystemError", (e) => e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e))
+      ),
+    readFileString: (path, encoding) =>
+      Effect.tryMap(impl.readFile(path), {
+        try: (_) => new TextDecoder(encoding).decode(_),
+        catch: () =>
+          Error.BadArgument({
+            module: "FileSystem",
+            method: "readFileString",
+            message: "invalid encoding"
+          })
+      }),
     stream: (path, options) =>
       pipe(
         impl.open(path, { flag: "r" }),

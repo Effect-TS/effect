@@ -57,6 +57,12 @@ export interface FileSystem {
     gid: number
   ) => Effect.Effect<never, PlatformError, void>
   /**
+   * Check if a path exists.
+   */
+  readonly exists: (
+    path: string
+  ) => Effect.Effect<never, PlatformError, boolean>
+  /**
    * Create a hard link from `fromPath` to `toPath`.
    */
   readonly link: (
@@ -135,6 +141,13 @@ export interface FileSystem {
   readonly readFile: (
     path: string
   ) => Effect.Effect<never, PlatformError, Uint8Array>
+  /**
+   * Read the contents of a file.
+   */
+  readonly readFileString: (
+    path: string,
+    encoding?: string
+  ) => Effect.Effect<never, PlatformError, string>
   /**
    * Read the destination of a symbolic link.
    */
@@ -363,7 +376,8 @@ export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
  * @since 1.0.0
  * @category constructor
  */
-export const make: (impl: Omit<FileSystem, "stream" | "sink">) => FileSystem = internal.make
+export const make: (impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink">) => FileSystem =
+  internal.make
 
 /**
  * @since 1.0.0
