@@ -14,22 +14,18 @@ as the most common needed in most of the apps regardless
 of the runtime (Node, Browser, Deno, Bun, etc).
 
 The user is expected to further install and use additional libraries
-such as "@effect/node" to integrate with specific runtimes and / or
-frameworks such as "@effect/express".
+such as "@effect/platform-node" to integrate with specific runtimes and / or
+frameworks such as "@effect/opentelemetry".
 
 Includes modules from:
 
-- "@fp-ts/core"
-- "@fp-ts/data"
-- "@fp-ts/schema" (tbd)
-- "@fp-ts/optic"
+- "@effect/data"
 - "@effect/io"
-- "@effect/stm" (tbd)
-- "@effect/stream" (tbd)
+- "@effect/match"
+- "@effect/stm"
+- "@effect/stream"
 
 Note: don't use this package when developing libraries, prefer targeting
 individual dependencies.
 
 For the list of available modules look into: [index](https://effect-ts.github.io/effect/modules/index.ts.html)
-
-Some of the modules may be extended, for example [Fiber](https://effect-ts.github.io/effect/modules/Fiber.ts.html), to include sub-modules, in such cases you may find independent documentations in [Modules](https://effect-ts.github.io/effect/docs/modules)
