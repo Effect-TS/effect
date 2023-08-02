@@ -21,7 +21,7 @@ export const make = (impl: Omit<FileSystem, "exists" | "readFileString" | "strea
       pipe(
         impl.access(path),
         Effect.as(true),
-        Effect.catchTag("SystemError", (e) => e.reason === "AlreadyExists" ? Effect.succeed(false) : Effect.fail(e))
+        Effect.catchTag("SystemError", (e) => e.reason === "NotFound" ? Effect.succeed(false) : Effect.fail(e))
       ),
     readFileString: (path, encoding) =>
       Effect.tryMap(impl.readFile(path), {
