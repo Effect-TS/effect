@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.10.3
+
+### Patch Changes
+
+- [#51](https://github.com/Effect-TS/platform/pull/51) [`9163d96`](https://github.com/Effect-TS/platform/commit/9163d96717a832e9dbf2bdd262d73034fcbe92e9) Thanks [@tim-smart](https://github.com/tim-smart)! - revert exists change
+
 ## 0.10.2
 
 ### Patch Changes
