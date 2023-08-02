@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.10.2
+
+### Patch Changes
+
+- [#49](https://github.com/Effect-TS/platform/pull/49) [`44eaaf5`](https://github.com/Effect-TS/platform/commit/44eaaf5c182dc70c73b7da9687e9c0a81daea86c) Thanks [@tim-smart](https://github.com/tim-smart)! - fix exists catching wrong error
+
 ## 0.10.1
 
 ### Patch Changes
