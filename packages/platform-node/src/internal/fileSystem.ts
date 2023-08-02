@@ -184,7 +184,7 @@ const openFactory = (method: string) => {
         nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd))
       ),
-      Effect.map((fd) => makeFile(FileSystem.FileDescriptor(fd)))
+      Effect.map((fd) => makeFile(FileSystem.FileDescriptor(fd), options?.flag?.startsWith("a") ?? false))
     )
 }
 const open = openFactory("open")
@@ -221,43 +221,65 @@ const makeFile = (() => {
   class FileImpl implements FileSystem.File {
     readonly [FileSystem.FileTypeId] = identity
 
+    private readonly semaphore = Effect.unsafeMakeSemaphore(1)
+    private position: bigint = 0n
+
     constructor(
-      readonly fd: FileSystem.File.Descriptor
+      readonly fd: FileSystem.File.Descriptor,
+      private readonly append: boolean
     ) {}
 
     get stat() {
       return Effect.map(nodeStat(this.fd), makeFileInfo)
     }
 
-    read(
-      buffer: Uint8Array,
-      options?: FileSystem.FileReadOptions
-    ) {
-      return Effect.map(
-        nodeRead(this.fd, {
-          buffer,
-          length: options?.length ? Number(options.length) : undefined,
-          position: options?.offset
-        }),
-        FileSystem.Size
+    seek(offset: FileSystem.Size, from: FileSystem.SeekMode) {
+      return this.semaphore.withPermits(1)(
+        Effect.sync(() => {
+          if (from === "start") {
+            this.position = offset
+          } else if (from === "current") {
+            this.position = this.position + offset
+          }
+
+          return this.position
+        })
       )
     }
 
-    readAlloc(size: FileSystem.Size, options?: FileSystem.FileReadOptions | undefined) {
-      return Effect.flatMap(
+    read(buffer: Uint8Array) {
+      return this.semaphore.withPermits(1)(
+        Effect.map(
+          Effect.suspend(() =>
+            nodeRead(this.fd, {
+              buffer,
+              position: this.position
+            })
+          ),
+          (bytesRead) => {
+            const sizeRead = FileSystem.Size(bytesRead)
+            this.position = this.position + sizeRead
+            return sizeRead
+          }
+        )
+      )
+    }
+
+    readAlloc(size: FileSystem.Size) {
+      return this.semaphore.withPermits(1)(Effect.flatMap(
         Effect.sync(() => Buffer.allocUnsafeSlow(Number(size))),
         (buffer) =>
           Effect.map(
             nodeReadAlloc(this.fd, {
               buffer,
-              length: options?.length ? Number(options.length) : undefined,
-              position: options?.offset
+              position: this.position
             }),
-            (bytesRead) => {
+            (bytesRead): Option.Option<Buffer> => {
               if (bytesRead === 0) {
                 return Option.none()
               }
 
+              this.position = this.position + BigInt(bytesRead)
               if (bytesRead === Number(size)) {
                 return Option.some(buffer)
               }
@@ -267,20 +289,45 @@ const makeFile = (() => {
               return Option.some(dst)
             }
           )
-      )
+      ))
     }
 
     truncate(length?: FileSystem.Size) {
-      return nodeTruncate(this.fd, length ? Number(length) : undefined)
+      return this.semaphore.withPermits(1)(
+        Effect.map(nodeTruncate(this.fd, length ? Number(length) : undefined), () => {
+          if (!this.append) {
+            const len = BigInt(length ?? 0)
+            if (this.position > len) {
+              this.position = len
+            }
+          }
+        })
+      )
     }
 
     write(buffer: Uint8Array) {
-      return Effect.map(nodeWrite(this.fd, buffer), FileSystem.Size)
+      return this.semaphore.withPermits(1)(
+        Effect.map(
+          Effect.suspend(() =>
+            nodeWrite(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(this.position))
+          ),
+          (bytesWritten) => {
+            const sizeWritten = FileSystem.Size(bytesWritten)
+            if (!this.append) {
+              this.position = this.position + sizeWritten
+            }
+
+            return sizeWritten
+          }
+        )
+      )
     }
 
-    writeAll(buffer: Uint8Array): Effect.Effect<never, Error.PlatformError, void> {
+    private writeAllChunk(buffer: Uint8Array): Effect.Effect<never, Error.PlatformError, void> {
       return Effect.flatMap(
-        nodeWriteAll(this.fd, buffer),
+        Effect.suspend(() =>
+          nodeWriteAll(this.fd, buffer, undefined, undefined, this.append ? undefined : Number(this.position))
+        ),
         (bytesWritten) => {
           if (bytesWritten === 0) {
             return Effect.fail(Error.SystemError({
@@ -290,16 +337,23 @@ const makeFile = (() => {
               pathOrDescriptor: this.fd,
               message: "write returned 0 bytes written"
             }))
-          } else if (bytesWritten < buffer.length) {
-            return this.writeAll(buffer.subarray(bytesWritten))
           }
-          return Effect.unit
+
+          if (!this.append) {
+            this.position = this.position + BigInt(bytesWritten)
+          }
+
+          return bytesWritten < buffer.length ? this.writeAllChunk(buffer.subarray(bytesWritten)) : Effect.unit
         }
       )
     }
+
+    writeAll(buffer: Uint8Array) {
+      return this.semaphore.withPermits(1)(this.writeAllChunk(buffer))
+    }
   }
 
-  return (fd: FileSystem.File.Descriptor): FileSystem.File => new FileImpl(fd)
+  return (fd: FileSystem.File.Descriptor, append: boolean): FileSystem.File => new FileImpl(fd, append)
 })()
 
 // == makeTempFile

@@ -407,13 +407,15 @@ export interface File {
   readonly [FileTypeId]: (_: never) => unknown
   readonly fd: File.Descriptor
   readonly stat: Effect.Effect<never, PlatformError, File.Info>
+  readonly seek: (
+    offset: Size,
+    from: SeekMode
+  ) => Effect.Effect<never, never, void>
   readonly read: (
-    buffer: Uint8Array,
-    options?: FileReadOptions
+    buffer: Uint8Array
   ) => Effect.Effect<never, PlatformError, Size>
   readonly readAlloc: (
-    size: Size,
-    options?: FileReadOptions
+    size: Size
   ) => Effect.Effect<never, PlatformError, Option<Uint8Array>>
   readonly truncate: (
     length?: Size
@@ -482,7 +484,4 @@ export const FileDescriptor = Brand.nominal<File.Descriptor>()
  * @since 1.0.0
  * @category model
  */
-export interface FileReadOptions {
-  readonly offset?: Size
-  readonly length?: Size
-}
+export type SeekMode = "start" | "current"

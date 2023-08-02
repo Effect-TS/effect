@@ -62,6 +62,11 @@ export {
   FileSystem,
   /**
    * @since 1.0.0
+   * @category model
+   */
+  SeekMode,
+  /**
+   * @since 1.0.0
    * @category constructor
    */
   Size
