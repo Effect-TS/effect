@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.10.1
+
+### Patch Changes
+
+- [#47](https://github.com/Effect-TS/platform/pull/47) [`24b56d5`](https://github.com/Effect-TS/platform/commit/24b56d5d6afa40df072e2db37ebd71df538e66ac) Thanks [@tim-smart](https://github.com/tim-smart)! - add exists and readFileString to FileSystem
+
 ## 0.10.0
 
 ### Minor Changes
