@@ -1,5 +1,15 @@
 # @effect/rpc-nextjs
 
+## 0.3.2
+
+### Patch Changes
+
+- [#78](https://github.com/Effect-TS/rpc/pull/78) [`55ba56e`](https://github.com/Effect-TS/rpc/commit/55ba56eb09c6066126af5f224652a4c5d413f8d4) Thanks [@alex-dixon](https://github.com/alex-dixon)! - upgrade deps
+
+- Updated dependencies [[`55ba56e`](https://github.com/Effect-TS/rpc/commit/55ba56eb09c6066126af5f224652a4c5d413f8d4)]:
+  - @effect/rpc-http@0.3.2
+  - @effect/rpc@0.3.2
+
 ## 0.3.1
 
 ### Patch Changes
