@@ -20,7 +20,7 @@ module.exports = {
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:@repo-tooling/dprint/recommended"
+    "plugin:@effect/recommended"
   ],
   plugins: ["deprecation", "import", "sort-destructure-keys", "simple-import-sort", "codegen"],
   rules: {
@@ -61,7 +61,7 @@ module.exports = {
     "@typescript-eslint/no-array-constructor": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/no-namespace": "off",
-    "@repo-tooling/dprint/dprint": [
+    "@effect/dprint": [
       "error",
       {
         config: {
