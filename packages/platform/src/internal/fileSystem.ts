@@ -8,7 +8,7 @@ import * as Sink from "@effect/stream/Sink"
 import * as Stream from "@effect/stream/Stream"
 
 /** @internal */
-export const tag = Tag<FileSystem>()
+export const tag = Tag<FileSystem>("@effect/platform/FileSystem")
 
 /** @internal */
 export const Size = (bytes: number | bigint) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_

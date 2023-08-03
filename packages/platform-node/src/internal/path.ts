@@ -1,13 +1,9 @@
-import { Tag } from "@effect/data/Context"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import { BadArgument } from "@effect/platform/Error"
-import type { Path as _Path } from "@effect/platform/Path"
+import { Path } from "@effect/platform/Path"
 import * as NodePath from "node:path"
 import * as NodeUrl from "node:url"
-
-/** @internal */
-export const Path = Tag<_Path>()
 
 const fromFileUrl = (url: URL): Effect.Effect<never, BadArgument, string> =>
   Effect.try({

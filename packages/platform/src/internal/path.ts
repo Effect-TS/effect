@@ -7,7 +7,7 @@ import type { Path as _Path } from "@effect/platform/Path"
 import * as PathB from "path-browserify"
 
 /** @internal */
-export const Path = Tag<_Path>()
+export const Path = Tag<_Path>("@effect/platform/Path")
 
 /** @internal */
 export const layer = Layer.succeed(

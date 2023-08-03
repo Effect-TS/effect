@@ -7,7 +7,7 @@ import type { Console as Console_ } from "@effect/platform/Console"
  * @since 1.0.0
  * @category tag
  */
-export const Console = Tag<Console_>()
+export const Console = Tag<Console_>("@effect/platform/Console")
 
 /** @internal */
 const consoleImpl = Console.of({
