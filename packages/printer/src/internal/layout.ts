@@ -236,16 +236,15 @@ export const pretty = dual<
   if (width._tag === "AvailablePerLine") {
     return wadlerLeijen(
       self,
-      (lineIndent, currentColumn) =>
-        (stream) => {
-          const remainingWidth = pageWidth.remainingWidth(
-            width.lineWidth,
-            width.ribbonFraction,
-            lineIndent,
-            currentColumn
-          )
-          return fitsPretty(stream, remainingWidth)
-        },
+      (lineIndent, currentColumn) => (stream) => {
+        const remainingWidth = pageWidth.remainingWidth(
+          width.lineWidth,
+          width.ribbonFraction,
+          lineIndent,
+          currentColumn
+        )
+        return fitsPretty(stream, remainingWidth)
+      },
       options
     )
   }
@@ -311,32 +310,32 @@ export const smart = dual<
 
 const fitsSmart = (lineWidth: number, ribbonFraction: number) => {
   return (lineIndent: number, currentColumn: number, initialIndentY: Option.Option<number>) =>
-    <A>(stream: DocStream.DocStream<A>): boolean => {
-      const availableWidth = pageWidth.remainingWidth(
-        lineWidth,
-        ribbonFraction,
-        lineIndent,
-        currentColumn
-      )
-      let minNestingLevel: number
-      switch (initialIndentY._tag) {
-        // If `y` is `None`, then it is definitely not a hanging layout,
-        // so we will need to check `x` with the same minNestingLevel
-        // that any subsequent lines with the same indentation use
-        case "None": {
-          minNestingLevel = currentColumn
-          break
-        }
-        // If `y` is some, then `y` could be a (less wide) hanging layout,
-        // so we need to check `x` a bit more thoroughly to make sure we
-        // do not miss a potentially better fitting `y`
-        case "Some": {
-          minNestingLevel = Math.min(initialIndentY.value, currentColumn)
-          break
-        }
+  <A>(stream: DocStream.DocStream<A>): boolean => {
+    const availableWidth = pageWidth.remainingWidth(
+      lineWidth,
+      ribbonFraction,
+      lineIndent,
+      currentColumn
+    )
+    let minNestingLevel: number
+    switch (initialIndentY._tag) {
+      // If `y` is `None`, then it is definitely not a hanging layout,
+      // so we will need to check `x` with the same minNestingLevel
+      // that any subsequent lines with the same indentation use
+      case "None": {
+        minNestingLevel = currentColumn
+        break
       }
-      return fitsSmartLoop(stream, availableWidth, minNestingLevel, lineWidth)
+      // If `y` is some, then `y` could be a (less wide) hanging layout,
+      // so we need to check `x` a bit more thoroughly to make sure we
+      // do not miss a potentially better fitting `y`
+      case "Some": {
+        minNestingLevel = Math.min(initialIndentY.value, currentColumn)
+        break
+      }
     }
+    return fitsSmartLoop(stream, availableWidth, minNestingLevel, lineWidth)
+  }
 }
 
 const fitsSmartLoop = <A>(

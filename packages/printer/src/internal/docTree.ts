@@ -373,11 +373,12 @@ interface DocTreeParser<S, A> {
 
 const parserSucceed = <S, A>(value: A): DocTreeParser<S, A> => (stream) => Option.some([value, stream] as const)
 
-const parserMap = <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => B): DocTreeParser<S, B> =>
-  (stream) => Option.map(self(stream), ([a, s]) => [f(a), s] as const)
+const parserMap = <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => B): DocTreeParser<S, B> => (stream) =>
+  Option.map(self(stream), ([a, s]) => [f(a), s] as const)
 
-const parserFlatMap = <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => DocTreeParser<S, B>): DocTreeParser<S, B> =>
-  (stream) => Option.flatMap(self(stream), ([a, s1]) => f(a)(s1))
+const parserFlatMap =
+  <S, A, B>(self: DocTreeParser<S, A>, f: (a: A) => DocTreeParser<S, B>): DocTreeParser<S, B> => (stream) =>
+    Option.flatMap(self(stream), ([a, s1]) => f(a)(s1))
 
 function many<S, A>(parser: DocTreeParser<S, A>): DocTreeParser<S, ReadonlyArray<A>> {
   return (stream) =>
