@@ -53,15 +53,21 @@
       "require": "./build/cjs/*.js"
     }
   },
-  "dependencies": {
+  "config": {
+    "side": [],
+    "modules": [],
+    "global": []
+  },
+  "devDependencies": {
     "@effect/data": "~0.17.1",
     "@effect/io": "~0.37.0",
     "@effect/printer": "workspace:^",
     "@effect/typeclass": "~0.2.1"
   },
-  "config": {
-    "side": [],
-    "modules": [],
-    "global": []
+  "peerDependencies": {
+    "@effect/data": "~0.17.1",
+    "@effect/io": "~0.37.0",
+    "@effect/printer": "workspace:^",
+    "@effect/typeclass": "~0.2.1"
   }
 }
