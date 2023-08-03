@@ -237,6 +237,14 @@ export interface FileSystem {
     data: Uint8Array,
     options?: WriteFileOptions
   ) => Effect.Effect<never, PlatformError, void>
+  /**
+   * Write a string to a file at `path`.
+   */
+  readonly writeFileString: (
+    path: string,
+    data: string,
+    options?: WriteFileStringOptions
+  ) => Effect.Effect<never, PlatformError, void>
 }
 
 /**
@@ -368,6 +376,15 @@ export interface WriteFileOptions {
 
 /**
  * @since 1.0.0
+ * @category options
+ */
+export interface WriteFileStringOptions {
+  readonly flag?: OpenFlag
+  readonly mode?: number
+}
+
+/**
+ * @since 1.0.0
  * @category tag
  */
 export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
@@ -376,8 +393,9 @@ export const FileSystem: Tag<FileSystem, FileSystem> = internal.tag
  * @since 1.0.0
  * @category constructor
  */
-export const make: (impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink">) => FileSystem =
-  internal.make
+export const make: (
+  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+) => FileSystem = internal.make
 
 /**
  * @since 1.0.0

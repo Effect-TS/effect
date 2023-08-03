@@ -14,7 +14,9 @@ export const tag = Tag<FileSystem>()
 export const Size = (bytes: number | bigint) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
 
 /** @internal */
-export const make = (impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink">): FileSystem => {
+export const make = (
+  impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
+): FileSystem => {
   return tag.of({
     ...impl,
     exists: (path) =>
@@ -47,6 +49,19 @@ export const make = (impl: Omit<FileSystem, "exists" | "readFileString" | "strea
         impl.open(path, { flag: "w", ...options }),
         Effect.map((file) => Sink.forEach((_: Uint8Array) => file.writeAll(_))),
         Sink.unwrapScoped
+      ),
+    writeFileString: (path, data, options) =>
+      Effect.flatMap(
+        Effect.try({
+          try: () => new TextEncoder().encode(data),
+          catch: () =>
+            Error.BadArgument({
+              module: "FileSystem",
+              method: "writeFileString",
+              message: "could not encode string"
+            })
+        }),
+        (_) => impl.writeFile(path, _, options)
       )
   })
 }
