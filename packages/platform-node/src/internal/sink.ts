@@ -43,20 +43,19 @@ const endWritable = (stream: Writable) =>
     stream.end(() => resume(Effect.unit))
   })
 
-const write = <E, A>(stream: Writable, onError: (error: unknown) => E, encoding?: BufferEncoding) =>
-  (_: A) =>
-    Effect.async<never, E, void>((resume) => {
-      const cb = (err?: Error | null) => {
-        if (err) {
-          resume(Effect.fail(onError(err)))
-        } else {
-          resume(Effect.unit)
-        }
-      }
-
-      if (encoding) {
-        stream.write(_, encoding, cb)
+const write = <E, A>(stream: Writable, onError: (error: unknown) => E, encoding?: BufferEncoding) => (_: A) =>
+  Effect.async<never, E, void>((resume) => {
+    const cb = (err?: Error | null) => {
+      if (err) {
+        resume(Effect.fail(onError(err)))
       } else {
-        stream.write(_, cb)
+        resume(Effect.unit)
       }
-    })
+    }
+
+    if (encoding) {
+      stream.write(_, encoding, cb)
+    } else {
+      stream.write(_, cb)
+    }
+  })

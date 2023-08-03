@@ -172,12 +172,12 @@ export const warn = (...args: ReadonlyArray<any>) => Effect.flatMap(Console, (_)
 
 /** @internal */
 export const withGroup = (options?: { label?: string; collapsed?: boolean }) =>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.flatMap(Console, (_) => _.withGroup(options)(self))
+<R, E, A>(
+  self: Effect.Effect<R, E, A>
+) => Effect.flatMap(Console, (_) => _.withGroup(options)(self))
 
 /** @internal */
 export const withTime = (label?: string) =>
-  <R, E, A>(
-    self: Effect.Effect<R, E, A>
-  ) => Effect.flatMap(Console, (_) => _.withTime(label)(self))
+<R, E, A>(
+  self: Effect.Effect<R, E, A>
+) => Effect.flatMap(Console, (_) => _.withTime(label)(self))

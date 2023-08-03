@@ -33,7 +33,8 @@ const toPlatformError = (
   return handleErrnoException("Command", method)(error, [flattened])
 }
 
-const runCommand = (fileSystem: FileSystem.FileSystem) =>
+const runCommand =
+  (fileSystem: FileSystem.FileSystem) =>
   (command: Command.Command): Effect.Effect<never, Error.PlatformError, CommandExecutor.Process> => {
     switch (command._tag) {
       case "StandardCommand": {

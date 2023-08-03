@@ -11,13 +11,12 @@ import * as NFS from "node:fs"
 import * as OS from "node:os"
 import * as Path from "node:path"
 
-const handleBadArgument = (method: string) =>
-  (err: unknown) =>
-    Error.BadArgument({
-      module: "FileSystem",
-      method,
-      message: (err as Error).message ?? String(err)
-    })
+const handleBadArgument = (method: string) => (err: unknown) =>
+  Error.BadArgument({
+    module: "FileSystem",
+    method,
+    message: (err as Error).message ?? String(err)
+  })
 
 // == access
 
