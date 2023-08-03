@@ -13,6 +13,7 @@ import type { Either } from "@effect/data/Either"
 import type { HashMap } from "@effect/data/HashMap"
 import type { HashSet } from "@effect/data/HashSet"
 import type { Option } from "@effect/data/Option"
+import type { Pipeable } from "@effect/data/Pipeable"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { Effect } from "@effect/io/Effect"
 
@@ -38,7 +39,7 @@ export type CommandTypeId = typeof CommandTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Command<A> extends Command.Variance<A> {}
+export interface Command<A> extends Command.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0

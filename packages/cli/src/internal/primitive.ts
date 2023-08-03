@@ -3,6 +3,7 @@ import * as span from "@effect/cli/internal/helpDoc/span"
 import type * as Primitive from "@effect/cli/Primitive"
 import { dual, pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
+import { pipeArguments } from "@effect/data/Pipeable"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
 
@@ -16,6 +17,9 @@ export const PrimitiveTypeId: Primitive.PrimitiveTypeId = Symbol.for(
 const proto = {
   [PrimitiveTypeId]: {
     _A: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 

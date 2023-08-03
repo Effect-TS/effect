@@ -16,6 +16,7 @@ import { dual, pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
 import * as Option from "@effect/data/Option"
 import * as Order from "@effect/data/Order"
+import { pipeArguments } from "@effect/data/Pipeable"
 import type { Predicate } from "@effect/data/Predicate"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
@@ -35,6 +36,9 @@ export type Op<Tag extends string, Body = {}> = Options.Options<never> & Body & 
 const proto = {
   [OptionsTypeId]: {
     _A: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 

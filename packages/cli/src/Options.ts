@@ -10,6 +10,7 @@ import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
 import type { Either } from "@effect/data/Either"
 import type { HashMap } from "@effect/data/HashMap"
 import type { Option } from "@effect/data/Option"
+import type { Pipeable } from "@effect/data/Pipeable"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { Effect } from "@effect/io/Effect"
 
@@ -29,7 +30,7 @@ export type OptionsTypeId = typeof OptionsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Options<A> extends Options.Variance<A> {}
+export interface Options<A> extends Options.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0

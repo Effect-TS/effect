@@ -12,6 +12,7 @@ import * as Chunk from "@effect/data/Chunk"
 import * as Either from "@effect/data/Either"
 import { dual } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
+import { pipeArguments } from "@effect/data/Pipeable"
 import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
@@ -31,6 +32,9 @@ export type Op<Tag extends string, Body = {}> = Args.Args<never> & Body & {
 const proto = {
   [ArgsTypeId]: {
     _A: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 

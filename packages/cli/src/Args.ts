@@ -8,6 +8,7 @@ import type { ValidationError } from "@effect/cli/ValidationError"
 import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
 import type { Either } from "@effect/data/Either"
 import type { Option } from "@effect/data/Option"
+import type { Pipeable } from "@effect/data/Pipeable"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { Effect } from "@effect/io/Effect"
 
@@ -29,7 +30,7 @@ export type ArgsTypeId = typeof ArgsTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Args<A> extends Args.Variance<A> {}
+export interface Args<A> extends Args.Variance<A>, Pipeable {}
 
 /**
  * @since 1.0.0

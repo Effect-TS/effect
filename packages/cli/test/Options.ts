@@ -68,7 +68,7 @@ describe.concurrent("Options", () => {
   it.effect("validates a text option", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const result = yield* $(Options.validate(option, ["--firstName", "John"], config))
       expect(result).toEqual([[], "John"])
     }))
@@ -76,7 +76,7 @@ describe.concurrent("Options", () => {
   it.effect("validates a text option with an alternative format", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const result = yield* $(Options.validate(option, ["--firstName=John"], config))
       expect(result).toEqual([[], "John"])
     }))
@@ -84,7 +84,7 @@ describe.concurrent("Options", () => {
   it.effect("validates a text option with an alias", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const result = yield* $(Options.validate(option, ["-f", "John"], config))
       expect(result).toEqual([[], "John"])
     }))
@@ -100,7 +100,7 @@ describe.concurrent("Options", () => {
   it.effect("validates an option and returns the remainder", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const args = ["--firstName", "John", "--lastName", "Doe"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([["--lastName", "Doe"], "John"])
@@ -109,7 +109,7 @@ describe.concurrent("Options", () => {
   it.effect("validates an option and returns the remainder with different ordering", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const args = ["--bar", "baz", "--firstName", "John", "--lastName", "Doe"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([["--bar", "baz", "--lastName", "Doe"], "John"])
@@ -118,7 +118,7 @@ describe.concurrent("Options", () => {
   it.effect("does not validate when no valid values are passed", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const args = ["--lastName", "Doe"]
       const result = yield* $(Effect.either(Options.validate(option, args, config)))
       expect(result).toEqual(Either.left(ValidationError.missingValue(HelpDoc.p(Span.error(
@@ -129,7 +129,7 @@ describe.concurrent("Options", () => {
   it.effect("does not validate when an option is passed without a corresponding value", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.alias(Options.text("firstName"), "f")
+      const option = Options.text("firstName").pipe(Options.alias("f"))
       const args = ["--firstName"]
       const result = yield* $(Effect.either(Options.validate(option, args, config)))
       expect(result).toEqual(Either.left(ValidationError.invalidValue(HelpDoc.p(
@@ -184,7 +184,7 @@ describe.concurrent("Options", () => {
   it.effect("validates an unsupplied optional option", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.optional(Options.integer("age"))
+      const option = Options.integer("age").pipe(Options.optional)
       const result = yield* $(Options.validate(option, [], config))
       expect(result).toEqual([[], Option.none()])
     }))
@@ -192,7 +192,7 @@ describe.concurrent("Options", () => {
   it.effect("validates an unsupplied optional option with remainder", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.optional(Options.integer("age"))
+      const option = Options.integer("age").pipe(Options.optional)
       const args = ["--bar", "baz"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([args, Option.none()])
@@ -201,7 +201,7 @@ describe.concurrent("Options", () => {
   it.effect("validates a supplied optional option", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.optional(Options.integer("age"))
+      const option = Options.integer("age").pipe(Options.optional)
       const args = ["--age", "20"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([[], Option.some(20)])
@@ -210,7 +210,7 @@ describe.concurrent("Options", () => {
   it.effect("validates a supplied optional option with remainder", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.optional(Options.integer("age"))
+      const option = Options.integer("age").pipe(Options.optional)
       const args = ["--firstName", "John", "--age", "20", "--lastName", "Doe"]
       const result = yield* $(Options.validate(option, args, config))
       expect(result).toEqual([["--firstName", "John", "--lastName", "Doe"], Option.some(20)])
@@ -245,7 +245,7 @@ describe.concurrent("Options", () => {
   it.effect("validate provides a suggestion if a provided option with a default is close to a specified option", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = Options.withDefault(Options.text("firstName"), "Jack")
+      const option = Options.text("firstName").pipe(Options.withDefault("Jack"))
       const args = ["--firstme", "Alice"]
       const result = yield* $(Effect.flip(Options.validate(option, args, config)))
       expect(result).toEqual(ValidationError.invalidValue(HelpDoc.p(Span.error(
@@ -300,8 +300,7 @@ describe.concurrent("Options", () => {
   it.effect("orElse - invalid option provided with a default", () =>
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
-      const option = pipe(
-        Options.integer("min"),
+      const option = Options.integer("min").pipe(
         Options.orElse(Options.integer("max")),
         Options.withDefault(0)
       )

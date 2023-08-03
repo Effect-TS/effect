@@ -21,6 +21,7 @@ import { dual, pipe } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
 import * as HashSet from "@effect/data/HashSet"
 import * as Option from "@effect/data/Option"
+import { pipeArguments } from "@effect/data/Pipeable"
 import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
@@ -41,6 +42,9 @@ const proto = {
   [CommandTypeId]: {
     _ArgsType: (_: never) => _,
     _OptionsType: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
   }
 }
 

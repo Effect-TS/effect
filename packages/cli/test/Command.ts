@@ -64,7 +64,7 @@ describe.concurrent("Command", () => {
     Effect.gen(function*($) {
       const config = CliConfig.defaultConfig
       const args = ["log"]
-      const command = pipe(Command.make("remote"), Command.orElse(Command.make("log")))
+      const command = Command.make("remote").pipe(Command.orElse(Command.make("log")))
       const result = yield* $(Command.parse(command, args, config))
       const expected = { name: "log", options: void 0, args: void 0 }
       expect(result).toEqual(CommandDirective.userDefined([], expected))
@@ -97,8 +97,7 @@ describe.concurrent("Command", () => {
     }))
 
   describe.concurrent("Subcommands - no options or arguments", () => {
-    const git = pipe(
-      Command.make("git", { options: Options.alias(Options.boolean("verbose"), "v") }),
+    const git = Command.make("git", { options: Options.boolean("verbose").pipe(Options.alias("v")) }).pipe(
       Command.subcommands([Command.make("remote"), Command.make("log")])
     )
 
@@ -155,13 +154,11 @@ describe.concurrent("Command", () => {
   })
 
   describe.concurrent("Subcommands - with options and arguments", () => {
-    const rebaseOptions = pipe(
-      Options.boolean("i"),
-      Options.zip(Options.withDefault(Options.text("empty"), "drop"))
+    const rebaseOptions = Options.boolean("i").pipe(
+      Options.zip(Options.text("empty").pipe(Options.withDefault("drop")))
     )
     const rebaseArgs = Args.zip(Args.text(), Args.text())
-    const git = pipe(
-      Command.make("git"),
+    const git = Command.make("git").pipe(
       Command.subcommands([
         Command.make("rebase", { options: rebaseOptions, args: rebaseArgs })
       ])
@@ -212,11 +209,9 @@ describe.concurrent("Command", () => {
   })
 
   describe.concurrent("Subcommands - nested", () => {
-    const command = pipe(
-      Command.make("command"),
+    const command = Command.make("command").pipe(
       Command.subcommands([
-        pipe(
-          Command.make("sub"),
+        Command.make("sub").pipe(
           Command.subcommands([Command.make("subsub", { options: Options.boolean("i"), args: Args.text() })])
         )
       ])
