@@ -1,18 +1,18 @@
 /**
  * @since 1.0.0
  */
-import * as Schema from "@effect/rpc/Schema"
-import * as S from "@effect/schema/Schema"
-import * as AST from "@effect/schema/AST"
 import { dual, pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
+import * as Schema from "@effect/rpc/Schema"
+import * as AST from "@effect/schema/AST"
+import * as S from "@effect/schema/Schema"
 
 export {
   /**
    * @category constructors
    * @since 1.0.0
    */
-  context,
+  context
 } from "@effect/rpc/Schema"
 
 /**
@@ -62,7 +62,7 @@ export const make = Schema.makeWith<"WebWorkerType", WebWorkerType>()
  * @since 1.0.0
  */
 export const TransferableAnnotationId = Symbol.for(
-  "@effect/rpc-webworkers/TransferableAnnotationId",
+  "@effect/rpc-webworkers/TransferableAnnotationId"
 )
 
 /**
@@ -75,18 +75,18 @@ export type TransferableAnnotationId = typeof TransferableAnnotationId
  * @since 1.0.0
  */
 export const transferable: {
-  <I>(f: (a: I) => ReadonlyArray<Transferable>): <A>(
-    self: S.Schema<I, A>,
-  ) => S.Schema<I, A>
+  <I>(
+    f: (a: I) => ReadonlyArray<Transferable>
+  ): <A>(self: S.Schema<I, A>) => S.Schema<I, A>
 
   <I, A>(
     self: S.Schema<I, A>,
-    f: (a: I) => ReadonlyArray<Transferable>,
+    f: (a: I) => ReadonlyArray<Transferable>
   ): S.Schema<I, A>
 } = dual(
   2,
   <I, A>(self: S.Schema<I, A>, f: (a: I) => ReadonlyArray<Transferable>) =>
-    S.annotations({ [TransferableAnnotationId]: f })(self),
+    S.annotations({ [TransferableAnnotationId]: f })(self)
 )
 
 /**
@@ -102,9 +102,9 @@ export const getTransferables: {
   <I, A>(self: S.Schema<I, A>, value: I): Array<Transferable> =>
     pipe(
       AST.getAnnotation<(value: I) => Array<Transferable>>(
-        TransferableAnnotationId,
+        TransferableAnnotationId
       )(self.ast),
       Option.map((f) => f(value)),
-      Option.getOrElse(() => []),
-    ),
+      Option.getOrElse(() => [])
+    )
 )

@@ -28,7 +28,7 @@ export interface WebWorker<E, I, O> {
  */
 export interface WebWorkerQueue<E, I, O> {
   readonly offer: (
-    item: readonly [request: I, deferred: Deferred<E, O>],
+    item: readonly [request: I, deferred: Deferred<E, O>]
   ) => Effect.Effect<never, never, void>
 
   readonly take: Effect.Effect<
@@ -56,37 +56,38 @@ export interface WebWorkerOptions<E, I, O> {
  */
 export const makeWorker: <E, I, O>(
   evaluate: LazyArg<Worker | SharedWorker>,
-  options: WebWorkerOptions<E, I, O>,
+  options: WebWorkerOptions<E, I, O>
 ) => Effect.Effect<never, never, WebWorker<E, I, O>> = worker.make
 
 /**
  * @category models
  * @since 1.0.0
  */
-export interface RpcWebWorker
-  extends WebWorker<
+export interface RpcWebWorker extends
+  WebWorker<
     RpcTransportError,
     Resolver.RpcRequest,
     Resolver.RpcResponse
-  > {}
+  >
+{}
 
 /**
  * @category tags
  * @since 1.0.0
  */
-export interface RpcWorkerQueue
-  extends WebWorkerQueue<
+export interface RpcWorkerQueue extends
+  WebWorkerQueue<
     RpcTransportError,
     Resolver.RpcRequest,
     Resolver.RpcResponse
-  > {}
+  >
+{}
 
 /**
  * @category tags
  * @since 1.0.0
  */
-export const RpcWorkerQueue: Tag<RpcWorkerQueue, RpcWorkerQueue> =
-  internal.RpcWorkerQueue
+export const RpcWorkerQueue: Tag<RpcWorkerQueue, RpcWorkerQueue> = internal.RpcWorkerQueue
 
 /**
  * @category tags
@@ -98,8 +99,7 @@ export interface RpcWorkerPool extends Pool<never, RpcWebWorker> {}
  * @category tags
  * @since 1.0.0
  */
-export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> =
-  internal.RpcWorkerPool
+export const RpcWorkerPool: Tag<RpcWorkerPool, RpcWorkerPool> = internal.RpcWorkerPool
 
 /**
  * @category constructors
@@ -109,9 +109,9 @@ export const makePool: <R, E>(
   create: (
     spawn: (
       evaluate: (id: number) => Worker | SharedWorker,
-      permits?: number,
-    ) => Effect.Effect<Scope, never, RpcWebWorker>,
-  ) => Effect.Effect<R, E, RpcWorkerPool>,
+      permits?: number
+    ) => Effect.Effect<Scope, never, RpcWebWorker>
+  ) => Effect.Effect<R, E, RpcWorkerPool>
 ) => Effect.Effect<R, E, RpcWorkerPool> = internal.makePool
 
 /**
@@ -122,9 +122,9 @@ export const makePoolLayer: <R, E>(
   create: (
     spawn: (
       evaluate: (id: number) => Worker | SharedWorker,
-      permits?: number,
-    ) => Effect.Effect<Scope, never, RpcWebWorker>,
-  ) => Effect.Effect<R, E, RpcWorkerPool>,
+      permits?: number
+    ) => Effect.Effect<Scope, never, RpcWebWorker>
+  ) => Effect.Effect<R, E, RpcWorkerPool>
 ) => Layer.Layer<Exclude<R, Scope>, E, RpcWorkerPool> = internal.makePoolLayer
 
 /**

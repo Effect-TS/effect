@@ -29,7 +29,9 @@ export const HttpRequest: Tag<HttpRequest, HttpRequest> = internal.HttpRequest
  * @since 1.0.0
  */
 export interface RpcHttpHandler<R extends RpcRouter.Base> {
-  (request: HttpRequest): Effect<
+  (
+    request: HttpRequest
+  ): Effect<
     Exclude<RpcHandlers.Services<R["handlers"]>, HttpRequest | Span>,
     never,
     ReadonlyArray<RpcResponse>
@@ -40,5 +42,4 @@ export interface RpcHttpHandler<R extends RpcRouter.Base> {
  * @category constructors
  * @since 1.0.0
  */
-export const make: <R extends RpcRouter.Base>(router: R) => RpcHttpHandler<R> =
-  internal.make as any
+export const make: <R extends RpcRouter.Base>(router: R) => RpcHttpHandler<R> = internal.make as any

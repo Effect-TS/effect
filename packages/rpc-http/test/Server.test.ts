@@ -9,20 +9,18 @@ const schema = RS.make({
   greet: {
     input: S.string,
     output: S.string,
-    error: S.never,
+    error: S.never
   },
 
   headers: {
-    output: S.record(S.string, S.string),
-  },
+    output: S.record(S.string, S.string)
+  }
 })
 
 const router = Router.make(schema, {
   greet: (name) => Effect.succeed(`Hello, ${name}!`),
 
-  headers: Effect.map(_.HttpRequest, (request) =>
-    Object.fromEntries(request.headers),
-  ),
+  headers: Effect.map(_.HttpRequest, (request) => Object.fromEntries(request.headers))
 })
 
 const handler = _.make(router)
@@ -38,10 +36,10 @@ describe("Server", () => {
             _tag: "headers",
             spanName: "RpcClient.headers",
             spanId: "123",
-            traceId: "native",
-          },
-        ],
-      }),
+            traceId: "native"
+          }
+        ]
+      })
     )
 
     expect(result).toEqual([{ _tag: "Success", value: { "x-foo": "bar" } }])

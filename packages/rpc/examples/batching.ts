@@ -18,7 +18,7 @@ export const schema = RpcSchema.make({
 
 const router = Router.make(schema, {
   getIds: Effect.succeed(["1", "2", "3"]),
-  getUser: (id) => Effect.succeed({ id, name: "Tim" }),
+  getUser: id => Effect.succeed({ id, name: "Tim" }),
 })
 
 const client = Client.makeWithResolver(
@@ -26,4 +26,6 @@ const client = Client.makeWithResolver(
   Resolver.make(Server.handler(router)),
 )
 
-Effect.flatMap(client.getIds, (ids) => Effect.allPar(ids.map(client.getUser)))
+Effect.flatMap(client.getIds, ids =>
+  Effect.all(ids.map(client.getUser), { concurrency: "unbounded" }),
+)

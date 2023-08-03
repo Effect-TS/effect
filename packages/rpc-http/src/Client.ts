@@ -13,10 +13,10 @@ export * from "@effect/rpc/Client"
  */
 export const make = <S extends RpcService.DefinitionWithoutSetup>(
   schemas: S,
-  options: Client.RpcClientOptions & Resolver.FetchResolverOptions,
+  options: Client.RpcClientOptions & Resolver.FetchResolverOptions
 ): Client.RpcClient<S, never> =>
   Client.makeWithResolver(
     schemas as any,
     Resolver.make(options),
-    options,
+    options
   ) as any

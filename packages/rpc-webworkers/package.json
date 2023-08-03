@@ -35,6 +35,7 @@
     "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
     "docs": "docgen",
     "lint": "eslint --ext .ts,.tsx src/**/* test/**/*",
+    "autofix": "pnpm lint --fix",
     "tc": "tsc --noEmit",
     "test": "vitest",
     "coverage": "vitest run --coverage"
@@ -44,13 +45,12 @@
   "license": "MIT",
   "sideEffects": [],
   "dependencies": {
-    "@effect/data": "^0.12.10",
-    "@effect/io": "^0.29.2",
+    "@effect/data": "^0.17.1",
+    "@effect/io": "^0.37.1",
     "@effect/rpc": "workspace:*"
   },
   "devDependencies": {
-    "@effect/schema": "^0.23.0",
-    "@vitest/web-worker": "^0.32.2"
+    "@effect/schema": "^0.32.0"
   },
   "config": {
     "side": [],

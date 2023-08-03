@@ -36,7 +36,7 @@ const posts = RpcSchema.make({
 
 // Post service router
 const postsRouter = Router.make(posts, {
-  create: (post) =>
+  create: post =>
     Effect.succeed({
       ...post,
       id: PostId(1),
@@ -69,7 +69,7 @@ const schema = RpcSchema.make({
 
 // Root service router
 const router = Router.make(schema, {
-  greet: (name) => Effect.succeed(`Hello ${name}!`),
+  greet: name => Effect.succeed(`Hello ${name}!`),
   currentTime: Effect.sync(() => new Date()),
   posts: postsRouter,
 })

@@ -8,7 +8,7 @@ import * as Http from "node:http"
 // Implement the RPC server router
 const router = Router.make(schema, {
   getUserIds: Effect.succeed(Chunk.map(Chunk.range(1, 100), UserId)),
-  getUser: (id) => Effect.succeed({ id, name: `User ${id}` }),
+  getUser: id => Effect.succeed({ id, name: `User ${id}` }),
 })
 
 // Create the HTTP handler, which takes the http request details and returns

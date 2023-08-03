@@ -27,9 +27,9 @@ export const RpcNotFound: SchemaC<
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcNotFound"),
-    method: Schema.string,
+    method: Schema.string
   }),
-  "RpcNotFound",
+  "RpcNotFound"
 )
 
 /**
@@ -52,9 +52,9 @@ export const RpcDecodeFailure: SchemaC<
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcDecodeFailure"),
-    errors: Schema.nonEmptyArray(Schema.any),
+    errors: Schema.nonEmptyArray(Schema.any)
   }),
-  "RpcDecodeFailure",
+  "RpcDecodeFailure"
 )
 
 /**
@@ -77,9 +77,9 @@ export const RpcEncodeFailure: SchemaC<
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcEncodeFailure"),
-    errors: Schema.nonEmptyArray(Schema.any),
+    errors: Schema.nonEmptyArray(Schema.any)
   }),
-  "RpcEncodeFailure",
+  "RpcEncodeFailure"
 )
 
 /**
@@ -102,9 +102,9 @@ export const RpcTransportError: SchemaC<
 > = withConstructorTagged(
   Schema.struct({
     _tag: Schema.literal("RpcTransportError"),
-    error: Schema.unknown,
+    error: Schema.unknown
   }),
-  "RpcTransportError",
+  "RpcTransportError"
 )
 
 /**
@@ -125,5 +125,5 @@ export const RpcError = Schema.union(
   RpcDecodeFailure,
   RpcEncodeFailure,
   RpcNotFound,
-  RpcTransportError,
+  RpcTransportError
 )

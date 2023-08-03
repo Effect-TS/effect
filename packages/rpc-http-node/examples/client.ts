@@ -9,8 +9,8 @@ const client = Client.make(schema, { url: "http://localhost:3000" })
 // Use the client
 pipe(
   client.getUserIds,
-  Effect.flatMap((ids) => Effect.forEachPar(ids, client.getUser)),
-  Effect.tap((users) =>
+  Effect.flatMap(ids => Effect.forEachPar(ids, client.getUser)),
+  Effect.tap(users =>
     Effect.sync(() => {
       console.log(users)
     }),

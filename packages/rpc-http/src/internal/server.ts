@@ -9,9 +9,8 @@ export const HttpRequest = Tag<server.HttpRequest>()
 
 /** @internal */
 export function make<R extends RpcRouter.Base>(
-  router: R,
+  router: R
 ): server.RpcHttpHandler<R> {
   const handler = Server.handler(router)
-  return (request) =>
-    Effect.provideService(handler(request.body), HttpRequest, request) as any
+  return (request) => Effect.provideService(handler(request.body), HttpRequest, request) as any
 }

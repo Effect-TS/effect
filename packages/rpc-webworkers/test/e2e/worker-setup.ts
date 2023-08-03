@@ -8,17 +8,15 @@ const router = Router.make(schemaWithSetup, {
   __setup: (port) =>
     Layer.scoped(
       Name,
-      Effect.gen(function* (_) {
+      Effect.gen(function*(_) {
         yield* _(
-          Effect.addFinalizer(() =>
-            Effect.sync(() => port.postMessage("closed")),
-          ),
+          Effect.addFinalizer(() => Effect.sync(() => port.postMessage("closed")))
         )
         return { name: "Tim" }
-      }),
+      })
     ),
 
-  getName: Effect.map(Name, (_) => _.name),
+  getName: Effect.map(Name, (_) => _.name)
 })
 
 Effect.runPromise(Server.make(router))

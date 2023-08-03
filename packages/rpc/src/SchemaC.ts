@@ -31,11 +31,11 @@ export const withConstructor: {
   2,
   <I, A, C>(
     self: Schema.Schema<I, A>,
-    f: (input: C) => A,
+    f: (input: C) => A
   ): SchemaC<I, A, C> => {
-    const validate = Schema.validate(self)
+    const validate = Schema.validateSync(self)
     const validateEither = Schema.validateEither(self)
-    const validateEffect = Schema.validateEffect(self)
+    const validateEffect = Schema.validate(self)
     const validateOption = Schema.validateOption(self)
 
     function make(input: C): A {
@@ -53,7 +53,7 @@ export const withConstructor: {
     }
 
     return make as any
-  },
+  }
 )
 
 /**
@@ -61,7 +61,7 @@ export const withConstructor: {
  * @since 1.0.0
  */
 export const withConstructorSelf = <I, A>(
-  self: Schema.Schema<I, A>,
+  self: Schema.Schema<I, A>
 ): SchemaC<I, A, A> => withConstructor(self, identity)
 
 /**
@@ -69,28 +69,28 @@ export const withConstructorSelf = <I, A>(
  * @since 1.0.0
  */
 export const withConstructorTagged: {
-  <A extends { readonly _tag: string }>(tag: A["_tag"]): <I>(
-    self: Schema.Schema<I, A>,
-  ) => SchemaC<I, A, Omit<A, "_tag">>
+  <A extends { readonly _tag: string }>(
+    tag: A["_tag"]
+  ): <I>(self: Schema.Schema<I, A>) => SchemaC<I, A, Omit<A, "_tag">>
 
   <I, A extends { readonly _tag: string }>(
     self: Schema.Schema<I, A>,
-    tag: A["_tag"],
+    tag: A["_tag"]
   ): SchemaC<I, A, Omit<A, "_tag">>
 } = dual(
   2,
   <I, A extends { readonly _tag: string }>(
     self: Schema.Schema<I, A>,
-    tag: A["_tag"],
+    tag: A["_tag"]
   ): SchemaC<I, A, Omit<A, "_tag">> =>
     withConstructor(
       self,
       (input) =>
         ({
           _tag: tag,
-          ...input,
-        } as A),
-    ),
+          ...input
+        }) as A
+    )
 )
 
 /**
@@ -98,28 +98,24 @@ export const withConstructorTagged: {
  * @since 1.0.0
  */
 export const withConstructorDataTagged: {
-  <A extends { readonly _tag: string }>(tag: A["_tag"]): <I>(
-    self: Schema.Schema<I, A>,
-  ) => SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
+  <A extends { readonly _tag: string }>(
+    tag: A["_tag"]
+  ): <I>(self: Schema.Schema<I, A>) => SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
 
   <I extends Record<string, any>, A extends { readonly _tag: string }>(
     self: Schema.Schema<I, A>,
-    tag: A["_tag"],
+    tag: A["_tag"]
   ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">>
 } = dual(
   2,
   <I extends Record<string, any>, A extends { readonly _tag: string }>(
     self: Schema.Schema<I, A>,
-    tag: A["_tag"],
-  ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">> =>
-    withConstructor(Schema.data(self), Data.tagged(tag) as any),
+    tag: A["_tag"]
+  ): SchemaC<I, Data.Data<A>, Omit<A, "_tag">> => withConstructor(Schema.data(self), Data.tagged(tag) as any)
 )
 
 /**
  * @category combinators
  * @since 1.0.0
  */
-export const withTo =
-  <A>() =>
-  <I, X extends A, C>(self: SchemaC<I, X, C>): SchemaC<I, A, C> =>
-    self as any
+export const withTo = <A>() => <I, X extends A, C>(self: SchemaC<I, X, C>): SchemaC<I, A, C> => self as any

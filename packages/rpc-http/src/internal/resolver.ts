@@ -10,9 +10,9 @@ const RpcFetchError_ = withConstructorTagged(
   S.struct({
     _tag: S.literal("RpcFetchError"),
     reason: S.union(S.literal("FetchError"), S.literal("JsonDecodeError")),
-    error: S.unknown,
+    error: S.unknown
   }),
-  "RpcFetchError",
+  "RpcFetchError"
 )
 
 /** @internal */
@@ -20,12 +20,12 @@ export const RpcFetchError = withTo<resolver.RpcFetchError>()(RpcFetchError_)
 
 /** @internal */
 export function make(
-  options: resolver.FetchResolverOptions,
+  options: resolver.FetchResolverOptions
 ): Resolver.RpcResolver<never> {
   return Resolver.make((requests) =>
     pipe(
-      Effect.tryCatchPromiseInterrupt(
-        (signal) => {
+      Effect.tryPromise({
+        try: (signal) => {
           const headers = new Headers(options.init?.headers)
           headers.set("Content-Type", "application/json; charset=utf-8")
           return fetch(options.url, {
@@ -33,18 +33,18 @@ export function make(
             method: "POST",
             headers,
             body: JSON.stringify(requests),
-            signal,
+            signal
           })
         },
-        (error) => RpcFetchError({ reason: "FetchError", error }),
-      ),
+        catch: (error) => RpcFetchError({ reason: "FetchError", error })
+      }),
       Effect.flatMap((response) =>
-        Effect.tryCatchPromise(
-          () => response.json(),
-          (error) => RpcFetchError({ reason: "JsonDecodeError", error }),
-        ),
+        Effect.tryPromise({
+          try: () => response.json(),
+          catch: (error) => RpcFetchError({ reason: "JsonDecodeError", error })
+        })
       ),
-      Effect.mapError((error) => RpcTransportError({ error })),
-    ),
+      Effect.mapError((error) => RpcTransportError({ error }))
+    )
   )
 }

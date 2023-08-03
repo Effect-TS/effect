@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type { Effect } from "@effect/io/Effect"
-import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
-import type { RpcUndecodedClient } from "@effect/rpc/Server"
-import * as internal from "@effect/rpc/internal/router"
 import type { Context, Tag } from "@effect/data/Context"
 import type { LazyArg } from "@effect/data/Function"
+import type { Effect } from "@effect/io/Effect"
 import type { Layer } from "@effect/io/Layer"
+import * as internal from "@effect/rpc/internal/router"
+import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
+import type { RpcUndecodedClient } from "@effect/rpc/Server"
 
 /**
  * @category handler models
@@ -57,14 +57,10 @@ export namespace RpcHandler {
     infer I,
     infer _IO,
     infer O
-  >
-    ? IO<any, E, I, O>
-    : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
-    ? IO<any, never, I, O>
-    : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O>
-    ? NoInput<any, E, O>
-    : C extends RpcSchema.NoInputNoError<infer _IO, infer O>
-    ? NoInput<any, never, O>
+  > ? IO<any, E, I, O>
+    : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O> ? IO<any, never, I, O>
+    : C extends RpcSchema.NoInput<infer _IE, infer E, infer _IO, infer O> ? NoInput<any, E, O>
+    : C extends RpcSchema.NoInputNoError<infer _IO, infer O> ? NoInput<any, never, O>
     : never
 
   /**
@@ -78,13 +74,10 @@ export namespace RpcHandler {
     infer I,
     infer _IO,
     infer O
-  >
-    ? O extends Context<infer A>
-      ? IO<any, E, I, Context<A>> | IOLayer<any, E, I, A>
-      : never
+  > ? O extends Context<infer A> ? IO<any, E, I, Context<A>> | IOLayer<any, E, I, A>
+    : never
     : C extends RpcSchema.NoError<infer _II, infer I, infer _IO, infer O>
-    ? O extends Context<infer A>
-      ? IO<any, never, I, Context<A>> | IOLayer<any, never, I, A>
+      ? O extends Context<infer A> ? IO<any, never, I, Context<A>> | IOLayer<any, never, I, A>
       : never
     : never
 
@@ -95,8 +88,7 @@ export namespace RpcHandler {
   export type FromMethod<H extends RpcHandlers, M, XR, E2> = Extract<
     RpcHandlers.Map<H, XR, E2>,
     [M, any]
-  > extends [infer _M, infer T]
-    ? T
+  > extends [infer _M, infer T] ? T
     : never
 }
 
@@ -104,8 +96,7 @@ export namespace RpcHandler {
  * @category handlers models
  * @since 1.0.0
  */
-export interface RpcHandlers
-  extends Record<string, RpcHandler.Any | { handlers: RpcHandlers }> {}
+export interface RpcHandlers extends Record<string, RpcHandler.Any | { handlers: RpcHandlers }> {}
 
 /**
  * @since 1.0.0
@@ -116,14 +107,13 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type FromService<S extends RpcService.DefinitionWithId> = {
-    readonly [K in Extract<
-      keyof S,
-      string
-    >]: S[K] extends RpcService.DefinitionWithId
-      ? { handlers: FromService<S[K]> }
-      : S[K] extends RpcSchema.Any
-      ? K extends "__setup"
-        ? RpcHandler.FromSetupSchema<S[K]>
+    readonly [
+      K in Extract<
+        keyof S,
+        string
+      >
+    ]: S[K] extends RpcService.DefinitionWithId ? { handlers: FromService<S[K]> }
+      : S[K] extends RpcSchema.Any ? K extends "__setup" ? RpcHandler.FromSetupSchema<S[K]>
         : RpcHandler.FromSchema<S[K]>
       : never
   }
@@ -133,10 +123,8 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type Services<H extends RpcHandlers> = {
-    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
-      ? Services<H[M]["handlers"]>
-      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O>
-      ? R
+    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers } ? Services<H[M]["handlers"]>
+      : H[M] extends RpcHandler<infer R, infer _E, infer _I, infer _O> ? R
       : never
   }[keyof H]
 
@@ -145,10 +133,8 @@ export namespace RpcHandlers {
    * @since 1.0.0
    */
   export type Error<H extends RpcHandlers> = {
-    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers }
-      ? Services<H[M]["handlers"]>
-      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O>
-      ? E
+    [M in keyof H]: H[M] extends { readonly handlers: RpcHandlers } ? Services<H[M]["handlers"]>
+      : H[M] extends RpcHandler<infer _R, infer E, infer _I, infer _O> ? E
       : never
   }[keyof H]
 
@@ -158,13 +144,11 @@ export namespace RpcHandlers {
    */
   export type Map<H extends RpcHandlers, XR, E2, P extends string = ""> = {
     readonly [K in keyof H]: K extends string
-      ? H[K] extends { handlers: RpcHandlers }
-        ? Map<H[K]["handlers"], XR, E2, `${P}${K}.`>
-        : H[K] extends RpcHandler.IO<infer R, infer E, infer _I, infer O>
+      ? H[K] extends { handlers: RpcHandlers } ? Map<H[K]["handlers"], XR, E2, `${P}${K}.`>
+      : H[K] extends RpcHandler.IO<infer R, infer E, infer _I, infer O>
         ? [`${P}${K}`, Effect<Exclude<R, XR>, E | E2, O>]
-        : H[K] extends Effect<infer R, infer E, infer O>
-        ? [`${P}${K}`, Effect<Exclude<R, XR>, E | E2, O>]
-        : never
+      : H[K] extends Effect<infer R, infer E, infer O> ? [`${P}${K}`, Effect<Exclude<R, XR>, E | E2, O>]
+      : never
       : never
   }[keyof H]
 }
@@ -175,7 +159,7 @@ export namespace RpcHandlers {
  */
 export interface RpcRouter<
   S extends RpcService.DefinitionWithId,
-  H extends RpcHandlers,
+  H extends RpcHandlers
 > extends RpcRouter.Base {
   readonly handlers: H
   readonly schema: S
@@ -235,25 +219,22 @@ export namespace RpcRouter {
       readonly [M in keyof Router["handlers"]]: Router["handlers"][M] extends Base
         ? Provide<Router["handlers"][M], XR, PR, PE>
         : Router["handlers"][M] extends RpcHandler.IO<
-            infer R,
-            infer E,
-            infer I,
-            infer O
-          >
-        ? RpcHandler.IO<Exclude<R, XR> | PR, E | PE, I, O>
+          infer R,
+          infer E,
+          infer I,
+          infer O
+        > ? RpcHandler.IO<Exclude<R, XR> | PR, E | PE, I, O>
         : Router["handlers"][M] extends RpcHandler.IOLayer<
-            infer R,
-            infer E,
-            infer I,
-            infer O
-          >
-        ? RpcHandler.IOLayer<Exclude<R, XR> | PR, E | PE, I, O>
+          infer R,
+          infer E,
+          infer I,
+          infer O
+        > ? RpcHandler.IOLayer<Exclude<R, XR> | PR, E | PE, I, O>
         : Router["handlers"][M] extends RpcHandler.NoInput<
-            infer R,
-            infer E,
-            infer O
-          >
-        ? RpcHandler.NoInput<Exclude<R, XR> | PR, E | PE, O>
+          infer R,
+          infer E,
+          infer O
+        > ? RpcHandler.NoInput<Exclude<R, XR> | PR, E | PE, O>
         : never
     }
   >
@@ -262,24 +243,20 @@ export namespace RpcRouter {
    * @category router utils
    * @since 1.0.0
    */
-  export type SetupServices<R extends WithSetup> =
-    R["handlers"]["__setup"] extends RpcHandler.IOLayer<
+  export type SetupServices<R extends WithSetup> = R["handlers"]["__setup"] extends RpcHandler.IOLayer<
+    infer _R,
+    infer _E,
+    infer _I,
+    infer O
+  > ? O
+    : R["handlers"]["__setup"] extends RpcHandler.IO<
       infer _R,
       infer _E,
       infer _I,
       infer O
-    >
-      ? O
-      : R["handlers"]["__setup"] extends RpcHandler.IO<
-          infer _R,
-          infer _E,
-          infer _I,
-          infer O
-        >
-      ? O extends Context<infer Env>
-        ? Env
-        : never
+    > ? O extends Context<infer Env> ? Env
       : never
+    : never
 }
 
 /**
@@ -288,11 +265,11 @@ export namespace RpcRouter {
  */
 export const make: <
   S extends RpcService.DefinitionWithId,
-  H extends RpcHandlers.FromService<S>,
+  H extends RpcHandlers.FromService<S>
 >(
   schema: S,
   handlers: H,
-  options?: Partial<RpcRouter.Options>,
+  options?: Partial<RpcRouter.Options>
 ) => RpcRouter<S, H> = internal.make
 
 /**
@@ -300,15 +277,16 @@ export const make: <
  * @since 1.0.0
  */
 export const provideService: {
-  <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>): <
-    Router extends RpcRouter.Base,
-  >(
-    self: Router,
+  <T extends Tag<any, any>>(
+    tag: T,
+    service: Tag.Service<T>
+  ): <Router extends RpcRouter.Base>(
+    self: Router
   ) => RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
   <Router extends RpcRouter.Base, T extends Tag<any, any>>(
     self: Router,
     tag: T,
-    service: Tag.Service<T>,
+    service: Tag.Service<T>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
 } = internal.provideService
 
@@ -321,20 +299,20 @@ export const provideServiceEffect: {
     Router extends RpcRouter.Base,
     T extends Tag<any, any>,
     R,
-    E extends RpcService.Errors<Router["schema"]>,
+    E extends RpcService.Errors<Router["schema"]>
   >(
     tag: T,
-    effect: Effect<R, E, Tag.Service<T>>,
+    effect: Effect<R, E, Tag.Service<T>>
   ): (self: Router) => RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
   <
     Router extends RpcRouter.Base,
     T extends Tag<any, any>,
     R,
-    E extends RpcService.Errors<Router["schema"]>,
+    E extends RpcService.Errors<Router["schema"]>
   >(
     self: Router,
     tag: T,
-    effect: Effect<R, E, Tag.Service<T>>,
+    effect: Effect<R, E, Tag.Service<T>>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, R, E>
 } = internal.provideServiceEffect
 
@@ -343,14 +321,15 @@ export const provideServiceEffect: {
  * @since 1.0.0
  */
 export const provideServiceSync: {
-  <T extends Tag<any, any>>(tag: T, service: LazyArg<Tag.Service<T>>): <
-    Router extends RpcRouter.Base,
-  >(
-    self: Router,
+  <T extends Tag<any, any>>(
+    tag: T,
+    service: LazyArg<Tag.Service<T>>
+  ): <Router extends RpcRouter.Base>(
+    self: Router
   ) => RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
   <Router extends RpcRouter.Base, T extends Tag<any, any>>(
     self: Router,
     tag: T,
-    service: LazyArg<Tag.Service<T>>,
+    service: LazyArg<Tag.Service<T>>
   ): RpcRouter.Provide<Router, Tag.Identifier<T>, never, never>
 } = internal.provideServiceSync

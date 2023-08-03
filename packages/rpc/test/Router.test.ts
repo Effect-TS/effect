@@ -11,7 +11,7 @@ const makeCounter = () => {
   let count = 0
 
   return {
-    count: () => count++,
+    count: () => count++
   }
 }
 interface Counter extends ReturnType<typeof makeCounter> {}
@@ -19,36 +19,36 @@ const Counter = Tag<Counter>()
 
 const SomeError_ = S.struct({
   _tag: S.literal("SomeError"),
-  message: S.string,
+  message: S.string
 })
 interface SomeError extends S.To<typeof SomeError_> {}
 const SomeError: S.Schema<SomeError> = SomeError_
 
 const posts = RS.make({
   create: {
-    output: S.string,
-  },
+    output: S.string
+  }
 })
 
 const schema = RS.withServiceError(
   RS.make({
     getCount: {
-      output: S.tuple(S.number, S.number),
+      output: S.tuple(S.number, S.number)
     },
-    posts,
+    posts
   }),
-  SomeError,
+  SomeError
 )
 
 const router = _.make(schema, {
   getCount: Effect.map(
     Counter,
-    (counter) => [counter.count(), counter.count()] as const,
+    (counter) => [counter.count(), counter.count()] as const
   ),
 
   posts: _.make(posts, {
-    create: Effect.succeed("post"),
-  }),
+    create: Effect.succeed("post")
+  })
 })
 
 describe("Router", () => {
@@ -66,8 +66,7 @@ describe("Router", () => {
   })
 
   it("provideServiceEffect/ error", () => {
-    const counterEffect: Effect.Effect<never, SomeError, Counter> =
-      Effect.sync(makeCounter)
+    const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.sync(makeCounter)
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
 
@@ -80,25 +79,25 @@ describe("Router", () => {
 
   it("provideServiceEffect/ error fail", () => {
     const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.fail(
-      { _tag: "SomeError", message: "boom" },
+      { _tag: "SomeError", message: "boom" }
     )
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
 
     expect(Effect.runSync(Effect.either(provided.handlers.getCount))).toEqual(
-      Either.left({ _tag: "SomeError", message: "boom" }),
+      Either.left({ _tag: "SomeError", message: "boom" })
     )
   })
 
   it("provideServiceEffect/ error fail nested", () => {
     const counterEffect: Effect.Effect<never, SomeError, Counter> = Effect.fail(
-      { _tag: "SomeError", message: "boom" },
+      { _tag: "SomeError", message: "boom" }
     )
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
 
     expect(
-      Effect.runSync(Effect.either(provided.handlers.posts.handlers.create)),
+      Effect.runSync(Effect.either(provided.handlers.posts.handlers.create))
     ).toEqual(Either.left({ _tag: "SomeError", message: "boom" }))
   })
 
@@ -106,8 +105,7 @@ describe("Router", () => {
     interface Foo {
       readonly _: unique symbol
     }
-    const counterEffect: Effect.Effect<Foo, SomeError, Counter> =
-      Effect.sync(makeCounter)
+    const counterEffect: Effect.Effect<Foo, SomeError, Counter> = Effect.sync(makeCounter)
 
     const provided = _.provideServiceEffect(router, Counter, counterEffect)
     typeEquals(provided.handlers.getCount)<

@@ -13,22 +13,22 @@ import * as Pool from "@effect/io/Pool"
 import "./style.css"
 
 // Create the worker pool layer
-const PoolLive = Resolver.makePoolLayer((spawn) =>
-  Pool.make(
-    spawn((id) => {
+const PoolLive = Resolver.makePoolLayer(spawn =>
+  Pool.make({
+    acquire: spawn(id => {
       console.log("Spawning worker", id)
       return new RpcWorker()
     }, 3),
-    navigator.hardwareConcurrency,
-  ),
+    size: navigator.hardwareConcurrency,
+  }),
 )
 // Create the resolver layer
 const ResolverLive = Layer.provide(PoolLive, Resolver.RpcWorkerResolverLive)
 
 // Example for using shared workers
-export const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
-  Pool.make(
-    spawn((id) => {
+export const SharedPoolLive = Resolver.makePoolLayer(spawn =>
+  Pool.make({
+    acquire: spawn(id => {
       console.log("Spawning shared worker", id)
       return new SharedWorker(new URL("./worker.ts", import.meta.url), {
         /* @vite-ignore */
@@ -36,21 +36,23 @@ export const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
         type: "module",
       })
     }, 3),
-    navigator.hardwareConcurrency,
-  ),
+    size: navigator.hardwareConcurrency,
+  }),
 )
 
 const client = Client.make(schema)
 
 // Send off 50 requests to the worker pool
 pipe(
-  Chunk.map(Chunk.range(1, 50), () =>
-    client.getBinary(new Uint8Array([1, 2, 3])),
+  Effect.all(
+    Chunk.map(Chunk.range(1, 50), () =>
+      client.getBinary(new Uint8Array([1, 2, 3])),
+    ),
+    { concurrency: "unbounded" },
   ),
-  Effect.allPar,
-  Effect.tap((_) => Effect.sync(() => console.log(_))),
+  Effect.tap(_ => Effect.sync(() => console.log(_))),
   Effect.zipLeft(
-    Effect.catchAll(client.crash, (e) => Effect.sync(() => console.log(e))),
+    Effect.catchAll(client.crash, e => Effect.sync(() => console.log(e))),
   ),
   // Sleep so you can see the spawned workers in dev tools
   Effect.zipLeft(Effect.sleep(Duration.seconds(120))),

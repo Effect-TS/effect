@@ -16,7 +16,7 @@ export {
    * @category tags
    * @since 1.0.0
    */
-  HttpRequest,
+  HttpRequest
 } from "@effect/rpc-http/Server"
 
 /**
@@ -24,7 +24,10 @@ export {
  * @since 1.0.0
  */
 export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
-  (request: IncomingMessage, response: ServerResponse): Effect.Effect<
+  (
+    request: IncomingMessage,
+    response: ServerResponse
+  ): Effect.Effect<
     Exclude<RpcHandlers.Services<R["handlers"]>, HttpRequest | Span>,
     never,
     void
@@ -36,13 +39,13 @@ export interface RpcNodeHttpHandler<R extends RpcRouter.Base> {
  * @since 1.0.0
  */
 export function make<R extends RpcRouter.Base>(
-  router: R,
+  router: R
 ): RpcNodeHttpHandler<R> {
   const handler = Server.make(router) as unknown as RpcServer
 
   return function handleRequestResponse(
     request: IncomingMessage,
-    response: ServerResponse,
+    response: ServerResponse
   ) {
     return pipe(
       bodyToString(request),
@@ -51,25 +54,24 @@ export function make<R extends RpcRouter.Base>(
         handler({
           url: request.url!,
           headers: new Headers(request.headers as any),
-          body,
-        }),
+          body
+        })
       ),
       Effect.tap((responses) =>
         Effect.sync(() => {
           response.writeHead(200, {
-            "Content-Type": "application/json; charset=utf-8",
+            "Content-Type": "application/json; charset=utf-8"
           })
           response.end(JSON.stringify(responses))
-        }),
+        })
       ),
       Effect.catchAllCause((cause) =>
-        Effect.flatMap(Effect.logErrorCause(cause), () =>
+        Effect.flatMap(Effect.logError(cause), () =>
           Effect.sync(() => {
             response.writeHead(500)
             response.end()
-          }),
-        ),
-      ),
+          }))
+      )
     )
   } as any
 }
@@ -90,7 +92,7 @@ const bodyToString = (stream: Readable) =>
   })
 
 const parseJson = (body: string) =>
-  Effect.tryCatch(
-    () => JSON.parse(body) as unknown,
-    (error) => new Error(`Failed to parse JSON: ${error}`),
-  )
+  Effect.try({
+    try: () => JSON.parse(body) as unknown,
+    catch: (error) => new Error(`Failed to parse JSON: ${error}`)
+  })

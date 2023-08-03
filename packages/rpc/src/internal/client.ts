@@ -2,12 +2,12 @@ import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
-import { RpcResolver } from "@effect/rpc/Resolver"
-import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
-import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import * as codec from "@effect/rpc/internal/codec"
 import * as resolverInternal from "@effect/rpc/internal/resolver"
 import * as schemaInternal from "@effect/rpc/internal/schema"
+import { RpcResolver } from "@effect/rpc/Resolver"
+import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
+import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import type * as Schema from "@effect/schema/Schema"
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
@@ -28,34 +28,33 @@ const makeRecursive = <S extends RpcService.DefinitionWithId>(
   transport: RpcResolver<never>,
   options: client.RpcClientOptions,
   serviceErrors: ReadonlyArray<Schema.Schema<any>> = [],
-  prefix = "",
+  prefix = ""
 ): client.RpcClient<S, never> => {
   serviceErrors = [
     ...serviceErrors,
-    schemas[RpcServiceErrorId] as Schema.Schema<any>,
+    schemas[RpcServiceErrorId] as Schema.Schema<any>
   ]
 
   return Object.entries(schemas).reduce(
     (acc, [method, codec]) => ({
       ...acc,
-      [method]:
-        RpcServiceId in codec
-          ? makeRecursive(
-              codec,
-              transport,
-              options,
-              serviceErrors,
-              `${prefix}${method}.`,
-            )
-          : makeRpc(
-              transport,
-              serviceErrors,
-              codec,
-              `${prefix}${method}`,
-              options,
-            ),
+      [method]: RpcServiceId in codec
+        ? makeRecursive(
+          codec,
+          transport,
+          options,
+          serviceErrors,
+          `${prefix}${method}.`
+        )
+        : makeRpc(
+          transport,
+          serviceErrors,
+          codec,
+          `${prefix}${method}`,
+          options
+        )
     }),
-    {} as any,
+    {} as any
   )
 }
 
@@ -65,19 +64,18 @@ export const makeWithResolver: {
     S extends RpcService.DefinitionWithSetup,
     Resolver extends
       | RpcResolver<never>
-      | Effect.Effect<any, never, RpcResolver<never>>,
+      | Effect.Effect<any, never, RpcResolver<never>>
   >(
     schemas: S,
     resolver: Resolver,
     init: RpcService.SetupInput<S>,
-    options?: client.RpcClientOptions,
+    options?: client.RpcClientOptions
   ): Effect.Effect<
     never,
     RpcService.SetupError<S> | RpcError,
     client.RpcClient<
       S,
-      [Resolver] extends [Effect.Effect<any, any, any>]
-        ? Effect.Effect.Context<Resolver>
+      [Resolver] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Resolver>
         : never
     >
   >
@@ -85,29 +83,28 @@ export const makeWithResolver: {
     S extends RpcService.DefinitionWithoutSetup,
     Resolver extends
       | RpcResolver<never>
-      | Effect.Effect<any, never, RpcResolver<never>>,
+      | Effect.Effect<any, never, RpcResolver<never>>
   >(
     schemas: S,
     resolver: Resolver,
-    options?: client.RpcClientOptions,
+    options?: client.RpcClientOptions
   ): client.RpcClient<
     S,
-    [Resolver] extends [Effect.Effect<any, any, any>]
-      ? Effect.Effect.Context<Resolver>
+    [Resolver] extends [Effect.Effect<any, any, any>] ? Effect.Effect.Context<Resolver>
       : never
   >
 } = (
   schemas: RpcService.DefinitionWithId,
   resolver: RpcResolver<never> | Effect.Effect<any, never, RpcResolver<never>>,
   initOrOptions?: unknown,
-  options?: client.RpcClientOptions,
+  options?: client.RpcClientOptions
 ) => {
   const hasSetup = "__setup" in schemas
   const opts = hasSetup ? options : (initOrOptions as client.RpcClientOptions)
   const client: any = {
     ...makeRecursive(schemas, resolver as any, opts ?? {}),
     _schemas: schemas,
-    _unsafeDecode: unsafeDecode(schemas),
+    _unsafeDecode: unsafeDecode(schemas)
   }
 
   if (hasSetup) {
@@ -122,7 +119,7 @@ export const make: {
   <S extends RpcService.DefinitionWithSetup>(
     schemas: S,
     init: RpcService.SetupInput<S>,
-    options?: client.RpcClientOptions,
+    options?: client.RpcClientOptions
   ): Effect.Effect<
     never,
     RpcService.SetupError<S> | RpcError,
@@ -130,12 +127,12 @@ export const make: {
   >
   <S extends RpcService.DefinitionWithoutSetup>(
     schemas: S,
-    options?: client.RpcClientOptions,
+    options?: client.RpcClientOptions
   ): client.RpcClient<S, RpcResolver<never>>
 } = (
   schemas: any,
   initOrOptions?: unknown,
-  options?: client.RpcClientOptions,
+  options?: client.RpcClientOptions
 ) => makeWithResolver(schemas, RpcResolver, initOrOptions, options) as any
 
 const makeRpc = <S extends RpcSchema.Any>(
@@ -143,14 +140,13 @@ const makeRpc = <S extends RpcSchema.Any>(
   serviceErrors: ReadonlyArray<Schema.Schema<any>>,
   schema: S,
   method: string,
-  { spanPrefix = "RpcClient" }: client.RpcClientOptions,
+  { spanPrefix = "RpcClient" }: client.RpcClientOptions
 ): client.Rpc<S, never, never> => {
-  const errorSchemas =
-    "error" in schema
-      ? [RpcError, schema.error, ...serviceErrors]
-      : [RpcError, ...serviceErrors]
+  const errorSchemas = "error" in schema
+    ? [RpcError, schema.error, ...serviceErrors]
+    : [RpcError, ...serviceErrors]
   const parseError = codec.decodeEffect(
-    schemaInternal.schemasToUnion(errorSchemas),
+    schemaInternal.schemasToUnion(errorSchemas)
   )
   const parseOutput = codec.decodeEffect(schema.output)
 
@@ -170,18 +166,17 @@ const makeRpc = <S extends RpcSchema.Any>(
                   input,
                   spanName: span.name,
                   spanId: span.spanId,
-                  traceId: span.traceId,
+                  traceId: span.traceId
                 },
                 hash,
-                schema,
+                schema
               }),
-              resolver,
-            ),
+              resolver
+            )
           ),
           Effect.flatMap(parseOutput),
-          Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
-        ),
-      )
+          Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail))
+        ))
     }) as any
   }
 
@@ -195,15 +190,14 @@ const makeRpc = <S extends RpcSchema.Any>(
             _tag: method,
             spanName: span.name,
             spanId: span.spanId,
-            traceId: span.traceId,
+            traceId: span.traceId
           },
           hash,
-          schema,
+          schema
         }),
-        resolver,
+        resolver
       ),
       Effect.flatMap(parseOutput),
-      Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail)),
-    ),
-  ) as any
+      Effect.catchAll((e) => Effect.flatMap(parseError(e), Effect.fail))
+    )) as any
 }

@@ -7,7 +7,7 @@ import * as Effect from "@effect/io/Effect"
 let count = 1
 
 const router = Router.make(schema, {
-  getBinary: (_) =>
+  getBinary: _ =>
     Effect.zipRight(
       Effect.log(`Got request: ${count++}`),
       Effect.delay(Effect.succeed(_), Duration.seconds(1)),

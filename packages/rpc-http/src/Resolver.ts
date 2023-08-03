@@ -38,5 +38,4 @@ export const RpcFetchError: SchemaC<
  * @category constructors
  * @since 1.0.0
  */
-export const make: (options: FetchResolverOptions) => RpcResolver<never> =
-  internal.make
+export const make: (options: FetchResolverOptions) => RpcResolver<never> = internal.make

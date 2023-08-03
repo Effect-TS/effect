@@ -12,53 +12,53 @@ import * as Server from "@effect/rpc/Server"
 
 /** @internal */
 export const makeHandler: {
-  <R extends RpcRouter.WithSetup>(router: R): Effect.Effect<
+  <R extends RpcRouter.WithSetup>(
+    router: R
+  ): Effect.Effect<
     Scope,
     never,
     (port: MessagePort | typeof globalThis) => RpcWorkerHandler<R>
   >
-  <R extends RpcRouter.WithoutSetup>(router: R): (
-    port: MessagePort | typeof globalThis,
-  ) => RpcWorkerHandler<R>
+  <R extends RpcRouter.WithoutSetup>(
+    router: R
+  ): (port: MessagePort | typeof globalThis) => RpcWorkerHandler<R>
 } = (router: RpcRouter.Base) => {
   const handler = Server.handleSingleWithSchema(router) as unknown
 
-  const run =
-    (handler: Server.RpcServerSingleWithSchema) =>
-    (
-      port: MessagePort | typeof globalThis,
-    ): RpcWorkerHandler<RpcRouter.Base> => {
-      return (message) => {
-        const [id, request] = message.data as [number, RpcRequest.Payload]
-        return pipe(
-          handler(request),
-          Effect.flatMap(([response, schema]) =>
-            Effect.sync(() => {
-              const transfer = pipe(
-                Option.map(schema, (schema) =>
-                  response._tag === "Success"
-                    ? getTransferables(schema.output, response.value)
-                    : getTransferables(schema.error, response.error),
-                ),
-                Option.getOrUndefined,
-              )
-              return port.postMessage([id, response], { transfer })
-            }),
-          ),
-          Effect.catchAllDefect((error) =>
-            Effect.sync(() =>
-              port.postMessage([
-                id,
-                {
-                  _tag: "Error",
-                  error: RpcTransportError({ error }),
-                } satisfies RpcResponse,
-              ]),
-            ),
-          ),
-        ) as any
-      }
+  const run = (handler: Server.RpcServerSingleWithSchema) =>
+  (
+    port: MessagePort | typeof globalThis
+  ): RpcWorkerHandler<RpcRouter.Base> => {
+    return (message) => {
+      const [id, request] = message.data as [number, RpcRequest.Payload]
+      return pipe(
+        handler(request),
+        Effect.flatMap(([response, schema]) =>
+          Effect.sync(() => {
+            const transfer = pipe(
+              Option.map(schema, (schema) =>
+                response._tag === "Success"
+                  ? getTransferables(schema.output, response.value)
+                  : getTransferables(schema.error, response.error)),
+              Option.getOrUndefined
+            )
+            return port.postMessage([id, response], { transfer })
+          })
+        ),
+        Effect.catchAllDefect((error) =>
+          Effect.sync(() =>
+            port.postMessage([
+              id,
+              {
+                _tag: "Error",
+                error: RpcTransportError({ error })
+              } satisfies RpcResponse
+            ])
+          )
+        )
+      ) as any
     }
+  }
 
   if (Effect.isEffect(handler)) {
     return Effect.map(handler as any, run)
@@ -69,14 +69,14 @@ export const makeHandler: {
 
 /** @internal */
 export const make = <Router extends RpcRouter.Base>(
-  router: Router,
+  router: Router
 ): RpcWorker<Router> => {
   const handler = makeHandler(router)
 
   const run = (
     handler: (
-      port: MessagePort | typeof globalThis,
-    ) => RpcWorkerHandler<RpcRouter.Base>,
+      port: MessagePort | typeof globalThis
+    ) => RpcWorkerHandler<RpcRouter.Base>
   ) =>
     pipe(
       Effect.runtime<any>(),
@@ -93,7 +93,7 @@ export const make = <Router extends RpcRouter.Base>(
               if ((event as MessageEvent).data === "close") {
                 portCount--
                 if (portCount === 0) {
-                  resume(Effect.unit())
+                  resume(Effect.unit)
                 }
               } else {
                 runFork(portHandler(event as MessageEvent) as any)
@@ -111,15 +111,15 @@ export const make = <Router extends RpcRouter.Base>(
                 const port = event.ports[0]
                 handlePort(port)
                 port.start()
-              },
+              }
             )
           }
 
           self.addEventListener("unhandledrejection", (event) => {
             throw event.reason
           })
-        }),
-      ),
+        })
+      )
     ) as any
 
   if (Effect.isEffect(handler)) {

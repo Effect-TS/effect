@@ -8,8 +8,8 @@ describe("SchemaC", () => {
   it("withConstructorSelf/ struct", () => {
     const User_ = _.withConstructorSelf(
       S.struct({
-        name: S.string,
-      }),
+        name: S.string
+      })
     )
     interface User extends S.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
@@ -25,9 +25,9 @@ describe("SchemaC", () => {
     const User_ = _.withConstructorTagged(
       S.struct({
         _tag: S.literal("User"),
-        name: S.string,
+        name: S.string
       }),
-      "User",
+      "User"
     )
     interface User extends S.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
@@ -47,9 +47,9 @@ describe("SchemaC", () => {
     const User_ = _.withConstructorDataTagged(
       S.struct({
         _tag: S.literal("User"),
-        name: S.string,
+        name: S.string
       }),
-      "User",
+      "User"
     )
     interface User extends S.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
@@ -63,7 +63,7 @@ describe("SchemaC", () => {
     >() satisfies true
 
     expect(User({ name: "John" })).toEqual(
-      Data.struct({ _tag: "User", name: "John" }),
+      Data.struct({ _tag: "User", name: "John" })
     )
   })
 })

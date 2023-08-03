@@ -6,22 +6,21 @@ import type * as Effect from "@effect/io/Effect"
 import type * as Request from "@effect/io/Request"
 import type * as Resolver from "@effect/io/RequestResolver"
 import type { RpcError, RpcTransportError } from "@effect/rpc/Error"
-import type { RpcSchema } from "@effect/rpc/Schema"
 import * as internal from "@effect/rpc/internal/resolver"
+import type { RpcSchema } from "@effect/rpc/Schema"
 
 /**
  * @category models
  * @since 1.0.0
  */
-export interface RpcResolver<R>
-  extends Resolver.RequestResolver<RpcRequest, R> {}
+export interface RpcResolver<R> extends Resolver.RequestResolver<RpcRequest, R> {}
 
 /**
  * @category tags
  * @since 1.0.0
  */
 export const RpcResolver = Tag<RpcResolver<never>>(
-  Symbol.for("@effect/rpc/RpcResolver"),
+  Symbol.for("@effect/rpc/RpcResolver")
 )
 
 /**
@@ -110,8 +109,8 @@ export namespace RpcResponse {
  */
 export const make: <R>(
   send: (
-    requests: ReadonlyArray<RpcRequest.Payload>,
-  ) => Effect.Effect<R, RpcTransportError, unknown>,
+    requests: ReadonlyArray<RpcRequest.Payload>
+  ) => Effect.Effect<R, RpcTransportError, unknown>
 ) => RpcResolver<R> = internal.make
 
 /**
@@ -120,8 +119,8 @@ export const make: <R>(
  */
 export const makeWithSchema: <R>(
   send: (
-    requests: ReadonlyArray<RpcRequest>,
-  ) => Effect.Effect<R, RpcTransportError, unknown>,
+    requests: ReadonlyArray<RpcRequest>
+  ) => Effect.Effect<R, RpcTransportError, unknown>
 ) => RpcResolver<R> = internal.makeWithSchema
 
 /**
@@ -130,8 +129,8 @@ export const makeWithSchema: <R>(
  */
 export const makeSingle: <R>(
   send: (
-    request: RpcRequest.Payload,
-  ) => Effect.Effect<R, RpcTransportError, unknown>,
+    request: RpcRequest.Payload
+  ) => Effect.Effect<R, RpcTransportError, unknown>
 ) => RpcResolver<R> = internal.makeSingle
 
 /**
@@ -139,5 +138,5 @@ export const makeSingle: <R>(
  * @since 1.0.0
  */
 export const makeSingleWithSchema: <R>(
-  send: (request: RpcRequest) => Effect.Effect<R, RpcTransportError, unknown>,
+  send: (request: RpcRequest) => Effect.Effect<R, RpcTransportError, unknown>
 ) => RpcResolver<R> = internal.makeSingleWithSchema
