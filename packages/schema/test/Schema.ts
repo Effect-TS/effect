@@ -226,22 +226,22 @@ describe.concurrent("Schema", () => {
         from: From,
         to: To
       ) =>
-        (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
-          if (AST.isTypeLiteral(schema.ast)) {
-            const propertySignatures = schema.ast.propertySignatures.slice()
-            const i = propertySignatures.findIndex((ps) => ps.name === from)
-            propertySignatures[i] = AST.createPropertySignature(
-              to,
-              propertySignatures[i].type,
-              propertySignatures[i].isOptional,
-              propertySignatures[i].isReadonly
-            )
-            return S.make(
-              AST.createTypeLiteral(propertySignatures, schema.ast.indexSignatures)
-            )
-          }
-          throw new Error("cannot rename")
+      (schema: S.Schema<A>): S.Schema<Omit<A, From> & { [K in To]: A[From] }> => {
+        if (AST.isTypeLiteral(schema.ast)) {
+          const propertySignatures = schema.ast.propertySignatures.slice()
+          const i = propertySignatures.findIndex((ps) => ps.name === from)
+          propertySignatures[i] = AST.createPropertySignature(
+            to,
+            propertySignatures[i].type,
+            propertySignatures[i].isOptional,
+            propertySignatures[i].isReadonly
+          )
+          return S.make(
+            AST.createTypeLiteral(propertySignatures, schema.ast.indexSignatures)
+          )
         }
+        throw new Error("cannot rename")
+      }
 
       const schema = S.struct({
         a: S.string,

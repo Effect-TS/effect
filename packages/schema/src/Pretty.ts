@@ -60,15 +60,13 @@ export const match: AST.Match<Pretty<any>> = {
       })
     ),
   "VoidKeyword": () => () => "void(0)",
-  "NeverKeyword": () =>
-    () => {
-      throw new Error("cannot pretty print a `never` value")
-    },
-  "Literal": () =>
-    (literal: AST.LiteralValue): string =>
-      typeof literal === "bigint" ?
-        `${String(literal)}n` :
-        JSON.stringify(literal),
+  "NeverKeyword": () => () => {
+    throw new Error("cannot pretty print a `never` value")
+  },
+  "Literal": () => (literal: AST.LiteralValue): string =>
+    typeof literal === "bigint" ?
+      `${String(literal)}n` :
+      JSON.stringify(literal),
   "SymbolKeyword": toString,
   "UniqueSymbol": toString,
   "TemplateLiteral": stringify,

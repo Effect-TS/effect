@@ -55,26 +55,26 @@ const of = <A>(a: A): Writer<A> => [a, []]
 const traverse = <A, B>(
   f: (a: A) => Writer<B>
 ) =>
-  (self: ReadonlyArray<A>): Writer<ReadonlyArray<B>> => {
-    const out: Array<B> = []
-    const declarations: Array<ts.Declaration> = []
-    for (const a of self) {
-      const [b, declaration] = f(a)
-      out.push(b)
-      declarations.push(...declaration)
-    }
-    return [out, declarations]
+(self: ReadonlyArray<A>): Writer<ReadonlyArray<B>> => {
+  const out: Array<B> = []
+  const declarations: Array<ts.Declaration> = []
+  for (const a of self) {
+    const [b, declaration] = f(a)
+    out.push(b)
+    declarations.push(...declaration)
   }
+  return [out, declarations]
+}
 
 const append = <B>(b: Writer<B>) =>
-  <A>(
-    as: Writer<ReadonlyArray<A>>
-  ): Writer<ReadonlyArray<A | B>> => [[...as[0], b[0]], as[1].concat(b[1])]
+<A>(
+  as: Writer<ReadonlyArray<A>>
+): Writer<ReadonlyArray<A | B>> => [[...as[0], b[0]], as[1].concat(b[1])]
 
 const appendAll = <B>(bs: Writer<ReadonlyArray<B>>) =>
-  <A>(
-    as: Writer<ReadonlyArray<A>>
-  ): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
+<A>(
+  as: Writer<ReadonlyArray<A>>
+): Writer<ReadonlyArray<A | B>> => [[...as[0], ...bs[0]], as[1].concat(bs[1])]
 
 const getIdentifier = AST.getAnnotation<AST.IdentifierAnnotation>(
   AST.IdentifierAnnotationId
@@ -89,14 +89,13 @@ const addJsDocComment = (node: ts.Node, documentation: string): void => {
   )
 }
 
-const addDocumentationOf = (annotated: AST.Annotated) =>
-  <N extends ts.Node>(node: N): N => {
-    const documentation = getDocumentationAnnotation(annotated)
-    if (O.isSome(documentation)) {
-      addJsDocComment(node, documentation.value)
-    }
-    return node
+const addDocumentationOf = (annotated: AST.Annotated) => <N extends ts.Node>(node: N): N => {
+  const documentation = getDocumentationAnnotation(annotated)
+  if (O.isSome(documentation)) {
+    addJsDocComment(node, documentation.value)
   }
+  return node
+}
 
 const createSymbol = (description: string | undefined) =>
   ts.factory.createCallExpression(

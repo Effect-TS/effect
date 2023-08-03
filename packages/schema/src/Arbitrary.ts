@@ -226,15 +226,14 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       return pipe(
         getHook(ast),
         O.match({
-          onNone: () =>
-            (fc) =>
-              from(fc).filter((a) => {
-                const eu = eitherOrUndefined(ast.decode(a))
-                if (eu) {
-                  return E.isRight(eu)
-                }
-                throw new Error("cannot build an Arbitrary for effectful refinements")
-              }),
+          onNone: () => (fc) =>
+            from(fc).filter((a) => {
+              const eu = eitherOrUndefined(ast.decode(a))
+              if (eu) {
+                return E.isRight(eu)
+              }
+              throw new Error("cannot build an Arbitrary for effectful refinements")
+            }),
           onSome: (handler) => handler(from)
         })
       )

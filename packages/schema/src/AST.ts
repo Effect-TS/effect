@@ -179,11 +179,10 @@ export interface Annotated {
 /**
  * @since 1.0.0
  */
-export const getAnnotation = <A>(key: PropertyKey) =>
-  (annotated: Annotated): O.Option<A> =>
-    Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
-      O.some(annotated.annotations[key] as any) :
-      O.none()
+export const getAnnotation = <A>(key: PropertyKey) => (annotated: Annotated): O.Option<A> =>
+  Object.prototype.hasOwnProperty.call(annotated.annotations, key) ?
+    O.some(annotated.annotations[key] as any) :
+    O.none()
 
 /**
  * @category model
