@@ -1,5 +1,21 @@
 # @effect/rpc-http-node
 
+## 1.0.0
+
+### Minor Changes
+
+- [#84](https://github.com/Effect-TS/rpc/pull/84) [`0557754`](https://github.com/Effect-TS/rpc/commit/05577547715eddd64800db55e4dfa4749366f042) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#81](https://github.com/Effect-TS/rpc/pull/81) [`4fd7acd`](https://github.com/Effect-TS/rpc/commit/4fd7acde0b7ceccec1df1a395a06c9bb6d2b9b62) Thanks [@tim-smart](https://github.com/tim-smart)! - switch to using peerDependencies
+
+- [#83](https://github.com/Effect-TS/rpc/pull/83) [`539c1f8`](https://github.com/Effect-TS/rpc/commit/539c1f88d02d8b5cf8454b5b3dc1d3a3d1002f6b) Thanks [@tim-smart](https://github.com/tim-smart)! - update build tools
+
+- Updated dependencies [[`0557754`](https://github.com/Effect-TS/rpc/commit/05577547715eddd64800db55e4dfa4749366f042), [`4fd7acd`](https://github.com/Effect-TS/rpc/commit/4fd7acde0b7ceccec1df1a395a06c9bb6d2b9b62), [`539c1f8`](https://github.com/Effect-TS/rpc/commit/539c1f88d02d8b5cf8454b5b3dc1d3a3d1002f6b)]:
+  - @effect/rpc-http@1.0.0
+  - @effect/rpc@0.4.0
+
 ## 0.3.2
 
 ### Patch Changes

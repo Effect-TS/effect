@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-nextjs",
-  "version": "0.3.2",
+  "version": "1.0.0",
   "description": "",
   "publishConfig": {
     "access": "public",
