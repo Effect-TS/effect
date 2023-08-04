@@ -1,5 +1,17 @@
 # @effect/printer
 
+## 0.13.0
+
+### Minor Changes
+
+- [#410](https://github.com/Effect-TS/printer/pull/410) [`be86d7e`](https://github.com/Effect-TS/printer/commit/be86d7ef86be5a60a1ccaea335bffd0b4e039ef6) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#407](https://github.com/Effect-TS/printer/pull/407) [`2dbbe93`](https://github.com/Effect-TS/printer/commit/2dbbe93bcf6d4f98971227fff001df4ef59db9c5) Thanks [@tim-smart](https://github.com/tim-smart)! - switch to peerDependencies
+
+- [#409](https://github.com/Effect-TS/printer/pull/409) [`13481c1`](https://github.com/Effect-TS/printer/commit/13481c1cd4a73c27a3bf33e5ed794904b63c48a5) Thanks [@tim-smart](https://github.com/tim-smart)! - update build tools
+
 ## 0.12.0
 
 ### Minor Changes
