@@ -46,18 +46,13 @@
   "sideEffects": [],
   "devDependencies": {
     "@effect/data": "^0.17.1",
-    "@effect/io": "^0.37.1",
+    "@effect/io": "^0.38.0",
     "@effect/rpc": "workspace:^",
-    "@effect/schema": "^0.32.0"
-  },
-  "config": {
-    "side": [],
-    "modules": [],
-    "global": []
+    "@effect/schema": "^0.33.0"
   },
   "peerDependencies": {
     "@effect/data": "^0.17.1",
-    "@effect/io": "^0.37.1",
+    "@effect/io": "^0.38.0",
     "@effect/rpc": "workspace:^"
   }
 }
