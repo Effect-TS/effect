@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.10.1
+
+### Patch Changes
+
+- [#320](https://github.com/Effect-TS/cli/pull/320) [`2ebdf8c`](https://github.com/Effect-TS/cli/commit/2ebdf8c870f23fd20e0aa1b1c1cb5581056e73cc) Thanks [@tim-smart](https://github.com/tim-smart)! - move /printer to peer deps and fix version
+
 ## 0.10.0
 
 ### Minor Changes
