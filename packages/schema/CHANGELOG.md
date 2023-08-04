@@ -1,5 +1,17 @@
 # @effect/schema
 
+## 0.33.0
+
+### Minor Changes
+
+- [#376](https://github.com/Effect-TS/schema/pull/376) [`64c2567`](https://github.com/Effect-TS/schema/commit/64c256769a69bce03fdb00b9fa4f7abdab794261) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io
+
+### Patch Changes
+
+- [#375](https://github.com/Effect-TS/schema/pull/375) [`bd61bcf`](https://github.com/Effect-TS/schema/commit/bd61bcf94a82b65a2a5285ac57a31e7b3342ba33) Thanks [@tim-smart](https://github.com/tim-smart)! - update build tools
+
+- [#373](https://github.com/Effect-TS/schema/pull/373) [`e74455e`](https://github.com/Effect-TS/schema/commit/e74455e82aa0219f236a884b84117d69bac6de57) Thanks [@tim-smart](https://github.com/tim-smart)! - use peer deps for /data and /io
+
 ## 0.32.0
 
 ### Minor Changes
