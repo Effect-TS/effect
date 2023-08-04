@@ -1,5 +1,21 @@
 # @effect/cli
 
+## 0.10.0
+
+### Minor Changes
+
+- [#319](https://github.com/Effect-TS/cli/pull/319) [`6dd210a`](https://github.com/Effect-TS/cli/commit/6dd210a46e1f2f16b8c8ac85e746c64ea5f00b57) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#316](https://github.com/Effect-TS/cli/pull/316) [`3f4e8c3`](https://github.com/Effect-TS/cli/commit/3f4e8c3337d0ca1c1960a060654a4f86e9b23685) Thanks [@fubhy](https://github.com/fubhy)! - Made `Command`, `Option`, `Args` and `Primitive` pipeable
+
+- [#318](https://github.com/Effect-TS/cli/pull/318) [`4a0fbae`](https://github.com/Effect-TS/cli/commit/4a0fbae24f85dd396ee36c3f185ccc84026839b7) Thanks [@tim-smart](https://github.com/tim-smart)! - use peer deps for /data and /io
+
+- [#314](https://github.com/Effect-TS/cli/pull/314) [`886f1fe`](https://github.com/Effect-TS/cli/commit/886f1fe3666aacd1fb54e5b0cde85f8b6fdb88d8) Thanks [@fubhy](https://github.com/fubhy)! - Fixed `withDefault` types
+
+- [#317](https://github.com/Effect-TS/cli/pull/317) [`eca403d`](https://github.com/Effect-TS/cli/commit/eca403d834ec0dc2918828f0140ef8c7052c80ff) Thanks [@tim-smart](https://github.com/tim-smart)! - update build tools
+
 ## 0.9.0
 
 ### Minor Changes
