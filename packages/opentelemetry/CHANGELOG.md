@@ -1,5 +1,17 @@
 # @effect/opentelemetry
 
+## 0.9.0
+
+### Minor Changes
+
+- [#44](https://github.com/Effect-TS/opentelemetry/pull/44) [`d0a845d`](https://github.com/Effect-TS/opentelemetry/commit/d0a845da6e409718951834ad6d5681e5dfb4acbc) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#41](https://github.com/Effect-TS/opentelemetry/pull/41) [`271984d`](https://github.com/Effect-TS/opentelemetry/commit/271984d7a56096810d51a31bad652b501b854445) Thanks [@tim-smart](https://github.com/tim-smart)! - use peer deps for /data, /io and @opentelemetry/api
+
+- [#43](https://github.com/Effect-TS/opentelemetry/pull/43) [`80faed0`](https://github.com/Effect-TS/opentelemetry/commit/80faed049abf6c57f35d4545f9d6499014783aeb) Thanks [@tim-smart](https://github.com/tim-smart)! - update build tools
+
 ## 0.8.2
 
 ### Patch Changes
