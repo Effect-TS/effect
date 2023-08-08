@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.11.1
+
+### Patch Changes
+
+- [#38](https://github.com/Effect-TS/platform/pull/38) [`f70a121`](https://github.com/Effect-TS/platform/commit/f70a121b2fc9d1052434863c41657d353d21fb26) Thanks [@tim-smart](https://github.com/tim-smart)! - add HttpClient module
+
 ## 0.11.0
 
 ### Minor Changes
