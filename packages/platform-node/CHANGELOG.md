@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.11.2
+
+### Patch Changes
+
+- [#62](https://github.com/Effect-TS/platform/pull/62) [`3d44256`](https://github.com/Effect-TS/platform/commit/3d442560fee94a0c8f01f936a3f7c5b5e1ac8fc2) Thanks [@tim-smart](https://github.com/tim-smart)! - improve http client options type
+
+- Updated dependencies [[`3d44256`](https://github.com/Effect-TS/platform/commit/3d442560fee94a0c8f01f936a3f7c5b5e1ac8fc2)]:
+  - @effect/platform@0.11.2
+
 ## 0.11.1
 
 ### Patch Changes
