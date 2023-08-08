@@ -38,158 +38,95 @@ export interface ClientRequest extends Pipeable {
 
 /**
  * @since 1.0.0
- * @category constructors
+ * @category models
  */
-export const make: (
-  method: Method
-) => (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.make
+export interface Options {
+  readonly method?: Method
+  readonly url?: string
+  readonly urlParams?: UrlParams.Input
+  readonly headers?: Headers.Input
+  readonly body?: Body.Body
+  readonly accept?: string
+  readonly acceptJson?: boolean
+}
+
+/**
+ * @since 1.0.0
+ */
+export namespace Options {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface NoBody extends Omit<Options, "method" | "url" | "body"> {}
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface NoUrl extends Omit<Options, "method" | "url"> {}
+}
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const get: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.get
+export const make: {
+  (method: "GET" | "HEAD"): (url: string, options?: Options.NoBody) => ClientRequest
+  (
+    method: Exclude<Method, "GET" | "HEAD">
+  ): (url: string, options?: Options.NoUrl) => ClientRequest
+} = internal.make
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const post: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.post
+export const get: (url: string, options?: Options.NoBody) => ClientRequest = internal.get
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const patch: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.patch
+export const post: (url: string, options?: Options.NoUrl) => ClientRequest = internal.post
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const put: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.put
+export const patch: (url: string, options?: Options.NoUrl) => ClientRequest = internal.patch
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const del: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.del
+export const put: (url: string, options?: Options.NoUrl) => ClientRequest = internal.put
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const head: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.head
+export const del: (url: string, options?: Options.NoUrl) => ClientRequest = internal.del
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const options: (
-  url: string,
-  options?: {
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }
-) => ClientRequest = internal.options
+export const head: (url: string, options?: Options.NoBody) => ClientRequest = internal.head
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const options: (url: string, options?: Options.NoUrl) => ClientRequest = internal.options
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const modify: {
-  (
-    options: {
-      readonly method?: Method
-      readonly url?: string
-      readonly urlParams?: UrlParams.Input
-      readonly headers?: Headers.Input
-      readonly body?: Body.Body
-      readonly accept?: string
-      readonly acceptJson?: boolean
-    }
-  ): (self: ClientRequest) => ClientRequest
-  (
-    self: ClientRequest,
-    options: {
-      readonly method?: Method
-      readonly url?: string
-      readonly urlParams?: UrlParams.Input
-      readonly headers?: Headers.Input
-      readonly body?: Body.Body
-      readonly accept?: string
-      readonly acceptJson?: boolean
-    }
-  ): ClientRequest
+  (options: Options): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, options: Options): ClientRequest
 } = internal.modify
 
 /**

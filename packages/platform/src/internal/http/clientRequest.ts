@@ -41,15 +41,12 @@ export const empty: ClientRequest.ClientRequest = new ClientRequestImpl(
 )
 
 /** @internal */
-export const make = (method: Method) =>
-(url: string, options?: {
-  readonly url?: string
-  readonly urlParams?: UrlParams.Input
-  readonly headers?: Headers.Input
-  readonly body?: Body.Body
-  readonly accept?: string
-  readonly acceptJson?: boolean
-}) =>
+export const make: {
+  (method: "GET" | "HEAD"): (url: string, options?: ClientRequest.Options.NoBody) => ClientRequest.ClientRequest
+  (
+    method: Exclude<Method, "GET" | "HEAD">
+  ): (url: string, options?: ClientRequest.Options.NoUrl) => ClientRequest.ClientRequest
+} = (method: Method) => (url: string, options?: ClientRequest.Options.NoUrl) =>
   modify(empty, {
     method,
     url,
@@ -79,24 +76,8 @@ export const options = make("OPTIONS")
 
 /** @internal */
 export const modify = dual<
-  (options: {
-    readonly method?: Method
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-  (self: ClientRequest.ClientRequest, options: {
-    readonly method?: Method
-    readonly url?: string
-    readonly urlParams?: UrlParams.Input
-    readonly headers?: Headers.Input
-    readonly body?: Body.Body
-    readonly accept?: string
-    readonly acceptJson?: boolean
-  }) => ClientRequest.ClientRequest
+  (options: ClientRequest.Options) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (self: ClientRequest.ClientRequest, options: ClientRequest.Options) => ClientRequest.ClientRequest
 >(2, (self, options) => {
   let result = self
 
