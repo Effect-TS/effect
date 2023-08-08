@@ -313,7 +313,7 @@ export const textBody = dual<
 /** @internal */
 export const jsonBody = dual<
   (body: unknown) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-  (self: ClientRequest.ClientRequest, body: string) => ClientRequest.ClientRequest
+  (self: ClientRequest.ClientRequest, body: unknown) => ClientRequest.ClientRequest
 >(2, (self, body) => setBody(self, internalBody.json(body)))
 
 /** @internal */
