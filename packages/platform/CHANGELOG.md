@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.11.4
+
+### Patch Changes
+
+- [#67](https://github.com/Effect-TS/platform/pull/67) [`c41a166`](https://github.com/Effect-TS/platform/commit/c41a16614bc4daff05956b84a6bcd01cbb5836dd) Thanks [@tim-smart](https://github.com/tim-smart)! - add node implementation of http client
+
 ## 0.11.3
 
 ### Patch Changes
