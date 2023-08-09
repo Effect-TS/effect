@@ -2,6 +2,7 @@ import * as Context from "@effect/data/Context"
 import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
+import * as NodeClient from "@effect/platform-node/Http/NodeClient"
 import * as Http from "@effect/platform/HttpClient"
 import * as Schema from "@effect/schema/Schema"
 import * as Stream from "@effect/stream/Stream"
@@ -37,32 +38,34 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
 interface JsonPlaceholder extends Effect.Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Tag<JsonPlaceholder>()
 const JsonPlaceholderLive = Layer.provide(
-  Http.client.fetchLayer,
+  NodeClient.layer,
   Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 )
 
 describe("HttpClient", () => {
   it("google", () =>
     Effect.gen(function*(_) {
+      const client = yield* _(Http.client.Client)
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
-        Http.client.fetchOk(),
+        client,
         Effect.flatMap((_) => _.text)
       )
       expect(response).toContain("Google")
-    }).pipe(Effect.runPromise))
+    }).pipe(Effect.provideLayer(NodeClient.layer), Effect.runPromise))
 
   it("google stream", () =>
     Effect.gen(function*(_) {
+      const client = yield* _(Http.client.Client)
       const response = yield* _(
         Http.request.get("https://www.google.com/"),
-        Http.client.fetchOk(),
+        client,
         Effect.map((_) => _.stream),
         Stream.unwrap,
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
       expect(response).toContain("Google")
-    }).pipe(Effect.runPromise))
+    }).pipe(Effect.provideLayer(NodeClient.layer), Effect.runPromise))
 
   it("jsonplaceholder", () =>
     Effect.gen(function*(_) {

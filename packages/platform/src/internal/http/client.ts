@@ -1,4 +1,3 @@
-import * as Chunk from "@effect/data/Chunk"
 import * as Context from "@effect/data/Context"
 import { dual } from "@effect/data/Function"
 import type * as Predicate from "@effect/data/Predicate"
@@ -10,6 +9,7 @@ import type * as Client from "@effect/platform/Http/Client"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as Method from "@effect/platform/Http/Method"
+import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
 import * as internalError from "@effect/platform/internal/http/clientError"
 import * as internalRequest from "@effect/platform/internal/http/clientRequest"
@@ -21,35 +21,20 @@ import * as Stream from "@effect/stream/Stream"
 /** @internal */
 export const tag = Context.Tag<Client.Client.Default>("@effect/platform/Http/Client")
 
-const baseUrl = (): string | undefined => {
-  if ("location" in globalThis) {
-    return location.origin + location.pathname
-  }
-  return undefined
-}
-
 /** @internal */
 export const fetch = (
   options: RequestInit = {}
 ): Client.Client.Default =>
 (request) =>
   Effect.flatMap(
-    Effect.try({
-      try: () => new URL(request.url, baseUrl()),
-      catch: (_) =>
-        internalError.requestError({
-          request,
-          reason: "Encode",
-          error: _
-        })
-    }),
+    UrlParams.makeUrl(request.url, request.urlParams, (_) =>
+      internalError.requestError({
+        request,
+        reason: "InvalidUrl",
+        error: _
+      })),
     (url) =>
       Effect.suspend(() => {
-        Chunk.forEach(request.urlParams, ([key, value]) => {
-          if (value === undefined) return
-          url.searchParams.append(key, value)
-        })
-
         const headers = new Headers([...request.headers] as any)
         const send = (body: BodyInit | undefined) =>
           Effect.map(

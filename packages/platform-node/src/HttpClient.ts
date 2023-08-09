@@ -13,6 +13,10 @@ export * as client from "@effect/platform/Http/Client"
 /**
  * @since 1.0.0
  */
+export * as nodeClient from "@effect/platform-node/Http/NodeClient"
+/**
+ * @since 1.0.0
+ */
 export * as request from "@effect/platform/Http/ClientRequest"
 /**
  * @since 1.0.0

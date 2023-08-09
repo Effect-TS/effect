@@ -99,9 +99,9 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     }))
   }
 
-  get blob(): Effect.Effect<never, Error.ResponseError, Blob> {
+  get arrayBuffer(): Effect.Effect<never, Error.ResponseError, ArrayBuffer> {
     return Effect.tryPromise({
-      try: () => this.source.blob(),
+      try: () => this.source.arrayBuffer(),
       catch: (_) =>
         internalError.responseError({
           request: this.request,

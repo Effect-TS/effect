@@ -58,3 +58,51 @@ const readChunk = <A>(
     Effect.sync(() => (size._tag === "Some" ? stream.read(Number(size)) : stream.read()) as A | null),
     Effect.flatMap((_) => (_ ? Effect.succeed(_) : Effect.fail(Option.none())))
   )
+
+/** @internal */
+export const toString = <E>(
+  evaluate: LazyArg<Readable>,
+  onError: (error: unknown) => E,
+  encoding: BufferEncoding = "utf-8"
+): Effect.Effect<never, E, string> =>
+  Effect.async<never, E, string>((resume) => {
+    const stream = evaluate()
+    let string = ""
+    stream.setEncoding(encoding)
+    stream.once("error", (err) => {
+      resume(Effect.fail(onError(err)))
+    })
+    stream.once("end", () => {
+      resume(Effect.succeed(string))
+    })
+    stream.on("data", (chunk) => {
+      string += chunk
+    })
+    return Effect.sync(() => {
+      stream.removeAllListeners()
+      stream.destroy()
+    })
+  })
+
+/** @internal */
+export const toUint8Array = <E>(
+  evaluate: LazyArg<Readable>,
+  onError: (error: unknown) => E
+): Effect.Effect<never, E, Uint8Array> =>
+  Effect.async<never, E, Uint8Array>((resume) => {
+    const stream = evaluate()
+    let buffer = Buffer.alloc(0)
+    stream.once("error", (err) => {
+      resume(Effect.fail(onError(err)))
+    })
+    stream.once("end", () => {
+      resume(Effect.succeed(buffer))
+    })
+    stream.on("data", (chunk) => {
+      buffer = Buffer.concat([buffer, chunk])
+    })
+    return Effect.sync(() => {
+      stream.removeAllListeners()
+      stream.destroy()
+    })
+  })

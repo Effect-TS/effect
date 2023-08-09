@@ -28,7 +28,7 @@ export interface IncomingMessage<E> {
   readonly headers: Headers.Headers
   readonly json: Effect.Effect<never, E, unknown>
   readonly text: Effect.Effect<never, E, string>
-  readonly blob: Effect.Effect<never, E, Blob>
+  readonly arrayBuffer: Effect.Effect<never, E, ArrayBuffer>
   readonly formData: Effect.Effect<never, E, FormData>
   // readonly formDataStream: Stream.Stream<never, Error.TransportError, FormData.Part>
   readonly stream: Stream.Stream<never, E, Uint8Array>

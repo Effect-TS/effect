@@ -3,6 +3,7 @@
  */
 import * as Chunk from "@effect/data/Chunk"
 import { dual } from "@effect/data/Function"
+import * as Effect from "@effect/io/Effect"
 
 /**
  * @since 1.0.0
@@ -104,3 +105,28 @@ export const remove = dual<
  * @category combinators
  */
 export const toString = (self: UrlParams): string => new URLSearchParams(Chunk.toReadonlyArray(self) as any).toString()
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const makeUrl = <E>(url: string, params: UrlParams, onError: (e: unknown) => E): Effect.Effect<never, E, URL> =>
+  Effect.try({
+    try: () => {
+      const urlInstance = new URL(url, baseUrl())
+      Chunk.forEach(params, ([key, value]) => {
+        if (value !== undefined) {
+          urlInstance.searchParams.append(key, value)
+        }
+      })
+      return urlInstance
+    },
+    catch: onError
+  })
+
+const baseUrl = (): string | undefined => {
+  if ("location" in globalThis) {
+    return location.origin + location.pathname
+  }
+  return undefined
+}
