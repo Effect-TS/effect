@@ -7,7 +7,7 @@ import * as Util from "@effect/schema/test/util"
 
 class Person extends S.Class({
   id: S.number,
-  name: S.string
+  name: S.string.pipe(S.nonEmpty())
 }) {
   get upperName() {
     return this.name.toUpperCase()
@@ -52,10 +52,15 @@ class PersonWithTransformFrom extends Person.transformFrom(
 
 describe("Class", () => {
   it("constructor", () => {
-    const person = new Person({ id: 1, name: "John" })
-    assert(person.name === "John")
-    assert(person.upperName === "JOHN")
-    expectTypeOf(person.upperName).toEqualTypeOf("string")
+    const john = new Person({ id: 1, name: "John" })
+    assert(john.name === "John")
+    assert(john.upperName === "JOHN")
+    expectTypeOf(john.upperName).toEqualTypeOf("string")
+    expect(() => new Person({ id: 1, name: "" })).toThrowError(
+      new Error(`error(s) found
+└─ ["name"]
+   └─ Expected a string at least 1 character(s) long, actual ""`)
+    )
   })
 
   it("schema", () => {
