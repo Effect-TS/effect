@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.33.1
+
+### Patch Changes
+
+- [#372](https://github.com/Effect-TS/schema/pull/372) [`9c30196`](https://github.com/Effect-TS/schema/commit/9c3019669b63245dd19b84939326f62e652277d2) Thanks [@fubhy](https://github.com/fubhy)! - Added `Class` to `Schema` module
+
 ## 0.33.0
 
 ### Minor Changes
