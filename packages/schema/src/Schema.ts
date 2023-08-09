@@ -569,28 +569,41 @@ export type FromOptionalKeys<Fields> = {
 }[keyof Fields]
 
 /**
+ * @since 1.0.0
+ */
+export type StructFields = Record<
+  PropertyKey,
+  | Schema<any>
+  | Schema<never>
+  | PropertySignature<any, boolean, any, boolean>
+  | PropertySignature<never, boolean, never, boolean>
+>
+
+/**
+ * @since 1.0.0
+ */
+export type FromStruct<Fields extends StructFields> =
+  & { readonly [K in Exclude<keyof Fields, FromOptionalKeys<Fields>>]: From<Fields[K]> }
+  & { readonly [K in FromOptionalKeys<Fields>]?: From<Fields[K]> }
+
+/**
+ * @since 1.0.0
+ */
+export type ToStruct<Fields extends StructFields> =
+  & { readonly [K in Exclude<keyof Fields, ToOptionalKeys<Fields>>]: To<Fields[K]> }
+  & { readonly [K in ToOptionalKeys<Fields>]?: To<Fields[K]> }
+
+/**
  * @category combinators
  * @since 1.0.0
  */
 export const struct = <
-  Fields extends Record<
-    PropertyKey,
-    | Schema<any>
-    | Schema<never>
-    | PropertySignature<any, boolean, any, boolean>
-    | PropertySignature<never, boolean, never, boolean>
-  >
+  Fields extends StructFields
 >(
   fields: Fields
 ): Schema<
-  Spread<
-    & { readonly [K in Exclude<keyof Fields, FromOptionalKeys<Fields>>]: From<Fields[K]> }
-    & { readonly [K in FromOptionalKeys<Fields>]?: From<Fields[K]> }
-  >,
-  Spread<
-    & { readonly [K in Exclude<keyof Fields, ToOptionalKeys<Fields>>]: To<Fields[K]> }
-    & { readonly [K in ToOptionalKeys<Fields>]?: To<Fields[K]> }
-  >
+  Spread<FromStruct<Fields>>,
+  Spread<ToStruct<Fields>>
 > => {
   const ownKeys = I.ownKeys(fields)
   const propertySignatures: Array<AST.PropertySignature> = []
@@ -1182,6 +1195,150 @@ export const examples =
 export const documentation =
   (documentation: AST.DocumentationAnnotation) => <I, A>(self: Schema<I, A>): Schema<I, A> =>
     make(AST.setAnnotation(self.ast, AST.DocumentationAnnotationId, documentation))
+
+// ---------------------------------------------
+// classes
+// ---------------------------------------------
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export interface Class<I, A, Inherited = {}> {
+  new(props: A): A & D.Case & Omit<Inherited, keyof A>
+
+  schema<T extends new(...args: any) => any>(this: T): Schema<I, InstanceType<T>>
+  schemaStruct(): Schema<I, A>
+  extend<
+    T extends new(...args: any) => any,
+    Fields extends StructFields
+  >(
+    this: T,
+    fields: Fields
+  ): Class<
+    Spread<Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>>,
+    Spread<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
+    InstanceType<T>
+  >
+  transform<
+    T extends new(...args: any) => any,
+    Fields extends StructFields
+  >(
+    this: T,
+    fields: Fields,
+    decode: (
+      input: Class.To<T>
+    ) => ParseResult<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
+    encode: (
+      input: Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>
+    ) => ParseResult<Class.To<T>>
+  ): Class<
+    Class.From<T>,
+    Spread<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
+    InstanceType<T>
+  >
+  transformFrom<
+    T extends new(...args: any) => any,
+    Fields extends StructFields
+  >(
+    this: T,
+    fields: Fields,
+    decode: (
+      input: Class.From<T>
+    ) => ParseResult<Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>>,
+    encode: (
+      input: Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>
+    ) => ParseResult<Class.From<T>>
+  ): Class<
+    Class.From<T>,
+    Spread<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
+    InstanceType<T>
+  >
+}
+
+/**
+ * @since 1.0.0
+ */
+export namespace Class {
+  /**
+   * @since 1.0.0
+   */
+  export type To<A> = A extends Class<infer _F, infer T> ? T : never
+
+  /**
+   * @since 1.0.0
+   */
+  export type From<A> = A extends Class<infer F, infer _T> ? F : never
+}
+
+const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
+  const validator = P.validateSync(selfSchema)
+
+  const fn = function(this: any, props: unknown) {
+    Object.assign(this, validator(props))
+  }
+  fn.prototype = Object.create(base)
+  fn.schemaStruct = function schemaStruct() {
+    return selfSchema
+  }
+  fn.schema = function schema(this: any) {
+    return transform(
+      selfSchema,
+      instanceOf(this),
+      (input) => Object.assign(Object.create(this.prototype), input),
+      (input) => ({ ...(input as any) })
+    )
+  }
+  fn.extend = function extend(this: any, fields: any) {
+    const newFields = { ...selfFields, ...fields }
+    return makeClass(
+      struct(newFields),
+      newFields,
+      this.prototype
+    )
+  }
+  fn.transform = function transform(this: any, fields: any, decode: any, encode: any) {
+    const newFields = { ...selfFields, ...fields }
+    return makeClass(
+      transformResult(
+        selfSchema,
+        to(struct(newFields)),
+        decode,
+        encode
+      ),
+      newFields,
+      this.prototype
+    )
+  }
+  fn.transformFrom = function transform(this: any, fields: any, decode: any, encode: any) {
+    const newFields = { ...selfFields, ...fields }
+    return makeClass(
+      transformResult(
+        from(selfSchema),
+        struct(newFields),
+        decode,
+        encode
+      ),
+      newFields,
+      this.prototype
+    )
+  }
+
+  return fn as any
+}
+
+/**
+ * @category classes
+ * @since 1.0.0
+ */
+export const Class = <
+  Fields extends StructFields
+>(
+  fields: Fields
+): Class<
+  Spread<FromStruct<Fields>>,
+  Spread<ToStruct<Fields>>
+> => makeClass(struct(fields), fields, D.Class.prototype)
 
 // ---------------------------------------------
 // data
