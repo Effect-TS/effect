@@ -51,38 +51,40 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<Scope.Sco
 /** @internal */
 export const agentLayer = Layer.scoped(HttpAgent, makeAgent())
 
-const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default => (request) =>
-  Effect.flatMap(
-    UrlParams.makeUrl(request.url, request.urlParams, (_) =>
-      Error.RequestError({
-        request,
-        reason: "InvalidUrl",
-        error: _
-      })),
-    (url) =>
-      Effect.suspend(() => {
-        const controller = new AbortController()
-        const nodeRequest = url.protocol === "https:" ?
-          Https.request(url, {
-            agent: agent.https,
-            method: request.method,
-            headers: Object.fromEntries(request.headers),
-            signal: controller.signal
-          }) :
-          Http.request(url, {
-            agent: agent.http,
-            method: request.method,
-            headers: Object.fromEntries(request.headers),
-            signal: controller.signal
-          })
-        return pipe(
-          Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest), {
-            concurrent: true
-          }),
-          Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
-          Effect.map((_) => new ClientResponseImpl(request, _))
-        )
-      })
+const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
+  Client.make((request) =>
+    Effect.flatMap(
+      UrlParams.makeUrl(request.url, request.urlParams, (_) =>
+        Error.RequestError({
+          request,
+          reason: "InvalidUrl",
+          error: _
+        })),
+      (url) =>
+        Effect.suspend(() => {
+          const controller = new AbortController()
+          const nodeRequest = url.protocol === "https:" ?
+            Https.request(url, {
+              agent: agent.https,
+              method: request.method,
+              headers: Object.fromEntries(request.headers),
+              signal: controller.signal
+            }) :
+            Http.request(url, {
+              agent: agent.http,
+              method: request.method,
+              headers: Object.fromEntries(request.headers),
+              signal: controller.signal
+            })
+          return pipe(
+            Effect.zipRight(sendBody(nodeRequest, request, request.body), waitForResponse(nodeRequest), {
+              concurrent: true
+            }),
+            Effect.onInterrupt(() => Effect.sync(() => controller.abort())),
+            Effect.map((_) => new ClientResponseImpl(request, _))
+          )
+        })
+    )
   )
 
 const sendBody = (

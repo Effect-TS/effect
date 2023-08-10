@@ -3,6 +3,7 @@
  */
 import type { HashMap } from "@effect/data/HashMap"
 import type { Option } from "@effect/data/Option"
+import type { Pipeable } from "@effect/data/Pipeable"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { Effect } from "@effect/io/Effect"
 import type { CommandExecutor, ExitCode, Process } from "@effect/platform/CommandExecutor"
@@ -78,7 +79,7 @@ export type CommandOutput = "inherit" | "pipe" | Sink<never, never, Uint8Array, 
  * @since 1.0.0
  * @category models
  */
-export interface StandardCommand extends Command.Proto {
+export interface StandardCommand extends Command.Proto, Pipeable {
   readonly _tag: "StandardCommand"
   readonly command: string
   readonly args: ReadonlyArray<string>
@@ -95,7 +96,7 @@ export interface StandardCommand extends Command.Proto {
  * @since 1.0.0
  * @category models
  */
-export interface PipedCommand extends Command.Proto {
+export interface PipedCommand extends Command.Proto, Pipeable {
   readonly _tag: "PipedCommand"
   readonly left: Command
   readonly right: Command

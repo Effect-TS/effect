@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type * as Context from "@effect/data/Context"
+import type { Pipeable } from "@effect/data/Pipeable"
 import type * as Predicate from "@effect/data/Predicate"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
@@ -17,7 +18,7 @@ import type * as Schema from "@effect/schema/Schema"
  * @since 1.0.0
  * @category models
  */
-export interface Client<R, E, A> {
+export interface Client<R, E, A> extends Pipeable {
   (request: ClientRequest.ClientRequest): Effect.Effect<R, E, A>
 }
 
@@ -183,6 +184,13 @@ export const filterStatus: {
 export const filterStatusOk: <R, E>(
   self: Client.WithResponse<R, E>
 ) => Client.WithResponse<R, Error.ResponseError | E> = internal.filterStatusOk
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const make: <R, E, A>(f: (request: ClientRequest.ClientRequest) => Effect.Effect<R, E, A>) => Client<R, E, A> =
+  internal.make
 
 /**
  * @since 1.0.0

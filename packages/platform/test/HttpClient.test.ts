@@ -1,5 +1,4 @@
 import * as Context from "@effect/data/Context"
-import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import * as Http from "@effect/platform/HttpClient"
@@ -16,12 +15,10 @@ const Todo = Schema.struct({
 
 const makeJsonPlaceholder = Effect.gen(function*(_) {
   const defaultClient = yield* _(Http.client.Client)
-  const client = pipe(
-    defaultClient,
+  const client = defaultClient.pipe(
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const todoClient = pipe(
-    client,
+  const todoClient = client.pipe(
     Http.client.mapEffect(Http.response.parseSchema(Todo))
   )
   const createTodo = Http.client.schemaFunction(

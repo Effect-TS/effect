@@ -2,6 +2,7 @@ import * as Chunk from "@effect/data/Chunk"
 import { dual } from "@effect/data/Function"
 import * as HashMap from "@effect/data/HashMap"
 import * as Option from "@effect/data/Option"
+import { pipeArguments } from "@effect/data/Pipeable"
 import type ReadonlyArray from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
 import type * as Command from "@effect/platform/Command"
@@ -88,7 +89,10 @@ export const make = (command: string, ...args: Array<string>): Command.Command =
   stdout: "pipe",
   stderr: "pipe",
   gid: Option.none(),
-  uid: Option.none()
+  uid: Option.none(),
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 })
 
 /** @internal */
@@ -99,7 +103,10 @@ export const pipeTo = dual<
   [CommandTypeId]: CommandTypeId,
   _tag: "PipedCommand",
   left: self,
-  right: into
+  right: into,
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 }))
 
 /** @internal */
