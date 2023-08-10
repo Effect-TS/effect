@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.11.5
+
+### Patch Changes
+
+- [#69](https://github.com/Effect-TS/platform/pull/69) [`0eb7df0`](https://github.com/Effect-TS/platform/commit/0eb7df0e2cbfb96986c3bbee4650c4036a97b1d2) Thanks [@tim-smart](https://github.com/tim-smart)! - have Command & Client implement Pipeable
+
+- Updated dependencies [[`0eb7df0`](https://github.com/Effect-TS/platform/commit/0eb7df0e2cbfb96986c3bbee4650c4036a97b1d2)]:
+  - @effect/platform@0.11.5
+
 ## 0.11.4
 
 ### Patch Changes
