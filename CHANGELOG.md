@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.25
+
+### Patch Changes
+
+- [#1402](https://github.com/Effect-TS/effect/pull/1402) [`0844367c5`](https://github.com/Effect-TS/effect/commit/0844367c546184dd9105a3394fc019ed9ad0199e) Thanks [@tim-smart](https://github.com/tim-smart)! - use dependencies + peerDependencies for packages
+
 ## 2.0.0-next.24
 
 ### Minor Changes
