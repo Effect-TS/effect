@@ -1,6 +1,6 @@
 # @effect/platform-node
 
-## 1.0.0
+## 0.12.0
 
 ### Minor Changes
 
