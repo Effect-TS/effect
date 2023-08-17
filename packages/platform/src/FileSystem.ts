@@ -251,7 +251,7 @@ export interface FileSystem {
  * Represents a size in bytes.
  *
  * @since 1.0.0
- * @category model
+ * @category sizes
  */
 export type Size = Brand.Branded<bigint, "Size">
 
@@ -259,15 +259,45 @@ export type Size = Brand.Branded<bigint, "Size">
  * Represents a size in bytes.
  *
  * @since 1.0.0
- * @category model
+ * @category sizes
  */
 export type SizeInput = bigint | number | Size
 
 /**
  * @since 1.0.0
- * @category constructor
+ * @category sizes
  */
 export const Size: (bytes: SizeInput) => Size = internal.Size
+
+/**
+ * @since 1.0.0
+ * @category sizes
+ */
+export const KiB: (n: number) => Size = internal.KiB
+
+/**
+ * @since 1.0.0
+ * @category sizes
+ */
+export const MiB: (n: number) => Size = internal.MiB
+
+/**
+ * @since 1.0.0
+ * @category sizes
+ */
+export const GiB: (n: number) => Size = internal.GiB
+
+/**
+ * @since 1.0.0
+ * @category sizes
+ */
+export const TiB: (n: number) => Size = internal.TiB
+
+/**
+ * @since 1.0.0
+ * @category sizes
+ */
+export const PiB: (n: number) => Size = internal.PiB
 
 /**
  * @since 1.0.0

@@ -14,6 +14,24 @@ export const tag = Tag<FileSystem>("@effect/platform/FileSystem")
 export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
 
 /** @internal */
+export const KiB = (n: number) => Size(n * 1024)
+
+/** @internal */
+export const MiB = (n: number) => Size(n * 1024 * 1024)
+
+/** @internal */
+export const GiB = (n: number) => Size(n * 1024 * 1024 * 1024)
+
+/** @internal */
+export const TiB = (n: number) => Size(n * 1024 * 1024 * 1024 * 1024)
+
+const bigint1024 = BigInt(1024)
+const bigintPiB = bigint1024 * bigint1024 * bigint1024 * bigint1024 * bigint1024
+
+/** @internal */
+export const PiB = (n: number) => Size(BigInt(n) * bigintPiB)
+
+/** @internal */
 export const make = (
   impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">
 ): FileSystem => {
