@@ -1,6 +1,7 @@
 /**
  * @since 1.0.0
  */
+import type * as Effect from "@effect/io/Effect"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
@@ -11,7 +12,17 @@ export {
    * @since 1.0.0
    * @category schema
    */
-  parseSchema
+  schemaBodyJson,
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
+  schemaBodyUrlParams,
+  /**
+   * @since 1.0.0
+   * @category schema
+   */
+  schemaHeaders
 } from "@effect/platform/Http/IncomingMessage"
 
 /**
@@ -33,6 +44,7 @@ export type TypeId = typeof TypeId
 export interface ClientResponse extends IncomingMessage.IncomingMessage<Error.ResponseError> {
   readonly [TypeId]: TypeId
   readonly status: number
+  readonly formData: Effect.Effect<never, Error.ResponseError, FormData>
 }
 
 /**

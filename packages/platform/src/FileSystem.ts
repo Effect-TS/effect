@@ -219,7 +219,7 @@ export interface FileSystem {
    */
   readonly truncate: (
     path: string,
-    length?: Size
+    length?: SizeInput
   ) => Effect.Effect<never, PlatformError, void>
   /**
    * Change the file system timestamps of the file at `path`.
@@ -256,10 +256,18 @@ export interface FileSystem {
 export type Size = Brand.Branded<bigint, "Size">
 
 /**
+ * Represents a size in bytes.
+ *
+ * @since 1.0.0
+ * @category model
+ */
+export type SizeInput = bigint | number | Size
+
+/**
  * @since 1.0.0
  * @category constructor
  */
-export const Size: (bytes: number | bigint) => Size = internal.Size
+export const Size: (bytes: SizeInput) => Size = internal.Size
 
 /**
  * @since 1.0.0
@@ -360,9 +368,9 @@ export interface SinkOptions extends OpenFileOptions {}
  */
 export interface StreamOptions {
   readonly bufferSize?: number
-  readonly bytesToRead?: Size
-  readonly chunkSize?: Size
-  readonly offset?: Size
+  readonly bytesToRead?: SizeInput
+  readonly chunkSize?: SizeInput
+  readonly offset?: SizeInput
 }
 
 /**
@@ -422,28 +430,15 @@ export const isFile = (u: unknown): u is File => typeof u === "object" && u !== 
  * @category model
  */
 export interface File {
-  readonly [FileTypeId]: (_: never) => unknown
+  readonly [FileTypeId]: FileTypeId
   readonly fd: File.Descriptor
   readonly stat: Effect.Effect<never, PlatformError, File.Info>
-  readonly seek: (
-    offset: Size,
-    from: SeekMode
-  ) => Effect.Effect<never, never, void>
-  readonly read: (
-    buffer: Uint8Array
-  ) => Effect.Effect<never, PlatformError, Size>
-  readonly readAlloc: (
-    size: Size
-  ) => Effect.Effect<never, PlatformError, Option<Uint8Array>>
-  readonly truncate: (
-    length?: Size
-  ) => Effect.Effect<never, PlatformError, void>
-  readonly write: (
-    buffer: Uint8Array
-  ) => Effect.Effect<never, PlatformError, Size>
-  readonly writeAll: (
-    buffer: Uint8Array
-  ) => Effect.Effect<never, PlatformError, void>
+  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<never, never, void>
+  readonly read: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, Size>
+  readonly readAlloc: (size: SizeInput) => Effect.Effect<never, PlatformError, Option<Uint8Array>>
+  readonly truncate: (length?: SizeInput) => Effect.Effect<never, PlatformError, void>
+  readonly write: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, Size>
+  readonly writeAll: (buffer: Uint8Array) => Effect.Effect<never, PlatformError, void>
 }
 
 /**

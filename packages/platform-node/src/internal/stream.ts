@@ -3,7 +3,7 @@ import { pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import type { FromReadableOptions } from "@effect/platform-node/Stream"
-import type { Size } from "@effect/platform/FileSystem"
+import type { SizeInput } from "@effect/platform/FileSystem"
 import * as Stream from "@effect/stream/Stream"
 import type { Readable } from "node:stream"
 
@@ -11,7 +11,7 @@ import type { Readable } from "node:stream"
 export const fromReadable = <E, A>(
   evaluate: LazyArg<Readable>,
   onError: (error: unknown) => E,
-  { chunkSize = Option.none() }: FromReadableOptions = {}
+  { chunkSize }: FromReadableOptions = {}
 ): Stream.Stream<never, E, A> =>
   pipe(
     Effect.acquireRelease(Effect.sync(evaluate), (stream) =>
@@ -52,57 +52,92 @@ export const fromReadable = <E, A>(
 
 const readChunk = <A>(
   stream: Readable,
-  size: Option.Option<Size>
+  size: SizeInput | undefined
 ): Effect.Effect<never, Option.Option<never>, A> =>
   pipe(
-    Effect.sync(() => (size._tag === "Some" ? stream.read(Number(size)) : stream.read()) as A | null),
+    Effect.sync(() => (size ? stream.read(Number(size)) : stream.read()) as A | null),
     Effect.flatMap((_) => (_ ? Effect.succeed(_) : Effect.fail(Option.none())))
   )
 
 /** @internal */
 export const toString = <E>(
-  evaluate: LazyArg<Readable>,
-  onError: (error: unknown) => E,
-  encoding: BufferEncoding = "utf-8"
-): Effect.Effect<never, E, string> =>
-  Effect.async<never, E, string>((resume) => {
-    const stream = evaluate()
-    let string = ""
-    stream.setEncoding(encoding)
-    stream.once("error", (err) => {
-      resume(Effect.fail(onError(err)))
-    })
-    stream.once("end", () => {
-      resume(Effect.succeed(string))
-    })
-    stream.on("data", (chunk) => {
-      string += chunk
-    })
-    return Effect.sync(() => {
-      stream.removeAllListeners()
-      stream.destroy()
-    })
-  })
+  options: {
+    readable: LazyArg<Readable>
+    onFailure: (error: unknown) => E
+    encoding?: BufferEncoding
+    maxBytes?: SizeInput
+  }
+): Effect.Effect<never, E, string> => {
+  const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
+  return Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const stream = options.readable()
+      stream.setEncoding(options.encoding ?? "utf8")
+      return stream
+    }),
+    (stream) =>
+      Effect.async((resume) => {
+        let string = ""
+        let bytes = 0
+        stream.once("error", (err) => {
+          resume(Effect.fail(options.onFailure(err)))
+        })
+        stream.once("end", () => {
+          resume(Effect.succeed(string))
+        })
+        stream.on("data", (chunk) => {
+          string += chunk
+          bytes += Buffer.byteLength(chunk)
+          if (maxBytesNumber && bytes > maxBytesNumber) {
+            resume(Effect.fail(options.onFailure(new Error("maxBytes exceeded"))))
+          }
+        })
+      }),
+    (stream) =>
+      Effect.sync(() => {
+        stream.removeAllListeners()
+        if (!stream.closed) {
+          stream.destroy()
+        }
+      })
+  )
+}
 
 /** @internal */
 export const toUint8Array = <E>(
-  evaluate: LazyArg<Readable>,
-  onError: (error: unknown) => E
-): Effect.Effect<never, E, Uint8Array> =>
-  Effect.async<never, E, Uint8Array>((resume) => {
-    const stream = evaluate()
-    let buffer = Buffer.alloc(0)
-    stream.once("error", (err) => {
-      resume(Effect.fail(onError(err)))
-    })
-    stream.once("end", () => {
-      resume(Effect.succeed(buffer))
-    })
-    stream.on("data", (chunk) => {
-      buffer = Buffer.concat([buffer, chunk])
-    })
-    return Effect.sync(() => {
-      stream.removeAllListeners()
-      stream.destroy()
-    })
-  })
+  options: {
+    readable: LazyArg<Readable>
+    onFailure: (error: unknown) => E
+    maxBytes?: SizeInput
+  }
+): Effect.Effect<never, E, Uint8Array> => {
+  const maxBytesNumber = options.maxBytes ? Number(options.maxBytes) : undefined
+  return Effect.acquireUseRelease(
+    Effect.sync(options.readable),
+    (stream) =>
+      Effect.async((resume) => {
+        let buffer = Buffer.alloc(0)
+        let bytes = 0
+        stream.once("error", (err) => {
+          resume(Effect.fail(options.onFailure(err)))
+        })
+        stream.once("end", () => {
+          resume(Effect.succeed(buffer))
+        })
+        stream.on("data", (chunk) => {
+          buffer = Buffer.concat([buffer, chunk])
+          bytes += chunk.length
+          if (maxBytesNumber && bytes > maxBytesNumber) {
+            resume(Effect.fail(options.onFailure(new Error("maxBytes exceeded"))))
+          }
+        })
+      }),
+    (stream) =>
+      Effect.sync(() => {
+        stream.removeAllListeners()
+        if (!stream.closed) {
+          stream.destroy()
+        }
+      })
+  )
+}

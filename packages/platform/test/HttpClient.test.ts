@@ -19,7 +19,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
   const todoClient = client.pipe(
-    Http.client.mapEffect(Http.response.parseSchema(Todo))
+    Http.client.mapEffect(Http.response.schemaBodyJson(Todo))
   )
   const createTodo = Http.client.schemaFunction(
     todoClient,
@@ -34,7 +34,7 @@ const makeJsonPlaceholder = Effect.gen(function*(_) {
 interface JsonPlaceholder extends Effect.Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Tag<JsonPlaceholder>()
 const JsonPlaceholderLive = Layer.provide(
-  Http.client.fetchLayer,
+  Http.client.layer,
   Layer.effect(JsonPlaceholder, makeJsonPlaceholder)
 )
 

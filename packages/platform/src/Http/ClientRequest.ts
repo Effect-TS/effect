@@ -2,6 +2,9 @@
  * @since 1.0.0
  */
 import type { Pipeable } from "@effect/data/Pipeable"
+import type * as Effect from "@effect/io/Effect"
+import type * as PlatformError from "@effect/platform/Error"
+import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as Headers from "@effect/platform/Http/Headers"
@@ -34,6 +37,19 @@ export interface ClientRequest extends Pipeable {
   readonly urlParams: UrlParams.UrlParams
   readonly headers: Headers.Headers
   readonly body: Body.Body
+}
+
+/**
+ * @since 1.0.0
+ */
+export namespace ClientRequest {
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface NonEffectBody extends ClientRequest {
+    readonly body: Body.NonEffect
+  }
 }
 
 /**
@@ -253,10 +269,19 @@ export const setBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const binaryBody: {
+export const uint8ArrayBody: {
   (body: Uint8Array, contentType?: string): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, body: Uint8Array, contentType?: string): ClientRequest
-} = internal.binaryBody
+} = internal.uint8ArrayBody
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const effectBody: {
+  (body: Effect.Effect<never, unknown, Body.NonEffect>): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, body: Effect.Effect<never, unknown, Body.NonEffect>): ClientRequest
+} = internal.effectBody
 
 /**
  * @since 1.0.0
@@ -275,6 +300,15 @@ export const jsonBody: {
   (body: unknown): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, body: unknown): ClientRequest
 } = internal.jsonBody
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const unsafeJsonBody: {
+  (body: unknown): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, body: unknown): ClientRequest
+} = internal.unsafeJsonBody
 
 /**
  * @since 1.0.0
@@ -318,3 +352,19 @@ export const streamBody: {
     options?: { readonly contentType?: string; readonly contentLength?: number }
   ): ClientRequest
 } = internal.streamBody
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const fileBody: {
+  (
+    path: string,
+    options?: FileSystem.StreamOptions & { readonly contentType?: string }
+  ): (self: ClientRequest) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+  (
+    self: ClientRequest,
+    path: string,
+    options?: FileSystem.StreamOptions & { readonly contentType?: string }
+  ): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
+} = internal.fileBody

@@ -40,7 +40,10 @@ export const empty: UrlParams = Chunk.empty()
  * @since 1.0.0
  * @category combinators
  */
-export const set = dual<
+export const set: {
+  (key: string, value: string): (self: UrlParams) => UrlParams
+  (self: UrlParams, key: string, value: string): UrlParams
+} = dual<
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
@@ -53,7 +56,10 @@ export const set = dual<
  * @since 1.0.0
  * @category combinators
  */
-export const setAll = dual<
+export const setAll: {
+  (input: Input): (self: UrlParams) => UrlParams
+  (self: UrlParams, input: Input): UrlParams
+} = dual<
   (input: Input) => (self: UrlParams) => UrlParams,
   (self: UrlParams, input: Input) => UrlParams
 >(2, (self, input) => {
@@ -69,7 +75,10 @@ export const setAll = dual<
  * @since 1.0.0
  * @category combinators
  */
-export const append = dual<
+export const append: {
+  (key: string, value: string): (self: UrlParams) => UrlParams
+  (self: UrlParams, key: string, value: string): UrlParams
+} = dual<
   (key: string, value: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string, value: string) => UrlParams
 >(3, (self, key, value) =>
@@ -82,7 +91,10 @@ export const append = dual<
  * @since 1.0.0
  * @category combinators
  */
-export const appendAll = dual<
+export const appendAll: {
+  (input: Input): (self: UrlParams) => UrlParams
+  (self: UrlParams, input: Input): UrlParams
+} = dual<
   (input: Input) => (self: UrlParams) => UrlParams,
   (self: UrlParams, input: Input) => UrlParams
 >(2, (self, input) =>
@@ -95,7 +107,10 @@ export const appendAll = dual<
  * @since 1.0.0
  * @category combinators
  */
-export const remove = dual<
+export const remove: {
+  (key: string): (self: UrlParams) => UrlParams
+  (self: UrlParams, key: string): UrlParams
+} = dual<
   (key: string) => (self: UrlParams) => UrlParams,
   (self: UrlParams, key: string) => UrlParams
 >(2, (self, key) => Chunk.filter(self, ([k]) => k !== key))

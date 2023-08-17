@@ -3,7 +3,7 @@ import { identity, pipe } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Error from "@effect/platform/Error"
-import type { File, FileSystem, Size as Size_, StreamOptions } from "@effect/platform/FileSystem"
+import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "@effect/platform/FileSystem"
 import * as Sink from "@effect/stream/Sink"
 import * as Stream from "@effect/stream/Stream"
 
@@ -11,7 +11,7 @@ import * as Stream from "@effect/stream/Stream"
 export const tag = Tag<FileSystem>("@effect/platform/FileSystem")
 
 /** @internal */
-export const Size = (bytes: number | bigint) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
+export const Size = (bytes: SizeInput) => typeof bytes === "bigint" ? bytes as Size_ : BigInt(bytes) as Size_
 
 /** @internal */
 export const make = (
@@ -69,10 +69,12 @@ export const make = (
 /** @internal */
 const stream = (file: File, {
   bufferSize = 4,
-  bytesToRead,
-  chunkSize = Size(64 * 1024)
-}: StreamOptions = {}) =>
-  Stream.bufferChunks(
+  bytesToRead: bytesToRead_,
+  chunkSize: chunkSize_ = Size(64 * 1024)
+}: StreamOptions = {}) => {
+  const bytesToRead = bytesToRead_ !== undefined ? Size(bytesToRead_) : undefined
+  const chunkSize = Size(chunkSize_)
+  return Stream.bufferChunks(
     Stream.unfoldEffect(BigInt(0), (totalBytesRead) => {
       if (bytesToRead !== undefined && bytesToRead <= totalBytesRead) {
         return Effect.succeed(Option.none())
@@ -83,9 +85,10 @@ const stream = (file: File, {
         : chunkSize
 
       return Effect.map(
-        file.readAlloc(toRead as Size_),
+        file.readAlloc(toRead),
         Option.map((buf) => [buf, Size(totalBytesRead + BigInt(buf.length))] as const)
       )
     }),
     { capacity: bufferSize }
   )
+}

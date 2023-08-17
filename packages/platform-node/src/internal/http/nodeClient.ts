@@ -4,15 +4,13 @@ import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import type * as Scope from "@effect/io/Scope"
 import type * as NodeClient from "@effect/platform-node/Http/NodeClient"
+import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomingMessage"
 import * as NodeSink from "@effect/platform-node/Sink"
-import * as NodeStream from "@effect/platform-node/Stream"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Client from "@effect/platform/Http/Client"
 import * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import * as ClientResponse from "@effect/platform/Http/ClientResponse"
-import * as Headers from "@effect/platform/Http/Headers"
-import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as Stream from "@effect/stream/Stream"
 import * as Http from "node:http"
@@ -49,7 +47,11 @@ export const makeAgent = (options?: Https.AgentOptions): Effect.Effect<Scope.Sco
   )
 
 /** @internal */
-export const agentLayer = Layer.scoped(HttpAgent, makeAgent())
+export const makeAgentLayer = (options?: Https.AgentOptions): Layer.Layer<never, never, NodeClient.HttpAgent> =>
+  Layer.scoped(HttpAgent, makeAgent(options))
+
+/** @internal */
+export const agentLayer = makeAgentLayer()
 
 const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
   Client.make((request) =>
@@ -90,7 +92,7 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
 const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: ClientRequest.ClientRequest,
-  body: Body.Body
+  body: Body.NonEffect
 ): Effect.Effect<never, Error.RequestError, void> =>
   Effect.suspend((): Effect.Effect<never, Error.RequestError, void> => {
     switch (body._tag) {
@@ -98,7 +100,7 @@ const sendBody = (
         nodeRequest.end()
         return waitForFinish(nodeRequest, request)
       }
-      case "Bytes":
+      case "Uint8Array":
       case "Raw": {
         nodeRequest.end(body.body)
         return waitForFinish(nodeRequest, request)
@@ -119,20 +121,6 @@ const sendBody = (
               error: _
             })
         })
-      }
-      case "BytesEffect": {
-        return Effect.flatMap(
-          Effect.mapError(body.body, (_) =>
-            Error.RequestError({
-              request,
-              reason: "Encode",
-              error: _
-            })),
-          (bytes) => {
-            nodeRequest.end(bytes)
-            return waitForFinish(nodeRequest, request)
-          }
-        )
       }
       case "Stream": {
         return Stream.run(
@@ -183,44 +171,25 @@ const waitForFinish = (nodeRequest: Http.ClientRequest, request: ClientRequest.C
     })
   })
 
-class ClientResponseImpl implements ClientResponse.ClientResponse {
-  readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId = IncomingMessage.TypeId
-  readonly [ClientResponse.TypeId]: ClientResponse.TypeId = ClientResponse.TypeId
+class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implements ClientResponse.ClientResponse {
+  readonly [ClientResponse.TypeId]: ClientResponse.TypeId
 
   constructor(
     readonly request: ClientRequest.ClientRequest,
-    readonly source: Http.IncomingMessage
-  ) {}
-
-  get status() {
-    return this.source.statusCode!
-  }
-
-  get headers() {
-    return Headers.fromInput(this.source.headers as any)
-  }
-
-  get text(): Effect.Effect<never, Error.ResponseError, string> {
-    return NodeStream.toString(() => this.source, (_) =>
+    source: Http.IncomingMessage
+  ) {
+    super(source, (_) =>
       Error.ResponseError({
-        request: this.request,
+        request,
         response: this,
         reason: "Decode",
         error: _
       }))
+    this[ClientResponse.TypeId] = ClientResponse.TypeId
   }
 
-  get json(): Effect.Effect<never, Error.ResponseError, unknown> {
-    return Effect.tryMap(this.text, {
-      try: (_) => JSON.parse(_) as unknown,
-      catch: (_) =>
-        Error.ResponseError({
-          request: this.request,
-          response: this,
-          reason: "Decode",
-          error: _
-        })
-    })
+  get status() {
+    return this.source.statusCode!
   }
 
   get formData(): Effect.Effect<never, Error.ResponseError, FormData> {
@@ -231,37 +200,20 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
           status: this.source.statusCode,
           statusText: this.source.statusMessage
         }).formData(),
-      catch: (_) =>
-        Error.ResponseError({
-          request: this.request,
-          response: this,
-          reason: "Decode",
-          error: _
-        })
+      catch: this.onError
     })
   }
 
-  get stream(): Stream.Stream<never, Error.ResponseError, Uint8Array> {
-    return NodeStream.fromReadable<Error.ResponseError, Uint8Array>(
-      () => this.source,
-      (_) =>
-        Error.ResponseError({
-          request: this.request,
-          response: this,
-          reason: "Decode",
-          error: _
-        })
-    )
+  toString(): string {
+    return `ClientResponse(${this.status})`
   }
 
-  get arrayBuffer(): Effect.Effect<never, Error.ResponseError, ArrayBuffer> {
-    return NodeStream.toUint8Array(() => this.source, (_) =>
-      Error.ResponseError({
-        request: this.request,
-        response: this,
-        reason: "Decode",
-        error: _
-      }))
+  toJSON(): unknown {
+    return {
+      _tag: "ClientResponse",
+      status: this.status,
+      headers: Object.fromEntries(this.headers)
+    }
   }
 }
 
@@ -269,7 +221,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
 export const make = Effect.map(HttpAgent, fromAgent)
 
 /** @internal */
-export const layer = Layer.provide(
-  agentLayer,
-  Layer.effect(Client.Client, make)
-)
+export const layerWithoutAgent = Layer.effect(Client.Client, make)
+
+/** @internal */
+export const layer = Layer.provide(agentLayer, layerWithoutAgent)

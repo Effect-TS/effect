@@ -9,6 +9,7 @@ import type * as Body from "@effect/platform/Http/Body"
 import type * as Client from "@effect/platform/Http/Client"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
+import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
 import * as Method from "@effect/platform/Http/Method"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
@@ -22,15 +23,33 @@ import * as Stream from "@effect/stream/Stream"
 /** @internal */
 export const tag = Context.Tag<Client.Client.Default>("@effect/platform/Http/Client")
 
+const clientProto = {
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
+
+const setProto = <R, E, A>(
+  f: (request: ClientRequest.ClientRequest.NonEffectBody) => Effect.Effect<R, E, A>
+) => {
+  Object.setPrototypeOf(f, clientProto)
+  return f as Client.Client<R, E, A>
+}
+
 /** @internal */
-export const make = <R, E, A>(
-  f: (request: ClientRequest.ClientRequest) => Effect.Effect<R, E, A>
-): Client.Client<R, E, A> =>
-  Object.assign(f, {
-    pipe() {
-      return pipeArguments(this, arguments)
-    }
-  })
+export const make = (
+  f: (
+    request: ClientRequest.ClientRequest.NonEffectBody
+  ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
+): Client.Client.Default => {
+  function client(request: ClientRequest.ClientRequest) {
+    return Effect.flatMap(
+      internalRequest.resolveBody(request),
+      (request) => f(request)
+    )
+  }
+  return setProto(client)
+}
 
 /** @internal */
 export const fetch = (
@@ -68,30 +87,20 @@ export const fetch = (
               (_) => internalResponse.fromWeb(request, _)
             )
           if (Method.hasBody(request.method)) {
-            return request.body._tag === "BytesEffect" ?
-              Effect.flatMap(
-                Effect.mapError(request.body.body, (error) =>
-                  internalError.requestError({
-                    reason: "Encode",
-                    request,
-                    error
-                  })),
-                (body) => send(body)
-              ) :
-              send(convertBody(request.body))
+            return send(convertBody(request.body))
           }
           return send(undefined)
         })
     )
   )
 
-const convertBody = (body: Exclude<Body.Body, Body.BytesEffect>): BodyInit | undefined => {
+const convertBody = (body: Body.NonEffect): BodyInit | undefined => {
   switch (body._tag) {
     case "Empty":
       return undefined
     case "Raw":
       return body.body as any
-    case "Bytes":
+    case "Uint8Array":
       return body.body
     case "FormData":
       return body.formData
@@ -105,7 +114,7 @@ export const fetchOk = (
 ): Client.Client.Default => filterStatusOk(fetch(options))
 
 /** @internal */
-export const fetchLayer = Layer.succeed(tag, fetch())
+export const layer = Layer.succeed(tag, fetch())
 
 /** @internal */
 export const catchTag: {
@@ -127,7 +136,7 @@ export const catchTag: {
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
   ): Client.Client<R1 | R, E1 | Exclude<E, { _tag: K }>, A1 | A> =>
-    make((request) => Effect.catchTag(self(request), tag, f))
+    setProto((request) => Effect.catchTag(self(request), tag, f))
 )
 
 /** @internal */
@@ -237,7 +246,7 @@ export const catchTags: {
       ) => Effect.Effect<any, any, infer A> ? A
         : never
     }[keyof Cases]
-  > => make((request) => Effect.catchTags(self(request), cases))
+  > => setProto((request) => Effect.catchTags(self(request), cases))
 )
 
 /** @internal */
@@ -254,7 +263,7 @@ export const catchAll: {
   <R, E, A, R2, E2, A2>(
     self: Client.Client<R, E, A>,
     f: (e: E) => Effect.Effect<R2, E2, A2>
-  ): Client.Client<R | R2, E2, A2 | A> => make((request) => Effect.catchAll(self(request), f))
+  ): Client.Client<R | R2, E2, A2 | A> => setProto((request) => Effect.catchAll(self(request), f))
 )
 
 /** @internal */
@@ -267,7 +276,7 @@ export const filterOrElse = dual<
     f: Predicate.Predicate<A>,
     orElse: (a: A) => Effect.Effect<R2, E2, B>
   ) => Client.Client<R2 | R, E2 | E, A | B>
->(3, (self, f, orElse) => make((request) => Effect.filterOrElse(self(request), f, orElse)))
+>(3, (self, f, orElse) => setProto((request) => Effect.filterOrElse(self(request), f, orElse)))
 
 /** @internal */
 export const filterOrFail = dual<
@@ -279,7 +288,7 @@ export const filterOrFail = dual<
     f: Predicate.Predicate<A>,
     orFailWith: (a: A) => E2
   ) => Client.Client<R, E2 | E, A>
->(3, (self, f, orFailWith) => make((request) => Effect.filterOrFail(self(request), f, orFailWith)))
+>(3, (self, f, orFailWith) => setProto((request) => Effect.filterOrFail(self(request), f, orFailWith)))
 
 /** @internal */
 export const filterStatus = dual<
@@ -293,7 +302,7 @@ export const filterStatus = dual<
 >(
   2,
   (self, f) =>
-    make((request) =>
+    setProto((request) =>
       Effect.filterOrFail(
         self(request),
         (response) => f(response.status),
@@ -322,7 +331,7 @@ export const map = dual<
     self: Client.Client<R, E, A>,
     f: (a: A) => B
   ) => Client.Client<R, E, B>
->(2, (self, f) => make((request) => Effect.map(self(request), f)))
+>(2, (self, f) => setProto((request) => Effect.map(self(request), f)))
 
 /** @internal */
 export const mapEffect = dual<
@@ -333,7 +342,7 @@ export const mapEffect = dual<
     self: Client.Client<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, B>
   ) => Client.Client<R | R2, E | E2, B>
->(2, (self, f) => make((request) => Effect.flatMap(self(request), f)))
+>(2, (self, f) => setProto((request) => Effect.flatMap(self(request), f)))
 
 /** @internal */
 export const mapRequest = dual<
@@ -344,7 +353,7 @@ export const mapRequest = dual<
     self: Client.Client<R, E, A>,
     f: (a: ClientRequest.ClientRequest) => ClientRequest.ClientRequest
   ) => Client.Client<R, E, A>
->(2, (self, f) => make((request) => self(f(request))))
+>(2, (self, f) => setProto((request) => self(f(request))))
 
 /** @internal */
 export const mapRequestEffect = dual<
@@ -355,7 +364,7 @@ export const mapRequestEffect = dual<
     self: Client.Client<R, E, A>,
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
   ) => Client.Client<R | R2, E | E2, A>
->(2, (self, f) => make((request) => Effect.flatMap(f(request), self)))
+>(2, (self, f) => setProto((request) => Effect.flatMap(f(request), self)))
 
 /** @internal */
 export const retry: {
@@ -371,7 +380,7 @@ export const retry: {
   <R, E extends E0, E0, A, R1, B>(
     self: Client.Client<R, E, A>,
     policy: Schedule.Schedule<R1, E0, B>
-  ): Client.Client<R | R1, E, A> => make((request) => Effect.retry(self(request), policy))
+  ): Client.Client<R | R1, E, A> => setProto((request) => Effect.retry(self(request), policy))
 )
 
 /** @internal */
@@ -405,7 +414,7 @@ export const schemaFunction = dual<
       (body) =>
         self(internalRequest.setBody(
           request,
-          internalBody.bytes(body, "application/json")
+          internalBody.uint8Array(body, "application/json")
         ))
     )
 })
@@ -419,7 +428,7 @@ export const tap = dual<
     self: Client.Client<R, E, A>,
     f: (a: A) => Effect.Effect<R2, E2, _>
   ) => Client.Client<R | R2, E | E2, A>
->(2, (self, f) => make((request) => Effect.tap(self(request), f)))
+>(2, (self, f) => setProto((request) => Effect.tap(self(request), f)))
 
 /** @internal */
 export const tapRequest = dual<
@@ -430,4 +439,4 @@ export const tapRequest = dual<
     self: Client.Client<R, E, A>,
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, _>
   ) => Client.Client<R | R2, E | E2, A>
->(2, (self, f) => make((request) => Effect.zipRight(f(request), self(request))))
+>(2, (self, f) => setProto((request) => Effect.zipRight(f(request), self(request))))

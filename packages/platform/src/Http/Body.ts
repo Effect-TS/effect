@@ -2,6 +2,8 @@
  * @since 1.0.0
  */
 import type * as Effect from "@effect/io/Effect"
+import type * as PlatformError from "@effect/platform/Error"
+import type * as FileSystem from "@effect/platform/FileSystem"
 import * as internal from "@effect/platform/internal/http/body"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream_ from "@effect/stream/Stream"
@@ -22,7 +24,13 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export type Body = Empty | Raw | Bytes | BytesEffect | FormData | Stream
+export type Body = Empty | Raw | Uint8Array | EffectBody | FormData | Stream
+
+/**
+ * @since 1.0.0
+ * @category models
+ */
+export type NonEffect = Exclude<Body, EffectBody>
 
 /**
  * @since 1.0.0
@@ -73,49 +81,57 @@ export const raw: (body: unknown) => Raw = internal.raw
  * @since 1.0.0
  * @category models
  */
-export interface Bytes extends Body.Proto {
-  readonly _tag: "Bytes"
-  readonly body: Uint8Array
+export interface Uint8Array extends Body.Proto {
+  readonly _tag: "Uint8Array"
+  readonly body: globalThis.Uint8Array
+  readonly contentType: string
+  readonly contentLength: number
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const bytes: (body: Uint8Array) => Bytes = internal.bytes
+export const uint8Array: (body: globalThis.Uint8Array) => Uint8Array = internal.uint8Array
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const text: (body: string, contentType?: string) => Bytes = internal.text
+export const text: (body: string, contentType?: string) => Uint8Array = internal.text
 
 /**
  * @since 1.0.0
  * @category models
  */
-export interface BytesEffect extends Body.Proto {
-  readonly _tag: "BytesEffect"
-  readonly body: Effect.Effect<never, unknown, Uint8Array>
+export interface EffectBody extends Body.Proto {
+  readonly _tag: "Effect"
+  readonly effect: Effect.Effect<never, unknown, NonEffect>
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const bytesEffect: (body: Effect.Effect<never, unknown, Uint8Array>) => BytesEffect = internal.bytesEffect
+export const effect: (body: Effect.Effect<never, unknown, NonEffect>) => EffectBody = internal.effect
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const json: (body: unknown) => BytesEffect = internal.json
+export const unsafeJson: (body: unknown) => Uint8Array = internal.unsafeJson
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const jsonSchema: <I, A>(schema: Schema.Schema<I, A>) => (body: A) => BytesEffect = internal.jsonSchema
+export const json: (body: unknown) => EffectBody = internal.json
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const jsonSchema: <I, A>(schema: Schema.Schema<I, A>) => (body: A) => EffectBody = internal.jsonSchema
 
 /**
  * @since 1.0.0
@@ -138,11 +154,22 @@ export const formData: (body: globalThis.FormData) => FormData = internal.formDa
  */
 export interface Stream extends Body.Proto {
   readonly _tag: "Stream"
-  readonly stream: Stream_.Stream<never, unknown, Uint8Array>
+  readonly stream: Stream_.Stream<never, unknown, globalThis.Uint8Array>
+  readonly contentType: string
+  readonly contentLength?: number
 }
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const stream: (body: Stream_.Stream<never, unknown, Uint8Array>) => Stream = internal.stream
+export const stream: (body: Stream_.Stream<never, unknown, globalThis.Uint8Array>) => Stream = internal.stream
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const file: (
+  path: string,
+  options?: FileSystem.StreamOptions & { readonly contentType?: string }
+) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.file

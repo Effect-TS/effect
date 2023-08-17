@@ -53,6 +53,13 @@ export const agentLayer: Layer.Layer<never, never, HttpAgent> = internal.agentLa
 
 /**
  * @since 1.0.0
+ * @category agent
+ */
+export const makeAgentLayer: (options?: Https.AgentOptions) => Layer.Layer<never, never, HttpAgent> =
+  internal.makeAgentLayer
+
+/**
+ * @since 1.0.0
  * @category constructors
  */
 export const make: Effect.Effect<HttpAgent, never, Client.Client.Default> = internal.make
@@ -62,3 +69,9 @@ export const make: Effect.Effect<HttpAgent, never, Client.Client.Default> = inte
  * @category layers
  */
 export const layer: Layer.Layer<never, never, Client.Client.Default> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerWithoutAgent: Layer.Layer<HttpAgent, never, Client.Client.Default> = internal.layerWithoutAgent
