@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.12.1
+
+### Patch Changes
+
+- [#75](https://github.com/Effect-TS/platform/pull/75) [`d23ff14`](https://github.com/Effect-TS/platform/commit/d23ff14756796e945307ccfdf65252d47f99b7aa) Thanks [@tim-smart](https://github.com/tim-smart)! - add size helpers
+
 ## 0.12.0
 
 ### Minor Changes
