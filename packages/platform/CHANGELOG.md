@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.1
+
+### Patch Changes
+
+- [#79](https://github.com/Effect-TS/platform/pull/79) [`3544c17`](https://github.com/Effect-TS/platform/commit/3544c17f5778ab47cb4019b6458b2543d572629a) Thanks [@TylorS](https://github.com/TylorS)! - Attempt to derive content-type from headers
+
 ## 0.13.0
 
 ### Minor Changes
