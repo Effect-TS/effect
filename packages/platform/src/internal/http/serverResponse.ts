@@ -1,4 +1,5 @@
 import { dual } from "@effect/data/Function"
+import * as Option from "@effect/data/Option"
 import { pipeArguments } from "@effect/data/Pipeable"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
@@ -77,7 +78,7 @@ export const uint8Array = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
-    internalBody.uint8Array(body, options?.contentType)
+    internalBody.uint8Array(body, getContentType(options))
   )
 
 /** @internal */
@@ -86,7 +87,7 @@ export const text = (body: string, options?: ServerResponse.Options.WithContentT
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
-    internalBody.text(body, options?.contentType)
+    internalBody.text(body, getContentType(options))
   )
 
 /** @internal */
@@ -188,8 +189,19 @@ export const stream = (
     options?.status ?? 200,
     options?.statusText,
     options?.headers ?? Headers.empty,
-    internalBody.stream(body, options?.contentType, options?.contentLength)
+    internalBody.stream(body, getContentType(options), options?.contentLength)
   )
+
+/** @internal */
+export const getContentType = (options?: ServerResponse.Options): string | undefined => {
+  if (options?.contentType) {
+    return options.contentType
+  } else if (options?.headers) {
+    return Option.getOrUndefined(Headers.get("content-type")(options.headers))
+  } else {
+    return
+  }
+}
 
 /** @internal */
 export const setHeader = dual<
