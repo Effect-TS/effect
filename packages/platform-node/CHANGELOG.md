@@ -1,5 +1,16 @@
 # @effect/platform-node
 
+## 0.13.0
+
+### Minor Changes
+
+- [#77](https://github.com/Effect-TS/platform/pull/77) [`e97d80b`](https://github.com/Effect-TS/platform/commit/e97d80bd69646195a65ea6dfe13c6af19589d2cf) Thanks [@tim-smart](https://github.com/tim-smart)! - remove Console module
+
+### Patch Changes
+
+- Updated dependencies [[`e97d80b`](https://github.com/Effect-TS/platform/commit/e97d80bd69646195a65ea6dfe13c6af19589d2cf)]:
+  - @effect/platform@0.13.0
+
 ## 0.12.1
 
 ### Patch Changes
