@@ -22,6 +22,7 @@ import * as Config from "effect/Config"
 import * as ConfigError from "effect/ConfigError"
 import * as ConfigProvider from "effect/ConfigProvider"
 import * as ConfigSecret from "effect/ConfigSecret"
+import * as Console from "effect/Console"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as DefaultServices from "effect/DefaultServices"
@@ -321,6 +322,15 @@ export {
    * ```
    */
   ConfigSecret,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Console.ts.html
+   * - Module: "effect/Console"
+   * ```
+   */
+  Console,
   /**
    * @since 2.0.0
    *
