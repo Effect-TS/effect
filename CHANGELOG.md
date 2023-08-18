@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.26
+
+### Patch Changes
+
+- [#1404](https://github.com/Effect-TS/effect/pull/1404) [`6441df29e`](https://github.com/Effect-TS/effect/commit/6441df29ede8a8d33398fff4ae44d141741c64f9) Thanks [@tim-smart](https://github.com/tim-smart)! - expose Console module
+
 ## 2.0.0-next.25
 
 ### Patch Changes
