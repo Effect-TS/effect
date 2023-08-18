@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 53
+nav_order: 54
 parent: Modules
 ---
 
@@ -33,6 +33,7 @@ Added in v2.0.0
   - [ConfigError](#configerror)
   - [ConfigProvider](#configprovider)
   - [ConfigSecret](#configsecret)
+  - [Console](#console)
   - [Context](#context)
   - [Data](#data)
   - [DefaultServices](#defaultservices)
@@ -448,6 +449,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Config/Secret.ts.html
 - Module: "effect/ConfigSecret"
+```
+
+## Console
+
+**Signature**
+
+```ts
+export declare const Console: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Console.ts.html
+- Module: "effect/Console"
 ```
 
 ## Context
