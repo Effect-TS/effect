@@ -57,15 +57,15 @@
     }
   },
   "dependencies": {
-    "@effect/data": "^0.17.1",
-    "@effect/io": "^0.38.0",
+    "@effect/data": "^0.17.3",
+    "@effect/io": "^0.38.2",
     "@effect/match": "^0.32.0",
     "@effect/stm": "^0.22.0",
     "@effect/stream": "^0.34.0"
   },
   "peerDependencies": {
     "@effect/data": "^0.17.1",
-    "@effect/io": "^0.38.0",
+    "@effect/io": "^0.38.2",
     "@effect/match": "^0.32.0",
     "@effect/stm": "^0.22.0",
     "@effect/stream": "^0.34.0"
@@ -89,7 +89,7 @@
     "@typescript-eslint/eslint-plugin": "^6.4.0",
     "@typescript-eslint/parser": "^6.4.0",
     "@vitejs/plugin-react": "^4.0.4",
-    "@vitest/coverage-v8": "^0.34.1",
+    "@vitest/coverage-v8": "^0.34.2",
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "concurrently": "^8.2.0",
     "eslint": "^8.47.0",
