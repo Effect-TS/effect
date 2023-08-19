@@ -937,11 +937,38 @@ export const extend: {
  */
 export const compose: {
   <B, C>(bc: Schema<B, C>): <A>(ab: Schema<A, B>) => Schema<A, C>
+  <B, C extends B, D>(
+    cd: Schema<C, D>,
+    options: { force: "decoding" }
+  ): <A>(ab: Schema<A, B>) => Schema<A, D>
+  <C, D>(
+    cd: Schema<C, D>,
+    options: { force: "encoding" }
+  ): <A, B extends C>(ab: Schema<A, B>) => Schema<A, D>
   <A, B, C>(ab: Schema<A, B>, bc: Schema<B, C>): Schema<A, C>
+  <A, B, C extends B, D>(
+    ab: Schema<A, B>,
+    cd: Schema<C, D>,
+    options: { force: "decoding" }
+  ): Schema<A, D>
+  <A, B extends C, C, D>(
+    ab: Schema<A, B>,
+    cd: Schema<C, D>,
+    options: { force: "encoding" }
+  ): Schema<A, D>
 } = dual(
-  2,
-  <A, B, C>(ab: Schema<A, B>, bc: Schema<B, C>): Schema<A, C> =>
-    transform(ab, bc, identity, identity)
+  (args) => isSchema(args[1]),
+  (ab: any, cd: any, options?: { force: "decoding" | "encoding" }) => {
+    if (options) {
+      if (options.force === "decoding") {
+        return transformResult(ab, cd, P.validateResult(from(cd)), PR.success)
+      } else {
+        return transformResult(ab, cd, PR.success, P.validateResult(to(ab)))
+      }
+    } else {
+      return transform(ab, cd, identity, identity)
+    }
+  }
 )
 
 /**
@@ -1899,15 +1926,13 @@ export const ValidDateFromSelf = DateFromSelf.pipe(validDate())
   @category Date
   @since 1.0.0
 */
-export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> => {
-  const schema: Schema<I, Date> = transformResult(
+export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> =>
+  transformResult(
     self,
     ValidDateFromSelf,
     (s) => PR.success(new Date(s)),
     (n) => PR.success(n.toISOString() as A) // this is safe because `self` will check its input anyway
   )
-  return schema
-}
 
 const _Date: Schema<string, Date> = dateFromString(string)
 
@@ -2990,3 +3015,38 @@ export const length = <A extends string>(
 export const nonEmpty = <A extends string>(
   options?: AnnotationOptions<A>
 ): <I>(self: Schema<I, A>) => Schema<I, A> => minLength(1, options)
+
+/**
+ * The `parseJson` combinator offers a method to convert JSON strings into the `unknown` type using the underlying
+ * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
+  reviver?: Parameters<typeof JSON.parse>[1]
+  replacer?: Parameters<typeof JSON.stringify>[1]
+  space?: Parameters<typeof JSON.stringify>[2]
+}): Schema<I, unknown> =>
+  transformResult(self, unknown, (s) => {
+    try {
+      return PR.success<unknown>(JSON.parse(s, options?.reviver))
+    } catch (e: any) {
+      return PR.failure(PR.type(ParseJson.ast, s, e.message))
+    }
+  }, (u) => {
+    try {
+      return PR.success(JSON.stringify(u, options?.replacer, options?.space) as A) // this is safe because `self` will check its input anyway
+    } catch (e: any) {
+      return PR.failure(PR.type(ParseJson.ast, u, e.message))
+    }
+  })
+
+/**
+ * The `ParseJson` schema offers a method to convert JSON strings into the `unknown` type using the underlying
+ * functionality of `JSON.parse`. It also employs `JSON.stringify` for encoding.
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const ParseJson: Schema<string, unknown> = parseJson(string)

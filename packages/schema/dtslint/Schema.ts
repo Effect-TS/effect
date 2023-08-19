@@ -520,3 +520,41 @@ pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
 
 // $ExpectType Schema<number, number & Brand<"MyNumber">>
 pipe(S.number, S.filter((n): n is number & Brand<"MyNumber"> => n > 0))
+
+// ---------------------------------------------
+// compose
+// ---------------------------------------------
+
+// plain
+
+// $ExpectType Schema<string, readonly number[]>
+S.compose(S.split(S.string, ","), S.array(S.NumberFromString))
+
+// $ExpectType Schema<string, readonly number[]>
+S.split(S.string, ",").pipe(S.compose(S.array(S.NumberFromString)))
+
+// $ExpectType Schema<string, readonly number[]>
+S.compose(S.array(S.NumberFromString))(S.split(S.string, ","))
+
+// decoding
+
+// @ts-expect-error
+S.compose(S.union(S.null, S.string), S.NumberFromString)
+
+// $ExpectType Schema<string | null, number>
+S.compose(S.union(S.null, S.string), S.NumberFromString, { force: 'decoding' })
+
+// $ExpectType Schema<string | null, number>
+S.union(S.null, S.string).pipe(S.compose(S.NumberFromString, { force: 'decoding' }))
+
+// encoding
+
+// @ts-expect-error
+S.compose(S.NumberFromString, S.union(S.null, S.number))
+
+// $ExpectType Schema<string, number | null>
+S.compose(S.NumberFromString, S.union(S.null, S.number), { force: 'encoding' })
+
+// $ExpectType Schema<string, number | null>
+S.NumberFromString.pipe(S.compose(S.union(S.null, S.number), { force: 'encoding' }))
+
