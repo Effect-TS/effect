@@ -11,16 +11,21 @@ export const make = <M extends Middleware.Middleware>(middleware: M): M => middl
 /** @internal */
 export const logger = make((httpApp) =>
   Effect.withLogSpan(
-    Effect.onExit(
-      httpApp,
-      (exit) =>
-        Effect.flatMap(
-          ServerRequest.ServerRequest,
-          (request) =>
-            Effect.annotateLogs(Effect.log("", exit._tag === "Failure" ? exit.cause : undefined), {
+    Effect.flatMap(
+      ServerRequest.ServerRequest,
+      (request) =>
+        Effect.tap(
+          Effect.tapErrorCause(httpApp, (cause) =>
+            Effect.annotateLogs(Effect.log(cause), {
               "http.method": request.method,
               "http.url": request.url,
-              "http.status": exit._tag === "Success" ? exit.value.status : 500
+              "http.status": 500
+            })),
+          (response) =>
+            Effect.annotateLogs(Effect.log(""), {
+              "http.method": request.method,
+              "http.url": request.url,
+              "http.status": response.status
             })
         )
     ),
@@ -46,16 +51,14 @@ export const tracer = make((httpApp) =>
 
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>
-  Effect.flatMap(ServerRequest.ServerRequest, (request) => {
-    return request.headers["x-forwarded-host"] ?
-      Effect.updateService(httpApp, ServerRequest.ServerRequest, (_) =>
-        _.replaceHeaders(Headers.set(
-          request.headers,
-          "host",
-          request.headers["x-forwarded-host"]
-        )))
-      : httpApp
-  })
+  Effect.updateService(httpApp, ServerRequest.ServerRequest, (request) =>
+    request.headers["x-forwarded-host"]
+      ? request.replaceHeaders(Headers.set(
+        request.headers,
+        "host",
+        request.headers["x-forwarded-host"]
+      ))
+      : request)
 )
 
 /** @internal */

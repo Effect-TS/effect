@@ -78,7 +78,7 @@ export const make = (
       serve: (httpApp, middleware) => {
         const handledApp = middleware ? middleware(respond(httpApp)) : respond(httpApp)
         return Effect.flatMap(Effect.runtime(), (runtime) => {
-          const runFork = Runtime.runFork(runtime as Runtime.Runtime<unknown>)
+          const runFork = Runtime.runFork(runtime)
           function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
             runFork(
               Effect.provideService(
@@ -105,13 +105,11 @@ export const make = (
     )
   )
 
-const respond = Middleware.make((httpApp) =>
-  Effect.flatMap(ServerRequest.ServerRequest, (request) =>
+const respond = Middleware.make((httpApp) => {
+  const nonEffectApp = Effect.flatMap(httpApp, ServerResponse.toNonEffectBody)
+  return Effect.flatMap(ServerRequest.ServerRequest, (request) =>
     Effect.tapErrorCause(
-      Effect.tap(
-        Effect.flatMap(httpApp, ServerResponse.toNonEffectBody),
-        (response) => handleResponse(request, response)
-      ),
+      Effect.tap(nonEffectApp, (response) => handleResponse(request, response)),
       (_cause) =>
         Effect.sync(() => {
           const nodeResponse = (request as ServerRequestImpl).response
@@ -123,7 +121,7 @@ const respond = Middleware.make((httpApp) =>
           }
         })
     ))
-)
+})
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId

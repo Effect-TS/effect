@@ -30,7 +30,7 @@ const clientProto = {
 }
 
 const setProto = <R, E, A>(
-  f: (request: ClientRequest.ClientRequest.NonEffectBody) => Effect.Effect<R, E, A>
+  f: (request: ClientRequest.ClientRequest) => Effect.Effect<R, E, A>
 ) => {
   Object.setPrototypeOf(f, clientProto)
   return f as Client.Client<R, E, A>
@@ -118,20 +118,20 @@ export const layer = Layer.succeed(tag, fetch())
 
 /** @internal */
 export const catchTag: {
-  <E extends { _tag: string }, K extends E["_tag"] & string, R1, E1, A1>(
+  <K extends (E extends { _tag: string } ? E["_tag"] : never), E, R1, E1, A1>(
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
   ): <R, A>(
     self: Client.Client<R, E, A>
   ) => Client.Client<R1 | R, E1 | Exclude<E, { _tag: K }>, A1 | A>
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, E1, R1, A1>(
+  <R, E, A, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
     self: Client.Client<R, E, A>,
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
   ): Client.Client<R1 | R, E1 | Exclude<E, { _tag: K }>, A1 | A>
 } = dual(
   3,
-  <R, E extends { _tag: string }, A, K extends E["_tag"] & string, E1, R1, A1>(
+  <R, E, A, K extends (E extends { _tag: string } ? E["_tag"] : never), R1, E1, A1>(
     self: Client.Client<R, E, A>,
     tag: K,
     f: (e: Extract<E, { _tag: K }>) => Effect.Effect<R1, E1, A1>
@@ -142,12 +142,11 @@ export const catchTag: {
 /** @internal */
 export const catchTags: {
   <
-    E extends { _tag: string },
-    Cases extends {
-      [K in E["_tag"]]+?:
-        | ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>)
-        | undefined
-    }
+    E,
+    Cases
+      extends (E extends { _tag: string }
+        ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>) }
+        : {})
   >(
     cases: Cases
   ): <R, A>(
@@ -179,11 +178,10 @@ export const catchTags: {
     R,
     E extends { _tag: string },
     A,
-    Cases extends {
-      [K in E["_tag"]]+?:
-        | ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>)
-        | undefined
-    }
+    Cases
+      extends (E extends { _tag: string }
+        ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>) }
+        : {})
   >(
     self: Client.Client<R, E, A>,
     cases: Cases
@@ -216,11 +214,10 @@ export const catchTags: {
     R,
     E extends { _tag: string },
     A,
-    Cases extends {
-      [K in E["_tag"]]+?:
-        | ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>)
-        | undefined
-    }
+    Cases
+      extends (E extends { _tag: string }
+        ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Effect.Effect<any, any, any>) }
+        : {})
   >(
     self: Client.Client<R, E, A>,
     cases: Cases

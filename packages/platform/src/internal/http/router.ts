@@ -95,15 +95,12 @@ const toHttpApp = <R, E>(
   self: Router.Router<R, E>
 ): App.Default<Exclude<R, Router.RouteContext>, E | Error.RouteNotFound> => {
   const router = FindMyWay()
-  Chunk.forEach(self.mounts, ([path, app]) => {
-    const fn = () => {}
-    fn.handler = Effect.updateService(app, ServerRequest.ServerRequest, (request) => sliceRequestUrl(request, path))
-    router.all(path, fn)
-    router.all(path + "/*", fn)
-  })
+  const mounts = Chunk.toReadonlyArray(self.mounts)
+  const mountsLen = mounts.length
   Chunk.forEach(self.routes, (route) => {
-    const fn = () => {}
-    fn.handler = route
+    function fn(_: any, __: any) {
+      return route
+    }
     if (route.method === "*") {
       router.all(route.path, fn)
     } else {
@@ -113,27 +110,36 @@ const toHttpApp = <R, E>(
   return Effect.flatMap(
     ServerRequest.ServerRequest,
     (request): App.Default<Exclude<R, Router.RouteContext>, E | Error.RouteNotFound> => {
+      if (mountsLen > 0) {
+        for (let i = 0; i < mountsLen; i++) {
+          const [path, app] = mounts[i]
+          if (request.url.startsWith(path)) {
+            return Effect.provideService(
+              app,
+              ServerRequest.ServerRequest,
+              sliceRequestUrl(request, path)
+            ) as App.Default<Exclude<R, Router.RouteContext>, E>
+          }
+        }
+      }
+
       const result = router.find(request.method as HTTPMethod, request.url)
       if (result === null) {
         return Effect.fail(Error.RouteNotFound({ request }))
       }
-      const handler = (result.handler as any).handler
-      if (RouteTypeId in handler) {
-        const route = handler as Router.Route<R, E>
-        if (route.prefix._tag === "Some") {
-          request = sliceRequestUrl(request, route.prefix.value)
-        }
-        return Effect.mapInputContext(
-          route.handler,
-          (context) =>
-            Context.add(
-              Context.add(context, ServerRequest.ServerRequest, request),
-              RouteContext,
-              new RouteContextImpl(result.params, result.searchParams)
-            ) as Context.Context<R>
-        )
+      const route = (result.handler as any)() as Router.Route<R, E>
+      if (route.prefix._tag === "Some") {
+        request = sliceRequestUrl(request, route.prefix.value)
       }
-      return (handler as App.Default<Exclude<R, Router.RouteContext>, E>)
+      return Effect.mapInputContext(
+        route.handler,
+        (context) =>
+          Context.add(
+            Context.add(context, ServerRequest.ServerRequest, request),
+            RouteContext,
+            new RouteContextImpl(result.params, result.searchParams)
+          ) as Context.Context<R>
+      )
     }
   )
 }
