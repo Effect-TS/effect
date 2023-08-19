@@ -69,13 +69,13 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
             Https.request(url, {
               agent: agent.https,
               method: request.method,
-              headers: Object.fromEntries(request.headers),
+              headers: request.headers,
               signal: controller.signal
             }) :
             Http.request(url, {
               agent: agent.http,
               method: request.method,
-              headers: Object.fromEntries(request.headers),
+              headers: request.headers,
               signal: controller.signal
             })
           return pipe(
@@ -212,7 +212,7 @@ class ClientResponseImpl extends IncomingMessageImpl<Error.ResponseError> implem
     return {
       _tag: "ClientResponse",
       status: this.status,
-      headers: Object.fromEntries(this.headers)
+      headers: this.headers
     }
   }
 }

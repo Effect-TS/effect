@@ -1,5 +1,4 @@
 import { dual } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
 import { pipeArguments } from "@effect/data/Pipeable"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
@@ -20,13 +19,26 @@ export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/S
 
 class ServerResponseImpl implements ServerResponse.ServerResponse {
   readonly [TypeId]: ServerResponse.TypeId
+  readonly headers: Headers.Headers
   constructor(
     readonly status: number,
     readonly statusText: string | undefined,
-    readonly headers: Headers.Headers,
+    headers: Headers.Headers,
     readonly body: Body.Body
   ) {
     this[TypeId] = TypeId
+    if (body.contentType || body.contentLength) {
+      const newHeaders = { ...headers }
+      if (body.contentType) {
+        newHeaders["content-type"] = body.contentType
+      }
+      if (body.contentLength) {
+        newHeaders["content-length"] = body.contentLength.toString()
+      }
+      this.headers = newHeaders
+    } else {
+      this.headers = headers
+    }
   }
   pipe() {
     return pipeArguments(this, arguments)
@@ -197,7 +209,7 @@ export const getContentType = (options?: ServerResponse.Options): string | undef
   if (options?.contentType) {
     return options.contentType
   } else if (options?.headers) {
-    return Option.getOrUndefined(Headers.get("content-type")(options.headers))
+    return options.headers["content-type"]
   } else {
     return
   }
@@ -247,16 +259,6 @@ export const setBody = dual<
   let headers = self.headers
   if (body._tag === "Empty") {
     headers = Headers.remove(Headers.remove(headers, "Content-Type"), "Content-length")
-  } else {
-    const contentType = body.contentType
-    if (contentType) {
-      headers = Headers.set(headers, "content-type", contentType)
-    }
-
-    const contentLength = body.contentLength
-    if (contentLength) {
-      headers = Headers.set(headers, "content-length", contentLength.toString())
-    }
   }
   return new ServerResponseImpl(
     self.status,

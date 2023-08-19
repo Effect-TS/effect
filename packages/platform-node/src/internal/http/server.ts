@@ -11,7 +11,7 @@ import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomin
 import * as NodeSink from "@effect/platform-node/Sink"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as FormData from "@effect/platform/Http/FormData"
-import * as Headers from "@effect/platform/Http/Headers"
+import type * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
 import * as Middleware from "@effect/platform/Http/Middleware"
@@ -152,7 +152,7 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
   }
 
   get headers(): Headers.Headers {
-    this.headersOverride ??= Headers.fromInput(this.source.headers as any)
+    this.headersOverride ??= this.source.headers as Headers.Headers
     return this.headersOverride
   }
 
@@ -209,7 +209,7 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
       method: this.method,
       url: this.url,
       originalUrl: this.originalUrl,
-      headers: Object.fromEntries(this.headers)
+      headers: this.headers
     }
   }
 }
@@ -241,30 +241,13 @@ const handleResponse = (
     const nodeResponse = (request as ServerRequestImpl).response
     switch (response.body._tag) {
       case "Empty": {
-        nodeResponse.writeHead(
-          response.status,
-          response.headers === Headers.empty ? undefined : Object.fromEntries(response.headers)
-        )
+        nodeResponse.writeHead(response.status, response.headers)
         nodeResponse.end()
         return Effect.unit
       }
-      case "Raw": {
-        const headers = response.headers === Headers.empty ? {} : Object.fromEntries(response.headers)
-        if (response.body.contentType) {
-          headers["content-type"] = response.body.contentType
-        }
-        if (response.body.contentLength) {
-          headers["content-length"] = response.body.contentLength.toString()
-        }
-        nodeResponse.writeHead(response.status, headers)
-        nodeResponse.end(response.body.body)
-        return Effect.unit
-      }
+      case "Raw":
       case "Uint8Array": {
-        const headers = response.headers === Headers.empty ? {} : Object.fromEntries(response.headers)
-        headers["content-type"] = response.body.contentType
-        headers["content-length"] = response.body.contentLength.toString()
-        nodeResponse.writeHead(response.status, headers)
+        nodeResponse.writeHead(response.status, response.headers)
         nodeResponse.end(response.body.body)
         return Effect.unit
       }
@@ -272,10 +255,10 @@ const handleResponse = (
         const body = response.body
         return Effect.async<never, Error.ResponseError, void>((resume) => {
           const r = new Response(body.formData)
-          const headers = response.headers
-            ? Object.fromEntries(response.headers)
-            : {}
-          headers["content-type"] = r.headers.get("content-type")!
+          const headers = {
+            ...response.headers,
+            ...Object.fromEntries(r.headers)
+          }
           nodeResponse.writeHead(response.status, headers)
           Readable.fromWeb(r.body as any)
             .pipe(nodeResponse)
@@ -293,12 +276,7 @@ const handleResponse = (
         })
       }
       case "Stream": {
-        const headers = response.headers === Headers.empty ? {} : Object.fromEntries(response.headers)
-        headers["content-type"] = response.body.contentType
-        if (response.body.contentLength) {
-          headers["content-length"] = response.body.contentLength.toString()
-        }
-        nodeResponse.writeHead(response.status, headers)
+        nodeResponse.writeHead(response.status, response.headers)
         return Stream.run(
           Stream.mapError(
             response.body.stream,

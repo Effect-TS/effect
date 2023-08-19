@@ -65,8 +65,7 @@ export const schemaBodyUrlParams = <I extends Readonly<Record<string, string>>, 
  */
 export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
   const parse = Schema.parse(schema)
-  return <E>(self: IncomingMessage<E>): Effect.Effect<never, ParseResult.ParseError, A> =>
-    parse(Object.fromEntries(self.headers))
+  return <E>(self: IncomingMessage<E>): Effect.Effect<never, ParseResult.ParseError, A> => parse(self.headers)
 }
 
 /**

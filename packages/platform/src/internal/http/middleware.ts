@@ -47,10 +47,13 @@ export const tracer = make((httpApp) =>
 /** @internal */
 export const xForwardedHeaders = make((httpApp) =>
   Effect.flatMap(ServerRequest.ServerRequest, (request) => {
-    const forwardedHost = Headers.get(request.headers, "x-forwarded-host")
-    return forwardedHost._tag === "Some"
-      ? Effect.updateService(httpApp, ServerRequest.ServerRequest, (_) =>
-        _.replaceHeaders(Headers.set(request.headers, "host", forwardedHost.value)))
+    return request.headers["x-forwarded-host"] ?
+      Effect.updateService(httpApp, ServerRequest.ServerRequest, (_) =>
+        _.replaceHeaders(Headers.set(
+          request.headers,
+          "host",
+          request.headers["x-forwarded-host"]
+        )))
       : httpApp
   })
 )

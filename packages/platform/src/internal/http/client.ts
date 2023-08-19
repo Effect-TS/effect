@@ -65,7 +65,7 @@ export const fetch = (
         })),
       (url) =>
         Effect.suspend(() => {
-          const headers = new Headers([...request.headers] as any)
+          const headers = new Headers(request.headers)
           const send = (body: BodyInit | undefined) =>
             Effect.map(
               Effect.tryPromise({
