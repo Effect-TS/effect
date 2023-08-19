@@ -5,7 +5,6 @@ import * as O from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as RA from "@effect/data/ReadonlyArray"
 import * as Effect from "@effect/io/Effect"
-import * as Exit from "@effect/io/Exit"
 import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
@@ -98,28 +97,35 @@ export const roundtrip = <I, A>(schema: Schema<I, A>) => {
   const to = S.to(schema)
   const arb = A.to(to)
   const is = S.is(to)
+  const encode = S.encode(schema)
+  const decode = S.decode(schema)
   fc.assert(fc.property(arb(fc), (a) => {
-    if (!is(a)) {
-      return false
-    }
-    const roundtrip = pipe(
-      a,
-      S.encode(schema),
-      Effect.flatMap(S.decode(schema)),
-      Effect.runSyncExit
+    const roundtrip = encode(a).pipe(
+      Effect.mapError(() => "encoding" as const),
+      Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
+      Effect.either,
+      Effect.runSync
     )
-    if (Exit.isFailure(roundtrip)) {
-      return false
+    if (Either.isLeft(roundtrip)) {
+      return roundtrip.left === "encoding"
     }
-    return is(roundtrip.value)
+    return is(roundtrip.right)
   }))
   if (doEffectify) {
-    const effect = effectify(schema, "semi")
+    const effectSchema = effectify(schema, "all")
+    const encode = S.encode(effectSchema)
+    const decode = S.decode(effectSchema)
     fc.assert(fc.asyncProperty(arb(fc), async (a) => {
-      const roundtrip = await Effect.runPromiseExit(
-        PR.flatMap(S.encode(effect)(a), S.decode(effect))
+      const roundtrip = await encode(a).pipe(
+        Effect.mapError(() => "encoding" as const),
+        Effect.flatMap((i) => decode(i).pipe(Effect.mapError(() => "decoding" as const))),
+        Effect.either,
+        Effect.runPromise
       )
-      return Exit.isSuccess(roundtrip)
+      if (Either.isLeft(roundtrip)) {
+        return roundtrip.left === "encoding"
+      }
+      return is(roundtrip.right)
     }))
   }
 }
