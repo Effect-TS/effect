@@ -98,7 +98,7 @@ const toHttpApp = <R, E>(
   const mounts = Chunk.toReadonlyArray(self.mounts)
   const mountsLen = mounts.length
   Chunk.forEach(self.routes, (route) => {
-    function fn(_: any, __: any) {
+    function fn() {
       return route
     }
     if (route.method === "*") {
