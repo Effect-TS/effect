@@ -3028,20 +3028,22 @@ export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
   reviver?: Parameters<typeof JSON.parse>[1]
   replacer?: Parameters<typeof JSON.stringify>[1]
   space?: Parameters<typeof JSON.stringify>[2]
-}): Schema<I, unknown> =>
-  transformResult(self, unknown, (s) => {
+}): Schema<I, unknown> => {
+  const schema: Schema<I, unknown> = transformResult(self, unknown, (s) => {
     try {
       return PR.success<unknown>(JSON.parse(s, options?.reviver))
     } catch (e: any) {
-      return PR.failure(PR.type(ParseJson.ast, s, e.message))
+      return PR.failure(PR.type(schema.ast, s, e.message))
     }
   }, (u) => {
     try {
       return PR.success(JSON.stringify(u, options?.replacer, options?.space) as A) // this is safe because `self` will check its input anyway
     } catch (e: any) {
-      return PR.failure(PR.type(ParseJson.ast, u, e.message))
+      return PR.failure(PR.type(schema.ast, u, e.message))
     }
   })
+  return schema
+}
 
 /**
  * The `ParseJson` schema offers a method to convert JSON strings into the `unknown` type using the underlying
