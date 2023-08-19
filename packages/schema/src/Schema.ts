@@ -2829,6 +2829,7 @@ export const pattern = <A extends string>(
         typeId: { id: PatternTypeId, params: { regex } },
         description: `a string matching the pattern ${pattern}`,
         jsonSchema: { pattern },
+        arbitrary: (): Arbitrary<string> => (fc) => fc.stringMatching(regex),
         ...options
       }
     )

@@ -398,4 +398,10 @@ describe.concurrent("Arbitrary", () => {
     const schema = S.number.pipe(S.int(), S.between(1, 10))
     propertyTo(schema)
   })
+
+  it("pattern: should be set by default", () => {
+    const regexp = /^[A-Z]{3}[0-9]{3}$/
+    const schema = S.string.pipe(S.pattern(regexp))
+    propertyTo(schema)
+  })
 })
