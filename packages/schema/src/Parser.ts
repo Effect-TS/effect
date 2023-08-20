@@ -298,21 +298,16 @@ const go = (ast: AST.AST, isBoundary = true): Parser<any, any> => {
       }
     }
     case "Transform": {
+      const from = go(ast.from, isBoundary)
       const to = go(ast.to, false)
-      if (isBoundary) {
-        const from = go(ast.from)
-        return (i1, options) =>
-          handleForbidden(
-            PR.flatMap(
-              from(i1, options),
-              (a) => PR.flatMap(ast.decode(a, options), (i2) => to(i2, options))
-            ),
-            options
-          )
-      } else {
-        return (a, options) =>
-          handleForbidden(PR.flatMap(ast.decode(a, options), (i2) => to(i2, options)), options)
-      }
+      return (i1, options) =>
+        handleForbidden(
+          PR.flatMap(
+            from(i1, options),
+            (a) => PR.flatMap(ast.decode(a, options), (i2) => to(i2, options))
+          ),
+          options
+        )
     }
     case "Declaration": {
       const decode = ast.decode(...ast.typeParameters)

@@ -41,7 +41,7 @@ describe.concurrent("ParseJson", () => {
   })
 
   it("compose", async () => {
-    const schema = S.ParseJson.pipe(S.compose(S.struct({ a: S.number }), { force: "decoding" }))
+    const schema = S.ParseJson.pipe(S.compose(S.struct({ a: S.number })))
     await Util.expectParseSuccess(schema, `{"a":1}`, { a: 1 })
     await Util.expectParseFailure(schema, `{"a"}`, `Unexpected token } in JSON at position 4`)
     await Util.expectParseFailure(schema, `{"a":"b"}`, `/a Expected number, actual "b"`)
