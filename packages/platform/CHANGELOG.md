@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.13.3
+
+### Patch Changes
+
+- [#86](https://github.com/Effect-TS/platform/pull/86) [`6dfc5b0`](https://github.com/Effect-TS/platform/commit/6dfc5b0fbec0e8a057a26c009f19c9951e4b3ba4) Thanks [@tim-smart](https://github.com/tim-smart)! - add router combinators
+
+- [#88](https://github.com/Effect-TS/platform/pull/88) [`d7fffeb`](https://github.com/Effect-TS/platform/commit/d7fffeb38a1c40ad3847e4e5b966f58939d1ba83) Thanks [@tim-smart](https://github.com/tim-smart)! - remove Middleware.compose
+
 ## 0.13.2
 
 ### Patch Changes
