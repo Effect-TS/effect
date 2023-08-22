@@ -60,7 +60,8 @@ export const traversePartitionMap = <T extends TypeLambda>(
   self: Kind<T, TR, TO, TE, A>,
   f: (a: A) => Kind<F, R, O, E, Either<B, C>>
 ) => Kind<F, R, O, E, [Kind<T, TR, TO, TE, B>, Kind<T, TR, TO, TE, C>]> =>
-  (F) => (self, f) => F.map(T.traverse(F)(self, f), filterable.separate(T))
+(F) =>
+(self, f) => F.map(T.traverse(F)(self, f), filterable.separate(T))
 
 /**
  * Returns a default binary `traverseFilterMap` implementation.
@@ -75,7 +76,8 @@ export const traverseFilterMap = <T extends TypeLambda>(
   self: Kind<T, TR, TO, TE, A>,
   f: (a: A) => Kind<F, R, O, E, Option<B>>
 ) => Kind<F, R, O, E, Kind<T, TR, TO, TE, B>> =>
-  (F) => (self, f) => F.map(T.traverse(F)(self, f), filterable.compact(T))
+(F) =>
+(self, f) => F.map(T.traverse(F)(self, f), filterable.compact(T))
 
 /**
  * @since 1.0.0
@@ -83,25 +85,27 @@ export const traverseFilterMap = <T extends TypeLambda>(
 export const traverseFilter = <T extends TypeLambda>(
   T: TraversableFilterable<T>
 ) =>
-  <F extends TypeLambda>(
-    F: Applicative<F>
-  ): {
-    <B extends A, R, O, E, A = B>(
-      predicate: (a: A) => Kind<F, R, O, E, boolean>
-    ): <TR, TO, TE>(
-      self: Kind<T, TR, TO, TE, B>
-    ) => Kind<F, R, O, E, Kind<T, TR, TO, TE, B>>
-    <TR, TO, TE, B extends A, R, O, E, A = B>(
-      self: Kind<T, TR, TO, TE, B>,
-      predicate: (a: A) => Kind<F, R, O, E, boolean>
-    ): Kind<F, R, O, E, Kind<T, TR, TO, TE, B>>
-  } =>
-    dual(2, <TR, TO, TE, B extends A, R, O, E, A = B>(
-      self: Kind<T, TR, TO, TE, B>,
-      predicate: (a: A) => Kind<F, R, O, E, boolean>
-    ): Kind<F, R, O, E, Kind<T, TR, TO, TE, B>> =>
-      T.traverseFilterMap(F)(self, (b) =>
-        F.map(predicate(b), (keep) => (keep ? O.some(b) : O.none()))))
+<F extends TypeLambda>(
+  F: Applicative<F>
+): {
+  <B extends A, R, O, E, A = B>(
+    predicate: (a: A) => Kind<F, R, O, E, boolean>
+  ): <TR, TO, TE>(
+    self: Kind<T, TR, TO, TE, B>
+  ) => Kind<F, R, O, E, Kind<T, TR, TO, TE, B>>
+  <TR, TO, TE, B extends A, R, O, E, A = B>(
+    self: Kind<T, TR, TO, TE, B>,
+    predicate: (a: A) => Kind<F, R, O, E, boolean>
+  ): Kind<F, R, O, E, Kind<T, TR, TO, TE, B>>
+} =>
+  dual(2, <TR, TO, TE, B extends A, R, O, E, A = B>(
+    self: Kind<T, TR, TO, TE, B>,
+    predicate: (a: A) => Kind<F, R, O, E, boolean>
+  ): Kind<F, R, O, E, Kind<T, TR, TO, TE, B>> =>
+    T.traverseFilterMap(F)(
+      self,
+      (b) => F.map(predicate(b), (keep) => (keep ? O.some(b) : O.none()))
+    ))
 
 /**
  * @since 1.0.0
@@ -109,22 +113,22 @@ export const traverseFilter = <T extends TypeLambda>(
 export const traversePartition = <T extends TypeLambda>(
   T: TraversableFilterable<T>
 ) =>
-  <F extends TypeLambda>(
-    F: Applicative<F>
-  ): {
-    <B extends A, R, O, E, A = B>(
-      predicate: (a: A) => Kind<F, R, O, E, boolean>
-    ): <TR, TO, TE>(
-      self: Kind<T, TR, TO, TE, B>
-    ) => Kind<F, R, O, E, [Kind<T, TR, TO, TE, B>, Kind<T, TR, TO, TE, B>]>
-    <TR, TO, TE, B extends A, R, O, E, A = B>(
-      self: Kind<T, TR, TO, TE, B>,
-      predicate: (a: A) => Kind<F, R, O, E, boolean>
-    ): Kind<F, R, O, E, [Kind<T, TR, TO, TE, B>, Kind<T, TR, TO, TE, B>]>
-  } =>
-    dual(2, (self, predicate) =>
-      T.traversePartitionMap(F)(self, (b) =>
-        F.map(
-          predicate(b),
-          (keep): E.Either<typeof b, typeof b> => (keep ? E.right(b) : E.left(b))
-        )))
+<F extends TypeLambda>(
+  F: Applicative<F>
+): {
+  <B extends A, R, O, E, A = B>(
+    predicate: (a: A) => Kind<F, R, O, E, boolean>
+  ): <TR, TO, TE>(
+    self: Kind<T, TR, TO, TE, B>
+  ) => Kind<F, R, O, E, [Kind<T, TR, TO, TE, B>, Kind<T, TR, TO, TE, B>]>
+  <TR, TO, TE, B extends A, R, O, E, A = B>(
+    self: Kind<T, TR, TO, TE, B>,
+    predicate: (a: A) => Kind<F, R, O, E, boolean>
+  ): Kind<F, R, O, E, [Kind<T, TR, TO, TE, B>, Kind<T, TR, TO, TE, B>]>
+} =>
+  dual(2, (self, predicate) =>
+    T.traversePartitionMap(F)(self, (b) =>
+      F.map(
+        predicate(b),
+        (keep): E.Either<typeof b, typeof b> => (keep ? E.right(b) : E.left(b))
+      )))

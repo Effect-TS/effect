@@ -41,16 +41,16 @@ export const partitionMapComposition = <F extends TypeLambda, G extends TypeLamb
   F: Covariant<F>,
   G: Filterable<G>
 ) =>
-  <FR, FO, FE, GR, GO, GE, A, B, C>(
-    self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-    f: (a: A) => Either.Either<B, C>
-  ): [Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>>, Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, C>>] => {
-    const filterMap = filterMapComposition(F, G)
-    return [
-      filterMap(self, (a) => Either.getLeft(f(a))),
-      filterMap(self, (a) => Either.getRight(f(a)))
-    ]
-  }
+<FR, FO, FE, GR, GO, GE, A, B, C>(
+  self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
+  f: (a: A) => Either.Either<B, C>
+): [Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>>, Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, C>>] => {
+  const filterMap = filterMapComposition(F, G)
+  return [
+    filterMap(self, (a) => Either.getLeft(f(a))),
+    filterMap(self, (a) => Either.getRight(f(a)))
+  ]
+}
 
 /**
  * Returns a default binary `filterMap` composition.
@@ -61,10 +61,10 @@ export const filterMapComposition = <F extends TypeLambda, G extends TypeLambda>
   F: Covariant<F>,
   G: Filterable<G>
 ) =>
-  <FR, FO, FE, GR, GO, GE, A, B>(
-    self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-    f: (a: A) => Option.Option<B>
-  ): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.map(self, G.filterMap(f))
+<FR, FO, FE, GR, GO, GE, A, B>(
+  self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
+  f: (a: A) => Option.Option<B>
+): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.map(self, G.filterMap(f))
 
 /**
  * @since 1.0.0

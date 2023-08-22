@@ -21,7 +21,8 @@ const of = <A>(_: A): Predicate.Predicate<A> => Predicate.isUnknown
 const product = <A, B>(
   self: Predicate.Predicate<A>,
   that: Predicate.Predicate<B>
-): Predicate.Predicate<readonly [A, B]> => ([a, b]) => self(a) && that(b)
+): Predicate.Predicate<readonly [A, B]> =>
+([a, b]) => self(a) && that(b)
 
 const productAll = <A>(
   collection: Iterable<Predicate.Predicate<A>>
@@ -131,18 +132,17 @@ export const getMonoidXor = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
 export const getSemigroupSome = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(
     Predicate.or,
-    (self, collection) =>
-      (a) => {
-        if (self(a)) {
+    (self, collection) => (a) => {
+      if (self(a)) {
+        return true
+      }
+      for (const p of collection) {
+        if (p(a)) {
           return true
         }
-        for (const p of collection) {
-          if (p(a)) {
-            return true
-          }
-        }
-        return false
       }
+      return false
+    }
   )
 
 /**
@@ -159,18 +159,17 @@ export const getMonoidSome = <A>(): monoid.Monoid<Predicate.Predicate<A>> =>
 export const getSemigroupEvery = <A>(): Semigroup<Predicate.Predicate<A>> =>
   semigroup.make<Predicate.Predicate<A>>(
     Predicate.and,
-    (self, collection) =>
-      (a) => {
-        if (!self(a)) {
+    (self, collection) => (a) => {
+      if (!self(a)) {
+        return false
+      }
+      for (const p of collection) {
+        if (!p(a)) {
           return false
         }
-        for (const p of collection) {
-          if (!p(a)) {
-            return false
-          }
-        }
-        return true
       }
+      return true
+    }
   )
 
 /**

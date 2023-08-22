@@ -20,7 +20,8 @@ export interface SemiApplicative<F extends TypeLambda> extends SemiProduct<F>, C
  * @category lifting
  * @since 1.0.0
  */
-export const getSemigroup = <F extends TypeLambda>(F: SemiApplicative<F>) =>
+export const getSemigroup =
+  <F extends TypeLambda>(F: SemiApplicative<F>) =>
   <A, R, O, E>(S: Semigroup<A>): Semigroup<Kind<F, R, O, E, A>> =>
     semigroup.make(
       (self, that) => F.map(F.product(self, that), ([a1, a2]) => S.combine(a1, a2)),
@@ -118,7 +119,8 @@ export const zipRight = <F extends TypeLambda>(F: SemiApplicative<F>): {
  * @category lifting
  * @since 1.0.0
  */
-export const lift2 = <F extends TypeLambda>(F: SemiApplicative<F>) =>
+export const lift2 =
+  <F extends TypeLambda>(F: SemiApplicative<F>) =>
   <A, B, C>(f: (a: A, b: B) => C): {
     <R2, O2, E2>(
       that: Kind<F, R2, O2, E2, B>

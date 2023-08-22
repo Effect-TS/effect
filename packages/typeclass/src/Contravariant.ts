@@ -27,10 +27,10 @@ export const contramapComposition = <F extends TypeLambda, G extends TypeLambda>
   F: Contravariant<F>,
   G: Contravariant<G>
 ) =>
-  <FR, FO, FE, GR, GO, GE, A, B>(
-    self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-    f: (a: A) => B
-  ): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.contramap(self, G.contramap(f))
+<FR, FO, FE, GR, GO, GE, A, B>(
+  self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
+  f: (a: A) => B
+): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.contramap(self, G.contramap(f))
 
 /**
  * Returns a default `imap` implementation.

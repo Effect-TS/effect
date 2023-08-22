@@ -45,15 +45,14 @@ export const bindDiscard: {
 
 describe.concurrent("SemiProduct", () => {
   it("productMany should be equivalent to `ap`", () => {
-    const curry = (f: Function, n: number, acc: ReadonlyArray<unknown>) =>
-      (x: unknown) => {
-        const combined = Array(acc.length + 1)
-        for (let i = 0; i < acc.length; i++) {
-          combined[i] = acc[i]
-        }
-        combined[acc.length] = x
-        return n === 0 ? f.apply(null, combined) : curry(f, n - 1, combined)
+    const curry = (f: Function, n: number, acc: ReadonlyArray<unknown>) => (x: unknown) => {
+      const combined = Array(acc.length + 1)
+      for (let i = 0; i < acc.length; i++) {
+        combined[i] = acc[i]
       }
+      combined[acc.length] = x
+      return n === 0 ? f.apply(null, combined) : curry(f, n - 1, combined)
+    }
 
     const getCurriedTupleConstructor = (len: number): (a: any) => any =>
       curry(<T extends ReadonlyArray<any>>(...t: T): T => t, len - 1, [])
@@ -61,26 +60,26 @@ describe.concurrent("SemiProduct", () => {
     const assertSameResult = <F extends TypeLambda>(
       SemiApplicative: semiApplicative.SemiApplicative<F>
     ) =>
-      <R, O, E, A>(collection: Iterable<Kind<F, R, O, E, A>>) =>
-        (self: Kind<F, R, O, E, A>) => {
-          const ap = semiApplicative.ap(SemiApplicative)
-          const productManyFromAp = <R, O, E, A>(collection: Iterable<Kind<F, R, O, E, A>>) =>
-            (
-              self: Kind<F, R, O, E, A>
-            ): Kind<F, R, O, E, [A, ...Array<A>]> => {
-              const args = [self, ...Array.from(collection)]
-              const len = args.length
-              const f = getCurriedTupleConstructor(len)
-              let fas = pipe(args[0], SemiApplicative.map(f))
-              for (let i = 1; i < len; i++) {
-                fas = pipe(fas, ap(args[i]))
-              }
-              return fas
-            }
-          const actual = SemiApplicative.productMany(self, collection)
-          const expected = pipe(self, productManyFromAp(collection))
-          U.deepStrictEqual(actual, expected)
+    <R, O, E, A>(collection: Iterable<Kind<F, R, O, E, A>>) =>
+    (self: Kind<F, R, O, E, A>) => {
+      const ap = semiApplicative.ap(SemiApplicative)
+      const productManyFromAp = <R, O, E, A>(collection: Iterable<Kind<F, R, O, E, A>>) =>
+      (
+        self: Kind<F, R, O, E, A>
+      ): Kind<F, R, O, E, [A, ...Array<A>]> => {
+        const args = [self, ...Array.from(collection)]
+        const len = args.length
+        const f = getCurriedTupleConstructor(len)
+        let fas = pipe(args[0], SemiApplicative.map(f))
+        for (let i = 1; i < len; i++) {
+          fas = pipe(fas, ap(args[i]))
         }
+        return fas
+      }
+      const actual = SemiApplicative.productMany(self, collection)
+      const expected = pipe(self, productManyFromAp(collection))
+      U.deepStrictEqual(actual, expected)
+    }
 
     assertSameResult(ReadonlyArrayInstances.SemiApplicative)([])([])
     assertSameResult(ReadonlyArrayInstances.SemiApplicative)([])([1, 2, 3])

@@ -24,9 +24,9 @@ export interface FlatMap<F extends TypeLambda> extends TypeClass<F> {
  * @since 1.0.0
  */
 export const flatten = <F extends TypeLambda>(F: FlatMap<F>) =>
-  <R2, O2, E2, R1, O1, E1, A>(
-    self: Kind<F, R2, O2, E2, Kind<F, R1, O1, E1, A>>
-  ): Kind<F, R1 & R2, O1 | O2, E1 | E2, A> => F.flatMap(self, identity)
+<R2, O2, E2, R1, O1, E1, A>(
+  self: Kind<F, R2, O2, E2, Kind<F, R1, O1, E1, A>>
+): Kind<F, R1 & R2, O1 | O2, E1 | E2, A> => F.flatMap(self, identity)
 
 /**
  * A variant of `flatMap` that ignores the value produced by this effect.
@@ -68,5 +68,6 @@ export const composeK = <F extends TypeLambda>(
     <A, R1, O1, E1, B, R2, O2, E2, C>(
       afb: (a: A) => Kind<F, R1, O1, E1, B>,
       bfc: (b: B) => Kind<F, R2, O2, E2, C>
-    ): ((a: A) => Kind<F, R1 & R2, O1 | O2, E1 | E2, C>) => (a) => F.flatMap(afb(a), bfc)
+    ): (a: A) => Kind<F, R1 & R2, O1 | O2, E1 | E2, C> =>
+    (a) => F.flatMap(afb(a), bfc)
   )

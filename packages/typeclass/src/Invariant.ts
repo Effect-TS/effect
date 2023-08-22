@@ -36,11 +36,11 @@ export const imapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Invariant<F>,
   G: Invariant<G>
 ) =>
-  <FR, FO, FE, GR, GO, GE, A, B>(
-    self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-    to: (a: A) => B,
-    from: (b: B) => A
-  ): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.imap(self, G.imap(to, from), G.imap(from, to))
+<FR, FO, FE, GR, GO, GE, A, B>(
+  self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
+  to: (a: A) => B,
+  from: (b: B) => A
+): Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> => F.imap(self, G.imap(to, from), G.imap(from, to))
 
 /**
  * @category do notation
@@ -68,5 +68,5 @@ export const bindTo = <F extends TypeLambda>(F: Invariant<F>): {
  */
 export const tupled = <F extends TypeLambda>(
   F: Invariant<F>
-): (<R, O, E, A>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, [A]>) =>
+): <R, O, E, A>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, [A]> =>
   F.imap((a) => [a], ([a]) => a)

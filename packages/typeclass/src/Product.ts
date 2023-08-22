@@ -19,33 +19,43 @@ export interface Product<F extends TypeLambda> extends SemiProduct<F>, Of<F> {
 /**
  * @since 1.0.0
  */
-export const tuple = <F extends TypeLambda>(F: Product<F>) =>
+export const tuple =
+  <F extends TypeLambda>(F: Product<F>) =>
   <T extends ReadonlyArray<Kind<F, any, any, any, any>>>(...elements: T): Kind<
     F,
-    ([T[number]] extends [Kind<F, infer R, any, any, any>] ? R : never),
+    ([T[number]] extends [Kind<F, infer R, any, any, any>] ? R
+      : never),
     (T[number] extends never ? never
       : [T[number]] extends [Kind<F, any, infer O, any, any>] ? O
       : never),
     (T[number] extends never ? never
       : [T[number]] extends [Kind<F, any, any, infer E, any>] ? E
       : never),
-    { [I in keyof T]: [T[I]] extends [Kind<F, any, any, any, infer A>] ? A : never }
+    {
+      [I in keyof T]: [T[I]] extends [Kind<F, any, any, any, infer A>] ? A
+        : never
+    }
   > => F.productAll(elements) as any
 
 /**
  * @since 1.0.0
  */
-export const struct = <F extends TypeLambda>(F: Product<F>) =>
+export const struct =
+  <F extends TypeLambda>(F: Product<F>) =>
   <R extends { readonly [x: string]: Kind<F, any, any, any, any> }>(fields: R): Kind<
     F,
-    ([R[keyof R]] extends [Kind<F, infer R, any, any, any>] ? R : never),
+    ([R[keyof R]] extends [Kind<F, infer R, any, any, any>] ? R
+      : never),
     (R[keyof R] extends never ? never
       : [R[keyof R]] extends [Kind<F, any, infer O, any, any>] ? O
       : never),
     (R[keyof R] extends never ? never
       : [R[keyof R]] extends [Kind<F, any, any, infer E, any>] ? E
       : never),
-    { [K in keyof R]: [R[K]] extends [Kind<F, any, any, any, infer A>] ? A : never }
+    {
+      [K in keyof R]: [R[K]] extends [Kind<F, any, any, any, infer A>] ? A
+        : never
+    }
   > => {
     const keys = Object.keys(fields)
     return F.imap(F.productAll(keys.map((k) => fields[k])), (values) => {

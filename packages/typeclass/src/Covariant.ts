@@ -24,10 +24,11 @@ export interface Covariant<F extends TypeLambda> extends Invariant<F> {
 export const mapComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Covariant<F>,
   G: Covariant<G>
-): (<FR, FO, FE, GR, GO, GE, A, B>(
+): <FR, FO, FE, GR, GO, GE, A, B>(
   self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
   f: (a: A) => B
-) => Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>>) => (self, f) => F.map(self, G.map(f))
+) => Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, B>> =>
+(self, f) => F.map(self, G.map(f))
 
 /**
  * Returns a default `imap` implementation.
@@ -71,7 +72,7 @@ export const as = <F extends TypeLambda>(F: Covariant<F>): {
  */
 export const asUnit = <F extends TypeLambda>(
   F: Covariant<F>
-): (<R, O, E, _>(self: Kind<F, R, O, E, _>) => Kind<F, R, O, E, void>) => as(F)<void>(undefined)
+): <R, O, E, _>(self: Kind<F, R, O, E, _>) => Kind<F, R, O, E, void> => as(F)<void>(undefined)
 
 const let_ = <F extends TypeLambda>(
   F: Covariant<F>

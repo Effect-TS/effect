@@ -28,11 +28,11 @@ export const reduceComposition = <F extends TypeLambda, G extends TypeLambda>(
   F: Foldable<F>,
   G: Foldable<G>
 ) =>
-  <FR, FO, FE, GR, GO, GE, A, B>(
-    self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
-    b: B,
-    f: (b: B, a: A) => B
-  ): B => F.reduce(self, b, (b, ga) => G.reduce(ga, b, f))
+<FR, FO, FE, GR, GO, GE, A, B>(
+  self: Kind<F, FR, FO, FE, Kind<G, GR, GO, GE, A>>,
+  b: B,
+  f: (b: B, a: A) => B
+): B => F.reduce(self, b, (b, ga) => G.reduce(ga, b, f))
 
 /**
  * @since 1.0.0
@@ -60,18 +60,21 @@ export const toArray = <F extends TypeLambda>(
  * @since 1.0.0
  */
 export const combineMap = <F extends TypeLambda>(F: Foldable<F>) =>
-  <M>(M: Monoid<M>): {
-    <A>(f: (a: A) => M): <R, O, E>(self: Kind<F, R, O, E, A>) => M
-    <R, O, E, A>(self: Kind<F, R, O, E, A>, f: (a: A) => M): M
-  } =>
-    dual(2, <R, O, E, A>(self: Kind<F, R, O, E, A>, f: (a: A) => M): M =>
-      F.reduce(self, M.empty, (m, a) =>
-        M.combine(m, f(a))))
+<M>(M: Monoid<M>): {
+  <A>(f: (a: A) => M): <R, O, E>(self: Kind<F, R, O, E, A>) => M
+  <R, O, E, A>(self: Kind<F, R, O, E, A>, f: (a: A) => M): M
+} =>
+  dual(
+    2,
+    <R, O, E, A>(self: Kind<F, R, O, E, A>, f: (a: A) => M): M =>
+      F.reduce(self, M.empty, (m, a) => M.combine(m, f(a)))
+  )
 
 /**
  * @since 1.0.0
  */
-export const reduceKind = <F extends TypeLambda>(F: Foldable<F>) =>
+export const reduceKind =
+  <F extends TypeLambda>(F: Foldable<F>) =>
   <G extends TypeLambda>(G: Monad<G>): {
     <B, A, R, O, E>(
       b: B,
@@ -97,7 +100,8 @@ export const reduceKind = <F extends TypeLambda>(F: Foldable<F>) =>
 /**
  * @since 1.0.0
  */
-export const coproductMapKind = <F extends TypeLambda>(F: Foldable<F>) =>
+export const coproductMapKind =
+  <F extends TypeLambda>(F: Foldable<F>) =>
   <G extends TypeLambda>(G: Coproduct<G>): {
     <A, R, O, E, B>(
       f: (a: A) => Kind<G, R, O, E, B>
