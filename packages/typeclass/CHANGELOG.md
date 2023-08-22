@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.4.0
+
+### Minor Changes
+
+- [#15](https://github.com/Effect-TS/typeclass/pull/15) [`8542d4e`](https://github.com/Effect-TS/typeclass/commit/8542d4ea6851cf31b3fbad6a1d8f458005ea900e) Thanks [@gcanti](https://github.com/gcanti)! - move effect/data to peerDependencies
+
 ## 0.3.0
 
 ### Minor Changes
