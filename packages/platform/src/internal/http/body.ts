@@ -4,7 +4,6 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Schema from "@effect/schema/Schema"
 import type * as Stream_ from "@effect/stream/Stream"
-import * as Mime from "mime"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(
@@ -104,7 +103,7 @@ export const file = (
       Effect.map(fs.stat(path), (info) =>
         stream(
           fs.stream(path, options),
-          options?.contentType ?? Mime.getType(path) ?? undefined,
+          options?.contentType,
           Number(info.size)
         ))
   )
@@ -120,7 +119,7 @@ export const fileInfo = (
     (fs) =>
       stream(
         fs.stream(path, options),
-        options?.contentType ?? Mime.getType(path) ?? undefined,
+        options?.contentType,
         Number(info.size)
       )
   )

@@ -14,6 +14,7 @@ import * as internalBody from "@effect/platform/internal/http/body"
 import * as internalError from "@effect/platform/internal/http/serverError"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream from "@effect/stream/Stream"
+import * as Mime from "mime"
 
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/ServerResponse") as ServerResponse.TypeId
@@ -154,7 +155,11 @@ export const file = (
         Etag.Generator,
         (generator) => generator.fromFileInfo(info)
       )),
-    Effect.bind("body", ({ info }) => internalBody.fileInfo(path, info, options)),
+    Effect.bind("body", ({ info }) =>
+      internalBody.fileInfo(path, info, {
+        contentType: Mime.getType(path) ?? undefined,
+        ...options
+      })),
     Effect.map(({ body, etag, info }) => {
       const headers: Record<string, string> = {
         ...(options?.headers ?? {}),
