@@ -80,7 +80,7 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
     })
   }
 
-  get urlParams(): Effect.Effect<never, Error.ResponseError, UrlParams.UrlParams> {
+  get urlParamsBody(): Effect.Effect<never, Error.ResponseError, UrlParams.UrlParams> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),

@@ -49,7 +49,7 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
     })
   }
 
-  get urlParams(): Effect.Effect<never, E, UrlParams.UrlParams> {
+  get urlParamsBody(): Effect.Effect<never, E, UrlParams.UrlParams> {
     return Effect.flatMap(this.text, (_) =>
       Effect.try({
         try: () => UrlParams.fromInput(new URLSearchParams(_)),

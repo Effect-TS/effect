@@ -34,7 +34,7 @@ export interface IncomingMessage<E> {
   readonly headers: Headers.Headers
   readonly json: Effect.Effect<never, E, unknown>
   readonly text: Effect.Effect<never, E, string>
-  readonly urlParams: Effect.Effect<never, E, UrlParams.UrlParams>
+  readonly urlParamsBody: Effect.Effect<never, E, UrlParams.UrlParams>
   readonly arrayBuffer: Effect.Effect<never, E, ArrayBuffer>
   readonly stream: Stream.Stream<never, E, Uint8Array>
 }
@@ -56,7 +56,7 @@ export const schemaBodyJson = <I, A>(schema: Schema.Schema<I, A>) => {
 export const schemaBodyUrlParams = <I extends Readonly<Record<string, string>>, A>(schema: Schema.Schema<I, A>) => {
   const parse = Schema.parse(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<never, E | ParseResult.ParseError, A> =>
-    Effect.flatMap(self.urlParams, (_) => parse(Object.fromEntries(_)))
+    Effect.flatMap(self.urlParamsBody, (_) => parse(Object.fromEntries(_)))
 }
 
 /**
