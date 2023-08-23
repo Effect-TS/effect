@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.13.4
+
+### Patch Changes
+
+- [#89](https://github.com/Effect-TS/platform/pull/89) [`30025cb`](https://github.com/Effect-TS/platform/commit/30025cbd773b4ded89ffdb20a523a4350eb0452e) Thanks [@tim-smart](https://github.com/tim-smart)! - add etag generation for http file responses
+
+- Updated dependencies [[`05d1765`](https://github.com/Effect-TS/platform/commit/05d1765a0606abce8a3c3d026bdcd5d8b3c64936), [`30025cb`](https://github.com/Effect-TS/platform/commit/30025cbd773b4ded89ffdb20a523a4350eb0452e)]:
+  - @effect/platform@0.13.4
+
 ## 0.13.3
 
 ### Patch Changes

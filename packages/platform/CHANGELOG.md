@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.13.4
+
+### Patch Changes
+
+- [#90](https://github.com/Effect-TS/platform/pull/90) [`05d1765`](https://github.com/Effect-TS/platform/commit/05d1765a0606abce8a3c3d026bdcd5d8b3c64936) Thanks [@tim-smart](https://github.com/tim-smart)! - rename Router.transform to Router.use
+
+- [#89](https://github.com/Effect-TS/platform/pull/89) [`30025cb`](https://github.com/Effect-TS/platform/commit/30025cbd773b4ded89ffdb20a523a4350eb0452e) Thanks [@tim-smart](https://github.com/tim-smart)! - add etag generation for http file responses
+
 ## 0.13.3
 
 ### Patch Changes
