@@ -4,7 +4,7 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Schema from "@effect/schema/Schema"
 import type * as Stream_ from "@effect/stream/Stream"
-import * as Mime from "mime/lite"
+import * as Mime from "mime"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(
