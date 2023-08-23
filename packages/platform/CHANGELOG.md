@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.5
+
+### Patch Changes
+
+- [#92](https://github.com/Effect-TS/platform/pull/92) [`a034383`](https://github.com/Effect-TS/platform/commit/a0343838bad8f37ab7fb6031084a6514103eba2b) Thanks [@tim-smart](https://github.com/tim-smart)! - fix mime import
+
 ## 0.13.4
 
 ### Patch Changes
