@@ -305,7 +305,7 @@ export const head = route("HEAD")
 export const options = route("OPTIONS")
 
 /** @internal */
-export const transform = dual<
+export const use = dual<
   <R, E, R1, E1>(
     f: (self: Router.Route.Handler<R, E>) => Router.Route.Handler<R1, E1>
   ) => (self: Router.Router<R, E>) => Router.Router<R1, E1>,
@@ -334,7 +334,7 @@ export const catchAll = dual<
     self: Router.Router<R, E>,
     f: (e: E) => Router.Route.Handler<R2, E2>
   ) => Router.Router<R2 | R, E2>
->(2, (self, f) => transform(self, Effect.catchAll(f)))
+>(2, (self, f) => use(self, Effect.catchAll(f)))
 
 /** @internal */
 export const catchAllCause = dual<
@@ -345,7 +345,7 @@ export const catchAllCause = dual<
     self: Router.Router<R, E>,
     f: (e: Cause.Cause<E>) => Router.Route.Handler<R2, E2>
   ) => Router.Router<R2 | R, E2>
->(2, (self, f) => transform(self, Effect.catchAllCause(f)))
+>(2, (self, f) => use(self, Effect.catchAllCause(f)))
 
 /** @internal */
 export const catchTag = dual<
@@ -358,7 +358,7 @@ export const catchTag = dual<
     k: K,
     f: (e: Extract<E, { _tag: K }>) => Router.Route.Handler<R1, E1>
   ) => Router.Router<R | R1, Exclude<E, { _tag: K }> | E1>
->(3, (self, k, f) => transform(self, Effect.catchTag(k, f)))
+>(3, (self, k, f) => use(self, Effect.catchTag(k, f)))
 
 /** @internal */
 export const catchTags: {
@@ -400,7 +400,7 @@ export const catchTags: {
       [K in keyof Cases]: Cases[K] extends ((...args: Array<any>) => Effect.Effect<any, infer E, any>) ? E : never
     }[keyof Cases]
   >
-} = dual(2, (self: Router.Router<any, any>, cases: {}) => transform(self, Effect.catchTags(cases)))
+} = dual(2, (self: Router.Router<any, any>, cases: {}) => use(self, Effect.catchTags(cases)))
 
 export const provideService = dual<
   <T extends Context.Tag<any, any>>(
@@ -412,7 +412,7 @@ export const provideService = dual<
     tag: T,
     service: Context.Tag.Service<T>
   ) => Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E>
->(3, (self, tag, service) => transform(self, Effect.provideService(tag, service)))
+>(3, (self, tag, service) => use(self, Effect.provideService(tag, service)))
 
 /* @internal */
 export const provideServiceEffect = dual<
@@ -429,4 +429,4 @@ export const provideServiceEffect = dual<
   self: Router.Router<R, E>,
   tag: T,
   effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
-) => transform(self, Effect.provideServiceEffect(tag, effect)))
+) => use(self, Effect.provideServiceEffect(tag, effect)))

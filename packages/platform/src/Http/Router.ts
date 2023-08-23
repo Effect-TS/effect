@@ -346,15 +346,20 @@ export const options: {
  * @since 1.0.0
  * @category combinators
  */
-export const transform = internal.transform
+export const use = internal.use
 
 /**
  * @since 1.0.0
  * @category combinators
  */
 export const catchAll: {
-  <E, R2, E2>(f: (e: E) => Route.Handler<R2, E2>): <R>(self: Router<R, E>) => Router<R2 | R, E2>
-  <R, E, R2, E2>(self: Router<R, E>, f: (e: E) => Route.Handler<R2, E2>): Router<R | R2, E2>
+  <E, R2, E2>(f: (e: E) => Route.Handler<R2, E2>): <R>(
+    self: Router<R, E>
+  ) => Router<R2 | R, E2>
+  <R, E, R2, E2>(
+    self: Router<R, E>,
+    f: (e: E) => Route.Handler<R2, E2>
+  ): Router<R | R2, E2>
 } = internal.catchAll
 
 /**
@@ -362,8 +367,13 @@ export const catchAll: {
  * @category combinators
  */
 export const catchAllCause: {
-  <E, R2, E2>(f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>): <R>(self: Router<R, E>) => Router<R2 | R, E2>
-  <R, E, R2, E2>(self: Router<R, E>, f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>): Router<R | R2, E2>
+  <E, R2, E2>(f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>): <R>(
+    self: Router<R, E>
+  ) => Router<R2 | R, E2>
+  <R, E, R2, E2>(
+    self: Router<R, E>,
+    f: (e: Cause.Cause<E>) => Route.Handler<R2, E2>
+  ): Router<R | R2, E2>
 } = internal.catchAllCause
 
 /**
@@ -389,40 +399,56 @@ export const catchTag: {
 export const catchTags: {
   <
     E,
-    Cases extends E extends { _tag: string }
-      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined }
+    Cases extends E extends { _tag: string } ? {
+        [K in E["_tag"]]+?:
+          | ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>)
+          | undefined
+      }
       : {}
   >(
     cases: Cases
-  ): <R>(
-    self: Router<R, E>
-  ) => Router<
+  ): <R>(self: Router<R, E>) => Router<
     | R
     | {
-      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<infer R, any, any> ? R : never
+      [K in keyof Cases]: Cases[K] extends (
+        ...args: Array<any>
+      ) => Effect.Effect<infer R, any, any> ? R
+        : never
     }[keyof Cases],
     | Exclude<E, { _tag: keyof Cases }>
     | {
-      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
+      [K in keyof Cases]: Cases[K] extends (
+        ...args: Array<any>
+      ) => Effect.Effect<any, infer E, any> ? E
+        : never
     }[keyof Cases]
   >
   <
     R,
     E,
-    Cases extends E extends { _tag: string }
-      ? { [K in E["_tag"]]+?: ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>) | undefined } :
-      {}
+    Cases extends E extends { _tag: string } ? {
+        [K in E["_tag"]]+?:
+          | ((error: Extract<E, { _tag: K }>) => Route.Handler<any, any>)
+          | undefined
+      }
+      : {}
   >(
     self: Router<R, E>,
     cases: Cases
   ): Router<
     | R
     | {
-      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<infer R, any, any> ? R : never
+      [K in keyof Cases]: Cases[K] extends (
+        ...args: Array<any>
+      ) => Effect.Effect<infer R, any, any> ? R
+        : never
     }[keyof Cases],
     | Exclude<E, { _tag: keyof Cases }>
     | {
-      [K in keyof Cases]: Cases[K] extends (...args: Array<any>) => Effect.Effect<any, infer E, any> ? E : never
+      [K in keyof Cases]: Cases[K] extends (
+        ...args: Array<any>
+      ) => Effect.Effect<any, infer E, any> ? E
+        : never
     }[keyof Cases]
   >
 } = internal.catchTags
@@ -432,10 +458,12 @@ export const catchTags: {
  * @category combinators
  */
 export const provideService: {
-  <T extends Context.Tag<any, any>>(
-    tag: T,
-    service: Context.Tag.Service<T>
-  ): <R, E>(self: Router<R, E>) => Router<Exclude<R, Context.Tag.Identifier<T>>, E>
+  <T extends Context.Tag<any, any>>(tag: T, service: Context.Tag.Service<T>): <
+    R,
+    E
+  >(
+    self: Router<R, E>
+  ) => Router<Exclude<R, Context.Tag.Identifier<T>>, E>
   <R, E, T extends Context.Tag<any, any>>(
     self: Router<R, E>,
     tag: T,
@@ -451,7 +479,9 @@ export const provideServiceEffect: {
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
     effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
-  ): <R, E>(self: Router<R, E>) => Router<R1 | Exclude<R, Context.Tag.Identifier<T>>, E1 | E>
+  ): <R, E>(
+    self: Router<R, E>
+  ) => Router<R1 | Exclude<R, Context.Tag.Identifier<T>>, E1 | E>
   <R, E, T extends Context.Tag<any, any>, R1, E1>(
     self: Router<R, E>,
     tag: T,
