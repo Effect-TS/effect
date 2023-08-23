@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.6
+
+### Patch Changes
+
+- [#94](https://github.com/Effect-TS/platform/pull/94) [`cd3b15e`](https://github.com/Effect-TS/platform/commit/cd3b15e0cb223d2788d383caaa7c0dbc06073dc1) Thanks [@tim-smart](https://github.com/tim-smart)! - only use mime module in ServerResponse
+
 ## 0.13.5
 
 ### Patch Changes
