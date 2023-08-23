@@ -6,6 +6,7 @@ import type * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
+import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Headers from "@effect/platform/Http/Headers"
 import type * as Error from "@effect/platform/Http/ServerError"
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -172,7 +173,7 @@ export const stream: (body: Stream.Stream<never, unknown, Uint8Array>, options?:
 export const file: (
   path: string,
   options?: Options & FileSystem.StreamOptions
-) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ServerResponse> = internal.file
+) => Effect.Effect<FileSystem.FileSystem | Etag.Generator, PlatformError.PlatformError, ServerResponse> = internal.file
 
 /**
  * @since 1.0.0

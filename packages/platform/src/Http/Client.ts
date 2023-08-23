@@ -16,9 +16,22 @@ import type * as Schema from "@effect/schema/Schema"
 
 /**
  * @since 1.0.0
+ * @category type ids
+ */
+export const TypeId: unique symbol = internal.TypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type TypeId = typeof TypeId
+
+/**
+ * @since 1.0.0
  * @category models
  */
 export interface Client<R, E, A> extends Pipeable {
+  readonly [TypeId]: TypeId
   (request: ClientRequest.ClientRequest): Effect.Effect<R, E, A>
 }
 

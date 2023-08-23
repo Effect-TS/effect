@@ -163,7 +163,12 @@ export interface Stream extends Body.Proto {
  * @since 1.0.0
  * @category constructors
  */
-export const stream: (body: Stream_.Stream<never, unknown, globalThis.Uint8Array>) => Stream = internal.stream
+export const stream: (
+  body: Stream_.Stream<never, unknown, globalThis.Uint8Array>,
+  contentType?: string,
+  contentLength?: number,
+  etag?: string
+) => Stream = internal.stream
 
 /**
  * @since 1.0.0
@@ -173,3 +178,13 @@ export const file: (
   path: string,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
 ) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.file
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileInfo: (
+  path: string,
+  info: FileSystem.File.Info,
+  options?: FileSystem.StreamOptions & { readonly contentType?: string }
+) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.fileInfo

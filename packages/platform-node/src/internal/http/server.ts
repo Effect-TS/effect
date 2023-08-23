@@ -6,6 +6,7 @@ import * as Fiber from "@effect/io/Fiber"
 import * as Layer from "@effect/io/Layer"
 import * as Runtime from "@effect/io/Runtime"
 import type * as Scope from "@effect/io/Scope"
+import * as internalEtag from "@effect/platform-node/internal/http/etag"
 import * as internalFormData from "@effect/platform-node/internal/http/formData"
 import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomingMessage"
 import * as NodeSink from "@effect/platform-node/Sink"
@@ -216,19 +217,26 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 export const layer = (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.scoped(Server.Server, make(evaluate, options))
+) =>
+  Layer.merge(
+    Layer.scoped(Server.Server, make(evaluate, options)),
+    internalEtag.layer
+  )
 
 /** @internal */
 export const layerConfig = (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
 ) =>
-  Layer.scoped(
-    Server.Server,
-    Effect.flatMap(
-      Effect.config(Config.unwrap(options)),
-      (options) => make(evaluate, options)
-    )
+  Layer.merge(
+    Layer.scoped(
+      Server.Server,
+      Effect.flatMap(
+        Effect.config(Config.unwrap(options)),
+        (options) => make(evaluate, options)
+      )
+    ),
+    internalEtag.layer
   )
 
 const handleResponse = (

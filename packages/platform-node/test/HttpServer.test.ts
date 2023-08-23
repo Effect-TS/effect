@@ -2,6 +2,7 @@ import { flow } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
+import { FileSystem } from "@effect/platform-node/FileSystem"
 import * as HttpC from "@effect/platform-node/HttpClient"
 import * as Http from "@effect/platform-node/HttpServer"
 import * as NodeContext from "@effect/platform-node/NodeContext"
@@ -222,5 +223,39 @@ describe("HttpServer", () => {
       expect(todo).toEqual("/1")
       const root = yield* _(client(HttpC.request.get("/child")), Effect.flatMap((_) => _.text))
       expect(root).toEqual("/")
+    }).pipe(runPromise))
+
+  it("file", () =>
+    Effect.gen(function*(_) {
+      const mtime = new Date(123456789)
+      yield* _(
+        Effect.succeed(
+          yield* _(
+            Http.response.file(`${__dirname}/fixtures/text.txt`),
+            Effect.updateService(
+              FileSystem,
+              (fs) => ({
+                ...fs,
+                stat: (_) =>
+                  Effect.map(
+                    fs.stat(_),
+                    (stat) => ({ ...stat, mtime: Option.some(mtime) })
+                  )
+              })
+            )
+          )
+        ),
+        Http.server.serve(),
+        Effect.scoped,
+        Effect.fork
+      )
+      const client = yield* _(makeClient)
+      const res = yield* _(client(HttpC.request.get("/")))
+      expect(res.status).toEqual(200)
+      expect(res.headers["content-type"]).toEqual("text/plain")
+      expect(res.headers["content-length"]).toEqual("27")
+      expect(res.headers.etag).toEqual("\"1b-75bcd15\"")
+      const text = yield* _(res.text)
+      expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
     }).pipe(runPromise))
 })

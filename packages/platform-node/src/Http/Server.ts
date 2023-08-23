@@ -8,6 +8,7 @@ import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type * as Scope from "@effect/io/Scope"
 import * as internal from "@effect/platform-node/internal/http/server"
+import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Server from "@effect/platform/Http/Server"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
@@ -33,7 +34,7 @@ export const make: (
 export const layer: (
   evaluate: LazyArg<Http.Server>,
   options: Net.ListenOptions
-) => Layer.Layer<never, never, Server.Server> = internal.layer
+) => Layer.Layer<never, never, Server.Server | Etag.Generator> = internal.layer
 
 /**
  * @since 1.0.0
@@ -42,4 +43,4 @@ export const layer: (
 export const layerConfig: (
   evaluate: LazyArg<Http.Server>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<never, ConfigError.ConfigError, Server.Server> = internal.layerConfig
+) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Etag.Generator> = internal.layerConfig

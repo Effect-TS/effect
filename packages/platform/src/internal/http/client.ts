@@ -21,9 +21,13 @@ import * as Schema from "@effect/schema/Schema"
 import * as Stream from "@effect/stream/Stream"
 
 /** @internal */
-export const tag = Context.Tag<Client.Client.Default>("@effect/platform/Http/Client")
+export const TypeId: Client.TypeId = Symbol.for("@effect/platform/Http/Client") as Client.TypeId
+
+/** @internal */
+export const tag = Context.Tag<Client.Client.Default>(TypeId)
 
 const clientProto = {
+  [TypeId]: TypeId,
   pipe() {
     return pipeArguments(this, arguments)
   }

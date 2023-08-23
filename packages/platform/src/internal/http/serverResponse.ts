@@ -1,9 +1,10 @@
-import { dual } from "@effect/data/Function"
+import { dual, pipe } from "@effect/data/Function"
 import { pipeArguments } from "@effect/data/Pipeable"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
-import type * as FileSystem from "@effect/platform/FileSystem"
+import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
+import * as Etag from "@effect/platform/Http/Etag"
 import * as Headers from "@effect/platform/Http/Headers"
 import type * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -141,14 +142,35 @@ export const schemaJson = <I, A>(
 export const file = (
   path: string,
   options?: ServerResponse.Options & FileSystem.StreamOptions
-): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ServerResponse.ServerResponse> =>
-  Effect.map(internalBody.file(path, options), (body) =>
-    new ServerResponseImpl(
-      options?.status ?? 200,
-      options?.statusText,
-      options?.headers ?? Headers.empty,
-      body
-    ))
+): Effect.Effect<
+  FileSystem.FileSystem | Etag.Generator,
+  PlatformError.PlatformError,
+  ServerResponse.ServerResponse
+> =>
+  pipe(
+    Effect.bindTo(Effect.flatMap(FileSystem.FileSystem, (fs) => fs.stat(path)), "info"),
+    Effect.bind("etag", ({ info }) =>
+      Effect.flatMap(
+        Etag.Generator,
+        (generator) => generator.fromFileInfo(info)
+      )),
+    Effect.bind("body", ({ info }) => internalBody.fileInfo(path, info, options)),
+    Effect.map(({ body, etag, info }) => {
+      const headers: Record<string, string> = {
+        ...(options?.headers ?? {}),
+        etag: Etag.toString(etag)
+      }
+      if (info.mtime._tag === "Some") {
+        headers["last-modified"] = info.mtime.value.toUTCString()
+      }
+      return new ServerResponseImpl(
+        options?.status ?? 200,
+        options?.statusText,
+        headers,
+        body
+      )
+    })
+  )
 
 /** @internal */
 export const urlParams = (
