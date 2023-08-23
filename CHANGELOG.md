@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.28
+
+### Patch Changes
+
+- [#1410](https://github.com/Effect-TS/effect/pull/1410) [`a8ffb5fb9`](https://github.com/Effect-TS/effect/commit/a8ffb5fb9a4a4decc44dce811356136542813af0) Thanks [@tim-smart](https://github.com/tim-smart)! - update @effect/match
+
 ## 2.0.0-next.27
 
 ### Patch Changes
