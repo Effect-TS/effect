@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.9.1
+
+### Patch Changes
+
+- [#9](https://github.com/Effect-TS/opentelemetry/pull/9) [`3a3e25f`](https://github.com/Effect-TS/opentelemetry/commit/3a3e25fd153bc70a2be500f1c9c69002e238ed7a) Thanks [@tim-smart](https://github.com/tim-smart)! - add Metrics module
+
 ## 0.9.0
 
 ### Minor Changes
