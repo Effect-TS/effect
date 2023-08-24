@@ -39,6 +39,12 @@ export const getKeysForIndexSignature = (
 // ---------------------------------------------
 
 /** @internal */
+export const maxSafeInteger = BigInt(Number.MAX_SAFE_INTEGER)
+
+/** @internal */
+export const minSafeInteger = BigInt(Number.MIN_SAFE_INTEGER)
+
+/** @internal */
 export const ownKeys = (o: object): ReadonlyArray<PropertyKey> =>
   (Object.keys(o) as ReadonlyArray<PropertyKey>).concat(Object.getOwnPropertySymbols(o))
 
