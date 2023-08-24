@@ -2949,6 +2949,53 @@ export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
   )
 
 /**
+ * @category type id
+ * @since 1.0.0
+ */
+export const LowercasedTypeId = "@effect/schema/LowercasedTypeId"
+
+/**
+ * Verifies that a string is lowercased
+ *
+ * Note. This combinator does not make any transformations, it only validates.
+ * If what you were looking for was a combinator to lowercase strings, then check out the `lowercase` combinator.
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const lowercased =
+  <A extends string>(options?: AnnotationOptions<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
+    self.pipe(
+      filter((a): a is A => a === a.toLowerCase(), {
+        typeId: LowercasedTypeId,
+        description: "a lowercase string",
+        ...options
+      })
+    )
+
+/**
+ * This combinator converts a string to lowercase
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const lowercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
+  transform(
+    self,
+    to(self).pipe(lowercased()),
+    (s) => s.toLowerCase() as A,
+    identity
+  )
+
+/**
+ * This combinator converts a string to lowercase
+ *
+ * @category string
+ * @since 1.0.0
+ */
+export const Lowercase: Schema<string, string> = lowercase(string)
+
+/**
  * This schema allows removing whitespaces from the beginning and end of a string.
  *
  * @category string
