@@ -145,6 +145,12 @@ export const basicAuth = dual<
 >(3, (self, username, password) => setHeader(self, "Authorization", `Basic ${btoa(`${username}:${password}`)}`))
 
 /** @internal */
+export const bearerToken = dual<
+  (token: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
+  (self: ClientRequest.ClientRequest, token: string) => ClientRequest.ClientRequest
+>(2, (self, token) => setHeader(self, "Authorization", `Bearer ${token}`))
+
+/** @internal */
 export const accept = dual<
   (mediaType: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, mediaType: string) => ClientRequest.ClientRequest

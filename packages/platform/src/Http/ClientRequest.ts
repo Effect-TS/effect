@@ -185,6 +185,15 @@ export const basicAuth: {
  * @since 1.0.0
  * @category combinators
  */
+export const bearerToken: {
+  (token: string): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, token: string): ClientRequest
+} = internal.bearerToken
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
 export const accept: {
   (mediaType: string): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, mediaType: string): ClientRequest

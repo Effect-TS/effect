@@ -27,17 +27,19 @@ const makeTodoService = Effect.gen(function*(_) {
     Http.client.filterStatusOk,
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const todoClient = Http.client.mapEffect(
-    clientWithBaseUrl,
-    Http.response.schemaBodyJson(Todo.schema())
-  )
+  const decodeTodo = Http.response.schemaBodyJson(Todo.schema())
 
-  const todoWithoutIdRequest = Http.request.schemaBody(TodoWithoutId)
-  const create = (_: TodoWithoutId) =>
-    Http.request.post("/todos").pipe(
-      todoWithoutIdRequest(_),
-      todoClient
+  const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
+  const create = (todo: TodoWithoutId) => {
+    const request = addTodoWithoutIdBody(
+      Http.request.post("/todos"),
+      todo
     )
+    return Effect.flatMap(
+      clientWithBaseUrl(request),
+      decodeTodo
+    )
+  }
 
   return TodoService.of({ create })
 })
