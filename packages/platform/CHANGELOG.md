@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.7
+
+### Patch Changes
+
+- [#97](https://github.com/Effect-TS/platform/pull/97) [`e5c91eb`](https://github.com/Effect-TS/platform/commit/e5c91eb541a6f97cb759ba39732cf08b0ae4c248) Thanks [@tim-smart](https://github.com/tim-smart)! - rename IncomingMessage.urlParams to urlParamsBody
+
 ## 0.13.6
 
 ### Patch Changes
