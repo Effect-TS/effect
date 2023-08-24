@@ -61,6 +61,7 @@ describe("Tracer", () => {
         TracingLive
       ))
   })
+
   describe("not provided", () => {
     it.effect("withSpan", () =>
       Effect.withSpan("ok")(

@@ -33,9 +33,9 @@ export const layer = (config: {
     ...(config.attributes ?? {}),
     [SemanticResourceAttributes.SERVICE_NAME]: config.serviceName,
     [SemanticResourceAttributes.TELEMETRY_SDK_NAME]: "@effect/opentelemetry",
-    [SemanticResourceAttributes.TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined" ?
-      TelemetrySdkLanguageValues.NODEJS :
-      TelemetrySdkLanguageValues.WEBJS
+    [SemanticResourceAttributes.TELEMETRY_SDK_LANGUAGE]: typeof (globalThis as any).document === "undefined"
+      ? TelemetrySdkLanguageValues.NODEJS
+      : TelemetrySdkLanguageValues.WEBJS
   }
   if (config.serviceVersion) {
     attributes[SemanticResourceAttributes.SERVICE_VERSION] = config.serviceVersion
