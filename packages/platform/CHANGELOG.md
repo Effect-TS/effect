@@ -1,5 +1,13 @@
 # @effect/platform
 
+## 0.13.8
+
+### Patch Changes
+
+- [#99](https://github.com/Effect-TS/platform/pull/99) [`e42c3f5`](https://github.com/Effect-TS/platform/commit/e42c3f5103b7361b5162a3e9280759ecd690295f) Thanks [@tim-smart](https://github.com/tim-smart)! - add ClientRequest.bearerToken
+
+- [#105](https://github.com/Effect-TS/platform/pull/105) [`127c8f5`](https://github.com/Effect-TS/platform/commit/127c8f50f69d5cf7e4a50241fca70923f71f61a2) Thanks [@tim-smart](https://github.com/tim-smart)! - add more form data limit config
+
 ## 0.13.7
 
 ### Patch Changes
