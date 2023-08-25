@@ -19,16 +19,22 @@ export const fromRequest = (
 ): Stream.Stream<never, FormData.FormDataError, FormData.Part> =>
   pipe(
     Effect.Do,
+    Effect.bind("maxParts", () => FiberRef.get(FormData.maxParts)),
+    Effect.bind("maxFields", () => FiberRef.get(FormData.maxFields)),
+    Effect.bind("maxFiles", () => FiberRef.get(FormData.maxFiles)),
     Effect.bind("fieldMimeTypes", () => FiberRef.get(FormData.fieldMimeTypes)),
     Effect.bind("maxFieldSize", () => FiberRef.get(FormData.maxFieldSize)),
     Effect.bind("maxFileSize", () => FiberRef.get(FormData.maxFileSize)),
-    Effect.bind("busboy", ({ maxFieldSize, maxFileSize }) =>
+    Effect.bind("busboy", ({ maxFieldSize, maxFields, maxFileSize, maxFiles, maxParts }) =>
       Effect.acquireRelease(
         Effect.sync(
           () =>
             Busboy({
               headers: source.headers,
               limits: {
+                parts: Option.getOrUndefined(Option.map(maxParts, Number)),
+                files: Option.getOrUndefined(Option.map(maxFiles, Number)),
+                fields: Option.getOrUndefined(Option.map(maxFields, Number)),
                 fieldSize: Number(maxFieldSize),
                 fileSize: Option.getOrUndefined(Option.map(maxFileSize, Number))
               }
@@ -126,7 +132,7 @@ export const formData = (
   Effect.flatMap(
     Effect.all([
       Effect.mapError(
-        Effect.flatMap(FileSystem.FileSystem, (_) => _.makeTempDirectoryScoped()),
+        Effect.flatMap(FileSystem.FileSystem, (fs) => fs.makeTempDirectoryScoped()),
         (error) => FormData.FormDataError("InternalError", error)
       ),
       Path.Path

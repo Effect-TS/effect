@@ -103,6 +103,36 @@ export const FormDataError: (
  * @since 1.0.0
  * @category fiber refs
  */
+export const maxParts: FiberRef.FiberRef<Option.Option<number>> = internal.maxParts
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withMaxParts: {
+  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>): Effect.Effect<R, E, A>
+} = internal.withMaxParts
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const maxFields: FiberRef.FiberRef<Option.Option<number>> = internal.maxFields
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withMaxFields: {
+  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>): Effect.Effect<R, E, A>
+} = internal.withMaxFields
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
 export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = internal.maxFieldSize
 
 /**
@@ -113,6 +143,21 @@ export const withMaxFieldSize: {
   (size: FileSystem.SizeInput): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
   <R, E, A>(effect: Effect.Effect<R, E, A>, size: FileSystem.SizeInput): Effect.Effect<R, E, A>
 } = internal.withMaxFieldSize
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const maxFiles: FiberRef.FiberRef<Option.Option<number>> = internal.maxFiles
+
+/**
+ * @since 1.0.0
+ * @category fiber refs
+ */
+export const withMaxFiles: {
+  (count: Option.Option<number>): <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>): Effect.Effect<R, E, A>
+} = internal.withMaxFiles
 
 /**
  * @since 1.0.0

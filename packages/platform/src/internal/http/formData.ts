@@ -30,9 +30,21 @@ export const FormDataError = (reason: FormData.FormDataError["reason"], error: u
   })
 
 /** @internal */
+export const maxParts: FiberRef.FiberRef<Option.Option<number>> = globalValue(
+  "@effect/platform/Http/FormData/maxParts",
+  () => FiberRef.unsafeMake(Option.none<number>())
+)
+
+/** @internal */
+export const withMaxParts = dual<
+  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
+>(2, (effect, count) => Effect.locally(effect, maxParts, count))
+
+/** @internal */
 export const maxFieldSize: FiberRef.FiberRef<FileSystem.Size> = globalValue(
   "@effect/platform/Http/FormData/maxFieldSize",
-  () => FiberRef.unsafeMake(FileSystem.Size(1024 * 1024))
+  () => FiberRef.unsafeMake(FileSystem.Size(10 * 1024 * 1024))
 )
 
 /** @internal */
@@ -40,6 +52,30 @@ export const withMaxFieldSize = dual<
   (size: FileSystem.SizeInput) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(effect: Effect.Effect<R, E, A>, size: FileSystem.SizeInput) => Effect.Effect<R, E, A>
 >(2, (effect, size) => Effect.locally(effect, maxFieldSize, FileSystem.Size(size)))
+
+/** @internal */
+export const maxFields: FiberRef.FiberRef<Option.Option<number>> = globalValue(
+  "@effect/platform/Http/FormData/maxFields",
+  () => FiberRef.unsafeMake(Option.none<number>())
+)
+
+/** @internal */
+export const withMaxFields = dual<
+  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
+>(2, (effect, count) => Effect.locally(effect, maxFields, count))
+
+/** @internal */
+export const maxFiles: FiberRef.FiberRef<Option.Option<number>> = globalValue(
+  "@effect/platform/Http/FormData/maxFiles",
+  () => FiberRef.unsafeMake(Option.none<number>())
+)
+
+/** @internal */
+export const withMaxFiles = dual<
+  (count: Option.Option<number>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, count: Option.Option<number>) => Effect.Effect<R, E, A>
+>(2, (effect, count) => Effect.locally(effect, maxFiles, count))
 
 /** @internal */
 export const maxFileSize: FiberRef.FiberRef<Option.Option<FileSystem.Size>> = globalValue(
@@ -59,10 +95,7 @@ export const fieldMimeTypes: FiberRef.FiberRef<Chunk.Chunk<string>> = globalValu
   () => FiberRef.unsafeMake(Chunk.make("application/json"))
 )
 
-/**
- * @since 1.0.0
- * @category fiber refs
- */
+/** @internal */
 export const withFieldMimeTypes = dual<
   (mimeTypes: ReadonlyArray<string>) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(effect: Effect.Effect<R, E, A>, mimeTypes: ReadonlyArray<string>) => Effect.Effect<R, E, A>
