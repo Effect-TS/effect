@@ -1,9 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from "@effect/platform/Http/Server":
- *
- * - https://effect-ts.github.io/platform/platform/Http/Server.ts.html
+ * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
  */
 import type { LazyArg } from "@effect/data/Function"
 import type * as Config from "@effect/io/Config"

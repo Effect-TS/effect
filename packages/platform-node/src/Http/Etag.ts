@@ -1,9 +1,7 @@
 /**
  * @since 1.0.0
  *
- * Also includes exports from "@effect/platform/Http/Etag":
- *
- * - https://effect-ts.github.io/platform/platform/Http/Etag.ts.html
+ * Also includes exports from [`@effect/platform/Http/Etag`](https://effect-ts.github.io/platform/platform/Http/Etag.ts.html).
  */
 import type * as Layer from "@effect/io/Layer"
 import * as internal from "@effect/platform-node/internal/http/etag"
