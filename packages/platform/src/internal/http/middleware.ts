@@ -8,11 +8,12 @@ import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 export const make = <M extends Middleware.Middleware>(middleware: M): M => middleware
 
 /** @internal */
-export const logger = make((httpApp) =>
-  Effect.withLogSpan(
-    Effect.flatMap(
-      ServerRequest.ServerRequest,
-      (request) =>
+export const logger = make((httpApp) => {
+  let counter = 0
+  return Effect.flatMap(
+    ServerRequest.ServerRequest,
+    (request) =>
+      Effect.withLogSpan(
         Effect.tap(
           Effect.tapErrorCause(httpApp, (cause) =>
             Effect.annotateLogs(Effect.log(cause), {
@@ -26,11 +27,11 @@ export const logger = make((httpApp) =>
               "http.url": request.url,
               "http.status": response.status
             })
-        )
-    ),
-    "http.span"
+        ),
+        `http.span.${++counter}`
+      )
   )
-)
+})
 
 /** @internal */
 export const tracer = make((httpApp) =>
