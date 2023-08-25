@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.9
+
+### Patch Changes
+
+- [#106](https://github.com/Effect-TS/platform/pull/106) [`df3dbcf`](https://github.com/Effect-TS/platform/commit/df3dbcf468d10dca8cdb219478bb0a23bc66da0c) Thanks [@tim-smart](https://github.com/tim-smart)! - add count to http log span
+
 ## 0.13.8
 
 ### Patch Changes
