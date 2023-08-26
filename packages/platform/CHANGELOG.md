@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.10
+
+### Patch Changes
+
+- [#109](https://github.com/Effect-TS/platform/pull/109) [`7031ec0`](https://github.com/Effect-TS/platform/commit/7031ec030a45a306f4fda4d3ed80796f98a7758e) Thanks [@tim-smart](https://github.com/tim-smart)! - remove Body.EffectBody
+
 ## 0.13.9
 
 ### Patch Changes
