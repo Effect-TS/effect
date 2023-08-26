@@ -49,7 +49,7 @@ describe("HttpServer", () => {
         Http.router.empty,
         Http.router.get(
           "/todos/:id",
-          Effect.map(
+          Effect.flatMap(
             Http.router.schemaParams(IdParams),
             ({ id }) => todoResponse({ id, title: "test" })
           )
@@ -75,7 +75,7 @@ describe("HttpServer", () => {
             const file = formData.get("file") as globalThis.File
             expect(file.name.endsWith("/test.txt")).toEqual(true)
             expect(file.type).toEqual("text/plain")
-            return Http.response.json({ ok: formData.has("file") })
+            return yield* _(Http.response.json({ ok: formData.has("file") }))
           }).pipe(Effect.scoped)
         ),
         Http.server.serve(),

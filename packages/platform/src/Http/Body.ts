@@ -1,10 +1,12 @@
 /**
  * @since 1.0.0
  */
+import type * as Data from "@effect/data/Data"
 import type * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as internal from "@effect/platform/internal/http/body"
+import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream_ from "@effect/stream/Stream"
 
@@ -24,13 +26,7 @@ export type TypeId = typeof TypeId
  * @since 1.0.0
  * @category models
  */
-export type Body = Empty | Raw | Uint8Array | EffectBody | FormData | Stream
-
-/**
- * @since 1.0.0
- * @category models
- */
-export type NonEffect = Exclude<Body, EffectBody>
+export type Body = Empty | Raw | Uint8Array | FormData | Stream
 
 /**
  * @since 1.0.0
@@ -48,6 +44,45 @@ export namespace Body {
   }
 }
 
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export const ErrorTypeId: unique symbol = internal.ErrorTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type ErrorTypeId = typeof ErrorTypeId
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export interface BodyError extends Data.Case {
+  readonly [ErrorTypeId]: ErrorTypeId
+  readonly _tag: "BodyError"
+  readonly reason: BodyErrorReason
+}
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export const BodyError: (reason: BodyErrorReason) => BodyError = internal.BodyError
+
+/**
+ * @since 1.0.0
+ * @category errors
+ */
+export type BodyErrorReason = {
+  readonly _tag: "JsonError"
+  readonly error: unknown
+} | {
+  readonly _tag: "SchemaError"
+  readonly error: ParseResult.ParseError
+}
 /**
  * @since 1.0.0
  * @category models
@@ -102,21 +137,6 @@ export const text: (body: string, contentType?: string) => Uint8Array = internal
 
 /**
  * @since 1.0.0
- * @category models
- */
-export interface EffectBody extends Body.Proto {
-  readonly _tag: "Effect"
-  readonly effect: Effect.Effect<never, unknown, NonEffect>
-}
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const effect: (body: Effect.Effect<never, unknown, NonEffect>) => EffectBody = internal.effect
-
-/**
- * @since 1.0.0
  * @category constructors
  */
 export const unsafeJson: (body: unknown) => Uint8Array = internal.unsafeJson
@@ -125,13 +145,15 @@ export const unsafeJson: (body: unknown) => Uint8Array = internal.unsafeJson
  * @since 1.0.0
  * @category constructors
  */
-export const json: (body: unknown) => EffectBody = internal.json
+export const json: (body: unknown) => Effect.Effect<never, BodyError, Uint8Array> = internal.json
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export const jsonSchema: <I, A>(schema: Schema.Schema<I, A>) => (body: A) => EffectBody = internal.jsonSchema
+export const jsonSchema: <I, A>(
+  schema: Schema.Schema<I, A>
+) => (body: A) => Effect.Effect<never, BodyError, Uint8Array> = internal.jsonSchema
 
 /**
  * @since 1.0.0

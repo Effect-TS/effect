@@ -6,12 +6,9 @@ import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Etag from "@effect/platform/Http/Etag"
 import * as Headers from "@effect/platform/Http/Headers"
-import type * as Error from "@effect/platform/Http/ServerError"
-import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
-import * as internalError from "@effect/platform/internal/http/serverError"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream from "@effect/stream/Stream"
 import * as Mime from "mime"
@@ -52,29 +49,6 @@ export const isServerResponse = (u: unknown): u is ServerResponse.ServerResponse
   typeof u === "object" && u !== null && TypeId in u
 
 /** @internal */
-export const toNonEffectBody = (
-  self: ServerResponse.ServerResponse
-): Effect.Effect<ServerRequest.ServerRequest, Error.ResponseError, ServerResponse.ServerResponse.NonEffectBody> =>
-  self.body._tag === "Effect" ?
-    Effect.map(
-      Effect.catchAll(self.body.effect, (error) =>
-        Effect.flatMap(
-          ServerRequest.ServerRequest,
-          (request) =>
-            Effect.fail(
-              internalError.responseError({
-                reason: "Decode",
-                request,
-                response: self,
-                error
-              })
-            )
-        )),
-      (body) => setBody(self, body) as ServerResponse.ServerResponse.NonEffectBody
-    ) :
-    Effect.succeed(self as ServerResponse.ServerResponse.NonEffectBody)
-
-/** @internal */
 export const empty = (options?: ServerResponse.Options.WithContent): ServerResponse.ServerResponse =>
   new ServerResponseImpl(
     options?.status ?? 204,
@@ -105,13 +79,17 @@ export const text = (body: string, options?: ServerResponse.Options.WithContentT
   )
 
 /** @internal */
-export const json = (body: unknown, options?: ServerResponse.Options.WithContent): ServerResponse.ServerResponse =>
-  new ServerResponseImpl(
-    options?.status ?? 200,
-    options?.statusText,
-    options?.headers ?? Headers.empty,
-    internalBody.json(body)
-  )
+export const json = (
+  body: unknown,
+  options?: ServerResponse.Options.WithContent
+): Effect.Effect<never, Body.BodyError, ServerResponse.ServerResponse> =>
+  Effect.map(internalBody.json(body), (body) =>
+    new ServerResponseImpl(
+      options?.status ?? 200,
+      options?.statusText,
+      options?.headers ?? Headers.empty,
+      body
+    ))
 
 /** @internal */
 export const unsafeJson = (
@@ -130,13 +108,17 @@ export const schemaJson = <I, A>(
   schema: Schema.Schema<I, A>
 ) => {
   const encode = internalBody.jsonSchema(schema)
-  return (body: A, options?: ServerResponse.Options.WithContent): ServerResponse.ServerResponse =>
-    new ServerResponseImpl(
-      options?.status ?? 200,
-      options?.statusText,
-      options?.headers ?? Headers.empty,
-      encode(body)
-    )
+  return (
+    body: A,
+    options?: ServerResponse.Options.WithContent
+  ): Effect.Effect<never, Body.BodyError, ServerResponse.ServerResponse> =>
+    Effect.map(encode(body), (body) =>
+      new ServerResponseImpl(
+        options?.status ?? 200,
+        options?.statusText,
+        options?.headers ?? Headers.empty,
+        body
+      ))
 }
 
 /** @internal */
@@ -187,18 +169,6 @@ export const urlParams = (
     options?.statusText,
     options?.headers ?? Headers.empty,
     internalBody.text(UrlParams.toString(UrlParams.fromInput(body)), "application/x-www-form-urlencoded")
-  )
-
-/** @internal */
-export const effect = (
-  body: Effect.Effect<never, unknown, Body.NonEffect>,
-  options?: ServerResponse.Options.WithContent
-): ServerResponse.ServerResponse =>
-  new ServerResponseImpl(
-    options?.status ?? 200,
-    options?.statusText,
-    options?.headers ?? Headers.empty,
-    internalBody.effect(body)
   )
 
 /** @internal */

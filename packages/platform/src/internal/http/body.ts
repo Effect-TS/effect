@@ -1,3 +1,4 @@
+import * as Data from "@effect/data/Data"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
@@ -9,6 +10,17 @@ import type * as Stream_ from "@effect/stream/Stream"
 export const TypeId: Body.TypeId = Symbol.for(
   "@effect/platform/Http/Body"
 ) as Body.TypeId
+
+/** @internal */
+export const ErrorTypeId: Body.ErrorTypeId = Symbol.for(
+  "@effect/platform/Http/Body/BodyError"
+) as Body.ErrorTypeId
+
+const bodyError = Data.tagged<Body.BodyError>("BodyError")
+
+/** @internal */
+export const BodyError = (reason: Body.BodyErrorReason): Body.BodyError =>
+  bodyError({ [ErrorTypeId]: ErrorTypeId, reason })
 
 class EmptyImpl implements Body.Empty {
   readonly [TypeId]: Body.TypeId
@@ -59,37 +71,25 @@ export const uint8Array = (body: Uint8Array, contentType?: string): Body.Uint8Ar
 export const text = (body: string, contentType?: string): Body.Uint8Array =>
   uint8Array(new TextEncoder().encode(body), contentType ?? "text/plain")
 
-class EffectBodyImpl implements Body.EffectBody {
-  readonly [TypeId]: Body.TypeId
-  readonly _tag = "Effect"
-  constructor(
-    readonly effect: Effect.Effect<never, unknown, Body.NonEffect>,
-    readonly contentType?: string
-  ) {
-    this[TypeId] = TypeId
-  }
-}
-
-/** @internal */
-export const effect = (
-  body: Effect.Effect<never, unknown, Body.NonEffect>
-): Body.EffectBody => new EffectBodyImpl(body)
-
 /** @internal */
 export const unsafeJson = (body: unknown): Body.Uint8Array =>
   uint8Array(new TextEncoder().encode(JSON.stringify(body)), "application/json")
 
 /** @internal */
-export const json = (body: unknown): Body.EffectBody => effect(Effect.try(() => unsafeJson(body)))
+export const json = (body: unknown): Effect.Effect<never, Body.BodyError, Body.Uint8Array> =>
+  Effect.try({
+    try: () => unsafeJson(body),
+    catch: (error) => BodyError({ _tag: "JsonError", error })
+  })
 
 /** @internal */
 export const jsonSchema = <I, A>(schema: Schema.Schema<I, A>) => {
   const encode = Schema.encode(schema)
-  return (body: A): Body.EffectBody =>
-    effect(Effect.flatMap(
-      encode(body),
-      (json) => Effect.try(() => unsafeJson(json))
-    ))
+  return (body: A): Effect.Effect<never, Body.BodyError, Body.Uint8Array> =>
+    Effect.flatMap(
+      Effect.mapError(encode(body), (error) => BodyError({ _tag: "SchemaError", error })),
+      json
+    )
 }
 
 /** @internal */

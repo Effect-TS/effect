@@ -10,7 +10,6 @@ import * as Headers from "@effect/platform/Http/Headers"
 import type { Method } from "@effect/platform/Http/Method"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
-import * as internalError from "@effect/platform/internal/http/clientError"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream from "@effect/stream/Stream"
 
@@ -314,20 +313,6 @@ export const uint8ArrayBody = dual<
 )
 
 /** @internal */
-export const effectBody = dual<
-  (
-    body: Effect.Effect<never, unknown, Body.NonEffect>
-  ) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-  (
-    self: ClientRequest.ClientRequest,
-    body: Effect.Effect<never, unknown, Body.NonEffect>
-  ) => ClientRequest.ClientRequest
->(
-  2,
-  (self, body) => setBody(self, internalBody.effect(body))
-)
-
-/** @internal */
 export const textBody = dual<
   (body: string, contentType?: string) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
   (self: ClientRequest.ClientRequest, body: string, contentType?: string) => ClientRequest.ClientRequest
@@ -338,9 +323,14 @@ export const textBody = dual<
 
 /** @internal */
 export const jsonBody = dual<
-  (body: unknown) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-  (self: ClientRequest.ClientRequest, body: unknown) => ClientRequest.ClientRequest
->(2, (self, body) => setBody(self, internalBody.json(body)))
+  (
+    body: unknown
+  ) => (self: ClientRequest.ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>,
+  (
+    self: ClientRequest.ClientRequest,
+    body: unknown
+  ) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
+>(2, (self, body) => Effect.map(internalBody.json(body), (body) => setBody(self, body)))
 
 /** @internal */
 export const unsafeJsonBody = dual<
@@ -368,14 +358,16 @@ export const fileBody = dual<
 
 /** @internal */
 export const schemaBody = <I, A>(schema: Schema.Schema<I, A>): {
-  (body: A): (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest
-  (self: ClientRequest.ClientRequest, body: A): ClientRequest.ClientRequest
+  (body: A): (self: ClientRequest.ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
+  (self: ClientRequest.ClientRequest, body: A): Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
 } => {
   const encode = internalBody.jsonSchema(schema)
   return dual<
-    (body: A) => (self: ClientRequest.ClientRequest) => ClientRequest.ClientRequest,
-    (self: ClientRequest.ClientRequest, body: A) => ClientRequest.ClientRequest
-  >(2, (self, body) => setBody(self, encode(body)))
+    (
+      body: A
+    ) => (self: ClientRequest.ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>,
+    (self: ClientRequest.ClientRequest, body: A) => Effect.Effect<never, Body.BodyError, ClientRequest.ClientRequest>
+  >(2, (self, body) => Effect.map(encode(body), (body) => setBody(self, body)))
 }
 
 /** @internal */
@@ -419,19 +411,3 @@ export const streamBody = dual<
   (self, body, { contentLength, contentType = "application/octet-stream" } = {}) =>
     setBody(self, internalBody.stream(body, contentType, contentLength))
 )
-
-/** @internal */
-export const resolveBody = (
-  self: ClientRequest.ClientRequest
-): Effect.Effect<never, Error.RequestError, ClientRequest.ClientRequest.NonEffectBody> =>
-  self.body._tag === "Effect"
-    ? Effect.map(
-      Effect.mapError(self.body.effect, (error) =>
-        internalError.requestError({
-          reason: "Encode",
-          request: self,
-          error
-        })),
-      (body) => setBody(self, body) as ClientRequest.ClientRequest.NonEffectBody
-    )
-    : Effect.succeed(self as ClientRequest.ClientRequest.NonEffectBody)

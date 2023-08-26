@@ -41,19 +41,6 @@ export interface ClientRequest extends Pipeable {
 
 /**
  * @since 1.0.0
- */
-export namespace ClientRequest {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface NonEffectBody extends ClientRequest {
-    readonly body: Body.NonEffect
-  }
-}
-
-/**
- * @since 1.0.0
  * @category models
  */
 export interface Options {
@@ -287,15 +274,6 @@ export const uint8ArrayBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const effectBody: {
-  (body: Effect.Effect<never, unknown, Body.NonEffect>): (self: ClientRequest) => ClientRequest
-  (self: ClientRequest, body: Effect.Effect<never, unknown, Body.NonEffect>): ClientRequest
-} = internal.effectBody
-
-/**
- * @since 1.0.0
- * @category combinators
- */
 export const textBody: {
   (body: string, contentType?: string): (self: ClientRequest) => ClientRequest
   (self: ClientRequest, body: string, contentType?: string): ClientRequest
@@ -306,8 +284,8 @@ export const textBody: {
  * @category combinators
  */
 export const jsonBody: {
-  (body: unknown): (self: ClientRequest) => ClientRequest
-  (self: ClientRequest, body: unknown): ClientRequest
+  (body: unknown): (self: ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest>
+  (self: ClientRequest, body: unknown): Effect.Effect<never, Body.BodyError, ClientRequest>
 } = internal.jsonBody
 
 /**
@@ -323,9 +301,11 @@ export const unsafeJsonBody: {
  * @since 1.0.0
  * @category combinators
  */
-export const schemaBody: <I, A>(schema: Schema.Schema<I, A>) => {
-  (body: A): (self: ClientRequest) => ClientRequest
-  (self: ClientRequest, body: A): ClientRequest
+export const schemaBody: <I, A>(
+  schema: Schema.Schema<I, A>
+) => {
+  (body: A): (self: ClientRequest) => Effect.Effect<never, Body.BodyError, ClientRequest>
+  (self: ClientRequest, body: A): Effect.Effect<never, Body.BodyError, ClientRequest>
 } = internal.schemaBody
 
 /**

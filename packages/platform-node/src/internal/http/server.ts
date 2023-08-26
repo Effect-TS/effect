@@ -19,7 +19,7 @@ import * as Middleware from "@effect/platform/Http/Middleware"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
-import * as ServerResponse from "@effect/platform/Http/ServerResponse"
+import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import type * as Path from "@effect/platform/Path"
 import * as Stream from "@effect/stream/Stream"
 import type * as Http from "node:http"
@@ -106,11 +106,10 @@ export const make = (
     )
   )
 
-const respond = Middleware.make((httpApp) => {
-  const nonEffectApp = Effect.flatMap(httpApp, ServerResponse.toNonEffectBody)
-  return Effect.flatMap(ServerRequest.ServerRequest, (request) =>
+const respond = Middleware.make((httpApp) =>
+  Effect.flatMap(ServerRequest.ServerRequest, (request) =>
     Effect.tapErrorCause(
-      Effect.tap(nonEffectApp, (response) => handleResponse(request, response)),
+      Effect.tap(httpApp, (response) => handleResponse(request, response)),
       (_cause) =>
         Effect.sync(() => {
           const nodeResponse = (request as ServerRequestImpl).response
@@ -122,7 +121,7 @@ const respond = Middleware.make((httpApp) => {
           }
         })
     ))
-})
+)
 
 class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implements ServerRequest.ServerRequest {
   readonly [ServerRequest.TypeId]: ServerRequest.TypeId
@@ -239,10 +238,7 @@ export const layerConfig = (
     internalEtag.layer
   )
 
-const handleResponse = (
-  request: ServerRequest.ServerRequest,
-  response: ServerResponse.ServerResponse.NonEffectBody
-) =>
+const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>
   Effect.suspend((): Effect.Effect<never, Error.ResponseError, void> => {
     const nodeResponse = (request as ServerRequestImpl).response
     switch (response.body._tag) {

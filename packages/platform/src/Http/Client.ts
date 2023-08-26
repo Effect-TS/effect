@@ -204,7 +204,7 @@ export const filterStatusOk: <R, E>(
  */
 export const make: (
   f: (
-    request: ClientRequest.ClientRequest.NonEffectBody
+    request: ClientRequest.ClientRequest
   ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
 ) => Client.Default = internal.make
 

@@ -43,17 +43,9 @@ const setProto = <R, E, A>(
 /** @internal */
 export const make = (
   f: (
-    request: ClientRequest.ClientRequest.NonEffectBody
+    request: ClientRequest.ClientRequest
   ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
-): Client.Client.Default => {
-  function client(request: ClientRequest.ClientRequest) {
-    return Effect.flatMap(
-      internalRequest.resolveBody(request),
-      (request) => f(request)
-    )
-  }
-  return setProto(client)
-}
+): Client.Client.Default => setProto(f)
 
 /** @internal */
 export const fetch = (
@@ -98,7 +90,7 @@ export const fetch = (
     )
   )
 
-const convertBody = (body: Body.NonEffect): BodyInit | undefined => {
+const convertBody = (body: Body.Body): BodyInit | undefined => {
   switch (body._tag) {
     case "Empty":
       return undefined

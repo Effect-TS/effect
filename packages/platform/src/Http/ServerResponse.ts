@@ -8,8 +8,6 @@ import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Headers from "@effect/platform/Http/Headers"
-import type * as Error from "@effect/platform/Http/ServerError"
-import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internal from "@effect/platform/internal/http/serverResponse"
 import type * as Schema from "@effect/schema/Schema"
@@ -37,19 +35,6 @@ export interface ServerResponse extends Pipeable {
   readonly statusText?: string
   readonly headers: Headers.Headers
   readonly body: Body.Body
-}
-
-/**
- * @since 1.0.0
- */
-export namespace ServerResponse {
-  /**
-   * @since 1.0.0
-   * @category models
-   */
-  export interface NonEffectBody extends ServerResponse {
-    readonly body: Body.NonEffect
-  }
 }
 
 /**
@@ -88,14 +73,6 @@ export const isServerResponse: (u: unknown) => u is ServerResponse = internal.is
 
 /**
  * @since 1.0.0
- */
-export const toNonEffectBody: (
-  self: ServerResponse
-) => Effect.Effect<ServerRequest.ServerRequest, Error.ResponseError, ServerResponse.NonEffectBody> =
-  internal.toNonEffectBody
-
-/**
- * @since 1.0.0
  * @category constructors
  */
 export const empty: (options?: Options.WithContent) => ServerResponse = internal.empty
@@ -116,7 +93,10 @@ export const text: (body: string, options?: Options.WithContentType) => ServerRe
  * @since 1.0.0
  * @category constructors
  */
-export const json: (body: unknown, options?: Options.WithContent) => ServerResponse = internal.json
+export const json: (
+  body: unknown,
+  options?: Options.WithContent
+) => Effect.Effect<never, Body.BodyError, ServerResponse> = internal.json
 
 /**
  * @since 1.0.0
@@ -124,7 +104,8 @@ export const json: (body: unknown, options?: Options.WithContent) => ServerRespo
  */
 export const schemaJson: <I, A>(
   schema: Schema.Schema<I, A>
-) => (body: A, options?: Options.WithContent) => ServerResponse = internal.schemaJson
+) => (body: A, options?: Options.WithContent) => Effect.Effect<never, Body.BodyError, ServerResponse> =
+  internal.schemaJson
 
 /**
  * @since 1.0.0
@@ -137,15 +118,6 @@ export const unsafeJson: (body: unknown, options?: Options.WithContent) => Serve
  * @category constructors
  */
 export const urlParams: (body: UrlParams.Input, options?: Options.WithContent) => ServerResponse = internal.urlParams
-
-/**
- * @since 1.0.0
- * @category constructors
- */
-export const effect: (
-  body: Effect.Effect<never, unknown, Body.NonEffect>,
-  options?: Options.WithContent
-) => ServerResponse = internal.effect
 
 /**
  * @since 1.0.0

@@ -92,7 +92,7 @@ const fromAgent = (agent: NodeClient.HttpAgent): Client.Client.Default =>
 const sendBody = (
   nodeRequest: Http.ClientRequest,
   request: ClientRequest.ClientRequest,
-  body: Body.NonEffect
+  body: Body.Body
 ): Effect.Effect<never, Error.RequestError, void> =>
   Effect.suspend((): Effect.Effect<never, Error.RequestError, void> => {
     switch (body._tag) {
