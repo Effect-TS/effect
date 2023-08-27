@@ -258,4 +258,59 @@ describe("HttpServer", () => {
       const text = yield* _(res.text)
       expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
     }).pipe(runPromise))
+
+  it("schemaBodyUrlParams", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.post(
+          "/todos",
+          Effect.flatMap(
+            Http.request.schemaBodyUrlParams(Schema.struct({
+              id: Schema.NumberFromString,
+              title: Schema.string
+            })),
+            ({ id, title }) => todoResponse({ id, title })
+          )
+        ),
+        Http.server.serve(),
+        Effect.scoped,
+        Effect.fork
+      )
+      const client = yield* _(makeTodoClient)
+      const todo = yield* _(
+        HttpC.request.post("/todos"),
+        HttpC.request.urlParamsBody({ id: "1", title: "test" }),
+        client
+      )
+      expect(todo).toEqual({ id: 1, title: "test" })
+    }).pipe(runPromise))
+
+  it("schemaBodyUrlParams error", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get(
+          "/todos",
+          Effect.flatMap(
+            Http.request.schemaBodyUrlParams(Schema.struct({
+              id: Schema.NumberFromString,
+              title: Schema.string
+            })),
+            ({ id, title }) => todoResponse({ id, title })
+          )
+        ),
+        Http.router.catchTag("ParseError", (error) =>
+          Effect.succeed(Http.response.unsafeJson({ error }, { status: 400 }))),
+        Http.server.serve(),
+        Effect.scoped,
+        Effect.fork
+      )
+      const client = yield* _(makeClient)
+      const response = yield* _(
+        HttpC.request.get("/todos"),
+        client
+      )
+      expect(response.status).toEqual(400)
+    }).pipe(runPromise))
 })
