@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.13.13
+
+### Patch Changes
+
+- [#117](https://github.com/Effect-TS/platform/pull/117) [`ee7e365`](https://github.com/Effect-TS/platform/commit/ee7e365eafd8b62bab5bc32dd94e3f1190f6e7d6) Thanks [@tim-smart](https://github.com/tim-smart)! - add support for File web api to http
+
+- Updated dependencies [[`ee7e365`](https://github.com/Effect-TS/platform/commit/ee7e365eafd8b62bab5bc32dd94e3f1190f6e7d6)]:
+  - @effect/platform@0.13.13
+
 ## 0.13.12
 
 ### Patch Changes
