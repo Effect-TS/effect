@@ -6,8 +6,10 @@ import { FileSystem } from "@effect/platform-node/FileSystem"
 import * as HttpC from "@effect/platform-node/HttpClient"
 import * as Http from "@effect/platform-node/HttpServer"
 import * as NodeContext from "@effect/platform-node/NodeContext"
+import * as Etag from "@effect/platform/Http/Etag"
 import * as Schema from "@effect/schema/Schema"
 import { createServer } from "http"
+import * as Buffer from "node:buffer"
 import { describe, it } from "vitest"
 
 const ServerLive = Http.server.layer(createServer, { port: 0 })
@@ -257,6 +259,37 @@ describe("HttpServer", () => {
       expect(res.headers.etag).toEqual("\"1b-75bcd15\"")
       const text = yield* _(res.text)
       expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
+    }).pipe(runPromise))
+
+  it("fileWeb", () =>
+    Effect.gen(function*(_) {
+      const now = new Date()
+      const file = new Buffer.File([new TextEncoder().encode("test")], "test.txt", {
+        type: "text/plain",
+        lastModified: now.getTime()
+      })
+      yield* _(
+        Http.response.fileWeb(file),
+        Effect.updateService(
+          Etag.Generator,
+          (etag) => ({
+            ...etag,
+            fromFileWeb: (_) => Effect.succeed({ _tag: "Weak", value: "etag" })
+          })
+        ),
+        Http.server.serve(),
+        Effect.scoped,
+        Effect.fork
+      )
+      const client = yield* _(makeClient)
+      const res = yield* _(client(HttpC.request.get("/")))
+      expect(res.status).toEqual(200)
+      expect(res.headers["content-type"]).toEqual("text/plain")
+      expect(res.headers["content-length"]).toEqual("4")
+      expect(res.headers["last-modified"]).toEqual(now.toUTCString())
+      expect(res.headers.etag).toEqual("W/\"etag\"")
+      const text = yield* _(res.text)
+      expect(text.trim()).toEqual("test")
     }).pipe(runPromise))
 
   it("schemaBodyUrlParams", () =>

@@ -4,6 +4,7 @@
 import type * as Context from "@effect/data/Context"
 import type * as Effect from "@effect/io/Effect"
 import type * as FileSystem from "@effect/platform/FileSystem"
+import type * as Body from "@effect/platform/Http/Body"
 import * as internal from "@effect/platform/internal/http/etag"
 
 /**
@@ -55,6 +56,7 @@ export type GeneratorTypeId = typeof GeneratorTypeId
 export interface Generator {
   readonly [GeneratorTypeId]: GeneratorTypeId
   readonly fromFileInfo: (info: FileSystem.File.Info) => Effect.Effect<never, never, Etag>
+  readonly fromFileWeb: (file: Body.Body.FileLike) => Effect.Effect<never, never, Etag>
 }
 
 /**

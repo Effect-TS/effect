@@ -160,6 +160,27 @@ export const file = (
   )
 
 /** @internal */
+export const fileWeb = (
+  file: Body.Body.FileLike,
+  options?: ServerResponse.Options.WithContent
+): Effect.Effect<Etag.Generator, never, ServerResponse.ServerResponse> =>
+  Effect.flatMap(Etag.Generator, (generator) =>
+    Effect.map(generator.fromFileWeb(file), (etag) => {
+      const body = internalBody.fileWeb(file)
+      const headers: Record<string, string> = {
+        ...(options?.headers ?? {}),
+        etag: Etag.toString(etag),
+        "last-modified": new Date(file.lastModified).toUTCString()
+      }
+      return new ServerResponseImpl(
+        options?.status ?? 200,
+        options?.statusText,
+        headers,
+        body
+      )
+    }))
+
+/** @internal */
 export const urlParams = (
   body: UrlParams.Input,
   options?: ServerResponse.Options.WithContent

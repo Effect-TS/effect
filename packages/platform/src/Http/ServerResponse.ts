@@ -149,6 +149,15 @@ export const file: (
 
 /**
  * @since 1.0.0
+ * @category constructors
+ */
+export const fileWeb: (
+  file: Body.Body.FileLike,
+  options?: Options.WithContent
+) => Effect.Effect<Etag.Generator, never, ServerResponse> = internal.fileWeb
+
+/**
+ * @since 1.0.0
  * @category combinators
  */
 export const setHeader: {

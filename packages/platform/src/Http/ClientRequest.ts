@@ -357,3 +357,12 @@ export const fileBody: {
     options?: FileSystem.StreamOptions & { readonly contentType?: string }
   ): Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, ClientRequest>
 } = internal.fileBody
+
+/**
+ * @since 1.0.0
+ * @category combinators
+ */
+export const fileWebBody: {
+  (file: Body.Body.FileLike): (self: ClientRequest) => ClientRequest
+  (self: ClientRequest, file: Body.Body.FileLike): ClientRequest
+} = internal.fileWebBody

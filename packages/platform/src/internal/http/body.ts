@@ -1,10 +1,11 @@
 import * as Data from "@effect/data/Data"
+import { identity } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Schema from "@effect/schema/Schema"
-import type * as Stream_ from "@effect/stream/Stream"
+import * as Stream_ from "@effect/stream/Stream"
 
 /** @internal */
 export const TypeId: Body.TypeId = Symbol.for(
@@ -123,6 +124,10 @@ export const fileInfo = (
         Number(info.size)
       )
   )
+
+/** @internal */
+export const fileWeb = (file: Body.Body.FileLike): Body.Stream =>
+  stream(Stream_.fromReadableStream(() => file.stream() as ReadableStream<Uint8Array>, identity), file.type, file.size)
 
 class FormDataImpl implements Body.FormData {
   readonly [TypeId]: Body.TypeId

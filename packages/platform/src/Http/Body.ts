@@ -42,6 +42,18 @@ export namespace Body {
     readonly contentType?: string
     readonly contentLength?: number
   }
+
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface FileLike {
+    readonly name: string
+    readonly lastModified: number
+    readonly size: number
+    readonly stream: () => unknown
+    readonly type: string
+  }
 }
 
 /**
@@ -210,3 +222,9 @@ export const fileInfo: (
   info: FileSystem.File.Info,
   options?: FileSystem.StreamOptions & { readonly contentType?: string }
 ) => Effect.Effect<FileSystem.FileSystem, PlatformError.PlatformError, Stream> = internal.fileInfo
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const fileWeb: (file: Body.FileLike) => Stream = internal.fileWeb
