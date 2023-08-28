@@ -12,6 +12,7 @@ import type * as Method from "@effect/platform/Http/Method"
 import type * as Router from "@effect/platform/Http/Router"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
+import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as Schema from "@effect/schema/Schema"
 import * as Channel from "@effect/stream/Channel"
 import * as Sink from "@effect/stream/Sink"
@@ -133,7 +134,7 @@ const toHttpApp = <R, E>(
         request = sliceRequestUrl(request, route.prefix.value)
       }
       return Effect.mapInputContext(
-        route.handler,
+        route.handler as Effect.Effect<Exclude<R, Router.RouteContext>, E, ServerResponse.ServerResponse>,
         (context) =>
           Context.add(
             Context.add(context, ServerRequest.ServerRequest, request),
@@ -241,15 +242,18 @@ export const mountApp = dual<
   <R1, E1>(
     path: string,
     that: App.Default<R1, E1>
-  ) => <R, E>(self: Router.Router<R, E>) => Router.Router<R | R1, E | E1>,
+  ) => <R, E>(
+    self: Router.Router<R, E>
+  ) => Router.Router<Exclude<R | R1, Router.RouteContext | ServerRequest.ServerRequest>, E | E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: string,
     that: App.Default<R1, E1>
-  ) => Router.Router<R | R1, E | E1>
+  ) => Router.Router<Exclude<R | R1, Router.RouteContext | ServerRequest.ServerRequest>, E | E1>
 >(
   3,
-  (self, path, that) => new RouterImpl(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that]) as any)
+  (self, path, that) =>
+    new RouterImpl<any, any>(self.routes, Chunk.append(self.mounts, [removeTrailingSlash(path), that]))
 )
 
 /** @internal */
@@ -257,23 +261,27 @@ export const route = (method: Method.Method | "*"): {
   <R1, E1>(
     path: string,
     handler: Router.Route.Handler<R1, E1>
-  ): <R, E>(self: Router.Router<R, E>) => Router.Router<R | Exclude<R1, Router.RouteContext>, E1 | E>
+  ): <R, E>(
+    self: Router.Router<R, E>
+  ) => Router.Router<R | Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E1 | E>
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
     path: string,
     handler: Router.Route.Handler<R1, E1>
-  ): Router.Router<R | Exclude<R1, Router.RouteContext>, E | E1>
+  ): Router.Router<R | Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E | E1>
 } =>
   dual<
     <R1, E1>(
       path: string,
       handler: Router.Route.Handler<R1, E1>
-    ) => <R, E>(self: Router.Router<R, E>) => Router.Router<R | Exclude<R1, Router.RouteContext>, E | E1>,
+    ) => <R, E>(
+      self: Router.Router<R, E>
+    ) => Router.Router<R | Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E | E1>,
     <R, E, R1, E1>(
       self: Router.Router<R, E>,
       path: string,
       handler: Router.Route.Handler<R1, E1>
-    ) => Router.Router<R | Exclude<R1, Router.RouteContext>, E | E1>
+    ) => Router.Router<R | Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E | E1>
   >(3, (self, path, handler) =>
     new RouterImpl(
       Chunk.append(self.routes, new RouteImpl(method, path, handler)) as any,
@@ -307,17 +315,17 @@ export const options = route("OPTIONS")
 /** @internal */
 export const use = dual<
   <R, E, R1, E1>(
-    f: (self: Router.Route.Handler<R, E>) => Router.Route.Handler<R1, E1>
-  ) => (self: Router.Router<R, E>) => Router.Router<R1, E1>,
+    f: (self: Router.Route.Handler<R, E>) => App.Default<R1, E1>
+  ) => (self: Router.Router<R, E>) => Router.Router<Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E1>,
   <R, E, R1, E1>(
     self: Router.Router<R, E>,
-    f: (self: Router.Route.Handler<R, E>) => Router.Route.Handler<R1, E1>
-  ) => Router.Router<R1, E1>
+    f: (self: Router.Route.Handler<R, E>) => App.Default<R1, E1>
+  ) => Router.Router<Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest>, E1>
 >(2, (self, f) =>
-  new RouterImpl(
+  new RouterImpl<any, any>(
     Chunk.map(
       self.routes,
-      (route) => new RouteImpl(route.method, route.path, f(route.handler), route.prefix)
+      (route) => new RouteImpl(route.method, route.path, f(route.handler) as any, route.prefix)
     ),
     Chunk.map(
       self.mounts,
@@ -412,19 +420,31 @@ export const provideService = dual<
     tag: T,
     service: Context.Tag.Service<T>
   ) => Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E>
->(3, (self, tag, service) => use(self, Effect.provideService(tag, service)))
+>(3, <R, E, T extends Context.Tag<any, any>>(
+  self: Router.Router<R, E>,
+  tag: T,
+  service: Context.Tag.Service<T>
+): Router.Router<Exclude<R, Context.Tag.Identifier<T>>, E> => use(self, Effect.provideService(tag, service)))
 
 /* @internal */
 export const provideServiceEffect = dual<
   <T extends Context.Tag<any, any>, R1, E1>(
     tag: T,
     effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
-  ) => <R, E>(self: Router.Router<R, E>) => Router.Router<R1 | Exclude<R, Context.Tag.Identifier<T>>, E | E1>,
+  ) => <R, E>(
+    self: Router.Router<R, E>
+  ) => Router.Router<
+    Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest> | Exclude<R, Context.Tag.Identifier<T>>,
+    E | E1
+  >,
   <R, E, T extends Context.Tag<any, any>, R1, E1>(
     self: Router.Router<R, E>,
     tag: T,
     effect: Effect.Effect<R1, E1, Context.Tag.Service<T>>
-  ) => Router.Router<R1 | Exclude<R, Context.Tag.Identifier<T>>, E | E1>
+  ) => Router.Router<
+    Exclude<R1, Router.RouteContext | ServerRequest.ServerRequest> | Exclude<R, Context.Tag.Identifier<T>>,
+    E | E1
+  >
 >(3, <R, E, T extends Context.Tag<any, any>, R1, E1>(
   self: Router.Router<R, E>,
   tag: T,
