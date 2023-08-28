@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.11
+
+### Patch Changes
+
+- [#113](https://github.com/Effect-TS/platform/pull/113) [`5945805`](https://github.com/Effect-TS/platform/commit/59458051ad3885d23c4657369a9a46015f4e569c) Thanks [@tim-smart](https://github.com/tim-smart)! - try to remove route context and requests from Router context
+
 ## 0.13.10
 
 ### Patch Changes
