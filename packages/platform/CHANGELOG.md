@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.12
+
+### Patch Changes
+
+- [#115](https://github.com/Effect-TS/platform/pull/115) [`4cba795`](https://github.com/Effect-TS/platform/commit/4cba79529426483775782f2384b2194ff57f1279) Thanks [@tim-smart](https://github.com/tim-smart)! - add Router.WithoutProvided
+
 ## 0.13.11
 
 ### Patch Changes
