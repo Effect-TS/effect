@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.13.15
+
+### Patch Changes
+
+- [#121](https://github.com/Effect-TS/platform/pull/121) [`1b8498f`](https://github.com/Effect-TS/platform/commit/1b8498f9dee68f2a2e93ec10c62b632c65e0017a) Thanks [@tim-smart](https://github.com/tim-smart)! - export KeyValueStore in platform-node
+
 ## 0.13.14
 
 ### Patch Changes
