@@ -6,6 +6,8 @@ import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalError from "@effect/platform/internal/http/clientError"
+import type * as ParseResult from "@effect/schema/ParseResult"
+import * as Schema from "@effect/schema/Schema"
 import * as Stream from "@effect/stream/Stream"
 
 /** @internal */
@@ -119,4 +121,26 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
         })
     })
   }
+}
+
+/** @internal */
+export const schemaJson = <
+  I extends {
+    readonly status?: number
+    readonly headers?: Headers.Headers
+    readonly body?: unknown
+  },
+  A
+>(schema: Schema.Schema<I, A>) => {
+  const parse = Schema.parse(schema)
+  return (self: ClientResponse.ClientResponse): Effect.Effect<never, Error.ResponseError | ParseResult.ParseError, A> =>
+    Effect.flatMap(
+      self.json,
+      (body) =>
+        parse({
+          status: self.status,
+          headers: self.headers,
+          body
+        })
+    )
 }

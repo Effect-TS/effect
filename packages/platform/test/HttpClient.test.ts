@@ -12,6 +12,10 @@ const Todo = Schema.struct({
   title: Schema.string,
   completed: Schema.boolean
 })
+const OkTodo = Schema.struct({
+  status: Schema.literal(200),
+  body: Todo
+})
 
 const makeJsonPlaceholder = Effect.gen(function*(_) {
   const defaultClient = yield* _(Http.client.Client)
@@ -77,5 +81,15 @@ describe("HttpClient", () => {
         completed: false
       }))
       expect(response.title).toBe("test")
+    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+
+  it("jsonplaceholder schemaJson", () =>
+    Effect.gen(function*(_) {
+      const jp = yield* _(JsonPlaceholder)
+      const client = Http.client.mapEffect(jp.client, Http.response.schemaJson(OkTodo)).pipe(
+        Http.client.map((_) => _.body)
+      )
+      const response = yield* _(Http.request.get("/todos/1"), client)
+      expect(response.id).toBe(1)
     }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
 })
