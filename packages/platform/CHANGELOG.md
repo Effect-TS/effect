@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.13.15
+
+### Patch Changes
+
+- [#123](https://github.com/Effect-TS/platform/pull/123) [`07089a8`](https://github.com/Effect-TS/platform/commit/07089a877fd72b2c1b30016f92af162bbb6ff2c8) Thanks [@tim-smart](https://github.com/tim-smart)! - add ClientResponse.schemaJson
+
 ## 0.13.14
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@effect/platform-node",
-  "version": "0.13.15",
+  "version": "0.13.16",
   "description": "Unified interfaces for common platform-specific services",
   "publishConfig": {
     "access": "public",
