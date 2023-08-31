@@ -88,7 +88,7 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/Router](https://effect-ts.github.io/platform/platform-bun/Http/Server.ts.html)
+   * - Docs: [Http/Server](https://effect-ts.github.io/platform/platform-bun/Http/Server.ts.html)
    * - Module: `@effect/platform-bun/Http/Server`
    */
   server,
