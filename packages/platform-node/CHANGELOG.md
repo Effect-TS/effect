@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.13.18
+
+### Patch Changes
+
+- [#127](https://github.com/Effect-TS/platform/pull/127) [`12fbbe9`](https://github.com/Effect-TS/platform/commit/12fbbe9366e3a07895326614ec911ff2601138b1) Thanks [@tim-smart](https://github.com/tim-smart)! - interrupt http app if request is aborted
+
 ## 0.13.17
 
 ### Patch Changes
