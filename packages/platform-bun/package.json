@@ -1,6 +1,6 @@
 {
-  "name": "@effect/platform-browser",
-  "version": "0.1.1",
+  "name": "@effect/platform-bun",
+  "version": "0.0.0",
   "description": "Unified interfaces for common platform-specific services",
   "publishConfig": {
     "access": "public",
@@ -42,14 +42,15 @@
   "devDependencies": {
     "@effect/data": "^0.17.6",
     "@effect/io": "^0.38.2",
-    "@effect/platform": "workspace:^",
+    "@effect/platform-node": "workspace:^",
     "@effect/schema": "^0.33.2",
     "@effect/stream": "^0.34.0",
-    "vitest-localstorage-mock": "^0.0.1"
+    "bun-types": "^0.8.1"
   },
   "peerDependencies": {
     "@effect/data": "^0.17.5",
     "@effect/io": "^0.38.2",
-    "@effect/platform": "workspace:^"
+    "@effect/platform-node": "workspace:^",
+    "@effect/stream": "^0.34.0"
   }
 }

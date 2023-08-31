@@ -170,13 +170,13 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
       return this.formDataEffect
     }
     this.formDataEffect = Effect.runSync(Effect.cached(
-      internalFormData.formData(this.source)
+      internalFormData.formData(this.source, this.source.headers)
     ))
     return this.formDataEffect
   }
 
   get formDataStream(): Stream.Stream<never, FormData.FormDataError, FormData.Part> {
-    return internalFormData.fromRequest(this.source)
+    return internalFormData.stream(this.source, this.source.headers)
   }
 
   setUrl(url: string): ServerRequest.ServerRequest {

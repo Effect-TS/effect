@@ -10,12 +10,13 @@ import * as Path from "@effect/platform/Path"
 import * as Stream from "@effect/stream/Stream"
 import Busboy from "busboy"
 import * as NodeFs from "node:fs"
-import type * as Http from "node:http"
+import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
 import * as NodeStreamP from "node:stream/promises"
 
-export const fromRequest = (
-  source: Http.IncomingMessage
+export const stream = (
+  source: Readable,
+  headers: IncomingHttpHeaders
 ): Stream.Stream<never, FormData.FormDataError, FormData.Part> =>
   pipe(
     Effect.Do,
@@ -30,7 +31,7 @@ export const fromRequest = (
         Effect.sync(
           () =>
             Busboy({
-              headers: source.headers,
+              headers,
               limits: {
                 parts: Option.getOrUndefined(Option.map(maxParts, Number)),
                 files: Option.getOrUndefined(Option.map(maxFiles, Number)),
@@ -127,7 +128,8 @@ class FileImpl implements FormData.File {
 
 /** @internal */
 export const formData = (
-  source: Http.IncomingMessage
+  source: Readable,
+  headers: IncomingHttpHeaders
 ) =>
   Effect.flatMap(
     Effect.all([
@@ -139,7 +141,7 @@ export const formData = (
     ]),
     ([dir, path_]) =>
       Stream.runFoldEffect(
-        fromRequest(source),
+        stream(source, headers),
         new globalThis.FormData(),
         (formData, part) => {
           if (part._tag === "Field") {
@@ -148,7 +150,10 @@ export const formData = (
           }
           const file = part as FileImpl
           const path = path_.join(dir, file.name)
-          formData.append(part.key, new Blob([], { type: file.contentType }), path)
+          const blob = "Bun" in globalThis ?
+            (globalThis as any).Bun.file(path, { type: file.contentType })
+            : new Blob([], { type: file.contentType })
+          formData.append(part.key, blob, path)
           return Effect.as(
             Effect.tryPromise({
               try: (signal) =>

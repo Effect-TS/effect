@@ -1,8 +1,8 @@
 import * as Context from "@effect/data/Context"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
-import * as Http from "@effect/platform-node/HttpClient"
-import { runMain } from "@effect/platform-node/Runtime"
+import * as Http from "@effect/platform-bun/HttpClient"
+import { runMain } from "@effect/platform-bun/Runtime"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 
