@@ -78,16 +78,21 @@ export const make = (
         },
       serve: (httpApp, middleware) => {
         const handledApp = middleware ? middleware(respond(httpApp)) : respond(httpApp)
-        return Effect.flatMap(Effect.runtime(), (runtime) => {
+        return Effect.flatMap(Effect.all([Effect.runtime(), Effect.fiberId]), ([runtime, fiberId]) => {
           const runFork = Runtime.runFork(runtime)
           function handler(nodeRequest: Http.IncomingMessage, nodeResponse: Http.ServerResponse) {
-            runFork(
+            const fiber = runFork(
               Effect.provideService(
                 handledApp,
                 ServerRequest.ServerRequest,
                 new ServerRequestImpl(nodeRequest, nodeResponse)
               )
             )
+            nodeResponse.on("close", () => {
+              if (!nodeResponse.writableEnded) {
+                runFork(fiber.interruptAsFork(fiberId))
+              }
+            })
           }
           return Effect.all([
             Effect.acquireRelease(

@@ -14,20 +14,18 @@ export const logger = make((httpApp) => {
     ServerRequest.ServerRequest,
     (request) =>
       Effect.withLogSpan(
-        Effect.tap(
-          Effect.tapErrorCause(httpApp, (cause) =>
-            Effect.annotateLogs(Effect.log(cause), {
+        Effect.onExit(httpApp, (exit) =>
+          exit._tag === "Failure" ?
+            Effect.annotateLogs(Effect.log(exit.cause), {
               "http.method": request.method,
               "http.url": request.url,
               "http.status": 500
-            })),
-          (response) =>
+            }) :
             Effect.annotateLogs(Effect.log(""), {
               "http.method": request.method,
               "http.url": request.url,
-              "http.status": response.status
-            })
-        ),
+              "http.status": exit.value.status
+            })),
         `http.span.${++counter}`
       )
   )

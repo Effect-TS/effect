@@ -1,4 +1,5 @@
 import { pipe } from "@effect/data/Function"
+import * as Cause from "@effect/io/Cause"
 import * as Config from "@effect/io/Config"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
@@ -11,6 +12,7 @@ import type * as App from "@effect/platform/Http/App"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import type { Method } from "@effect/platform/Http/Method"
+import * as Middleware from "@effect/platform/Http/Middleware"
 import * as Server from "@effect/platform/Http/Server"
 import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
@@ -45,30 +47,36 @@ export const make = (
     return Server.make({
       address: { _tag: "TcpAddress", port: server.port, hostname: server.hostname },
       serve(httpApp, middleware) {
-        const app: App.HttpApp<never, unknown, Response> = Effect.flatMap(
-          middleware ? middleware(httpApp) : httpApp,
-          respond
-        )
+        const app: App.Default<never, unknown> = middleware
+          ? middleware(respond(httpApp)) as App.Default<never, unknown>
+          : respond(httpApp)
         return pipe(
-          Effect.runtime<never>(),
-          Effect.flatMap((runtime) =>
+          Effect.all([Effect.runtime<never>(), Effect.fiberId]),
+          Effect.zipLeft(
+            Effect.addFinalizer(() =>
+              Effect.sync(() => {
+                handlerStack.pop()
+                server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
+              })
+            )
+          ),
+          Effect.flatMap(([runtime, fiberId]) =>
             Effect.async<never, Error.ServeError, never>(() => {
-              const runPromise = Runtime.runPromise(runtime)
+              const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
-                return runPromise(Effect.provideService(
-                  app,
-                  ServerRequest.ServerRequest,
-                  new ServerRequestImpl(request)
-                ))
+                return new Promise<Response>((resolve, reject) => {
+                  const fiber = runFork(Effect.provideService(
+                    app,
+                    ServerRequest.ServerRequest,
+                    new ServerRequestImpl(request, resolve, reject)
+                  ))
+                  request.signal.addEventListener("abort", () => {
+                    runFork(fiber.interruptAsFork(fiberId))
+                  })
+                })
               }
               handlerStack.push(handler)
               server.reload({ fetch: handler } as ServeOptions)
-            })
-          ),
-          Effect.acquireRelease(() =>
-            Effect.sync(() => {
-              handlerStack.pop()
-              server.reload({ fetch: handlerStack[handlerStack.length - 1] } as ServeOptions)
             })
           )
         )
@@ -76,41 +84,58 @@ export const make = (
     })
   })
 
-const respond = (response: ServerResponse.ServerResponse) =>
-  Effect.sync((): Response => {
-    const body = response.body
-    switch (body._tag) {
-      case "Empty": {
-        return new Response(undefined, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        })
-      }
-      case "Uint8Array":
-      case "Raw": {
-        return new Response(body.body as any, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        })
-      }
-      case "FormData": {
-        return new Response(body.formData, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        })
-      }
-      case "Stream": {
-        return new Response(Stream.toReadableStream(body.stream), {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers
-        })
-      }
+const makeResponse = (response: ServerResponse.ServerResponse): Response => {
+  const body = response.body
+  switch (body._tag) {
+    case "Empty": {
+      return new Response(undefined, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
     }
-  })
+    case "Uint8Array":
+    case "Raw": {
+      return new Response(body.body as any, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    case "FormData": {
+      return new Response(body.formData, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+    case "Stream": {
+      return new Response(Stream.toReadableStream(body.stream), {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      })
+    }
+  }
+}
+
+const respond = Middleware.make((httpApp) =>
+  Effect.flatMap(
+    ServerRequest.ServerRequest,
+    (request) =>
+      Effect.onExit(
+        httpApp,
+        (exit) =>
+          Effect.sync(() => {
+            if (exit._tag === "Success") {
+              ;(request as ServerRequestImpl).resolve(makeResponse(exit.value))
+            } else {
+              ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
+            }
+          })
+      )
+  )
+)
 
 /** @internal */
 export const layer = (
@@ -135,6 +160,8 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
   readonly [IncomingMessage.TypeId]: IncomingMessage.TypeId
   constructor(
     readonly source: Request,
+    public resolve: (response: Response) => void,
+    public reject: (reason: any) => void,
     readonly url = source.url,
     public headersOverride?: Headers.Headers
   ) {
@@ -152,10 +179,10 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     return this.headersOverride
   }
   setUrl(url: string): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(this.source, url)
+    return new ServerRequestImpl(this.source, this.resolve, this.reject, url)
   }
   replaceHeaders(headers: Headers.Headers): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(this.source, this.url, headers)
+    return new ServerRequestImpl(this.source, this.resolve, this.reject, this.url, headers)
   }
 
   get stream(): Stream.Stream<never, Error.RequestError, Uint8Array> {

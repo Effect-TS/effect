@@ -16,6 +16,7 @@ const serve = Http.router.empty.pipe(
     )
   ),
   Http.router.get("/package", Http.response.file("./package.json")),
+  Http.router.get("/sleep", Effect.as(Effect.sleep("10 seconds"), Http.response.empty())),
   Http.router.post(
     "/upload",
     Effect.gen(function*(_) {
