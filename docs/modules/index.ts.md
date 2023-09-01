@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 54
+nav_order: 46
 parent: Modules
 ---
 
@@ -38,13 +38,7 @@ Added in v2.0.0
   - [Data](#data)
   - [DefaultServices](#defaultservices)
   - [Deferred](#deferred)
-  - [DeterministicRandom](#deterministicrandom)
   - [Differ](#differ)
-  - [DifferChunkPatch](#differchunkpatch)
-  - [DifferContextPatch](#differcontextpatch)
-  - [DifferHashMapPatch](#differhashmappatch)
-  - [DifferHashSetPatch](#differhashsetpatch)
-  - [DifferOrPatch](#differorpatch)
   - [Duration](#duration)
   - [Effect](#effect)
   - [Either](#either)
@@ -56,8 +50,6 @@ Added in v2.0.0
   - [FiberId](#fiberid)
   - [FiberRef](#fiberref)
   - [FiberRefs](#fiberrefs)
-  - [FiberRuntimeFlags](#fiberruntimeflags)
-  - [FiberRuntimeFlagsPatch](#fiberruntimeflagspatch)
   - [FiberStatus](#fiberstatus)
   - [Function](#function)
   - [GroupBy](#groupby)
@@ -69,9 +61,9 @@ Added in v2.0.0
   - [KeyedPool](#keyedpool)
   - [Layer](#layer)
   - [List](#list)
+  - [LogLevel](#loglevel)
+  - [LogSpan](#logspan)
   - [Logger](#logger)
-  - [LoggerLevel](#loggerlevel)
-  - [LoggerSpan](#loggerspan)
   - [Match](#match)
   - [Metric](#metric)
   - [MetricBoundaries](#metricboundaries)
@@ -92,6 +84,7 @@ Added in v2.0.0
   - [Option](#option)
   - [Order](#order)
   - [Ordering](#ordering)
+  - [PCGRandom](#pcgrandom)
   - [Pipeable](#pipeable)
   - [Pool](#pool)
   - [Predicate](#predicate)
@@ -107,6 +100,8 @@ Added in v2.0.0
   - [RequestResolver](#requestresolver)
   - [Resource](#resource)
   - [Runtime](#runtime)
+  - [RuntimeFlags](#runtimeflags)
+  - [RuntimeFlagsPatch](#runtimeflagspatch)
   - [STM](#stm)
   - [Schedule](#schedule)
   - [ScheduleDecision](#scheduledecision)
@@ -142,6 +137,7 @@ Added in v2.0.0
   - [Tracer](#tracer)
   - [Tuple](#tuple)
   - [absurd](#absurd)
+  - [flow](#flow)
   - [hole](#hole)
   - [identity](#identity)
   - [pipe](#pipe)
@@ -417,7 +413,7 @@ export declare const ConfigError: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Config/Error.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
 - Module: "effect/ConfigError"
 ```
 
@@ -432,7 +428,7 @@ export declare const ConfigProvider: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Config/Provider.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
 - Module: "effect/ConfigProvider"
 ```
 
@@ -447,7 +443,7 @@ export declare const ConfigSecret: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Config/Secret.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
 - Module: "effect/ConfigSecret"
 ```
 
@@ -526,21 +522,6 @@ Added in v2.0.0
 - Module: "effect/Deferred"
 ```
 
-## DeterministicRandom
-
-**Signature**
-
-```ts
-export declare const DeterministicRandom: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Random.ts.html
-- Module: "effect/Random"
-```
-
 ## Differ
 
 **Signature**
@@ -554,81 +535,6 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
 - Module: "effect/Differ"
-```
-
-## DifferChunkPatch
-
-**Signature**
-
-```ts
-export declare const DifferChunkPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Differ/ChunkPatch.ts.html
-- Module: "effect/DifferChunkPatch"
-```
-
-## DifferContextPatch
-
-**Signature**
-
-```ts
-export declare const DifferContextPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Differ/ContextPatch.ts.html
-- Module: "effect/DifferContextPatch"
-```
-
-## DifferHashMapPatch
-
-**Signature**
-
-```ts
-export declare const DifferHashMapPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Differ/HashMapPatch.ts.html
-- Module: "effect/DifferHashMapPatch"
-```
-
-## DifferHashSetPatch
-
-**Signature**
-
-```ts
-export declare const DifferHashSetPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Differ/HashSetPatch.ts.html
-- Module: "effect/DifferHashSetPatch"
-```
-
-## DifferOrPatch
-
-**Signature**
-
-```ts
-export declare const DifferOrPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/data/modules/Differ/OrPatch.ts.html
-- Module: "effect/DifferOrPatch"
 ```
 
 ## Duration
@@ -762,7 +668,7 @@ export declare const FiberId: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
+- Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
 - Module: "effect/FiberId"
 ```
 
@@ -796,36 +702,6 @@ Added in v2.0.0
 - Module: "effect/FiberRefs"
 ```
 
-## FiberRuntimeFlags
-
-**Signature**
-
-```ts
-export declare const FiberRuntimeFlags: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags.ts.html
-- Module: "effect/FiberRuntimeFlags"
-```
-
-## FiberRuntimeFlagsPatch
-
-**Signature**
-
-```ts
-export declare const FiberRuntimeFlagsPatch: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Runtime/Flags/Patch.ts.html
-- Module: "effect/FiberRuntimeFlagsPatch"
-```
-
 ## FiberStatus
 
 **Signature**
@@ -837,7 +713,7 @@ export declare const FiberStatus: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
+- Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
 - Module: "effect/FiberStatus"
 ```
 
@@ -991,6 +867,36 @@ Added in v2.0.0
 - Module: "effect/List"
 ```
 
+## LogLevel
+
+**Signature**
+
+```ts
+export declare const LogLevel: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
+- Module: "effect/LogLevel"
+```
+
+## LogSpan
+
+**Signature**
+
+```ts
+export declare const LogSpan: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
+- Module: "effect/LoggerSpan"
+```
+
 ## Logger
 
 **Signature**
@@ -1004,36 +910,6 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
 - Module: "effect/Logger"
-```
-
-## LoggerLevel
-
-**Signature**
-
-```ts
-export declare const LoggerLevel: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/Logger/Level.ts.html
-- Module: "effect/LoggerLevel"
-```
-
-## LoggerSpan
-
-**Signature**
-
-```ts
-export declare const LoggerSpan: any
-```
-
-Added in v2.0.0
-
-```md
-- Docs: https://effect-ts.github.io/io/modules/Logger/Span.ts.html
-- Module: "effect/LoggerSpan"
 ```
 
 ## Match
@@ -1077,7 +953,7 @@ export declare const MetricBoundaries: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
 - Module: "effect/MetricBoundaries"
 ```
 
@@ -1092,7 +968,7 @@ export declare const MetricHook: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Hook.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
 - Module: "effect/MetricHook"
 ```
 
@@ -1107,7 +983,7 @@ export declare const MetricKey: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
 - Module: "effect/MetricKey"
 ```
 
@@ -1122,7 +998,7 @@ export declare const MetricKeyType: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
 - Module: "effect/MetricKeyType"
 ```
 
@@ -1137,7 +1013,7 @@ export declare const MetricLabel: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
 - Module: "effect/MetricLabel"
 ```
 
@@ -1152,7 +1028,7 @@ export declare const MetricPair: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
 - Module: "effect/MetricPair"
 ```
 
@@ -1167,7 +1043,7 @@ export declare const MetricPolling: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/PollingPolling.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
 - Module: "effect/MetricPolling"
 ```
 
@@ -1182,7 +1058,7 @@ export declare const MetricRegistry: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
 - Module: "effect/MetricRegistry"
 ```
 
@@ -1197,7 +1073,7 @@ export declare const MetricState: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
+- Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
 - Module: "effect/MetricState"
 ```
 
@@ -1334,6 +1210,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
 - Module: "effect/Ordering"
+```
+
+## PCGRandom
+
+**Signature**
+
+```ts
+export declare const PCGRandom: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
+- Module: "effect/PCGRandom"
 ```
 
 ## Pipeable
@@ -1561,6 +1452,36 @@ Added in v2.0.0
 - Module: "effect/Runtime"
 ```
 
+## RuntimeFlags
+
+**Signature**
+
+```ts
+export declare const RuntimeFlags: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
+- Module: "effect/RuntimeFlags"
+```
+
+## RuntimeFlagsPatch
+
+**Signature**
+
+```ts
+export declare const RuntimeFlagsPatch: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
+- Module: "effect/RuntimeFlagsPatch"
+```
+
 ## STM
 
 **Signature**
@@ -1602,7 +1523,7 @@ export declare const ScheduleDecision: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
 - Module: "effect/ScheduleDecision"
 ```
 
@@ -1617,7 +1538,7 @@ export declare const ScheduleInterval: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Schedule/Interval.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
 - Module: "effect/ScheduleInterval"
 ```
 
@@ -1632,7 +1553,7 @@ export declare const ScheduleIntervals: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
+- Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
 - Module: "effect/ScheduleIntervals"
 ```
 
@@ -1872,7 +1793,7 @@ export declare const SynchronizedRef: any
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
+- Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
 - Module: "effect/SynchronizedRef"
 ```
 
@@ -2083,6 +2004,21 @@ Added in v2.0.0
 
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
+- Module: "effect/Function"
+```
+
+## flow
+
+**Signature**
+
+```ts
+export declare const flow: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
 - Module: "effect/Function"
 ```
 

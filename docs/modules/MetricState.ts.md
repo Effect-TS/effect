@@ -1,6 +1,6 @@
 ---
 title: MetricState.ts
-nav_order: 71
+nav_order: 63
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/State.ts.html
-- Module: "@effect/io/Metric/State"
+- Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
+- Module: "@effect/io/MetricState"
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: TDeferred.ts
-nav_order: 119
+nav_order: 114
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Scheduler.ts
-nav_order: 100
+nav_order: 95
 parent: Modules
 ---
 

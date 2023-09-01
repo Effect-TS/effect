@@ -1,6 +1,6 @@
 ---
 title: MetricPolling.ts
-nav_order: 69
+nav_order: 61
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Polling.ts.html
-- Module: "@effect/io/Metric/Polling"
+- Docs: https://effect-ts.github.io/io/modules/MetricPolling.ts.html
+- Module: "@effect/io/MetricPolling"
 ```
 
 ---

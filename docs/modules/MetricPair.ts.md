@@ -1,6 +1,6 @@
 ---
 title: MetricPair.ts
-nav_order: 68
+nav_order: 60
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Pair.ts.html
-- Module: "@effect/io/Metric/Pair"
+- Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
+- Module: "@effect/io/MetricPair"
 ```
 
 ---

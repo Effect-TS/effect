@@ -1,6 +1,6 @@
 ---
 title: MetricKey.ts
-nav_order: 65
+nav_order: 57
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Key.ts.html
-- Module: "@effect/io/Metric/Key"
+- Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
+- Module: "@effect/io/MetricKey"
 ```
 
 ---

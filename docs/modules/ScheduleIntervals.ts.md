@@ -1,6 +1,6 @@
 ---
 title: ScheduleIntervals.ts
-nav_order: 99
+nav_order: 94
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Schedule/Intervals.ts.html
-- Module: "@effect/io/Schedule/Intervals"
+- Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
+- Module: "@effect/io/ScheduleIntervals"
 ```
 
 ---

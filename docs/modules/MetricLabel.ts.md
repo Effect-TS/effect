@@ -1,6 +1,6 @@
 ---
 title: MetricLabel.ts
-nav_order: 67
+nav_order: 59
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Label.ts.html
-- Module: "@effect/io/Metric/Label"
+- Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
+- Module: "@effect/io/MetricLabel"
 ```
 
 ---

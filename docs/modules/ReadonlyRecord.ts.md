@@ -1,6 +1,6 @@
 ---
 title: ReadonlyRecord.ts
-nav_order: 87
+nav_order: 80
 parent: Modules
 ---
 

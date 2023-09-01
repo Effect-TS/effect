@@ -1,6 +1,6 @@
 ---
 title: ScheduleDecision.ts
-nav_order: 97
+nav_order: 92
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Schedule/Decision.ts.html
-- Module: "@effect/io/Schedule/Decision"
+- Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
+- Module: "@effect/io/ScheduleDecision"
 ```
 
 ---

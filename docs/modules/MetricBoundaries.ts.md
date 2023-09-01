@@ -1,6 +1,6 @@
 ---
 title: MetricBoundaries.ts
-nav_order: 63
+nav_order: 55
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Boundaries.ts.html
-- Module: "@effect/io/Metric/Boundaries"
+- Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
+- Module: "@effect/io/MetricBoundaries"
 ```
 
 ---

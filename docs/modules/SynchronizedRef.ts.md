@@ -1,6 +1,6 @@
 ---
 title: SynchronizedRef.ts
-nav_order: 116
+nav_order: 111
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Ref/Synchronized.ts.html
-- Module: "@effect/io/Ref/Synchronized"
+- Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
+- Module: "@effect/io/SynchronizedRef"
 ```
 
 ---
