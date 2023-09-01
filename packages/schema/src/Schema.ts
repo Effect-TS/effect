@@ -1192,11 +1192,11 @@ export function filter<A>(
 }
 
 /**
-  Create a new `Schema` by transforming the input and output of an existing `Schema`
-  using the provided decoding functions.
-
-  @category combinators
-  @since 1.0.0
+ * Create a new `Schema` by transforming the input and output of an existing `Schema`
+ * using the provided decoding functions.
+ *
+ * @category combinators
+ * @since 1.0.0
  */
 export const transformOrFail: {
   <I2, A2, A1>(
@@ -1229,12 +1229,12 @@ export const transformOrFail: {
   ))
 
 /**
-  Create a new `Schema` by transforming the input and output of an existing `Schema`
-  using the provided mapping functions.
-
-  @category combinators
-  @since 1.0.0
-*/
+ * Create a new `Schema` by transforming the input and output of an existing `Schema`
+ * using the provided mapping functions.
+ *
+ * @category combinators
+ * @since 1.0.0
+ */
 export const transform: {
   <I2, A2, A1>(
     to: Schema<I2, A2>,
@@ -2736,11 +2736,11 @@ export const ValidDateFromSelf: Schema<Date> = DateFromSelf.pipe(validDate())
 // ---------------------------------------------
 
 /**
-  A combinator that transforms a `string` into a valid `Date`.
-
-  @category Date transformations
-  @since 1.0.0
-*/
+ * A combinator that transforms a `string` into a valid `Date`.
+ *
+ * @category Date transformations
+ * @since 1.0.0
+ */
 export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, Date> =>
   transform(
     self,
