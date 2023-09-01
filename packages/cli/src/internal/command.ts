@@ -232,16 +232,16 @@ const parseMap: {
             onFailure: (error) => error.error,
             onSuccess: (tuple) => tuple[1]
           }),
-          Effect.some,
+          Effect.flatten,
           Effect.map(commandDirective.builtIn)
         )
-        : Effect.fail(Option.none())
+        : Option.none()
     const parseUserDefinedArgs = pipe(
       ReadonlyArray.isNonEmptyReadonlyArray(args)
         ? pipe(
           Effect.succeed(args.slice(1)),
           Effect.when(() => cliConfig.normalizeCase(config, args[0]) === cliConfig.normalizeCase(config, self.name)),
-          Effect.some,
+          Effect.flatten,
           Effect.orElseFail(() =>
             validationError.commandMismatch(doc.p(span.error(`Missing command name: '${self.name}'`)))
           )
