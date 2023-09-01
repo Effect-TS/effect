@@ -1,6 +1,6 @@
 {
   "name": "@effect/rpc-http-node",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "",
   "publishConfig": {
     "access": "public",

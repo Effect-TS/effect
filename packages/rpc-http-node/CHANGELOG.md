@@ -1,5 +1,17 @@
 # @effect/rpc-http-node
 
+## 0.5.0
+
+### Minor Changes
+
+- [#86](https://github.com/Effect-TS/rpc/pull/86) [`ed3f157`](https://github.com/Effect-TS/rpc/commit/ed3f157aa7cd16be8e701faff224e724d71ecc2a) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- Updated dependencies [[`ed3f157`](https://github.com/Effect-TS/rpc/commit/ed3f157aa7cd16be8e701faff224e724d71ecc2a)]:
+  - @effect/rpc-http@1.0.0
+  - @effect/rpc@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes
