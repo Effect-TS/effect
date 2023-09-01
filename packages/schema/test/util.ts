@@ -14,15 +14,12 @@ import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
 
-// const doEffectify = true
-// const doRoundtrip = true
-// TODO
-const doEffectify = false
-const doRoundtrip = false
+const doEffectify = true
+const doRoundtrip = true
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
-export const effectifyDecode = (
+const effectifyDecode = (
   decode: (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any>,
   override: AST.AST
 ): (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any> =>
@@ -69,22 +66,24 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
         effectifyAST(ast.to, mode),
         AST.createFinalTransformation(
           // I need to override with the original ast here in order to not change the error message
-          // ------------------------------------------------v
+          // --------------------------------------------------v
           effectifyDecode(getDecode(ast.transformation, true), ast),
           // I need to override with the original ast here in order to not change the error message
-          // ------------------------------------------------v
+          // ---------------------------------------------------v
           effectifyDecode(getDecode(ast.transformation, false), ast)
         ),
         ast.annotations
       )
   }
-  const decode = S.decode(S.make(ast))
+  const schema = S.make(ast)
+  const decode = S.decode(schema)
+  const encode = S.encode(schema)
   return AST.createTransform(
-    ast,
-    ast,
+    AST.from(ast),
+    AST.to(ast),
     AST.createFinalTransformation(
       (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
-      (a, options) => Effect.flatMap(sleep, () => decode(a, options))
+      (a, options) => Effect.flatMap(sleep, () => encode(a, options))
     )
   )
 }
@@ -96,9 +95,8 @@ export const roundtrip = <I, A>(schema: S.Schema<I, A>) => {
   if (!doRoundtrip) {
     return
   }
-  const to = S.to(schema)
-  const arb = A.to(to)
-  const is = S.is(to)
+  const arb = A.to(schema)
+  const is = S.is(schema)
   const encode = S.encode(schema)
   const decode = S.decode(schema)
   fc.assert(fc.property(arb(fc), (a) => {
