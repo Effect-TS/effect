@@ -1,6 +1,6 @@
 ---
 title: MetricRegistry.ts
-nav_order: 70
+nav_order: 62
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/Registry.ts.html
-- Module: "@effect/io/Metric/Registry"
+- Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
+- Module: "@effect/io/MetricRegistry"
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: Duration.ts
-nav_order: 33
+nav_order: 27
 parent: Modules
 ---
 

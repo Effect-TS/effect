@@ -1,6 +1,6 @@
 ---
 title: Hub.ts
-nav_order: 53
+nav_order: 45
 parent: Modules
 ---
 

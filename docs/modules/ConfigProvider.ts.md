@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Config/Provider.ts.html
-- Module: "@effect/io/Config/Provider"
+- Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
+- Module: "@effect/io/ConfigProvider"
 ```
 
 ---

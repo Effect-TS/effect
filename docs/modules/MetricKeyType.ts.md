@@ -1,6 +1,6 @@
 ---
 title: MetricKeyType.ts
-nav_order: 66
+nav_order: 58
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Metric/KeyType.ts.html
-- Module: "@effect/io/Metric/KeyType"
+- Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
+- Module: "@effect/io/MetricKeyType"
 ```
 
 ---

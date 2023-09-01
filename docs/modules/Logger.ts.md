@@ -1,6 +1,6 @@
 ---
 title: Logger.ts
-nav_order: 58
+nav_order: 50
 parent: Modules
 ---
 

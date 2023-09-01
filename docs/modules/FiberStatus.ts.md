@@ -1,6 +1,6 @@
 ---
 title: FiberStatus.ts
-nav_order: 46
+nav_order: 38
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Status.ts.html
-- Module: "@effect/io/Fiber/Status"
+- Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
+- Module: "@effect/io/FiberStatus"
 ```
 
 ---

@@ -1,6 +1,6 @@
 ---
 title: Effect.ts
-nav_order: 34
+nav_order: 28
 parent: Modules
 ---
 

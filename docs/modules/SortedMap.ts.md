@@ -1,6 +1,6 @@
 ---
 title: SortedMap.ts
-nav_order: 105
+nav_order: 100
 parent: Modules
 ---
 

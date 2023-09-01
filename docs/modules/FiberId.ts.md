@@ -1,6 +1,6 @@
 ---
 title: FiberId.ts
-nav_order: 41
+nav_order: 35
 parent: Modules
 ---
 
@@ -9,8 +9,8 @@ parent: Modules
 Added in v2.0.0
 
 ```md
-- Docs: https://effect-ts.github.io/io/modules/Fiber/Id.ts.html
-- Module: "@effect/io/Fiber/Id"
+- Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
+- Module: "@effect/io/FiberId"
 ```
 
 ---
