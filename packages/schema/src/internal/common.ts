@@ -9,10 +9,10 @@ import type * as AST from "@effect/schema/AST"
 // ---------------------------------------------
 
 /** @internal */
-export const ArbitraryHookId = "@effect/schema/ArbitraryHookId"
+export const ArbitraryHookId = Symbol.for("@effect/schema/ArbitraryHookId")
 
 /** @internal */
-export const PrettyHookId = "@effect/schema/PrettyHookId"
+export const PrettyHookId = Symbol.for("@effect/schema/PrettyHookId")
 
 // ---------------------------------------------
 // Schema APIs

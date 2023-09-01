@@ -2,15 +2,14 @@
  * @since 1.0.0
  */
 
-import * as E from "@effect/data/Either"
 import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
-import { isNumber } from "@effect/data/Predicate"
-import * as RA from "@effect/data/ReadonlyArray"
+import * as Option from "@effect/data/Option"
+import * as Predicate from "@effect/data/Predicate"
+import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
-import * as I from "@effect/schema/internal/common"
-import { eitherOrUndefined } from "@effect/schema/ParseResult"
-import * as S from "@effect/schema/Schema"
+import * as Internal from "@effect/schema/internal/common"
+import * as Parser from "@effect/schema/Parser"
+import * as Schema from "@effect/schema/Schema"
 import type * as FastCheck from "fast-check"
 
 /**
@@ -25,14 +24,14 @@ export interface Arbitrary<A> {
  * @category hooks
  * @since 1.0.0
  */
-export const ArbitraryHookId = I.ArbitraryHookId
+export const ArbitraryHookId = Internal.ArbitraryHookId
 
 /**
  * @category arbitrary
  * @since 1.0.0
  */
 export const to = <I, A>(
-  schema: S.Schema<I, A>
+  schema: Schema.Schema<I, A>
 ): (fc: typeof FastCheck) => FastCheck.Arbitrary<A> => go(AST.to(schema.ast))
 
 /**
@@ -40,7 +39,7 @@ export const to = <I, A>(
  * @since 1.0.0
  */
 export const from = <I, A>(
-  schema: S.Schema<I, A>
+  schema: Schema.Schema<I, A>
 ): (fc: typeof FastCheck) => FastCheck.Arbitrary<I> => go(AST.from(schema.ast))
 
 const record = <K extends PropertyKey, V>(
@@ -66,7 +65,7 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
     case "Declaration":
       return pipe(
         getHook(ast),
-        O.match({
+        Option.match({
           onNone: () => go(ast.type),
           onSome: (handler) => handler(...ast.typeParameters.map((p) => go(p)))
         })
@@ -129,13 +128,13 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
     }
     case "Tuple": {
       const elements = ast.elements.map((e) => go(e.type))
-      const rest = pipe(ast.rest, O.map(RA.mapNonEmpty((e) => go(e))))
+      const rest = pipe(ast.rest, Option.map(ReadonlyArray.mapNonEmpty((e) => go(e))))
       return (fc) => {
         // ---------------------------------------------
         // handle elements
         // ---------------------------------------------
         let output = fc.tuple(...elements.map((arb) => arb(fc)))
-        if (elements.length > 0 && O.isNone(rest)) {
+        if (elements.length > 0 && Option.isNone(rest)) {
           const firstOptionalIndex = ast.elements.findIndex((e) => e.isOptional)
           if (firstOptionalIndex !== -1) {
             output = output.chain((as) =>
@@ -149,9 +148,9 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
-        if (O.isSome(rest)) {
-          const head = RA.headNonEmpty(rest.value)
-          const tail = RA.tailNonEmpty(rest.value)
+        if (Option.isSome(rest)) {
+          const head = ReadonlyArray.headNonEmpty(rest.value)
+          const tail = ReadonlyArray.tailNonEmpty(rest.value)
           output = output.chain((as) =>
             fc.array(head(fc), { maxLength: 2 }).map((rest) => [...as, ...rest])
           )
@@ -207,9 +206,9 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
     case "Lazy":
       return pipe(
         getHook(ast),
-        O.match({
+        Option.match({
           onNone: () => {
-            const get = I.memoizeThunk(() => go(ast.f()))
+            const get = Internal.memoizeThunk(() => go(ast.f()))
             return (fc) => fc.constant(null).chain(() => get()(fc))
           },
           onSome: (handler) => handler()
@@ -225,15 +224,9 @@ export const go = (ast: AST.AST, constraints?: Constraints): Arbitrary<any> => {
       const from = go(ast.from, combineConstraints(constraints, getConstraints(ast)))
       return pipe(
         getHook(ast),
-        O.match({
+        Option.match({
           onNone: () => (fc) =>
-            from(fc).filter((a) => {
-              const eu = eitherOrUndefined(ast.decode(a))
-              if (eu) {
-                return E.isRight(eu)
-              }
-              throw new Error("cannot build an Arbitrary for effectful refinements")
-            }),
+            from(fc).filter((a) => Option.isNone(ast.filter(a, Parser.defaultParseOption, ast))),
           onSome: (handler) => handler(from)
         })
       )
@@ -265,41 +258,35 @@ export const getConstraints = (ast: AST.Refinement): Constraints | undefined => 
   const TypeAnnotationId = ast.annotations[AST.TypeAnnotationId]
   const jsonSchema: any = ast.annotations[AST.JSONSchemaAnnotationId]
   switch (TypeAnnotationId) {
-    case S.GreaterThanTypeId:
-    case S.GreaterThanOrEqualToTypeId:
+    case Schema.GreaterThanTypeId:
+    case Schema.GreaterThanOrEqualToTypeId:
       return {
         _tag: "NumberConstraints",
         constraints: { min: jsonSchema.exclusiveMinimum ?? jsonSchema.minimum }
       }
-    case S.LessThanTypeId:
-    case S.LessThanOrEqualToTypeId:
+    case Schema.LessThanTypeId:
+    case Schema.LessThanOrEqualToTypeId:
       return {
         _tag: "NumberConstraints",
         constraints: { max: jsonSchema.exclusiveMaximum ?? jsonSchema.maximum }
       }
-    case S.PositiveTypeId:
-    case S.NonNegativeTypeId:
-      return { _tag: "NumberConstraints", constraints: { min: 0 } }
-    case S.NegativeTypeId:
-    case S.NonPositiveTypeId:
-      return { _tag: "NumberConstraints", constraints: { max: 0 } }
-    case S.IntTypeId:
+    case Schema.IntTypeId:
       return { _tag: "IntegerConstraints", constraints: {} }
-    case S.BetweenTypeId: {
+    case Schema.BetweenTypeId: {
       const min = jsonSchema.minimum
       const max = jsonSchema.maximum
       const constraints: NumberConstraints["constraints"] = {}
-      if (isNumber(min)) {
+      if (Predicate.isNumber(min)) {
         constraints.min = min
       }
-      if (isNumber(max)) {
+      if (Predicate.isNumber(max)) {
         constraints.max = max
       }
       return { _tag: "NumberConstraints", constraints }
     }
-    case S.MinLengthTypeId:
+    case Schema.MinLengthTypeId:
       return { _tag: "StringConstraints", constraints: { minLength: jsonSchema.minLength } }
-    case S.MaxLengthTypeId:
+    case Schema.MaxLengthTypeId:
       return { _tag: "StringConstraints", constraints: { maxLength: jsonSchema.maxLength } }
   }
 }
@@ -324,11 +311,11 @@ export const combineConstraints = (
             constraints: { ...c1.constraints, ...c2.constraints }
           }
           const min = getMax(c1.constraints.min, c2.constraints.min)
-          if (isNumber(min)) {
+          if (Predicate.isNumber(min)) {
             out.constraints.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
-          if (isNumber(max)) {
+          if (Predicate.isNumber(max)) {
             out.constraints.max = max
           }
           return out
@@ -336,11 +323,11 @@ export const combineConstraints = (
         case "IntegerConstraints": {
           const out: IntegerConstraints = { ...c2 }
           const min = getMax(c1.constraints.min, c2.constraints.min)
-          if (isNumber(min)) {
+          if (Predicate.isNumber(min)) {
             out.constraints.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
-          if (isNumber(max)) {
+          if (Predicate.isNumber(max)) {
             out.constraints.max = max
           }
           return out
@@ -356,11 +343,11 @@ export const combineConstraints = (
             constraints: { ...c1.constraints, ...c2.constraints }
           }
           const min = getMax(c1.constraints.minLength, c2.constraints.minLength)
-          if (isNumber(min)) {
+          if (Predicate.isNumber(min)) {
             out.constraints.minLength = min
           }
           const max = getMin(c1.constraints.maxLength, c2.constraints.maxLength)
-          if (isNumber(max)) {
+          if (Predicate.isNumber(max)) {
             out.constraints.maxLength = max
           }
           return out
@@ -374,11 +361,11 @@ export const combineConstraints = (
         case "IntegerConstraints": {
           const out: IntegerConstraints = { ...c1 }
           const min = getMax(c1.constraints.min, c2.constraints.min)
-          if (isNumber(min)) {
+          if (Predicate.isNumber(min)) {
             out.constraints.min = min
           }
           const max = getMin(c1.constraints.max, c2.constraints.max)
-          if (isNumber(max)) {
+          if (Predicate.isNumber(max)) {
             out.constraints.max = max
           }
           return out

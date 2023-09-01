@@ -63,7 +63,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("bigint", () => {
-    const pretty = P.to(S.bigint)
+    const pretty = P.to(S.bigintFromSelf)
     expect(pretty(1n)).toEqual("1n")
   })
 

@@ -3,7 +3,7 @@
  */
 
 import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
+import * as Option from "@effect/data/Option"
 import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
 import type { ParseErrors } from "@effect/schema/ParseResult"
@@ -87,11 +87,11 @@ const getDescription = AST.getAnnotation<AST.DescriptionAnnotation>(
   AST.DescriptionAnnotationId
 )
 
-const getExpected = (ast: AST.AST): O.Option<string> =>
+const getExpected = (ast: AST.AST): Option.Option<string> =>
   pipe(
     getIdentifier(ast),
-    O.orElse(() => getTitle(ast)),
-    O.orElse(() => getDescription(ast))
+    Option.orElse(() => getTitle(ast)),
+    Option.orElse(() => getDescription(ast))
   )
 
 /** @internal */
@@ -108,37 +108,40 @@ export const formatExpected = (ast: AST.AST): string => {
     case "UnknownKeyword":
     case "VoidKeyword":
     case "NeverKeyword":
-      return O.getOrElse(getExpected(ast), () => ast._tag)
+      return Option.getOrElse(getExpected(ast), () => ast._tag)
     case "Literal":
-      return O.getOrElse(getExpected(ast), () => formatActual(ast.literal))
+      return Option.getOrElse(getExpected(ast), () => formatActual(ast.literal))
     case "UniqueSymbol":
-      return O.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
+      return Option.getOrElse(getExpected(ast), () => formatActual(ast.symbol))
     case "Union":
       return ast.types.map(formatExpected).join(" or ")
     case "TemplateLiteral":
-      return O.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
+      return Option.getOrElse(getExpected(ast), () => formatTemplateLiteral(ast))
     case "Tuple":
-      return O.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous tuple or array schema>")
     case "TypeLiteral":
-      return O.getOrElse(getExpected(ast), () => "<anonymous type literal schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous type literal schema>")
     case "Enums":
-      return O.getOrElse(
+      return Option.getOrElse(
         getExpected(ast),
         () => ast.enums.map((_, value) => JSON.stringify(value)).join(" | ")
       )
     case "Lazy":
-      return O.getOrElse(getExpected(ast), () => "<anonymous lazy schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous lazy schema>")
     case "Declaration":
-      return O.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous declaration schema>")
     case "Refinement":
-      return O.getOrElse(getExpected(ast), () => "<anonymous refinement schema>")
+      return Option.getOrElse(getExpected(ast), () => "<anonymous refinement schema>")
     case "Transform":
-      return O.getOrElse(
+      return Option.getOrElse(
         getExpected(ast),
-        () => `${formatExpected(ast.from)} -> ${formatExpected(ast.to)}`
+        () => `${formatExpected(ast.from)} <-> ${formatExpected(ast.to)}`
       )
   }
 }
+
+const isCollapsible = (es: Forest<string>, errors: NonEmptyReadonlyArray<ParseErrors>): boolean =>
+  es.length === 1 && es[0].forest.length !== 0 && errors[0]._tag !== "UnionMember"
 
 const go = (e: ParseErrors): Tree<string> => {
   switch (e._tag) {
@@ -146,9 +149,9 @@ const go = (e: ParseErrors): Tree<string> => {
       return make(
         pipe(
           getMessage(e.expected),
-          O.map((f) => f(e.actual)),
-          O.orElse(() => e.message),
-          O.getOrElse(() =>
+          Option.map((f) => f(e.actual)),
+          Option.orElse(() => e.message),
+          Option.getOrElse(() =>
             `Expected ${formatExpected(e.expected)}, actual ${formatActual(e.actual)}`
           )
         )
@@ -157,7 +160,7 @@ const go = (e: ParseErrors): Tree<string> => {
       return make("is forbidden")
     case "Index": {
       const es = e.errors.map(go)
-      if (es.length === 1 && es[0].forest.length !== 0) {
+      if (isCollapsible(es, e.errors)) {
         return make(`[${e.index}]${es[0].value}`, es[0].forest)
       }
       return make(`[${e.index}]`, es)
@@ -166,7 +169,7 @@ const go = (e: ParseErrors): Tree<string> => {
       return make(`is unexpected`)
     case "Key": {
       const es = e.errors.map(go)
-      if (es.length === 1 && es[0].forest.length !== 0) {
+      if (isCollapsible(es, e.errors)) {
         return make(`[${formatActual(e.key)}]${es[0].value}`, es[0].forest)
       }
       return make(`[${formatActual(e.key)}]`, es)

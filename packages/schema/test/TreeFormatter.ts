@@ -47,7 +47,13 @@ describe.concurrent("formatErrors", () => {
 
   it("should collapse trees that have a branching factor of 1", async () => {
     const schema = S.struct({
-      a: S.struct({ b: S.struct({ c: S.array(S.struct({ d: S.string })) }) })
+      a: S.struct({ b: S.struct({ c: S.array(S.struct({ d: S.string })) }) }),
+      e: S.optional(
+        S.union(
+          S.struct({ type: S.literal("f"), f: S.string }),
+          S.struct({ type: S.literal("g"), g: S.number })
+        )
+      )
     })
     Util.expectParseFailureTree(
       schema,
@@ -73,6 +79,15 @@ describe.concurrent("formatErrors", () => {
    └─ [1]["d"]
       └─ Expected string, actual 1`,
       Util.allErrors
+    )
+    Util.expectParseFailureTree(
+      schema,
+      { a: { b: { c: [{ d: "d" }] } }, e: { type: "f" } },
+      `error(s) found
+└─ ["e"]
+   └─ union member
+      └─ ["f"]
+         └─ is missing`
     )
   })
 })

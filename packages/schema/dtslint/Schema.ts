@@ -1,22 +1,20 @@
-import { Brand } from "@effect/data/Brand";
+import * as Brand from "@effect/data/Brand"
 import { pipe } from "@effect/data/Function";
 import * as S from "@effect/schema/Schema";
-
-declare const NumberFromString: S.Schema<string, number>
 
 // ---------------------------------------------
 // From
 // ---------------------------------------------
 
 // $ExpectType never
-export type FromNever = S.From<typeof S.never>
+export type FromNever = S.Schema.From<typeof S.never>
 
 // ---------------------------------------------
 // To
 // ---------------------------------------------
 
 // $ExpectType never
-export type ToNever = S.To<typeof S.never>
+export type ToNever = S.Schema.To<typeof S.never>
 
 // ---------------------------------------------
 // Primitives
@@ -38,7 +36,7 @@ S.number;
 S.boolean;
 
 // $ExpectType Schema<bigint, bigint>
-S.bigint;
+S.bigintFromSelf;
 
 // $ExpectType Schema<symbol, symbol>
 S.symbol;
@@ -143,7 +141,7 @@ S.enums(Fruits);
 S.nullable(S.string)
 
 // $ExpectType Schema<string | null, number | null>
-S.nullable(NumberFromString)
+S.nullable(S.NumberFromString)
 
 // ---------------------------------------------
 // Unions
@@ -153,14 +151,14 @@ S.nullable(NumberFromString)
 S.union(S.string, S.number);
 
 // $ExpectType Schema<string | boolean, number | boolean>
-S.union(S.boolean, NumberFromString);
+S.union(S.boolean, S.NumberFromString);
 
 // ---------------------------------------------
 // keyof
 // ---------------------------------------------
 
 // $ExpectType Schema<"a" | "b", "a" | "b">
-S.keyof(S.struct({ a: S.string,  b: NumberFromString }));
+S.keyof(S.struct({ a: S.string,  b: S.NumberFromString }));
 
 // ---------------------------------------------
 // Tuples
@@ -170,7 +168,7 @@ S.keyof(S.struct({ a: S.string,  b: NumberFromString }));
 S.tuple(S.string, S.number);
 
 // $ExpectType Schema<readonly [string, string], readonly [string, number]>
-S.tuple(S.string, NumberFromString);
+S.tuple(S.string, S.NumberFromString);
 
 // ---------------------------------------------
 // rest
@@ -180,7 +178,7 @@ S.tuple(S.string, NumberFromString);
 pipe(S.tuple(S.string, S.number), S.rest(S.boolean))
 
 // $ExpectType Schema<readonly [string, string, ...string[]], readonly [string, number, ...number[]]>
-pipe(S.tuple(S.string, NumberFromString), S.rest(NumberFromString))
+pipe(S.tuple(S.string, S.NumberFromString), S.rest(S.NumberFromString))
 
 // ---------------------------------------------
 // element
@@ -190,7 +188,7 @@ pipe(S.tuple(S.string, NumberFromString), S.rest(NumberFromString))
 pipe(S.tuple(S.string, S.number), S.element(S.boolean))
 
 // $ExpectType Schema<readonly [string, string, string], readonly [string, number, number]>
-pipe(S.tuple(S.string, NumberFromString), S.element(NumberFromString))
+pipe(S.tuple(S.string, S.NumberFromString), S.element(S.NumberFromString))
 
 // ---------------------------------------------
 // optionalElement
@@ -200,7 +198,7 @@ pipe(S.tuple(S.string, NumberFromString), S.element(NumberFromString))
 pipe(S.tuple(S.string, S.number), S.optionalElement(S.boolean))
 
 // $ExpectType Schema<readonly [string, string, string?], readonly [string, number, number?]>
-pipe(S.tuple(S.string, NumberFromString), S.optionalElement(NumberFromString))
+pipe(S.tuple(S.string, S.NumberFromString), S.optionalElement(S.NumberFromString))
 
 // ---------------------------------------------
 // Arrays
@@ -210,13 +208,13 @@ pipe(S.tuple(S.string, NumberFromString), S.optionalElement(NumberFromString))
 S.array(S.number);
 
 // $ExpectType Schema<readonly string[], readonly number[]>
-S.array(NumberFromString);
+S.array(S.NumberFromString);
 
 // $ExpectType Schema<readonly [number, ...number[]], readonly [number, ...number[]]>
 S.nonEmptyArray(S.number);
 
 // $ExpectType Schema<readonly [string, ...string[]], readonly [number, ...number[]]>
-S.nonEmptyArray(NumberFromString);
+S.nonEmptyArray(S.NumberFromString);
 
 // ---------------------------------------------
 // Structs
@@ -226,13 +224,13 @@ S.nonEmptyArray(NumberFromString);
 S.struct({ a: S.string,  b: S.number });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
-const MyModel = S.struct({ a: S.string,  b: NumberFromString });
+const MyModel = S.struct({ a: S.string,  b: S.NumberFromString });
 
 // $ExpectType { readonly a: string; readonly b: string; }
-export type MyModelFrom = S.From<typeof MyModel>
+export type MyModelFrom = S.Schema.From<typeof MyModel>
 
 // $ExpectType { readonly a: string; readonly b: number; }
-export type MyModelTo = S.To<typeof MyModel>
+export type MyModelTo = S.Schema.To<typeof MyModel>
 
 // $ExpectType Schema<{ readonly a: never; }, { readonly a: never; }>
 S.struct({ a: S.never })
@@ -245,7 +243,7 @@ S.struct({ a: S.never })
 S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean) });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c?: number; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString) });
+S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString) });
 
 // piping
 // $ExpectType Schema<{ readonly a?: string; }, { readonly a?: string; }>
@@ -262,7 +260,7 @@ S.struct({ a: pipe(S.string, S.optional) })
 S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean).withDefault(() => false) });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c: number; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString).withDefault(() => 0) });
+S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString).withDefault(() => 0) });
 
 // piping
 // $ExpectType Schema<{ readonly a?: string; }, { readonly a: string; }>
@@ -276,7 +274,7 @@ S.struct({ a: pipe(S.string, S.optional).withDefault(() => '') })
 S.struct({ a: S.string, b: S.number, c: S.optional(S.boolean).toOption() });
 
 // $ExpectType Schema<{ readonly a: string; readonly b: number; readonly c?: string; }, { readonly a: string; readonly b: number; readonly c: Option<number>; }>
-S.struct({ a: S.string, b: S.number, c: S.optional(NumberFromString).toOption() });
+S.struct({ a: S.string, b: S.number, c: S.optional(S.NumberFromString).toOption() });
 
 // piping
 // $ExpectType Schema<{ readonly a?: string; }, { readonly a: Option<string>; }>
@@ -290,7 +288,7 @@ S.struct({ a: pipe(S.string, S.optional).toOption() })
 pipe(S.struct({ a: S.string,  b: S.number, c: S.boolean }), S.pick('a', 'b'));
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
-pipe(S.struct({ a: S.string,  b: NumberFromString, c: S.boolean }), S.pick('a', 'b'));
+pipe(S.struct({ a: S.string,  b: S.NumberFromString, c: S.boolean }), S.pick('a', 'b'));
 
 // ---------------------------------------------
 // pick - optional
@@ -300,10 +298,10 @@ pipe(S.struct({ a: S.string,  b: NumberFromString, c: S.boolean }), S.pick('a', 
 pipe(S.struct({ a: S.optional(S.string),  b: S.number, c: S.boolean }), S.pick('a', 'b'));
 
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a?: string; readonly b: number; }>
-pipe(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.boolean }), S.pick('a', 'b'));
+pipe(S.struct({ a: S.optional(S.string),  b: S.NumberFromString, c: S.boolean }), S.pick('a', 'b'));
 
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
-pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromString, c: S.boolean }), S.pick('a', 'b'));
+pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: S.NumberFromString, c: S.boolean }), S.pick('a', 'b'));
 
 // ---------------------------------------------
 // omit
@@ -313,7 +311,7 @@ pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromStr
 pipe(S.struct({ a: S.string,  b: S.number, c: S.boolean }), S.omit('c'));
 
 // $ExpectType Schema<{ readonly a: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
-pipe(S.struct({ a: S.string,  b: NumberFromString, c: S.boolean }), S.omit('c'));
+pipe(S.struct({ a: S.string,  b: S.NumberFromString, c: S.boolean }), S.omit('c'));
 
 // ---------------------------------------------
 // omit - optional
@@ -323,10 +321,10 @@ pipe(S.struct({ a: S.string,  b: NumberFromString, c: S.boolean }), S.omit('c'))
 pipe(S.struct({ a: S.optional(S.string),  b: S.number, c: S.boolean }), S.omit('c'));
 
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a?: string; readonly b: number; }>
-pipe(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.boolean }), S.omit('c'));
+pipe(S.struct({ a: S.optional(S.string),  b: S.NumberFromString, c: S.boolean }), S.omit('c'));
 
 // $ExpectType Schema<{ readonly a?: string; readonly b: string; }, { readonly a: string; readonly b: number; }>
-pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromString, c: S.boolean }), S.omit('c'));
+pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: S.NumberFromString, c: S.boolean }), S.omit('c'));
 
 // ---------------------------------------------
 // brand
@@ -336,7 +334,7 @@ pipe(S.struct({ a: S.optional(S.string).withDefault(() => ''),  b: NumberFromStr
 pipe(S.number, S.int(), S.brand('Int'))
 
 // $ExpectType BrandSchema<string, number & Brand<"Int">>
-pipe(NumberFromString, S.int(), S.brand('Int'))
+pipe(S.NumberFromString, S.int(), S.brand('Int'))
 
 // ---------------------------------------------
 // Partial
@@ -346,7 +344,7 @@ pipe(NumberFromString, S.int(), S.brand('Int'))
 S.partial(S.struct({ a: S.string,  b: S.number }));
 
 // $ExpectType Schema<{ readonly a?: string; readonly b?: string; }, { readonly a?: string; readonly b?: number; }>
-S.partial(S.struct({ a: S.string,  b: NumberFromString }));
+S.partial(S.struct({ a: S.string,  b: S.NumberFromString }));
 
 // ---------------------------------------------
 // Required
@@ -356,7 +354,7 @@ S.partial(S.struct({ a: S.string,  b: NumberFromString }));
 S.required(S.struct({ a: S.optional(S.string),  b: S.optional(S.number) }));
 
 // $ExpectType Schema<{ readonly b: string; readonly a: string; readonly c: string; }, { readonly b: number; readonly a: string; readonly c: number; }>
-S.required(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.optional(NumberFromString) }));
+S.required(S.struct({ a: S.optional(S.string),  b: S.NumberFromString, c: S.optional(S.NumberFromString) }));
 
 // ---------------------------------------------
 // Records
@@ -366,7 +364,7 @@ S.required(S.struct({ a: S.optional(S.string),  b: NumberFromString, c: S.option
 S.record(S.string, S.string)
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: number; }>
-S.record(S.string, NumberFromString)
+S.record(S.string, S.NumberFromString)
 
 // $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string]: string; }>
 S.record(pipe(S.string, S.minLength(2)), S.string)
@@ -379,6 +377,12 @@ S.record(S.symbol, S.string)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }>
 S.record(S.templateLiteral(S.literal('a'), S.string), S.string)
+
+// $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string & Brand<"UserId">]: string; }>
+S.record(S.string.pipe(S.brand('UserId')), S.string)
+
+// $ExpectType Schema<{ readonly [x: string]: string; }, { readonly [x: string & Brand<symbol>]: string; }>
+S.record(S.string.pipe(S.brand(Symbol.for('UserId'))), S.string)
 
 // ---------------------------------------------
 // Extend
@@ -426,7 +430,7 @@ interface LazyTo2 {
 }
 const lazy2: S.Schema<LazyFrom2, LazyTo2> = S.lazy(() =>
   S.struct({
-    a: NumberFromString,
+    a: S.NumberFromString,
     as: S.array(lazy2)
   })
 )
@@ -439,7 +443,7 @@ const lazy2: S.Schema<LazyFrom2, LazyTo2> = S.lazy(() =>
 S.optionFromSelf(S.number)
 
 // $ExpectType Schema<Option<string>, Option<number>>
-S.optionFromSelf(NumberFromString)
+S.optionFromSelf(S.NumberFromString)
 
 // ---------------------------------------------
 // optionFromNullable
@@ -449,7 +453,7 @@ S.optionFromSelf(NumberFromString)
 S.optionFromNullable(S.number)
 
 // $ExpectType Schema<string | null, Option<number>>
-S.optionFromNullable(NumberFromString)
+S.optionFromNullable(S.NumberFromString)
 
 // ---------------------------------------------
 // instanceOf
@@ -484,7 +488,7 @@ S.templateLiteral(S.union(EmailLocaleIDs, FooterLocaleIDs), S.literal("_id"))
 pipe(S.struct({ radius: S.number }), S.attachPropertySignature("kind", "circle"))
 
 // $ExpectType Schema<{ readonly radius: string; }, { readonly radius: number; readonly kind: "circle"; }>
-pipe(S.struct({ radius: NumberFromString }), S.attachPropertySignature("kind", "circle"))
+pipe(S.struct({ radius: S.NumberFromString }), S.attachPropertySignature("kind", "circle"))
 
 // ---------------------------------------------
 // filter
@@ -519,7 +523,7 @@ declare const UnionFilter: S.Schema<{ readonly a: string } | { readonly b: strin
 pipe(UnionFilter, S.filter(S.is(S.struct({ b: S.string }))))
 
 // $ExpectType Schema<number, number & Brand<"MyNumber">>
-pipe(S.number, S.filter((n): n is number & Brand<"MyNumber"> => n > 0))
+pipe(S.number, S.filter((n): n is number & Brand.Brand<"MyNumber"> => n > 0))
 
 // ---------------------------------------------
 // compose
@@ -553,3 +557,13 @@ S.NumberFromString.pipe(S.compose(S.union(S.null, S.number)))
 
 // @ts-expect-error
 S.compose(S.string, S.number)
+
+// ---------------------------------------------
+// fromBrand
+// ---------------------------------------------
+
+type Eur = number & Brand.Brand<"Eur">
+const Eur = Brand.nominal<Eur>()
+
+// $ExpectType Schema<number, number & Brand<"Eur">>
+S.number.pipe(S.fromBrand(Eur))

@@ -2,14 +2,13 @@
  * @since 1.0.0
  */
 import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
-import * as RA from "@effect/data/ReadonlyArray"
+import * as Option from "@effect/data/Option"
+import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
-import * as I from "@effect/schema/internal/common"
-import * as P from "@effect/schema/Parser"
-import type { Schema } from "@effect/schema/Schema"
-import * as S from "@effect/schema/Schema"
-import { formatActual } from "@effect/schema/TreeFormatter"
+import * as Internal from "@effect/schema/internal/common"
+import * as Parser from "@effect/schema/Parser"
+import * as Schema from "@effect/schema/Schema"
+import * as TreeFormatter from "@effect/schema/TreeFormatter"
 
 /**
  * @category model
@@ -23,19 +22,20 @@ export interface Pretty<To> {
  * @category hooks
  * @since 1.0.0
  */
-export const PrettyHookId = I.PrettyHookId
+export const PrettyHookId = Internal.PrettyHookId
 
 /**
  * @category prettify
  * @since 1.0.0
  */
-export const to = <I, A>(schema: Schema<I, A>): (a: A) => string => compile(schema.ast)
+export const to = <I, A>(schema: Schema.Schema<I, A>): (a: A) => string => compile(schema.ast)
 
 /**
  * @category prettify
  * @since 1.0.0
  */
-export const from = <I, A>(schema: Schema<I, A>): (i: I) => string => compile(AST.from(schema.ast))
+export const from = <I, A>(schema: Schema.Schema<I, A>): (i: I) => string =>
+  compile(AST.from(schema.ast))
 
 const getHook = AST.getAnnotation<(...args: ReadonlyArray<Pretty<any>>) => Pretty<any>>(
   PrettyHookId
@@ -45,7 +45,7 @@ const toString = () => String
 
 const stringify = () => (a: any) => JSON.stringify(a)
 
-const format = () => formatActual
+const format = () => TreeFormatter.formatActual
 
 /**
  * @since 1.0.0
@@ -54,7 +54,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Declaration": (ast, go) =>
     pipe(
       getHook(ast),
-      O.match({
+      Option.match({
         onNone: () => go(ast.type),
         onSome: (handler) => handler(...ast.typeParameters.map(go))
       })
@@ -81,7 +81,7 @@ export const match: AST.Match<Pretty<any>> = {
   "Enums": stringify,
   "Tuple": (ast, go) => {
     const elements = ast.elements.map((e) => go(e.type))
-    const rest = pipe(ast.rest, O.map(RA.mapNonEmpty(go)))
+    const rest = pipe(ast.rest, Option.map(ReadonlyArray.mapNonEmpty(go)))
     return (input: ReadonlyArray<unknown>) => {
       const output: Array<string> = []
       let i = 0
@@ -100,9 +100,9 @@ export const match: AST.Match<Pretty<any>> = {
       // ---------------------------------------------
       // handle rest element
       // ---------------------------------------------
-      if (O.isSome(rest)) {
-        const head = RA.headNonEmpty(rest.value)
-        const tail = RA.tailNonEmpty(rest.value)
+      if (Option.isSome(rest)) {
+        const head = ReadonlyArray.headNonEmpty(rest.value)
+        const tail = ReadonlyArray.tailNonEmpty(rest.value)
         for (; i < input.length - tail.length; i++) {
           output.push(head(input[i]))
         }
@@ -146,7 +146,7 @@ export const match: AST.Match<Pretty<any>> = {
       if (indexSignatureTypes.length > 0) {
         for (let i = 0; i < indexSignatureTypes.length; i++) {
           const type = indexSignatureTypes[i]
-          const keys = I.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
+          const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
             if (Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
               continue
@@ -156,18 +156,18 @@ export const match: AST.Match<Pretty<any>> = {
         }
       }
 
-      return RA.isNonEmptyReadonlyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
+      return ReadonlyArray.isNonEmptyReadonlyArray(output) ? "{ " + output.join(", ") + " }" : "{}"
     }
   },
   "Union": (ast, go) => {
-    const types = ast.types.map((ast) => [P.is(S.make(ast)), go(ast)] as const)
+    const types = ast.types.map((ast) => [Parser.is(Schema.make(ast)), go(ast)] as const)
     return (a) => {
       const index = types.findIndex(([is]) => is(a))
       return types[index][1](a)
     }
   },
   "Lazy": (ast, go) => {
-    const get = I.memoizeThunk(() => go(ast.f()))
+    const get = Internal.memoizeThunk(() => go(ast.f()))
     return (a) => get()(a)
   },
   "Refinement": (ast, go) => go(ast.from),

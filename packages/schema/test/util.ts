@@ -8,21 +8,25 @@ import * as Effect from "@effect/io/Effect"
 import * as A from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
+import { getDecode } from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
-import type { Schema } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
 
-const doEffectify = true
-const doRoundtrip = true
+// const doEffectify = true
+// const doRoundtrip = true
+// TODO
+const doEffectify = false
+const doRoundtrip = false
 
 export const sleep = Effect.sleep(Duration.millis(10))
 
 export const effectifyDecode = (
-  decode: (input: any, options?: ParseOptions) => PR.ParseResult<any>
-): (input: any, options?: ParseOptions) => PR.ParseResult<any> =>
-(input, options) => PR.flatMap(sleep, () => decode(input, options))
+  decode: (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any>,
+  override: AST.AST
+): (input: any, options: ParseOptions, self: AST.AST) => PR.ParseResult<any> =>
+(input, options) => PR.flatMap(sleep, () => decode(input, options, override))
 
 let skip = false
 
@@ -34,13 +38,6 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     }
   }
   switch (ast._tag) {
-    case "Declaration":
-      return AST.createDeclaration(
-        ast.typeParameters.map((ast) => effectifyAST(ast, mode)),
-        ast.type,
-        ast.decode,
-        ast.annotations
-      )
     case "Tuple":
       return AST.createTuple(
         ast.elements.map((e) => AST.createElement(effectifyAST(e.type, mode), e.isOptional)),
@@ -63,34 +60,39 @@ const effectifyAST = (ast: AST.AST, mode: "all" | "semi"): AST.AST => {
     case "Refinement":
       return AST.createRefinement(
         effectifyAST(ast.from, mode),
-        effectifyDecode(ast.decode),
-        ast.isReversed,
+        ast.filter,
         ast.annotations
       )
     case "Transform":
-      return AST._createTransform(
+      return AST.createTransform(
         effectifyAST(ast.from, mode),
         effectifyAST(ast.to, mode),
-        effectifyDecode(ast.decode),
-        effectifyDecode(ast.encode),
-        ast.propertySignatureTransformations,
+        AST.createFinalTransformation(
+          // I need to override with the original ast here in order to not change the error message
+          // ------------------------------------------------v
+          effectifyDecode(getDecode(ast.transformation, true), ast),
+          // I need to override with the original ast here in order to not change the error message
+          // ------------------------------------------------v
+          effectifyDecode(getDecode(ast.transformation, false), ast)
+        ),
         ast.annotations
       )
   }
   const decode = S.decode(S.make(ast))
-  return AST._createTransform(
+  return AST.createTransform(
     ast,
     ast,
-    (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
-    (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
-    []
+    AST.createFinalTransformation(
+      (a, options) => Effect.flatMap(sleep, () => decode(a, options)),
+      (a, options) => Effect.flatMap(sleep, () => decode(a, options))
+    )
   )
 }
 
-export const effectify = <I, A>(schema: Schema<I, A>, mode: "all" | "semi"): Schema<I, A> =>
+export const effectify = <I, A>(schema: S.Schema<I, A>, mode: "all" | "semi"): S.Schema<I, A> =>
   S.make(effectifyAST(schema.ast, mode))
 
-export const roundtrip = <I, A>(schema: Schema<I, A>) => {
+export const roundtrip = <I, A>(schema: S.Schema<I, A>) => {
   if (!doRoundtrip) {
     return
   }
@@ -139,123 +141,122 @@ export const allErrors: ParseOptions = {
 }
 
 export const expectParseSuccess = async <I, A>(
-  schema: Schema<I, A>,
-  u: unknown,
-  a: A = u as any,
+  schema: S.Schema<I, A>,
+  input: unknown,
+  expected: A = input as any,
   options?: ParseOptions
 ) => {
-  const either = Effect.runSync(Effect.either(S.parse(schema)(u, options)))
-  expect(either).toStrictEqual(Either.right(a))
+  const actual = Effect.runSync(Effect.either(S.parse(schema)(input, options)))
+  expect(actual).toStrictEqual(Either.right(expected))
   if (doEffectify) {
-    const parseResult = await Effect.runPromise(
-      Effect.either(S.parse(effectify(schema, "all"))(u, options))
+    const parseEffectResult = await Effect.runPromise(
+      Effect.either(S.parse(effectify(schema, "all"))(input, options))
     )
-    expect(parseResult).toStrictEqual(either)
+    expect(parseEffectResult).toStrictEqual(actual)
     const semiParseEffectResult = await Effect.runPromise(
-      Effect.either(S.parse(effectify(schema, "semi"))(u, options))
+      Effect.either(S.parse(effectify(schema, "semi"))(input, options))
     )
-    expect(semiParseEffectResult).toStrictEqual(either)
+    expect(semiParseEffectResult).toStrictEqual(actual)
   }
 }
 
 export const expectParseFailure = async <I, A>(
-  schema: Schema<I, A>,
-  u: unknown,
+  schema: S.Schema<I, A>,
+  input: unknown,
   message: string,
   options?: ParseOptions
 ) => {
-  const either = Either.mapLeft(
-    Effect.runSync(Effect.either(S.parse(schema)(u, options))),
+  const actual = Either.mapLeft(
+    Effect.runSync(Effect.either(S.parse(schema)(input, options))),
     (e) => formatAll(e.errors)
   )
-  expect(either).toStrictEqual(Either.left(message))
+  expect(actual).toStrictEqual(Either.left(message))
   if (doEffectify) {
-    const parseResult = Either.mapLeft(
-      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "all"))(u, options))),
+    const parseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "all"))(input, options))),
       (e) => formatAll(e.errors)
     )
-    expect(parseResult).toStrictEqual(either)
+    expect(parseEffectResult).toStrictEqual(actual)
     const semiParseEffectResult = Either.mapLeft(
-      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "semi"))(u, options))),
+      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "semi"))(input, options))),
       (e) => formatAll(e.errors)
     )
-    expect(semiParseEffectResult).toStrictEqual(either)
+    expect(semiParseEffectResult).toStrictEqual(actual)
   }
 }
 
 export const expectParseFailureTree = async <I, A>(
-  schema: Schema<I, A>,
-  u: unknown,
+  schema: S.Schema<I, A>,
+  input: unknown,
   message: string,
   options?: ParseOptions
 ) => {
-  const either = Either.mapLeft(
-    Effect.runSync(Effect.either(S.parse(schema)(u, options))),
+  const actual = Either.mapLeft(
+    Effect.runSync(Effect.either(S.parse(schema)(input, options))),
     (e) => formatErrors(e.errors)
   )
-  expect(either).toEqual(Either.left(message))
+  expect(actual).toEqual(Either.left(message))
   if (doEffectify) {
-    const parseResult = Either.mapLeft(
-      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "all"))(u, options))),
+    const parseEffectResult = Either.mapLeft(
+      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "all"))(input, options))),
       (e) => formatErrors(e.errors)
     )
-    expect(parseResult).toStrictEqual(either)
+    expect(parseEffectResult).toStrictEqual(actual)
     const semiParseEffectResult = Either.mapLeft(
-      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "semi"))(u, options))),
+      await Effect.runPromise(Effect.either(S.parse(effectify(schema, "semi"))(input, options))),
       (e) => formatErrors(e.errors)
     )
-    expect(semiParseEffectResult).toStrictEqual(either)
+    expect(semiParseEffectResult).toStrictEqual(actual)
   }
 }
 
 export const expectEncodeSuccess = async <I, A>(
-  schema: Schema<I, A>,
+  schema: S.Schema<I, A>,
   a: A,
-  o: unknown,
+  expected: unknown,
   options?: ParseOptions
 ) => {
-  const either = Effect.runSync(Effect.either(S.encode(schema)(a, options)))
-  expect(either).toStrictEqual(Either.right(o))
+  const actual = Effect.runSync(Effect.either(S.encode(schema)(a, options)))
+  expect(actual).toStrictEqual(Either.right(expected))
   if (doEffectify) {
-    const encodeResult = await Effect.runPromise(
+    const allencodeEffectResult = await Effect.runPromise(
       Effect.either(S.encode(effectify(schema, "all"))(a, options))
     )
-    expect(encodeResult).toStrictEqual(either)
-    const randomEncodeEffectResult = await Effect.runPromise(
+    expect(allencodeEffectResult).toStrictEqual(actual)
+    const semiEncodeEffectResult = await Effect.runPromise(
       Effect.either(S.encode(effectify(schema, "semi"))(a, options))
     )
-    expect(randomEncodeEffectResult).toStrictEqual(either)
+    expect(semiEncodeEffectResult).toStrictEqual(actual)
   }
 }
 
 export const expectEncodeFailure = async <I, A>(
-  schema: Schema<I, A>,
+  schema: S.Schema<I, A>,
   a: A,
   message: string,
   options?: ParseOptions
 ) => {
-  const either = Either.mapLeft(
+  const actual = Either.mapLeft(
     Effect.runSync(Effect.either(S.encode(schema)(a, options))),
     (e) => formatAll(e.errors)
   )
-  expect(either).toStrictEqual(Either.left(message))
+  expect(actual).toStrictEqual(Either.left(message))
   if (doEffectify) {
-    const encodeResult = Either.mapLeft(
+    const encodeEffectResult = Either.mapLeft(
       await Effect.runPromise(Effect.either(S.encode(effectify(schema, "all"))(a, options))),
       (e) => formatAll(e.errors)
     )
-    expect(encodeResult).toStrictEqual(either)
+    expect(encodeEffectResult).toStrictEqual(actual)
     const randomEncodeEffectResult = Either.mapLeft(
       await Effect.runPromise(Effect.either(S.encode(effectify(schema, "semi"))(a, options))),
       (e) => formatAll(e.errors)
     )
-    expect(randomEncodeEffectResult).toStrictEqual(either)
+    expect(randomEncodeEffectResult).toStrictEqual(actual)
   }
 }
 
-export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseErrors>): string => {
-  return pipe(errors, RA.map(formatDecodeError), RA.join(", "))
-}
+export const formatAll = (errors: NonEmptyReadonlyArray<PR.ParseErrors>): string =>
+  pipe(errors, RA.map(formatDecodeError), RA.join(", "))
 
 const getMessage = AST.getAnnotation<AST.MessageAnnotation<unknown>>(AST.MessageAnnotationId)
 
@@ -284,3 +285,24 @@ const formatDecodeError = (e: PR.ParseErrors): string => {
       return `union member: ${pipe(e.errors, RA.map(formatDecodeError), RA.join(", "))}`
   }
 }
+
+export const printAST = <I, A>(schema: S.Schema<I, A>) => {
+  console.log("%o", schema.ast)
+}
+
+export const identityTransform = <A>(schema: S.Schema<A>): S.Schema<A, A> =>
+  schema.pipe(S.compose(schema))
+
+export const X2 = S.transform(
+  S.string,
+  S.string,
+  (s) => s + s,
+  (s) => s.substring(0, s.length / 2)
+)
+
+export const X3 = S.transform(
+  S.string,
+  S.string,
+  (s) => s + s + s,
+  (s) => s.substring(0, s.length / 3)
+)

@@ -450,7 +450,7 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("bigint", () => {
-    const schema = S.bigint
+    const schema = S.bigintFromSelf
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual(["bigint"])
   })
