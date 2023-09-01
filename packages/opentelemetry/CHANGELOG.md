@@ -1,5 +1,13 @@
 # @effect/opentelemetry
 
+## 0.10.0
+
+### Minor Changes
+
+- [#46](https://github.com/Effect-TS/opentelemetry/pull/46) [`fcd35a7`](https://github.com/Effect-TS/opentelemetry/commit/fcd35a76db860d9f8999f294d0b1add3f9d65a99) Thanks [@tim-smart](https://github.com/tim-smart)! - remove Metric labels
+
+- [#46](https://github.com/Effect-TS/opentelemetry/pull/46) [`fcd35a7`](https://github.com/Effect-TS/opentelemetry/commit/fcd35a76db860d9f8999f294d0b1add3f9d65a99) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 0.9.1
 
 ### Patch Changes
