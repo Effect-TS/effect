@@ -1,5 +1,16 @@
 # @effect/platform-bun
 
+## 0.2.0
+
+### Minor Changes
+
+- [#130](https://github.com/Effect-TS/platform/pull/130) [`2713c4f`](https://github.com/Effect-TS/platform/commit/2713c4f766f5493303221772368710a09033658d) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- Updated dependencies [[`2713c4f`](https://github.com/Effect-TS/platform/commit/2713c4f766f5493303221772368710a09033658d)]:
+  - @effect/platform-node@1.0.0
+
 ## 0.1.1
 
 ### Patch Changes
