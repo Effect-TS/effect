@@ -9,8 +9,8 @@ describe.concurrent(".pipe()", () => {
 
     const PositiveInt = S.string.pipe(S.numberFromString, int, positive)
 
-    expect(PositiveInt.refine(1)).toEqual(true)
-    expect(PositiveInt.refine(-1)).toEqual(false)
-    expect(PositiveInt.refine(1.2)).toEqual(false)
+    expect(PositiveInt.is(1)).toEqual(true)
+    expect(PositiveInt.is(-1)).toEqual(false)
+    expect(PositiveInt.is(1.2)).toEqual(false)
   })
 })
