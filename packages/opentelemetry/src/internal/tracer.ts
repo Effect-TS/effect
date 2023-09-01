@@ -5,11 +5,9 @@ import * as Option from "@effect/data/Option"
 import * as Cause from "@effect/io/Cause"
 import * as Effect from "@effect/io/Effect"
 import type { Exit } from "@effect/io/Exit"
-import type { RuntimeFiber } from "@effect/io/Fiber"
 import * as FiberRef from "@effect/io/FiberRef"
 import * as FiberRefs from "@effect/io/FiberRefs"
 import * as Layer from "@effect/io/Layer"
-import * as Supervisor from "@effect/io/Supervisor"
 import * as Tracer from "@effect/io/Tracer"
 import { Resource } from "@effect/opentelemetry/Resource"
 import * as OtelApi from "@opentelemetry/api"
@@ -115,6 +113,24 @@ export const make = pipe(
           links,
           startTime
         )
+      },
+      context(execution, fiber) {
+        const currentSpan = Option.flatMap(
+          FiberRefs.get(
+            fiber.unsafeGetFiberRefs(),
+            FiberRef.currentTracerSpan
+          ),
+          List.head
+        )
+
+        if (currentSpan._tag === "None") {
+          return execution()
+        }
+
+        return OtelApi.context.with(
+          populateContext(OtelApi.context.active(), currentSpan.value),
+          execution
+        )
       }
     })
   )
@@ -155,39 +171,7 @@ export const makeExternalSpan = (options: {
 }
 
 /** @internal */
-export class OtelSupervisor extends Supervisor.AbstractSupervisor<void> {
-  value(): Effect.Effect<never, never, void> {
-    return Effect.unit
-  }
-
-  onRun<E, A, X>(execution: () => X, fiber: RuntimeFiber<E, A>): X {
-    const currentSpan = Option.flatMap(
-      FiberRefs.get(
-        fiber.unsafeGetFiberRefs(),
-        FiberRef.currentTracerSpan
-      ),
-      List.head
-    )
-
-    if (currentSpan._tag === "None") {
-      return execution()
-    }
-
-    return OtelApi.context.with(
-      populateContext(OtelApi.context.active(), currentSpan.value),
-      execution
-    )
-  }
-}
-
-/** @internal */
-export const supervisor = new OtelSupervisor()
-
-/** @internal */
-export const layer = Layer.merge(
-  Layer.unwrapEffect(Effect.map(make, Effect.setTracer)),
-  Supervisor.addSupervisor(supervisor)
-)
+export const layer = Layer.unwrapEffect(Effect.map(make, Effect.setTracer))
 
 // -------------------------------------------------------------------------------------
 // utils

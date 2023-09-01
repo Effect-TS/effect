@@ -8,13 +8,7 @@ import * as OtelMetrics from "@effect/opentelemetry/Metrics"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { PrometheusExporter } from "@opentelemetry/exporter-prometheus"
 
-const counter = Metric.taggedWithLabels(
-  Metric.counter("count", "An example counter"),
-  [
-    OtelMetrics.integerLabel,
-    OtelMetrics.incrementalOnlyLabel
-  ]
-)
+const counter = Metric.counter("count", "An example counter")
 
 const incrementCounter = pipe(
   Metric.increment(counter),
@@ -39,7 +33,6 @@ const labels = [
   "brownie",
   "muffin"
 ]
-Effect.all([], { mode: "either" })
 
 const freqLoop = Effect.randomWith((_) => _.nextIntBetween(0, labels.length)).pipe(
   Effect.flatMap((_) => Metric.update(freq, labels[_])),

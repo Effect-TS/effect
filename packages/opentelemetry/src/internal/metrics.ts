@@ -4,10 +4,9 @@ import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import * as Metric from "@effect/io/Metric"
-import type * as MetricKey from "@effect/io/Metric/Key"
-import * as MetricKeyType from "@effect/io/Metric/KeyType"
-import * as MetricLabel from "@effect/io/Metric/Label"
-import * as MetricState from "@effect/io/Metric/State"
+import type * as MetricKey from "@effect/io/MetricKey"
+import * as MetricKeyType from "@effect/io/MetricKeyType"
+import * as MetricState from "@effect/io/MetricState"
 import * as Resource from "@effect/opentelemetry/Resource"
 import type { HrTime } from "@opentelemetry/api"
 import { ValueType } from "@opentelemetry/api"
@@ -24,40 +23,6 @@ import type { MetricCollectOptions, MetricProducer } from "@opentelemetry/sdk-me
 
 const sdkName = "@effect/opentelemetry/Metrics"
 
-const aggregationTemporalityLabelKey = `${sdkName}/aggregationTemporality`
-
-/** @internal */
-export const aggregationTemporalityLabel = (value: "delta" | "cumulative") =>
-  MetricLabel.make(
-    aggregationTemporalityLabelKey,
-    value
-  )
-
-const incrementalOnlyLabelKey = `${sdkName}/isIncrementalOnly`
-
-/** @internal */
-export const incrementalOnlyLabel = MetricLabel.make(
-  incrementalOnlyLabelKey,
-  "true"
-)
-
-const integerLabelKey = `${sdkName}/isInteger`
-
-/** @internal */
-export const integerLabel = MetricLabel.make(
-  integerLabelKey,
-  "true"
-)
-
-const unitLabelKey = `${sdkName}/unit`
-
-/** @internal */
-export const unitLabel = (unit: string) =>
-  MetricLabel.make(
-    unitLabelKey,
-    unit
-  )
-
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
   constructor(readonly resource: Resources.Resource) {
@@ -69,22 +34,18 @@ export class MetricProducerImpl implements MetricProducer {
     const metricData: Array<MetricData> = []
 
     for (const { metricKey, metricState } of snapshot) {
-      const tags = HashSet.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
+      const attributes = HashSet.reduce(metricKey.tags, {}, (acc: Record<string, string>, label) => {
         acc[label.key] = label.value
         return acc
       })
-      const attributes = Object.fromEntries(
-        Object.entries(tags).filter(([key]) => !key.startsWith(sdkName))
-      )
-      const isDelta = tags[aggregationTemporalityLabelKey] === "delta"
-      const descriptor = descriptorFromKey(metricKey, tags)
+      const descriptor = descriptorFromKey(metricKey, attributes)
 
       if (MetricState.isCounterState(metricState)) {
         metricData.push({
           dataPointType: DataPointType.SUM,
           descriptor,
           isMonotonic: descriptor.type === InstrumentType.COUNTER,
-          aggregationTemporality: isDelta ? AggregationTemporality.DELTA : AggregationTemporality.CUMULATIVE,
+          aggregationTemporality: AggregationTemporality.CUMULATIVE,
           dataPoints: [{
             startTime: hrTimeNow,
             endTime: hrTimeNow,
@@ -96,7 +57,7 @@ export class MetricProducerImpl implements MetricProducer {
         metricData.push({
           dataPointType: DataPointType.GAUGE,
           descriptor,
-          aggregationTemporality: isDelta ? AggregationTemporality.DELTA : AggregationTemporality.CUMULATIVE,
+          aggregationTemporality: AggregationTemporality.CUMULATIVE,
           dataPoints: [{
             startTime: hrTimeNow,
             endTime: hrTimeNow,
@@ -153,7 +114,7 @@ export class MetricProducerImpl implements MetricProducer {
         }
         metricData.push({
           dataPointType: DataPointType.SUM,
-          descriptor: descriptorFromKey(metricKey, tags),
+          descriptor: descriptorFromKey(metricKey, attributes),
           aggregationTemporality: AggregationTemporality.CUMULATIVE,
           isMonotonic: true,
           dataPoints
@@ -182,7 +143,7 @@ export class MetricProducerImpl implements MetricProducer {
 
         metricData.push({
           dataPointType: DataPointType.SUM,
-          descriptor: descriptorFromKey(metricKey, tags, "quantiles"),
+          descriptor: descriptorFromKey(metricKey, attributes, "quantiles"),
           aggregationTemporality: AggregationTemporality.CUMULATIVE,
           isMonotonic: false,
           dataPoints
@@ -251,12 +212,12 @@ const descriptorFromKey = (
   suffix?: string
 ): InstrumentDescriptor => ({
   ...descriptorMeta(metricKey, suffix),
-  unit: tags[unitLabelKey] ?? tags.unit ?? tags.time_unit ?? "1",
-  type: instrumentTypeFromKey(metricKey, tags),
-  valueType: valueTypeFromKey(metricKey, tags)
+  unit: tags.unit ?? tags.time_unit ?? "1",
+  type: instrumentTypeFromKey(metricKey),
+  valueType: ValueType.DOUBLE
 })
 
-const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped, tags: Record<string, string>): InstrumentType => {
+const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped): InstrumentType => {
   if (MetricKeyType.isHistogramKey(key.keyType)) {
     return InstrumentType.HISTOGRAM
   } else if (MetricKeyType.isGaugeKey(key.keyType)) {
@@ -267,17 +228,7 @@ const instrumentTypeFromKey = (key: MetricKey.MetricKey.Untyped, tags: Record<st
     return InstrumentType.COUNTER
   }
 
-  return tags[incrementalOnlyLabelKey] ?
-    InstrumentType.COUNTER :
-    InstrumentType.UP_DOWN_COUNTER
-}
-
-const valueTypeFromKey = (_key: MetricKey.MetricKey.Untyped, tags: Record<string, string>): ValueType => {
-  if (tags[integerLabelKey]) {
-    return ValueType.INT
-  }
-
-  return ValueType.DOUBLE
+  return InstrumentType.UP_DOWN_COUNTER
 }
 
 const currentHrTime = (): HrTime => {
