@@ -31,7 +31,7 @@ export type Body = Empty | Raw | Uint8Array | FormData | Stream
 /**
  * @since 1.0.0
  */
-export namespace Body {
+export declare namespace Body {
   /**
    * @since 1.0.0
    * @category models

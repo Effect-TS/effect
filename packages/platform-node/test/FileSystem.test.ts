@@ -75,19 +75,19 @@ describe("FileSystem", () => {
           let text: string
           const file = yield* _(fs.open(`${__dirname}/fixtures/text.txt`))
 
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(5))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(5))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("lorem")
 
           yield* _(file.seek(Fs.Size(7), "current"))
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(5))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(5))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("dolar")
 
           yield* _(file.seek(Fs.Size(1), "current"))
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(8))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(8))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("sit amet")
 
           yield* _(file.seek(Fs.Size(0), "start"))
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(11))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(11))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("lorem ipsum")
 
           text = yield* _(
@@ -149,14 +149,14 @@ describe("FileSystem", () => {
           text = yield* _(fs.readFileString(path))
           expect(text).toBe("foobar")
 
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(3))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(3))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("foo")
 
           yield* _(file.write(new TextEncoder().encode("baz")))
           text = yield* _(fs.readFileString(path))
           expect(text).toBe("foobarbaz")
 
-          text = yield* _(Effect.some(file.readAlloc(Fs.Size(6))), Effect.map((_) => new TextDecoder().decode(_)))
+          text = yield* _(Effect.flatten(file.readAlloc(Fs.Size(6))), Effect.map((_) => new TextDecoder().decode(_)))
           expect(text).toBe("barbaz")
         }),
         Effect.scoped

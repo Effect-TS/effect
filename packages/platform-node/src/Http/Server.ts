@@ -5,7 +5,7 @@
  */
 import type { LazyArg } from "@effect/data/Function"
 import type * as Config from "@effect/io/Config"
-import type * as ConfigError from "@effect/io/Config/Error"
+import type * as ConfigError from "@effect/io/ConfigError"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type * as Scope from "@effect/io/Scope"

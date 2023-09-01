@@ -474,7 +474,7 @@ export interface File {
 /**
  * @since 1.0.0
  */
-export namespace File {
+export declare namespace File {
   /**
    * @since 1.0.0
    * @category model

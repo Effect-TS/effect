@@ -52,7 +52,7 @@ export interface Options {
 /**
  * @since 1.0.0
  */
-export namespace Options {
+export declare namespace Options {
   /**
    * @since 1.0.0
    * @category models

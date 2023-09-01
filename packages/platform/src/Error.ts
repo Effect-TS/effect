@@ -25,7 +25,7 @@ export type PlatformError = BadArgument | SystemError
 /**
  * @since 1.0.0
  */
-export namespace PlatformError {
+export declare namespace PlatformError {
   /**
    * @since 1.0.0
    * @category models

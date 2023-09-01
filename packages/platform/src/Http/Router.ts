@@ -40,7 +40,7 @@ export interface Router<R, E> extends App.Default<Exclude<R, RouteContext>, E | 
 /**
  * @since 1.0.0
  */
-export namespace Router {
+export declare namespace Router {
   /**
    * @since 1.0.0
    */
@@ -79,7 +79,7 @@ export interface Route<R, E> {
 /**
  * @since 1.0.0
  */
-export namespace Route {
+export declare namespace Route {
   /**
    * @since 1.0.0
    */

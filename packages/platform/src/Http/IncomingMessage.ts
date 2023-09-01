@@ -2,7 +2,7 @@
  * @since 1.0.0
  */
 import { dual } from "@effect/data/Function"
-import * as Global from "@effect/data/Global"
+import * as Global from "@effect/data/GlobalValue"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as FiberRef from "@effect/io/FiberRef"

@@ -38,7 +38,7 @@ export interface Client<R, E, A> extends Pipeable {
 /**
  * @since 1.0.0
  */
-export namespace Client {
+export declare namespace Client {
   /**
    * @since 1.0.0
    * @category models

@@ -113,7 +113,7 @@ export type ProcessId = Brand.Branded<number, "ProcessId">
 /**
  * @since 1.0.0
  */
-export namespace Process {
+export declare namespace Process {
   /**
    * @since 1.0.0
    * @category models

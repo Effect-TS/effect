@@ -15,7 +15,7 @@ export interface Middleware {
 /**
  * @since 1.0.0
  */
-export namespace Middleware {
+export declare namespace Middleware {
   /**
    * @since 1.0.0
    */

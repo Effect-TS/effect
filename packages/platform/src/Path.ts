@@ -32,7 +32,7 @@ export interface Path {
 /**
  * @since 1.0.0
  */
-export namespace Path {
+export declare namespace Path {
   /**
    * @since 1.0.0
    * @category model

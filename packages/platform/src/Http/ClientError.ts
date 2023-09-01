@@ -27,7 +27,7 @@ export type HttpClientError = RequestError | ResponseError
 /**
  * @since 1.0.0
  */
-export namespace HttpError {
+export declare namespace HttpError {
   /**
    * @since 1.0.0
    * @category models

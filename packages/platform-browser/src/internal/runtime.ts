@@ -1,6 +1,6 @@
 import * as Effect from "@effect/io/Effect"
 import * as Fiber from "@effect/io/Fiber"
-import type * as FiberId from "@effect/io/Fiber/Id"
+import type * as FiberId from "@effect/io/FiberId"
 
 /** @internal */
 export const runMain = <E, A>(

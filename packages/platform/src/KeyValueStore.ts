@@ -82,7 +82,7 @@ export interface KeyValueStore {
 /**
  * @since 1.0.0
  */
-export namespace KeyValueStore {
+export declare namespace KeyValueStore {
   /**
    * @since 1.0.0
    */

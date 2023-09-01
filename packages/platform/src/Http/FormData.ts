@@ -33,7 +33,7 @@ export type Part = Field | File
 /**
  * @since 1.0.0
  */
-export namespace Part {
+export declare namespace Part {
   /**
    * @since 1.0.0
    * @category models

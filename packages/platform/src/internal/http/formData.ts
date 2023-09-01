@@ -1,7 +1,7 @@
 import * as Chunk from "@effect/data/Chunk"
 import * as Data from "@effect/data/Data"
 import { dual, pipe } from "@effect/data/Function"
-import { globalValue } from "@effect/data/Global"
+import { globalValue } from "@effect/data/GlobalValue"
 import * as Option from "@effect/data/Option"
 import * as Predicate from "@effect/data/Predicate"
 import * as ReadonlyArray from "@effect/data/ReadonlyArray"
