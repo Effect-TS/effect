@@ -9,13 +9,13 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "typescript": "^5.1.6",
-    "vite": "^4.4.8"
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9"
   },
   "dependencies": {
-    "@effect/data": "^0.17.1",
-    "@effect/io": "^0.38.0",
+    "@effect/data": "^0.18.3",
+    "@effect/io": "^0.39.0",
     "@effect/rpc-webworkers": "workspace:^",
-    "@effect/schema": "^0.33.0"
+    "@effect/schema": "^0.34.0"
   }
 }
