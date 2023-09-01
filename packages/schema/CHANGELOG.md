@@ -1,5 +1,17 @@
 # @effect/schema
 
+## 0.34.0
+
+### Minor Changes
+
+- [#403](https://github.com/Effect-TS/schema/pull/403) [`da52c2b`](https://github.com/Effect-TS/schema/commit/da52c2b9ca0945ca49ce57bd227f773aab1fc3c9) Thanks [@tim-smart](https://github.com/tim-smart)! - update /data & /io
+
+### Patch Changes
+
+- [#397](https://github.com/Effect-TS/schema/pull/397) [`376fc3d`](https://github.com/Effect-TS/schema/commit/376fc3d89061c9db6aca2841f96dfd3f48bc4a50) Thanks [@jessekelly881](https://github.com/jessekelly881)! - added S.Lowercase
+
+- [#382](https://github.com/Effect-TS/schema/pull/382) [`d79309b`](https://github.com/Effect-TS/schema/commit/d79309b00f0028089858a8db8c98b6ecdf9c624c) Thanks [@fubhy](https://github.com/fubhy)! - Added `bigintFromNumber` transform
+
 ## 0.33.2
 
 ### Patch Changes
