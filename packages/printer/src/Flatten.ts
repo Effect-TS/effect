@@ -45,6 +45,9 @@ export declare namespace Flatten {
     }
   }
 
+  /**
+   * @since 1.0.0
+   */
   export type TypeLambda = FlattenTypeLambda
 }
 

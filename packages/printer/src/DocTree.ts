@@ -53,12 +53,18 @@ export type DocTree<A> =
  * @since 1.0.0
  */
 export declare namespace DocTree {
+  /**
+   * @since 1.0.0
+   */
   export interface Variance<A> extends Equal {
     readonly [DocTreeTypeId]: {
       readonly _A: (_: never) => A
     }
   }
 
+  /**
+   * @since 1.0.0
+   */
   export type TypeLambda = DocTreeTypeLambda
 }
 

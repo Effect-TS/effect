@@ -79,6 +79,9 @@ export declare namespace Doc {
     }
   }
 
+  /**
+   * @since 1.0.0
+   */
   export type TypeLambda = DocTypeLambda
 }
 

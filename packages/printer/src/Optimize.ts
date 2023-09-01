@@ -24,6 +24,9 @@ export interface Optimize<A> {
  * @since 1.0.0
  */
 export declare namespace Optimize {
+  /**
+   * @since 1.0.0
+   */
   export type Depth = FusionDepth
 }
 
