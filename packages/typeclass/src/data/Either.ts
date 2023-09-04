@@ -24,7 +24,7 @@ import type * as traversable from "@effect/typeclass/Traversable"
 
 const of = Either.right
 
-const map = Either.mapRight
+const map = Either.map
 
 const imap = covariant.imap<Either.EitherTypeLambda>(map)
 
