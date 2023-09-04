@@ -10,7 +10,7 @@ import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type * as Scope from "@effect/io/Scope"
 import * as internal from "@effect/platform-node/internal/http/server"
-import type * as Etag from "@effect/platform/Http/Etag"
+import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
@@ -34,15 +34,15 @@ export const make: (
  * @category layers
  */
 export const layer: (
-  evaluate: LazyArg<Http.Server>,
+  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
   options: Net.ListenOptions
-) => Layer.Layer<never, never, Server.Server | Etag.Generator> = internal.layer
+) => Layer.Layer<never, never, Server.Server | Platform.Platform> = internal.layer
 
 /**
  * @since 1.0.0
  * @category layers
  */
 export const layerConfig: (
-  evaluate: LazyArg<Http.Server>,
+  evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
   options: Config.Config.Wrap<Net.ListenOptions>
-) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Etag.Generator> = internal.layerConfig
+) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Platform.Platform> = internal.layerConfig

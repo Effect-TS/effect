@@ -2,7 +2,6 @@
  * @since 1.0.0
  */
 import * as server from "@effect/platform-bun/Http/Server"
-import * as response from "@effect/platform-bun/Http/ServerResponse"
 import * as etag from "@effect/platform-node/Http/Etag"
 import * as formData from "@effect/platform-node/Http/FormData"
 import * as app from "@effect/platform/Http/App"
@@ -12,6 +11,7 @@ import * as middleware from "@effect/platform/Http/Middleware"
 import * as router from "@effect/platform/Http/Router"
 import * as error from "@effect/platform/Http/ServerError"
 import * as request from "@effect/platform/Http/ServerRequest"
+import * as response from "@effect/platform/Http/ServerResponse"
 import * as urlParams from "@effect/platform/Http/UrlParams"
 
 export {
@@ -74,8 +74,8 @@ export {
   /**
    * @since 1.0.0
    *
-   * - Docs: [Http/ServerResponse](https://effect-ts.github.io/platform/platform-bun/Http/ServerResponse.ts.html)
-   * - Module: `@effect/platform-bun/Http/ServerResponse`
+   * - Docs: [Http/ServerResponse](https://effect-ts.github.io/platform/platform/Http/ServerResponse.ts.html)
+   * - Module: `@effect/platform/Http/ServerResponse`
    */
   response,
   /**

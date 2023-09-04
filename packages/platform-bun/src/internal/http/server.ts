@@ -5,7 +5,7 @@ import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import * as Runtime from "@effect/io/Runtime"
 import type * as Scope from "@effect/io/Scope"
-import * as Etag from "@effect/platform-node/Http/Etag"
+import * as Platform from "@effect/platform-bun/Http/Platform"
 import * as FormData from "@effect/platform-node/Http/FormData"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as App from "@effect/platform/Http/App"
@@ -84,7 +84,14 @@ export const make = (
     })
   })
 
-const makeResponse = (response: ServerResponse.ServerResponse): Response => {
+const makeResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse): Response => {
+  if (request.method === "HEAD") {
+    return new Response(undefined, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers
+    })
+  }
   const body = response.body
   switch (body._tag) {
     case "Empty": {
@@ -128,7 +135,7 @@ const respond = Middleware.make((httpApp) =>
         (exit) =>
           Effect.sync(() => {
             if (exit._tag === "Success") {
-              ;(request as ServerRequestImpl).resolve(makeResponse(exit.value))
+              ;(request as ServerRequestImpl).resolve(makeResponse(request, exit.value))
             } else {
               ;(request as ServerRequestImpl).reject(Cause.pretty(exit.cause))
             }
@@ -143,7 +150,7 @@ export const layer = (
 ) =>
   Layer.merge(
     Layer.scoped(Server.Server, make(options)),
-    Etag.layer
+    Platform.layer
   )
 
 /** @internal */
@@ -152,7 +159,7 @@ export const layerConfig = (
 ) =>
   Layer.merge(
     Layer.scoped(Server.Server, Effect.flatMap(Effect.config(Config.unwrap(options)), make)),
-    Etag.layer
+    Platform.layer
   )
 
 class ServerRequestImpl implements ServerRequest.ServerRequest {

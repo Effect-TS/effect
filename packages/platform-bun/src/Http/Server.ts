@@ -8,8 +8,8 @@ import type * as ConfigError from "@effect/io/ConfigError"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type * as Scope from "@effect/io/Scope"
+import type * as Platform from "@effect/platform-bun/Http/Platform"
 import * as internal from "@effect/platform-bun/internal/http/server"
-import type * as Etag from "@effect/platform/Http/Etag"
 import type * as Server from "@effect/platform/Http/Server"
 import type { ServeOptions } from "bun"
 
@@ -32,7 +32,7 @@ export const make: (
  */
 export const layer: (
   options: Omit<ServeOptions, "fetch" | "error">
-) => Layer.Layer<never, never, Server.Server | Etag.Generator> = internal.layer
+) => Layer.Layer<never, never, Server.Server | Platform.Platform> = internal.layer
 
 /**
  * @since 1.0.0
@@ -40,4 +40,4 @@ export const layer: (
  */
 export const layerConfig: (
   options: Config.Config.Wrap<Omit<ServeOptions, "fetch" | "error">>
-) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Etag.Generator> = internal.layerConfig
+) => Layer.Layer<never, ConfigError.ConfigError, Server.Server | Platform.Platform> = internal.layerConfig

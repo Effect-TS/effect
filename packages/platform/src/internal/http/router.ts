@@ -125,7 +125,10 @@ const toHttpApp = <R, E>(
         }
       }
 
-      const result = router.find(request.method as HTTPMethod, request.url)
+      let result = router.find(request.method as HTTPMethod, request.url)
+      if (result === null && request.method === "HEAD") {
+        result = router.find("GET", request.url)
+      }
       if (result === null) {
         return Effect.fail(Error.RouteNotFound({ request }))
       }
@@ -139,7 +142,7 @@ const toHttpApp = <R, E>(
           Context.add(
             Context.add(context, ServerRequest.ServerRequest, request),
             RouteContext,
-            new RouteContextImpl(result.params, result.searchParams)
+            new RouteContextImpl(result!.params, result!.searchParams)
           ) as Context.Context<R>
       )
     }

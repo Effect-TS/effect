@@ -6,9 +6,9 @@ import * as Fiber from "@effect/io/Fiber"
 import * as Layer from "@effect/io/Layer"
 import * as Runtime from "@effect/io/Runtime"
 import type * as Scope from "@effect/io/Scope"
-import * as internalEtag from "@effect/platform-node/internal/http/etag"
 import * as internalFormData from "@effect/platform-node/internal/http/formData"
 import { IncomingMessageImpl } from "@effect/platform-node/internal/http/incomingMessage"
+import * as internalPlatform from "@effect/platform-node/internal/http/platform"
 import * as NodeSink from "@effect/platform-node/Sink"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as FormData from "@effect/platform/Http/FormData"
@@ -25,6 +25,7 @@ import * as Stream from "@effect/stream/Stream"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
 import { Readable } from "node:stream"
+import { pipeline } from "node:stream/promises"
 
 /** @internal */
 export const make = (
@@ -224,7 +225,7 @@ export const layer = (
 ) =>
   Layer.merge(
     Layer.scoped(Server.Server, make(evaluate, options)),
-    internalEtag.layer
+    internalPlatform.layer
   )
 
 /** @internal */
@@ -240,26 +241,50 @@ export const layerConfig = (
         (options) => make(evaluate, options)
       )
     ),
-    internalEtag.layer
+    internalPlatform.layer
   )
 
 const handleResponse = (request: ServerRequest.ServerRequest, response: ServerResponse.ServerResponse) =>
   Effect.suspend((): Effect.Effect<never, Error.ResponseError, void> => {
     const nodeResponse = (request as ServerRequestImpl).response
-    switch (response.body._tag) {
+    if (request.method === "HEAD") {
+      nodeResponse.writeHead(response.status, response.headers)
+      nodeResponse.end()
+      return Effect.unit
+    }
+    const body = response.body
+    switch (body._tag) {
       case "Empty": {
         nodeResponse.writeHead(response.status, response.headers)
         nodeResponse.end()
         return Effect.unit
       }
-      case "Raw":
+      case "Raw": {
+        nodeResponse.writeHead(response.status, response.headers)
+        if (
+          typeof body.body === "object" && body.body !== null && "pipe" in body.body &&
+          typeof body.body.pipe === "function"
+        ) {
+          return Effect.tryPromise({
+            try: (signal) => pipeline(body.body as any, nodeResponse, { signal, end: true }),
+            catch: (error) =>
+              Error.ResponseError({
+                request,
+                response,
+                reason: "Decode",
+                error
+              })
+          })
+        }
+        nodeResponse.end(body.body)
+        return Effect.unit
+      }
       case "Uint8Array": {
         nodeResponse.writeHead(response.status, response.headers)
-        nodeResponse.end(response.body.body)
+        nodeResponse.end(body.body)
         return Effect.unit
       }
       case "FormData": {
-        const body = response.body
         return Effect.async<never, Error.ResponseError, void>((resume) => {
           const r = new Response(body.formData)
           const headers = {
@@ -286,7 +311,7 @@ const handleResponse = (request: ServerRequest.ServerRequest, response: ServerRe
         nodeResponse.writeHead(response.status, response.headers)
         return Stream.run(
           Stream.mapError(
-            response.body.stream,
+            body.stream,
             (error) =>
               Error.ResponseError({
                 request,

@@ -2,11 +2,11 @@ import { flow } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
-import { FileSystem } from "@effect/platform-node/FileSystem"
+import * as Etag from "@effect/platform-node/Http/Etag"
+import * as Platform from "@effect/platform-node/Http/Platform"
 import * as HttpC from "@effect/platform-node/HttpClient"
 import * as Http from "@effect/platform-node/HttpServer"
 import * as NodeContext from "@effect/platform-node/NodeContext"
-import * as Etag from "@effect/platform/Http/Etag"
 import * as Schema from "@effect/schema/Schema"
 import { createServer } from "http"
 import * as Buffer from "node:buffer"
@@ -15,6 +15,7 @@ import { describe, it } from "vitest"
 const ServerLive = Http.server.layer(createServer, { port: 0 })
 const EnvLive = Layer.mergeAll(
   NodeContext.layer,
+  Etag.layer,
   ServerLive,
   Layer.provide(HttpC.nodeClient.makeAgentLayer({ keepAlive: false }), HttpC.nodeClient.layerWithoutAgent)
 )
@@ -229,19 +230,18 @@ describe("HttpServer", () => {
 
   it("file", () =>
     Effect.gen(function*(_) {
-      const mtime = new Date(123456789)
       yield* _(
         Effect.succeed(
           yield* _(
             Http.response.file(`${__dirname}/fixtures/text.txt`),
             Effect.updateService(
-              FileSystem,
-              (fs) => ({
-                ...fs,
-                stat: (_) =>
+              Platform.Platform,
+              (_) => ({
+                ..._,
+                fileResponse: (path, options) =>
                   Effect.map(
-                    fs.stat(_),
-                    (stat) => ({ ...stat, mtime: Option.some(mtime) })
+                    _.fileResponse(path, options),
+                    (res) => ({ ...res, headers: { ...res.headers, etag: "\"etag\"" } })
                   )
               })
             )
@@ -256,7 +256,7 @@ describe("HttpServer", () => {
       expect(res.status).toEqual(200)
       expect(res.headers["content-type"]).toEqual("text/plain")
       expect(res.headers["content-length"]).toEqual("27")
-      expect(res.headers.etag).toEqual("\"1b-75bcd15\"")
+      expect(res.headers.etag).toEqual("\"etag\"")
       const text = yield* _(res.text)
       expect(text.trim()).toEqual("lorem ipsum dolar sit amet")
     }).pipe(runPromise))
@@ -271,10 +271,14 @@ describe("HttpServer", () => {
       yield* _(
         Http.response.fileWeb(file),
         Effect.updateService(
-          Etag.Generator,
-          (etag) => ({
-            ...etag,
-            fromFileWeb: (_) => Effect.succeed({ _tag: "Weak", value: "etag" })
+          Platform.Platform,
+          (_) => ({
+            ..._,
+            fileWebResponse: (path, options) =>
+              Effect.map(
+                _.fileWebResponse(path, options),
+                (res) => ({ ...res, headers: { ...res.headers, etag: "W/\"etag\"" } })
+              )
           })
         ),
         Http.server.serve(),

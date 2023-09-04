@@ -1,17 +1,16 @@
-import { dual, pipe } from "@effect/data/Function"
+import { dual } from "@effect/data/Function"
 import { pipeArguments } from "@effect/data/Pipeable"
 import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
-import * as FileSystem from "@effect/platform/FileSystem"
+import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
-import * as Etag from "@effect/platform/Http/Etag"
 import * as Headers from "@effect/platform/Http/Headers"
+import * as Platform from "@effect/platform/Http/Platform"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
 import type * as Schema from "@effect/schema/Schema"
 import type * as Stream from "@effect/stream/Stream"
-import * as Mime from "mime"
 
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/ServerResponse") as ServerResponse.TypeId
@@ -125,60 +124,21 @@ export const schemaJson = <I, A>(
 export const file = (
   path: string,
   options?: ServerResponse.Options & FileSystem.StreamOptions
-): Effect.Effect<
-  FileSystem.FileSystem | Etag.Generator,
-  PlatformError.PlatformError,
-  ServerResponse.ServerResponse
-> =>
-  pipe(
-    Effect.bindTo(Effect.flatMap(FileSystem.FileSystem, (fs) => fs.stat(path)), "info"),
-    Effect.bind("etag", ({ info }) =>
-      Effect.flatMap(
-        Etag.Generator,
-        (generator) => generator.fromFileInfo(info)
-      )),
-    Effect.bind("body", ({ info }) =>
-      internalBody.fileInfo(path, info, {
-        contentType: Mime.getType(path) ?? undefined,
-        ...options
-      })),
-    Effect.map(({ body, etag, info }) => {
-      const headers: Record<string, string> = {
-        ...(options?.headers ?? {}),
-        etag: Etag.toString(etag)
-      }
-      if (info.mtime._tag === "Some") {
-        headers["last-modified"] = info.mtime.value.toUTCString()
-      }
-      return new ServerResponseImpl(
-        options?.status ?? 200,
-        options?.statusText,
-        headers,
-        body
-      )
-    })
+): Effect.Effect<Platform.Platform, PlatformError.PlatformError, ServerResponse.ServerResponse> =>
+  Effect.flatMap(
+    Platform.Platform,
+    (platform) => platform.fileResponse(path, options)
   )
 
 /** @internal */
 export const fileWeb = (
   file: Body.Body.FileLike,
-  options?: ServerResponse.Options.WithContent
-): Effect.Effect<Etag.Generator, never, ServerResponse.ServerResponse> =>
-  Effect.flatMap(Etag.Generator, (generator) =>
-    Effect.map(generator.fromFileWeb(file), (etag) => {
-      const body = internalBody.fileWeb(file)
-      const headers: Record<string, string> = {
-        ...(options?.headers ?? {}),
-        etag: Etag.toString(etag),
-        "last-modified": new Date(file.lastModified).toUTCString()
-      }
-      return new ServerResponseImpl(
-        options?.status ?? 200,
-        options?.statusText,
-        headers,
-        body
-      )
-    }))
+  options?: ServerResponse.Options.WithContent & FileSystem.StreamOptions
+): Effect.Effect<Platform.Platform, never, ServerResponse.ServerResponse> =>
+  Effect.flatMap(
+    Platform.Platform,
+    (platform) => platform.fileWebResponse(file, options)
+  )
 
 /** @internal */
 export const urlParams = (

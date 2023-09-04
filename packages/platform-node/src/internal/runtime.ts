@@ -21,7 +21,6 @@ export const runMain: RunMain = <E, A>(
   function onSigint() {
     process.removeListener("SIGINT", onSigint)
     process.removeListener("SIGTERM", onSigint)
-
     Effect.runFork(fiber.interruptAsFork(fiber.id()))
   }
 
