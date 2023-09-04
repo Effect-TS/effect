@@ -1,5 +1,11 @@
 # @effect/typeclass
 
+## 0.5.0
+
+### Minor Changes
+
+- [#17](https://github.com/Effect-TS/typeclass/pull/17) [`c54d4a7`](https://github.com/Effect-TS/typeclass/commit/c54d4a784e32619451d2cb628adf059dc2c310dc) Thanks [@gcanti](https://github.com/gcanti)! - update to latest /data
+
 ## 0.4.0
 
 ### Minor Changes
