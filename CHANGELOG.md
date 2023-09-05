@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.31
+
+### Patch Changes
+
+- [#1419](https://github.com/Effect-TS/effect/pull/1419) [`543dfb495`](https://github.com/Effect-TS/effect/commit/543dfb495c7cfd4799b27e0623d547cf0341a838) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
 ## 2.0.0-next.30
 
 ### Patch Changes
