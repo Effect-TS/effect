@@ -117,7 +117,7 @@ export const make = pipe(
       context(execution, fiber) {
         const currentSpan = Option.flatMap(
           FiberRefs.get(
-            fiber.unsafeGetFiberRefs(),
+            fiber.getFiberRefs(),
             FiberRef.currentTracerSpan
           ),
           List.head
