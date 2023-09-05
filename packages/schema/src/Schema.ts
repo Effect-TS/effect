@@ -529,7 +529,7 @@ export const bigintFromSelf: Schema<bigint> = make(AST.bigIntKeyword)
  * @category primitives
  * @since 1.0.0
  */
-export const symbol: Schema<symbol> = make(AST.symbolKeyword)
+export const symbolFromSelf: Schema<symbol> = make(AST.symbolKeyword)
 
 /**
  * @category primitives
@@ -2275,6 +2275,39 @@ export const not = <I>(self: Schema<I, boolean>): Schema<I, boolean> =>
  * @since 1.0.0
  */
 export const Not: Schema<boolean> = not(boolean)
+
+// ---------------------------------------------
+// symbol transformations
+// ---------------------------------------------
+
+/**
+ * This combinator transforms a `string` into a `symbol`.
+ *
+ * @param self - The schema representing the input string
+ *
+ * @category symbol transformations
+ * @since 1.0.0
+ */
+export const symbolFromString = <I, A extends string>(self: Schema<I, A>): Schema<I, symbol> => {
+  return transform(
+    self,
+    symbolFromSelf,
+    (s) => Symbol.for(s),
+    (sym) => sym.description as A // this is safe because `self` will check its input anyway
+  )
+}
+
+// ---------------------------------------------
+// symbol constructors
+// ---------------------------------------------
+
+/**
+ * This schema transforms a `string` into a `symbol`.
+ *
+ * @category symbol constructors
+ * @since 1.0.0
+ */
+export const symbol: Schema<string, symbol> = symbolFromString(string)
 
 // ---------------------------------------------
 // bigint filters

@@ -44,9 +44,10 @@ describe.concurrent("AST/createUnion", () => {
   })
 
   it("should unify symbol literals with symbol", () => {
-    expect(S.union(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")), S.symbol).ast).toEqual(
-      S.symbol.ast
-    )
+    expect(S.union(S.uniqueSymbol(Symbol.for("@effect/schema/test/a")), S.symbolFromSelf).ast)
+      .toEqual(
+        S.symbolFromSelf.ast
+      )
   })
 
   describe.concurrent("should give precedence to schemas containing more infos", () => {

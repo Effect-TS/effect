@@ -37,8 +37,8 @@ describe.concurrent("Schema/keyof", () => {
 
   it("should unify symbol literals with symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.struct({ [a]: S.string }).pipe(S.extend(S.record(S.symbol, S.string)))
-    expect(AST.keyof(schema.ast)).toEqual(S.symbol.ast)
+    const schema = S.struct({ [a]: S.string }).pipe(S.extend(S.record(S.symbolFromSelf, S.string)))
+    expect(AST.keyof(schema.ast)).toEqual(S.symbolFromSelf.ast)
   })
 
   it("lazy", () => {

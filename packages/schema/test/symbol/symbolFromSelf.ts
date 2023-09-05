@@ -1,8 +1,8 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-describe.concurrent("Schema/symbol", () => {
-  const schema = S.symbol
+describe.concurrent("symbol/symbolFromSelf", () => {
+  const schema = S.symbolFromSelf
   it("decoding", async () => {
     const a = Symbol.for("@effect/schema/test/a")
     await Util.expectParseSuccess(schema, a)

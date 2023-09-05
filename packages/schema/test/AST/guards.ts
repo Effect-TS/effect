@@ -37,7 +37,7 @@ describe.concurrent("AST/guards", () => {
   })
 
   it("isSymbolKeyword", () => {
-    expect(AST.isSymbolKeyword(S.symbol.ast)).toEqual(true)
+    expect(AST.isSymbolKeyword(S.symbolFromSelf.ast)).toEqual(true)
     expect(AST.isSymbolKeyword(S.unknown.ast)).toEqual(false)
   })
 

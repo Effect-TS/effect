@@ -1,7 +1,7 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-describe.concurrent("nigint/bigintFromString", () => {
+describe.concurrent("bigint/bigint", () => {
   const schema = S.bigint
 
   it("property tests", () => {

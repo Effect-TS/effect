@@ -456,7 +456,7 @@ describe.concurrent("TypeScript", () => {
   })
 
   it("symbol", () => {
-    const schema = S.symbol
+    const schema = S.symbolFromSelf
     const ts = typeScriptFor(schema)
     expect(printNodes(ts.nodes)).toEqual(["symbol"])
   })
@@ -743,7 +743,7 @@ describe.concurrent("TypeScript", () => {
     })
 
     it("record(symbol, string)", () => {
-      const schema = S.record(S.symbol, S.string)
+      const schema = S.record(S.symbolFromSelf, S.string)
       const ts = typeScriptFor(schema)
       expect(printNodes(ts.nodes)).toEqual([`{
     readonly [x: symbol]: string;

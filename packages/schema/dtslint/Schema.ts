@@ -38,7 +38,13 @@ S.boolean;
 // $ExpectType Schema<bigint, bigint>
 S.bigintFromSelf;
 
+// $ExpectType Schema<string, bigint>
+S.bigint;
+
 // $ExpectType Schema<symbol, symbol>
+S.symbolFromSelf;
+
+// $ExpectType Schema<string, symbol>
 S.symbol;
 
 // $ExpectType Schema<unknown, unknown>
@@ -373,7 +379,7 @@ S.record(pipe(S.string, S.minLength(2)), S.string)
 S.record(S.union(S.literal('a'), S.literal('b')), S.string)
 
 // $ExpectType Schema<{ readonly [x: symbol]: string; }, { readonly [x: symbol]: string; }>
-S.record(S.symbol, S.string)
+S.record(S.symbolFromSelf, S.string)
 
 // $ExpectType Schema<{ readonly [x: `a${string}`]: string; }, { readonly [x: `a${string}`]: string; }>
 S.record(S.templateLiteral(S.literal('a'), S.string), S.string)

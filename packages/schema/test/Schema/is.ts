@@ -40,7 +40,7 @@ describe.concurrent("Schema/is", () => {
 
   it("symbol", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const is = P.is(S.symbol)
+    const is = P.is(S.symbolFromSelf)
     expect(is(a)).toEqual(true)
     expect(is("@effect/schema/test/a")).toEqual(false)
   })
@@ -329,7 +329,7 @@ describe.concurrent("Schema/is", () => {
   it("record(symbol, string)", () => {
     const a = Symbol.for("@effect/schema/test/a")
     const b = Symbol.for("@effect/schema/test/b")
-    const schema = S.record(S.symbol, S.string)
+    const schema = S.record(S.symbolFromSelf, S.string)
     const is = P.is(schema)
     expect(is(null)).toEqual(false)
     expect(is({})).toEqual(true)
@@ -385,7 +385,9 @@ describe.concurrent("Schema/is", () => {
 
   it("record(keyof struct({ a, b } & Record<symbol, string>), number)", () => {
     const schema = S.record(
-      S.keyof(S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.symbol, S.string)))),
+      S.keyof(
+        S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.symbolFromSelf, S.string)))
+      ),
       S.number
     )
     const is = P.is(schema)

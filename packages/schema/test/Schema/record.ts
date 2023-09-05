@@ -40,7 +40,7 @@ describe.concurrent("Schema/record", () => {
 
     it("record(symbol, number)", async () => {
       const a = Symbol.for("@effect/schema/test/a")
-      const schema = S.record(S.symbol, S.number)
+      const schema = S.record(S.symbolFromSelf, S.number)
       await Util.expectParseSuccess(schema, {})
       await Util.expectParseSuccess(schema, { [a]: 1 })
 
@@ -110,7 +110,9 @@ describe.concurrent("Schema/record", () => {
     it("record(keyof struct({ a, b } & Record<symbol, string>), number)", async () => {
       const schema = S.record(
         S.keyof(
-          S.struct({ a: S.string, b: S.string }).pipe(S.extend(S.record(S.symbol, S.string)))
+          S.struct({ a: S.string, b: S.string }).pipe(
+            S.extend(S.record(S.symbolFromSelf, S.string))
+          )
         ),
         S.number
       )

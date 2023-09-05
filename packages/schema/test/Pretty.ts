@@ -68,7 +68,7 @@ describe.concurrent("Pretty", () => {
   })
 
   it("symbol", () => {
-    const pretty = P.to(S.symbol)
+    const pretty = P.to(S.symbolFromSelf)
     expect(pretty(Symbol.for("@effect/data/test/a"))).toEqual("Symbol(@effect/data/test/a)")
   })
 
@@ -159,7 +159,7 @@ describe.concurrent("Pretty", () => {
 
   it("record(symbol, string)", () => {
     const a = Symbol.for("@effect/schema/test/a")
-    const schema = S.record(S.symbol, S.string)
+    const schema = S.record(S.symbolFromSelf, S.string)
     const pretty = P.to(schema)
     expect(pretty({ [a]: "a" })).toEqual(
       `{ Symbol(@effect/schema/test/a): "a" }`

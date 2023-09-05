@@ -148,8 +148,8 @@ describe.concurrent("Schema/extend", () => {
 
     it(`extend/overlapping index signatures/ symbol`, () => {
       expect(() =>
-        S.record(S.symbol, S.number).pipe(
-          S.extend(S.record(S.symbol, S.boolean))
+        S.record(S.symbolFromSelf, S.number).pipe(
+          S.extend(S.record(S.symbolFromSelf, S.boolean))
         )
       ).toThrowError(new Error("Duplicate index signature for type `symbol`"))
     })
@@ -254,7 +254,7 @@ describe.concurrent("Schema/extend", () => {
     it("struct + record(symbol, NumberFromChar)", async () => {
       const b = Symbol.for("@effect/schema/test/b")
       const schema = S.struct({ a: S.number }).pipe(
-        S.extend(S.record(S.symbol, NumberFromChar))
+        S.extend(S.record(S.symbolFromSelf, NumberFromChar))
       )
       await Util.expectEncodeSuccess(schema, { a: 1 }, { a: 1 })
       await Util.expectEncodeSuccess(schema, { a: 1, [b]: 1 }, { a: 1, [b]: "1" })

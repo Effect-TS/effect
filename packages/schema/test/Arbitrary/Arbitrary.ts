@@ -124,7 +124,7 @@ describe.concurrent("Arbitrary/Arbitrary", () => {
   })
 
   it("symbol", () => {
-    propertyTo(S.symbol)
+    propertyTo(S.symbolFromSelf)
   })
 
   it("object", () => {
@@ -309,7 +309,7 @@ describe.concurrent("Arbitrary/Arbitrary", () => {
   })
 
   it("record(symbol, string)", () => {
-    const schema = S.record(S.symbol, S.string)
+    const schema = S.record(S.symbolFromSelf, S.string)
     propertyTo(schema)
   })
 
