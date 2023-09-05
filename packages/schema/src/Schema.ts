@@ -1146,10 +1146,8 @@ export const extend: {
  * @since 1.0.0
  */
 export const compose: {
-  <B, C extends B, D>(bc: Schema<C, D>): <A>(ab: Schema<A, B>) => Schema<A, D>
-  <C, D>(bc: Schema<C, D>): <A, B extends C>(ab: Schema<A, B>) => Schema<A, D>
-  <A, B, C extends B, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D>
-  <A, B extends C, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D>
+  <C, D>(bc: Schema<C, D>): <A, B>(ab: Schema<A, B>) => Schema<A, D>
+  <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D>
 } = dual(
   2,
   <A, B, C, D>(ab: Schema<A, B>, cd: Schema<C, D>): Schema<A, D> =>
@@ -1200,26 +1198,26 @@ export function filter<A>(
  * @since 1.0.0
  */
 export const transformOrFail: {
-  <I2, A2, A1>(
-    to: Schema<I2, A2>,
-    decode: (a1: A1, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<I2>,
-    encode: (i2: I2, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<A1>,
+  <C, D, B>(
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     annotations?: AST.Annotated["annotations"]
-  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
-  <I1, A1, I2, A2>(
-    from: Schema<I1, A1>,
-    to: Schema<I2, A2>,
-    decode: (a1: A1, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<I2>,
-    encode: (i2: I2, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<A1>,
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+    encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
     annotations?: AST.Annotated["annotations"]
-  ): Schema<I1, A2>
-} = dual(4, <I1, A1, I2, A2>(
-  from: Schema<I1, A1>,
-  to: Schema<I2, A2>,
-  decode: (a1: A1, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<I2>,
-  encode: (i2: I2, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<A1>,
+  ): Schema<A, D>
+} = dual(4, <A, B, C, D>(
+  from: Schema<A, B>,
+  to: Schema<C, D>,
+  decode: (b: B, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
+  encode: (c: C, options: ParseOptions, ast: AST.AST) => ParseResult.ParseResult<unknown>,
   annotations?: AST.Annotated["annotations"]
-): Schema<I1, A2> =>
+): Schema<A, D> =>
   make(
     AST.createTransform(
       from.ast,
@@ -1237,25 +1235,25 @@ export const transformOrFail: {
  * @since 1.0.0
  */
 export const transform: {
-  <I2, A2, A1>(
-    to: Schema<I2, A2>,
-    decode: (a1: A1) => I2,
-    encode: (i2: I2) => A1
-  ): <I1>(self: Schema<I1, A1>) => Schema<I1, A2>
-  <I1, A1, I2, A2>(
-    from: Schema<I1, A1>,
-    to: Schema<I2, A2>,
-    decode: (a1: A1) => I2,
-    encode: (i2: I2) => A1
-  ): Schema<I1, A2>
+  <C, D, B>(
+    to: Schema<C, D>,
+    decode: (b: B) => unknown,
+    encode: (c: C) => unknown
+  ): <A>(self: Schema<A, B>) => Schema<A, D>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B) => unknown,
+    encode: (c: C) => unknown
+  ): Schema<A, D>
 } = dual(
   4,
-  <I1, A1, I2, A2>(
-    from: Schema<I1, A1>,
-    to: Schema<I2, A2>,
-    decode: (a1: A1) => I2,
-    encode: (i2: I2) => A1
-  ): Schema<I1, A2> =>
+  <A, B, C, D>(
+    from: Schema<A, B>,
+    to: Schema<C, D>,
+    decode: (b: B) => unknown,
+    encode: (c: C) => unknown
+  ): Schema<A, D> =>
     transformOrFail(from, to, (a) => Either.right(decode(a)), (b) => Either.right(encode(b)))
 )
 
@@ -1715,7 +1713,7 @@ export const lowercase = <I, A extends string>(self: Schema<I, A>): Schema<I, A>
   transform(
     self,
     to(self).pipe(lowercased()),
-    (s) => s.toLowerCase() as A,
+    (s) => s.toLowerCase(),
     identity
   )
 
@@ -1737,7 +1735,7 @@ export const trim = <I, A extends string>(self: Schema<I, A>): Schema<I, A> =>
   transform(
     self,
     to(self).pipe(trimmed()),
-    (s) => s.trim() as A, // this is safe because `pipe(to(self), trimmed())` will check its input anyway
+    (s) => s.trim(),
     identity
   )
 
@@ -1781,7 +1779,7 @@ export const parseJson = <I, A extends string>(self: Schema<I, A>, options?: {
     }
   }, (u, _, ast) => {
     try {
-      return ParseResult.success(JSON.stringify(u, options?.replacer, options?.space) as A) // this is safe because `self` will check its input anyway
+      return ParseResult.success(JSON.stringify(u, options?.replacer, options?.space))
     } catch (e: any) {
       return ParseResult.failure(ParseResult.type(ast, u, e.message))
     }
@@ -2118,7 +2116,7 @@ export const clamp =
     transform(
       self,
       self.pipe(to, between(min, max)),
-      (self) => N.clamp(self, min, max) as A, // this is safe because `self.pipe(to, between(min, max))` will check its input anyway
+      (self) => N.clamp(self, min, max),
       identity
     )
 
@@ -2154,7 +2152,7 @@ export const numberFromString = <I, A extends string>(self: Schema<I, A>): Schem
       const n = Number(s)
       return isNaN(n) ? ParseResult.failure(ParseResult.type(ast, s)) : ParseResult.success(n)
     },
-    (n) => ParseResult.success(String(n) as A) // this is safe because `self` will check its input anyway
+    (n) => ParseResult.success(String(n))
   )
 }
 
@@ -2293,7 +2291,7 @@ export const symbolFromString = <I, A extends string>(self: Schema<I, A>): Schem
     self,
     symbolFromSelf,
     (s) => Symbol.for(s),
-    (sym) => sym.description as A // this is safe because `self` will check its input anyway
+    (sym) => sym.description
   )
 }
 
@@ -2487,7 +2485,7 @@ export const clampBigint =
     transform(
       self,
       self.pipe(to, betweenBigint(min, max)),
-      (self) => Bigint.clamp(self, min, max) as A, // this is safe because `self.pipe(to, betweenBigint(min, max))` will check its input anyway
+      (self) => Bigint.clamp(self, min, max),
       identity
     )
 
@@ -2516,7 +2514,7 @@ export const bigintFromString = <I, A extends string>(self: Schema<I, A>): Schem
         return ParseResult.failure(ParseResult.type(ast, s))
       }
     },
-    (n) => ParseResult.success(String(n) as A) // this is safe because `self` will check its input anyway
+    (n) => ParseResult.success(String(n))
   )
 }
 
@@ -2546,7 +2544,7 @@ export const bigintFromNumber = <I, A extends number>(self: Schema<I, A>): Schem
         return ParseResult.failure(ParseResult.type(ast, b))
       }
 
-      return ParseResult.success(Number(b) as A)
+      return ParseResult.success(Number(b))
     }
   )
 }
@@ -2672,7 +2670,7 @@ export const uint8ArrayFromNumbers = <I, A extends ReadonlyArray<number>>(
     self,
     Uint8ArrayFromSelf,
     (a) => Uint8Array.from(a),
-    (n) => Array.from(n) as unknown as A
+    (n) => Array.from(n)
   )
 
 const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = uint8ArrayFromNumbers(
@@ -2717,7 +2715,7 @@ const makeEncodingTransform = <A extends string>(
         (decodeException) =>
           ParseResult.parseError([ParseResult.type(ast, s, decodeException.message)])
       ),
-    (u) => ParseResult.success(encode(u) as A2),
+    (u) => ParseResult.success(encode(u)),
     {
       [AST.IdentifierAnnotationId]: id,
       [Internal.PrettyHookId]: (): Pretty<Uint8Array> => (u) => `${id}(${encode(u)})`,
@@ -2938,7 +2936,7 @@ export const dateFromString = <I, A extends string>(self: Schema<I, A>): Schema<
     self,
     ValidDateFromSelf,
     (s) => new Date(s),
-    (n) => n.toISOString() as A // this is safe because `self` will check its input anyway
+    (n) => n.toISOString()
   )
 
 const _Date: Schema<string, Date> = dateFromString(string)
@@ -3340,7 +3338,7 @@ export const data = <
     item,
     to(dataFromSelf(item)),
     toData,
-    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a) as any
+    (a) => Array.isArray(a) ? Array.from(a) : Object.assign({}, a)
   )
 
 // ---------------------------------------------
@@ -3433,7 +3431,7 @@ const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, bas
       selfSchema,
       instanceOf(this),
       (input) => Object.assign(Object.create(this.prototype), input),
-      (input) => ({ ...(input as any) })
+      (input) => ({ ...input })
     )
   }
   fn.extend = function extend(this: any, fields: any) {

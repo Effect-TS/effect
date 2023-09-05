@@ -559,11 +559,6 @@ S.compose(S.NumberFromString, S.union(S.null, S.number))
 // $ExpectType Schema<string, number | null>
 S.NumberFromString.pipe(S.compose(S.union(S.null, S.number)))
 
-// mismatch
-
-// @ts-expect-error
-S.compose(S.string, S.number)
-
 // ---------------------------------------------
 // fromBrand
 // ---------------------------------------------
