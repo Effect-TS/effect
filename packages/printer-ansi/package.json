@@ -60,14 +60,14 @@
   },
   "devDependencies": {
     "@effect/data": "^0.18.3",
-    "@effect/io": "^0.39.0",
+    "@effect/io": "^0.40.0",
     "@effect/printer": "workspace:^",
-    "@effect/typeclass": "^0.4.0"
+    "@effect/typeclass": "^0.5.0"
   },
   "peerDependencies": {
     "@effect/data": "^0.18.3",
-    "@effect/io": "^0.39.0",
+    "@effect/io": "^0.40.0",
     "@effect/printer": "workspace:^",
-    "@effect/typeclass": "^0.4.0"
+    "@effect/typeclass": "^0.5.0"
   }
 }
