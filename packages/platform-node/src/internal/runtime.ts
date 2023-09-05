@@ -10,7 +10,7 @@ export const runMain: RunMain = <E, A>(
 ) => {
   const fiber = Effect.runFork(effect)
 
-  fiber.unsafeAddObserver((exit) =>
+  fiber.addObserver((exit) =>
     teardown(exit, (code) => {
       Effect.runCallback(interruptAll(fiber.id()), () => {
         process.exit(code)

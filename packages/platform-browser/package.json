@@ -40,16 +40,16 @@
   "license": "MIT",
   "sideEffects": [],
   "devDependencies": {
-    "@effect/data": "^0.18.3",
-    "@effect/io": "^0.39.0",
+    "@effect/data": "^0.18.4",
+    "@effect/io": "^0.40.0",
     "@effect/platform": "workspace:^",
-    "@effect/schema": "^0.34.0",
-    "@effect/stream": "^0.35.1",
+    "@effect/schema": "^0.35.0",
+    "@effect/stream": "^0.36.0",
     "vitest-localstorage-mock": "^0.0.1"
   },
   "peerDependencies": {
-    "@effect/data": "^0.18.3",
-    "@effect/io": "^0.39.0",
+    "@effect/data": "^0.18.4",
+    "@effect/io": "^0.40.0",
     "@effect/platform": "workspace:^"
   }
 }

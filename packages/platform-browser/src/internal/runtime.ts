@@ -8,7 +8,7 @@ export const runMain = <E, A>(
 ) => {
   const fiber = Effect.runFork(effect)
 
-  fiber.unsafeAddObserver(() => {
+  fiber.addObserver(() => {
     Effect.runFork(interruptAll(fiber.id()))
   })
 
