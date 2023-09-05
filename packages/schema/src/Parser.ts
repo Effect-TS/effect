@@ -321,7 +321,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
       }
     }
     case "Transform": {
-      const decode = getDecode(ast.transformation, isDecoding)
+      const transform = getFinalTransformation(ast.transformation, isDecoding)
       const from = isDecoding ? go(ast.from, true) : go(ast.to, false)
       const to = isDecoding ? go(ast.to, true) : go(ast.from, false)
       return (i1, options) =>
@@ -330,7 +330,7 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
             from(i1, options),
             (a) =>
               ParseResult.flatMap(
-                decode(a, options ?? defaultParseOption, ast),
+                transform(a, options ?? defaultParseOption, ast),
                 (i2) => to(i2, options)
               )
           ),
@@ -1102,64 +1102,55 @@ function sortByIndex(es: Array<[number, any]>): any {
 // transformations interpreter
 // -------------------------------------------------------------------------------------
 
-const isFinalPropertySignatureTransformation = (
-  ast: AST.FinalPropertySignatureTransformation | AST.Transformation
-): ast is AST.FinalPropertySignatureTransformation =>
-  ast._tag === "FinalPropertySignatureTransformation"
+const getFinalPropertySignatureTransformation = (
+  transformation: AST.PropertySignatureTransformation,
+  isDecoding: boolean
+) => {
+  switch (transformation._tag) {
+    case "FinalPropertySignatureTransformation":
+      return isDecoding ? transformation.decode : transformation.encode
+  }
+}
 
 /** @internal */
-export const getDecode = (
-  transform: AST.Transformation,
+export const getFinalTransformation = (
+  transformation: AST.Transformation,
   isDecoding: boolean
 ): (input: any, options: AST.ParseOptions, self: AST.AST) => ParseResult.ParseResult<any> => {
-  switch (transform._tag) {
+  switch (transformation._tag) {
     case "FinalTransformation":
-      return isDecoding ? transform.decode : transform.encode
+      return isDecoding ? transformation.decode : transformation.encode
     case "ComposeTransformation":
       return ParseResult.success
     case "TypeLiteralTransformation":
-      return (input, options, ast) => {
+      return (input) => {
         let out: ParseResult.ParseResult<any> = Either.right(input)
 
         // ---------------------------------------------
         // handle property signature transformations
         // ---------------------------------------------
-        for (const pst of transform.propertySignatureTransformations) {
+        for (const pst of transformation.propertySignatureTransformations) {
           const [from, to] = isDecoding ?
             [pst.from, pst.to] :
             [pst.to, pst.from]
-          const t = pst.propertySignatureTransformation
-          if (isFinalPropertySignatureTransformation(t)) {
-            const parse = isDecoding ? t.decode : t.encode
-            const f = (input: any) => {
-              const o = parse(
-                Object.prototype.hasOwnProperty.call(input, from) ?
-                  Option.some(input[from]) :
-                  Option.none()
-              )
-              if (Option.isSome(o)) {
-                input[to] = o.value
-              } else {
-                delete input[from]
-              }
-              return input
-            }
-            out = ParseResult.map(out, f)
-          } else {
-            const parse = getDecode(t, isDecoding)
-            out = ParseResult.flatMap(
-              out,
-              (input) =>
-                ParseResult.bimap(
-                  parse(input[from], options, ast),
-                  (e) => ParseResult.parseError([ParseResult.key(from, e.errors)]),
-                  (value) => {
-                    input[to] = value
-                    return input
-                  }
-                )
+          const transform = getFinalPropertySignatureTransformation(
+            pst.propertySignatureTransformation,
+            isDecoding
+          )
+          const f = (input: any) => {
+            const o = transform(
+              Object.prototype.hasOwnProperty.call(input, from) ?
+                Option.some(input[from]) :
+                Option.none()
             )
+            if (Option.isSome(o)) {
+              input[to] = o.value
+            } else {
+              delete input[from]
+            }
+            return input
           }
+          out = ParseResult.map(out, f)
         }
         return out
       }

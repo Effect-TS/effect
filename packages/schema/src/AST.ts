@@ -1043,7 +1043,7 @@ export type PropertySignatureTransformation = FinalPropertySignatureTransformati
 export interface PropertySignatureTransform {
   readonly from: PropertyKey
   readonly to: PropertyKey
-  readonly propertySignatureTransformation: FinalPropertySignatureTransformation
+  readonly propertySignatureTransformation: PropertySignatureTransformation
 }
 
 /**
