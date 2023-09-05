@@ -1,5 +1,48 @@
 # @effect/schema
 
+## 0.35.0
+
+### Minor Changes
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - backport AST changes from POC:
+
+  - change decode in Declaration- change decode in Refinement (to filter)
+  - remove isReversed from Refinement
+  - add transformation to Transform (and remove decode, encode, propertySignatureTransformations)
+  - refactor PropertySignature
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - refactor annotations: keys must be symbols
+
+- [#411](https://github.com/Effect-TS/schema/pull/411) [`2f6c4d1`](https://github.com/Effect-TS/schema/commit/2f6c4d116eb5c935710cf6dadbc5d500010c95d4) Thanks [@gcanti](https://github.com/gcanti)! - rename `symbol` to `symbolFromSelf` and add `symbol` which decodes/encodes from/to `string`
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - remove Spread in favour of /data/Types#Simplify
+
+- [#413](https://github.com/Effect-TS/schema/pull/413) [`20ef377`](https://github.com/Effect-TS/schema/commit/20ef377fc0fc6adb92896c926fb5cc77430e0e1e) Thanks [@tim-smart](https://github.com/tim-smart)! - update /io
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - fix fromBrand definition (self is a Schema<I, A> now instead of Schema<A>)
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - rename `bigint` to `bigintFromSelf` and `BigintFromString` to `bigint`
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - change transformation display in error messages (from A -> B to A <-> B)
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - move From, To to Schema namespace (conforming to the ecosystem standard)
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - rename `transformResult` to `transformOrFail` and change signature (add additional ast parameter to transformations)
+
+### Patch Changes
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - record: add support for branded keys
+
+- [#407](https://github.com/Effect-TS/schema/pull/407) [`9a1b8de`](https://github.com/Effect-TS/schema/commit/9a1b8de5b8ff8f93c8a564bfdfc0f4c327d6a6aa) Thanks [@fubhy](https://github.com/fubhy)! - Add support for `base64`, `base64url` and `hex` encoding
+
+- [#412](https://github.com/Effect-TS/schema/pull/412) [`3768461`](https://github.com/Effect-TS/schema/commit/37684611899d2bee1110d30c8d3136d74f6c5dcf) Thanks [@gcanti](https://github.com/gcanti)! - relax transform / transformOrFail / compose constraints
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - TreeFormatter: should not collapse union members
+
+- [#401](https://github.com/Effect-TS/schema/pull/401) [`8b1ae6b`](https://github.com/Effect-TS/schema/commit/8b1ae6b4e4305eb983bc621c054f1523474066f7) Thanks [@gcanti](https://github.com/gcanti)! - add description annotations to: string, number, boolean, symbol, bigint, object
+
+- [#405](https://github.com/Effect-TS/schema/pull/405) [`0e24b7d`](https://github.com/Effect-TS/schema/commit/0e24b7dea40e625d466d4922ed94433a09867dfb) Thanks [@fubhy](https://github.com/fubhy)! - Add support for `Uint8Array`
+
 ## 0.34.0
 
 ### Minor Changes
