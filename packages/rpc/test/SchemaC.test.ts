@@ -11,7 +11,7 @@ describe("SchemaC", () => {
         name: S.string
       })
     )
-    interface User extends S.To<typeof User_> {}
+    interface User extends S.Schema.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
 
     typeEquals(User)<
@@ -29,7 +29,7 @@ describe("SchemaC", () => {
       }),
       "User"
     )
-    interface User extends S.To<typeof User_> {}
+    interface User extends S.Schema.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
 
     typeEquals(User)<
@@ -51,7 +51,7 @@ describe("SchemaC", () => {
       }),
       "User"
     )
-    interface User extends S.To<typeof User_> {}
+    interface User extends S.Schema.To<typeof User_> {}
     const User = _.withTo<User>()(User_)
 
     typeEquals(User)<

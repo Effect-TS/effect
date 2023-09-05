@@ -1,25 +1,25 @@
-import { pipe } from "@effect/data/Function"
 import * as Chunk from "@effect/data/Chunk"
+import { pipe } from "@effect/data/Function"
 import * as Effect from "@effect/io/Effect"
 import * as Client from "@effect/rpc/Client"
-import * as Router from "@effect/rpc/Router"
-import * as Server from "@effect/rpc/Server"
-import * as RpcSchema from "@effect/rpc/Schema"
-import * as Schema from "@effect/schema/Schema"
 import * as Resolver from "@effect/rpc/Resolver"
+import * as Router from "@effect/rpc/Router"
+import * as RpcSchema from "@effect/rpc/Schema"
+import * as Server from "@effect/rpc/Server"
+import * as Schema from "@effect/schema/Schema"
 
 // Post schema
 const PostId = pipe(
   Schema.number,
   Schema.positive(),
   Schema.int(),
-  Schema.brand("PostId"),
+  Schema.brand("PostId")
 )
-type PostId = Schema.To<typeof PostId>
+type PostId = Schema.Schema.To<typeof PostId>
 
 const Post = Schema.struct({
   id: PostId,
-  body: Schema.string,
+  body: Schema.string
 })
 const CreatePost = pipe(Post, Schema.omit("id"))
 
@@ -27,29 +27,29 @@ const CreatePost = pipe(Post, Schema.omit("id"))
 const posts = RpcSchema.make({
   create: {
     input: CreatePost,
-    output: Post,
+    output: Post
   },
   list: {
-    output: Schema.chunk(Post),
-  },
+    output: Schema.chunk(Post)
+  }
 })
 
 // Post service router
 const postsRouter = Router.make(posts, {
-  create: post =>
+  create: (post) =>
     Effect.succeed({
       ...post,
-      id: PostId(1),
+      id: PostId(1)
     }),
 
   list: Effect.succeed(
     Chunk.fromIterable([
       {
         id: PostId(1),
-        body: "Hello world!",
-      },
-    ]),
-  ),
+        body: "Hello world!"
+      }
+    ])
+  )
 })
 
 // Root service schema
@@ -59,19 +59,19 @@ const schema = RpcSchema.make({
 
   greet: {
     input: Schema.string,
-    output: Schema.string,
+    output: Schema.string
   },
 
   currentTime: {
-    output: Schema.dateFromString(Schema.string),
-  },
+    output: Schema.dateFromString(Schema.string)
+  }
 })
 
 // Root service router
 const router = Router.make(schema, {
-  greet: name => Effect.succeed(`Hello ${name}!`),
+  greet: (name) => Effect.succeed(`Hello ${name}!`),
   currentTime: Effect.sync(() => new Date()),
-  posts: postsRouter,
+  posts: postsRouter
 })
 
 const handler = Server.handler(router)

@@ -18,7 +18,7 @@ const SomeError = S.struct({
   _tag: S.literal("SomeError"),
   message: S.string
 })
-interface SomeError extends S.To<typeof SomeError> {}
+interface SomeError extends S.Schema.To<typeof SomeError> {}
 
 const makeCounter = () => {
   let count = 0

@@ -21,7 +21,7 @@ const SomeError_ = S.struct({
   _tag: S.literal("SomeError"),
   message: S.string
 })
-interface SomeError extends S.To<typeof SomeError_> {}
+interface SomeError extends S.Schema.To<typeof SomeError_> {}
 const SomeError: S.Schema<SomeError> = SomeError_
 
 const posts = RS.make({

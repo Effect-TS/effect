@@ -169,7 +169,7 @@ export namespace RpcService {
    * @category utils
    * @since 1.0.0
    */
-  export type Errors<S extends DefinitionWithId> = Schema.To<
+  export type Errors<S extends DefinitionWithId> = Schema.Schema.To<
     S[RpcServiceErrorId]
   >
 
@@ -177,7 +177,7 @@ export namespace RpcService {
    * @category utils
    * @since 1.0.0
    */
-  export type ErrorsFrom<S extends DefinitionWithId> = Schema.From<
+  export type ErrorsFrom<S extends DefinitionWithId> = Schema.Schema.From<
     S[RpcServiceErrorId]
   >
 
