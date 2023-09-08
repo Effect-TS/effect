@@ -1,5 +1,11 @@
 # @effect/platform-bun
 
+## 0.3.2
+
+### Patch Changes
+
+- [#140](https://github.com/Effect-TS/platform/pull/140) [`fadedf1`](https://github.com/Effect-TS/platform/commit/fadedf15990b438d4baea3bb9a5b63a911715f0b) Thanks [@tim-smart](https://github.com/tim-smart)! - remove host from bun server urls
+
 ## 0.3.1
 
 ### Patch Changes
