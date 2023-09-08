@@ -2,6 +2,21 @@
 
 Welcome to Effect, a powerful TypeScript framework that provides a fully-fledged functional effect system with a rich standard library.
 
+# Requirements
+
+- TypeScript 5.0 or newer
+- The `strict` flag enabled in your `tsconfig.json` file
+
+```
+{
+  // ...
+  "compilerOptions": {
+    // ...
+    "strict": true,
+  }
+}
+```
+
 ## Documentation
 
 For detailed information and usage examples, please visit the [Effect website](https://www.effect.website/).
