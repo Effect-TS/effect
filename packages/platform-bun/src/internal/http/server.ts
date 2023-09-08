@@ -68,7 +68,7 @@ export const make = (
                   const fiber = runFork(Effect.provideService(
                     app,
                     ServerRequest.ServerRequest,
-                    new ServerRequestImpl(request, resolve, reject)
+                    new ServerRequestImpl(request, resolve, reject, removeHost(request.url))
                   ))
                   request.signal.addEventListener("abort", () => {
                     runFork(fiber.interruptAsFork(fiberId))
@@ -169,7 +169,7 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     readonly source: Request,
     public resolve: (response: Response) => void,
     public reject: (reason: any) => void,
-    readonly url = source.url,
+    readonly url: string,
     public headersOverride?: Headers.Headers
   ) {
     this[ServerRequest.TypeId] = ServerRequest.TypeId
@@ -294,4 +294,12 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     ))
     return this.arrayBufferEffect
   }
+}
+
+const removeHost = (url: string) => {
+  if (url[0] === "/") {
+    return url
+  }
+  const index = url.indexOf("/", url.indexOf("//") + 2)
+  return index === -1 ? "/" : url.slice(index)
 }
