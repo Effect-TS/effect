@@ -2641,8 +2641,7 @@ export const Uint8ArrayFromSelf: Schema<Uint8Array> = declare(
   [],
   struct({}),
   () => (u, _, ast) =>
-    // TODO: Use `Predicate.isUint8Array` when it's available
-    !(u instanceof Uint8Array)
+    !Predicate.isUint8Array(u)
       ? ParseResult.failure(ParseResult.type(ast, u))
       : ParseResult.success(u),
   {
