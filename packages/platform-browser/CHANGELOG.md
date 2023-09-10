@@ -1,5 +1,14 @@
 # @effect/platform-browser
 
+## 0.3.2
+
+### Patch Changes
+
+- [#131](https://github.com/Effect-TS/platform/pull/131) [`06e27ce`](https://github.com/Effect-TS/platform/commit/06e27ce29553ea8d0a234b941fa1de1a51996fbf) Thanks [@jessekelly881](https://github.com/jessekelly881)! - add Clipboard module to /platform-browser
+
+- Updated dependencies [[`06e27ce`](https://github.com/Effect-TS/platform/commit/06e27ce29553ea8d0a234b941fa1de1a51996fbf)]:
+  - @effect/platform@0.15.2
+
 ## 0.3.1
 
 ### Patch Changes

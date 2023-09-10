@@ -1,5 +1,14 @@
 # @effect/platform-node
 
+## 0.15.2
+
+### Patch Changes
+
+- [#142](https://github.com/Effect-TS/platform/pull/142) [`8571c36`](https://github.com/Effect-TS/platform/commit/8571c36f1f8a6ab36b23ee26922cf58def15196e) Thanks [@tim-smart](https://github.com/tim-smart)! - fix mime package import
+
+- Updated dependencies [[`06e27ce`](https://github.com/Effect-TS/platform/commit/06e27ce29553ea8d0a234b941fa1de1a51996fbf)]:
+  - @effect/platform@0.15.2
+
 ## 0.15.1
 
 ### Patch Changes
