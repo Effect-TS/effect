@@ -65,7 +65,7 @@
   },
   "peerDependencies": {
     "@effect/data": "^0.18.5",
-    "@effect/io": "^0.40.0"
+    "@effect/io": "^0.40.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.9",
@@ -78,7 +78,7 @@
     "@effect/data": "^0.18.5",
     "@effect/docgen": "^0.1.4",
     "@effect/eslint-plugin": "^0.1.2",
-    "@effect/io": "^0.40.0",
+    "@effect/io": "^0.40.1",
     "@effect/language-service": "^0.0.21",
     "@types/benchmark": "^2.1.2",
     "@types/chai": "^4.3.5",
