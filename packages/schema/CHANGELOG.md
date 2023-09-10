@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.35.1
+
+### Patch Changes
+
+- [#418](https://github.com/Effect-TS/schema/pull/418) [`9cd24ac`](https://github.com/Effect-TS/schema/commit/9cd24acbde6c366ebecb48aff3c78eb74d0d48b9) Thanks [@gcanti](https://github.com/gcanti)! - update dependencies
+
+- [#416](https://github.com/Effect-TS/schema/pull/416) [`f932832`](https://github.com/Effect-TS/schema/commit/f932832984af0b059f4dd7493f62510e2a551ed2) Thanks [@fubhy](https://github.com/fubhy)! - Use `Predicate.isUint8Array` and update `/data`
+
 ## 0.35.0
 
 ### Minor Changes
