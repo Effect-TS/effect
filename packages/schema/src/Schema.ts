@@ -3421,9 +3421,17 @@ const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, bas
       if (this._ast) {
         return this._ast
       }
+      const toSchema = to(selfSchema)
       this._ast = transform(
         selfSchema,
-        instanceOf(this),
+        declare([toSchema], toSchema, () => (input, _, ast) =>
+          input instanceof this
+            ? ParseResult.success(input)
+            : ParseResult.failure(ParseResult.type(ast, input)), {
+          [AST.DescriptionAnnotationId]: `an instance of ${this.name}`,
+          [Internal.ArbitraryHookId]: (struct: any) => (fc: any) =>
+            struct(fc).map((props: any) => new this(props))
+        }),
         (input) => Object.assign(Object.create(this.prototype), input),
         (input) => ({ ...input })
       ).ast

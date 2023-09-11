@@ -73,6 +73,17 @@ describe("Schema/classes", () => {
     )
   })
 
+  it("keyof", () => {
+    expect(S.keyof(S.to(Person))).toEqual(
+      S.union(S.literal("id"), S.literal("name"))
+    )
+  })
+
+  it("is", () => {
+    const is = S.is(S.to(Person))
+    expect(is(new Person({ id: 1, name: "name" }))).toEqual(true)
+  })
+
   it("schema", () => {
     const person = S.parseSync(Person)({ id: 1, name: "John" })
     assert(person.name === "John")
