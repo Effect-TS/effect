@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.36.1
+
+### Patch Changes
+
+- [#425](https://github.com/Effect-TS/schema/pull/425) [`d952db8`](https://github.com/Effect-TS/schema/commit/d952db8a635f1ffeeb24b37518c44475a49af591) Thanks [@gcanti](https://github.com/gcanti)! - Class: add support for Arbitrary, closes #424
+
 ## 0.36.0
 
 ### Minor Changes
