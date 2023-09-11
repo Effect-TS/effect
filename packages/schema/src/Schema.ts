@@ -74,6 +74,14 @@ export declare module Schema {
   export type To<S extends { readonly [TypeId]: { readonly To: (..._: any) => any } }> = Parameters<
     S[TypeId]["To"]
   >[0]
+
+  /**
+   * @since 1.0.0
+   */
+  export type ToAsserts<S extends Schema<any>> = (
+    input: unknown,
+    options?: AST.ParseOptions
+  ) => asserts input is Schema.To<S>
 }
 
 /**
@@ -222,13 +230,6 @@ export {
    * @since 1.0.0
    */
   validateSync
-} from "@effect/schema/Parser"
-
-export type {
-  /**
-   * @since 1.0.0
-   */
-  ToAsserts
 } from "@effect/schema/Parser"
 /* c8 ignore end */
 

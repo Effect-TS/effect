@@ -51,6 +51,10 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
 ) {}
 
 describe("Schema/classes", () => {
+  it("should be a Schema", () => {
+    expect(S.isSchema(Person)).toEqual(true)
+  })
+
   it("constructor", () => {
     const john = new Person({ id: 1, name: "John" })
     assert(john.name === "John")

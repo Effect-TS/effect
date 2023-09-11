@@ -210,14 +210,6 @@ export const is = <_, A>(schema: Schema.Schema<_, A>) => {
 }
 
 /**
- * @since 1.0.0
- */
-export type ToAsserts<S extends Schema.Schema<any>> = (
-  input: unknown,
-  options?: AST.ParseOptions
-) => asserts input is Schema.Schema.To<S>
-
-/**
  * @category validation
  * @since 1.0.0
  */
