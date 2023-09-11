@@ -1,5 +1,13 @@
 # @effect/schema
 
+## 0.36.0
+
+### Minor Changes
+
+- [#420](https://github.com/Effect-TS/schema/pull/420) [`3a46cbc`](https://github.com/Effect-TS/schema/commit/3a46cbc3af2592e39619f193dd6972aa3a5ce04f) Thanks [@tim-smart](https://github.com/tim-smart)! - have Schema.Class constructors implement Schema directly
+
+- [#422](https://github.com/Effect-TS/schema/pull/422) [`295561b`](https://github.com/Effect-TS/schema/commit/295561b46256444498202959852abdef8d6f4c0c) Thanks [@gcanti](https://github.com/gcanti)! - move ToAsserts utility type to Schema namespace
+
 ## 0.35.1
 
 ### Patch Changes
