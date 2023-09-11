@@ -8,6 +8,10 @@ describe.concurrent("Uint8Array/Uint8Array", () => {
     Util.roundtrip(schema)
   })
 
+  it("isSchema", () => {
+    expect(S.isSchema(schema)).toEqual(true)
+  })
+
   it("decoding", async () => {
     await Util.expectParseSuccess(schema, [0, 1, 2, 3], Uint8Array.from([0, 1, 2, 3]))
     await Util.expectParseFailure(

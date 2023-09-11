@@ -1,6 +1,7 @@
 import * as Data from "@effect/data/Data"
 import * as Equal from "@effect/data/Equal"
 import * as O from "@effect/data/Option"
+import * as AST from "@effect/schema/AST"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
@@ -53,6 +54,11 @@ class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFr
 describe("Schema/classes", () => {
   it("should be a Schema", () => {
     expect(S.isSchema(Person)).toEqual(true)
+    const schema = Person.pipe(S.title("Person"))
+    expect(schema.ast.annotations).toEqual({
+      [AST.TitleAnnotationId]: "Person"
+    })
+    expect(S.isSchema(schema)).toEqual(true)
   })
 
   it("constructor", () => {

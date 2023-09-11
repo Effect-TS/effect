@@ -7,8 +7,9 @@ import * as Util from "@effect/schema/test/util"
 describe.concurrent("Schema/brand", () => {
   describe.concurrent("annotations", () => {
     it("should move the brand annotations to the right end", async () => {
-      const codec = Util.X2.pipe(S.brand("X2"))
-      expect(S.to(codec).ast).toEqual(S.string.pipe(S.brand("X2")).ast)
+      const schema = Util.X2.pipe(S.brand("X2"))
+      const to = S.to(schema)
+      expect(to.ast).toEqual(S.string.pipe(S.brand("X2")).ast)
     })
 
     it("brand as string", () => {

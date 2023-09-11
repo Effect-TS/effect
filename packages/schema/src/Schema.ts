@@ -244,7 +244,7 @@ export {
  * @since 1.0.0
  */
 export const isSchema = (u: unknown): u is Schema<unknown, unknown> =>
-  Predicate.isObject(u) && TypeId in u && "ast" in u
+  Predicate.isObject(u) && TypeId in u && "ast" in u && "pipe" in u
 
 // ---------------------------------------------
 // constructors
@@ -2675,10 +2675,9 @@ export const uint8ArrayFromNumbers = <I, A extends ReadonlyArray<number>>(
 
 const _Uint8Array: Schema<ReadonlyArray<number>, Uint8Array> = uint8ArrayFromNumbers(
   array(number.pipe(
-    between(0, 255),
-    annotations({
-      [AST.TitleAnnotationId]: "8-bit unsigned integer",
-      [AST.DescriptionAnnotationId]: "a 8-bit unsigned integer"
+    between(0, 255, {
+      title: "8-bit unsigned integer",
+      description: "a 8-bit unsigned integer"
     })
   ))
 )
