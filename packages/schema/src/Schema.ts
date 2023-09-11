@@ -3348,138 +3348,129 @@ export const data = <
  * @category classes
  * @since 1.0.0
  */
-export interface Class<I, A, Inherited = {}> {
-  new(props: A): A & Data.Case & Omit<Inherited, keyof A>
+export interface Class<A, Fields extends StructFields, Inherited = Data.Case>
+  extends Schema<Simplify<FromStruct<Fields>>, A>
+{
+  new(
+    props: Simplify<ToStruct<Fields>>
+  ): ToStruct<Fields> & Omit<Inherited, keyof Fields>
 
-  schema<T extends new(...args: any) => any>(this: T): Schema<I, InstanceType<T>>
-  schemaStruct(): Schema<I, A>
-  extend<
-    T extends new(...args: any) => any,
-    Fields extends StructFields
-  >(
-    this: T,
-    fields: Fields
-  ): Class<
-    Simplify<Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>>,
-    Simplify<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
-    InstanceType<T>
+  readonly struct: Schema<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>>
+
+  readonly extend: <B>() => <FieldsB extends StructFields>(fields: FieldsB) => Class<
+    B,
+    Omit<Fields, keyof FieldsB> & FieldsB,
+    A
   >
-  transform<
-    T extends new(...args: any) => any,
-    Fields extends StructFields
+
+  readonly transform: <B>() => <
+    FieldsB extends StructFields
   >(
-    this: T,
-    fields: Fields,
+    fields: FieldsB,
     decode: (
-      input: Class.To<T>
-    ) => ParseResult.ParseResult<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
+      input: Simplify<ToStruct<Fields>>
+    ) => ParseResult.ParseResult<ToStruct<Omit<Fields, keyof FieldsB> & FieldsB>>,
     encode: (
-      input: Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>
-    ) => ParseResult.ParseResult<Class.To<T>>
-  ): Class<
-    Class.From<T>,
-    Simplify<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
-    InstanceType<T>
+      input: Simplify<ToStruct<Omit<Fields, keyof FieldsB> & FieldsB>>
+    ) => ParseResult.ParseResult<ToStruct<Fields>>
+  ) => Class<
+    B,
+    Omit<Fields, keyof FieldsB> & FieldsB,
+    A
   >
-  transformFrom<
-    T extends new(...args: any) => any,
-    Fields extends StructFields
+
+  readonly transformFrom: <B>() => <
+    FieldsB extends StructFields
   >(
-    this: T,
-    fields: Fields,
+    fields: FieldsB,
     decode: (
-      input: Class.From<T>
-    ) => ParseResult.ParseResult<Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>>,
+      input: Simplify<FromStruct<Fields>>
+    ) => ParseResult.ParseResult<FromStruct<Omit<Fields, keyof FieldsB> & FieldsB>>,
     encode: (
-      input: Omit<Class.From<T>, keyof Fields> & FromStruct<Fields>
-    ) => ParseResult.ParseResult<Class.From<T>>
-  ): Class<
-    Class.From<T>,
-    Simplify<Omit<Class.To<T>, keyof Fields> & ToStruct<Fields>>,
-    InstanceType<T>
+      input: Simplify<FromStruct<Omit<Fields, keyof FieldsB> & FieldsB>>
+    ) => ParseResult.ParseResult<FromStruct<Fields>>
+  ) => Class<
+    B,
+    Omit<Fields, keyof FieldsB> & FieldsB,
+    A
   >
-}
-
-/**
- * @since 1.0.0
- */
-export declare namespace Class {
-  /**
-   * @since 1.0.0
-   */
-  export type To<A> = A extends Class<infer _F, infer T> ? T : never
-
-  /**
-   * @since 1.0.0
-   */
-  export type From<A> = A extends Class<infer F, infer _T> ? F : never
-}
-
-const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
-  const validator = Parser.validateSync(selfSchema)
-
-  const fn = function(this: any, props: unknown) {
-    Object.assign(this, validator(props))
-  }
-  fn.prototype = Object.create(base)
-  fn.schemaStruct = function schemaStruct() {
-    return selfSchema
-  }
-  fn.schema = function schema(this: any) {
-    return transform(
-      selfSchema,
-      instanceOf(this),
-      (input) => Object.assign(Object.create(this.prototype), input),
-      (input) => ({ ...input })
-    )
-  }
-  fn.extend = function extend(this: any, fields: any) {
-    const newFields = { ...selfFields, ...fields }
-    return makeClass(
-      struct(newFields),
-      newFields,
-      this.prototype
-    )
-  }
-  fn.transform = function transform(this: any, fields: any, decode: any, encode: any) {
-    const newFields = { ...selfFields, ...fields }
-    return makeClass(
-      transformOrFail(
-        selfSchema,
-        to(struct(newFields)),
-        decode,
-        encode
-      ),
-      newFields,
-      this.prototype
-    )
-  }
-  fn.transformFrom = function transform(this: any, fields: any, decode: any, encode: any) {
-    const newFields = { ...selfFields, ...fields }
-    return makeClass(
-      transformOrFail(
-        from(selfSchema),
-        struct(newFields),
-        decode,
-        encode
-      ),
-      newFields,
-      this.prototype
-    )
-  }
-
-  return fn as any
 }
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export const Class = <
-  Fields extends StructFields
->(
+export const Class = <A>() =>
+<Fields extends StructFields>(
   fields: Fields
-): Class<
-  Simplify<FromStruct<Fields>>,
-  Simplify<ToStruct<Fields>>
-> => makeClass(struct(fields), fields, Data.Class.prototype)
+): Class<A, Fields> => makeClass(struct(fields), fields, Data.Class.prototype)
+
+const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
+  const validator = Parser.validateSync(selfSchema)
+
+  const fn = function(this: any, props: unknown) {
+    Object.assign(this, validator(props))
+  } as any
+  fn.prototype = Object.create(base)
+  fn[TypeId] = variance
+  fn.pipe = function pipe() {
+    return pipeArguments(this, arguments)
+  }
+  Object.defineProperty(fn, "ast", {
+    get() {
+      if (this._ast) {
+        return this._ast
+      }
+      this._ast = transform(
+        selfSchema,
+        instanceOf(this),
+        (input) => Object.assign(Object.create(this.prototype), input),
+        (input) => ({ ...input })
+      ).ast
+      return this._ast
+    }
+  })
+  fn.struct = selfSchema
+  fn.extend = function() {
+    return (fields: any) => {
+      const newFields = { ...selfFields, ...fields }
+      return makeClass(
+        struct(newFields),
+        newFields,
+        this.prototype
+      )
+    }
+  }
+  fn.transform = function() {
+    return (fields: any, decode: any, encode: any) => {
+      const newFields = { ...selfFields, ...fields }
+      return makeClass(
+        transformOrFail(
+          selfSchema,
+          to(struct(newFields)),
+          decode,
+          encode
+        ),
+        newFields,
+        this.prototype
+      )
+    }
+  }
+  fn.transformFrom = function() {
+    return (fields: any, decode: any, encode: any) => {
+      const newFields = { ...selfFields, ...fields }
+      return makeClass(
+        transformOrFail(
+          from(selfSchema),
+          struct(newFields),
+          decode,
+          encode
+        ),
+        newFields,
+        this.prototype
+      )
+    }
+  }
+
+  return fn
+}

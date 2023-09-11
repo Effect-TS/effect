@@ -5,7 +5,7 @@ import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-class Person extends S.Class({
+class Person extends S.Class<Person>()({
   id: S.number,
   name: S.string.pipe(S.nonEmpty())
 }) {
@@ -14,7 +14,7 @@ class Person extends S.Class({
   }
 }
 
-class PersonWithAge extends Person.extend({
+class PersonWithAge extends Person.extend<PersonWithAge>()({
   age: S.number
 }) {
   get isAdult() {
@@ -22,11 +22,11 @@ class PersonWithAge extends Person.extend({
   }
 }
 
-class PersonWithNick extends PersonWithAge.extend({
+class PersonWithNick extends PersonWithAge.extend<PersonWithNick>()({
   nick: S.string
 }) {}
 
-class PersonWithTransform extends Person.transform(
+class PersonWithTransform extends Person.transform<PersonWithTransform>()(
   {
     thing: S.optional(S.struct({ id: S.number })).toOption()
   },
@@ -38,7 +38,7 @@ class PersonWithTransform extends Person.transform(
   PR.success
 ) {}
 
-class PersonWithTransformFrom extends Person.transformFrom(
+class PersonWithTransformFrom extends Person.transformFrom<PersonWithTransformFrom>()(
   {
     thing: S.optional(S.struct({ id: S.number })).toOption()
   },
@@ -64,10 +64,10 @@ describe("Schema/classes", () => {
   })
 
   it("schema", () => {
-    const person = S.parseSync(Person.schema())({ id: 1, name: "John" })
+    const person = S.parseSync(Person)({ id: 1, name: "John" })
     assert(person.name === "John")
 
-    const PersonFromSelf = S.to(Person.schema())
+    const PersonFromSelf = S.to(Person)
     Util.expectParseSuccess(PersonFromSelf, new Person({ id: 1, name: "John" }))
     Util.expectParseFailure(
       PersonFromSelf,
@@ -77,7 +77,7 @@ describe("Schema/classes", () => {
   })
 
   it("extends", () => {
-    const person = S.parseSync(PersonWithAge.schema())({
+    const person = S.parseSync(PersonWithAge)({
       id: 1,
       name: "John",
       age: 30
@@ -90,7 +90,7 @@ describe("Schema/classes", () => {
   })
 
   it("extends extends", () => {
-    const person = S.parseSync(PersonWithNick.schema())({
+    const person = S.parseSync(PersonWithNick)({
       id: 1,
       name: "John",
       age: 30,
@@ -101,7 +101,7 @@ describe("Schema/classes", () => {
   })
 
   it("extends error", () => {
-    expect(() => S.parseSync(PersonWithAge.schema())({ id: 1, name: "John" })).toThrowError(
+    expect(() => S.parseSync(PersonWithAge)({ id: 1, name: "John" })).toThrowError(
       new Error(`error(s) found
 └─ ["age"]
    └─ is missing`)
@@ -122,7 +122,7 @@ describe("Schema/classes", () => {
   })
 
   it("transform", () => {
-    const decode = S.decodeSync(PersonWithTransform.schema())
+    const decode = S.decodeSync(PersonWithTransform)
     const person = decode({
       id: 1,
       name: "John"
@@ -135,7 +135,7 @@ describe("Schema/classes", () => {
   })
 
   it("transform from", () => {
-    const decode = S.decodeSync(PersonWithTransformFrom.schema())
+    const decode = S.decodeSync(PersonWithTransformFrom)
     const person = decode({
       id: 1,
       name: "John"
