@@ -6,15 +6,15 @@ import { runMain } from "@effect/platform-bun/Runtime"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 
-class Todo extends Schema.Class({
+class Todo extends Schema.Class<Todo>()({
   userId: Schema.number,
   id: Schema.number,
   title: Schema.string,
   completed: Schema.boolean
 }) {}
 
-const TodoWithoutId = Todo.schemaStruct().pipe(Schema.omit("id"))
-type TodoWithoutId = Schema.To<typeof TodoWithoutId>
+const TodoWithoutId = Todo.struct.pipe(Schema.omit("id"))
+type TodoWithoutId = Schema.Schema.To<typeof TodoWithoutId>
 
 interface TodoService {
   readonly create: (
@@ -29,7 +29,7 @@ const makeTodoService = Effect.gen(function*(_) {
     Http.client.filterStatusOk,
     Http.client.mapRequest(Http.request.prependUrl("https://jsonplaceholder.typicode.com"))
   )
-  const decodeTodo = Http.response.schemaBodyJson(Todo.schema())
+  const decodeTodo = Http.response.schemaBodyJson(Todo)
 
   const addTodoWithoutIdBody = Http.request.schemaBody(TodoWithoutId)
   const create = (todo: TodoWithoutId) =>

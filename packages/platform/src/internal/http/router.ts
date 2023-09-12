@@ -3,6 +3,7 @@ import * as Context from "@effect/data/Context"
 import * as Equal from "@effect/data/Equal"
 import { dual } from "@effect/data/Function"
 import * as Hash from "@effect/data/Hash"
+import * as Inspectable from "@effect/data/Inspectable"
 import * as Option from "@effect/data/Option"
 import { pipeArguments } from "@effect/data/Pipeable"
 import type * as Cause from "@effect/io/Cause"
@@ -90,6 +91,19 @@ class RouterImpl<R, E> implements Router.Router<R, E> {
   }
   [Hash.symbol](this: RouterImpl<R, E>): number {
     return Hash.random(this)
+  }
+  toJSON() {
+    return {
+      _id: "Router",
+      routes: this.routes.toJSON(),
+      mounts: this.mounts.toJSON()
+    }
+  }
+  toString() {
+    return Inspectable.toString(this)
+  }
+  [Inspectable.NodeInspectSymbol]() {
+    return this.toJSON()
   }
 }
 
