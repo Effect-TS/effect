@@ -350,4 +350,35 @@ describe("HttpServer", () => {
       )
       expect(response.status).toEqual(400)
     }).pipe(runPromise))
+
+  it("tracing", () =>
+    Effect.gen(function*(_) {
+      yield* _(
+        Http.router.empty,
+        Http.router.get(
+          "/",
+          Effect.flatMap(
+            Effect.flatten(Effect.currentSpan),
+            (_) => Http.response.json({ spanId: _.spanId, parent: _.parent })
+          )
+        ),
+        Http.middleware.b3Response,
+        Http.server.serve(Http.middleware.tracer),
+        Effect.scoped,
+        Effect.fork
+      )
+      const client = yield* _(makeClient)
+      const tracerClient = HttpC.client.withB3Propagation(client)
+      const requestSpan = yield* _(Effect.makeSpan("client request"))
+      const [body, span] = yield* _(
+        tracerClient(HttpC.request.get("/")),
+        Effect.flatMap((_) =>
+          Effect.withSpan(Effect.all([_.json, Effect.flatten(Effect.currentSpan)]), "client response")
+        ),
+        Effect.withParentSpan(requestSpan),
+        Effect.scoped
+      )
+      expect((body as any).parent.value.spanId).toEqual(requestSpan.spanId)
+      expect(span.parent._tag === "Some" && span.parent.value.spanId).toEqual((body as any).spanId)
+    }).pipe(runPromise))
 })

@@ -1,15 +1,18 @@
 import * as Context from "@effect/data/Context"
-import { dual } from "@effect/data/Function"
+import { dual, pipe } from "@effect/data/Function"
+import * as Option from "@effect/data/Option"
 import { pipeArguments } from "@effect/data/Pipeable"
 import type * as Predicate from "@effect/data/Predicate"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
 import type * as Schedule from "@effect/io/Schedule"
+import type * as Scope from "@effect/io/Scope"
 import type * as Body from "@effect/platform/Http/Body"
 import type * as Client from "@effect/platform/Http/Client"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
+import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as Method from "@effect/platform/Http/Method"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
@@ -358,6 +361,35 @@ export const mapRequestEffect = dual<
     f: (a: ClientRequest.ClientRequest) => Effect.Effect<R2, E2, ClientRequest.ClientRequest>
   ) => Client.Client<R | R2, E | E2, A>
 >(2, (self, f) => setProto((request) => Effect.flatMap(f(request), self)))
+
+/** @internal */
+export const withB3Propagation = <R, E>(
+  self: Client.Client.WithResponse<R, E>
+): Client.Client.WithResponse<R | Scope.Scope, E> =>
+  setProto((req) =>
+    pipe(
+      Effect.map(
+        Effect.currentSpan,
+        Option.match({
+          onNone: () => req,
+          onSome: (span) => {
+            const parentId = span.parent._tag === "Some" ? `-${span.parent.value.spanId}` : ""
+            return internalRequest.setHeader(
+              req,
+              "b3",
+              `${span.traceId}-${span.spanId}-1${parentId}`
+            )
+          }
+        })
+      ),
+      Effect.flatMap(self),
+      Effect.tap((res) =>
+        Effect.ignore(
+          Effect.flatMap(IncomingMessage.schemaExternalSpan(res), Effect.withParentSpanScoped)
+        )
+      )
+    )
+  )
 
 /** @internal */
 export const retry: {

@@ -7,6 +7,7 @@ import type * as Predicate from "@effect/data/Predicate"
 import type * as Effect from "@effect/io/Effect"
 import type * as Layer from "@effect/io/Layer"
 import type * as Schedule from "@effect/io/Schedule"
+import type * as Scope from "@effect/io/Scope"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
@@ -279,6 +280,13 @@ export const schemaFunction: {
     request: ClientRequest.ClientRequest
   ) => (a: SA) => Effect.Effect<R, Error.RequestError | ParseResult.ParseError | E, A>
 } = internal.schemaFunction
+
+/**
+ * @since 1.0.0
+ * @category tracing
+ */
+export const withB3Propagation: <R, E>(self: Client.WithResponse<R, E>) => Client.WithResponse<R | Scope.Scope, E> =
+  internal.withB3Propagation
 
 /**
  * @since 1.0.0

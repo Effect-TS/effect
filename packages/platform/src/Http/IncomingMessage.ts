@@ -1,15 +1,17 @@
 /**
  * @since 1.0.0
  */
-import { dual } from "@effect/data/Function"
+import * as Context from "@effect/data/Context"
+import { dual, flow } from "@effect/data/Function"
 import * as Global from "@effect/data/GlobalValue"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as FiberRef from "@effect/io/FiberRef"
+import type { ExternalSpan } from "@effect/io/Tracer"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Headers from "@effect/platform/Http/Headers"
 import type * as UrlParams from "@effect/platform/Http/UrlParams"
-import type * as ParseResult from "@effect/schema/ParseResult"
+import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
 import type * as Stream from "@effect/stream/Stream"
 
@@ -67,6 +69,63 @@ export const schemaHeaders = <I extends Readonly<Record<string, string>>, A>(sch
   const parse = Schema.parse(schema)
   return <E>(self: IncomingMessage<E>): Effect.Effect<never, ParseResult.ParseError, A> => parse(self.headers)
 }
+
+const SpanSchema = Schema.struct({
+  traceId: Schema.string,
+  spanId: Schema.string,
+  parentSpanId: Schema.union(Schema.string, Schema.undefined)
+})
+
+/**
+ * @since 1.0.0
+ * @category schema
+ */
+export const schemaExternalSpan = flow(
+  schemaHeaders(Schema.union(
+    Schema.transformOrFail(
+      Schema.struct({
+        b3: Schema.NonEmpty
+      }),
+      SpanSchema,
+      (_) => {
+        const parts = _.b3.split("-")
+        if (parts.length >= 2) {
+          return ParseResult.success({
+            traceId: parts[0],
+            spanId: parts[1],
+            parentSpanId: parts[3]
+          })
+        }
+        return ParseResult.failure(ParseResult.missing)
+      },
+      (_) => ParseResult.success("")
+    ),
+    Schema.transform(
+      Schema.struct({
+        "x-b3-traceid": Schema.NonEmpty,
+        "x-b3-spanid": Schema.NonEmpty,
+        "x-b3-parentspanid": Schema.optional(Schema.NonEmpty)
+      }),
+      SpanSchema,
+      (_) => ({
+        traceId: _["x-b3-traceid"],
+        spanId: _["x-b3-spanid"],
+        parentSpanId: _["x-b3-parentspanid"]
+      }),
+      (_) => ({
+        "x-b3-traceid": _.traceId,
+        "x-b3-spanid": _.spanId,
+        "x-b3-parentspanid": _.parentSpanId
+      })
+    )
+  )),
+  Effect.map((_): ExternalSpan => ({
+    _tag: "ExternalSpan",
+    traceId: _.traceId,
+    spanId: _.spanId,
+    context: Context.empty()
+  }))
+)
 
 /**
  * @since 1.0.0
