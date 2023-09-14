@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.33
+
+### Patch Changes
+
+- [#1426](https://github.com/Effect-TS/effect/pull/1426) [`92af22066`](https://github.com/Effect-TS/effect/commit/92af220665261946a440b62e283e3772e4c5fa72) Thanks [@tim-smart](https://github.com/tim-smart)! - expose /data GlobalValue & Types modules
+
 ## 2.0.0-next.32
 
 ### Patch Changes
