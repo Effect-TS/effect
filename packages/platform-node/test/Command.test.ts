@@ -333,4 +333,13 @@ describe("Command", () => {
     const stdout = Command.flatten(command).map((command) => command.stdout)
     expect(stdout).toEqual(["pipe", "pipe", "inherit"])
   })
+
+  it("exitCode after exit", () =>
+    runPromise(Effect.gen(function*($) {
+      const command = Command.make("echo", "-n", "test")
+      const process = yield* $(Command.start(command))
+      yield* $(process.exitCode)
+      const code = yield* $(process.exitCode)
+      expect(code).toEqual(0)
+    })))
 })

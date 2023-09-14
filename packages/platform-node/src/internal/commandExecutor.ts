@@ -56,6 +56,10 @@ const runCommand =
                 cwd: Option.getOrElse(command.cwd, constUndefined),
                 env: { ...env, ...Object.fromEntries(command.env) }
               })
+              let exited = false
+              handle.on("exit", () => {
+                exited = true
+              })
 
               // If starting the process throws an error, make sure to capture it
               handle.on("error", (err) => {
@@ -76,6 +80,20 @@ const runCommand =
                 }
 
                 const exitCode: CommandExecutor.Process["exitCode"] = Effect.async((resume) => {
+                  if (exited) {
+                    return resume(
+                      handle.exitCode !== null
+                        ? Effect.succeed(CommandExecutor.ExitCode(handle.exitCode))
+                        : Effect.fail(
+                          toPlatformError(
+                            "exitCode",
+                            new globalThis.Error(`Process interrupted due to receipt of signal: ${handle.signalCode}`),
+                            command
+                          )
+                        )
+                    )
+                  }
+
                   handle.on("exit", (code, signal) => {
                     if (code !== null) {
                       resume(Effect.succeed(CommandExecutor.ExitCode(code)))
