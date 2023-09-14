@@ -1,3 +1,4 @@
+import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
@@ -37,6 +38,10 @@ class ClientResponseImpl implements ClientResponse.ClientResponse {
 
   get headers(): Headers.Headers {
     return Headers.fromInput(this.source.headers)
+  }
+
+  get remoteAddress(): Option.Option<string> {
+    return Option.none()
   }
 
   get stream(): Stream.Stream<never, Error.ResponseError, Uint8Array> {

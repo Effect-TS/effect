@@ -34,6 +34,7 @@ export type TypeId = typeof TypeId
 export interface IncomingMessage<E> {
   readonly [TypeId]: TypeId
   readonly headers: Headers.Headers
+  readonly remoteAddress: Option.Option<string>
   readonly json: Effect.Effect<never, E, unknown>
   readonly text: Effect.Effect<never, E, string>
   readonly urlParamsBody: Effect.Effect<never, E, UrlParams.UrlParams>

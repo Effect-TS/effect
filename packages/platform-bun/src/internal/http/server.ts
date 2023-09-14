@@ -1,4 +1,5 @@
 import { pipe } from "@effect/data/Function"
+import * as Option from "@effect/data/Option"
 import * as Cause from "@effect/io/Cause"
 import * as Config from "@effect/io/Config"
 import * as Effect from "@effect/io/Effect"
@@ -64,6 +65,7 @@ export const make = (
             Effect.async<never, Error.ServeError, never>(() => {
               const runFork = Runtime.runFork(runtime)
               function handler(request: Request, _server: BunServer) {
+                console.log(request)
                 return new Promise<Response>((resolve, reject) => {
                   const fiber = runFork(Effect.provideService(
                     app,
@@ -170,10 +172,27 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
     public resolve: (response: Response) => void,
     public reject: (reason: any) => void,
     readonly url: string,
-    public headersOverride?: Headers.Headers
+    public headersOverride?: Headers.Headers,
+    private remoteAddressOverride?: string
   ) {
     this[ServerRequest.TypeId] = ServerRequest.TypeId
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
+  }
+  modify(
+    options: {
+      readonly url?: string | undefined
+      readonly headers?: Headers.Headers | undefined
+      readonly remoteAddress?: string | undefined
+    }
+  ) {
+    return new ServerRequestImpl(
+      this.source,
+      this.resolve,
+      this.reject,
+      options.url ?? this.url,
+      options.headers ?? this.headersOverride,
+      options.remoteAddress ?? this.remoteAddressOverride
+    )
   }
   get method(): Method {
     return this.source.method as Method
@@ -181,15 +200,12 @@ class ServerRequestImpl implements ServerRequest.ServerRequest {
   get originalUrl() {
     return this.source.url
   }
+  get remoteAddress(): Option.Option<string> {
+    return this.remoteAddressOverride ? Option.some(this.remoteAddressOverride) : Option.none()
+  }
   get headers(): Headers.Headers {
     this.headersOverride ??= Headers.fromInput(this.source.headers)
     return this.headersOverride
-  }
-  setUrl(url: string): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(this.source, this.resolve, this.reject, url)
-  }
-  replaceHeaders(headers: Headers.Headers): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(this.source, this.resolve, this.reject, this.url, headers)
   }
 
   get stream(): Stream.Stream<never, Error.RequestError, Uint8Array> {

@@ -136,15 +136,32 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
     readonly source: Http.IncomingMessage,
     readonly response: Http.ServerResponse,
     readonly url = source.url!,
-    private headersOverride?: Headers.Headers
+    private headersOverride?: Headers.Headers,
+    remoteAddressOverride?: string
   ) {
     super(source, (_) =>
       Error.RequestError({
         request: this,
         reason: "Decode",
         error: _
-      }))
+      }), remoteAddressOverride)
     this[ServerRequest.TypeId] = ServerRequest.TypeId
+  }
+
+  modify(
+    options: {
+      readonly url?: string | undefined
+      readonly headers?: Headers.Headers | undefined
+      readonly remoteAddress?: string | undefined
+    }
+  ) {
+    return new ServerRequestImpl(
+      this.source,
+      this.response,
+      options.url ?? this.url,
+      options.headers ?? this.headersOverride,
+      options.remoteAddress ?? this.remoteAddressOverride
+    )
   }
 
   get originalUrl(): string {
@@ -183,24 +200,6 @@ class ServerRequestImpl extends IncomingMessageImpl<Error.RequestError> implemen
 
   get formDataStream(): Stream.Stream<never, FormData.FormDataError, FormData.Part> {
     return internalFormData.stream(this.source, this.source.headers)
-  }
-
-  setUrl(url: string): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(
-      this.source,
-      this.response,
-      url,
-      this.headersOverride
-    )
-  }
-
-  replaceHeaders(headers: Headers.Headers): ServerRequest.ServerRequest {
-    return new ServerRequestImpl(
-      this.source,
-      this.response,
-      this.url,
-      headers
-    )
   }
 
   toString(): string {

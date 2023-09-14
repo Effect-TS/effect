@@ -165,7 +165,7 @@ const toHttpApp = <R, E>(
 
 function sliceRequestUrl(request: ServerRequest.ServerRequest, prefix: string) {
   const prefexLen = prefix.length
-  return request.setUrl(request.url.length <= prefexLen ? "/" : request.url.slice(prefexLen))
+  return request.modify({ url: request.url.length <= prefexLen ? "/" : request.url.slice(prefexLen) })
 }
 
 class RouteImpl<R, E> implements Router.Route<R, E> {

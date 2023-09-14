@@ -14,13 +14,18 @@ export class IncomingMessageImpl<E> implements IncomingMessage.IncomingMessage<E
 
   constructor(
     readonly source: Http.IncomingMessage,
-    readonly onError: (error: unknown) => E
+    readonly onError: (error: unknown) => E,
+    readonly remoteAddressOverride?: string
   ) {
     this[IncomingMessage.TypeId] = IncomingMessage.TypeId
   }
 
   get headers() {
     return Headers.fromInput(this.source.headers as any)
+  }
+
+  get remoteAddress() {
+    return Option.fromNullable(this.remoteAddressOverride ?? this.source.socket.remoteAddress)
   }
 
   private textEffect: Effect.Effect<never, E, string> | undefined

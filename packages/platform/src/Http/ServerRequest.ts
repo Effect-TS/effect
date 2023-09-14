@@ -49,8 +49,13 @@ export interface ServerRequest extends IncomingMessage.IncomingMessage<Error.Req
   readonly formData: Effect.Effect<Scope.Scope | FileSystem.FileSystem | Path.Path, FormData.FormDataError, FormData>
   readonly formDataStream: Stream.Stream<never, FormData.FormDataError, FormData.Part>
 
-  readonly setUrl: (url: string) => ServerRequest
-  readonly replaceHeaders: (headers: Headers.Headers) => ServerRequest
+  readonly modify: (
+    options: {
+      readonly url?: string
+      readonly headers?: Headers.Headers
+      readonly remoteAddress?: string
+    }
+  ) => ServerRequest
 }
 
 /**
