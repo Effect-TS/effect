@@ -1,5 +1,11 @@
 # @effect/platform-node
 
+## 0.16.2
+
+### Patch Changes
+
+- [#151](https://github.com/Effect-TS/platform/pull/151) [`ea877f8`](https://github.com/Effect-TS/platform/commit/ea877f8948a43a394658abf8b781a56a097624e9) Thanks [@tim-smart](https://github.com/tim-smart)! - fix exitCode for already exited processes
+
 ## 0.16.1
 
 ### Patch Changes
