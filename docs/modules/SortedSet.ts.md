@@ -1,6 +1,6 @@
 ---
 title: SortedSet.ts
-nav_order: 101
+nav_order: 102
 parent: Modules
 ---
 

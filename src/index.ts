@@ -42,6 +42,7 @@ import * as FiberRefs from "effect/FiberRefs"
 import * as FiberStatus from "effect/FiberStatus"
 import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "effect/Function"
 import * as Function from "effect/Function"
+import * as GlobalValue from "effect/GlobalValue"
 import * as GroupBy from "effect/GroupBy"
 import * as Hash from "effect/Hash"
 import * as HashMap from "effect/HashMap"
@@ -126,6 +127,7 @@ import * as TRef from "effect/TRef"
 import * as TSemaphore from "effect/TSemaphore"
 import * as TSet from "effect/TSet"
 import * as Tuple from "effect/Tuple"
+import * as Types from "effect/Types"
 
 export {
   /**
@@ -497,6 +499,15 @@ export {
    * ```
    */
   Function,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
+   * - Module: "effect/GlobalValue"
+   * ```
+   */
+  GlobalValue,
   /**
    * @since 2.0.0
    *
@@ -1280,6 +1291,15 @@ export {
    * ```
    */
   Tuple,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/data/modules/Types.ts.html
+   * - Module: "effect/Types"
+   * ```
+   */
+  Types,
   /**
    * @since 2.0.0
    */

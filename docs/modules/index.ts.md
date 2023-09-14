@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 46
+nav_order: 47
 parent: Modules
 ---
 
@@ -52,6 +52,7 @@ Added in v2.0.0
   - [FiberRefs](#fiberrefs)
   - [FiberStatus](#fiberstatus)
   - [Function](#function)
+  - [GlobalValue](#globalvalue)
   - [GroupBy](#groupby)
   - [HKT](#hkt)
   - [Hash](#hash)
@@ -136,6 +137,7 @@ Added in v2.0.0
   - [Take](#take)
   - [Tracer](#tracer)
   - [Tuple](#tuple)
+  - [Types](#types)
   - [absurd](#absurd)
   - [flow](#flow)
   - [hole](#hole)
@@ -730,6 +732,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html
 - Module: "effect/Function"
+```
+
+## GlobalValue
+
+**Signature**
+
+```ts
+export declare const GlobalValue: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
+- Module: "effect/GlobalValue"
 ```
 
 ## GroupBy
@@ -1990,6 +2007,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
 - Module: "effect/Tuple"
+```
+
+## Types
+
+**Signature**
+
+```ts
+export declare const Types: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/data/modules/Types.ts.html
+- Module: "effect/Types"
 ```
 
 ## absurd
