@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.16.1
+
+### Patch Changes
+
+- [#148](https://github.com/Effect-TS/platform/pull/148) [`492f0e7`](https://github.com/Effect-TS/platform/commit/492f0e700e939ded6ff17eeca4d50a9e1ce59219) Thanks [@tim-smart](https://github.com/tim-smart)! - add IncomingMessage.remoteAddress
+
 ## 0.16.0
 
 ### Minor Changes
