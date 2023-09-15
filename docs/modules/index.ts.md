@@ -126,6 +126,7 @@ Added in v2.0.0
   - [SynchronizedRef](#synchronizedref)
   - [TArray](#tarray)
   - [TDeferred](#tdeferred)
+  - [THub](#thub)
   - [TMap](#tmap)
   - [TPriorityQueue](#tpriorityqueue)
   - [TQueue](#tqueue)
@@ -1842,6 +1843,21 @@ Added in v2.0.0
 ```md
 - Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
 - Module: "@effect/stm/TDeferred"
+```
+
+## THub
+
+**Signature**
+
+```ts
+export declare const THub: any
+```
+
+Added in v2.0.0
+
+```md
+- Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
+- Module: "@effect/stm/THub"
 ```
 
 ## TMap

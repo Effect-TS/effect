@@ -9,17 +9,17 @@ dependencies:
     specifier: ^0.18.5
     version: 0.18.5
   '@effect/io':
-    specifier: ^0.40.1
-    version: 0.40.1(@effect/data@0.18.5)
+    specifier: ^0.40.3
+    version: 0.40.3(@effect/data@0.18.5)
   '@effect/match':
     specifier: ^0.35.2
     version: 0.35.2(@effect/data@0.18.5)
   '@effect/stm':
     specifier: ^0.24.0
-    version: 0.24.0(@effect/data@0.18.5)(@effect/io@0.40.1)
+    version: 0.24.0(@effect/data@0.18.5)(@effect/io@0.40.3)
   '@effect/stream':
-    specifier: ^0.36.0
-    version: 0.36.0(@effect/data@0.18.5)(@effect/io@0.40.1)
+    specifier: ^0.36.1
+    version: 0.36.1(@effect/data@0.18.5)(@effect/io@0.40.3)
 
 devDependencies:
   '@babel/cli':
@@ -818,8 +818,8 @@ packages:
       diff: 5.1.0
     dev: true
 
-  /@effect/io@0.40.1(@effect/data@0.18.5):
-    resolution: {integrity: sha512-OeMK7JonvW/D6Z377cOsuCSHUbsO9ZkmAIDmzQ1Qffx8+h5yUXRm0htmPwKkxtCHZr2QxyZfSBzxSzrGU7asXQ==}
+  /@effect/io@0.40.3(@effect/data@0.18.5):
+    resolution: {integrity: sha512-bnHBFq1XzXn94x2w5FcXZz3MbY7N3YrhiI2CrncJr3WcGRDc2rCYIpPupw0JQGFcJsoopTj1BNfBuBR5s4/RyA==}
     peerDependencies:
       '@effect/data': ^0.18.5
     dependencies:
@@ -838,24 +838,24 @@ packages:
       '@effect/data': 0.18.5
     dev: false
 
-  /@effect/stm@0.24.0(@effect/data@0.18.5)(@effect/io@0.40.1):
+  /@effect/stm@0.24.0(@effect/data@0.18.5)(@effect/io@0.40.3):
     resolution: {integrity: sha512-6L4zhy2lvkxn3jMG7dvZ4lKOmxSvaNBpkIT/ZOS6mad+B5/r8G3bKFe0C70aHwpQkxORd9LVmFr/f5MXLKZtfQ==}
     peerDependencies:
       '@effect/data': ^0.18.3
       '@effect/io': ^0.40.0
     dependencies:
       '@effect/data': 0.18.5
-      '@effect/io': 0.40.1(@effect/data@0.18.5)
+      '@effect/io': 0.40.3(@effect/data@0.18.5)
     dev: false
 
-  /@effect/stream@0.36.0(@effect/data@0.18.5)(@effect/io@0.40.1):
-    resolution: {integrity: sha512-vAMQ3kumsAXAiAwtuzJEOeII2bAB9rNY1NLYOqpgvXVWTUIYQf/wy4QbbcLXLuoMUUi7zS/JDVmC8jbPscfLNg==}
+  /@effect/stream@0.36.1(@effect/data@0.18.5)(@effect/io@0.40.3):
+    resolution: {integrity: sha512-gF/RzTBGgghCA+lcgYFkHW/ozozyOfx4hrGhKWspkjMXyc4B7p0E7dsHO14byTZtUD/JAXvrekvVX8uV7i8Zzw==}
     peerDependencies:
       '@effect/data': ^0.18.3
       '@effect/io': ^0.40.0
     dependencies:
       '@effect/data': 0.18.5
-      '@effect/io': 0.40.1(@effect/data@0.18.5)
+      '@effect/io': 0.40.3(@effect/data@0.18.5)
     dev: false
 
   /@esbuild/android-arm64@0.18.20:

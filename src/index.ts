@@ -117,6 +117,7 @@ import * as SynchronizedRef from "effect/SynchronizedRef"
 import * as Take from "effect/Take"
 import * as TArray from "effect/TArray"
 import * as TDeferred from "effect/TDeferred"
+import * as THub from "effect/THub"
 import * as TMap from "effect/TMap"
 import * as TPriorityQueue from "effect/TPriorityQueue"
 import * as TQueue from "effect/TQueue"
@@ -1201,6 +1202,15 @@ export {
    * ```
    */
   TDeferred,
+  /**
+   * @since 2.0.0
+   *
+   * ```md
+   * - Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
+   * - Module: "@effect/stm/THub"
+   * ```
+   */
+  THub,
   /**
    * @since 2.0.0
    *
