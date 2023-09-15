@@ -1,5 +1,11 @@
 # effect
 
+## 2.0.0-next.34
+
+### Patch Changes
+
+- [#1428](https://github.com/Effect-TS/effect/pull/1428) [`d77e66834`](https://github.com/Effect-TS/effect/commit/d77e668346db402374e9a28a5f00840e75679387) Thanks [@gcanti](https://github.com/gcanti)! - expose /stm THub module
+
 ## 2.0.0-next.33
 
 ### Patch Changes
