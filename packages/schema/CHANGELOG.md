@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.36.2
+
+### Patch Changes
+
+- [#428](https://github.com/Effect-TS/schema/pull/428) [`73a8424`](https://github.com/Effect-TS/schema/commit/73a842493079893898495fdb92ef3592a33176a7) Thanks [@tim-smart](https://github.com/tim-smart)! - fix Class transform helper types
+
 ## 0.36.1
 
 ### Patch Changes
