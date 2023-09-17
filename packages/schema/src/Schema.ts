@@ -3348,51 +3348,50 @@ export const data = <
  * @category classes
  * @since 1.0.0
  */
-export interface Class<A, Fields extends StructFields, Inherited = Data.Case>
-  extends Schema<Simplify<FromStruct<Fields>>, A>
-{
-  new(
-    props: Simplify<ToStruct<Fields>>
-  ): ToStruct<Fields> & Omit<Inherited, keyof Fields>
+export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self> {
+  new(props: A): A & Omit<Inherited, keyof A>
 
-  readonly struct: Schema<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>>
+  readonly struct: Schema<I, A>
 
-  readonly extend: <B>() => <FieldsB extends StructFields>(fields: FieldsB) => Class<
-    B,
-    Omit<Fields, keyof FieldsB> & FieldsB,
-    A
+  readonly extend: <Extended>() => <FieldsB extends StructFields>(fields: FieldsB) => Class<
+    Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    Extended,
+    Self
   >
 
-  readonly transform: <B>() => <
+  readonly transform: <Transformed>() => <
     FieldsB extends StructFields
   >(
     fields: FieldsB,
     decode: (
-      input: Simplify<ToStruct<Fields>>
-    ) => ParseResult.ParseResult<ToStruct<Omit<Fields, keyof FieldsB> & FieldsB>>,
+      input: A
+    ) => ParseResult.ParseResult<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
     encode: (
-      input: Simplify<ToStruct<Omit<Fields, keyof FieldsB> & FieldsB>>
-    ) => ParseResult.ParseResult<ToStruct<Fields>>
+      input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>
+    ) => ParseResult.ParseResult<A>
   ) => Class<
-    B,
-    Omit<Fields, keyof FieldsB> & FieldsB,
-    A
+    I,
+    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    Transformed,
+    Self
   >
 
-  readonly transformFrom: <B>() => <
+  readonly transformFrom: <Transformed>() => <
     FieldsB extends StructFields
   >(
     fields: FieldsB,
     decode: (
-      input: Simplify<FromStruct<Fields>>
-    ) => ParseResult.ParseResult<FromStruct<Omit<Fields, keyof FieldsB> & FieldsB>>,
+      input: I
+    ) => ParseResult.ParseResult<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
     encode: (
-      input: Simplify<FromStruct<Omit<Fields, keyof FieldsB> & FieldsB>>
-    ) => ParseResult.ParseResult<FromStruct<Fields>>
+      input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>
+    ) => ParseResult.ParseResult<I>
   ) => Class<
-    B,
-    Omit<Fields, keyof FieldsB> & FieldsB,
-    A
+    I,
+    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+    Transformed,
+    Self
   >
 }
 
@@ -3400,10 +3399,11 @@ export interface Class<A, Fields extends StructFields, Inherited = Data.Case>
  * @category classes
  * @since 1.0.0
  */
-export const Class = <A>() =>
+export const Class = <Self>() =>
 <Fields extends StructFields>(
   fields: Fields
-): Class<A, Fields> => makeClass(struct(fields), fields, Data.Class.prototype)
+): Class<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>, Self> =>
+  makeClass(struct(fields), fields, Data.Class.prototype)
 
 const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
   const validator = Parser.validateSync(selfSchema)
