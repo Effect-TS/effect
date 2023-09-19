@@ -3353,14 +3353,18 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
 
   readonly struct: Schema<I, A>
 
-  readonly extend: <Extended>() => <FieldsB extends StructFields>(fields: FieldsB) => Class<
-    Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
-    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
-    Extended,
-    Self
-  >
+  readonly extend: <Extended = never>() => <FieldsB extends StructFields>(
+    fields: FieldsB
+  ) => [Extended] extends [never]
+    ? "missing Self generic - use `class Self extends Base.extend<Self>()({ ... })`"
+    : Class<
+      Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>,
+      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Extended,
+      Self
+    >
 
-  readonly transform: <Transformed>() => <
+  readonly transform: <Transformed = never>() => <
     FieldsB extends StructFields
   >(
     fields: FieldsB,
@@ -3370,14 +3374,16 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
     encode: (
       input: Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>
     ) => ParseResult.ParseResult<A>
-  ) => Class<
-    I,
-    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
-    Transformed,
-    Self
-  >
+  ) => [Transformed] extends [never]
+    ? "missing Self generic - use `class Self extends Base.transform<Self>()({ ... })`"
+    : Class<
+      I,
+      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Transformed,
+      Self
+    >
 
-  readonly transformFrom: <Transformed>() => <
+  readonly transformFrom: <Transformed = never>() => <
     FieldsB extends StructFields
   >(
     fields: FieldsB,
@@ -3387,22 +3393,25 @@ export interface Class<I, A, Self, Inherited = Data.Case> extends Schema<I, Self
     encode: (
       input: Simplify<Omit<I, keyof FieldsB> & FromStruct<FieldsB>>
     ) => ParseResult.ParseResult<I>
-  ) => Class<
-    I,
-    Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
-    Transformed,
-    Self
-  >
+  ) => [Transformed] extends [never]
+    ? "missing Self generic - use `class Self extends Base.transformFrom<Self>()({ ... })`"
+    : Class<
+      I,
+      Simplify<Omit<A, keyof FieldsB> & ToStruct<FieldsB>>,
+      Transformed,
+      Self
+    >
 }
 
 /**
  * @category classes
  * @since 1.0.0
  */
-export const Class = <Self>() =>
+export const Class = <Self = never>() =>
 <Fields extends StructFields>(
   fields: Fields
-): Class<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>, Self> =>
+): [Self] extends [never] ? "missing Self generic - use `class Self extends Class<Self>()({ ... })`"
+  : Class<Simplify<FromStruct<Fields>>, Simplify<ToStruct<Fields>>, Self> =>
   makeClass(struct(fields), fields, Data.Class.prototype)
 
 const makeClass = <I, A>(selfSchema: Schema<I, A>, selfFields: StructFields, base: any) => {
