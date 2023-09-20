@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.36.3
+
+### Patch Changes
+
+- [#430](https://github.com/Effect-TS/schema/pull/430) [`de5d649`](https://github.com/Effect-TS/schema/commit/de5d6493095460fa413e70a83a87aaabadabcf57) Thanks [@fubhy](https://github.com/fubhy)! - Enforce explicit `Schema.Class` type parameters
+
 ## 0.36.2
 
 ### Patch Changes
