@@ -45,7 +45,7 @@
     "@effect/platform": "workspace:^",
     "@effect/schema": "^0.36.1",
     "@effect/stream": "^0.36.0",
-    "@types/busboy": "^1.5.0",
+    "@types/busboy": "^1.5.1",
     "@types/mime": "^3.0.1"
   },
   "peerDependencies": {
