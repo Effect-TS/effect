@@ -1,5 +1,11 @@
 # @effect/platform-browser
 
+## 0.5.0
+
+### Minor Changes
+
+- [#155](https://github.com/Effect-TS/platform/pull/155) [`937b9e5`](https://github.com/Effect-TS/platform/commit/937b9e5c00f80bea128f21c7f5bfa662ba1d45bd) Thanks [@tim-smart](https://github.com/tim-smart)! - use direct deps in sibling packages
+
 ## 0.4.1
 
 ### Patch Changes

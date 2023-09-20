@@ -1,5 +1,13 @@
 # @effect/platform-node
 
+## 0.17.0
+
+### Minor Changes
+
+- [#153](https://github.com/Effect-TS/platform/pull/153) [`be1b6f0`](https://github.com/Effect-TS/platform/commit/be1b6f036246713a55462ec76e8d999eae654cd7) Thanks [@IMax153](https://github.com/IMax153)! - make platform-node an explicit dependency of platform-bun
+
+- [#155](https://github.com/Effect-TS/platform/pull/155) [`937b9e5`](https://github.com/Effect-TS/platform/commit/937b9e5c00f80bea128f21c7f5bfa662ba1d45bd) Thanks [@tim-smart](https://github.com/tim-smart)! - use direct deps in sibling packages
+
 ## 0.16.2
 
 ### Patch Changes
