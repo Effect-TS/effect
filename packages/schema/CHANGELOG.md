@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.36.4
+
+### Patch Changes
+
+- [#434](https://github.com/Effect-TS/schema/pull/434) [`994a37e`](https://github.com/Effect-TS/schema/commit/994a37e61fc12bffe36145e01b7708e18e213f36) Thanks [@gcanti](https://github.com/gcanti)! - Exclude property signatures from index signatures validations, fix #433
+
 ## 0.36.3
 
 ### Patch Changes
