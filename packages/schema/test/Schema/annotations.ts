@@ -1,4 +1,5 @@
 import * as AST from "@effect/schema/AST"
+import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
@@ -84,5 +85,16 @@ describe.concurrent("Schema/annotations", () => {
       expect(S.isSchema(schema)).toEqual(true)
       await Util.expectParseFailure(schema, "", "custom message")
     })
+  })
+
+  it("pretty", () => {
+    class A {
+      constructor(readonly a: string) {}
+    }
+    const prettyA = (): Pretty.Pretty<A> => (instance) => `new A("${instance.a}")`
+    const AFromSelf = S.instanceOf(A, {
+      pretty: prettyA
+    })
+    expect(Pretty.to(AFromSelf)(new A("value"))).toEqual(`new A("value")`)
   })
 })
