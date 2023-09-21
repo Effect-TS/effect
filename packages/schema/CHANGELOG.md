@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.36.5
+
+### Patch Changes
+
+- [#436](https://github.com/Effect-TS/schema/pull/436) [`3a660d3`](https://github.com/Effect-TS/schema/commit/3a660d3c1fecd3f4acd0dbb99e2aed2d6e266189) Thanks [@gcanti](https://github.com/gcanti)! - add pretty to FilterAnnotations
+
 ## 0.36.4
 
 ### Patch Changes
