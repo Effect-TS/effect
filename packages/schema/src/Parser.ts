@@ -726,70 +726,72 @@ const go = (ast: AST.AST, isDecoding: boolean): Parser<any, any> => {
           const type = indexSignatures[i][1]
           const keys = Internal.getKeysForIndexSignature(input, ast.indexSignatures[i].parameter)
           for (const key of keys) {
-            // ---------------------------------------------
-            // handle keys
-            // ---------------------------------------------
-            const keu = ParseResult.eitherOrUndefined(parameter(key, options))
-            if (keu) {
-              if (Either.isLeft(keu)) {
-                const e = ParseResult.key(key, keu.left.errors)
-                if (allErrors) {
-                  es.push([stepKey++, e])
-                  continue
-                } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+            if (!(Object.prototype.hasOwnProperty.call(expectedKeys, key))) {
+              // ---------------------------------------------
+              // handle keys
+              // ---------------------------------------------
+              const keu = ParseResult.eitherOrUndefined(parameter(key, options))
+              if (keu) {
+                if (Either.isLeft(keu)) {
+                  const e = ParseResult.key(key, keu.left.errors)
+                  if (allErrors) {
+                    es.push([stepKey++, e])
+                    continue
+                  } else {
+                    return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  }
                 }
               }
-            }
-            // there's no else here because index signature parameters are restricted to primitives
+              // there's no else here because index signature parameters are restricted to primitives
 
-            // ---------------------------------------------
-            // handle values
-            // ---------------------------------------------
-            const vpr = type(input[key], options)
-            const veu = ParseResult.eitherOrUndefined(vpr)
-            if (veu) {
-              if (Either.isLeft(veu)) {
-                const e = ParseResult.key(key, veu.left.errors)
-                if (allErrors) {
-                  es.push([stepKey++, e])
-                  continue
+              // ---------------------------------------------
+              // handle values
+              // ---------------------------------------------
+              const vpr = type(input[key], options)
+              const veu = ParseResult.eitherOrUndefined(vpr)
+              if (veu) {
+                if (Either.isLeft(veu)) {
+                  const e = ParseResult.key(key, veu.left.errors)
+                  if (allErrors) {
+                    es.push([stepKey++, e])
+                    continue
+                  } else {
+                    return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  }
                 } else {
-                  return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                  if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
+                    output[key] = veu.right
+                  }
                 }
               } else {
-                if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
-                  output[key] = veu.right
+                const nk = stepKey++
+                const index = key
+                if (!queue) {
+                  queue = []
                 }
-              }
-            } else {
-              const nk = stepKey++
-              const index = key
-              if (!queue) {
-                queue = []
-              }
-              queue.push(
-                ({ es, output }: State) =>
-                  Effect.flatMap(
-                    Effect.either(vpr),
-                    (tv) => {
-                      if (Either.isLeft(tv)) {
-                        const e = ParseResult.key(index, tv.left.errors)
-                        if (allErrors) {
-                          es.push([nk, e])
-                          return Effect.unit
+                queue.push(
+                  ({ es, output }: State) =>
+                    Effect.flatMap(
+                      Effect.either(vpr),
+                      (tv) => {
+                        if (Either.isLeft(tv)) {
+                          const e = ParseResult.key(index, tv.left.errors)
+                          if (allErrors) {
+                            es.push([nk, e])
+                            return Effect.unit
+                          } else {
+                            return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                          }
                         } else {
-                          return ParseResult.failures(mutableAppend(sortByIndex(es), e))
+                          if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
+                            output[key] = tv.right
+                          }
+                          return Effect.unit
                         }
-                      } else {
-                        if (!Object.prototype.hasOwnProperty.call(expectedKeys, key)) {
-                          output[key] = tv.right
-                        }
-                        return Effect.unit
                       }
-                    }
-                  )
-              )
+                    )
+                )
+              }
             }
           }
         }

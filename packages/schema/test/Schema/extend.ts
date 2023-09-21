@@ -197,6 +197,25 @@ describe.concurrent("Schema/extend", () => {
       )
     })
 
+    it("struct extend record(templateLiteral, string)", async () => {
+      const schema = S.struct({ a: S.string }).pipe(
+        S.extend(S.record(
+          S.templateLiteral(
+            S.string,
+            S.literal("-"),
+            S.number
+          ),
+          S.string
+        ))
+      )
+      // type A = {
+      //   [x: `${string}-${number}`]: string
+      //   readonly a: string
+      // }
+      // const a: A = { a: "a" } // OK
+      await Util.expectParseSuccess(schema, { a: "a" })
+    })
+
     describe.concurrent("both operands are transformations", () => {
       const BoolFromString = S.transform(
         S.string,
