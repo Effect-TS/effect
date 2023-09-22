@@ -13,7 +13,7 @@ import type * as Otel from "@opentelemetry/api"
  * @since 1.0.0
  * @category constructors
  */
-export const make: Effect<Resource, never, Tracer> = internal.make
+export const make: Effect<Otel.Tracer, never, Tracer> = internal.make
 
 /**
  * @since 1.0.0
@@ -33,6 +33,18 @@ export const makeExternalSpan: (
  * @category layers
  */
 export const layer: Layer<Resource, never, never> = internal.layer
+
+/**
+ * @since 1.0.0
+ * @category layers
+ */
+export const layerOtelTracer: Layer<Resource, never, Otel.Tracer> = internal.layerOtelTracer
+
+/**
+ * @since 1.0.0
+ * @category tags
+ */
+export const OtelTracer: Tag<Otel.Tracer, Otel.Tracer> = internal.OtelTracer
 
 /**
  * @since 1.0.0

@@ -1,5 +1,4 @@
 import * as Context from "@effect/data/Context"
-import { pipe } from "@effect/data/Function"
 import * as List from "@effect/data/List"
 import * as Option from "@effect/data/Option"
 import * as Cause from "@effect/io/Cause"
@@ -91,50 +90,41 @@ export class OtelSpan implements Tracer.Span {
 }
 
 /** @internal */
-export const make = pipe(
-  Resource,
-  Effect.flatMap((resource) =>
-    Effect.sync(() =>
-      OtelApi.trace.getTracer(
-        resource.attributes["service.name"] as string,
-        resource.attributes["service.version"] as string
+export const OtelTracer = Context.Tag<OtelApi.Tracer>("@effect/opentelemetry/Tracer/OtelTracer")
+
+/** @internal */
+export const make = Effect.map(OtelTracer, (tracer) =>
+  Tracer.make({
+    span(name, parent, context, links, startTime) {
+      return new OtelSpan(
+        OtelApi.context,
+        tracer,
+        name,
+        parent,
+        context,
+        links,
+        startTime
       )
-    )
-  ),
-  Effect.map((tracer) =>
-    Tracer.make({
-      span(name, parent, context, links, startTime) {
-        return new OtelSpan(
-          OtelApi.context,
-          tracer,
-          name,
-          parent,
-          context,
-          links,
-          startTime
-        )
-      },
-      context(execution, fiber) {
-        const currentSpan = Option.flatMap(
-          FiberRefs.get(
-            fiber.getFiberRefs(),
-            FiberRef.currentTracerSpan
-          ),
-          List.head
-        )
+    },
+    context(execution, fiber) {
+      const currentSpan = Option.flatMap(
+        FiberRefs.get(
+          fiber.getFiberRefs(),
+          FiberRef.currentTracerSpan
+        ),
+        List.head
+      )
 
-        if (currentSpan._tag === "None") {
-          return execution()
-        }
-
-        return OtelApi.context.with(
-          populateContext(OtelApi.context.active(), currentSpan.value),
-          execution
-        )
+      if (currentSpan._tag === "None") {
+        return execution()
       }
-    })
-  )
-)
+
+      return OtelApi.context.with(
+        populateContext(OtelApi.context.active(), currentSpan.value),
+        execution
+      )
+    }
+  }))
 
 /** @internal */
 export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
@@ -171,7 +161,25 @@ export const makeExternalSpan = (options: {
 }
 
 /** @internal */
-export const layer = Layer.unwrapEffect(Effect.map(make, Effect.setTracer))
+export const layerOtelTracer = Layer.effect(
+  OtelTracer,
+  Effect.flatMap(
+    Resource,
+    (resource) =>
+      Effect.sync(() =>
+        OtelApi.trace.getTracer(
+          resource.attributes["service.name"] as string,
+          resource.attributes["service.version"] as string
+        )
+      )
+  )
+)
+
+/** @internal */
+export const layer = Layer.provide(
+  layerOtelTracer,
+  Layer.unwrapEffect(Effect.map(make, Effect.setTracer))
+)
 
 // -------------------------------------------------------------------------------------
 // utils
