@@ -1,5 +1,11 @@
 # @effect/opentelemetry
 
+## 0.11.1
+
+### Patch Changes
+
+- [#50](https://github.com/Effect-TS/opentelemetry/pull/50) [`70f551a`](https://github.com/Effect-TS/opentelemetry/commit/70f551afa76109dc4ab8ad76c55995cd67f2ef86) Thanks [@tim-smart](https://github.com/tim-smart)! - expose otel tracer with tag + layer
+
 ## 0.11.0
 
 ### Minor Changes
