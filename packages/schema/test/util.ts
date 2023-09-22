@@ -13,6 +13,7 @@ import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import { formatActual, formatErrors, formatExpected } from "@effect/schema/TreeFormatter"
 import * as fc from "fast-check"
+import { expect } from "vitest"
 
 const doEffectify = true
 const doRoundtrip = true
@@ -304,3 +305,43 @@ export const X3 = S.transform(
   (s) => s + s + s,
   (s) => s.substring(0, s.length / 3)
 )
+
+const doProperty = true
+
+export const propertyTo = <I, A>(schema: S.Schema<I, A>) => {
+  if (!doProperty) {
+    return
+  }
+  const arbitrary = A.to(schema)
+  const is = S.is(schema)
+  fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
+}
+
+export const propertyFrom = <I, A>(schema: S.Schema<I, A>) => {
+  if (!doProperty) {
+    return
+  }
+  const arbitrary = A.from(schema)
+  const is = S.is(S.from(schema))
+  fc.assert(fc.property(arbitrary(fc), (a) => is(a)))
+}
+
+export const isBun = "Bun" in globalThis
+
+export const resolves = async <A>(promise: Promise<A>, a: A) => {
+  try {
+    const actual = await promise
+    expect(actual).toStrictEqual(a)
+  } catch (_e) {
+    throw new Error(`Promise didn't resolve`)
+  }
+}
+
+export const rejects = async <A>(promise: Promise<A>) => {
+  try {
+    await promise
+    throw new Error(`Promise didn't reject`)
+  } catch (_e) {
+    // ok
+  }
+}

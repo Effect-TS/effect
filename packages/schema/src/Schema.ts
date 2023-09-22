@@ -3260,10 +3260,14 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
     }),
     (isDecoding, item) => {
       const parse = isDecoding ? Parser.parseResult(array(item)) : Parser.encodeResult(array(item))
-      return (u, options, ast) =>
-        !Chunk.isChunk(u) ?
-          ParseResult.failure(ParseResult.type(ast, u)) :
-          ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
+      return (u, options, ast) => {
+        if (Chunk.isChunk(u)) {
+          return Chunk.isEmpty(u)
+            ? ParseResult.success(u)
+            : ParseResult.map(parse(Chunk.toReadonlyArray(u), options), Chunk.fromIterable)
+        }
+        return ParseResult.failure(ParseResult.type(ast, u))
+      }
     },
     {
       [AST.IdentifierAnnotationId]: "Chunk",
@@ -3278,7 +3282,12 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
  * @since 1.0.0
  */
 export const chunk = <I, A>(item: Schema<I, A>): Schema<ReadonlyArray<I>, Chunk.Chunk<A>> =>
-  transform(array(item), to(chunkFromSelf(item)), Chunk.fromIterable, Chunk.toReadonlyArray)
+  transform(
+    array(item),
+    to(chunkFromSelf(item)),
+    (as) => as.length === 0 ? Chunk.empty() : Chunk.fromIterable(as),
+    Chunk.toReadonlyArray
+  )
 
 // ---------------------------------------------
 // Data transformations
