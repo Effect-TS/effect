@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stm/THub`
  * - Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
- * - Module: "@effect/stm/THub"
- * ```
  */
 
 export * from "@effect/stm/THub"

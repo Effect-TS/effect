@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/FiberStatus`
 - Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
-- Module: "@effect/io/FiberStatus"
-```
 
 ---
 

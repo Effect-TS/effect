@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/FiberRefs`
  * - Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
- * - Module: "@effect/io/FiberRefs"
- * ```
  */
 
 import * as Patch from "@effect/io/FiberRefsPatch"
@@ -15,10 +13,8 @@ export {
   /**
    * @since 2.0.0
    *
-   * ```md
+   * - Module: `@effect/io/FiberRefsPatch`
    * - Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
-   * - Module: "@effect/io/FiberRefsPatch"
-   * ```
    */
   Patch
 }

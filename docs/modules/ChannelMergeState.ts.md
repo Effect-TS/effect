@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/MergeState`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
-- Module: "@effect/stream/Channel/MergeState"
-```
 
 ---
 

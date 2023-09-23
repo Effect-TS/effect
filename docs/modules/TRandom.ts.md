@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TRandom`
 - Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
-- Module: "@effect/stm/TRandom"
-```
 
 ---
 

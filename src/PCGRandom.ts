@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/PCGRandom`
  * - Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
- * - Module: "@effect/data/PCGRandom"
- * ```
  */
 
 export * from "@effect/data/PCGRandom"

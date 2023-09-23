@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Clock`
 - Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
-- Module: "@effect/io/Clock"
-```
 
 ---
 

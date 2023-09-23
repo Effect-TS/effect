@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Struct`
  * - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
- * - Module: "@effect/data/Struct"
- * ```
  */
 
 export * from "@effect/data/Struct"

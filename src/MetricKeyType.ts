@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/MetricKeyType`
  * - Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
- * - Module: "@effect/io/MetricKeyType"
- * ```
  */
 
 export * from "@effect/io/MetricKeyType"

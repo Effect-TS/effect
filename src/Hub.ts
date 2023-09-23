@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/Hub`
  * - Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
- * - Module: "@effect/io/Hub"
- * ```
  */
 
 export * from "@effect/io/Hub"

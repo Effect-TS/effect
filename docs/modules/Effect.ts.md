@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Effect`
 - Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
-- Module: "@effect/io/Effect"
-```
 
 ---
 

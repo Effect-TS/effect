@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/GlobalValue`
  * - Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
- * - Module: "@effect/data/GlobalValue"
- * ```
  */
 
 export * from "@effect/data/GlobalValue"

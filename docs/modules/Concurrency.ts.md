@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Concurrency`
 - Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
-- Module: "@effect/io/Concurrency"
-```
 
 ---
 

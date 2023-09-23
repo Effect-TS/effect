@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/Console`
  * - Docs: https://effect-ts.github.io/io/modules/Console.ts.html
- * - Module: "@effect/io/Console"
- * ```
  */
 
 export * from "@effect/io/Console"

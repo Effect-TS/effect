@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Types`
 - Docs: https://effect-ts.github.io/data/modules/Types.ts.html
-- Module: "@effect/data/Types"
-```
 
 ---
 

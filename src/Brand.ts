@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Brand`
  * - Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
- * - Module: "@effect/data/Brand"
- * ```
  */
 
 export * from "@effect/data/Brand"

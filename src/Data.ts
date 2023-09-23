@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Data`
  * - Docs: https://effect-ts.github.io/data/modules/Data.ts.html
- * - Module: "@effect/data/Data"
- * ```
  */
 
 export * from "@effect/data/Data"

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stm/TQueue`
  * - Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
- * - Module: "@effect/stm/TQueue"
- * ```
  */
 
 export * from "@effect/stm/TQueue"
