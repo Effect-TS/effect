@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Tracer`
 - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
-- Module: "@effect/io/Tracer"
-```
 
 ---
 

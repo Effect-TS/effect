@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Layer`
 - Docs: https://effect-ts.gitLayer.io/io/modules/Layer.ts.html
-- Module: "@effect/io/Layer"
-```
 
 ---
 

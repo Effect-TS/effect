@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/match`
 - Docs: https://effect-ts.github.io/match/modules/index.ts.html
-- Module: "@effect/match"
-```
 
 ---
 

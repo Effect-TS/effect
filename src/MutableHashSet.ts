@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/MutableHashSet`
  * - Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
- * - Module: "@effect/data/MutableHashSet"
- * ```
  */
 
 export * from "@effect/data/MutableHashSet"

@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Pipeable`
 - Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-- Module: "@effect/data/Pipeable"
-```
 
 ---
 

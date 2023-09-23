@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/SynchronizedRef`
 - Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
-- Module: "@effect/io/SynchronizedRef"
-```
 
 ---
 

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stream/Channel/UpstreamPullStrategy`
  * - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
- * - Module: "@effect/stream/Channel/UpstreamPullStrategy"
- * ```
  */
 
 export * from "@effect/stream/Channel/UpstreamPullStrategy"

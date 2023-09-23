@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/Scheduler`
  * - Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
- * - Module: "@effect/io/Scheduler"
- * ```
  */
 
 export * from "@effect/io/Scheduler"

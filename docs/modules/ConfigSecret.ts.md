@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ConfigSecret`
 - Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
-- Module: "@effect/io/ConfigSecret"
-```
 
 ---
 

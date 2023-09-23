@@ -160,10 +160,8 @@ export declare const Bigint: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Bigint`
 - Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
-- Module: "effect/Bigint"
-```
 
 ## Boolean
 
@@ -175,10 +173,8 @@ export declare const Boolean: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Boolean`
 - Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
-- Module: "effect/Boolean"
-```
 
 ## Brand
 
@@ -190,10 +186,8 @@ export declare const Brand: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Brand`
 - Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
-- Module: "effect/Brand"
-```
 
 ## Cache
 
@@ -205,10 +199,8 @@ export declare const Cache: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Cache`
 - Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
-- Module: "effect/Cache"
-```
 
 ## Cause
 
@@ -220,10 +212,8 @@ export declare const Cause: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Cause`
 - Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
-- Module: "effect/Cause"
-```
 
 ## Channel
 
@@ -235,10 +225,8 @@ export declare const Channel: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel`
 - Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
-- Module: "@effect/stream/Channel"
-```
 
 ## ChannelChildExecutorDecision
 
@@ -250,10 +238,8 @@ export declare const ChannelChildExecutorDecision: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/ChildExecutorDecision`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
-- Module: "@effect/stream/Channel/ChildExecutorDecision"
-```
 
 ## ChannelMergeDecision
 
@@ -265,10 +251,8 @@ export declare const ChannelMergeDecision: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/MergeDecision`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
-- Module: "@effect/stream/Channel/MergeDecision"
-```
 
 ## ChannelMergeState
 
@@ -280,10 +264,8 @@ export declare const ChannelMergeState: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/MergeState`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
-- Module: "@effect/stream/Channel/MergeState"
-```
 
 ## ChannelMergeStrategy
 
@@ -295,10 +277,8 @@ export declare const ChannelMergeStrategy: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/MergeStrategy`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
-- Module: "@effect/stream/Channel/MergeStrategy"
-```
 
 ## ChannelSingleProducerAsyncInput
 
@@ -310,10 +290,8 @@ export declare const ChannelSingleProducerAsyncInput: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/SingleProducerAsyncInput`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
-- Module: "@effect/stream/Channel/SingleProducerAsyncInput"
-```
 
 ## ChannelUpstreamPullRequest
 
@@ -325,10 +303,8 @@ export declare const ChannelUpstreamPullRequest: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/UpstreamPullRequest`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
-- Module: "@effect/stream/Channel/UpstreamPullRequest"
-```
 
 ## ChannelUpstreamPullStrategy
 
@@ -340,10 +316,8 @@ export declare const ChannelUpstreamPullStrategy: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Channel/UpstreamPullStrategy`
 - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
-- Module: "@effect/stream/Channel/UpstreamPullStrategy"
-```
 
 ## Chunk
 
@@ -355,10 +329,8 @@ export declare const Chunk: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Chunk`
 - Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
-- Module: "effect/Chunk"
-```
 
 ## Clock
 
@@ -370,10 +342,8 @@ export declare const Clock: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Clock`
 - Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
-- Module: "effect/Clock"
-```
 
 ## Concurrency
 
@@ -385,10 +355,8 @@ export declare const Concurrency: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Concurrency`
 - Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
-- Module: "effect/Concurrency"
-```
 
 ## Config
 
@@ -400,10 +368,8 @@ export declare const Config: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Config`
 - Docs: https://effect-ts.github.io/io/modules/Config.ts.html
-- Module: "effect/Config"
-```
 
 ## ConfigError
 
@@ -415,10 +381,8 @@ export declare const ConfigError: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ConfigError`
 - Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
-- Module: "effect/ConfigError"
-```
 
 ## ConfigProvider
 
@@ -430,10 +394,8 @@ export declare const ConfigProvider: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ConfigProvider`
 - Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
-- Module: "effect/ConfigProvider"
-```
 
 ## ConfigSecret
 
@@ -445,10 +407,8 @@ export declare const ConfigSecret: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ConfigSecret`
 - Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
-- Module: "effect/ConfigSecret"
-```
 
 ## Console
 
@@ -460,10 +420,8 @@ export declare const Console: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Console`
 - Docs: https://effect-ts.github.io/data/modules/Console.ts.html
-- Module: "effect/Console"
-```
 
 ## Context
 
@@ -475,10 +433,8 @@ export declare const Context: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Context`
 - Docs: https://effect-ts.github.io/data/modules/Context.ts.html
-- Module: "effect/Context"
-```
 
 ## Data
 
@@ -490,10 +446,8 @@ export declare const Data: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Data`
 - Docs: https://effect-ts.github.io/data/modules/Data.ts.html
-- Module: "effect/Data"
-```
 
 ## DefaultServices
 
@@ -505,10 +459,8 @@ export declare const DefaultServices: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/DefaultServices`
 - Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
-- Module: "effect/DefaultServices"
-```
 
 ## Deferred
 
@@ -520,10 +472,8 @@ export declare const Deferred: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Deferred`
 - Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
-- Module: "effect/Deferred"
-```
 
 ## Differ
 
@@ -535,10 +485,8 @@ export declare const Differ: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Differ`
 - Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
-- Module: "effect/Differ"
-```
 
 ## Duration
 
@@ -550,10 +498,8 @@ export declare const Duration: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Duration`
 - Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
-- Module: "effect/Duration"
-```
 
 ## Effect
 
@@ -565,10 +511,8 @@ export declare const Effect: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Effect`
 - Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
-- Module: "effect/Effect"
-```
 
 ## Either
 
@@ -580,10 +524,8 @@ export declare const Either: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Either`
 - Docs: https://effect-ts.github.io/data/modules/Either.ts.html
-- Module: "effect/Either"
-```
 
 ## Equal
 
@@ -595,10 +537,8 @@ export declare const Equal: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Equal`
 - Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
-- Module: "effect/Equal"
-```
 
 ## Equivalence
 
@@ -610,10 +550,8 @@ export declare const Equivalence: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Equivalence`
 - Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
-- Module: "effect/Equivalence"
-```
 
 ## ExecutionStrategy
 
@@ -625,10 +563,8 @@ export declare const ExecutionStrategy: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ExecutionStrategy`
 - Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
-- Module: "effect/ExecutionStrategy"
-```
 
 ## Exit
 
@@ -640,10 +576,8 @@ export declare const Exit: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Exit`
 - Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
-- Module: "effect/Exit"
-```
 
 ## Fiber
 
@@ -655,10 +589,8 @@ export declare const Fiber: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Fiber`
 - Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
-- Module: "effect/Fiber"
-```
 
 ## FiberId
 
@@ -670,10 +602,8 @@ export declare const FiberId: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/FiberId`
 - Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
-- Module: "effect/FiberId"
-```
 
 ## FiberRef
 
@@ -685,10 +615,8 @@ export declare const FiberRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/FiberRef`
 - Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
-- Module: "effect/FiberRef"
-```
 
 ## FiberRefs
 
@@ -700,10 +628,8 @@ export declare const FiberRefs: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/FiberRefs`
 - Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-- Module: "effect/FiberRefs"
-```
 
 ## FiberStatus
 
@@ -715,10 +641,8 @@ export declare const FiberStatus: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/FiberStatus`
 - Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
-- Module: "effect/FiberStatus"
-```
 
 ## Function
 
@@ -730,10 +654,8 @@ export declare const Function: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html
-- Module: "effect/Function"
-```
 
 ## GlobalValue
 
@@ -745,10 +667,8 @@ export declare const GlobalValue: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/GlobalValue`
 - Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
-- Module: "effect/GlobalValue"
-```
 
 ## GroupBy
 
@@ -760,10 +680,8 @@ export declare const GroupBy: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/GroupBy`
 - Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
-- Module: "@effect/stream/GroupBy"
-```
 
 ## HKT
 
@@ -775,10 +693,8 @@ export declare const HKT: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/HKT`
 - Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-- Module: "effect/HKT"
-```
 
 ## Hash
 
@@ -790,10 +706,8 @@ export declare const Hash: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Hash`
 - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
-- Module: "effect/Hash"
-```
 
 ## HashMap
 
@@ -805,10 +719,8 @@ export declare const HashMap: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/HashMap`
 - Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
-- Module: "effect/HashMap"
-```
 
 ## HashSet
 
@@ -820,10 +732,8 @@ export declare const HashSet: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/HashSet`
 - Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
-- Module: "effect/HashSet"
-```
 
 ## Hub
 
@@ -835,10 +745,8 @@ export declare const Hub: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Hub`
 - Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
-- Module: "effect/Hub"
-```
 
 ## KeyedPool
 
@@ -850,10 +758,8 @@ export declare const KeyedPool: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/KeyedPool`
 - Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
-- Module: "effect/KeyedPool"
-```
 
 ## Layer
 
@@ -865,10 +771,8 @@ export declare const Layer: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Layer`
 - Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
-- Module: "effect/Layer"
-```
 
 ## List
 
@@ -880,10 +784,8 @@ export declare const List: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/List`
 - Docs: https://effect-ts.github.io/data/modules/List.ts.html
-- Module: "effect/List"
-```
 
 ## LogLevel
 
@@ -895,10 +797,8 @@ export declare const LogLevel: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/LogLevel`
 - Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
-- Module: "effect/LogLevel"
-```
 
 ## LogSpan
 
@@ -910,10 +810,8 @@ export declare const LogSpan: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/LoggerSpan`
 - Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
-- Module: "effect/LoggerSpan"
-```
 
 ## Logger
 
@@ -925,10 +823,8 @@ export declare const Logger: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Logger`
 - Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
-- Module: "effect/Logger"
-```
 
 ## Match
 
@@ -940,10 +836,8 @@ export declare const Match: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/match`
 - Docs: https://effect-ts.github.io/match/modules/index.ts.html
-- Module: "@effect/match"
-```
 
 ## Metric
 
@@ -955,10 +849,8 @@ export declare const Metric: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Metric`
 - Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
-- Module: "effect/Metric"
-```
 
 ## MetricBoundaries
 
@@ -970,10 +862,8 @@ export declare const MetricBoundaries: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricBoundaries`
 - Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
-- Module: "effect/MetricBoundaries"
-```
 
 ## MetricHook
 
@@ -985,10 +875,8 @@ export declare const MetricHook: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricHook`
 - Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
-- Module: "effect/MetricHook"
-```
 
 ## MetricKey
 
@@ -1000,10 +888,8 @@ export declare const MetricKey: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricKey`
 - Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
-- Module: "effect/MetricKey"
-```
 
 ## MetricKeyType
 
@@ -1015,10 +901,8 @@ export declare const MetricKeyType: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricKeyType`
 - Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
-- Module: "effect/MetricKeyType"
-```
 
 ## MetricLabel
 
@@ -1030,10 +914,8 @@ export declare const MetricLabel: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricLabel`
 - Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
-- Module: "effect/MetricLabel"
-```
 
 ## MetricPair
 
@@ -1045,10 +927,8 @@ export declare const MetricPair: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricPair`
 - Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
-- Module: "effect/MetricPair"
-```
 
 ## MetricPolling
 
@@ -1060,10 +940,8 @@ export declare const MetricPolling: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricPolling`
 - Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
-- Module: "effect/MetricPolling"
-```
 
 ## MetricRegistry
 
@@ -1075,10 +953,8 @@ export declare const MetricRegistry: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricRegistry`
 - Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
-- Module: "effect/MetricRegistry"
-```
 
 ## MetricState
 
@@ -1090,10 +966,8 @@ export declare const MetricState: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/MetricState`
 - Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
-- Module: "effect/MetricState"
-```
 
 ## MutableHashMap
 
@@ -1105,10 +979,8 @@ export declare const MutableHashMap: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/MutableHashMap`
 - Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
-- Module: "effect/MutableHashMap"
-```
 
 ## MutableHashSet
 
@@ -1120,10 +992,8 @@ export declare const MutableHashSet: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/MutableHashSet`
 - Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
-- Module: "effect/MutableHashSet"
-```
 
 ## MutableList
 
@@ -1135,10 +1005,8 @@ export declare const MutableList: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/MutableList`
 - Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
-- Module: "effect/MutableList"
-```
 
 ## MutableQueue
 
@@ -1150,10 +1018,8 @@ export declare const MutableQueue: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/MutableQueue`
 - Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
-- Module: "effect/MutableQueue"
-```
 
 ## MutableRef
 
@@ -1165,10 +1031,8 @@ export declare const MutableRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/mutable/MutableRef`
 - Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
-- Module: "effect/mutable/MutableRef"
-```
 
 ## Number
 
@@ -1180,10 +1044,8 @@ export declare const Number: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Number`
 - Docs: https://effect-ts.github.io/data/modules/Number.ts.html
-- Module: "effect/Number"
-```
 
 ## Option
 
@@ -1195,10 +1057,8 @@ export declare const Option: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Option`
 - Docs: https://effect-ts.github.io/data/modules/Option.ts.html
-- Module: "effect/Option"
-```
 
 ## Order
 
@@ -1210,10 +1070,8 @@ export declare const Order: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Order`
 - Docs: https://effect-ts.github.io/data/modules/Order.ts.html
-- Module: "effect/Order"
-```
 
 ## Ordering
 
@@ -1225,10 +1083,8 @@ export declare const Ordering: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Ordering`
 - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
-- Module: "effect/Ordering"
-```
 
 ## PCGRandom
 
@@ -1240,10 +1096,8 @@ export declare const PCGRandom: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/PCGRandom`
 - Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
-- Module: "effect/PCGRandom"
-```
 
 ## Pipeable
 
@@ -1255,10 +1109,8 @@ export declare const Pipeable: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Pipeable`
 - Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-- Module: "effect/Pipeable"
-```
 
 ## Pool
 
@@ -1270,10 +1122,8 @@ export declare const Pool: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Pool`
 - Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
-- Module: "effect/Pool"
-```
 
 ## Predicate
 
@@ -1285,10 +1135,8 @@ export declare const Predicate: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Predicate`
 - Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
-- Module: "effect/Predicate"
-```
 
 ## Queue
 
@@ -1300,10 +1148,8 @@ export declare const Queue: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Queue`
 - Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
-- Module: "effect/Queue"
-```
 
 ## Random
 
@@ -1315,10 +1161,8 @@ export declare const Random: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Random`
 - Docs: https://effect-ts.github.io/io/modules/Random.ts.html
-- Module: "effect/Random"
-```
 
 ## ReadonlyArray
 
@@ -1330,10 +1174,8 @@ export declare const ReadonlyArray: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/ReadonlyArray`
 - Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
-- Module: "effect/ReadonlyArray"
-```
 
 ## ReadonlyRecord
 
@@ -1345,10 +1187,8 @@ export declare const ReadonlyRecord: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/ReadonlyRecord`
 - Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
-- Module: "effect/ReadonlyRecord"
-```
 
 ## RedBlackTree
 
@@ -1360,10 +1200,8 @@ export declare const RedBlackTree: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/RedBlackTree`
 - Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
-- Module: "effect/RedBlackTree"
-```
 
 ## Ref
 
@@ -1375,10 +1213,8 @@ export declare const Ref: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Ref`
 - Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
-- Module: "effect/Ref"
-```
 
 ## Reloadable
 
@@ -1390,10 +1226,8 @@ export declare const Reloadable: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Reloadable`
 - Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
-- Module: "effect/Reloadable"
-```
 
 ## Request
 
@@ -1405,10 +1239,8 @@ export declare const Request: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Request`
 - Docs: https://effect-ts.github.io/io/modules/Request.ts.html
-- Module: "effect/Request"
-```
 
 ## RequestBlock
 
@@ -1420,10 +1252,8 @@ export declare const RequestBlock: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/RequestBlock`
 - Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
-- Module: "effect/RequestBlock"
-```
 
 ## RequestResolver
 
@@ -1435,10 +1265,8 @@ export declare const RequestResolver: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/RequestResolver`
 - Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
-- Module: "effect/RequestResolver"
-```
 
 ## Resource
 
@@ -1450,10 +1278,8 @@ export declare const Resource: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Resource`
 - Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
-- Module: "effect/Resource"
-```
 
 ## Runtime
 
@@ -1465,10 +1291,8 @@ export declare const Runtime: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Runtime`
 - Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
-- Module: "effect/Runtime"
-```
 
 ## RuntimeFlags
 
@@ -1480,10 +1304,8 @@ export declare const RuntimeFlags: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/RuntimeFlags`
 - Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
-- Module: "effect/RuntimeFlags"
-```
 
 ## RuntimeFlagsPatch
 
@@ -1495,10 +1317,8 @@ export declare const RuntimeFlagsPatch: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/RuntimeFlagsPatch`
 - Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
-- Module: "effect/RuntimeFlagsPatch"
-```
 
 ## STM
 
@@ -1510,10 +1330,8 @@ export declare const STM: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/STM`
 - Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
-- Module: "@effect/stm/STM"
-```
 
 ## Schedule
 
@@ -1525,10 +1343,8 @@ export declare const Schedule: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Schedule`
 - Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
-- Module: "effect/Schedule"
-```
 
 ## ScheduleDecision
 
@@ -1540,10 +1356,8 @@ export declare const ScheduleDecision: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ScheduleDecision`
 - Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
-- Module: "effect/ScheduleDecision"
-```
 
 ## ScheduleInterval
 
@@ -1555,10 +1369,8 @@ export declare const ScheduleInterval: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ScheduleInterval`
 - Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
-- Module: "effect/ScheduleInterval"
-```
 
 ## ScheduleIntervals
 
@@ -1570,10 +1382,8 @@ export declare const ScheduleIntervals: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ScheduleIntervals`
 - Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
-- Module: "effect/ScheduleIntervals"
-```
 
 ## Scheduler
 
@@ -1585,10 +1395,8 @@ export declare const Scheduler: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Scheduler`
 - Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
-- Module: "effect/Scheduler"
-```
 
 ## Scope
 
@@ -1600,10 +1408,8 @@ export declare const Scope: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Scope`
 - Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
-- Module: "effect/Scope"
-```
 
 ## ScopedCache
 
@@ -1615,10 +1421,8 @@ export declare const ScopedCache: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ScopedCache`
 - Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
-- Module: "effect/ScopedCache"
-```
 
 ## ScopedRef
 
@@ -1630,10 +1434,8 @@ export declare const ScopedRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/ScopedRef`
 - Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
-- Module: "effect/ScopedRef"
-```
 
 ## Sink
 
@@ -1645,10 +1447,8 @@ export declare const Sink: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Sink`
 - Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
-- Module: "@effect/stream/Sink"
-```
 
 ## SortedMap
 
@@ -1660,10 +1460,8 @@ export declare const SortedMap: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/SortedMap`
 - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-- Module: "effect/SortedMap"
-```
 
 ## SortedSet
 
@@ -1675,10 +1473,8 @@ export declare const SortedSet: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/SortedSet`
 - Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
-- Module: "effect/SortedSet"
-```
 
 ## Stream
 
@@ -1690,10 +1486,8 @@ export declare const Stream: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Stream`
 - Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
-- Module: "@effect/stream/Stream"
-```
 
 ## StreamEmit
 
@@ -1705,10 +1499,8 @@ export declare const StreamEmit: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Stream/Emit`
 - Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
-- Module: "@effect/stream/Stream/Emit"
-```
 
 ## StreamHaltStrategy
 
@@ -1720,10 +1512,8 @@ export declare const StreamHaltStrategy: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Stream/HaltStrategy`
 - Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
-- Module: "@effect/stream/Stream/HaltStrategy"
-```
 
 ## String
 
@@ -1735,10 +1525,8 @@ export declare const String: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/String`
 - Docs: https://effect-ts.github.io/data/modules/String.ts.html
-- Module: "effect/String"
-```
 
 ## Struct
 
@@ -1750,10 +1538,8 @@ export declare const Struct: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Struct`
 - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
-- Module: "effect/Struct"
-```
 
 ## SubscriptionRef
 
@@ -1765,10 +1551,8 @@ export declare const SubscriptionRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/SubscriptionRef`
 - Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
-- Module: "@effect/stream/SubscriptionRef"
-```
 
 ## Supervisor
 
@@ -1780,10 +1564,8 @@ export declare const Supervisor: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Supervisor`
 - Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
-- Module: "effect/Supervisor"
-```
 
 ## Symbol
 
@@ -1795,10 +1577,8 @@ export declare const Symbol: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Symbol`
 - Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-- Module: "effect/Symbol"
-```
 
 ## SynchronizedRef
 
@@ -1810,10 +1590,8 @@ export declare const SynchronizedRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/SynchronizedRef`
 - Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
-- Module: "effect/SynchronizedRef"
-```
 
 ## TArray
 
@@ -1825,10 +1603,8 @@ export declare const TArray: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TArray`
 - Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
-- Module: "@effect/stm/TArray"
-```
 
 ## TDeferred
 
@@ -1840,10 +1616,8 @@ export declare const TDeferred: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TDeferred`
 - Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
-- Module: "@effect/stm/TDeferred"
-```
 
 ## THub
 
@@ -1855,10 +1629,8 @@ export declare const THub: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/THub`
 - Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
-- Module: "@effect/stm/THub"
-```
 
 ## TMap
 
@@ -1870,10 +1642,8 @@ export declare const TMap: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TMap`
 - Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
-- Module: "@effect/stm/TMap"
-```
 
 ## TPriorityQueue
 
@@ -1885,10 +1655,8 @@ export declare const TPriorityQueue: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TPriorityQueue`
 - Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
-- Module: "@effect/stm/TPriorityQueue"
-```
 
 ## TQueue
 
@@ -1900,10 +1668,8 @@ export declare const TQueue: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TQueue`
 - Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
-- Module: "@effect/stm/TQueue"
-```
 
 ## TRandom
 
@@ -1915,10 +1681,8 @@ export declare const TRandom: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TRandom`
 - Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
-- Module: "@effect/stm/TRandom"
-```
 
 ## TReentrantLock
 
@@ -1930,10 +1694,8 @@ export declare const TReentrantLock: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TReentrantLock`
 - Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
-- Module: "@effect/stm/TReentrantLock"
-```
 
 ## TRef
 
@@ -1945,10 +1707,8 @@ export declare const TRef: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TRef`
 - Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
-- Module: "@effect/stm/TRef"
-```
 
 ## TSemaphore
 
@@ -1960,10 +1720,8 @@ export declare const TSemaphore: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TSemaphore`
 - Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
-- Module: "@effect/stm/TSemaphore"
-```
 
 ## TSet
 
@@ -1975,10 +1733,8 @@ export declare const TSet: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stm/TSet`
 - Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
-- Module: "@effect/stm/TSet"
-```
 
 ## Take
 
@@ -1990,10 +1746,8 @@ export declare const Take: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Take`
 - Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
-- Module: "@effect/stream/Take"
-```
 
 ## Tracer
 
@@ -2005,10 +1759,8 @@ export declare const Tracer: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/io/Tracer`
 - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
-- Module: "effect/Tracer"
-```
 
 ## Tuple
 
@@ -2020,10 +1772,8 @@ export declare const Tuple: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Tuple`
 - Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
-- Module: "effect/Tuple"
-```
 
 ## Types
 
@@ -2035,10 +1785,8 @@ export declare const Types: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Types`
 - Docs: https://effect-ts.github.io/data/modules/Types.ts.html
-- Module: "effect/Types"
-```
 
 ## absurd
 
@@ -2050,10 +1798,8 @@ export declare const absurd: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
-- Module: "effect/Function"
-```
 
 ## flow
 
@@ -2065,10 +1811,8 @@ export declare const flow: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
-- Module: "effect/Function"
-```
 
 ## hole
 
@@ -2080,10 +1824,8 @@ export declare const hole: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
-- Module: "effect/Function"
-```
 
 ## identity
 
@@ -2095,10 +1837,8 @@ export declare const identity: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
-- Module: "effect/Function"
-```
 
 ## pipe
 
@@ -2110,10 +1850,8 @@ export declare const pipe: any
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/Function`
 - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
-- Module: "effect/Function"
-```
 
 ## unsafeCoerce
 
@@ -2124,3 +1862,6 @@ export declare const unsafeCoerce: any
 ```
 
 Added in v2.0.0
+
+- Module: `@effect/data/Function`
+- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce

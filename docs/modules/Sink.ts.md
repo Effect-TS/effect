@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/stream/Sink`
 - Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
-- Module: "@effect/stream/Sink"
-```
 
 ---
 

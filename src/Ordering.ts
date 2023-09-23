@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Ordering`
  * - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
- * - Module: "@effect/data/Ordering"
- * ```
  */
 
 export * from "@effect/data/Ordering"

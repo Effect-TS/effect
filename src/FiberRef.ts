@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/FiberRef`
  * - Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
- * - Module: "@effect/io/FiberRef"
- * ```
  */
 
 export * from "@effect/io/FiberRef"

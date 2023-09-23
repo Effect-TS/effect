@@ -8,10 +8,8 @@ parent: Modules
 
 Added in v2.0.0
 
-```md
+- Module: `@effect/data/SortedMap`
 - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-- Module: "@effect/data/SortedMap"
-```
 
 ---
 
