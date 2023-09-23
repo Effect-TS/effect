@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/HashMap`
  * - Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
- * - Module: "@effect/data/HashMap"
- * ```
  */
 
 export * from "@effect/data/HashMap"

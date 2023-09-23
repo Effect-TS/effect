@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/ScheduleIntervals`
  * - Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
- * - Module: "@effect/io/ScheduleIntervals"
- * ```
  */
 
 export * from "@effect/io/ScheduleIntervals"

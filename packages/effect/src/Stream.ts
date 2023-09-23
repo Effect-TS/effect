@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stream/Stream`
  * - Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
- * - Module: "@effect/stream/Stream"
- * ```
  */
 
 export * from "@effect/stream/Stream"

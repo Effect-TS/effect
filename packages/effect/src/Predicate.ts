@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Predicate`
  * - Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
- * - Module: "@effect/data/Predicate"
- * ```
  */
 
 export * from "@effect/data/Predicate"

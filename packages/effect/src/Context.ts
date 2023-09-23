@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Context`
  * - Docs: https://effect-ts.github.io/data/modules/Context.ts.html
- * - Module: "@effect/data/Context"
- * ```
  */
 
 export * from "@effect/data/Context"

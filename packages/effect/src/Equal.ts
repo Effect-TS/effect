@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Equal`
  * - Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
- * - Module: "@effect/data/Equal"
- * ```
  */
 
 export * from "@effect/data/Equal"

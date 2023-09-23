@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/MutableRef`
  * - Docs: https://effect-ts.github.io/data/modules/MutableRef.ts.html
- * - Module: "@effect/data/MutableRef"
- * ```
  */
 
 export * from "@effect/data/MutableRef"

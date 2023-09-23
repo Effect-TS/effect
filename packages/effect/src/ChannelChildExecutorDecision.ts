@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stream/Channel/ChildExecutorDecision`
  * - Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
- * - Module: "@effect/stream/Channel/ChildExecutorDecision"
- * ```
  */
 
 export * from "@effect/stream/Channel/ChildExecutorDecision"

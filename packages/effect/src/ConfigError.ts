@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/ConfigError`
  * - Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
- * - Module: "@effect/io/ConfigError"
- * ```
  */
 
 export * from "@effect/io/ConfigError"

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/Metric`
  * - Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
- * - Module: "@effect/io/Metric"
- * ```
  */
 
 export * from "@effect/io/Metric"

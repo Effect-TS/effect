@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/ReadonlyRecord`
  * - Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
- * - Module: "@effect/data/ReadonlyRecord"
- * ```
  */
 
 export * from "@effect/data/ReadonlyRecord"

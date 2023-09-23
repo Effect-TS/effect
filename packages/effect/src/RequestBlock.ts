@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/RequestBlock`
  * - Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
- * - Module: "@effect/io/RequestBlock"
- * ```
  */
 
 export * from "@effect/io/RequestBlock"

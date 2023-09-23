@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/SortedSet`
  * - Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
- * - Module: "@effect/data/SortedSet"
- * ```
  */
 
 export * from "@effect/data/SortedSet"

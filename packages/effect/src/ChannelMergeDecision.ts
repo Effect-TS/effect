@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stream/Channel/MergeDecision`
  * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
- * - Module: "@effect/stream/Channel/MergeDecision"
- * ```
  */
 
 export * from "@effect/stream/Channel/MergeDecision"

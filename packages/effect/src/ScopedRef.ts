@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/ScopedRef`
  * - Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
- * - Module: "@effect/io/ScopedRef"
- * ```
  */
 
 export * from "@effect/io/ScopedRef"

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Symbol`
  * - Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
- * - Module: "@effect/data/Symbol"
- * ```
  */
 
 export * from "@effect/data/Symbol"

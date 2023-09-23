@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/MutableHashMap`
  * - Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
- * - Module: "@effect/data/MutableHashMap"
- * ```
  */
 
 export * from "@effect/data/MutableHashMap"

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/stm/TSemaphore`
  * - Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
- * - Module: "@effect/stm/TSemaphore"
- * ```
  */
 
 export * from "@effect/stm/TSemaphore"

@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/io/MetricLabel`
  * - Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
- * - Module: "@effect/io/MetricLabel"
- * ```
  */
 
 export * from "@effect/io/MetricLabel"

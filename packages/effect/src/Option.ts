@@ -1,10 +1,8 @@
 /**
  * @since 2.0.0
  *
- * ```md
+ * - Module: `@effect/data/Option`
  * - Docs: https://effect-ts.github.io/data/modules/Option.ts.html
- * - Module: "@effect/data/Option"
- * ```
  */
 
 export * from "@effect/data/Option"
