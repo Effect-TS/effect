@@ -6,13 +6,29 @@ parent: Modules
 
 ## ReadonlyArray overview
 
-Added in v2.0.0
+Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
 
-- Module: `@effect/data/ReadonlyArray`
-- Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
+Added in v2.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/data/ReadonlyArray"](#from-effectdatareadonlyarray)
+
 ---
+
+# exports
+
+## From "@effect/data/ReadonlyArray"
+
+Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/data/ReadonlyArray'
+```
+
+Added in v2.0.0

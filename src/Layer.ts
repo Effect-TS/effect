@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.gitLayer.io/io/modules/Layer.ts.html
  *
- * - Module: `@effect/io/Layer`
- * - Docs: https://effect-ts.gitLayer.io/io/modules/Layer.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/io/Layer"

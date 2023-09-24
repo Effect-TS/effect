@@ -152,6 +152,8 @@ Added in v2.0.0
 
 ## Bigint
 
+Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
+
 **Signature**
 
 ```ts
@@ -160,10 +162,9 @@ export declare const Bigint: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Bigint`
-- Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
-
 ## Boolean
+
+Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
 
 **Signature**
 
@@ -173,10 +174,9 @@ export declare const Boolean: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Boolean`
-- Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
-
 ## Brand
+
+Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
 
 **Signature**
 
@@ -186,10 +186,9 @@ export declare const Brand: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Brand`
-- Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
-
 ## Cache
+
+Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
 
 **Signature**
 
@@ -199,10 +198,9 @@ export declare const Cache: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Cache`
-- Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
-
 ## Cause
+
+Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
 
 **Signature**
 
@@ -212,10 +210,9 @@ export declare const Cause: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Cause`
-- Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
-
 ## Channel
+
+Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
 
 **Signature**
 
@@ -225,10 +222,9 @@ export declare const Channel: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel`
-- Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
-
 ## ChannelChildExecutorDecision
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
 
 **Signature**
 
@@ -238,10 +234,9 @@ export declare const ChannelChildExecutorDecision: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/ChildExecutorDecision`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
-
 ## ChannelMergeDecision
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
 
 **Signature**
 
@@ -251,10 +246,9 @@ export declare const ChannelMergeDecision: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/MergeDecision`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
-
 ## ChannelMergeState
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
 
 **Signature**
 
@@ -264,10 +258,9 @@ export declare const ChannelMergeState: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/MergeState`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
-
 ## ChannelMergeStrategy
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
 
 **Signature**
 
@@ -277,10 +270,9 @@ export declare const ChannelMergeStrategy: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/MergeStrategy`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
-
 ## ChannelSingleProducerAsyncInput
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
 
 **Signature**
 
@@ -290,10 +282,9 @@ export declare const ChannelSingleProducerAsyncInput: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/SingleProducerAsyncInput`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
-
 ## ChannelUpstreamPullRequest
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
 
 **Signature**
 
@@ -303,10 +294,9 @@ export declare const ChannelUpstreamPullRequest: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/UpstreamPullRequest`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
-
 ## ChannelUpstreamPullStrategy
+
+Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
 
 **Signature**
 
@@ -316,10 +306,9 @@ export declare const ChannelUpstreamPullStrategy: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Channel/UpstreamPullStrategy`
-- Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
-
 ## Chunk
+
+Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
 
 **Signature**
 
@@ -329,10 +318,9 @@ export declare const Chunk: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Chunk`
-- Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
-
 ## Clock
+
+Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
 
 **Signature**
 
@@ -342,10 +330,9 @@ export declare const Clock: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Clock`
-- Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
-
 ## Concurrency
+
+Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
 
 **Signature**
 
@@ -355,10 +342,9 @@ export declare const Concurrency: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Concurrency`
-- Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
-
 ## Config
+
+Docs: https://effect-ts.github.io/io/modules/Config.ts.html
 
 **Signature**
 
@@ -368,10 +354,9 @@ export declare const Config: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Config`
-- Docs: https://effect-ts.github.io/io/modules/Config.ts.html
-
 ## ConfigError
+
+Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
 
 **Signature**
 
@@ -381,10 +366,9 @@ export declare const ConfigError: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ConfigError`
-- Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
-
 ## ConfigProvider
+
+Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
 
 **Signature**
 
@@ -394,10 +378,9 @@ export declare const ConfigProvider: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ConfigProvider`
-- Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
-
 ## ConfigSecret
+
+Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
 
 **Signature**
 
@@ -407,10 +390,9 @@ export declare const ConfigSecret: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ConfigSecret`
-- Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
-
 ## Console
+
+Docs: https://effect-ts.github.io/data/modules/Console.ts.html
 
 **Signature**
 
@@ -420,10 +402,9 @@ export declare const Console: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Console`
-- Docs: https://effect-ts.github.io/data/modules/Console.ts.html
-
 ## Context
+
+Docs: https://effect-ts.github.io/data/modules/Context.ts.html
 
 **Signature**
 
@@ -433,10 +414,9 @@ export declare const Context: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Context`
-- Docs: https://effect-ts.github.io/data/modules/Context.ts.html
-
 ## Data
+
+Docs: https://effect-ts.github.io/data/modules/Data.ts.html
 
 **Signature**
 
@@ -446,10 +426,9 @@ export declare const Data: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Data`
-- Docs: https://effect-ts.github.io/data/modules/Data.ts.html
-
 ## DefaultServices
+
+Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
 
 **Signature**
 
@@ -459,10 +438,9 @@ export declare const DefaultServices: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/DefaultServices`
-- Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
-
 ## Deferred
+
+Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
 
 **Signature**
 
@@ -472,10 +450,9 @@ export declare const Deferred: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Deferred`
-- Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
-
 ## Differ
+
+Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
 
 **Signature**
 
@@ -485,10 +462,9 @@ export declare const Differ: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Differ`
-- Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
-
 ## Duration
+
+Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
 
 **Signature**
 
@@ -498,10 +474,9 @@ export declare const Duration: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Duration`
-- Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
-
 ## Effect
+
+Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
 
 **Signature**
 
@@ -511,10 +486,9 @@ export declare const Effect: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Effect`
-- Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
-
 ## Either
+
+Docs: https://effect-ts.github.io/data/modules/Either.ts.html
 
 **Signature**
 
@@ -524,10 +498,9 @@ export declare const Either: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Either`
-- Docs: https://effect-ts.github.io/data/modules/Either.ts.html
-
 ## Equal
+
+Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
 
 **Signature**
 
@@ -537,10 +510,9 @@ export declare const Equal: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Equal`
-- Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
-
 ## Equivalence
+
+Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
 
 **Signature**
 
@@ -550,10 +522,9 @@ export declare const Equivalence: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Equivalence`
-- Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
-
 ## ExecutionStrategy
+
+Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
 
 **Signature**
 
@@ -563,10 +534,9 @@ export declare const ExecutionStrategy: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ExecutionStrategy`
-- Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
-
 ## Exit
+
+Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
 
 **Signature**
 
@@ -576,10 +546,9 @@ export declare const Exit: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Exit`
-- Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
-
 ## Fiber
+
+Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
 
 **Signature**
 
@@ -589,10 +558,9 @@ export declare const Fiber: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Fiber`
-- Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
-
 ## FiberId
+
+Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
 
 **Signature**
 
@@ -602,10 +570,9 @@ export declare const FiberId: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/FiberId`
-- Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
-
 ## FiberRef
+
+Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
 
 **Signature**
 
@@ -615,10 +582,9 @@ export declare const FiberRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/FiberRef`
-- Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
-
 ## FiberRefs
+
+Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
 
 **Signature**
 
@@ -628,10 +594,9 @@ export declare const FiberRefs: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/FiberRefs`
-- Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-
 ## FiberStatus
+
+Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
 
 **Signature**
 
@@ -641,10 +606,9 @@ export declare const FiberStatus: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/FiberStatus`
-- Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
-
 ## Function
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html
 
 **Signature**
 
@@ -654,10 +618,9 @@ export declare const Function: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html
-
 ## GlobalValue
+
+Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
 
 **Signature**
 
@@ -667,10 +630,9 @@ export declare const GlobalValue: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/GlobalValue`
-- Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
-
 ## GroupBy
+
+Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
 
 **Signature**
 
@@ -680,10 +642,9 @@ export declare const GroupBy: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/GroupBy`
-- Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
-
 ## HKT
+
+Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
 
 **Signature**
 
@@ -693,10 +654,9 @@ export declare const HKT: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/HKT`
-- Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
-
 ## Hash
+
+Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
 
 **Signature**
 
@@ -706,10 +666,9 @@ export declare const Hash: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Hash`
-- Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
-
 ## HashMap
+
+Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
 
 **Signature**
 
@@ -719,10 +678,9 @@ export declare const HashMap: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/HashMap`
-- Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
-
 ## HashSet
+
+Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
 
 **Signature**
 
@@ -732,10 +690,9 @@ export declare const HashSet: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/HashSet`
-- Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
-
 ## Hub
+
+Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
 
 **Signature**
 
@@ -745,10 +702,9 @@ export declare const Hub: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Hub`
-- Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
-
 ## KeyedPool
+
+Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
 
 **Signature**
 
@@ -758,10 +714,9 @@ export declare const KeyedPool: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/KeyedPool`
-- Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
-
 ## Layer
+
+Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
 
 **Signature**
 
@@ -771,10 +726,9 @@ export declare const Layer: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Layer`
-- Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
-
 ## List
+
+Docs: https://effect-ts.github.io/data/modules/List.ts.html
 
 **Signature**
 
@@ -784,10 +738,9 @@ export declare const List: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/List`
-- Docs: https://effect-ts.github.io/data/modules/List.ts.html
-
 ## LogLevel
+
+Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
 
 **Signature**
 
@@ -797,10 +750,9 @@ export declare const LogLevel: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/LogLevel`
-- Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
-
 ## LogSpan
+
+Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
 
 **Signature**
 
@@ -810,10 +762,9 @@ export declare const LogSpan: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/LoggerSpan`
-- Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
-
 ## Logger
+
+Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
 
 **Signature**
 
@@ -823,10 +774,9 @@ export declare const Logger: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Logger`
-- Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
-
 ## Match
+
+Docs: https://effect-ts.github.io/match/modules/index.ts.html
 
 **Signature**
 
@@ -836,10 +786,9 @@ export declare const Match: any
 
 Added in v2.0.0
 
-- Module: `@effect/match`
-- Docs: https://effect-ts.github.io/match/modules/index.ts.html
-
 ## Metric
+
+Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
 
 **Signature**
 
@@ -849,10 +798,9 @@ export declare const Metric: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Metric`
-- Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
-
 ## MetricBoundaries
+
+Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
 
 **Signature**
 
@@ -862,10 +810,9 @@ export declare const MetricBoundaries: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricBoundaries`
-- Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
-
 ## MetricHook
+
+Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
 
 **Signature**
 
@@ -875,10 +822,9 @@ export declare const MetricHook: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricHook`
-- Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
-
 ## MetricKey
+
+Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
 
 **Signature**
 
@@ -888,10 +834,9 @@ export declare const MetricKey: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricKey`
-- Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
-
 ## MetricKeyType
+
+Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
 
 **Signature**
 
@@ -901,10 +846,9 @@ export declare const MetricKeyType: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricKeyType`
-- Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
-
 ## MetricLabel
+
+Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
 
 **Signature**
 
@@ -914,10 +858,9 @@ export declare const MetricLabel: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricLabel`
-- Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
-
 ## MetricPair
+
+Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
 
 **Signature**
 
@@ -927,10 +870,9 @@ export declare const MetricPair: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricPair`
-- Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
-
 ## MetricPolling
+
+Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
 
 **Signature**
 
@@ -940,10 +882,9 @@ export declare const MetricPolling: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricPolling`
-- Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
-
 ## MetricRegistry
+
+Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
 
 **Signature**
 
@@ -953,10 +894,9 @@ export declare const MetricRegistry: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricRegistry`
-- Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
-
 ## MetricState
+
+Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
 
 **Signature**
 
@@ -966,10 +906,9 @@ export declare const MetricState: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/MetricState`
-- Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
-
 ## MutableHashMap
+
+Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
 
 **Signature**
 
@@ -979,10 +918,9 @@ export declare const MutableHashMap: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/MutableHashMap`
-- Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
-
 ## MutableHashSet
+
+Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
 
 **Signature**
 
@@ -992,10 +930,9 @@ export declare const MutableHashSet: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/MutableHashSet`
-- Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
-
 ## MutableList
+
+Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
 
 **Signature**
 
@@ -1005,10 +942,9 @@ export declare const MutableList: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/MutableList`
-- Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
-
 ## MutableQueue
+
+Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
 
 **Signature**
 
@@ -1018,10 +954,9 @@ export declare const MutableQueue: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/MutableQueue`
-- Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
-
 ## MutableRef
+
+Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
 
 **Signature**
 
@@ -1031,10 +966,9 @@ export declare const MutableRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/mutable/MutableRef`
-- Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
-
 ## Number
+
+Docs: https://effect-ts.github.io/data/modules/Number.ts.html
 
 **Signature**
 
@@ -1044,10 +978,9 @@ export declare const Number: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Number`
-- Docs: https://effect-ts.github.io/data/modules/Number.ts.html
-
 ## Option
+
+Docs: https://effect-ts.github.io/data/modules/Option.ts.html
 
 **Signature**
 
@@ -1057,10 +990,9 @@ export declare const Option: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Option`
-- Docs: https://effect-ts.github.io/data/modules/Option.ts.html
-
 ## Order
+
+Docs: https://effect-ts.github.io/data/modules/Order.ts.html
 
 **Signature**
 
@@ -1070,10 +1002,9 @@ export declare const Order: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Order`
-- Docs: https://effect-ts.github.io/data/modules/Order.ts.html
-
 ## Ordering
+
+Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
 
 **Signature**
 
@@ -1083,10 +1014,9 @@ export declare const Ordering: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Ordering`
-- Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
-
 ## PCGRandom
+
+Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
 
 **Signature**
 
@@ -1096,10 +1026,9 @@ export declare const PCGRandom: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/PCGRandom`
-- Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
-
 ## Pipeable
+
+Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
 
 **Signature**
 
@@ -1109,10 +1038,9 @@ export declare const Pipeable: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Pipeable`
-- Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
-
 ## Pool
+
+Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
 
 **Signature**
 
@@ -1122,10 +1050,9 @@ export declare const Pool: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Pool`
-- Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
-
 ## Predicate
+
+Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
 
 **Signature**
 
@@ -1135,10 +1062,9 @@ export declare const Predicate: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Predicate`
-- Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
-
 ## Queue
+
+Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
 
 **Signature**
 
@@ -1148,10 +1074,9 @@ export declare const Queue: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Queue`
-- Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
-
 ## Random
+
+Docs: https://effect-ts.github.io/io/modules/Random.ts.html
 
 **Signature**
 
@@ -1161,10 +1086,9 @@ export declare const Random: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Random`
-- Docs: https://effect-ts.github.io/io/modules/Random.ts.html
-
 ## ReadonlyArray
+
+Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
 
 **Signature**
 
@@ -1174,10 +1098,9 @@ export declare const ReadonlyArray: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/ReadonlyArray`
-- Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
-
 ## ReadonlyRecord
+
+Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
 
 **Signature**
 
@@ -1187,10 +1110,9 @@ export declare const ReadonlyRecord: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/ReadonlyRecord`
-- Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
-
 ## RedBlackTree
+
+Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
 
 **Signature**
 
@@ -1200,10 +1122,9 @@ export declare const RedBlackTree: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/RedBlackTree`
-- Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
-
 ## Ref
+
+Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
 
 **Signature**
 
@@ -1213,10 +1134,9 @@ export declare const Ref: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Ref`
-- Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
-
 ## Reloadable
+
+Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
 
 **Signature**
 
@@ -1226,10 +1146,9 @@ export declare const Reloadable: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Reloadable`
-- Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
-
 ## Request
+
+Docs: https://effect-ts.github.io/io/modules/Request.ts.html
 
 **Signature**
 
@@ -1239,10 +1158,9 @@ export declare const Request: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Request`
-- Docs: https://effect-ts.github.io/io/modules/Request.ts.html
-
 ## RequestBlock
+
+Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
 
 **Signature**
 
@@ -1252,10 +1170,9 @@ export declare const RequestBlock: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/RequestBlock`
-- Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
-
 ## RequestResolver
+
+Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
 
 **Signature**
 
@@ -1265,10 +1182,9 @@ export declare const RequestResolver: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/RequestResolver`
-- Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
-
 ## Resource
+
+Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
 
 **Signature**
 
@@ -1278,10 +1194,9 @@ export declare const Resource: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Resource`
-- Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
-
 ## Runtime
+
+Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
 
 **Signature**
 
@@ -1291,10 +1206,9 @@ export declare const Runtime: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Runtime`
-- Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
-
 ## RuntimeFlags
+
+Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
 
 **Signature**
 
@@ -1304,10 +1218,9 @@ export declare const RuntimeFlags: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/RuntimeFlags`
-- Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
-
 ## RuntimeFlagsPatch
+
+Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
 
 **Signature**
 
@@ -1317,10 +1230,9 @@ export declare const RuntimeFlagsPatch: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/RuntimeFlagsPatch`
-- Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
-
 ## STM
+
+Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
 
 **Signature**
 
@@ -1330,10 +1242,9 @@ export declare const STM: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/STM`
-- Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
-
 ## Schedule
+
+Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
 
 **Signature**
 
@@ -1343,10 +1254,9 @@ export declare const Schedule: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Schedule`
-- Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
-
 ## ScheduleDecision
+
+Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
 
 **Signature**
 
@@ -1356,10 +1266,9 @@ export declare const ScheduleDecision: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ScheduleDecision`
-- Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
-
 ## ScheduleInterval
+
+Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
 
 **Signature**
 
@@ -1369,10 +1278,9 @@ export declare const ScheduleInterval: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ScheduleInterval`
-- Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
-
 ## ScheduleIntervals
+
+Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
 
 **Signature**
 
@@ -1382,10 +1290,9 @@ export declare const ScheduleIntervals: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ScheduleIntervals`
-- Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
-
 ## Scheduler
+
+Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
 
 **Signature**
 
@@ -1395,10 +1302,9 @@ export declare const Scheduler: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Scheduler`
-- Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
-
 ## Scope
+
+Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
 
 **Signature**
 
@@ -1408,10 +1314,9 @@ export declare const Scope: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Scope`
-- Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
-
 ## ScopedCache
+
+Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
 
 **Signature**
 
@@ -1421,10 +1326,9 @@ export declare const ScopedCache: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ScopedCache`
-- Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
-
 ## ScopedRef
+
+Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
 
 **Signature**
 
@@ -1434,10 +1338,9 @@ export declare const ScopedRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/ScopedRef`
-- Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
-
 ## Sink
+
+Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
 
 **Signature**
 
@@ -1447,10 +1350,9 @@ export declare const Sink: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Sink`
-- Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
-
 ## SortedMap
+
+Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
 
 **Signature**
 
@@ -1460,10 +1362,9 @@ export declare const SortedMap: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/SortedMap`
-- Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
-
 ## SortedSet
+
+Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
 
 **Signature**
 
@@ -1473,10 +1374,9 @@ export declare const SortedSet: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/SortedSet`
-- Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
-
 ## Stream
+
+Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
 
 **Signature**
 
@@ -1486,10 +1386,9 @@ export declare const Stream: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Stream`
-- Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
-
 ## StreamEmit
+
+Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
 
 **Signature**
 
@@ -1499,10 +1398,9 @@ export declare const StreamEmit: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Stream/Emit`
-- Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
-
 ## StreamHaltStrategy
+
+Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
 
 **Signature**
 
@@ -1512,10 +1410,9 @@ export declare const StreamHaltStrategy: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Stream/HaltStrategy`
-- Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
-
 ## String
+
+Docs: https://effect-ts.github.io/data/modules/String.ts.html
 
 **Signature**
 
@@ -1525,10 +1422,9 @@ export declare const String: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/String`
-- Docs: https://effect-ts.github.io/data/modules/String.ts.html
-
 ## Struct
+
+Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
 
 **Signature**
 
@@ -1538,10 +1434,9 @@ export declare const Struct: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Struct`
-- Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
-
 ## SubscriptionRef
+
+Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
 
 **Signature**
 
@@ -1551,10 +1446,9 @@ export declare const SubscriptionRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/SubscriptionRef`
-- Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
-
 ## Supervisor
+
+Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
 
 **Signature**
 
@@ -1564,10 +1458,9 @@ export declare const Supervisor: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Supervisor`
-- Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
-
 ## Symbol
+
+Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
 
 **Signature**
 
@@ -1577,10 +1470,9 @@ export declare const Symbol: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Symbol`
-- Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
-
 ## SynchronizedRef
+
+Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
 
 **Signature**
 
@@ -1590,10 +1482,9 @@ export declare const SynchronizedRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/SynchronizedRef`
-- Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
-
 ## TArray
+
+Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
 
 **Signature**
 
@@ -1603,10 +1494,9 @@ export declare const TArray: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TArray`
-- Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
-
 ## TDeferred
+
+Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
 
 **Signature**
 
@@ -1616,10 +1506,9 @@ export declare const TDeferred: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TDeferred`
-- Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
-
 ## THub
+
+Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
 
 **Signature**
 
@@ -1629,10 +1518,9 @@ export declare const THub: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/THub`
-- Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
-
 ## TMap
+
+Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
 
 **Signature**
 
@@ -1642,10 +1530,9 @@ export declare const TMap: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TMap`
-- Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
-
 ## TPriorityQueue
+
+Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
 
 **Signature**
 
@@ -1655,10 +1542,9 @@ export declare const TPriorityQueue: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TPriorityQueue`
-- Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
-
 ## TQueue
+
+Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
 
 **Signature**
 
@@ -1668,10 +1554,9 @@ export declare const TQueue: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TQueue`
-- Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
-
 ## TRandom
+
+Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
 
 **Signature**
 
@@ -1681,10 +1566,9 @@ export declare const TRandom: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TRandom`
-- Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
-
 ## TReentrantLock
+
+Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
 
 **Signature**
 
@@ -1694,10 +1578,9 @@ export declare const TReentrantLock: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TReentrantLock`
-- Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
-
 ## TRef
+
+Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
 
 **Signature**
 
@@ -1707,10 +1590,9 @@ export declare const TRef: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TRef`
-- Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
-
 ## TSemaphore
+
+Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
 
 **Signature**
 
@@ -1720,10 +1602,9 @@ export declare const TSemaphore: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TSemaphore`
-- Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
-
 ## TSet
+
+Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
 
 **Signature**
 
@@ -1733,10 +1614,9 @@ export declare const TSet: any
 
 Added in v2.0.0
 
-- Module: `@effect/stm/TSet`
-- Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
-
 ## Take
+
+Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
 
 **Signature**
 
@@ -1746,10 +1626,9 @@ export declare const Take: any
 
 Added in v2.0.0
 
-- Module: `@effect/stream/Take`
-- Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
-
 ## Tracer
+
+Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
 
 **Signature**
 
@@ -1759,10 +1638,9 @@ export declare const Tracer: any
 
 Added in v2.0.0
 
-- Module: `@effect/io/Tracer`
-- Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
-
 ## Tuple
+
+Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
 
 **Signature**
 
@@ -1772,10 +1650,9 @@ export declare const Tuple: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Tuple`
-- Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
-
 ## Types
+
+Docs: https://effect-ts.github.io/data/modules/Types.ts.html
 
 **Signature**
 
@@ -1785,10 +1662,9 @@ export declare const Types: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Types`
-- Docs: https://effect-ts.github.io/data/modules/Types.ts.html
-
 ## absurd
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
 
 **Signature**
 
@@ -1798,10 +1674,9 @@ export declare const absurd: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
-
 ## flow
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
 
 **Signature**
 
@@ -1811,10 +1686,9 @@ export declare const flow: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
-
 ## hole
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
 
 **Signature**
 
@@ -1824,10 +1698,9 @@ export declare const hole: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
-
 ## identity
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
 
 **Signature**
 
@@ -1837,10 +1710,9 @@ export declare const identity: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
-
 ## pipe
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
 
 **Signature**
 
@@ -1850,10 +1722,9 @@ export declare const pipe: any
 
 Added in v2.0.0
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
-
 ## unsafeCoerce
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce
 
 **Signature**
 
@@ -1862,6 +1733,3 @@ export declare const unsafeCoerce: any
 ```
 
 Added in v2.0.0
-
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce

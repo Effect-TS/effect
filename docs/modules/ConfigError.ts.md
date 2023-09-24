@@ -6,13 +6,29 @@ parent: Modules
 
 ## ConfigError overview
 
-Added in v2.0.0
+Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
 
-- Module: `@effect/io/ConfigError`
-- Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
+Added in v2.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/io/ConfigError"](#from-effectioconfigerror)
+
 ---
+
+# exports
+
+## From "@effect/io/ConfigError"
+
+Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/io/ConfigError'
+```
+
+Added in v2.0.0

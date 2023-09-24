@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
  *
- * - Module: `@effect/io/LogSpan`
- * - Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/io/LogSpan"

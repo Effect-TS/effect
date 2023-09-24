@@ -8,21 +8,36 @@ parent: Modules
 
 Added in v2.0.0
 
-- Module: `@effect/io/FiberRefs`
-- Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
-
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/io/FiberRefs"](#from-effectiofiberrefs)
 - [utils](#utils)
   - [Patch](#patch)
 
 ---
 
+# exports
+
+## From "@effect/io/FiberRefs"
+
+Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/io/FiberRefs'
+```
+
+Added in v2.0.0
+
 # utils
 
 ## Patch
+
+Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
 
 **Signature**
 
@@ -31,6 +46,3 @@ export declare const Patch: typeof Patch
 ```
 
 Added in v2.0.0
-
-- Module: `@effect/io/FiberRefsPatch`
-- Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html

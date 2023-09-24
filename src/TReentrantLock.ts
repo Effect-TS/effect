@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
  *
- * - Module: `@effect/stm/TReentrantLock`
- * - Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/stm/TReentrantLock"

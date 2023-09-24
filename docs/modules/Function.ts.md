@@ -6,13 +6,29 @@ parent: Modules
 
 ## Function overview
 
-Added in v2.0.0
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html
 
-- Module: `@effect/data/Function`
-- Docs: https://effect-ts.github.io/data/modules/Function.ts.html
+Added in v2.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/data/Function"](#from-effectdatafunction)
+
 ---
+
+# exports
+
+## From "@effect/data/Function"
+
+Docs: https://effect-ts.github.io/data/modules/Function.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/data/Function'
+```
+
+Added in v2.0.0
