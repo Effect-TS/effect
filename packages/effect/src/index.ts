@@ -39,6 +39,7 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import * as FiberRef from "effect/FiberRef"
 import * as FiberRefs from "effect/FiberRefs"
+import * as FiberRefsPatch from "effect/FiberRefsPatch"
 import * as FiberStatus from "effect/FiberStatus"
 import { absurd, flow, hole, identity, pipe, unsafeCoerce } from "effect/Function"
 import * as Function from "effect/Function"
@@ -359,6 +360,12 @@ export {
    * @since 2.0.0
    */
   FiberRefs,
+  /**
+   * Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
+   *
+   * @since 2.0.0
+   */
+  FiberRefsPatch,
   /**
    * Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
    *
