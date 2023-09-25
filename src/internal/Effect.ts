@@ -1,10 +1,11 @@
+import type * as Effect from "../Effect"
 import type * as Equal from "../Equal"
 
 /** @internal */
-export const EffectTypeId = Symbol.for("@effect/io/Effect")
+export const EffectTypeId: Effect.EffectTypeId = Symbol.for("effect/Effect") as Effect.EffectTypeId
 
 /** @internal */
-export type EffectTypeId = typeof EffectTypeId
+export type EffectTypeId = Effect.EffectTypeId
 
 /** @internal */
 export interface Effectable extends Equal.Equal {

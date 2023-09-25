@@ -1,6 +1,6 @@
 ---
 title: Encoding.ts
-nav_order: 10
+nav_order: 23
 parent: Modules
 ---
 
