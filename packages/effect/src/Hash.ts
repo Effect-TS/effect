@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
  *
- * - Module: `@effect/data/Hash`
- * - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/data/Hash"

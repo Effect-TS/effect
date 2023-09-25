@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
  *
- * - Module: `@effect/io/Schedule`
- * - Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/io/Schedule"
