@@ -4,8 +4,56 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
+  "files.exclude": {
+    "dist": true,
+    "Bigint": true,
+    "Either": true,
+    "HashMap": true,
+    "MutableRef": true,
+    "Predicate": true,
+    "Symbol": true,
+    "Boolean": true,
+    "Encoding": true,
+    "HashSet": true,
+    "NonEmptyIterable": true,
+    "ReadonlyArray": true,
+    "Tuple": true,
+    "Brand": true,
+    "Equal": true,
+    "Inspectable": true,
+    "Number": true,
+    "ReadonlyRecord": true,
+    "Types": true,
+    "Chunk": true,
+    "Equivalence": true,
+    "List": true,
+    "Option": true,
+    "RedBlackTree": true,
+    "Unify": true,
+    "Context": true,
+    "Function": true,
+    "MutableHashMap": true,
+    "Order": true,
+    "SortedMap": true,
+    "UtilsGen": true,
+    "Data": true,
+    "GlobalValue": true,
+    "MutableHashSet": true,
+    "Ordering": true,
+    "SortedSet": true,
+    "Differ": true,
+    "HKT": true,
+    "MutableList": true,
+    "PCGRandom": true,
+    "String": true,
+    "Duration": true,
+    "Hash": true,
+    "MutableQueue": true,
+    "Pipeable": true,
+    "Struct": true
+  },
   "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
@@ -22,7 +70,11 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
-  "eslint.validate": ["markdown", "javascript", "typescript"],
+  "eslint.validate": [
+    "markdown",
+    "javascript",
+    "typescript"
+  ],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },

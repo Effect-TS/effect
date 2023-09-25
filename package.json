@@ -1,110 +1,417 @@
 {
-  "name": "effect",
-  "version": "2.0.0-next.36",
-  "publishConfig": {
-    "access": "public",
-    "directory": "dist"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Effect-TS/effect.git"
-  },
-  "author": "Michael Arnaldi <ma@matechs.com>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/Effect-TS/effect/issues"
-  },
-  "homepage": "https://github.com/Effect-TS/effect",
-  "description": "Functional programming in TypeScript",
-  "tags": [
-    "typescript",
-    "algebraic-data-types",
-    "functional-programming"
-  ],
-  "keywords": [
-    "typescript",
-    "algebraic-data-types",
-    "functional-programming"
-  ],
-  "scripts": {
-    "example": "ts-node --project tsconfig.examples.json",
-    "version": "changeset version && pnpm install --no-frozen-lockfile && pnpm run docs-update",
-    "release": "pnpm run build && changeset publish",
-    "clean": "rimraf build tsbuildinfo dist .ultra.cache.json",
-    "build": "pnpm build-all && pnpm build-pack",
-    "build-cjs": "babel build/esm --config-file ./.babel.cjs.json --out-dir build/cjs --out-file-extension .js --source-maps",
-    "build-mjs": "babel build/esm --config-file ./.babel.mjs.json --out-dir build/mjs --out-file-extension .mjs --source-maps",
-    "build-post": "build-utils pack-v1",
-    "build-pack": "concurrently \"pnpm build-cjs\" \"pnpm build-mjs\" && pnpm build-post",
-    "build-all": "tsc -b tsconfig.json",
-    "build-watch": "tsc -b tsconfig.json --watch",
-    "lint": "eslint . --ext .ts,.tsx",
-    "autofix": "pnpm lint --fix",
-    "tc": "tsc --noEmit",
-    "docs": "docgen",
-    "docs-update": "git add --force --all docs/modules || true",
-    "circular": "madge --ts-config ./tsconfig.madge.json --circular --no-color --no-spinner --warning build/esm",
-    "test": "vitest",
-    "coverage": "vitest run --coverage",
-    "changeset": "changeset"
-  },
-  "exports": {
-    ".": {
-      "require": "./build/cjs/index.js"
+    "name": "effect",
+    "version": "2.0.0-next.36",
+    "publishConfig": {
+        "access": "public"
     },
-    "./*": {
-      "require": "./build/cjs/*.js"
+    "scripts": {
+        "build": "preconstruct fix && preconstruct build",
+        "release": "pnpm build && npm publish",
+        "clean": "sh scripts/clean.sh",
+        "test": "vitest",
+        "coverage": "vitest run --coverage",
+        "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
+        "update-version": "changeset version && pnpm install --no-frozen-lockfile",
+        "lint": "eslint src test"
+    },
+    "files": [
+        "dist",
+        "Bigint",
+        "Either",
+        "HashMap",
+        "MutableRef",
+        "Predicate",
+        "Symbol",
+        "Boolean",
+        "Encoding",
+        "HashSet",
+        "NonEmptyIterable",
+        "ReadonlyArray",
+        "Tuple",
+        "Brand",
+        "Equal",
+        "Inspectable",
+        "Number",
+        "ReadonlyRecord",
+        "Types",
+        "Chunk",
+        "Equivalence",
+        "List",
+        "Option",
+        "RedBlackTree",
+        "Unify",
+        "Context",
+        "Function",
+        "MutableHashMap",
+        "Order",
+        "SortedMap",
+        "UtilsGen",
+        "Data",
+        "GlobalValue",
+        "MutableHashSet",
+        "Ordering",
+        "SortedSet",
+        "index",
+        "Differ",
+        "HKT",
+        "MutableList",
+        "PCGRandom",
+        "String",
+        "Duration",
+        "Hash",
+        "MutableQueue",
+        "Pipeable",
+        "Struct"
+    ],
+    "preconstruct": {
+        "distFilenameStrategy": "full",
+        "exports": {
+            "importConditionDefaultExport": "default"
+        },
+        "entrypoints": [
+            "index.ts",
+            "Bigint.ts",
+            "Either.ts",
+            "HashMap.ts",
+            "MutableRef.ts",
+            "Predicate.ts",
+            "Symbol.ts",
+            "Boolean.ts",
+            "Encoding.ts",
+            "HashSet.ts",
+            "NonEmptyIterable.ts",
+            "ReadonlyArray.ts",
+            "Tuple.ts",
+            "Brand.ts",
+            "Equal.ts",
+            "Inspectable.ts",
+            "Number.ts",
+            "ReadonlyRecord.ts",
+            "Types.ts",
+            "Chunk.ts",
+            "Equivalence.ts",
+            "List.ts",
+            "Option.ts",
+            "RedBlackTree.ts",
+            "Unify.ts",
+            "Context.ts",
+            "Function.ts",
+            "MutableHashMap.ts",
+            "Order.ts",
+            "SortedMap.ts",
+            "UtilsGen.ts",
+            "Data.ts",
+            "GlobalValue.ts",
+            "MutableHashSet.ts",
+            "Ordering.ts",
+            "SortedSet.ts",
+            "index.ts",
+            "Differ.ts",
+            "HKT.ts",
+            "MutableList.ts",
+            "PCGRandom.ts",
+            "String.ts",
+            "Duration.ts",
+            "Hash.ts",
+            "MutableQueue.ts",
+            "Pipeable.ts",
+            "Struct.ts"
+        ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Effect-TS/effect.git"
+    },
+    "author": "Michael Arnaldi <ma@matechs.com>",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/Effect-TS/effect/issues"
+    },
+    "homepage": "https://github.com/Effect-TS/effect",
+    "description": "Functional programming in TypeScript",
+    "main": "dist/effect.cjs.js",
+    "module": "dist/effect.esm.js",
+    "exports": {
+        "./HKT": {
+            "module": "./HKT/dist/effect-HKT.esm.js",
+            "import": "./HKT/dist/effect-HKT.cjs.mjs",
+            "default": "./HKT/dist/effect-HKT.cjs.js"
+        },
+        "./Data": {
+            "module": "./Data/dist/effect-Data.esm.js",
+            "import": "./Data/dist/effect-Data.cjs.mjs",
+            "default": "./Data/dist/effect-Data.cjs.js"
+        },
+        "./Hash": {
+            "module": "./Hash/dist/effect-Hash.esm.js",
+            "import": "./Hash/dist/effect-Hash.cjs.mjs",
+            "default": "./Hash/dist/effect-Hash.cjs.js"
+        },
+        "./List": {
+            "module": "./List/dist/effect-List.esm.js",
+            "import": "./List/dist/effect-List.cjs.mjs",
+            "default": "./List/dist/effect-List.cjs.js"
+        },
+        "./Brand": {
+            "module": "./Brand/dist/effect-Brand.esm.js",
+            "import": "./Brand/dist/effect-Brand.cjs.mjs",
+            "default": "./Brand/dist/effect-Brand.cjs.js"
+        },
+        "./Chunk": {
+            "module": "./Chunk/dist/effect-Chunk.esm.js",
+            "import": "./Chunk/dist/effect-Chunk.cjs.mjs",
+            "default": "./Chunk/dist/effect-Chunk.cjs.js"
+        },
+        "./Equal": {
+            "module": "./Equal/dist/effect-Equal.esm.js",
+            "import": "./Equal/dist/effect-Equal.cjs.mjs",
+            "default": "./Equal/dist/effect-Equal.cjs.js"
+        },
+        "./Order": {
+            "module": "./Order/dist/effect-Order.esm.js",
+            "import": "./Order/dist/effect-Order.cjs.mjs",
+            "default": "./Order/dist/effect-Order.cjs.js"
+        },
+        "./Tuple": {
+            "module": "./Tuple/dist/effect-Tuple.esm.js",
+            "import": "./Tuple/dist/effect-Tuple.cjs.mjs",
+            "default": "./Tuple/dist/effect-Tuple.cjs.js"
+        },
+        "./Types": {
+            "module": "./Types/dist/effect-Types.esm.js",
+            "import": "./Types/dist/effect-Types.cjs.mjs",
+            "default": "./Types/dist/effect-Types.cjs.js"
+        },
+        "./Unify": {
+            "module": "./Unify/dist/effect-Unify.esm.js",
+            "import": "./Unify/dist/effect-Unify.cjs.mjs",
+            "default": "./Unify/dist/effect-Unify.cjs.js"
+        },
+        ".": {
+            "module": "./dist/effect.esm.js",
+            "import": "./dist/effect.cjs.mjs",
+            "default": "./dist/effect.cjs.js"
+        },
+        "./Bigint": {
+            "module": "./Bigint/dist/effect-Bigint.esm.js",
+            "import": "./Bigint/dist/effect-Bigint.cjs.mjs",
+            "default": "./Bigint/dist/effect-Bigint.cjs.js"
+        },
+        "./Differ": {
+            "module": "./Differ/dist/effect-Differ.esm.js",
+            "import": "./Differ/dist/effect-Differ.cjs.mjs",
+            "default": "./Differ/dist/effect-Differ.cjs.js"
+        },
+        "./Either": {
+            "module": "./Either/dist/effect-Either.esm.js",
+            "import": "./Either/dist/effect-Either.cjs.mjs",
+            "default": "./Either/dist/effect-Either.cjs.js"
+        },
+        "./Number": {
+            "module": "./Number/dist/effect-Number.esm.js",
+            "import": "./Number/dist/effect-Number.cjs.mjs",
+            "default": "./Number/dist/effect-Number.cjs.js"
+        },
+        "./Option": {
+            "module": "./Option/dist/effect-Option.esm.js",
+            "import": "./Option/dist/effect-Option.cjs.mjs",
+            "default": "./Option/dist/effect-Option.cjs.js"
+        },
+        "./String": {
+            "module": "./String/dist/effect-String.esm.js",
+            "import": "./String/dist/effect-String.cjs.mjs",
+            "default": "./String/dist/effect-String.cjs.js"
+        },
+        "./Struct": {
+            "module": "./Struct/dist/effect-Struct.esm.js",
+            "import": "./Struct/dist/effect-Struct.cjs.mjs",
+            "default": "./Struct/dist/effect-Struct.cjs.js"
+        },
+        "./Symbol": {
+            "module": "./Symbol/dist/effect-Symbol.esm.js",
+            "import": "./Symbol/dist/effect-Symbol.cjs.mjs",
+            "default": "./Symbol/dist/effect-Symbol.cjs.js"
+        },
+        "./Boolean": {
+            "module": "./Boolean/dist/effect-Boolean.esm.js",
+            "import": "./Boolean/dist/effect-Boolean.cjs.mjs",
+            "default": "./Boolean/dist/effect-Boolean.cjs.js"
+        },
+        "./Context": {
+            "module": "./Context/dist/effect-Context.esm.js",
+            "import": "./Context/dist/effect-Context.cjs.mjs",
+            "default": "./Context/dist/effect-Context.cjs.js"
+        },
+        "./HashMap": {
+            "module": "./HashMap/dist/effect-HashMap.esm.js",
+            "import": "./HashMap/dist/effect-HashMap.cjs.mjs",
+            "default": "./HashMap/dist/effect-HashMap.cjs.js"
+        },
+        "./HashSet": {
+            "module": "./HashSet/dist/effect-HashSet.esm.js",
+            "import": "./HashSet/dist/effect-HashSet.cjs.mjs",
+            "default": "./HashSet/dist/effect-HashSet.cjs.js"
+        },
+        "./Duration": {
+            "module": "./Duration/dist/effect-Duration.esm.js",
+            "import": "./Duration/dist/effect-Duration.cjs.mjs",
+            "default": "./Duration/dist/effect-Duration.cjs.js"
+        },
+        "./Encoding": {
+            "module": "./Encoding/dist/effect-Encoding.esm.js",
+            "import": "./Encoding/dist/effect-Encoding.cjs.mjs",
+            "default": "./Encoding/dist/effect-Encoding.cjs.js"
+        },
+        "./Function": {
+            "module": "./Function/dist/effect-Function.esm.js",
+            "import": "./Function/dist/effect-Function.cjs.mjs",
+            "default": "./Function/dist/effect-Function.cjs.js"
+        },
+        "./Ordering": {
+            "module": "./Ordering/dist/effect-Ordering.esm.js",
+            "import": "./Ordering/dist/effect-Ordering.cjs.mjs",
+            "default": "./Ordering/dist/effect-Ordering.cjs.js"
+        },
+        "./Pipeable": {
+            "module": "./Pipeable/dist/effect-Pipeable.esm.js",
+            "import": "./Pipeable/dist/effect-Pipeable.cjs.mjs",
+            "default": "./Pipeable/dist/effect-Pipeable.cjs.js"
+        },
+        "./UtilsGen": {
+            "module": "./UtilsGen/dist/effect-UtilsGen.esm.js",
+            "import": "./UtilsGen/dist/effect-UtilsGen.cjs.mjs",
+            "default": "./UtilsGen/dist/effect-UtilsGen.cjs.js"
+        },
+        "./PCGRandom": {
+            "module": "./PCGRandom/dist/effect-PCGRandom.esm.js",
+            "import": "./PCGRandom/dist/effect-PCGRandom.cjs.mjs",
+            "default": "./PCGRandom/dist/effect-PCGRandom.cjs.js"
+        },
+        "./Predicate": {
+            "module": "./Predicate/dist/effect-Predicate.esm.js",
+            "import": "./Predicate/dist/effect-Predicate.cjs.mjs",
+            "default": "./Predicate/dist/effect-Predicate.cjs.js"
+        },
+        "./SortedMap": {
+            "module": "./SortedMap/dist/effect-SortedMap.esm.js",
+            "import": "./SortedMap/dist/effect-SortedMap.cjs.mjs",
+            "default": "./SortedMap/dist/effect-SortedMap.cjs.js"
+        },
+        "./SortedSet": {
+            "module": "./SortedSet/dist/effect-SortedSet.esm.js",
+            "import": "./SortedSet/dist/effect-SortedSet.cjs.mjs",
+            "default": "./SortedSet/dist/effect-SortedSet.cjs.js"
+        },
+        "./MutableRef": {
+            "module": "./MutableRef/dist/effect-MutableRef.esm.js",
+            "import": "./MutableRef/dist/effect-MutableRef.cjs.mjs",
+            "default": "./MutableRef/dist/effect-MutableRef.cjs.js"
+        },
+        "./Equivalence": {
+            "module": "./Equivalence/dist/effect-Equivalence.esm.js",
+            "import": "./Equivalence/dist/effect-Equivalence.cjs.mjs",
+            "default": "./Equivalence/dist/effect-Equivalence.cjs.js"
+        },
+        "./GlobalValue": {
+            "module": "./GlobalValue/dist/effect-GlobalValue.esm.js",
+            "import": "./GlobalValue/dist/effect-GlobalValue.cjs.mjs",
+            "default": "./GlobalValue/dist/effect-GlobalValue.cjs.js"
+        },
+        "./Inspectable": {
+            "module": "./Inspectable/dist/effect-Inspectable.esm.js",
+            "import": "./Inspectable/dist/effect-Inspectable.cjs.mjs",
+            "default": "./Inspectable/dist/effect-Inspectable.cjs.js"
+        },
+        "./MutableList": {
+            "module": "./MutableList/dist/effect-MutableList.esm.js",
+            "import": "./MutableList/dist/effect-MutableList.cjs.mjs",
+            "default": "./MutableList/dist/effect-MutableList.cjs.js"
+        },
+        "./MutableQueue": {
+            "module": "./MutableQueue/dist/effect-MutableQueue.esm.js",
+            "import": "./MutableQueue/dist/effect-MutableQueue.cjs.mjs",
+            "default": "./MutableQueue/dist/effect-MutableQueue.cjs.js"
+        },
+        "./RedBlackTree": {
+            "module": "./RedBlackTree/dist/effect-RedBlackTree.esm.js",
+            "import": "./RedBlackTree/dist/effect-RedBlackTree.cjs.mjs",
+            "default": "./RedBlackTree/dist/effect-RedBlackTree.cjs.js"
+        },
+        "./ReadonlyArray": {
+            "module": "./ReadonlyArray/dist/effect-ReadonlyArray.esm.js",
+            "import": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.mjs",
+            "default": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.js"
+        },
+        "./MutableHashMap": {
+            "module": "./MutableHashMap/dist/effect-MutableHashMap.esm.js",
+            "import": "./MutableHashMap/dist/effect-MutableHashMap.cjs.mjs",
+            "default": "./MutableHashMap/dist/effect-MutableHashMap.cjs.js"
+        },
+        "./MutableHashSet": {
+            "module": "./MutableHashSet/dist/effect-MutableHashSet.esm.js",
+            "import": "./MutableHashSet/dist/effect-MutableHashSet.cjs.mjs",
+            "default": "./MutableHashSet/dist/effect-MutableHashSet.cjs.js"
+        },
+        "./ReadonlyRecord": {
+            "module": "./ReadonlyRecord/dist/effect-ReadonlyRecord.esm.js",
+            "import": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.mjs",
+            "default": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.js"
+        },
+        "./NonEmptyIterable": {
+            "module": "./NonEmptyIterable/dist/effect-NonEmptyIterable.esm.js",
+            "import": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.mjs",
+            "default": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "tags": [
+        "typescript",
+        "algebraic-data-types",
+        "functional-programming"
+    ],
+    "keywords": [
+        "typescript",
+        "algebraic-data-types",
+        "functional-programming"
+    ],
+    "devDependencies": {
+        "@babel/cli": "^7.22.15",
+        "@babel/core": "^7.22.15",
+        "@babel/plugin-transform-modules-commonjs": "^7.22.15",
+        "@babel/preset-typescript": "^7.23.0",
+        "@changesets/changelog-github": "^0.4.8",
+        "@changesets/cli": "^2.26.2",
+        "@definitelytyped/dtslint": "^0.0.177",
+        "@effect/babel-plugin": "^0.2.0",
+        "@effect/build-utils": "^0.1.4",
+        "@effect/docgen": "^0.1.7",
+        "@effect/eslint-plugin": "^0.1.2",
+        "@effect/language-service": "^0.0.21",
+        "@preconstruct/cli": "^2.8.1",
+        "@rollup/pluginutils": "^5.0.4",
+        "@types/chai": "^4.3.6",
+        "@types/node": "^20.5.9",
+        "@types/prettier": "3.0.0",
+        "@typescript-eslint/eslint-plugin": "^6.6.0",
+        "@typescript-eslint/parser": "^6.6.0",
+        "@vitejs/plugin-react": "^4.0.4",
+        "@vitest/coverage-v8": "^0.34.3",
+        "babel-plugin-annotate-pure-calls": "^0.4.0",
+        "concurrently": "^8.2.1",
+        "eslint": "^8.48.0",
+        "eslint-import-resolver-typescript": "^3.6.0",
+        "eslint-plugin-codegen": "0.17.0",
+        "eslint-plugin-deprecation": "^1.5.0",
+        "eslint-plugin-import": "^2.28.1",
+        "eslint-plugin-simple-import-sort": "^10.0.0",
+        "eslint-plugin-sort-destructure-keys": "^1.5.0",
+        "fast-check": "^3.13.0",
+        "madge": "^6.1.0",
+        "prettier": "^3.0.3",
+        "rimraf": "^5.0.1",
+        "ts-node": "^10.9.1",
+        "typescript": "^5.2.2",
+        "vite": "^4.4.9",
+        "vitest": "0.34.3"
     }
-  },
-  "dependencies": {
-    "@effect/data": "^0.18.6",
-    "@effect/io": "^0.41.1",
-    "@effect/match": "^0.35.2",
-    "@effect/stm": "^0.25.0",
-    "@effect/stream": "^0.37.0"
-  },
-  "peerDependencies": {
-    "@effect/data": "^0.18.6",
-    "@effect/io": "^0.41.0",
-    "@effect/match": "^0.35.2",
-    "@effect/stm": "^0.25.0",
-    "@effect/stream": "^0.37.0"
-  },
-  "devDependencies": {
-    "@babel/cli": "^7.22.15",
-    "@babel/core": "^7.22.15",
-    "@babel/plugin-transform-modules-commonjs": "^7.22.15",
-    "@changesets/changelog-github": "^0.4.8",
-    "@changesets/cli": "^2.26.2",
-    "@definitelytyped/dtslint": "^0.0.177",
-    "@effect/babel-plugin": "^0.2.0",
-    "@effect/build-utils": "^0.1.4",
-    "@effect/docgen": "^0.1.7",
-    "@effect/eslint-plugin": "^0.1.2",
-    "@effect/language-service": "^0.0.21",
-    "@rollup/pluginutils": "^5.0.4",
-    "@types/chai": "^4.3.6",
-    "@types/node": "^20.5.9",
-    "@types/prettier": "3.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.6.0",
-    "@typescript-eslint/parser": "^6.6.0",
-    "@vitejs/plugin-react": "^4.0.4",
-    "@vitest/coverage-v8": "^0.34.3",
-    "babel-plugin-annotate-pure-calls": "^0.4.0",
-    "concurrently": "^8.2.1",
-    "eslint": "^8.48.0",
-    "eslint-import-resolver-typescript": "^3.6.0",
-    "eslint-plugin-codegen": "0.17.0",
-    "eslint-plugin-deprecation": "^1.5.0",
-    "eslint-plugin-import": "^2.28.1",
-    "eslint-plugin-simple-import-sort": "^10.0.0",
-    "eslint-plugin-sort-destructure-keys": "^1.5.0",
-    "madge": "^6.1.0",
-    "prettier": "^3.0.3",
-    "rimraf": "^5.0.1",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2",
-    "vite": "^4.4.9",
-    "vitest": "0.34.3"
-  }
 }

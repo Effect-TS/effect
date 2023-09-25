@@ -42,8 +42,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - run: pnpm install
-      - run: pnpm run build
-      - run: pnpm run circular
-      - run: pnpm run test --coverage
-      - run: pnpm run lint
-      - run: pnpm run docs
+      - run: pnpm build
+      - run: pnpm circular
+      - run: pnpm test
+      - run: pnpm lint
+      - run: pnpm docgen

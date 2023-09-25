@@ -1,34 +1,30 @@
 ---
 title: GlobalValue.ts
-nav_order: 41
+nav_order: 14
 parent: Modules
 ---
 
 ## GlobalValue overview
 
-Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
-
-Added in v2.0.0
+Added in v1.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
-- [exports](#exports)
-  - [From "@effect/data/GlobalValue"](#from-effectdataglobalvalue)
+- [utils](#utils)
+  - [globalValue](#globalvalue)
 
 ---
 
-# exports
+# utils
 
-## From "@effect/data/GlobalValue"
-
-Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
+## globalValue
 
 **Signature**
 
 ```ts
-export * from '@effect/data/GlobalValue'
+export declare const globalValue: <A>(id: unknown, compute: () => A) => A
 ```
 
-Added in v2.0.0
+Added in v1.0.0
