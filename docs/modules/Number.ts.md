@@ -1,6 +1,6 @@
 ---
 title: Number.ts
-nav_order: 70
+nav_order: 71
 parent: Modules
 ---
 

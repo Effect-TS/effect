@@ -6,6 +6,8 @@ parent: Modules
 
 ## FiberRefs overview
 
+Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+
 Added in v2.0.0
 
 ---
@@ -14,8 +16,6 @@ Added in v2.0.0
 
 - [exports](#exports)
   - [From "@effect/io/FiberRefs"](#from-effectiofiberrefs)
-- [utils](#utils)
-  - [Patch](#patch)
 
 ---
 
@@ -29,20 +29,6 @@ Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
 
 ```ts
 export * from '@effect/io/FiberRefs'
-```
-
-Added in v2.0.0
-
-# utils
-
-## Patch
-
-Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
-
-**Signature**
-
-```ts
-export declare const Patch: typeof Patch
 ```
 
 Added in v2.0.0

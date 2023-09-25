@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 47
+nav_order: 48
 parent: Modules
 ---
 
@@ -50,6 +50,7 @@ Added in v2.0.0
   - [FiberId](#fiberid)
   - [FiberRef](#fiberref)
   - [FiberRefs](#fiberrefs)
+  - [FiberRefsPatch](#fiberrefspatch)
   - [FiberStatus](#fiberstatus)
   - [Function](#function)
   - [GlobalValue](#globalvalue)
@@ -590,6 +591,18 @@ Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
 
 ```ts
 export declare const FiberRefs: any
+```
+
+Added in v2.0.0
+
+## FiberRefsPatch
+
+Docs: https://effect-ts.github.io/io/modules/FiberRefsPatch.ts.html
+
+**Signature**
+
+```ts
+export declare const FiberRefsPatch: any
 ```
 
 Added in v2.0.0
