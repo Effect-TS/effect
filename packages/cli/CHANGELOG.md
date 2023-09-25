@@ -1,5 +1,11 @@
 # @effect/cli
 
+## 0.13.0
+
+### Minor Changes
+
+- [#326](https://github.com/Effect-TS/cli/pull/326) [`22dd35f`](https://github.com/Effect-TS/cli/commit/22dd35fe0eb7f24e7d19015ebd83d4c300cc5422) Thanks [@IMax153](https://github.com/IMax153)! - use builtin Console service
+
 ## 0.12.0
 
 ### Minor Changes
