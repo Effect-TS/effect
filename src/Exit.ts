@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
  *
- * - Module: `@effect/io/Exit`
- * - Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/io/Exit"

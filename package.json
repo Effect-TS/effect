@@ -79,7 +79,7 @@
     "@definitelytyped/dtslint": "^0.0.177",
     "@effect/babel-plugin": "^0.2.0",
     "@effect/build-utils": "^0.1.4",
-    "@effect/docgen": "^0.1.4",
+    "@effect/docgen": "^0.1.7",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@rollup/pluginutils": "^5.0.4",

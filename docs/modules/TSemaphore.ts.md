@@ -6,13 +6,29 @@ parent: Modules
 
 ## TSemaphore overview
 
-Added in v2.0.0
+Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
 
-- Module: `@effect/stm/TSemaphore`
-- Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+Added in v2.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/stm/TSemaphore"](#from-effectstmtsemaphore)
+
 ---
+
+# exports
+
+## From "@effect/stm/TSemaphore"
+
+Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/stm/TSemaphore'
+```
+
+Added in v2.0.0

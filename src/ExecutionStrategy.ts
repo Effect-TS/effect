@@ -1,8 +1,7 @@
 /**
- * @since 2.0.0
+ * Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
  *
- * - Module: `@effect/io/ExecutionStrategy`
- * - Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
+ * @since 2.0.0
  */
 
 export * from "@effect/io/ExecutionStrategy"

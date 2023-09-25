@@ -6,13 +6,29 @@ parent: Modules
 
 ## Deferred overview
 
-Added in v2.0.0
+Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
 
-- Module: `@effect/io/Deferred`
-- Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
+Added in v2.0.0
 
 ---
 
 <h2 class="text-delta">Table of contents</h2>
 
+- [exports](#exports)
+  - [From "@effect/io/Deferred"](#from-effectiodeferred)
+
 ---
+
+# exports
+
+## From "@effect/io/Deferred"
+
+Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
+
+**Signature**
+
+```ts
+export * from '@effect/io/Deferred'
+```
+
+Added in v2.0.0

@@ -132,927 +132,795 @@ import * as Types from "effect/Types"
 
 export {
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#absurd
+   * @since 2.0.0
    */
   absurd,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
    *
-   * - Module: `@effect/data/Bigint`
-   * - Docs: https://effect-ts.github.io/data/modules/Bigint.ts.html
+   * @since 2.0.0
    */
   Bigint,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
    *
-   * - Module: `@effect/data/Boolean`
-   * - Docs: https://effect-ts.github.io/data/modules/Boolean.ts.html
+   * @since 2.0.0
    */
   Boolean,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
    *
-   * - Module: `@effect/data/Brand`
-   * - Docs: https://effect-ts.github.io/data/modules/Brand.ts.html
+   * @since 2.0.0
    */
   Brand,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
    *
-   * - Module: `@effect/io/Cache`
-   * - Docs: https://effect-ts.github.io/io/modules/Cache.ts.html
+   * @since 2.0.0
    */
   Cache,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
    *
-   * - Module: `@effect/io/Cause`
-   * - Docs: https://effect-ts.github.io/io/modules/Cause.ts.html
+   * @since 2.0.0
    */
   Cause,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
    *
-   * - Module: `@effect/stream/Channel`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel.ts.html
+   * @since 2.0.0
    */
   Channel,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
    *
-   * - Module: `@effect/stream/Channel/ChildExecutorDecision`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/ChildExecutorDecision.ts.html
+   * @since 2.0.0
    */
   ChannelChildExecutorDecision,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
    *
-   * - Module: `@effect/stream/Channel/MergeDecision`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeDecision.ts.html
+   * @since 2.0.0
    */
   ChannelMergeDecision,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
    *
-   * - Module: `@effect/stream/Channel/MergeState`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeState.ts.html
+   * @since 2.0.0
    */
   ChannelMergeState,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
    *
-   * - Module: `@effect/stream/Channel/MergeStrategy`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/MergeStrategy.ts.html
+   * @since 2.0.0
    */
   ChannelMergeStrategy,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
    *
-   * - Module: `@effect/stream/Channel/SingleProducerAsyncInput`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/SingleProducerAsyncInput.ts.html
+   * @since 2.0.0
    */
   ChannelSingleProducerAsyncInput,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
    *
-   * - Module: `@effect/stream/Channel/UpstreamPullRequest`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullRequest.ts.html
+   * @since 2.0.0
    */
   ChannelUpstreamPullRequest,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
    *
-   * - Module: `@effect/stream/Channel/UpstreamPullStrategy`
-   * - Docs: https://effect-ts.github.io/stream/modules/Channel/UpstreamPullStrategy.ts.html
+   * @since 2.0.0
    */
   ChannelUpstreamPullStrategy,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
    *
-   * - Module: `@effect/data/Chunk`
-   * - Docs: https://effect-ts.github.io/data/modules/Chunk.ts.html
+   * @since 2.0.0
    */
   Chunk,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
    *
-   * - Module: `@effect/io/Clock`
-   * - Docs: https://effect-ts.github.io/io/modules/Clock.ts.html
+   * @since 2.0.0
    */
   Clock,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
    *
-   * - Module: `@effect/io/Concurrency`
-   * - Docs: https://effect-ts.github.io/io/modules/Concurrency.ts.html
+   * @since 2.0.0
    */
   Concurrency,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Config.ts.html
    *
-   * - Module: `@effect/io/Config`
-   * - Docs: https://effect-ts.github.io/io/modules/Config.ts.html
+   * @since 2.0.0
    */
   Config,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
    *
-   * - Module: `@effect/io/ConfigError`
-   * - Docs: https://effect-ts.github.io/io/modules/ConfigError.ts.html
+   * @since 2.0.0
    */
   ConfigError,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
    *
-   * - Module: `@effect/io/ConfigProvider`
-   * - Docs: https://effect-ts.github.io/io/modules/ConfigProvider.ts.html
+   * @since 2.0.0
    */
   ConfigProvider,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
    *
-   * - Module: `@effect/io/ConfigSecret`
-   * - Docs: https://effect-ts.github.io/io/modules/ConfigSecret.ts.html
+   * @since 2.0.0
    */
   ConfigSecret,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Console.ts.html
    *
-   * - Module: `@effect/data/Console`
-   * - Docs: https://effect-ts.github.io/data/modules/Console.ts.html
+   * @since 2.0.0
    */
   Console,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Context.ts.html
    *
-   * - Module: `@effect/data/Context`
-   * - Docs: https://effect-ts.github.io/data/modules/Context.ts.html
+   * @since 2.0.0
    */
   Context,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Data.ts.html
    *
-   * - Module: `@effect/data/Data`
-   * - Docs: https://effect-ts.github.io/data/modules/Data.ts.html
+   * @since 2.0.0
    */
   Data,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
    *
-   * - Module: `@effect/io/DefaultServices`
-   * - Docs: https://effect-ts.github.io/io/modules/DefaultServices.ts.html
+   * @since 2.0.0
    */
   DefaultServices,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
    *
-   * - Module: `@effect/io/Deferred`
-   * - Docs: https://effect-ts.github.io/io/modules/Deferred.ts.html
+   * @since 2.0.0
    */
   Deferred,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
    *
-   * - Module: `@effect/data/Differ`
-   * - Docs: https://effect-ts.github.io/data/modules/Differ.ts.html
+   * @since 2.0.0
    */
   Differ,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
    *
-   * - Module: `@effect/data/Duration`
-   * - Docs: https://effect-ts.github.io/data/modules/Duration.ts.html
+   * @since 2.0.0
    */
   Duration,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
    *
-   * - Module: `@effect/io/Effect`
-   * - Docs: https://effect-ts.github.io/io/modules/Effect.ts.html
+   * @since 2.0.0
    */
   Effect,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Either.ts.html
    *
-   * - Module: `@effect/data/Either`
-   * - Docs: https://effect-ts.github.io/data/modules/Either.ts.html
+   * @since 2.0.0
    */
   Either,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
    *
-   * - Module: `@effect/data/Equal`
-   * - Docs: https://effect-ts.github.io/data/modules/Equal.ts.html
+   * @since 2.0.0
    */
   Equal,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
    *
-   * - Module: `@effect/data/Equivalence`
-   * - Docs: https://effect-ts.github.io/data/modules/Equivalence.ts.html
+   * @since 2.0.0
    */
   Equivalence,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
    *
-   * - Module: `@effect/io/ExecutionStrategy`
-   * - Docs: https://effect-ts.github.io/io/modules/ExecutionStrategy.ts.html
+   * @since 2.0.0
    */
   ExecutionStrategy,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
    *
-   * - Module: `@effect/io/Exit`
-   * - Docs: https://effect-ts.github.io/io/modules/Exit.ts.html
+   * @since 2.0.0
    */
   Exit,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
    *
-   * - Module: `@effect/io/Fiber`
-   * - Docs: https://effect-ts.github.io/io/modules/Fiber.ts.html
+   * @since 2.0.0
    */
   Fiber,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
    *
-   * - Module: `@effect/io/FiberId`
-   * - Docs: https://effect-ts.github.io/io/modules/FiberId.ts.html
+   * @since 2.0.0
    */
   FiberId,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
    *
-   * - Module: `@effect/io/FiberRef`
-   * - Docs: https://effect-ts.github.io/io/modules/FiberRef.ts.html
+   * @since 2.0.0
    */
   FiberRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
    *
-   * - Module: `@effect/io/FiberRefs`
-   * - Docs: https://effect-ts.github.io/io/modules/FiberRefs.ts.html
+   * @since 2.0.0
    */
   FiberRefs,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
    *
-   * - Module: `@effect/io/FiberStatus`
-   * - Docs: https://effect-ts.github.io/io/modules/FiberStatus.ts.html
+   * @since 2.0.0
    */
   FiberStatus,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#flow
+   * @since 2.0.0
    */
   flow,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html
+   * @since 2.0.0
    */
   Function,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
    *
-   * - Module: `@effect/data/GlobalValue`
-   * - Docs: https://effect-ts.github.io/data/modules/GlobalValue.ts.html
+   * @since 2.0.0
    */
   GlobalValue,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
    *
-   * - Module: `@effect/stream/GroupBy`
-   * - Docs: https://effect-ts.github.io/stream/modules/GroupBy.ts.html
+   * @since 2.0.0
    */
   GroupBy,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
    *
-   * - Module: `@effect/data/Hash`
-   * - Docs: https://effect-ts.github.io/data/modules/Hash.ts.html
+   * @since 2.0.0
    */
   Hash,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
    *
-   * - Module: `@effect/data/HashMap`
-   * - Docs: https://effect-ts.github.io/data/modules/HashMap.ts.html
+   * @since 2.0.0
    */
   HashMap,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
    *
-   * - Module: `@effect/data/HashSet`
-   * - Docs: https://effect-ts.github.io/data/modules/HashSet.ts.html
+   * @since 2.0.0
    */
   HashSet,
   /**
-   * @since 2.0.0
+   * Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
    *
-   * - Module: `@effect/data/HKT`
-   * - Docs: https://fp-ts.github.io/core/modules/HKT.ts.html
+   * @since 2.0.0
    */
   HKT,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#hole
+   * @since 2.0.0
    */
   hole,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
    *
-   * - Module: `@effect/io/Hub`
-   * - Docs: https://effect-ts.github.io/io/modules/Hub.ts.html
+   * @since 2.0.0
    */
   Hub,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#identity
+   * @since 2.0.0
    */
   identity,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
    *
-   * - Module: `@effect/io/KeyedPool`
-   * - Docs: https://effect-ts.github.io/io/modules/KeyedPool.ts.html
+   * @since 2.0.0
    */
   KeyedPool,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
    *
-   * - Module: `@effect/io/Layer`
-   * - Docs: https://effect-ts.github.io/io/modules/Layer.ts.html
+   * @since 2.0.0
    */
   Layer,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/List.ts.html
    *
-   * - Module: `@effect/data/List`
-   * - Docs: https://effect-ts.github.io/data/modules/List.ts.html
+   * @since 2.0.0
    */
   List,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
    *
-   * - Module: `@effect/io/Logger`
-   * - Docs: https://effect-ts.github.io/io/modules/Logger.ts.html
+   * @since 2.0.0
    */
   Logger,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
    *
-   * - Module: `@effect/io/LogLevel`
-   * - Docs: https://effect-ts.github.io/io/modules/LogLevel.ts.html
+   * @since 2.0.0
    */
   LogLevel,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
    *
-   * - Module: `@effect/io/LoggerSpan`
-   * - Docs: https://effect-ts.github.io/io/modules/LogSpan.ts.html
+   * @since 2.0.0
    */
   LogSpan,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/match/modules/index.ts.html
    *
-   * - Module: `@effect/match`
-   * - Docs: https://effect-ts.github.io/match/modules/index.ts.html
+   * @since 2.0.0
    */
   Match,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
    *
-   * - Module: `@effect/io/Metric`
-   * - Docs: https://effect-ts.github.io/io/modules/Metric.ts.html
+   * @since 2.0.0
    */
   Metric,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
    *
-   * - Module: `@effect/io/MetricBoundaries`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricBoundaries.ts.html
+   * @since 2.0.0
    */
   MetricBoundaries,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
    *
-   * - Module: `@effect/io/MetricHook`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricHook.ts.html
+   * @since 2.0.0
    */
   MetricHook,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
    *
-   * - Module: `@effect/io/MetricKey`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricKey.ts.html
+   * @since 2.0.0
    */
   MetricKey,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
    *
-   * - Module: `@effect/io/MetricKeyType`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricKeyType.ts.html
+   * @since 2.0.0
    */
   MetricKeyType,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
    *
-   * - Module: `@effect/io/MetricLabel`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricLabel.ts.html
+   * @since 2.0.0
    */
   MetricLabel,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
    *
-   * - Module: `@effect/io/MetricPair`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricPair.ts.html
+   * @since 2.0.0
    */
   MetricPair,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
    *
-   * - Module: `@effect/io/MetricPolling`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricPollingPolling.ts.html
+   * @since 2.0.0
    */
   MetricPolling,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
    *
-   * - Module: `@effect/io/MetricRegistry`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricRegistry.ts.html
+   * @since 2.0.0
    */
   MetricRegistry,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
    *
-   * - Module: `@effect/io/MetricState`
-   * - Docs: https://effect-ts.github.io/io/modules/MetricState.ts.html
+   * @since 2.0.0
    */
   MetricState,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
    *
-   * - Module: `@effect/data/MutableHashMap`
-   * - Docs: https://effect-ts.github.io/data/modules/MutableHashMap.ts.html
+   * @since 2.0.0
    */
   MutableHashMap,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
    *
-   * - Module: `@effect/data/MutableHashSet`
-   * - Docs: https://effect-ts.github.io/data/modules/MutableHashSet.ts.html
+   * @since 2.0.0
    */
   MutableHashSet,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
    *
-   * - Module: `@effect/data/MutableList`
-   * - Docs: https://effect-ts.github.io/data/modules/MutableList.ts.html
+   * @since 2.0.0
    */
   MutableList,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
    *
-   * - Module: `@effect/data/MutableQueue`
-   * - Docs: https://effect-ts.github.io/data/modules/MutableQueue.ts.html
+   * @since 2.0.0
    */
   MutableQueue,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
    *
-   * - Module: `@effect/data/mutable/MutableRef`
-   * - Docs: https://effect-ts.github.io/data/modules/mutable/MutableRef.ts.html
+   * @since 2.0.0
    */
   MutableRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Number.ts.html
    *
-   * - Module: `@effect/data/Number`
-   * - Docs: https://effect-ts.github.io/data/modules/Number.ts.html
+   * @since 2.0.0
    */
   Number,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Option.ts.html
    *
-   * - Module: `@effect/data/Option`
-   * - Docs: https://effect-ts.github.io/data/modules/Option.ts.html
+   * @since 2.0.0
    */
   Option,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Order.ts.html
    *
-   * - Module: `@effect/data/Order`
-   * - Docs: https://effect-ts.github.io/data/modules/Order.ts.html
+   * @since 2.0.0
    */
   Order,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
    *
-   * - Module: `@effect/data/Ordering`
-   * - Docs: https://effect-ts.github.io/data/modules/Ordering.ts.html
+   * @since 2.0.0
    */
   Ordering,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
    *
-   * - Module: `@effect/data/PCGRandom`
-   * - Docs: https://effect-ts.github.io/data/modules/PCGRandom.ts.html
+   * @since 2.0.0
    */
   PCGRandom,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#pipe
+   * @since 2.0.0
    */
   pipe,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
    *
-   * - Module: `@effect/data/Pipeable`
-   * - Docs: https://effect-ts.github.io/data/modules/Pipeable.ts.html
+   * @since 2.0.0
    */
   Pipeable,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
    *
-   * - Module: `@effect/io/Pool`
-   * - Docs: https://effect-ts.github.io/io/modules/Pool.ts.html
+   * @since 2.0.0
    */
   Pool,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
    *
-   * - Module: `@effect/data/Predicate`
-   * - Docs: https://effect-ts.github.io/data/modules/Predicate.ts.html
+   * @since 2.0.0
    */
   Predicate,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
    *
-   * - Module: `@effect/io/Queue`
-   * - Docs: https://effect-ts.github.io/io/modules/Queue.ts.html
+   * @since 2.0.0
    */
   Queue,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Random.ts.html
    *
-   * - Module: `@effect/io/Random`
-   * - Docs: https://effect-ts.github.io/io/modules/Random.ts.html
+   * @since 2.0.0
    */
   Random,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
    *
-   * - Module: `@effect/data/ReadonlyArray`
-   * - Docs: https://effect-ts.github.io/data/modules/ReadonlyArray.ts.html
+   * @since 2.0.0
    */
   ReadonlyArray,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
    *
-   * - Module: `@effect/data/ReadonlyRecord`
-   * - Docs: https://effect-ts.github.io/data/modules/ReadonlyRecord.ts.html
+   * @since 2.0.0
    */
   ReadonlyRecord,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
    *
-   * - Module: `@effect/data/RedBlackTree`
-   * - Docs: https://effect-ts.github.io/data/modules/RedBlackTree.ts.html
+   * @since 2.0.0
    */
   RedBlackTree,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
    *
-   * - Module: `@effect/io/Ref`
-   * - Docs: https://effect-ts.github.io/io/modules/Ref.ts.html
+   * @since 2.0.0
    */
   Ref,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
    *
-   * - Module: `@effect/io/Reloadable`
-   * - Docs: https://effect-ts.github.io/io/modules/Reloadable.ts.html
+   * @since 2.0.0
    */
   Reloadable,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Request.ts.html
    *
-   * - Module: `@effect/io/Request`
-   * - Docs: https://effect-ts.github.io/io/modules/Request.ts.html
+   * @since 2.0.0
    */
   Request,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
    *
-   * - Module: `@effect/io/RequestBlock`
-   * - Docs: https://effect-ts.github.io/io/modules/RequestBlock.ts.html
+   * @since 2.0.0
    */
   RequestBlock,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
    *
-   * - Module: `@effect/io/RequestResolver`
-   * - Docs: https://effect-ts.github.io/io/modules/RequestResolver.ts.html
+   * @since 2.0.0
    */
   RequestResolver,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
    *
-   * - Module: `@effect/io/Resource`
-   * - Docs: https://effect-ts.github.io/io/modules/Resource.ts.html
+   * @since 2.0.0
    */
   Resource,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
    *
-   * - Module: `@effect/io/Runtime`
-   * - Docs: https://effect-ts.github.io/io/modules/Runtime.ts.html
+   * @since 2.0.0
    */
   Runtime,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
    *
-   * - Module: `@effect/io/RuntimeFlags`
-   * - Docs: https://effect-ts.github.io/io/modules/RuntimeFlags.ts.html
+   * @since 2.0.0
    */
   RuntimeFlags,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
    *
-   * - Module: `@effect/io/RuntimeFlagsPatch`
-   * - Docs: https://effect-ts.github.io/io/modules/RuntimeFlagsPatch.ts.html
+   * @since 2.0.0
    */
   RuntimeFlagsPatch,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
    *
-   * - Module: `@effect/io/Schedule`
-   * - Docs: https://effect-ts.github.io/io/modules/Schedule.ts.html
+   * @since 2.0.0
    */
   Schedule,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
    *
-   * - Module: `@effect/io/ScheduleDecision`
-   * - Docs: https://effect-ts.github.io/io/modules/ScheduleDecision.ts.html
+   * @since 2.0.0
    */
   ScheduleDecision,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
    *
-   * - Module: `@effect/io/ScheduleInterval`
-   * - Docs: https://effect-ts.github.io/io/modules/ScheduleInterval.ts.html
+   * @since 2.0.0
    */
   ScheduleInterval,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
    *
-   * - Module: `@effect/io/ScheduleIntervals`
-   * - Docs: https://effect-ts.github.io/io/modules/ScheduleIntervals.ts.html
+   * @since 2.0.0
    */
   ScheduleIntervals,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
    *
-   * - Module: `@effect/io/Scheduler`
-   * - Docs: https://effect-ts.github.io/io/modules/Scheduler.ts.html
+   * @since 2.0.0
    */
   Scheduler,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
    *
-   * - Module: `@effect/io/Scope`
-   * - Docs: https://effect-ts.github.io/io/modules/Scope.ts.html
+   * @since 2.0.0
    */
   Scope,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
    *
-   * - Module: `@effect/io/ScopedCache`
-   * - Docs: https://effect-ts.github.io/io/modules/ScopedCache.ts.html
+   * @since 2.0.0
    */
   ScopedCache,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
    *
-   * - Module: `@effect/io/ScopedRef`
-   * - Docs: https://effect-ts.github.io/io/modules/ScopedRef.ts.html
+   * @since 2.0.0
    */
   ScopedRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
    *
-   * - Module: `@effect/stream/Sink`
-   * - Docs: https://effect-ts.github.io/stream/modules/Sink.ts.html
+   * @since 2.0.0
    */
   Sink,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
    *
-   * - Module: `@effect/data/SortedMap`
-   * - Docs: https://effect-ts.github.io/data/modules/SortedMap.ts.html
+   * @since 2.0.0
    */
   SortedMap,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
    *
-   * - Module: `@effect/data/SortedSet`
-   * - Docs: https://effect-ts.github.io/data/modules/SortedSet.ts.html
+   * @since 2.0.0
    */
   SortedSet,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
    *
-   * - Module: `@effect/stm/STM`
-   * - Docs: https://effect-ts.github.io/stm/modules/STM.ts.html
+   * @since 2.0.0
    */
   STM,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
    *
-   * - Module: `@effect/stream/Stream`
-   * - Docs: https://effect-ts.github.io/stream/modules/Stream.ts.html
+   * @since 2.0.0
    */
   Stream,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
    *
-   * - Module: `@effect/stream/Stream/Emit`
-   * - Docs: https://effect-ts.github.io/stream/modules/Stream/Emit.ts.html
+   * @since 2.0.0
    */
   StreamEmit,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
    *
-   * - Module: `@effect/stream/Stream/HaltStrategy`
-   * - Docs: https://effect-ts.github.io/stream/modules/Stream/HaltStrategy.ts.html
+   * @since 2.0.0
    */
   StreamHaltStrategy,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/String.ts.html
    *
-   * - Module: `@effect/data/String`
-   * - Docs: https://effect-ts.github.io/data/modules/String.ts.html
+   * @since 2.0.0
    */
   String,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
    *
-   * - Module: `@effect/data/Struct`
-   * - Docs: https://effect-ts.github.io/data/modules/Struct.ts.html
+   * @since 2.0.0
    */
   Struct,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
    *
-   * - Module: `@effect/stream/SubscriptionRef`
-   * - Docs: https://effect-ts.github.io/stream/modules/SubscriptionRef.ts.html
+   * @since 2.0.0
    */
   SubscriptionRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
    *
-   * - Module: `@effect/io/Supervisor`
-   * - Docs: https://effect-ts.github.io/io/modules/Supervisor.ts.html
+   * @since 2.0.0
    */
   Supervisor,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
    *
-   * - Module: `@effect/data/Symbol`
-   * - Docs: https://effect-ts.github.io/data/modules/Symbol.ts.html
+   * @since 2.0.0
    */
   Symbol,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
    *
-   * - Module: `@effect/io/SynchronizedRef`
-   * - Docs: https://effect-ts.github.io/io/modules/SynchronizedRef.ts.html
+   * @since 2.0.0
    */
   SynchronizedRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
    *
-   * - Module: `@effect/stream/Take`
-   * - Docs: https://effect-ts.github.io/stream/modules/Take.ts.html
+   * @since 2.0.0
    */
   Take,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
    *
-   * - Module: `@effect/stm/TArray`
-   * - Docs: https://effect-ts.github.io/stm/modules/TArray.ts.html
+   * @since 2.0.0
    */
   TArray,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
    *
-   * - Module: `@effect/stm/TDeferred`
-   * - Docs: https://effect-ts.github.io/stm/modules/TDeferred.ts.html
+   * @since 2.0.0
    */
   TDeferred,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
    *
-   * - Module: `@effect/stm/THub`
-   * - Docs: https://effect-ts.github.io/stm/modules/THub.ts.html
+   * @since 2.0.0
    */
   THub,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
    *
-   * - Module: `@effect/stm/TMap`
-   * - Docs: https://effect-ts.github.io/stm/modules/TMap.ts.html
+   * @since 2.0.0
    */
   TMap,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
    *
-   * - Module: `@effect/stm/TPriorityQueue`
-   * - Docs: https://effect-ts.github.io/stm/modules/TPriorityQueue.ts.html
+   * @since 2.0.0
    */
   TPriorityQueue,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
    *
-   * - Module: `@effect/stm/TQueue`
-   * - Docs: https://effect-ts.github.io/stm/modules/TQueue.ts.html
+   * @since 2.0.0
    */
   TQueue,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
    *
-   * - Module: `@effect/io/Tracer`
-   * - Docs: https://effect-ts.github.io/io/modules/Tracer.ts.html
+   * @since 2.0.0
    */
   Tracer,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
    *
-   * - Module: `@effect/stm/TRandom`
-   * - Docs: https://effect-ts.github.io/stm/modules/TRandom.ts.html
+   * @since 2.0.0
    */
   TRandom,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
    *
-   * - Module: `@effect/stm/TReentrantLock`
-   * - Docs: https://effect-ts.github.io/stm/modules/TReentrantLock.ts.html
+   * @since 2.0.0
    */
   TReentrantLock,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
    *
-   * - Module: `@effect/stm/TRef`
-   * - Docs: https://effect-ts.github.io/stm/modules/TRef.ts.html
+   * @since 2.0.0
    */
   TRef,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
    *
-   * - Module: `@effect/stm/TSemaphore`
-   * - Docs: https://effect-ts.github.io/stm/modules/TSemaphore.ts.html
+   * @since 2.0.0
    */
   TSemaphore,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
    *
-   * - Module: `@effect/stm/TSet`
-   * - Docs: https://effect-ts.github.io/stm/modules/TSet.ts.html
+   * @since 2.0.0
    */
   TSet,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
    *
-   * - Module: `@effect/data/Tuple`
-   * - Docs: https://effect-ts.github.io/data/modules/Tuple.ts.html
+   * @since 2.0.0
    */
   Tuple,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Types.ts.html
    *
-   * - Module: `@effect/data/Types`
-   * - Docs: https://effect-ts.github.io/data/modules/Types.ts.html
+   * @since 2.0.0
    */
   Types,
   /**
-   * @since 2.0.0
+   * Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce
    *
-   * - Module: `@effect/data/Function`
-   * - Docs: https://effect-ts.github.io/data/modules/Function.ts.html#unsafecoerce
+   * @since 2.0.0
    */
   unsafeCoerce
 }
