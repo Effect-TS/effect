@@ -17,7 +17,7 @@ import * as order from "./Order"
 import type { Pipeable } from "./Pipeable"
 import type { Predicate, Refinement } from "./Predicate"
 import type * as Unify from "./Unify"
-import * as Gen from "./UtilsGen"
+import * as Gen from "./Utils"
 
 /**
  * @category models

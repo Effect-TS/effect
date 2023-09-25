@@ -3,8 +3,8 @@ import * as Context from "../Context"
 import type * as Effect from "../Effect"
 import { pipe } from "../Function"
 import * as core from "../internal/core"
-import * as PCGRandom from "../PCGRandom"
 import type * as Random from "../Random"
+import * as PCGRandom from "../Utils"
 
 /** @internal */
 const RandomSymbolKey = "effect/Random"

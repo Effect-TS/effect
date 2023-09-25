@@ -30,7 +30,7 @@ rm -rf ./Function
 rm -rf ./MutableHashMap
 rm -rf ./Order
 rm -rf ./SortedMap
-rm -rf ./UtilsGen
+rm -rf ./Utils
 rm -rf ./Data
 rm -rf ./GlobalValue
 rm -rf ./MutableHashSet
@@ -40,7 +40,6 @@ rm -rf ./index
 rm -rf ./Differ
 rm -rf ./HKT
 rm -rf ./MutableList
-rm -rf ./PCGRandom
 rm -rf ./String
 rm -rf ./Duration
 rm -rf ./Hash
@@ -56,7 +55,6 @@ rm -rf ./RequestBlock
 rm -rf ./Clock
 rm -rf ./Layer
 rm -rf ./RequestResolver
-rm -rf ./Concurrency
 rm -rf ./LogLevel
 rm -rf ./Resource
 rm -rf ./Config

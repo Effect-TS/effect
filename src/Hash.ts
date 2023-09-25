@@ -3,7 +3,7 @@
  */
 import { pipe } from "./Function"
 import { globalValue } from "./GlobalValue"
-import { PCGRandom } from "./PCGRandom"
+import { PCGRandom } from "./Utils"
 
 /** @internal */
 const randomHashCache = globalValue(

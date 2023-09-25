@@ -1,6 +1,6 @@
 ---
 title: index.ts
-nav_order: 41
+nav_order: 40
 parent: Modules
 ---
 
@@ -41,7 +41,6 @@ Added in v1.0.0
   - [From "./Option"](#from-option)
   - [From "./Order"](#from-order)
   - [From "./Ordering"](#from-ordering)
-  - [From "./PCGRandom"](#from-pcgrandom)
   - [From "./Pipeable"](#from-pipeable)
   - [From "./Predicate"](#from-predicate)
   - [From "./ReadonlyArray"](#from-readonlyarray)
@@ -54,7 +53,7 @@ Added in v1.0.0
   - [From "./Symbol"](#from-symbol)
   - [From "./Tuple"](#from-tuple)
   - [From "./Unify"](#from-unify)
-  - [From "./UtilsGen"](#from-utilsgen)
+  - [From "./Utils"](#from-utils)
 
 ---
 
@@ -396,18 +395,6 @@ export * from './Ordering'
 
 Added in v1.0.0
 
-## From "./PCGRandom"
-
-Re-exports all named exports from the "./PCGRandom" module.
-
-**Signature**
-
-```ts
-export * from './PCGRandom'
-```
-
-Added in v1.0.0
-
 ## From "./Pipeable"
 
 Re-exports all named exports from the "./Pipeable" module.
@@ -552,14 +539,14 @@ export * from './Unify'
 
 Added in v1.0.0
 
-## From "./UtilsGen"
+## From "./Utils"
 
-Re-exports all named exports from the "./UtilsGen" module.
+Re-exports all named exports from the "./Utils" module.
 
 **Signature**
 
 ```ts
-export * from './UtilsGen'
+export * from './Utils'
 ```
 
 Added in v1.0.0

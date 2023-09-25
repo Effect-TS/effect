@@ -1,5 +1,5 @@
-import type { Concurrency } from "../Concurrency"
 import type { Effect } from "../Effect"
+import type { Concurrency } from "../Types"
 import * as core from "./core"
 
 /** @internal */

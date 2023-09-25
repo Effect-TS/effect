@@ -2,7 +2,6 @@ import * as Boolean from "../Boolean"
 import type * as Cause from "../Cause"
 import * as Chunk from "../Chunk"
 import type * as Clock from "../Clock"
-import type { Concurrency } from "../Concurrency"
 import type { ConfigProvider } from "../ConfigProvider"
 import * as Context from "../Context"
 import * as Deferred from "../Deferred"
@@ -63,6 +62,7 @@ import { currentScheduler, type Scheduler } from "../Scheduler"
 import type * as Scope from "../Scope"
 import type * as Supervisor from "../Supervisor"
 import type * as Tracer from "../Tracer"
+import type { Concurrency } from "../Types"
 
 /** @internal */
 export const fiberStarted = metric.counter("effect_fiber_started")

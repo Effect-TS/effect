@@ -113,3 +113,11 @@ export type MergeRight<K, H> = Simplify<
     [k in keyof K | keyof H]: k extends keyof H ? H[k] : k extends keyof K ? K[k] : never
   }
 >
+
+/**
+ * Describes the concurrency to use when executing multiple Effect's.
+ *
+ * @since 1.0.0
+ * @category models
+ */
+export type Concurrency = number | "unbounded" | "inherit"

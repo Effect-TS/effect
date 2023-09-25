@@ -1,6 +1,6 @@
 ---
 title: MetricRegistry.ts
-nav_order: 57
+nav_order: 56
 parent: Modules
 ---
 

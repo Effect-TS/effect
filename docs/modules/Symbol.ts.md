@@ -1,6 +1,6 @@
 ---
 title: Symbol.ts
-nav_order: 100
+nav_order: 98
 parent: Modules
 ---
 

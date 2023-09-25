@@ -1,6 +1,6 @@
 ---
 title: MutableList.ts
-nav_order: 61
+nav_order: 60
 parent: Modules
 ---
 

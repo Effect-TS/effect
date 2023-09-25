@@ -4,7 +4,6 @@
 import type * as Cause from "./Cause"
 import type * as Chunk from "./Chunk"
 import type * as Clock from "./Clock"
-import type { Concurrency } from "./Concurrency"
 import type { Config } from "./Config"
 import type { ConfigError } from "./ConfigError"
 import type { ConfigProvider } from "./ConfigProvider"
@@ -59,6 +58,7 @@ import * as Scheduler from "./Scheduler"
 import type * as Scope from "./Scope"
 import type * as Supervisor from "./Supervisor"
 import type * as Tracer from "./Tracer"
+import type { Concurrency } from "./Types"
 import type * as Unify from "./Unify"
 
 // -------------------------------------------------------------------------------------

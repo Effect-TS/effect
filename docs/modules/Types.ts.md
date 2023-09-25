@@ -1,6 +1,6 @@
 ---
 title: Types.ts
-nav_order: 104
+nav_order: 102
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ Added in v1.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [models](#models)
+  - [Concurrency (type alias)](#concurrency-type-alias)
   - [Equals (type alias)](#equals-type-alias)
   - [MergeLeft (type alias)](#mergeleft-type-alias)
   - [MergeRight (type alias)](#mergeright-type-alias)
@@ -28,6 +29,18 @@ Added in v1.0.0
 ---
 
 # models
+
+## Concurrency (type alias)
+
+Describes the concurrency to use when executing multiple Effect's.
+
+**Signature**
+
+```ts
+export type Concurrency = number | 'unbounded' | 'inherit'
+```
+
+Added in v1.0.0
 
 ## Equals (type alias)
 

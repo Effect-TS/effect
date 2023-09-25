@@ -113,10 +113,6 @@ export * as Ordering from "./Ordering"
 /**
  * @since 1.0.0
  */
-export * as PCGRandom from "./PCGRandom"
-/**
- * @since 1.0.0
- */
 export * as Pipeable from "./Pipeable"
 /**
  * @since 1.0.0
@@ -165,4 +161,4 @@ export * as Unify from "./Unify"
 /**
  * @since 1.0.0
  */
-export * as UtilsGen from "./UtilsGen"
+export * as Utils from "./Utils"

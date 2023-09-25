@@ -46,7 +46,6 @@
         "MutableHashMap",
         "Order",
         "SortedMap",
-        "UtilsGen",
         "Data",
         "GlobalValue",
         "MutableHashSet",
@@ -56,7 +55,6 @@
         "Differ",
         "HKT",
         "MutableList",
-        "PCGRandom",
         "String",
         "Duration",
         "Hash",
@@ -72,7 +70,6 @@
         "Clock",
         "Layer",
         "RequestResolver",
-        "Concurrency",
         "LogLevel",
         "Resource",
         "Config",
@@ -122,7 +119,8 @@
         "FiberRefsPatch",
         "Ref",
         "FiberStatus",
-        "Reloadable"
+        "Reloadable",
+        "Utils"
     ],
     "preconstruct": {
         "distFilenameStrategy": "full",
@@ -160,7 +158,7 @@
             "MutableHashMap.ts",
             "Order.ts",
             "SortedMap.ts",
-            "UtilsGen.ts",
+            "Utils.ts",
             "Data.ts",
             "GlobalValue.ts",
             "MutableHashSet.ts",
@@ -170,7 +168,6 @@
             "Differ.ts",
             "HKT.ts",
             "MutableList.ts",
-            "PCGRandom.ts",
             "String.ts",
             "Duration.ts",
             "Hash.ts",
@@ -186,7 +183,6 @@
             "Clock.ts",
             "Layer.ts",
             "RequestResolver.ts",
-            "Concurrency.ts",
             "LogLevel.ts",
             "Resource.ts",
             "Config.ts",
@@ -363,6 +359,11 @@
             "import": "./Unify/dist/effect-Unify.cjs.mjs",
             "default": "./Unify/dist/effect-Unify.cjs.js"
         },
+        "./Utils": {
+            "module": "./Utils/dist/effect-Utils.esm.js",
+            "import": "./Utils/dist/effect-Utils.cjs.mjs",
+            "default": "./Utils/dist/effect-Utils.cjs.js"
+        },
         ".": {
             "module": "./dist/effect.esm.js",
             "import": "./dist/effect.cjs.mjs",
@@ -533,11 +534,6 @@
             "import": "./Schedule/dist/effect-Schedule.cjs.mjs",
             "default": "./Schedule/dist/effect-Schedule.cjs.js"
         },
-        "./UtilsGen": {
-            "module": "./UtilsGen/dist/effect-UtilsGen.esm.js",
-            "import": "./UtilsGen/dist/effect-UtilsGen.cjs.mjs",
-            "default": "./UtilsGen/dist/effect-UtilsGen.cjs.js"
-        },
         "./FiberRefs": {
             "module": "./FiberRefs/dist/effect-FiberRefs.esm.js",
             "import": "./FiberRefs/dist/effect-FiberRefs.cjs.mjs",
@@ -552,11 +548,6 @@
             "module": "./MetricKey/dist/effect-MetricKey.esm.js",
             "import": "./MetricKey/dist/effect-MetricKey.cjs.mjs",
             "default": "./MetricKey/dist/effect-MetricKey.cjs.js"
-        },
-        "./PCGRandom": {
-            "module": "./PCGRandom/dist/effect-PCGRandom.esm.js",
-            "import": "./PCGRandom/dist/effect-PCGRandom.cjs.mjs",
-            "default": "./PCGRandom/dist/effect-PCGRandom.cjs.js"
         },
         "./Predicate": {
             "module": "./Predicate/dist/effect-Predicate.esm.js",
@@ -607,11 +598,6 @@
             "module": "./Supervisor/dist/effect-Supervisor.esm.js",
             "import": "./Supervisor/dist/effect-Supervisor.cjs.mjs",
             "default": "./Supervisor/dist/effect-Supervisor.cjs.js"
-        },
-        "./Concurrency": {
-            "module": "./Concurrency/dist/effect-Concurrency.esm.js",
-            "import": "./Concurrency/dist/effect-Concurrency.cjs.mjs",
-            "default": "./Concurrency/dist/effect-Concurrency.cjs.js"
         },
         "./ConfigError": {
             "module": "./ConfigError/dist/effect-ConfigError.esm.js",

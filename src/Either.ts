@@ -13,7 +13,7 @@ import type { Option } from "./Option"
 import type { Pipeable } from "./Pipeable"
 import { isFunction } from "./Predicate"
 import type * as Unify from "./Unify"
-import * as Gen from "./UtilsGen"
+import * as Gen from "./Utils"
 
 /**
  * @category models
