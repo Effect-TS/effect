@@ -1,7 +1,6 @@
 import * as Args from "@effect/cli/Args"
 import * as CliApp from "@effect/cli/CliApp"
 import * as Command from "@effect/cli/Command"
-import * as Console from "@effect/cli/Console"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
@@ -88,25 +87,20 @@ const git: Command.Command<Git> = pipe(
   Command.map(({ options: version, subcommand }) => Git({ version, subcommand }))
 )
 
-const handleRemoteSubcomand = (verbose: boolean) =>
-  (command: RemoteSubcommand): Effect.Effect<never, never, void> => {
-    switch (command._tag) {
-      case "AddRemote": {
-        const msg = (
-          `Executing 'git remote add' with '--name' set to '${command.name}', ` +
-          `'--url' set to '${command.url}', and '--verbose' set to ${verbose}`
-        )
-        return Effect.log(msg)
-      }
-      case "RemoveRemote": {
-        const msg = (
-          `Executing 'git remote remove' with '--name' set to '${command.name}', ` +
-          `and '--verbose' set to ${verbose}`
-        )
-        return Effect.log(msg)
-      }
+const handleRemoteSubcomand = (verbose: boolean) => (command: RemoteSubcommand): Effect.Effect<never, never, void> => {
+  switch (command._tag) {
+    case "AddRemote": {
+      const msg = `Executing 'git remote add' with '--name' set to '${command.name}', ` +
+        `'--url' set to '${command.url}', and '--verbose' set to ${verbose}`
+      return Effect.log(msg)
+    }
+    case "RemoveRemote": {
+      const msg = `Executing 'git remote remove' with '--name' set to '${command.name}', ` +
+        `and '--verbose' set to ${verbose}`
+      return Effect.log(msg)
     }
   }
+}
 
 const handleGitSubcommand = (command: GitSubcommand): Effect.Effect<never, never, void> => {
   switch (command._tag) {
@@ -143,6 +137,5 @@ pipe(
         onSome: handleGitSubcommand
       }))
   ),
-  Effect.provideLayer(Console.layer),
   Effect.runFork
 )
