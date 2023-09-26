@@ -1,4 +1,7 @@
-import * as Context from "../../Context"
+/**
+ * @since 1.0.0
+ */
+import * as Context from "./Context"
 
 /**
  * The `TestConfig` service provides access to default configuration settings
@@ -7,7 +10,7 @@ import * as Context from "../../Context"
  * number of samples to check from a random variable, and the maximum number of
  * shrinkings to minimize large failures.
  *
- * @internal
+ * @since 1.0.0
  */
 export interface TestConfig {
   /**
@@ -28,12 +31,16 @@ export interface TestConfig {
   readonly shrinks: number
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const TestConfig: Context.Tag<TestConfig, TestConfig> = Context.Tag<TestConfig>(
   Symbol.for("@effect/test/TestConfig")
 )
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const make = (params: {
   readonly repeats: number
   readonly retries: number

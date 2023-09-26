@@ -6,12 +6,12 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as FiberRef from "effect/FiberRef"
-import * as TestClock from "effect/internal/testing/testClock"
 import * as timeout from "effect/internal/timeout"
 import * as Layer from "effect/Layer"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Request from "effect/Request"
 import * as Resolver from "effect/RequestResolver"
+import * as TestClock from "effect/TestClock"
 import type { Concurrency } from "effect/Types"
 
 interface Counter {

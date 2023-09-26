@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constFalse, pipe } from "effect/Function"
-import * as TestClock from "effect/internal/testing/testClock"
 import * as Option from "effect/Option"
+import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {

@@ -4,11 +4,11 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import { identity, pipe } from "effect/Function"
 import * as HashMap from "effect/HashMap"
-import * as TestServices from "effect/internal/testing/testServices"
 import * as Option from "effect/Option"
 import * as Ref from "effect/Ref"
 import * as Schedule from "effect/Schedule"
 import type * as Scope from "effect/Scope"
+import * as TestServices from "effect/TestServices"
 
 export interface WatchableLookup<Key, Error, Value> {
   (key: Key): Effect.Effect<Scope.Scope, Error, Value>

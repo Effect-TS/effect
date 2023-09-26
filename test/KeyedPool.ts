@@ -3,11 +3,11 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import * as TestClock from "effect/internal/testing/testClock"
 import * as KeyedPool from "effect/KeyedPool"
 import * as Random from "effect/Random"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import * as TestClock from "effect/TestClock"
 import { describe, expect } from "vitest"
 
 describe("KeyedPool", () => {

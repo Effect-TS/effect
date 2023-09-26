@@ -1,36 +1,39 @@
-import * as Chunk from "../../Chunk"
-import type * as Clock from "../../Clock"
-import * as Context from "../../Context"
-import type { Deferred } from "../../Deferred"
-import * as Duration from "../../Duration"
-import type * as Effect from "../../Effect"
-import * as Equal from "../../Equal"
-import type * as Fiber from "../../Fiber"
-import type * as FiberId from "../../FiberId"
-import * as FiberStatus from "../../FiberStatus"
-import { constVoid, dual, identity, pipe } from "../../Function"
-import * as HashMap from "../../HashMap"
-import * as clock from "../../internal/clock"
-import * as core from "../../internal/core"
-import * as defaultServices from "../../internal/defaultServices"
-import * as circular from "../../internal/effect/circular"
-import * as fiberRuntime from "../../internal/fiberRuntime"
-import * as layer from "../../internal/layer"
-import * as ref from "../../internal/ref"
-import * as synchronized from "../../internal/synchronizedRef"
-import * as Annotations from "../../internal/testing/annotations"
-import * as Live from "../../internal/testing/live"
-import * as Data from "../../internal/testing/testClock/data"
-import * as SuspendedWarningData from "../../internal/testing/testClock/suspendedWarningData"
-import * as WarningData from "../../internal/testing/testClock/warningData"
-import type * as Layer from "../../Layer"
-import * as number from "../../Number"
-import * as Option from "../../Option"
-import * as Order from "../../Order"
-import type * as Ref from "../../Ref"
-import type * as SortedSet from "../../SortedSet"
-import type * as Synchronized from "../../SynchronizedRef"
-import * as effect from "../core-effect"
+/**
+ * @since 1.0.0
+ */
+import * as Chunk from "./Chunk"
+import type * as Clock from "./Clock"
+import * as Context from "./Context"
+import type { Deferred } from "./Deferred"
+import * as Duration from "./Duration"
+import type * as Effect from "./Effect"
+import * as Equal from "./Equal"
+import type * as Fiber from "./Fiber"
+import type * as FiberId from "./FiberId"
+import * as FiberStatus from "./FiberStatus"
+import { constVoid, dual, identity, pipe } from "./Function"
+import * as HashMap from "./HashMap"
+import * as clock from "./internal/clock"
+import * as core from "./internal/core"
+import * as effect from "./internal/core-effect"
+import * as defaultServices from "./internal/defaultServices"
+import * as circular from "./internal/effect/circular"
+import * as fiberRuntime from "./internal/fiberRuntime"
+import * as layer from "./internal/layer"
+import * as ref from "./internal/ref"
+import * as synchronized from "./internal/synchronizedRef"
+import * as Data from "./internal/testing/data"
+import * as SuspendedWarningData from "./internal/testing/suspendedWarningData"
+import * as WarningData from "./internal/testing/warningData"
+import type * as Layer from "./Layer"
+import * as number from "./Number"
+import * as Option from "./Option"
+import * as Order from "./Order"
+import type * as Ref from "./Ref"
+import type * as SortedSet from "./SortedSet"
+import type * as Synchronized from "./SynchronizedRef"
+import * as Annotations from "./TestAnnotations"
+import * as Live from "./TestLive"
 
 /**
  * A `TestClock` makes it easy to deterministically and efficiently test effects
@@ -71,7 +74,7 @@ import * as effect from "../core-effect"
  * being tested, then adjust the clock time, and finally verify that the
  * expected effects have been performed.
  *
- * @internal
+ * @since 1.0.0
  */
 export interface TestClock extends Clock.Clock {
   adjust(duration: Duration.DurationInput): Effect.Effect<never, never, void>
@@ -81,7 +84,9 @@ export interface TestClock extends Clock.Clock {
   sleeps(): Effect.Effect<never, never, Chunk.Chunk<number>>
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
   Symbol.for("@effect/test/TestClock")
 )
@@ -111,8 +116,8 @@ export class TestClockImpl implements TestClock {
   [clock.ClockTypeId]: Clock.ClockTypeId = clock.ClockTypeId
   constructor(
     readonly clockState: Ref.Ref<Data.Data>,
-    readonly live: Live.Live,
-    readonly annotations: Annotations.Annotations,
+    readonly live: Live.TestLive,
+    readonly annotations: Annotations.TestAnnotations,
     readonly warningState: Synchronized.SynchronizedRef<WarningData.WarningData>,
     readonly suspendedWarningState: Synchronized.SynchronizedRef<SuspendedWarningData.SuspendedWarningData>
   ) {
@@ -401,13 +406,15 @@ export class TestClockImpl implements TestClock {
   }
 }
 
-/** @internal */
-export const live = (data: Data.Data): Layer.Layer<Annotations.Annotations | Live.Live, never, TestClock> =>
+/**
+ * @since 1.0.0
+ */
+export const live = (data: Data.Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
     TestClock,
     effect.gen(function*($) {
-      const live = yield* $(Live.Live)
-      const annotations = yield* $(Annotations.Annotations)
+      const live = yield* $(Live.TestLive)
+      const annotations = yield* $(Annotations.TestAnnotations)
       const clockState = yield* $(core.sync(() => ref.unsafeMake(data)))
       const warningState = yield* $(circular.makeSynchronized(WarningData.start))
       const suspendedWarningState = yield* $(circular.makeSynchronized(SuspendedWarningData.start))
@@ -420,8 +427,10 @@ export const live = (data: Data.Data): Layer.Layer<Annotations.Annotations | Liv
     })
   )
 
-/** @internal */
-export const defaultTestClock: Layer.Layer<Annotations.Annotations | Live.Live, never, TestClock> = live(
+/**
+ * @since 1.0.0
+ */
+export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
   Data.make(new Date(0).getTime(), Chunk.empty())
 )
 
@@ -430,14 +439,16 @@ export const defaultTestClock: Layer.Layer<Annotations.Annotations | Live.Live, 
  * by the specified duration, running any actions scheduled for on or before
  * the new time in order.
  *
- * @internal
+ * @since 1.0.0
  */
 export const adjust = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
   const duration = Duration.decode(durationInput)
   return testClockWith((testClock) => testClock.adjust(duration))
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const adjustWith = dual<
   (duration: Duration.DurationInput) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(effect: Effect.Effect<R, E, A>, duration: Duration.DurationInput) => Effect.Effect<R, E, A>
@@ -451,7 +462,7 @@ export const adjustWith = dual<
  * state in an effect which, when run, will restore the `TestClock` to the
  * saved state.
  *
- * @internal
+ * @since 1.0.0
  */
 export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, void>> =>
   testClockWith((testClock) => testClock.save())
@@ -461,7 +472,7 @@ export const save = (): Effect.Effect<never, never, Effect.Effect<never, never, 
  * to the specified `Instant`, running any actions scheduled for on or before
  * the new time in order.
  *
- * @internal
+ * @since 1.0.0
  */
 export const setTime = (instant: number): Effect.Effect<never, never, void> =>
   testClockWith((testClock) => testClock.setTime(instant))
@@ -471,7 +482,7 @@ export const setTime = (instant: number): Effect.Effect<never, never, void> =>
  * greater than the specified duration. Once the clock time is adjusted to
  * on or after the duration, the fiber will automatically be resumed.
  *
- * @internal
+ * @since 1.0.0
  */
 export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<never, never, void> => {
   const duration = Duration.decode(durationInput)
@@ -482,7 +493,7 @@ export const sleep = (durationInput: Duration.DurationInput): Effect.Effect<neve
  * Accesses a `TestClock` instance in the context and returns a list of
  * times that effects are scheduled to run.
  *
- * @internal
+ * @since 1.0.0
  */
 export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
   testClockWith(
@@ -492,7 +503,7 @@ export const sleeps = (): Effect.Effect<never, never, Chunk.Chunk<number>> =>
 /**
  * Retrieves the `TestClock` service for this test.
  *
- * @internal
+ * @since 1.0.0
  */
 export const testClock = (): Effect.Effect<never, never, TestClock> => testClockWith(core.succeed)
 
@@ -500,7 +511,7 @@ export const testClock = (): Effect.Effect<never, never, TestClock> => testClock
  * Retrieves the `TestClock` service for this test and uses it to run the
  * specified workflow.
  *
- * @internal
+ * @since 1.0.0
  */
 export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(
@@ -512,7 +523,7 @@ export const testClockWith = <R, E, A>(f: (testClock: TestClock) => Effect.Effec
  * Accesses the current time of a `TestClock` instance in the context in
  * milliseconds.
  *
- * @internal
+ * @since 1.0.0
  */
 export const currentTimeMillis: Effect.Effect<never, never, number> = testClockWith((testClock) =>
   testClock.currentTimeMillis

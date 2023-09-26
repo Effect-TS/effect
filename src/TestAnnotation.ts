@@ -1,24 +1,33 @@
-import * as Chunk from "../../Chunk"
-import * as Context from "../../Context"
-import * as Either from "../../Either"
-import * as Equal from "../../Equal"
-import type * as Fiber from "../../Fiber"
-import { pipe } from "../../Function"
-import * as Hash from "../../Hash"
-import * as HashSet from "../../HashSet"
-import type * as MutableRef from "../../MutableRef"
-import type * as SortedSet from "../../SortedSet"
+/**
+ * @since 1.0.0
+ */
+import * as Chunk from "./Chunk"
+import * as Context from "./Context"
+import * as Either from "./Either"
+import * as Equal from "./Equal"
+import type * as Fiber from "./Fiber"
+import { pipe } from "./Function"
+import * as Hash from "./Hash"
+import * as HashSet from "./HashSet"
+import type * as MutableRef from "./MutableRef"
+import type * as SortedSet from "./SortedSet"
 
 /** @internal */
 const TestAnnotationSymbolKey = "@effect/test/TestAnnotation"
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export interface TestAnnotation<A> extends Equal.Equal {
   readonly [TestAnnotationTypeId]: TestAnnotationTypeId
   readonly identifier: string
@@ -50,12 +59,16 @@ class TestAnnotationImpl<A> implements Equal.Equal {
   }
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => {
   return typeof u === "object" && u != null && TestAnnotationTypeId in u
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const make = <A>(
   identifier: string,
   tag: Context.Tag<A, A>,
@@ -65,7 +78,9 @@ export const make = <A>(
   return new TestAnnotationImpl(identifier, tag, initial, combine)
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const compose = <A>(
   left: Either.Either<number, Chunk.Chunk<A>>,
   right: Either.Either<number, Chunk.Chunk<A>>
@@ -85,7 +100,9 @@ export const compose = <A>(
   throw new Error("BUG: TestAnnotation.compose - please report an issue at https://github.com/Effect-TS/io/issues")
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const fibers: TestAnnotation<
   Either.Either<
     number,
@@ -103,7 +120,7 @@ export const fibers: TestAnnotation<
 /**
  * An annotation which counts ignored tests.
  *
- * @internal
+ * @since 1.0.0
  */
 export const ignored: TestAnnotation<number> = make(
   "ignored",
@@ -115,7 +132,7 @@ export const ignored: TestAnnotation<number> = make(
 /**
  * An annotation which counts repeated tests.
  *
- * @internal
+ * @since 1.0.0
  */
 export const repeated: TestAnnotation<number> = make(
   "repeated",
@@ -127,7 +144,7 @@ export const repeated: TestAnnotation<number> = make(
 /**
  * An annotation which counts retried tests.
  *
- * @internal
+ * @since 1.0.0
  */
 export const retried: TestAnnotation<number> = make(
   "retried",
@@ -139,7 +156,7 @@ export const retried: TestAnnotation<number> = make(
 /**
  * An annotation which tags tests with strings.
  *
- * @internal
+ * @since 1.0.0
  */
 export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
   "tagged",

@@ -1,29 +1,32 @@
-import * as Context from "../../Context"
-import type * as DefaultServices from "../../DefaultServices"
-import * as Effect from "../../Effect"
-import type * as Fiber from "../../Fiber"
-import type * as FiberRef from "../../FiberRef"
-import { dual, pipe } from "../../Function"
-import * as core from "../../internal/core"
-import * as defaultServices from "../../internal/defaultServices"
-import * as fiberRuntime from "../../internal/fiberRuntime"
-import * as layer from "../../internal/layer"
-import * as ref from "../../internal/ref"
-import * as Annotations from "../../internal/testing/annotations"
-import * as Live from "../../internal/testing/live"
-import * as Sized from "../../internal/testing/sized"
-import type * as TestAnnotation from "../../internal/testing/testAnnotation"
-import * as TestAnnotationMap from "../../internal/testing/testAnnotationMap"
-import * as TestConfig from "../../internal/testing/testConfig"
-import type * as Layer from "../../Layer"
-import type * as Scope from "../../Scope"
-import type * as SortedSet from "../../SortedSet"
+/**
+ * @since 1.0.0
+ */
+import * as Context from "./Context"
+import type * as DefaultServices from "./DefaultServices"
+import * as Effect from "./Effect"
+import type * as Fiber from "./Fiber"
+import type * as FiberRef from "./FiberRef"
+import { dual, pipe } from "./Function"
+import * as core from "./internal/core"
+import * as defaultServices from "./internal/defaultServices"
+import * as fiberRuntime from "./internal/fiberRuntime"
+import * as layer from "./internal/layer"
+import * as ref from "./internal/ref"
+import type * as Layer from "./Layer"
+import type * as Scope from "./Scope"
+import type * as SortedSet from "./SortedSet"
+import type * as TestAnnotation from "./TestAnnotation"
+import * as TestAnnotationMap from "./TestAnnotationMap"
+import * as Annotations from "./TestAnnotations"
+import * as TestConfig from "./TestConfig"
+import * as Live from "./TestLive"
+import * as Sized from "./TestSized"
 
 /** @internal */
 export type TestServices =
-  | Annotations.Annotations
-  | Live.Live
-  | Sized.Sized
+  | Annotations.TestAnnotations
+  | Live.TestLive
+  | Sized.TestSized
   | TestConfig.TestConfig
 
 /**
@@ -32,9 +35,9 @@ export type TestServices =
  * @internal
  */
 export const liveServices: Context.Context<TestServices> = pipe(
-  Context.make(Annotations.Annotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
-  Context.add(Live.Live, Live.make(defaultServices.liveServices)),
-  Context.add(Sized.Sized, Sized.make(100)),
+  Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
+  Context.add(Live.TestLive, Live.make(defaultServices.liveServices)),
+  Context.add(Sized.TestSized, Sized.make(100)),
   Context.add(TestConfig.TestConfig, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
 
@@ -48,7 +51,7 @@ export const currentServices: FiberRef.FiberRef<Context.Context<TestServices>> =
  *
  * @internal
  */
-export const annotations = (): Effect.Effect<never, never, Annotations.Annotations> => annotationsWith(core.succeed)
+export const annotations = (): Effect.Effect<never, never, Annotations.TestAnnotations> => annotationsWith(core.succeed)
 
 /**
  * Retrieves the `Annotations` service for this test and uses it to run the
@@ -57,11 +60,11 @@ export const annotations = (): Effect.Effect<never, never, Annotations.Annotatio
  * @internal
  */
 export const annotationsWith = <R, E, A>(
-  f: (annotations: Annotations.Annotations) => Effect.Effect<R, E, A>
+  f: (annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>
 ): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, Annotations.Annotations))
+    (services) => f(Context.get(services, Annotations.TestAnnotations))
   )
 
 /**
@@ -71,12 +74,12 @@ export const annotationsWith = <R, E, A>(
  * @internal
  */
 export const withAnnotations = dual<
-  (annotations: Annotations.Annotations) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, annotations: Annotations.Annotations) => Effect.Effect<R, E, A>
+  (annotations: Annotations.TestAnnotations) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>
 >(2, (effect, annotations) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Annotations.Annotations, annotations)
+    Context.add(Annotations.TestAnnotations, annotations)
   )(effect))
 
 /**
@@ -85,10 +88,12 @@ export const withAnnotations = dual<
  *
  * @internal
  */
-export const withAnnotationsScoped = (annotations: Annotations.Annotations): Effect.Effect<Scope.Scope, never, void> =>
+export const withAnnotationsScoped = (
+  annotations: Annotations.TestAnnotations
+): Effect.Effect<Scope.Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(
     currentServices,
-    Context.add(Annotations.Annotations, annotations)
+    Context.add(Annotations.TestAnnotations, annotations)
   )
 
 /**
@@ -96,9 +101,9 @@ export const withAnnotationsScoped = (annotations: Annotations.Annotations): Eff
  *
  * @internal
  */
-export const annotationsLayer = (): Layer.Layer<never, never, Annotations.Annotations> =>
+export const annotationsLayer = (): Layer.Layer<never, never, Annotations.TestAnnotations> =>
   layer.scoped(
-    Annotations.Annotations,
+    Annotations.TestAnnotations,
     pipe(
       core.sync(() => ref.unsafeMake(TestAnnotationMap.empty())),
       core.map(Annotations.make),
@@ -140,7 +145,7 @@ export const supervisedFibers = (): Effect.Effect<
  *
  * @internal
  */
-export const live = (): Effect.Effect<never, never, Live.Live> => liveWith(core.succeed)
+export const live = (): Effect.Effect<never, never, Live.TestLive> => liveWith(core.succeed)
 
 /**
  * Retrieves the `Live` service for this test and uses it to run the specified
@@ -148,8 +153,8 @@ export const live = (): Effect.Effect<never, never, Live.Live> => liveWith(core.
  *
  * @internal
  */
-export const liveWith = <R, E, A>(f: (live: Live.Live) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
-  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.Live)))
+export const liveWith = <R, E, A>(f: (live: Live.TestLive) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+  core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.TestLive)))
 
 /**
  * Executes the specified workflow with the specified implementation of the
@@ -158,12 +163,12 @@ export const liveWith = <R, E, A>(f: (live: Live.Live) => Effect.Effect<R, E, A>
  * @internal
  */
 export const withLive = dual<
-  (live: Live.Live) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, live: Live.Live) => Effect.Effect<R, E, A>
+  (live: Live.TestLive) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, live: Live.TestLive) => Effect.Effect<R, E, A>
 >(2, (effect, live) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Live.Live, live)
+    Context.add(Live.TestLive, live)
   )(effect))
 
 /**
@@ -172,17 +177,17 @@ export const withLive = dual<
  *
  * @internal
  */
-export const withLiveScoped = (live: Live.Live): Effect.Effect<Scope.Scope, never, void> =>
-  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.Live, live))
+export const withLiveScoped = (live: Live.TestLive): Effect.Effect<Scope.Scope, never, void> =>
+  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.TestLive, live))
 
 /**
  * Constructs a new `Live` service wrapped in a layer.
  *
  * @internal
  */
-export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, Live.Live> =>
+export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive> =>
   layer.scoped(
-    Live.Live,
+    Live.TestLive,
     pipe(
       core.context<DefaultServices.DefaultServices>(),
       core.map(Live.make),
@@ -223,7 +228,7 @@ export const provideWithLive = dual<
  *
  * @internal
  */
-export const sized = (): Effect.Effect<never, never, Sized.Sized> => sizedWith(core.succeed)
+export const sized = (): Effect.Effect<never, never, Sized.TestSized> => sizedWith(core.succeed)
 
 /**
  * Retrieves the `Sized` service for this test and uses it to run the
@@ -231,10 +236,10 @@ export const sized = (): Effect.Effect<never, never, Sized.Sized> => sizedWith(c
  *
  * @internal
  */
-export const sizedWith = <R, E, A>(f: (sized: Sized.Sized) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
+export const sizedWith = <R, E, A>(f: (sized: Sized.TestSized) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(
     currentServices,
-    (services) => f(Context.get(services, Sized.Sized))
+    (services) => f(Context.get(services, Sized.TestSized))
   )
 
 /**
@@ -244,12 +249,12 @@ export const sizedWith = <R, E, A>(f: (sized: Sized.Sized) => Effect.Effect<R, E
  * @internal
  */
 export const withSized = dual<
-  (sized: Sized.Sized) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(effect: Effect.Effect<R, E, A>, sized: Sized.Sized) => Effect.Effect<R, E, A>
+  (sized: Sized.TestSized) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
+  <R, E, A>(effect: Effect.Effect<R, E, A>, sized: Sized.TestSized) => Effect.Effect<R, E, A>
 >(2, (effect, sized) =>
   core.fiberRefLocallyWith(
     currentServices,
-    Context.add(Sized.Sized, sized)
+    Context.add(Sized.TestSized, sized)
   )(effect))
 
 /**
@@ -258,13 +263,13 @@ export const withSized = dual<
  *
  * @internal
  */
-export const withSizedScoped = (sized: Sized.Sized): Effect.Effect<Scope.Scope, never, void> =>
-  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.Sized, sized))
+export const withSizedScoped = (sized: Sized.TestSized): Effect.Effect<Scope.Scope, never, void> =>
+  fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.TestSized, sized))
 
 /** @internal */
-export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.Sized> =>
+export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSized> =>
   layer.scoped(
-    Sized.Sized,
+    Sized.TestSized,
     pipe(
       fiberRuntime.fiberRefMake(size),
       core.map(Sized.fromFiberRef),

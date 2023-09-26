@@ -133,7 +133,16 @@
         "TDeferred",
         "TPriorityQueue",
         "TReentrantLock",
-        "TSet"
+        "TSet",
+        "TestAnnotation",
+        "TestAnnotationMap",
+        "TestAnnotations",
+        "TestClock",
+        "TestConfig",
+        "TestContext",
+        "TestLive",
+        "TestServices",
+        "TestSized"
     ],
     "preconstruct": {
         "distFilenameStrategy": "full",
@@ -257,7 +266,16 @@
             "TDeferred.ts",
             "TPriorityQueue.ts",
             "TReentrantLock.ts",
-            "TSet.ts"
+            "TSet.ts",
+            "TestAnnotation.ts",
+            "TestAnnotationMap.ts",
+            "TestAnnotations.ts",
+            "TestClock.ts",
+            "TestConfig.ts",
+            "TestContext.ts",
+            "TestLive.ts",
+            "TestServices.ts",
+            "TestSized.ts"
         ]
     },
     "repository": {
@@ -599,6 +617,11 @@
             "import": "./Schedule/dist/effect-Schedule.cjs.mjs",
             "default": "./Schedule/dist/effect-Schedule.cjs.js"
         },
+        "./TestLive": {
+            "module": "./TestLive/dist/effect-TestLive.esm.js",
+            "import": "./TestLive/dist/effect-TestLive.cjs.mjs",
+            "default": "./TestLive/dist/effect-TestLive.cjs.js"
+        },
         "./FiberRefs": {
             "module": "./FiberRefs/dist/effect-FiberRefs.esm.js",
             "import": "./FiberRefs/dist/effect-FiberRefs.cjs.mjs",
@@ -644,6 +667,16 @@
             "import": "./TDeferred/dist/effect-TDeferred.cjs.mjs",
             "default": "./TDeferred/dist/effect-TDeferred.cjs.js"
         },
+        "./TestClock": {
+            "module": "./TestClock/dist/effect-TestClock.esm.js",
+            "import": "./TestClock/dist/effect-TestClock.cjs.mjs",
+            "default": "./TestClock/dist/effect-TestClock.cjs.js"
+        },
+        "./TestSized": {
+            "module": "./TestSized/dist/effect-TestSized.esm.js",
+            "import": "./TestSized/dist/effect-TestSized.cjs.mjs",
+            "default": "./TestSized/dist/effect-TestSized.cjs.js"
+        },
         "./MetricHook": {
             "module": "./MetricHook/dist/effect-MetricHook.esm.js",
             "import": "./MetricHook/dist/effect-MetricHook.cjs.mjs",
@@ -673,6 +706,11 @@
             "module": "./TSemaphore/dist/effect-TSemaphore.esm.js",
             "import": "./TSemaphore/dist/effect-TSemaphore.cjs.mjs",
             "default": "./TSemaphore/dist/effect-TSemaphore.cjs.js"
+        },
+        "./TestConfig": {
+            "module": "./TestConfig/dist/effect-TestConfig.esm.js",
+            "import": "./TestConfig/dist/effect-TestConfig.cjs.mjs",
+            "default": "./TestConfig/dist/effect-TestConfig.cjs.js"
         },
         "./ConfigError": {
             "module": "./ConfigError/dist/effect-ConfigError.esm.js",
@@ -719,6 +757,11 @@
             "import": "./ScopedCache/dist/effect-ScopedCache.cjs.mjs",
             "default": "./ScopedCache/dist/effect-ScopedCache.cjs.js"
         },
+        "./TestContext": {
+            "module": "./TestContext/dist/effect-TestContext.esm.js",
+            "import": "./TestContext/dist/effect-TestContext.cjs.mjs",
+            "default": "./TestContext/dist/effect-TestContext.cjs.js"
+        },
         "./ConfigSecret": {
             "module": "./ConfigSecret/dist/effect-ConfigSecret.esm.js",
             "import": "./ConfigSecret/dist/effect-ConfigSecret.cjs.mjs",
@@ -743,6 +786,11 @@
             "module": "./RuntimeFlags/dist/effect-RuntimeFlags.esm.js",
             "import": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.mjs",
             "default": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.js"
+        },
+        "./TestServices": {
+            "module": "./TestServices/dist/effect-TestServices.esm.js",
+            "import": "./TestServices/dist/effect-TestServices.cjs.mjs",
+            "default": "./TestServices/dist/effect-TestServices.cjs.js"
         },
         "./MetricKeyType": {
             "module": "./MetricKeyType/dist/effect-MetricKeyType.esm.js",
@@ -799,6 +847,11 @@
             "import": "./TReentrantLock/dist/effect-TReentrantLock.cjs.mjs",
             "default": "./TReentrantLock/dist/effect-TReentrantLock.cjs.js"
         },
+        "./TestAnnotation": {
+            "module": "./TestAnnotation/dist/effect-TestAnnotation.esm.js",
+            "import": "./TestAnnotation/dist/effect-TestAnnotation.cjs.mjs",
+            "default": "./TestAnnotation/dist/effect-TestAnnotation.cjs.js"
+        },
         "./DefaultServices": {
             "module": "./DefaultServices/dist/effect-DefaultServices.esm.js",
             "import": "./DefaultServices/dist/effect-DefaultServices.cjs.mjs",
@@ -813,6 +866,11 @@
             "module": "./SynchronizedRef/dist/effect-SynchronizedRef.esm.js",
             "import": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.mjs",
             "default": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.js"
+        },
+        "./TestAnnotations": {
+            "module": "./TestAnnotations/dist/effect-TestAnnotations.esm.js",
+            "import": "./TestAnnotations/dist/effect-TestAnnotations.cjs.mjs",
+            "default": "./TestAnnotations/dist/effect-TestAnnotations.cjs.js"
         },
         "./MetricBoundaries": {
             "module": "./MetricBoundaries/dist/effect-MetricBoundaries.esm.js",
@@ -848,6 +906,11 @@
             "module": "./ScheduleIntervals/dist/effect-ScheduleIntervals.esm.js",
             "import": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.mjs",
             "default": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.js"
+        },
+        "./TestAnnotationMap": {
+            "module": "./TestAnnotationMap/dist/effect-TestAnnotationMap.esm.js",
+            "import": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.mjs",
+            "default": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.js"
         },
         "./ConfigProviderPathPatch": {
             "module": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.esm.js",

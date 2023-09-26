@@ -450,3 +450,39 @@ export * as TSet from "./TSet"
  * @since 1.0.0
  */
 export * as Types from "./Types"
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotation from "./TestAnnotation"
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotationMap from "./TestAnnotationMap"
+/**
+ * @since 1.0.0
+ */
+export * as TestAnnotations from "./TestAnnotations"
+/**
+ * @since 1.0.0
+ */
+export * as TestClock from "./TestClock"
+/**
+ * @since 1.0.0
+ */
+export * as TestConfig from "./TestConfig"
+/**
+ * @since 1.0.0
+ */
+export * as TestContext from "./TestContext"
+/**
+ * @since 1.0.0
+ */
+export * as TestLive from "./TestLive"
+/**
+ * @since 1.0.0
+ */
+export * as TestServices from "./TestServices"
+/**
+ * @since 1.0.0
+ */
+export * as TestSized from "./TestSized"

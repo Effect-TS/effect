@@ -1,4 +1,4 @@
-import type * as Fiber from "../../../Fiber"
+import type * as Fiber from "../../Fiber"
 
 /** @internal */
 export type SuspendedWarningData = Start | Pending | Done

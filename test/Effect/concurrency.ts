@@ -7,8 +7,8 @@ import * as Either from "effect/Either"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { pipe } from "effect/Function"
-import { adjust } from "effect/internal/testing/testClock"
 import * as Ref from "effect/Ref"
+import { adjust } from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 export const ExampleError = new Error("Oh noes!")

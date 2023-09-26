@@ -1,6 +1,6 @@
 ---
 title: TSemaphore.ts
-nav_order: 111
+nav_order: 120
 parent: Modules
 ---
 

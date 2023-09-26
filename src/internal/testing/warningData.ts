@@ -1,4 +1,4 @@
-import type * as Fiber from "../../../Fiber"
+import type * as Fiber from "../../Fiber"
 
 /**
  * `WarningData` describes the state of the warning message that is displayed

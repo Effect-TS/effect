@@ -3,10 +3,10 @@ import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Either from "effect/Either"
 import { identity, pipe } from "effect/Function"
-import * as TestClock from "effect/internal/testing/testClock"
 import * as Ref from "effect/Ref"
 import * as Cached from "effect/Resource"
 import * as Schedule from "effect/Schedule"
+import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Resource", () => {

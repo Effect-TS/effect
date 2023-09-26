@@ -121,6 +121,15 @@ Added in v1.0.0
   - [From "./TRef"](#from-tref)
   - [From "./TSemaphore"](#from-tsemaphore)
   - [From "./TSet"](#from-tset)
+  - [From "./TestAnnotation"](#from-testannotation)
+  - [From "./TestAnnotationMap"](#from-testannotationmap)
+  - [From "./TestAnnotations"](#from-testannotations)
+  - [From "./TestClock"](#from-testclock)
+  - [From "./TestConfig"](#from-testconfig)
+  - [From "./TestContext"](#from-testcontext)
+  - [From "./TestLive"](#from-testlive)
+  - [From "./TestServices"](#from-testservices)
+  - [From "./TestSized"](#from-testsized)
   - [From "./Tracer"](#from-tracer)
   - [From "./Tuple"](#from-tuple)
   - [From "./Types"](#from-types)
@@ -1423,6 +1432,114 @@ Re-exports all named exports from the "./TSet" module.
 
 ```ts
 export * from './TSet'
+```
+
+Added in v1.0.0
+
+## From "./TestAnnotation"
+
+Re-exports all named exports from the "./TestAnnotation" module.
+
+**Signature**
+
+```ts
+export * from './TestAnnotation'
+```
+
+Added in v1.0.0
+
+## From "./TestAnnotationMap"
+
+Re-exports all named exports from the "./TestAnnotationMap" module.
+
+**Signature**
+
+```ts
+export * from './TestAnnotationMap'
+```
+
+Added in v1.0.0
+
+## From "./TestAnnotations"
+
+Re-exports all named exports from the "./TestAnnotations" module.
+
+**Signature**
+
+```ts
+export * from './TestAnnotations'
+```
+
+Added in v1.0.0
+
+## From "./TestClock"
+
+Re-exports all named exports from the "./TestClock" module.
+
+**Signature**
+
+```ts
+export * from './TestClock'
+```
+
+Added in v1.0.0
+
+## From "./TestConfig"
+
+Re-exports all named exports from the "./TestConfig" module.
+
+**Signature**
+
+```ts
+export * from './TestConfig'
+```
+
+Added in v1.0.0
+
+## From "./TestContext"
+
+Re-exports all named exports from the "./TestContext" module.
+
+**Signature**
+
+```ts
+export * from './TestContext'
+```
+
+Added in v1.0.0
+
+## From "./TestLive"
+
+Re-exports all named exports from the "./TestLive" module.
+
+**Signature**
+
+```ts
+export * from './TestLive'
+```
+
+Added in v1.0.0
+
+## From "./TestServices"
+
+Re-exports all named exports from the "./TestServices" module.
+
+**Signature**
+
+```ts
+export * from './TestServices'
+```
+
+Added in v1.0.0
+
+## From "./TestSized"
+
+Re-exports all named exports from the "./TestSized" module.
+
+**Signature**
+
+```ts
+export * from './TestSized'
 ```
 
 Added in v1.0.0

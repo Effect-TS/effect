@@ -126,3 +126,12 @@ dist/
 /TPriorityQueue
 /TReentrantLock
 /TSet
+/TestAnnotation
+/TestAnnotationMap
+/TestAnnotations
+/TestClock
+/TestConfig
+/TestContext
+/TestLive
+/TestServices
+/TestSized

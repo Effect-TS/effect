@@ -120,7 +120,16 @@
     "TDeferred": true,
     "TPriorityQueue": true,
     "TReentrantLock": true,
-    "TSet": true
+    "TSet": true,
+    "TestAnnotation": true,
+    "TestAnnotationMap": true,
+    "TestAnnotations": true,
+    "TestClock": true,
+    "TestConfig": true,
+    "TestContext": true,
+    "TestLive": true,
+    "TestServices": true,
+    "TestSized": true
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"

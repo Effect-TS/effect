@@ -1,23 +1,30 @@
-import * as Context from "../../Context"
-import type * as Effect from "../../Effect"
-import * as Equal from "../../Equal"
-import type * as Fiber from "../../Fiber"
-import { pipe } from "../../Function"
-import * as core from "../../internal/core"
-import * as fiber from "../../internal/fiber"
-import * as TestAnnotation from "../../internal/testing/testAnnotation"
-import * as TestAnnotationMap from "../../internal/testing/testAnnotationMap"
-import * as MutableRef from "../../MutableRef"
-import * as RA from "../../ReadonlyArray"
-import * as Ref from "../../Ref"
-import * as SortedSet from "../../SortedSet"
-import * as effect from "../core-effect"
+/**
+ * @since 1.0.0
+ */
+import * as Context from "./Context"
+import type * as Effect from "./Effect"
+import * as Equal from "./Equal"
+import type * as Fiber from "./Fiber"
+import { pipe } from "./Function"
+import * as core from "./internal/core"
+import * as effect from "./internal/core-effect"
+import * as fiber from "./internal/fiber"
+import * as MutableRef from "./MutableRef"
+import * as RA from "./ReadonlyArray"
+import * as Ref from "./Ref"
+import * as SortedSet from "./SortedSet"
+import * as TestAnnotation from "./TestAnnotation"
+import * as TestAnnotationMap from "./TestAnnotationMap"
 
-/** @internal */
-export const AnnotationsTypeId = Symbol.for("@effect/test/Annotations")
+/**
+ * @since 1.0.0
+ */
+export const TestAnnotationsTypeId = Symbol.for("@effect/test/Annotations")
 
-/** @internal */
-export type AnnotationsTypeId = typeof AnnotationsTypeId
+/**
+ * @since 1.0.0
+ */
+export type TestAnnotationsTypeId = typeof TestAnnotationsTypeId
 
 /**
  * The `Annotations` trait provides access to an annotation map that tests can
@@ -27,12 +34,11 @@ export type AnnotationsTypeId = typeof AnnotationsTypeId
  * structured logging service or as a super polymorphic version of the writer
  * monad effect.
  *
- * @internal
+ * @since 1.0.0
  */
-export interface Annotations {
-  readonly [AnnotationsTypeId]: AnnotationsTypeId
+export interface TestAnnotations {
+  readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId
 
-  /** @internal */
   readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
 
   /**
@@ -54,8 +60,8 @@ export interface Annotations {
 }
 
 /** @internal */
-class AnnotationsImpl implements Annotations {
-  readonly [AnnotationsTypeId]: AnnotationsTypeId = AnnotationsTypeId
+class AnnotationsImpl implements TestAnnotations {
+  readonly [TestAnnotationsTypeId]: TestAnnotationsTypeId = TestAnnotationsTypeId
   constructor(readonly ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>) {
   }
   get<A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<never, never, A> {
@@ -85,17 +91,23 @@ class AnnotationsImpl implements Annotations {
   }
 }
 
-/** @internal */
-export const Annotations: Context.Tag<Annotations, Annotations> = Context.Tag<Annotations>(
+/**
+ * @since 1.0.0
+ */
+export const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations> = Context.Tag<TestAnnotations>(
   Symbol.for("@effect/test/Annotations")
 )
 
-/** @internal */
-export const isAnnotations = (u: unknown): u is Annotations => {
-  return typeof u === "object" && u != null && AnnotationsTypeId in u
+/**
+ * @since 1.0.0
+ */
+export const isTestAnnotations = (u: unknown): u is TestAnnotations => {
+  return typeof u === "object" && u != null && TestAnnotationsTypeId in u
 }
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const make = (
   ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>
-): Annotations => new AnnotationsImpl(ref)
+): TestAnnotations => new AnnotationsImpl(ref)

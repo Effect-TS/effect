@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-rm -rf .tsbuildinfo
+rm -rf tsconfig.tsbuildinfo
 rm -rf ./dist
 rm -rf ./Bigint
 rm -rf ./Either
@@ -117,3 +117,12 @@ rm -rf ./TDeferred
 rm -rf ./TPriorityQueue
 rm -rf ./TReentrantLock
 rm -rf ./TSet
+rm -rf ./TestAnnotation
+rm -rf ./TestAnnotationMap
+rm -rf ./TestAnnotations
+rm -rf ./TestClock
+rm -rf ./TestConfig
+rm -rf ./TestContext
+rm -rf ./TestLive
+rm -rf ./TestServices
+rm -rf ./TestSized

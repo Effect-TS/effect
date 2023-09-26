@@ -11,11 +11,11 @@ import * as Fiber from "effect/Fiber"
 import * as FiberId from "effect/FiberId"
 import { constVoid, pipe } from "effect/Function"
 import * as HashSet from "effect/HashSet"
-import * as TestClock from "effect/internal/testing/testClock"
 import * as MutableRef from "effect/MutableRef"
 import * as Option from "effect/Option"
 import * as ReadonlyArray from "effect/ReadonlyArray"
 import * as Ref from "effect/Ref"
+import * as TestClock from "effect/TestClock"
 import { assert, describe } from "vitest"
 
 describe.concurrent("Effect", () => {
