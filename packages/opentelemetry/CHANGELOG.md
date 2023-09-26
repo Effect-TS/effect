@@ -1,5 +1,17 @@
 # @effect/opentelemetry
 
+## 0.12.0
+
+### Minor Changes
+
+- [#54](https://github.com/Effect-TS/opentelemetry/pull/54) [`2af42ea`](https://github.com/Effect-TS/opentelemetry/commit/2af42ea90abde92c6c3832e585389c6697f487b3) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- [#52](https://github.com/Effect-TS/opentelemetry/pull/52) [`c9dcaf5`](https://github.com/Effect-TS/opentelemetry/commit/c9dcaf562bf8bd4567ec1355ee0744c3ddbb4e3f) Thanks [@tim-smart](https://github.com/tim-smart)! - makeExternalSpan is now compatible with the span context interface
+
+- [#52](https://github.com/Effect-TS/opentelemetry/pull/52) [`c9dcaf5`](https://github.com/Effect-TS/opentelemetry/commit/c9dcaf562bf8bd4567ec1355ee0744c3ddbb4e3f) Thanks [@tim-smart](https://github.com/tim-smart)! - add currentOtelSpan accessor
+
 ## 0.11.1
 
 ### Patch Changes
