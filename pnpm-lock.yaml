@@ -9,17 +9,17 @@ dependencies:
     specifier: ^0.18.6
     version: 0.18.6
   '@effect/io':
-    specifier: ^0.41.0
-    version: 0.41.0(@effect/data@0.18.6)
+    specifier: ^0.41.1
+    version: 0.41.1(@effect/data@0.18.6)
   '@effect/match':
     specifier: ^0.35.2
     version: 0.35.2(@effect/data@0.18.6)
   '@effect/stm':
     specifier: ^0.25.0
-    version: 0.25.0(@effect/data@0.18.6)(@effect/io@0.41.0)
+    version: 0.25.0(@effect/data@0.18.6)(@effect/io@0.41.1)
   '@effect/stream':
     specifier: ^0.37.0
-    version: 0.37.0(@effect/data@0.18.6)(@effect/io@0.41.0)
+    version: 0.37.0(@effect/data@0.18.6)(@effect/io@0.41.1)
 
 devDependencies:
   '@babel/cli':
@@ -819,8 +819,8 @@ packages:
       diff: 5.1.0
     dev: true
 
-  /@effect/io@0.41.0(@effect/data@0.18.6):
-    resolution: {integrity: sha512-gCjntDN3lbUh8wVQnwNoYlugNlWESZWsVkBFPfmOf2439EptHkvdEDNA47vR4OSB3lcqhH+J5jJHi2KWnEbRew==}
+  /@effect/io@0.41.1(@effect/data@0.18.6):
+    resolution: {integrity: sha512-gJ9fdN7GKkC1sryroy/bsFYugVFyjY2mhY/hwVQwLHxYluje0b5tRr7kpUnbG0ntSvuPS0JVe1604ppGUmym0g==}
     peerDependencies:
       '@effect/data': ^0.18.5
     dependencies:
@@ -839,24 +839,24 @@ packages:
       '@effect/data': 0.18.6
     dev: false
 
-  /@effect/stm@0.25.0(@effect/data@0.18.6)(@effect/io@0.41.0):
+  /@effect/stm@0.25.0(@effect/data@0.18.6)(@effect/io@0.41.1):
     resolution: {integrity: sha512-iHq/nRIH0wNxCpxm46ALxRTAJJO6YaA29sYrqtYdClEYVy66+zn79BgSVc8IgX1MdOjoEf73Ayp6wOinsKB7RQ==}
     peerDependencies:
       '@effect/data': ^0.18.6
       '@effect/io': ^0.41.0
     dependencies:
       '@effect/data': 0.18.6
-      '@effect/io': 0.41.0(@effect/data@0.18.6)
+      '@effect/io': 0.41.1(@effect/data@0.18.6)
     dev: false
 
-  /@effect/stream@0.37.0(@effect/data@0.18.6)(@effect/io@0.41.0):
+  /@effect/stream@0.37.0(@effect/data@0.18.6)(@effect/io@0.41.1):
     resolution: {integrity: sha512-fa5OeBCta/nmllMl3CZhgTUJseAlUsFFojMrEjIOW3HJrnz7VbJV1mceJuWSgNkrM2lhIXmWEVBBrZPjH63kEA==}
     peerDependencies:
       '@effect/data': ^0.18.6
       '@effect/io': ^0.41.0
     dependencies:
       '@effect/data': 0.18.6
-      '@effect/io': 0.41.0(@effect/data@0.18.6)
+      '@effect/io': 0.41.1(@effect/data@0.18.6)
     dev: false
 
   /@esbuild/android-arm64@0.18.20:
