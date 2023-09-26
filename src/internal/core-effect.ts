@@ -785,16 +785,13 @@ const adapter = function() {
   @internal */
 export const gen: typeof Effect.gen = function() {
   let f: any
-  let self: any
   if (arguments.length === 1) {
     f = arguments[0]
-    self = undefined
   } else {
-    f = arguments[1]
-    self = arguments[0]
+    f = arguments[1].bind(arguments[0])
   }
   return core.suspend(() => {
-    const iterator = f.bind(self)(adapter)
+    const iterator = f(adapter)
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
