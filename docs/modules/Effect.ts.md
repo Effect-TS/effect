@@ -4129,7 +4129,7 @@ of executing `Effect` values.
 **Signature**
 
 ```ts
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable, Inspectable {
+export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.blacklistSymbol]?: EffectUnifyBlacklist

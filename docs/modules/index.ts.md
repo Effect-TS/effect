@@ -94,6 +94,7 @@ Added in v1.0.0
   - [From "./Runtime"](#from-runtime)
   - [From "./RuntimeFlags"](#from-runtimeflags)
   - [From "./RuntimeFlagsPatch"](#from-runtimeflagspatch)
+  - [From "./STM"](#from-stm)
   - [From "./Schedule"](#from-schedule)
   - [From "./ScheduleDecision"](#from-scheduledecision)
   - [From "./ScheduleInterval"](#from-scheduleinterval)
@@ -109,6 +110,17 @@ Added in v1.0.0
   - [From "./Supervisor"](#from-supervisor)
   - [From "./Symbol"](#from-symbol)
   - [From "./SynchronizedRef"](#from-synchronizedref)
+  - [From "./TArray"](#from-tarray)
+  - [From "./TDeferred"](#from-tdeferred)
+  - [From "./THub"](#from-thub)
+  - [From "./TMap"](#from-tmap)
+  - [From "./TPriorityQueue"](#from-tpriorityqueue)
+  - [From "./TQueue"](#from-tqueue)
+  - [From "./TRandom"](#from-trandom)
+  - [From "./TReentrantLock"](#from-treentrantlock)
+  - [From "./TRef"](#from-tref)
+  - [From "./TSemaphore"](#from-tsemaphore)
+  - [From "./TSet"](#from-tset)
   - [From "./Tracer"](#from-tracer)
   - [From "./Tuple"](#from-tuple)
   - [From "./Unify"](#from-unify)
@@ -1090,6 +1102,18 @@ export * from './RuntimeFlagsPatch'
 
 Added in v1.0.0
 
+## From "./STM"
+
+Re-exports all named exports from the "./STM" module.
+
+**Signature**
+
+```ts
+export * from './STM'
+```
+
+Added in v1.0.0
+
 ## From "./Schedule"
 
 Re-exports all named exports from the "./Schedule" module.
@@ -1266,6 +1290,138 @@ Re-exports all named exports from the "./SynchronizedRef" module.
 
 ```ts
 export * from './SynchronizedRef'
+```
+
+Added in v1.0.0
+
+## From "./TArray"
+
+Re-exports all named exports from the "./TArray" module.
+
+**Signature**
+
+```ts
+export * from './TArray'
+```
+
+Added in v1.0.0
+
+## From "./TDeferred"
+
+Re-exports all named exports from the "./TDeferred" module.
+
+**Signature**
+
+```ts
+export * from './TDeferred'
+```
+
+Added in v1.0.0
+
+## From "./THub"
+
+Re-exports all named exports from the "./THub" module.
+
+**Signature**
+
+```ts
+export * from './THub'
+```
+
+Added in v1.0.0
+
+## From "./TMap"
+
+Re-exports all named exports from the "./TMap" module.
+
+**Signature**
+
+```ts
+export * from './TMap'
+```
+
+Added in v1.0.0
+
+## From "./TPriorityQueue"
+
+Re-exports all named exports from the "./TPriorityQueue" module.
+
+**Signature**
+
+```ts
+export * from './TPriorityQueue'
+```
+
+Added in v1.0.0
+
+## From "./TQueue"
+
+Re-exports all named exports from the "./TQueue" module.
+
+**Signature**
+
+```ts
+export * from './TQueue'
+```
+
+Added in v1.0.0
+
+## From "./TRandom"
+
+Re-exports all named exports from the "./TRandom" module.
+
+**Signature**
+
+```ts
+export * from './TRandom'
+```
+
+Added in v1.0.0
+
+## From "./TReentrantLock"
+
+Re-exports all named exports from the "./TReentrantLock" module.
+
+**Signature**
+
+```ts
+export * from './TReentrantLock'
+```
+
+Added in v1.0.0
+
+## From "./TRef"
+
+Re-exports all named exports from the "./TRef" module.
+
+**Signature**
+
+```ts
+export * from './TRef'
+```
+
+Added in v1.0.0
+
+## From "./TSemaphore"
+
+Re-exports all named exports from the "./TSemaphore" module.
+
+**Signature**
+
+```ts
+export * from './TSemaphore'
+```
+
+Added in v1.0.0
+
+## From "./TSet"
+
+Re-exports all named exports from the "./TSet" module.
+
+**Signature**
+
+```ts
+export * from './TSet'
 ```
 
 Added in v1.0.0

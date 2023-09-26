@@ -41,7 +41,7 @@ value.
 ```ts
 export declare const fromAcquire: <R, E, A>(
   acquire: Effect.Effect<R, E, A>
-) => Effect.Effect<R | Scope.Scope, E, ScopedRef<A>>
+) => Effect.Effect<Scope.Scope | R, E, ScopedRef<A>>
 ```
 
 Added in v1.0.0

@@ -13,7 +13,8 @@
         "coverage": "vitest run --coverage",
         "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
         "update-version": "changeset version && pnpm install --no-frozen-lockfile",
-        "lint": "eslint src test"
+        "lint": "eslint src test",
+        "fix": "preconstruct fix"
     },
     "files": [
         "dist",
@@ -120,7 +121,19 @@
         "Ref",
         "FiberStatus",
         "Reloadable",
-        "Utils"
+        "Utils",
+        "STM",
+        "THub",
+        "TQueue",
+        "TRef",
+        "TArray",
+        "TMap",
+        "TRandom",
+        "TSemaphore",
+        "TDeferred",
+        "TPriorityQueue",
+        "TReentrantLock",
+        "TSet"
     ],
     "preconstruct": {
         "distFilenameStrategy": "full",
@@ -232,7 +245,19 @@
             "FiberRefsPatch.ts",
             "Ref.ts",
             "FiberStatus.ts",
-            "Reloadable.ts"
+            "Reloadable.ts",
+            "STM.ts",
+            "THub.ts",
+            "TQueue.ts",
+            "TRef.ts",
+            "TArray.ts",
+            "TMap.ts",
+            "TRandom.ts",
+            "TSemaphore.ts",
+            "TDeferred.ts",
+            "TPriorityQueue.ts",
+            "TReentrantLock.ts",
+            "TSet.ts"
         ]
     },
     "repository": {
@@ -264,6 +289,11 @@
             "import": "./Ref/dist/effect-Ref.cjs.mjs",
             "default": "./Ref/dist/effect-Ref.cjs.js"
         },
+        "./STM": {
+            "module": "./STM/dist/effect-STM.esm.js",
+            "import": "./STM/dist/effect-STM.cjs.mjs",
+            "default": "./STM/dist/effect-STM.cjs.js"
+        },
         "./Data": {
             "module": "./Data/dist/effect-Data.esm.js",
             "import": "./Data/dist/effect-Data.cjs.mjs",
@@ -288,6 +318,26 @@
             "module": "./Pool/dist/effect-Pool.esm.js",
             "import": "./Pool/dist/effect-Pool.cjs.mjs",
             "default": "./Pool/dist/effect-Pool.cjs.js"
+        },
+        "./THub": {
+            "module": "./THub/dist/effect-THub.esm.js",
+            "import": "./THub/dist/effect-THub.cjs.mjs",
+            "default": "./THub/dist/effect-THub.cjs.js"
+        },
+        "./TMap": {
+            "module": "./TMap/dist/effect-TMap.esm.js",
+            "import": "./TMap/dist/effect-TMap.cjs.mjs",
+            "default": "./TMap/dist/effect-TMap.cjs.js"
+        },
+        "./TRef": {
+            "module": "./TRef/dist/effect-TRef.esm.js",
+            "import": "./TRef/dist/effect-TRef.cjs.mjs",
+            "default": "./TRef/dist/effect-TRef.cjs.js"
+        },
+        "./TSet": {
+            "module": "./TSet/dist/effect-TSet.esm.js",
+            "import": "./TSet/dist/effect-TSet.cjs.mjs",
+            "default": "./TSet/dist/effect-TSet.cjs.js"
         },
         "./Brand": {
             "module": "./Brand/dist/effect-Brand.esm.js",
@@ -434,6 +484,16 @@
             "import": "./Symbol/dist/effect-Symbol.cjs.mjs",
             "default": "./Symbol/dist/effect-Symbol.cjs.js"
         },
+        "./TArray": {
+            "module": "./TArray/dist/effect-TArray.esm.js",
+            "import": "./TArray/dist/effect-TArray.cjs.mjs",
+            "default": "./TArray/dist/effect-TArray.cjs.js"
+        },
+        "./TQueue": {
+            "module": "./TQueue/dist/effect-TQueue.esm.js",
+            "import": "./TQueue/dist/effect-TQueue.cjs.mjs",
+            "default": "./TQueue/dist/effect-TQueue.cjs.js"
+        },
         "./Tracer": {
             "module": "./Tracer/dist/effect-Tracer.esm.js",
             "import": "./Tracer/dist/effect-Tracer.cjs.mjs",
@@ -483,6 +543,11 @@
             "module": "./Runtime/dist/effect-Runtime.esm.js",
             "import": "./Runtime/dist/effect-Runtime.cjs.mjs",
             "default": "./Runtime/dist/effect-Runtime.cjs.js"
+        },
+        "./TRandom": {
+            "module": "./TRandom/dist/effect-TRandom.esm.js",
+            "import": "./TRandom/dist/effect-TRandom.cjs.mjs",
+            "default": "./TRandom/dist/effect-TRandom.cjs.js"
         },
         "./Deferred": {
             "module": "./Deferred/dist/effect-Deferred.esm.js",
@@ -574,6 +639,11 @@
             "import": "./SortedSet/dist/effect-SortedSet.cjs.mjs",
             "default": "./SortedSet/dist/effect-SortedSet.cjs.js"
         },
+        "./TDeferred": {
+            "module": "./TDeferred/dist/effect-TDeferred.esm.js",
+            "import": "./TDeferred/dist/effect-TDeferred.cjs.mjs",
+            "default": "./TDeferred/dist/effect-TDeferred.cjs.js"
+        },
         "./MetricHook": {
             "module": "./MetricHook/dist/effect-MetricHook.esm.js",
             "import": "./MetricHook/dist/effect-MetricHook.cjs.mjs",
@@ -598,6 +668,11 @@
             "module": "./Supervisor/dist/effect-Supervisor.esm.js",
             "import": "./Supervisor/dist/effect-Supervisor.cjs.mjs",
             "default": "./Supervisor/dist/effect-Supervisor.cjs.js"
+        },
+        "./TSemaphore": {
+            "module": "./TSemaphore/dist/effect-TSemaphore.esm.js",
+            "import": "./TSemaphore/dist/effect-TSemaphore.cjs.mjs",
+            "default": "./TSemaphore/dist/effect-TSemaphore.cjs.js"
         },
         "./ConfigError": {
             "module": "./ConfigError/dist/effect-ConfigError.esm.js",
@@ -713,6 +788,16 @@
             "module": "./ReadonlyRecord/dist/effect-ReadonlyRecord.esm.js",
             "import": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.mjs",
             "default": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.js"
+        },
+        "./TPriorityQueue": {
+            "module": "./TPriorityQueue/dist/effect-TPriorityQueue.esm.js",
+            "import": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.mjs",
+            "default": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.js"
+        },
+        "./TReentrantLock": {
+            "module": "./TReentrantLock/dist/effect-TReentrantLock.esm.js",
+            "import": "./TReentrantLock/dist/effect-TReentrantLock.cjs.mjs",
+            "default": "./TReentrantLock/dist/effect-TReentrantLock.cjs.js"
         },
         "./DefaultServices": {
             "module": "./DefaultServices/dist/effect-DefaultServices.esm.js",

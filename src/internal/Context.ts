@@ -8,14 +8,24 @@ import { type Effectable, EffectTypeId, effectVariance } from "../internal/Effec
 import type * as O from "../Option"
 import * as option from "../Option"
 import { pipeArguments } from "../Pipeable"
+import type * as STM from "../STM"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
 
 /** @internal */
+const STMSymbolKey = "effect/STM"
+
+/** @internal */
+export const STMTypeId: STM.STMTypeId = Symbol.for(
+  STMSymbolKey
+) as STM.STMTypeId
+
+/** @internal */
 export const TagProto: C.Tag<unknown, unknown> & Effectable = {
   _tag: "Tag",
   [EffectTypeId]: effectVariance,
+  [STMTypeId]: effectVariance,
   [TagTypeId]: {
     _S: (_: unknown) => _,
     _I: (_: unknown) => _

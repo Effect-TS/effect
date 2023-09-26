@@ -114,3 +114,15 @@ dist/
 /Ref
 /FiberStatus
 /Reloadable
+/STM
+/THub
+/TQueue
+/TRef
+/TArray
+/TMap
+/TRandom
+/TSemaphore
+/TDeferred
+/TPriorityQueue
+/TReentrantLock
+/TSet

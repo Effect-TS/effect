@@ -25,7 +25,6 @@ import { dual, identity } from "./Function"
 import type * as HashMap from "./HashMap"
 import type * as HashSet from "./HashSet"
 import type { TypeLambda } from "./HKT"
-import type { Inspectable } from "./Inspectable"
 import { clockTag } from "./internal/clock"
 import * as core from "./internal/core"
 import * as effect from "./internal/core-effect"
@@ -103,7 +102,7 @@ export type EffectTypeId = typeof EffectTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable, Inspectable {
+export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, Pipeable {
   readonly [Unify.typeSymbol]?: unknown
   readonly [Unify.unifySymbol]?: EffectUnify<this>
   readonly [Unify.blacklistSymbol]?: EffectUnifyBlacklist

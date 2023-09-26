@@ -1,6 +1,6 @@
 ---
 title: Types.ts
-nav_order: 102
+nav_order: 114
 parent: Modules
 ---
 

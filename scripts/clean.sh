@@ -105,3 +105,15 @@ rm -rf ./FiberRefsPatch
 rm -rf ./Ref
 rm -rf ./FiberStatus
 rm -rf ./Reloadable
+rm -rf ./STM
+rm -rf ./THub
+rm -rf ./TQueue
+rm -rf ./TRef
+rm -rf ./TArray
+rm -rf ./TMap
+rm -rf ./TRandom
+rm -rf ./TSemaphore
+rm -rf ./TDeferred
+rm -rf ./TPriorityQueue
+rm -rf ./TReentrantLock
+rm -rf ./TSet

@@ -108,7 +108,19 @@
     "FiberRefsPatch": true,
     "Ref": true,
     "FiberStatus": true,
-    "Reloadable": true
+    "Reloadable": true,
+    "STM": true,
+    "THub": true,
+    "TQueue": true,
+    "TRef": true,
+    "TArray": true,
+    "TMap": true,
+    "TRandom": true,
+    "TSemaphore": true,
+    "TDeferred": true,
+    "TPriorityQueue": true,
+    "TReentrantLock": true,
+    "TSet": true
   },
   "[json]": {
     "editor.defaultFormatter": "vscode.json-language-features"
