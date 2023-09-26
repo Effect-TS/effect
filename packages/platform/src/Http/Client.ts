@@ -203,11 +203,36 @@ export const filterStatusOk: <R, E>(
  * @since 1.0.0
  * @category constructors
  */
-export const make: (
-  f: (
-    request: ClientRequest.ClientRequest
-  ) => Effect.Effect<never, Error.HttpClientError, ClientResponse.ClientResponse>
-) => Client.Default = internal.make
+export const make: <R, E, A>(f: (request: ClientRequest.ClientRequest) => Effect.Effect<R, E, A>) => Client<R, E, A> =
+  internal.make
+
+/**
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const transform: {
+  <R, E, A, R1, E1, A1>(
+    f: (client: Client<R, E, A>) => (request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
+  ): (self: Client<R, E, A>) => Client<R1, E1, A1>
+  <R, E, A, R1, E1, A1>(
+    self: Client<R, E, A>,
+    f: (client: Client<R, E, A>) => (request: ClientRequest.ClientRequest) => Effect.Effect<R1, E1, A1>
+  ): Client<R1, E1, A1>
+} = internal.transform
+
+/**
+ * @since 1.0.0
+ * @category mapping & sequencing
+ */
+export const transformResponse: {
+  <R, E, A, R1, E1, A1>(
+    f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R1, E1, A1>
+  ): (self: Client<R, E, A>) => Client<R1, E1, A1>
+  <R, E, A, R1, E1, A1>(
+    self: Client<R, E, A>,
+    f: (effect: Effect.Effect<R, E, A>) => Effect.Effect<R1, E1, A1>
+  ): Client<R1, E1, A1>
+} = internal.transformResponse
 
 /**
  * @since 1.0.0
