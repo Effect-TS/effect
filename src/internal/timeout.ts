@@ -5,7 +5,7 @@
  */
 
 /** @internal */
-const isBun = !!((process as any)?.isBun)
+const isBun = typeof process === "undefined" ? false : !!((process as any)?.isBun)
 
 /** @internal */
 export const clear: (id: NodeJS.Timeout) => void = isBun ? clearInterval : clearTimeout
