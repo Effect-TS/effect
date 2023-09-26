@@ -51,7 +51,7 @@ describe("e2e", () => {
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
-      Effect.provideLayer(ResolverLive),
+      Effect.provide(ResolverLive),
       Effect.runPromise
     ))
 
@@ -59,7 +59,7 @@ describe("e2e", () => {
     pipe(
       client.getBinary(new Uint8Array([1, 2, 3])),
       Effect.tap((_) => Effect.sync(() => expect(_).toEqual(new Uint8Array([1, 2, 3])))),
-      Effect.provideLayer(SharedResolverLive),
+      Effect.provide(SharedResolverLive),
       Effect.runPromise
     ))
 
@@ -70,7 +70,7 @@ describe("e2e", () => {
         { concurrency: "unbounded" }
       ),
       Effect.tap((_) => Effect.sync(() => expect(_.length).toEqual(100))),
-      Effect.provideLayer(ResolverLive),
+      Effect.provide(ResolverLive),
       Effect.runPromise
     ))
 
@@ -82,7 +82,7 @@ describe("e2e", () => {
           onTimeout: () => Cause.die("boom"),
           duration: Duration.millis(100)
         }),
-        Effect.provideLayer(ResolverLive),
+        Effect.provide(ResolverLive),
         Effect.runPromise
       )
     ).rejects.toEqual(new Error("boom"))
@@ -102,7 +102,7 @@ describe("e2e", () => {
         const name = yield* $(client.getName)
         expect(name).toEqual("Tim")
       }),
-      Effect.provideLayer(SetupResolverLive),
+      Effect.provide(SetupResolverLive),
       Effect.runPromise
     )
 

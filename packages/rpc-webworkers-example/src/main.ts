@@ -1,43 +1,43 @@
-import { pipe } from "@effect/data/Function"
-import * as Layer from "@effect/io/Layer"
-import * as Effect from "@effect/io/Effect"
+import viteLogo from "/vite.svg"
+import * as Chunk from "@effect/data/Chunk"
 import * as Duration from "@effect/data/Duration"
+import { pipe } from "@effect/data/Function"
+import * as Effect from "@effect/io/Effect"
+import * as Layer from "@effect/io/Layer"
+import * as Pool from "@effect/io/Pool"
 import * as Client from "@effect/rpc-webworkers/Client"
 import * as Resolver from "@effect/rpc-webworkers/Resolver"
-import * as Chunk from "@effect/data/Chunk"
 import { schema } from "./schema"
 import typescriptLogo from "./typescript.svg"
 import RpcWorker from "./worker?worker"
-import viteLogo from "/vite.svg"
-import * as Pool from "@effect/io/Pool"
 import "./style.css"
 
 // Create the worker pool layer
-const PoolLive = Resolver.makePoolLayer(spawn =>
+const PoolLive = Resolver.makePoolLayer((spawn) =>
   Pool.make({
-    acquire: spawn(id => {
+    acquire: spawn((id) => {
       console.log("Spawning worker", id)
       return new RpcWorker()
     }, 3),
-    size: navigator.hardwareConcurrency,
-  }),
+    size: navigator.hardwareConcurrency
+  })
 )
 // Create the resolver layer
 const ResolverLive = Layer.provide(PoolLive, Resolver.RpcWorkerResolverLive)
 
 // Example for using shared workers
-export const SharedPoolLive = Resolver.makePoolLayer(spawn =>
+export const SharedPoolLive = Resolver.makePoolLayer((spawn) =>
   Pool.make({
-    acquire: spawn(id => {
+    acquire: spawn((id) => {
       console.log("Spawning shared worker", id)
       return new SharedWorker(new URL("./worker.ts", import.meta.url), {
         /* @vite-ignore */
         name: `worker-${id}`,
-        type: "module",
+        type: "module"
       })
     }, 3),
-    size: navigator.hardwareConcurrency,
-  }),
+    size: navigator.hardwareConcurrency
+  })
 )
 
 const client = Client.make(schema)
@@ -45,19 +45,17 @@ const client = Client.make(schema)
 // Send off 50 requests to the worker pool
 pipe(
   Effect.all(
-    Chunk.map(Chunk.range(1, 50), () =>
-      client.getBinary(new Uint8Array([1, 2, 3])),
-    ),
-    { concurrency: "unbounded" },
+    Chunk.map(Chunk.range(1, 50), () => client.getBinary(new Uint8Array([1, 2, 3]))),
+    { concurrency: "unbounded" }
   ),
-  Effect.tap(_ => Effect.sync(() => console.log(_))),
+  Effect.tap((_) => Effect.sync(() => console.log(_))),
   Effect.zipLeft(
-    Effect.catchAll(client.crash, e => Effect.sync(() => console.log(e))),
+    Effect.catchAll(client.crash, (e) => Effect.sync(() => console.log(e)))
   ),
   // Sleep so you can see the spawned workers in dev tools
   Effect.zipLeft(Effect.sleep(Duration.seconds(120))),
-  Effect.provideLayer(ResolverLive),
-  Effect.runFork,
+  Effect.provide(ResolverLive),
+  Effect.runFork
 )
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `

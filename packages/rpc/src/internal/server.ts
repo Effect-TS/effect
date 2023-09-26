@@ -114,7 +114,7 @@ export const handleSingle: {
                     Effect.fail(
                       RpcTransportError({ error: "__setup not called" })
                     ),
-                  onSome: (ctx) => Effect.provideSomeContext(effect, ctx)
+                  onSome: (ctx) => Effect.provide(effect, ctx)
                 })
               )
             )

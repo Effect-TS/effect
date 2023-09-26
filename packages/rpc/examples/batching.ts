@@ -8,24 +8,22 @@ import * as Schema from "@effect/schema/Schema"
 
 export const schema = RpcSchema.make({
   getIds: {
-    output: Schema.array(Schema.string),
+    output: Schema.array(Schema.string)
   },
   getUser: {
     input: Schema.string,
-    output: Schema.any,
-  },
+    output: Schema.any
+  }
 })
 
 const router = Router.make(schema, {
   getIds: Effect.succeed(["1", "2", "3"]),
-  getUser: id => Effect.succeed({ id, name: "Tim" }),
+  getUser: (id) => Effect.succeed({ id, name: "Tim" })
 })
 
 const client = Client.makeWithResolver(
   schema,
-  Resolver.make(Server.handler(router)),
+  Resolver.make(Server.handler(router))
 )
 
-Effect.flatMap(client.getIds, ids =>
-  Effect.all(ids.map(client.getUser), { concurrency: "unbounded" }),
-)
+Effect.flatMap(client.getIds, (ids) => Effect.all(ids.map(client.getUser), { concurrency: "unbounded" }))
