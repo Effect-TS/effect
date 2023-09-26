@@ -1,5 +1,16 @@
 # @effect/platform-browser
 
+## 0.6.0
+
+### Minor Changes
+
+- [#156](https://github.com/Effect-TS/platform/pull/156) [`e6c4101`](https://github.com/Effect-TS/platform/commit/e6c41011e5420d90c543dd25d87036d4150f3e85) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- Updated dependencies [[`e6c4101`](https://github.com/Effect-TS/platform/commit/e6c41011e5420d90c543dd25d87036d4150f3e85)]:
+  - @effect/platform@0.17.0
+
 ## 0.5.0
 
 ### Minor Changes
