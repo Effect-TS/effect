@@ -7,7 +7,7 @@ import type * as TestAnnotation from "./TestAnnotation"
 /**
  * @since 1.0.0
  */
-export const TestAnnotationMapTypeId = Symbol.for("@effect/test/TestAnnotationMap")
+export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
 
 /**
  * @since 1.0.0

@@ -58,7 +58,7 @@ For example, here is how we can test `Effect.timeout` using `TestClock`:
 import * as Duration from 'effect/Duration'
 import * as Effect from 'effect/Effect'
 import * as Fiber from 'effect/Fiber'
-import * as TestClock from '@effect/test/TestClock'
+import * as TestClock from 'effect/TestClock'
 import * as Option from 'effect/Option'
 
 Effect.gen(function* () {

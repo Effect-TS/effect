@@ -5,7 +5,7 @@ import * as Hash from "../../../Hash"
 import * as OpCodes from "../../../internal/stm/opCodes/tExit"
 
 /** @internal */
-const TExitSymbolKey = "@effect/io/TExit"
+const TExitSymbolKey = "effect/TExit"
 
 /** @internal */
 export const TExitTypeId = Symbol.for(TExitSymbolKey)

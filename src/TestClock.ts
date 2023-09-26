@@ -51,7 +51,7 @@ import * as Live from "./TestLive"
  * import * as Duration from "effect/Duration"
  * import * as Effect from "effect/Effect"
  * import * as Fiber from "effect/Fiber"
- * import * as TestClock from "@effect/test/TestClock"
+ * import * as TestClock from "effect/TestClock"
  * import * as Option from "effect/Option"
  *
  * Effect.gen(function*() {
@@ -88,7 +88,7 @@ export interface TestClock extends Clock.Clock {
  * @since 1.0.0
  */
 export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
-  Symbol.for("@effect/test/TestClock")
+  Symbol.for("effect/TestClock")
 )
 
 /**

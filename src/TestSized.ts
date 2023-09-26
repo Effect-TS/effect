@@ -9,7 +9,7 @@ import * as core from "./internal/core"
 /**
  * @since 1.0.0
  */
-export const TestSizedTypeId = Symbol.for("@effect/test/Sized")
+export const TestSizedTypeId = Symbol.for("effect/Sized")
 
 /**
  * @since 1.0.0

@@ -7,7 +7,7 @@ import * as TExitOpCodes from "../../../internal/stm/opCodes/tExit"
 import type * as TExit from "../../../internal/stm/stm/tExit"
 
 /** @internal */
-const STMStateSymbolKey = "@effect/io/STM/State"
+const STMStateSymbolKey = "effect/STM/State"
 
 /** @internal */
 export const STMStateTypeId = Symbol.for(STMStateSymbolKey)

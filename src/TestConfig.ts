@@ -35,7 +35,7 @@ export interface TestConfig {
  * @since 1.0.0
  */
 export const TestConfig: Context.Tag<TestConfig, TestConfig> = Context.Tag<TestConfig>(
-  Symbol.for("@effect/test/TestConfig")
+  Symbol.for("effect/TestConfig")
 )
 
 /**

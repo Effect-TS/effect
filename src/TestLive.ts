@@ -10,7 +10,7 @@ import * as defaultServices from "./internal/defaultServices"
 /**
  * @since 1.0.0
  */
-export const TestLiveTypeId = Symbol.for("@effect/test/Live")
+export const TestLiveTypeId = Symbol.for("effect/Live")
 
 /**
  * @since 1.0.0
@@ -34,7 +34,7 @@ export interface TestLive {
  * @since 1.0.0
  */
 export const TestLive: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
-  Symbol.for("@effect/test/Live")
+  Symbol.for("effect/Live")
 )
 
 /** @internal */

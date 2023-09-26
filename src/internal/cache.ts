@@ -94,7 +94,7 @@ export const refreshing = <Key, Error, Value>(
   })
 
 /** @internal */
-export const MapKeyTypeId = Symbol.for("@effect/cache/Cache/MapKey")
+export const MapKeyTypeId = Symbol.for("effect/Cache/MapKey")
 
 /** @internal */
 export type MapKeyTypeId = typeof MapKeyTypeId
@@ -260,7 +260,7 @@ export const initialCacheState = <Key, Error, Value>(): CacheState<Key, Error, V
   )
 
 /** @internal */
-const CacheSymbolKey = "@effect/cache/Cache"
+const CacheSymbolKey = "effect/Cache"
 
 /** @internal */
 export const CacheTypeId: Cache.CacheTypeId = Symbol.for(

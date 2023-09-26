@@ -19,7 +19,7 @@ import * as TestAnnotationMap from "./TestAnnotationMap"
 /**
  * @since 1.0.0
  */
-export const TestAnnotationsTypeId = Symbol.for("@effect/test/Annotations")
+export const TestAnnotationsTypeId = Symbol.for("effect/Annotations")
 
 /**
  * @since 1.0.0
@@ -95,7 +95,7 @@ class AnnotationsImpl implements TestAnnotations {
  * @since 1.0.0
  */
 export const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations> = Context.Tag<TestAnnotations>(
-  Symbol.for("@effect/test/Annotations")
+  Symbol.for("effect/Annotations")
 )
 
 /**

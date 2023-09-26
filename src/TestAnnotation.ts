@@ -13,7 +13,7 @@ import type * as MutableRef from "./MutableRef"
 import type * as SortedSet from "./SortedSet"
 
 /** @internal */
-const TestAnnotationSymbolKey = "@effect/test/TestAnnotation"
+const TestAnnotationSymbolKey = "effect/TestAnnotation"
 
 /**
  * @since 1.0.0
@@ -124,7 +124,7 @@ export const fibers: TestAnnotation<
  */
 export const ignored: TestAnnotation<number> = make(
   "ignored",
-  Context.Tag<number>(Symbol.for("@effect/test/TestAnnotation/ignored")),
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/ignored")),
   0,
   (a, b) => a + b
 )
@@ -136,7 +136,7 @@ export const ignored: TestAnnotation<number> = make(
  */
 export const repeated: TestAnnotation<number> = make(
   "repeated",
-  Context.Tag<number>(Symbol.for("@effect/test/TestAnnotation/repeated")),
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/repeated")),
   0,
   (a, b) => a + b
 )
@@ -148,7 +148,7 @@ export const repeated: TestAnnotation<number> = make(
  */
 export const retried: TestAnnotation<number> = make(
   "retried",
-  Context.Tag<number>(Symbol.for("@effect/test/TestAnnotation/retired")),
+  Context.Tag<number>(Symbol.for("effect/TestAnnotation/retired")),
   0,
   (a, b) => a + b
 )
@@ -160,7 +160,7 @@ export const retried: TestAnnotation<number> = make(
  */
 export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
   "tagged",
-  Context.Tag<HashSet.HashSet<string>>(Symbol.for("@effect/test/TestAnnotation/tagged")),
+  Context.Tag<HashSet.HashSet<string>>(Symbol.for("effect/TestAnnotation/tagged")),
   HashSet.empty(),
   (a, b) => pipe(a, HashSet.union(b))
 )
