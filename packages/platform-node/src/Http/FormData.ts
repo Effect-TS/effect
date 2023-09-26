@@ -13,6 +13,9 @@ import type * as Stream from "@effect/stream/Stream"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
 
+/**
+ * @since 1.0.0
+ */
 export * from "@effect/platform/Http/FormData"
 
 /**

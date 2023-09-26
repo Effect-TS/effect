@@ -5,7 +5,7 @@ import * as Stream from "@effect/stream/Stream"
 
 const runPromise = <E, A>(self: Effect.Effect<Fs.FileSystem, E, A>) =>
   Effect.runPromise(
-    Effect.provideLayer(self, Fs.layer)
+    Effect.provide(self, Fs.layer)
   )
 
 describe("FileSystem", () => {

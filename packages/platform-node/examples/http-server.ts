@@ -7,7 +7,7 @@ const ServerLive = Http.server.layer(() => createServer(), { port: 3000 })
 
 Http.server.serve(Effect.succeed(Http.response.text("Hello World"))).pipe(
   Effect.scoped,
-  Effect.provideLayer(ServerLive),
+  Effect.provide(ServerLive),
   Effect.tapErrorCause(Effect.logError),
   runMain
 )

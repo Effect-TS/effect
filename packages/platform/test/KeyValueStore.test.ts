@@ -8,7 +8,7 @@ import { afterEach } from "vitest"
 
 export const testLayer = <E>(layer: Layer.Layer<never, E, KeyValueStore.KeyValueStore>) => {
   const run = <E, A>(effect: Effect.Effect<KeyValueStore.KeyValueStore, E, A>) =>
-    Effect.runPromise(Effect.provideLayer(effect, layer))
+    Effect.runPromise(Effect.provide(effect, layer))
 
   afterEach(() =>
     run(Effect.gen(function*(_) {
@@ -105,7 +105,7 @@ describe("KeyValueStore / prefix", () => {
       expect(yield* _(store.get("prefix/foo"))).toEqual(Option.some("barbar"))
       expect(yield* _(store.has("prefix/foo"))).toEqual(true)
     }).pipe(
-      Effect.provideLayer(KeyValueStore.layerMemory),
+      Effect.provide(KeyValueStore.layerMemory),
       Effect.runPromise
     ))
 })
@@ -116,7 +116,7 @@ class User extends Schema.Class<User>()({
 }) {}
 const UserStore = KeyValueStore.layerSchema(User)
 const runUserStore = <E, A>(effect: Effect.Effect<KeyValueStore.SchemaStore<User>, E, A>) =>
-  Effect.runPromise(Effect.provideLayer(effect, UserStore.layer.pipe(Layer.use(KeyValueStore.layerMemory))))
+  Effect.runPromise(Effect.provide(effect, UserStore.layer.pipe(Layer.use(KeyValueStore.layerMemory))))
 
 describe("KeyValueStore / SchemaStore", () => {
   it("encodes & decodes", () =>

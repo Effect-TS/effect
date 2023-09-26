@@ -53,7 +53,7 @@ Effect.flatMap(
   (todos) => todos.create({ userId: 1, title: "test", completed: false })
 ).pipe(
   Effect.tap(Effect.log),
-  Effect.provideLayer(TodoServiceLive),
+  Effect.provide(TodoServiceLive),
   Effect.tapErrorCause(Effect.logError),
   runMain
 )

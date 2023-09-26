@@ -49,7 +49,7 @@ describe("HttpClient", () => {
         Effect.flatMap((_) => _.text)
       )
       expect(response).toContain("Google")
-    }).pipe(Effect.provideLayer(NodeClient.layer), Effect.runPromise))
+    }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
 
   it("google stream", () =>
     Effect.gen(function*(_) {
@@ -62,14 +62,14 @@ describe("HttpClient", () => {
         Stream.runFold("", (a, b) => a + new TextDecoder().decode(b))
       )
       expect(response).toContain("Google")
-    }).pipe(Effect.provideLayer(NodeClient.layer), Effect.runPromise))
+    }).pipe(Effect.provide(NodeClient.layer), Effect.runPromise))
 
   it("jsonplaceholder", () =>
     Effect.gen(function*(_) {
       const jp = yield* _(JsonPlaceholder)
       const response = yield* _(Http.request.get("/todos/1"), jp.todoClient)
       expect(response.id).toBe(1)
-    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+    }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaFunction", () =>
     Effect.gen(function*(_) {
@@ -80,5 +80,5 @@ describe("HttpClient", () => {
         completed: false
       }))
       expect(response.title).toBe("test")
-    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+    }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 })

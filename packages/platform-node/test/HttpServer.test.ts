@@ -1,4 +1,3 @@
-import { flow } from "@effect/data/Function"
 import * as Option from "@effect/data/Option"
 import * as Effect from "@effect/io/Effect"
 import * as Layer from "@effect/io/Layer"
@@ -19,7 +18,13 @@ const EnvLive = Layer.mergeAll(
   ServerLive,
   Layer.provide(HttpC.nodeClient.makeAgentLayer({ keepAlive: false }), HttpC.nodeClient.layerWithoutAgent)
 )
-const runPromise = flow(Effect.provideLayer(EnvLive), Effect.runPromise)
+const runPromise = <E, A>(
+  effect: Effect.Effect<
+    NodeContext.NodeContext | Etag.Generator | Http.server.Server | Platform.Platform | HttpC.client.Client.Default,
+    E,
+    A
+  >
+) => Effect.runPromise(Effect.provide(effect, EnvLive))
 
 const Todo = Schema.struct({
   id: Schema.number,

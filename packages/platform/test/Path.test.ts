@@ -3,7 +3,7 @@ import { BadArgument } from "@effect/platform/Error"
 import * as Path from "@effect/platform/Path"
 
 const runPromise = <E, A>(effect: Effect.Effect<Path.Path, E, A>) =>
-  Effect.runPromise(Effect.provideLayer(effect, Path.layer))
+  Effect.runPromise(Effect.provide(effect, Path.layer))
 
 describe("Path", () => {
   it("fromFileUrl", () =>

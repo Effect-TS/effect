@@ -70,7 +70,7 @@ describe("HttpClient", () => {
       const jp = yield* _(JsonPlaceholder)
       const response = yield* _(Http.request.get("/todos/1"), jp.todoClient)
       expect(response.id).toBe(1)
-    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+    }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaFunction", () =>
     Effect.gen(function*(_) {
@@ -81,7 +81,7 @@ describe("HttpClient", () => {
         completed: false
       }))
       expect(response.title).toBe("test")
-    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+    }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 
   it("jsonplaceholder schemaJson", () =>
     Effect.gen(function*(_) {
@@ -91,5 +91,5 @@ describe("HttpClient", () => {
       )
       const response = yield* _(Http.request.get("/todos/1"), client)
       expect(response.id).toBe(1)
-    }).pipe(Effect.provideLayer(JsonPlaceholderLive), Effect.runPromise))
+    }).pipe(Effect.provide(JsonPlaceholderLive), Effect.runPromise))
 })

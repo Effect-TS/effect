@@ -34,7 +34,7 @@ const EnvLive = Layer.merge(ServerLive, NodeContext.layer)
 
 serve.pipe(
   Effect.scoped,
-  Effect.provideLayer(EnvLive),
+  Effect.provide(EnvLive),
   Effect.tapErrorCause(Effect.logError),
   runMain
 )

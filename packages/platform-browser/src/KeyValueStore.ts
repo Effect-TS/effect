@@ -5,6 +5,9 @@
  */
 import * as internal from "@effect/platform-browser/internal/keyValueStore"
 
+/**
+ * @since 1.0.0
+ */
 export * from "@effect/platform/KeyValueStore"
 
 /**

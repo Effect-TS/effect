@@ -17,7 +17,7 @@ const TEST_BASH_SCRIPTS_DIRECTORY = Path.join(__dirname, "fixtures", "bash")
 
 const runPromise = <E, A>(self: Effect.Effect<FileSystem.FileSystem | CommandExecutor.CommandExecutor, E, A>) =>
   Effect.runPromise(
-    Effect.provideLayer(self, Layer.provideMerge(FileSystem.layer, CommandExecutor.layer))
+    Effect.provide(self, Layer.provideMerge(FileSystem.layer, CommandExecutor.layer))
   )
 
 describe("Command", () => {
@@ -59,7 +59,7 @@ describe("Command", () => {
     runPromise(Effect.gen(function*($) {
       const command = Command.make("some-invalid-command", "test")
       const result = yield* $(Effect.exit(Command.string(command)))
-      expect(Exit.unannotate(result)).toEqual(Exit.fail(SystemError({
+      expect(result).toEqual(Exit.fail(SystemError({
         reason: "NotFound",
         module: "Command",
         method: "spawn",
@@ -205,7 +205,7 @@ describe("Command", () => {
         Command.workingDirectory(TEST_BASH_SCRIPTS_DIRECTORY)
       )
       const result = yield* $(Effect.exit(Command.string(command)))
-      expect(Exit.unannotate(result)).toEqual(Exit.fail(SystemError({
+      expect(result).toEqual(Exit.fail(SystemError({
         reason: "PermissionDenied",
         module: "Command",
         method: "spawn",
@@ -222,7 +222,7 @@ describe("Command", () => {
         Command.workingDirectory("/some/bad/path")
       )
       const result = yield* $(Effect.exit(Command.lines(command)))
-      expect(Exit.unannotate(result)).toEqual(Exit.fail(SystemError({
+      expect(result).toEqual(Exit.fail(SystemError({
         reason: "NotFound",
         module: "FileSystem",
         method: "access",

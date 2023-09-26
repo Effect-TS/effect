@@ -9,6 +9,9 @@ import * as Path from "@effect/platform-node/Path"
 import type * as PlatformError from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 
+/**
+ * @since 1.0.0
+ */
 export * from "@effect/platform/KeyValueStore"
 
 /**
