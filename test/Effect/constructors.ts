@@ -30,4 +30,17 @@ describe.concurrent("Effect", () => {
         })
       )
     ))
+  it.effect("can pass this to generator", () => {
+    class MyService {
+      readonly local = 1
+      compute = Effect.gen(this, function*(_) {
+        return yield* _(Effect.succeed(this.local + 1))
+      })
+    }
+    const instance = new MyService()
+
+    return Effect.map(instance.compute, (n) => {
+      assert.strictEqual(n, 2)
+    })
+  })
 })

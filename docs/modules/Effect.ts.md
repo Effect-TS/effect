@@ -1379,13 +1379,21 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const gen: <Eff extends EffectGen<any, any, any>, AEff>(
-  f: (resume: Adapter) => Generator<Eff, AEff, any>
-) => Effect<
-  [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
-  [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
-  AEff
->
+export declare const gen: {
+  <Eff extends EffectGen<any, any, any>, AEff>(f: (resume: Adapter) => Generator<Eff, AEff, any>): Effect<
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
+    AEff
+  >
+  <Self, Eff extends EffectGen<any, any, any>, AEff>(
+    self: Self,
+    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
+  ): Effect<
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
+    AEff
+  >
+}
 ```
 
 Added in v1.0.0

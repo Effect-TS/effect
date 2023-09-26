@@ -1063,13 +1063,23 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Effect<never, never, never
  * @since 1.0.0
  * @category constructors
  */
-export const gen: <Eff extends EffectGen<any, any, any>, AEff>(
-  f: (resume: Adapter) => Generator<Eff, AEff, any>
-) => Effect<
-  [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
-  [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
-  AEff
-> = effect.gen
+export const gen: {
+  <Eff extends EffectGen<any, any, any>, AEff>(
+    f: (resume: Adapter) => Generator<Eff, AEff, any>
+  ): Effect<
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
+    AEff
+  >
+  <Self, Eff extends EffectGen<any, any, any>, AEff>(
+    self: Self,
+    f: (this: Self, resume: Adapter) => Generator<Eff, AEff, any>
+  ): Effect<
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<infer R, any, any>] ? R : never,
+    [Eff] extends [never] ? never : [Eff] extends [EffectGen<any, infer E, any>] ? E : never,
+    AEff
+  >
+} = effect.gen
 
 /**
  * @category models

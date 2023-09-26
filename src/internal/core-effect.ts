@@ -783,9 +783,18 @@ const adapter = function() {
 /**
  * Inspired by https://github.com/tusharmath/qio/pull/22 (revised)
   @internal */
-export const gen: typeof Effect.gen = (f) =>
-  core.suspend(() => {
-    const iterator = f(adapter)
+export const gen: typeof Effect.gen = function() {
+  let f: any
+  let self: any
+  if (arguments.length === 1) {
+    f = arguments[0]
+    self = undefined
+  } else {
+    f = arguments[1]
+    self = arguments[0]
+  }
+  return core.suspend(() => {
+    const iterator = f.bind(self)(adapter)
     const state = iterator.next()
     const run = (
       state: IteratorYieldResult<any> | IteratorReturnResult<any>
@@ -797,6 +806,7 @@ export const gen: typeof Effect.gen = (f) =>
       ))
     return run(state)
   })
+}
 
 /* @internal */
 export const fiberRefs: Effect.Effect<never, never, FiberRefs.FiberRefs> = core.withFiberRuntime<
