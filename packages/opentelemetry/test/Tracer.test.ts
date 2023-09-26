@@ -24,7 +24,7 @@ const TracingLive = Layer.provide(
 describe("Tracer", () => {
   describe("provided", () => {
     it.effect("withSpan", () =>
-      Effect.provideLayer(
+      Effect.provide(
         Effect.withSpan("ok")(
           Effect.gen(function*(_) {
             const span = yield* _(Effect.flatMap(Effect.currentSpan, identity))
@@ -48,11 +48,11 @@ describe("Tracer", () => {
         expect(otelSpan.links.length).toBe(1)
       }).pipe(
         Effect.scoped,
-        Effect.provideLayer(TracingLive)
+        Effect.provide(TracingLive)
       ))
 
     it.effect("supervisor sets context", () =>
-      Effect.provideLayer(
+      Effect.provide(
         Effect.withSpan("ok")(
           Effect.sync(() => {
             expect(OtelApi.trace.getSpan(OtelApi.context.active())).toBeDefined()
@@ -67,7 +67,7 @@ describe("Tracer", () => {
         expect(OtelApi.trace.getSpan(OtelApi.context.active())).toBeDefined()
       }).pipe(
         Effect.withSpan("ok"),
-        Effect.provideLayer(TracingLive)
+        Effect.provide(TracingLive)
       ))
   })
 

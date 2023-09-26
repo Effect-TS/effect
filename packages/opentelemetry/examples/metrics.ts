@@ -76,7 +76,7 @@ const MetricsLive = Layer.provide(
 pipe(
   program,
   Effect.awaitAllChildren,
-  Effect.provideLayer(MetricsLive),
+  Effect.provide(MetricsLive),
   Effect.catchAllCause(Effect.logError),
   Effect.runFork
 )
