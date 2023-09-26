@@ -6,7 +6,6 @@
     },
     "scripts": {
         "build": "preconstruct fix && preconstruct build",
-        "release": "pnpm build && npm publish",
         "clean": "sh scripts/clean.sh",
         "test": "vitest",
         "check": "tsc -p tsconfig.json",
