@@ -60,6 +60,15 @@ describe("Tracer", () => {
         ),
         TracingLive
       ))
+
+    it.effect("supervisor sets context generator", () =>
+      Effect.gen(function*(_) {
+        yield* _(Effect.yieldNow())
+        expect(OtelApi.trace.getSpan(OtelApi.context.active())).toBeDefined()
+      }).pipe(
+        Effect.withSpan("ok"),
+        Effect.provideLayer(TracingLive)
+      ))
   })
 
   describe("not provided", () => {

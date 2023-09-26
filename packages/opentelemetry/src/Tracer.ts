@@ -2,6 +2,7 @@
  * @since 1.0.0
  */
 import type { Tag } from "@effect/data/Context"
+import type * as Option from "@effect/data/Option"
 import type { Effect } from "@effect/io/Effect"
 import type { Layer } from "@effect/io/Layer"
 import type { ExternalSpan, Tracer } from "@effect/io/Tracer"
@@ -23,10 +24,16 @@ export const makeExternalSpan: (
   options: {
     readonly traceId: string
     readonly spanId: string
-    readonly traceFlags?: number
-    readonly traceState?: string
+    readonly traceFlags?: number | undefined
+    readonly traceState?: string | Otel.TraceState | undefined
   }
 ) => ExternalSpan = internal.makeExternalSpan
+
+/**
+ * @since 1.0.0
+ * @category accessors
+ */
+export const currentOtelSpan: Effect<never, never, Option.Option<Otel.Span>> = internal.currentOtelSpan
 
 /**
  * @since 1.0.0

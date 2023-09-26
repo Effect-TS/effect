@@ -127,6 +127,8 @@ export const make = Effect.map(OtelTracer, (tracer) =>
   }))
 
 /** @internal */
+
+/** @internal */
 export const traceFlagsTag = Context.Tag<OtelApi.TraceFlags>("@effect/opentelemetry/traceFlags")
 
 /** @internal */
@@ -137,7 +139,7 @@ export const makeExternalSpan = (options: {
   readonly traceId: string
   readonly spanId: string
   readonly traceFlags?: number
-  readonly traceState?: string
+  readonly traceState?: string | OtelApi.TraceState
 }): Tracer.ExternalSpan => {
   let context = Context.empty()
 
@@ -145,11 +147,13 @@ export const makeExternalSpan = (options: {
     context = Context.add(context, traceFlagsTag, options.traceFlags)
   }
 
-  if (options.traceState) {
+  if (typeof options.traceState === "string") {
     context = Option.match(createTraceState(options.traceState), {
       onNone: () => context,
       onSome: (traceState) => Context.add(context, traceStateTag, traceState)
     })
+  } else if (options.traceState) {
+    context = Context.add(context, traceStateTag, options.traceState)
   }
 
   return {
@@ -159,6 +163,16 @@ export const makeExternalSpan = (options: {
     context
   }
 }
+
+/** @internal */
+export const currentOtelSpan = Effect.map(
+  Effect.currentSpan,
+  (span) =>
+    Option.map(
+      Option.filter(span, (span): span is OtelSpan => "span" in span),
+      (_) => _.span
+    )
+)
 
 /** @internal */
 export const layerOtelTracer = Layer.effect(
