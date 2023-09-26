@@ -1,5 +1,16 @@
 # @effect/printer-ansi
 
+## 0.16.0
+
+### Minor Changes
+
+- [#416](https://github.com/Effect-TS/printer/pull/416) [`ebcd800`](https://github.com/Effect-TS/printer/commit/ebcd800312411ba877863568ec112b313889ba42) Thanks [@tim-smart](https://github.com/tim-smart)! - update dependencies
+
+### Patch Changes
+
+- Updated dependencies [[`ebcd800`](https://github.com/Effect-TS/printer/commit/ebcd800312411ba877863568ec112b313889ba42)]:
+  - @effect/printer@0.16.0
+
 ## 0.15.0
 
 ### Minor Changes
