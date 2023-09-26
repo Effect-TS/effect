@@ -1,5 +1,11 @@
 # @effect/platform
 
+## 0.17.1
+
+### Patch Changes
+
+- [#158](https://github.com/Effect-TS/platform/pull/158) [`9b10bf3`](https://github.com/Effect-TS/platform/commit/9b10bf394106ba0bafd8440dc0b3fba30a5cc1ea) Thanks [@tim-smart](https://github.com/tim-smart)! - add client transform apis
+
 ## 0.17.0
 
 ### Minor Changes
