@@ -87,10 +87,16 @@ export const Tag = Context.Tag<TRandom.TRandom>()
 
 class TRandomImpl implements TRandom.TRandom {
   readonly [TRandomTypeId]: TRandom.TRandomTypeId = TRandomTypeId
-  constructor(readonly state: TRef.TRef<Random.PCGRandomState>) {}
-  next = withState(this.state, randomNumber)
-  nextBoolean = core.flatMap(this.next, (n) => core.succeed(n > 0.5))
-  nextInt = withState(this.state, randomInteger)
+  constructor(readonly state: TRef.TRef<Random.PCGRandomState>) {
+    this.next = withState(this.state, randomNumber)
+    this.nextBoolean = core.flatMap(this.next, (n) => core.succeed(n > 0.5))
+    this.nextInt = withState(this.state, randomInteger)
+  }
+
+  next: STM.STM<never, never, number>
+  nextBoolean: STM.STM<never, never, boolean>
+  nextInt: STM.STM<never, never, number>
+
   nextRange(min: number, max: number): STM.STM<never, never, number> {
     return core.flatMap(this.next, (n) => core.succeed((max - min) * n + min))
   }

@@ -446,3 +446,7 @@ export * as TReentrantLock from "./TReentrantLock"
  * @since 1.0.0
  */
 export * as TSet from "./TSet"
+/**
+ * @since 1.0.0
+ */
+export * as Types from "./Types"

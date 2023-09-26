@@ -123,6 +123,7 @@ Added in v1.0.0
   - [From "./TSet"](#from-tset)
   - [From "./Tracer"](#from-tracer)
   - [From "./Tuple"](#from-tuple)
+  - [From "./Types"](#from-types)
   - [From "./Unify"](#from-unify)
   - [From "./Utils"](#from-utils)
 
@@ -1446,6 +1447,18 @@ Re-exports all named exports from the "./Tuple" module.
 
 ```ts
 export * from './Tuple'
+```
+
+Added in v1.0.0
+
+## From "./Types"
+
+Re-exports all named exports from the "./Types" module.
+
+**Signature**
+
+```ts
+export * from './Types'
 ```
 
 Added in v1.0.0
