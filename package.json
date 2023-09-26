@@ -9,7 +9,7 @@
         "release": "pnpm build && npm publish",
         "clean": "sh scripts/clean.sh",
         "test": "vitest",
-        "check": "tsc -b tsconfig.json",
+        "check": "tsc -p tsconfig.json",
         "coverage": "vitest run --coverage",
         "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
         "update-version": "changeset version && pnpm install --no-frozen-lockfile",
