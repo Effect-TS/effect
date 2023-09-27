@@ -117,6 +117,9 @@ const asyncFiberException = <E, A>(fiber: Fiber.RuntimeFiber<E, A>): Runtime.Asy
     _tag: {
       value: _tag
     },
+    fiber: {
+      value: fiber
+    },
     message: {
       value: message
     },
