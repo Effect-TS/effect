@@ -3452,7 +3452,7 @@ export const withSpanScoped = (
   }
 ): Effect.Effect<Scope.Scope, never, void> =>
   core.flatMap(
-    internalEffect.makeSpan(name, options),
+    useSpanScoped(name, options),
     (span) =>
       fiberRefLocallyScopedWith(
         core.currentTracerSpan,
