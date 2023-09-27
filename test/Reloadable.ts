@@ -27,7 +27,7 @@ describe.concurrent("Reloadable", () => {
       const layer = Reloadable.manual(Tag, {
         layer: Layer.scoped(Tag, pipe(counter.acquire(), Effect.as(DummyService)))
       })
-      yield* $(Reloadable.get(Tag), Effect.provideLayer(layer))
+      yield* $(Reloadable.get(Tag), Effect.provide(layer))
       const acquired = yield* $(counter.acquired())
       assert.strictEqual(acquired, 1)
     }))
@@ -37,7 +37,7 @@ describe.concurrent("Reloadable", () => {
       const layer = Reloadable.manual(Tag, {
         layer: Layer.scoped(Tag, pipe(counter.acquire(), Effect.as(DummyService)))
       })
-      yield* $(Reloadable.reload(Tag), Effect.provideLayer(layer))
+      yield* $(Reloadable.reload(Tag), Effect.provide(layer))
       const acquired = yield* $(counter.acquired())
       assert.strictEqual(acquired, 2)
     }))

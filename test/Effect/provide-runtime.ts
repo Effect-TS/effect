@@ -32,7 +32,7 @@ describe.concurrent("Effect", () => {
 
     const all = await Effect.runPromise(Effect.all(
       [
-        Effect.provideSomeRuntime(
+        Effect.provide(
           Effect.gen(function*($) {
             const a = yield* $(FiberRef.get(ref))
             const b = yield* $(A)

@@ -19,9 +19,9 @@ import type * as Fiber from "./Fiber"
 import type * as FiberId from "./FiberId"
 import type * as FiberRef from "./FiberRef"
 import type * as FiberRefs from "./FiberRefs"
-import * as FiberRefsPatch from "./FiberRefsPatch"
+import type * as FiberRefsPatch from "./FiberRefsPatch"
 import type { LazyArg } from "./Function"
-import { dual, identity } from "./Function"
+import { identity } from "./Function"
 import type * as HashMap from "./HashMap"
 import type * as HashSet from "./HashSet"
 import type { TypeLambda } from "./HKT"
@@ -50,7 +50,7 @@ import type * as Request from "./Request"
 import type { RequestBlock } from "./RequestBlock"
 import type { RequestResolver } from "./RequestResolver"
 import type * as Runtime from "./Runtime"
-import * as RuntimeFlags from "./RuntimeFlags"
+import type * as RuntimeFlags from "./RuntimeFlags"
 import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
 import type * as Schedule from "./Schedule"
 import * as Scheduler from "./Scheduler"
@@ -3054,71 +3054,22 @@ export const mapInputContext: {
 } = core.mapInputContext
 
 /**
- * Provides the effect with its required context, which eliminates its
- * dependency on `R`.
- *
- * @since 1.0.0
- * @category context
- */
-export const provideContext: {
-  <R>(context: Context.Context<R>): <E, A>(self: Effect<R, E, A>) => Effect<never, E, A>
-  <R, E, A>(self: Effect<R, E, A>, context: Context.Context<R>): Effect<never, E, A>
-} = core.provideContext
-
-/**
  * Splits the context into two parts, providing one part using the
- * specified layer and leaving the remainder `R0`.
+ * specified layer/context/runtime and leaving the remainder `R0`
  *
  * @since 1.0.0
  * @category context
  */
-export const provideSomeContext: {
-  <R>(context: Context.Context<R>): <R1, E, A>(self: Effect<R1, E, A>) => Effect<Exclude<R1, R>, E, A>
-  <R, R1, E, A>(self: Effect<R1, E, A>, context: Context.Context<R>): Effect<Exclude<R1, R>, E, A>
-} = core.provideSomeContext
-
-/**
- * Splits the context into two parts, providing one part using the
- * specified runtime and leaving the remainder `R0`.
- *
- * @since 1.0.0
- * @category context
- */
-export const provideSomeRuntime: {
-  <R>(context: Runtime.Runtime<R>): <R1, E, A>(self: Effect<R1, E, A>) => Effect<Exclude<R1, R>, E, A>
-  <R, R1, E, A>(self: Effect<R1, E, A>, context: Runtime.Runtime<R>): Effect<Exclude<R1, R>, E, A>
-} = dual<
-  <R>(context: Runtime.Runtime<R>) => <R1, E, A>(self: Effect<R1, E, A>) => Effect<Exclude<R1, R>, E, A>,
-  <R, R1, E, A>(self: Effect<R1, E, A>, context: Runtime.Runtime<R>) => Effect<Exclude<R1, R>, E, A>
->(2, (self, runtime) => {
-  const patchFlags = RuntimeFlags.diff(_runtime.defaultRuntime.runtimeFlags, runtime.runtimeFlags)
-  const inversePatchFlags = RuntimeFlags.diff(runtime.runtimeFlags, _runtime.defaultRuntime.runtimeFlags)
-  const patchRefs = FiberRefsPatch.diff(_runtime.defaultRuntime.fiberRefs, runtime.fiberRefs)
-  const inversePatchRefs = FiberRefsPatch.diff(runtime.fiberRefs, _runtime.defaultRuntime.fiberRefs)
-  return acquireUseRelease(
-    core.flatMap(
-      patchRuntimeFlags(patchFlags),
-      () => patchFiberRefs(patchRefs)
-    ),
-    () => provideSomeContext(self, runtime.context),
-    () =>
-      core.flatMap(
-        patchRuntimeFlags(inversePatchFlags),
-        () => patchFiberRefs(inversePatchRefs)
-      )
-  )
-})
-
-/**
- * Provides a layer to the effect, which translates it to another level.
- *
- * @since 1.0.0
- * @category context
- */
-export const provideLayer: {
-  <R0, E2, R>(layer: Layer.Layer<R0, E2, R>): <E, A>(self: Effect<R, E, A>) => Effect<R0, E2 | E, A>
-  <R, E, A, R0, E2>(self: Effect<R, E, A>, layer: Layer.Layer<R0, E2, R>): Effect<R0, E | E2, A>
-} = layer.provideLayer
+export const provide: {
+  <R2, E2, A2>(
+    layer: Layer.Layer<R2, E2, A2>
+  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, A2>, E2 | E, A>
+  <R2>(context: Context.Context<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
+  <R2>(runtime: Runtime.Runtime<R2>): <R, E, A>(self: Effect<R, E, A>) => Effect<Exclude<R, R2>, E, A>
+  <R, E, A, R2, E2, A2>(self: Effect<R, E, A>, layer: Layer.Layer<R2, E2, A2>): Effect<R2 | Exclude<R, A2>, E | E2, A>
+  <R, E, A, R2>(self: Effect<R, E, A>, context: Context.Context<R2>): Effect<Exclude<R, R2>, E, A>
+  <R, E, A, R2>(self: Effect<R, E, A>, runtime: Runtime.Runtime<R2>): Effect<Exclude<R, R2>, E, A>
+} = layer.effect_provide
 
 /**
  * Provides the effect with the single service it requires. If the effect
@@ -3157,23 +3108,6 @@ export const provideServiceEffect: {
     effect: Effect<R1, E1, Context.Tag.Service<T>>
   ): Effect<R1 | Exclude<R, Context.Tag.Identifier<T>>, E | E1, A>
 } = effect.provideServiceEffect
-
-/**
- * Splits the context into two parts, providing one part using the
- * specified layer and leaving the remainder `R0`.
- *
- * @since 1.0.0
- * @category context
- */
-export const provideSomeLayer: {
-  <R2, E2, A2>(
-    layer: Layer.Layer<R2, E2, A2>
-  ): <R, E, A>(self: Effect<R, E, A>) => Effect<R2 | Exclude<R, A2>, E2 | E, A>
-  <R, E, A, R2, E2, A2>(
-    self: Effect<R, E, A>,
-    layer: Layer.Layer<R2, E2, A2>
-  ): Effect<R2 | Exclude<R, A2>, E | E2, A>
-} = layer.provideSomeLayer
 
 /**
  * @since 1.0.0

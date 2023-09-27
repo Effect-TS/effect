@@ -24,7 +24,7 @@ describe.concurrent("Effect", () => {
         const v2 = yield* $(
           pipe(
             NumberService,
-            Effect.provideContext(Context.make(NumberService, { n: 2 }))
+            Effect.provide(Context.make(NumberService, { n: 2 }))
           )
         )
         const v3 = yield* $(NumberService)
@@ -32,7 +32,7 @@ describe.concurrent("Effect", () => {
         assert.strictEqual(v2.n, 2)
         assert.strictEqual(v3.n, 4)
       }),
-      Effect.provideContext(Context.make(NumberService, { n: 4 }))
+      Effect.provide(Context.make(NumberService, { n: 4 }))
     ))
   it.effect("environment - provideSomeContext provides context in the right order", () =>
     pipe(
@@ -42,15 +42,15 @@ describe.concurrent("Effect", () => {
         assert.strictEqual(v1.n, 1)
         assert.strictEqual(v2.s, "ok")
       }),
-      Effect.provideSomeContext(Context.make(NumberService, { n: 1 })),
-      Effect.provideSomeContext(Context.make(NumberService, { n: 2 })),
-      Effect.provideSomeContext(Context.make(StringService, { s: "ok" }))
+      Effect.provide(Context.make(NumberService, { n: 1 })),
+      Effect.provide(Context.make(NumberService, { n: 2 })),
+      Effect.provide(Context.make(StringService, { s: "ok" }))
     ))
   it.effect("environment - async can use environment", () =>
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.async<NumberService, never, number>((cb) => cb(Effect.map(NumberService, ({ n }) => n))),
-        Effect.provideContext(Context.make(NumberService, { n: 10 }))
+        Effect.provide(Context.make(NumberService, { n: 10 }))
       )
       assert.strictEqual(result, 10)
     }))
@@ -58,7 +58,7 @@ describe.concurrent("Effect", () => {
     Effect.gen(function*($) {
       const result = yield* $(
         Effect.flatMap(NumberService, ({ n }) => Effect.succeed(n + 3)),
-        Effect.provideContext(Context.make(NumberService, { n: 0 }))
+        Effect.provide(Context.make(NumberService, { n: 0 }))
       )
       assert.strictEqual(result, 3)
     }))
@@ -67,7 +67,7 @@ describe.concurrent("Effect", () => {
   //   Effect.gen(function*($) {
   //     const result = yield* $(
   //       Effect.flatMap(NumberService.traced(sourceLocation(new Error())), ({ n }) => Effect.succeed(n + 3)),
-  //       Effect.provideContext(Context.make(NumberService, { n: 0 }))
+  //       Effect.provide(Context.make(NumberService, { n: 0 }))
   //     )
   //     assert.strictEqual(result, 3)
   //   }))
@@ -79,7 +79,7 @@ describe.concurrent("Effect", () => {
         assert.strictEqual(a.n, 1)
         assert.strictEqual(b.n, 0)
       }),
-      Effect.provideContext(pipe(Context.make(NumberService, { n: 0 })))
+      Effect.provide(pipe(Context.make(NumberService, { n: 0 })))
     ))
 
   it.effect("serviceFunctions - expose service functions", () => {

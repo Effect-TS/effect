@@ -187,7 +187,7 @@ describe("Tracer", () => {
           Option.some("parent")
         )
       }).pipe(
-        Effect.provideLayer(Layer.unwrapScoped(
+        Effect.provide(Layer.unwrapScoped(
           Effect.map(
             Effect.useSpanScoped("parent"),
             (span) => Effect.setParentSpan(span)
@@ -206,7 +206,7 @@ describe("Tracer", () => {
           Option.some("parent")
         )
       }).pipe(
-        Effect.provideLayer(Effect.setSpan("parent"))
+        Effect.provide(Effect.setSpan("parent"))
       ))
 
     it.effect("linkSpans", () =>

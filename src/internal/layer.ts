@@ -5,7 +5,7 @@ import * as Duration from "../Duration"
 import type * as Effect from "../Effect"
 import type * as Exit from "../Exit"
 import type { FiberRef } from "../FiberRef"
-import type * as FiberRefsPatch from "../FiberRefsPatch"
+import * as FiberRefsPatch from "../FiberRefsPatch"
 import type { LazyArg } from "../Function"
 import { dual, pipe } from "../Function"
 import * as core from "../internal/core"
@@ -25,6 +25,7 @@ import * as ScheduleDecision from "../ScheduleDecision"
 import * as Intervals from "../ScheduleIntervals"
 import * as Scope from "../Scope"
 import type * as Synchronized from "../SynchronizedRef"
+import * as runtimeFlags from "./runtimeFlags"
 
 /** @internal */
 const LayerSymbolKey = "effect/Layer"
@@ -1099,28 +1100,86 @@ export const zipWithPar = dual<
 
 // circular with Effect
 
-/** @internal */
-export const provideLayer = dual<
-  <R0, E2, R>(layer: Layer.Layer<R0, E2, R>) => <E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R0, E | E2, A>,
-  <R, E, A, R0, E2>(self: Effect.Effect<R, E, A>, layer: Layer.Layer<R0, E2, R>) => Effect.Effect<R0, E | E2, A>
+const provideSomeLayer = dual<
+  <R2, E2, A2>(
+    layer: Layer.Layer<R2, E2, A2>
+  ) => <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>,
+  <R, E, A, R2, E2, A2>(
+    self: Effect.Effect<R, E, A>,
+    layer: Layer.Layer<R2, E2, A2>
+  ) => Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>
 >(2, (self, layer) =>
   core.acquireUseRelease(
     fiberRuntime.scopeMake(),
     (scope) =>
       core.flatMap(
         buildWithScope(layer, scope),
-        (context) => core.provideContext(self, context)
+        (context) => core.provideSomeContext(self, context)
       ),
     (scope, exit) => core.scopeClose(scope, exit)
   ))
 
+const provideSomeRuntime: {
+  <R>(context: Runtime.Runtime<R>): <R1, E, A>(self: Effect.Effect<R1, E, A>) => Effect.Effect<Exclude<R1, R>, E, A>
+  <R, R1, E, A>(self: Effect.Effect<R1, E, A>, context: Runtime.Runtime<R>): Effect.Effect<Exclude<R1, R>, E, A>
+} = dual<
+  <R>(context: Runtime.Runtime<R>) => <R1, E, A>(self: Effect.Effect<R1, E, A>) => Effect.Effect<Exclude<R1, R>, E, A>,
+  <R, R1, E, A>(self: Effect.Effect<R1, E, A>, context: Runtime.Runtime<R>) => Effect.Effect<Exclude<R1, R>, E, A>
+>(2, (self, rt) => {
+  const patchFlags = runtimeFlags.diff(runtime.defaultRuntime.runtimeFlags, rt.runtimeFlags)
+  const inversePatchFlags = runtimeFlags.diff(rt.runtimeFlags, runtime.defaultRuntime.runtimeFlags)
+  const patchRefs = FiberRefsPatch.diff(runtime.defaultRuntime.fiberRefs, rt.fiberRefs)
+  const inversePatchRefs = FiberRefsPatch.diff(rt.fiberRefs, runtime.defaultRuntime.fiberRefs)
+  return core.acquireUseRelease(
+    core.flatMap(
+      core.updateRuntimeFlags(patchFlags),
+      () => effect.patchFiberRefs(patchRefs)
+    ),
+    () => core.provideSomeContext(self, rt.context),
+    () =>
+      core.flatMap(
+        core.updateRuntimeFlags(inversePatchFlags),
+        () => effect.patchFiberRefs(inversePatchRefs)
+      )
+  )
+})
+
 /** @internal */
-export const provideSomeLayer: {
-  <R2, E2, A2>(
-    layer: Layer.Layer<R2, E2, A2>
-  ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>
-  <R, E, A, R2, E2, A2>(
+export const effect_provide = dual<
+  {
+    <R2, E2, A2>(
+      layer: Layer.Layer<R2, E2, A2>
+    ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>
+    <R2>(
+      context: Context.Context<R2>
+    ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, R2>, E, A>
+    <R2>(
+      runtime: Runtime.Runtime<R2>
+    ): <R, E, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<Exclude<R, R2>, E, A>
+  },
+  {
+    <R, E, A, R2, E2, A2>(
+      self: Effect.Effect<R, E, A>,
+      layer: Layer.Layer<R2, E2, A2>
+    ): Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>
+    <R, E, A, R2>(
+      self: Effect.Effect<R, E, A>,
+      context: Context.Context<R2>
+    ): Effect.Effect<Exclude<R, R2>, E, A>
+    <R, E, A, R2>(
+      self: Effect.Effect<R, E, A>,
+      runtime: Runtime.Runtime<R2>
+    ): Effect.Effect<Exclude<R, R2>, E, A>
+  }
+>(
+  2,
+  <R, E, A, R2>(
     self: Effect.Effect<R, E, A>,
-    layer: Layer.Layer<R2, E2, A2>
-  ): Effect.Effect<R2 | Exclude<R, A2>, E | E2, A>
-} = dual(2, (self, layer) => provideLayer(self, merge(context(), layer)))
+    source: Layer.Layer<any, any, R2> | Context.Context<R2> | Runtime.Runtime<R2>
+  ): Effect.Effect<Exclude<R, R2>, any, any> =>
+    isLayer(source)
+      ? provideSomeLayer(self, source as Layer.Layer<any, any, R2>)
+      : Context.isContext(source)
+      ? core.provideSomeContext(self, source)
+      : provideSomeRuntime(self, source as Runtime.Runtime<R2>)
+)

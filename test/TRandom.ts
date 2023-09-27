@@ -22,7 +22,7 @@ describe.concurrent("TRandom", () => {
     fc.assert(fc.asyncProperty(intsArb, async ([min, max]) => {
       const result = await pipe(
         STM.commit(TRandom.nextRange(min, max)),
-        Effect.provideLayer(TRandom.live),
+        Effect.provide(TRandom.live),
         Effect.runPromise
       )
       assert.isAtLeast(result, min)
@@ -33,7 +33,7 @@ describe.concurrent("TRandom", () => {
     fc.assert(fc.asyncProperty(floatsArb, async ([min, max]) => {
       const result = await pipe(
         STM.commit(TRandom.nextRange(min, max)),
-        Effect.provideLayer(TRandom.live),
+        Effect.provide(TRandom.live),
         Effect.runPromise
       )
       assert.isAtLeast(result, min)

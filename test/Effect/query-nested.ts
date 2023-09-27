@@ -174,6 +174,6 @@ describe.concurrent("Effect", () => {
       expect(count.count).toBe(3)
       expect(requests.count).toBe(7)
     }).pipe(
-      Effect.provideSomeLayer(EnvLive)
+      Effect.provide(EnvLive)
     ))
 })

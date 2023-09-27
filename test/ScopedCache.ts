@@ -336,9 +336,9 @@ describe.concurrent("ScopedCache", () => {
         const scoped = cache.get(void 0)
         const scope1 = yield* $(Scope.make())
         const scope2 = yield* $(Scope.make())
-        const acquire1 = Effect.provideContext(scoped, Context.make(Scope.Scope, scope1))
+        const acquire1 = Effect.provide(scoped, Context.make(Scope.Scope, scope1))
         const release1: Scope.Scope.Finalizer = (exit) => Scope.close(scope1, exit)
-        const acquire2 = Effect.provideContext(scoped, Context.make(Scope.Scope, scope2))
+        const acquire2 = Effect.provide(scoped, Context.make(Scope.Scope, scope2))
         const release2: Scope.Scope.Finalizer = (exit) => Scope.close(scope2, exit)
         yield* $(subResource.assertNotAcquired())
         yield* $(acquire2)
@@ -391,11 +391,11 @@ describe.concurrent("ScopedCache", () => {
       const scope2 = yield* $(Scope.make())
       const [release1, release2] = yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
-        yield* $(Effect.provideContext(
+        yield* $(Effect.provide(
           cache.get(void 0),
           Context.make(Scope.Scope, scope1)
         ))
-        yield* $(Effect.provideContext(
+        yield* $(Effect.provide(
           cache.get(void 0),
           Context.make(Scope.Scope, scope2)
         ))
@@ -423,8 +423,8 @@ describe.concurrent("ScopedCache", () => {
       const [release1, release2] = yield* $(Effect.scoped(Effect.gen(function*($) {
         const cache = yield* $(scopedCache)
         const scoped = cache.get(void 0)
-        yield* $(Effect.provideContext(scoped, Context.make(Scope.Scope, scope1)))
-        yield* $(Effect.provideContext(scoped, Context.make(Scope.Scope, scope2)))
+        yield* $(Effect.provide(scoped, Context.make(Scope.Scope, scope1)))
+        yield* $(Effect.provide(scoped, Context.make(Scope.Scope, scope2)))
         const release1: Scope.Scope.Finalizer = (exit) => Scope.close(scope1, exit)
         const release2: Scope.Scope.Finalizer = (exit) => Scope.close(scope2, exit)
         return [release1, release2] as const
@@ -538,7 +538,7 @@ describe.concurrent("ScopedCache", () => {
           lookup: (key: void) => watchableLookup(key)
         }))
         const scope = yield* $(Scope.make())
-        const acquire = Effect.provideContext(
+        const acquire = Effect.provide(
           cache.get(void 0),
           Context.make(Scope.Scope, scope)
         )
@@ -820,7 +820,7 @@ describe.concurrent("ScopedCache", () => {
           lookup: watchableLookup
         }))
         const scope = yield* $(Scope.make())
-        const acquire = Effect.provideContext(
+        const acquire = Effect.provide(
           cache.get(void 0),
           Context.make(Scope.Scope, scope)
         )

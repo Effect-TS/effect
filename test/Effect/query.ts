@@ -121,7 +121,7 @@ const EnvLive = Layer.provideMerge(
   )
 )
 
-const provideEnv = Effect.provideSomeLayer(EnvLive)
+const provideEnv = Effect.provide(EnvLive)
 
 describe.concurrent("Effect", () => {
   it.effect("requests are executed correctly", () =>

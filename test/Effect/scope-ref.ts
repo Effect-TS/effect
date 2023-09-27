@@ -41,7 +41,7 @@ describe("Effect", () => {
         withValue("INNER"),
         Effect.scoped,
         withValue("OUTER"),
-        Effect.provideSomeLayer(layer),
+        Effect.provide(layer),
         withValue("EXTERN")
       )
 
