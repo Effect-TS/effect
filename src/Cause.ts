@@ -267,21 +267,6 @@ export interface Interrupt extends Cause.Variance<never>, Equal.Equal, Pipeable,
 }
 
 /**
- * The `Annotated` cause represents a `Cause` which is annotated with some
- * arbitrary metadata.
- *
- * For example, we can annotate a `Cause` with a trace to assist in debugging.
- *
- * @since 1.0.0
- * @category models
- */
-export interface Annotated<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: "Annotated"
-  readonly cause: Cause<E>
-  readonly annotation: unknown
-}
-
-/**
  * The `Parallel` cause represents the composition of two causes which occurred
  * in parallel.
  *
@@ -696,7 +681,6 @@ export const match: {
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
       readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onAnnotated: (value: Z, annotation: unknown) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -708,7 +692,6 @@ export const match: {
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
       readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onAnnotated: (value: Z, annotation: unknown) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }

@@ -80,7 +80,6 @@ Added in v1.0.0
   - [as](#as)
   - [map](#map)
 - [models](#models)
-  - [Annotated (interface)](#annotated-interface)
   - [Cause (type alias)](#cause-type-alias)
   - [CauseReducer (interface)](#causereducer-interface)
   - [Die (interface)](#die-interface)
@@ -368,7 +367,6 @@ export declare const match: {
     readonly onFail: (error: E) => Z
     readonly onDie: (defect: unknown) => Z
     readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-    readonly onAnnotated: (value: Z, annotation: unknown) => Z
     readonly onSequential: (left: Z, right: Z) => Z
     readonly onParallel: (left: Z, right: Z) => Z
   }): (self: Cause<E>) => Z
@@ -379,7 +377,6 @@ export declare const match: {
       readonly onFail: (error: E) => Z
       readonly onDie: (defect: unknown) => Z
       readonly onInterrupt: (fiberId: FiberId.FiberId) => Z
-      readonly onAnnotated: (value: Z, annotation: unknown) => Z
       readonly onSequential: (left: Z, right: Z) => Z
       readonly onParallel: (left: Z, right: Z) => Z
     }
@@ -687,25 +684,6 @@ export declare const map: {
 Added in v1.0.0
 
 # models
-
-## Annotated (interface)
-
-The `Annotated` cause represents a `Cause` which is annotated with some
-arbitrary metadata.
-
-For example, we can annotate a `Cause` with a trace to assist in debugging.
-
-**Signature**
-
-```ts
-export interface Annotated<E> extends Cause.Variance<E>, Equal.Equal, Pipeable, Inspectable {
-  readonly _tag: 'Annotated'
-  readonly cause: Cause<E>
-  readonly annotation: unknown
-}
-```
-
-Added in v1.0.0
 
 ## Cause (type alias)
 
