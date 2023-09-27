@@ -13,9 +13,7 @@
     "preserveSymlinks": true,
     "moduleResolution": "node",
     "noEmit": true,
-    "lib": [
-      "ES2021"
-    ],
+    "lib": ["ES2021"],
     "isolatedModules": true,
     "sourceMap": true,
     "declarationMap": true,
@@ -39,23 +37,12 @@
     "incremental": true,
     "removeComments": false,
     "paths": {
-      "effect": [
-        "./src/index.ts"
-      ],
-      "effect/*": [
-        "./src/*.ts"
-      ],
-      "effect-test/*": [
-        "./test/*.ts"
-      ],
+      "effect": ["./src/index.ts"],
+      "effect/*": ["./src/*.ts"],
+      "effect-test/*": ["./test/*.ts"]
     },
-    "types": [
-      "vitest/globals",
-      "node"
-    ]
+    "types": ["vitest/globals", "node"],
+    "plugins": [{ "name": "@effect/language-service" }]
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts"
-  ]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

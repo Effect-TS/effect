@@ -13,7 +13,7 @@ import * as core from "../internal/core"
 import * as ref from "../internal/ref"
 import * as Option from "../Option"
 import { pipeArguments } from "../Pipeable"
-import type { Predicate } from "../Predicate"
+import type { Predicate, Refinement } from "../Predicate"
 import * as Random from "../Random"
 import type * as Ref from "../Ref"
 import type * as Schedule from "../Schedule"
@@ -1830,9 +1830,19 @@ const repeatOrElseEffectLoop = <R, E, A extends A0, A0, R1, B, R2, E2, C>(
 
 /** @internal */
 export const repeatUntil_Effect = dual<
-  <A>(f: Predicate<A>) => <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) => Effect.Effect<R, E, A>
->(2, (self, f) => repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a))))
+  {
+    <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, B>
+    <A>(f: Predicate<A>): <R, E>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  },
+  {
+    <R, E, A, B extends A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, B>
+    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>): Effect.Effect<R, E, A>
+  }
+>(
+  2,
+  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<A>) =>
+    repeatUntilEffect_Effect(self, (a) => core.sync(() => f(a)))
+)
 
 /** @internal */
 export const repeatUntilEffect_Effect: {
@@ -1946,9 +1956,15 @@ const retryOrElse_EffectLoop = <R, E, A, R1, A1, R2, E2, A2>(
 
 /** @internal */
 export const retryUntil_Effect = dual<
-  <E>(f: Predicate<E>) => <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
-  <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) => Effect.Effect<R, E, A>
->(2, (self, f) =>
+  {
+    <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E2, A>
+    <E>(f: Predicate<E>): <R, A>(self: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
+  },
+  {
+    <R, E, A, E2 extends E>(self: Effect.Effect<R, E, A>, f: Refinement<E, E2>): Effect.Effect<R, E2, A>
+    <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>): Effect.Effect<R, E, A>
+  }
+>(2, <R, E, A>(self: Effect.Effect<R, E, A>, f: Predicate<E>) =>
   retryUntilEffect_Effect(
     self,
     (e) => core.sync(() => f(e))

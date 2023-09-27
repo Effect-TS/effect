@@ -1781,7 +1781,9 @@ export const retryOrElse: {
  * @category error handling
  */
 export const retryUntil: {
+  <E, E2 extends E>(f: Refinement<E, E2>): <R, A>(self: Effect<R, E, A>) => Effect<R, E2, A>
   <E>(f: Predicate<E>): <R, A>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A, E2 extends E>(self: Effect<R, E, A>, f: Refinement<E, E2>): Effect<R, E2, A>
   <R, E, A>(self: Effect<R, E, A>, f: Predicate<E>): Effect<R, E, A>
 } = _schedule.retryUntil_Effect
 
@@ -3927,7 +3929,9 @@ export const repeatOrElse: {
  * @category repetition / recursion
  */
 export const repeatUntil: {
+  <A, B extends A>(f: Refinement<A, B>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, B>
   <A>(f: Predicate<A>): <R, E>(self: Effect<R, E, A>) => Effect<R, E, A>
+  <R, E, A, B extends A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, B>
   <R, E, A>(self: Effect<R, E, A>, f: Predicate<A>): Effect<R, E, A>
 } = _schedule.repeatUntil_Effect
 
