@@ -381,6 +381,7 @@ Added in v1.0.0
     - [ReturnTuple (type alias)](#returntuple-type-alias)
   - [Effect (namespace)](#effect-namespace)
     - [Variance (interface)](#variance-interface)
+    - [VarianceStruct (interface)](#variancestruct-interface)
     - [Context (type alias)](#context-type-alias)
     - [Error (type alias)](#error-type-alias)
     - [Success (type alias)](#success-type-alias)
@@ -4051,7 +4052,7 @@ Added in v1.0.0
 
 ```ts
 export interface Blocked<R, E, A> extends Effect<R, E, A> {
-  readonly _tag: 'Blocked'
+  readonly _op: 'Blocked'
   readonly i0: RequestBlock<R>
   readonly i1: Effect<R, E, A>
 }
@@ -6275,11 +6276,21 @@ Added in v1.0.0
 
 ```ts
 export interface Variance<R, E, A> {
-  readonly [EffectTypeId]: {
-    readonly _R: (_: never) => R
-    readonly _E: (_: never) => E
-    readonly _A: (_: never) => A
-  }
+  readonly [EffectTypeId]: VarianceStruct<R, E, A>
+}
+```
+
+Added in v1.0.0
+
+### VarianceStruct (interface)
+
+**Signature**
+
+```ts
+export interface VarianceStruct<R, E, A> {
+  readonly _R: (_: never) => R
+  readonly _E: (_: never) => E
+  readonly _A: (_: never) => A
 }
 ```
 
