@@ -1,6 +1,6 @@
 ---
 title: Resource.ts
-nav_order: 81
+nav_order: 90
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Equal.ts
-nav_order: 23
+nav_order: 31
 parent: Modules
 ---
 

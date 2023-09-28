@@ -1,6 +1,6 @@
 ---
 title: Inspectable.ts
-nav_order: 41
+nav_order: 50
 parent: Modules
 ---
 

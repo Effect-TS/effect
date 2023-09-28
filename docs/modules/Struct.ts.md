@@ -1,6 +1,6 @@
 ---
 title: Struct.ts
-nav_order: 97
+nav_order: 110
 parent: Modules
 ---
 

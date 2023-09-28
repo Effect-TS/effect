@@ -1,6 +1,6 @@
 ---
 title: Effect.ts
-nav_order: 20
+nav_order: 28
 parent: Modules
 ---
 
@@ -630,7 +630,7 @@ export declare const all: <
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | 'inherit' | undefined
     readonly discard?: boolean | undefined
-    readonly mode?: 'default' | 'validate' | 'either' | undefined
+    readonly mode?: 'either' | 'default' | 'validate' | undefined
   }
 >(
   arg: Arg,
@@ -672,7 +672,7 @@ export declare const allWith: <
     readonly concurrency?: Concurrency | undefined
     readonly batching?: boolean | 'inherit' | undefined
     readonly discard?: boolean | undefined
-    readonly mode?: 'default' | 'validate' | 'either' | undefined
+    readonly mode?: 'either' | 'default' | 'validate' | undefined
   }
 >(
   options?: O | undefined

@@ -1,6 +1,6 @@
 ---
 title: MutableQueue.ts
-nav_order: 61
+nav_order: 70
 parent: Modules
 ---
 
