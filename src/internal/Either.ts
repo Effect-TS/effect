@@ -35,6 +35,7 @@ const CommonProto = {
 
 const RightProto = Object.assign(Object.create(CommonProto), {
   _tag: "Right",
+  _op: "Right",
   [Equal.symbol]<E, A>(this: Either.Right<E, A>, that: unknown): boolean {
     return isEither(that) && isRight(that) && Equal.equals(that.right, this.right)
   },
@@ -52,6 +53,7 @@ const RightProto = Object.assign(Object.create(CommonProto), {
 
 const LeftProto = Object.assign(Object.create(CommonProto), {
   _tag: "Left",
+  _op: "Left",
   [Equal.symbol]<E, A>(this: Either.Left<E, A>, that: unknown): boolean {
     return isEither(that) && isLeft(that) && Equal.equals(that.left, this.left)
   },

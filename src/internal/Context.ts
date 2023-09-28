@@ -27,6 +27,7 @@ export const STMTypeId: STM.STMTypeId = Symbol.for(
 /** @internal */
 export const TagProto: C.Tag<unknown, unknown> & Effectable = {
   _tag: "Tag",
+  _op: "Tag",
   [EffectTypeId]: effectVariance,
   [STMTypeId]: effectVariance,
   [Symbol.for("effect/Stream") as StreamTypeId]: effectVariance,

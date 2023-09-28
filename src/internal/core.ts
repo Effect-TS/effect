@@ -135,10 +135,10 @@ export type Continuation =
 
 /** @internal */
 export class RevertFlags {
-  readonly _tag = OpCodes.OP_REVERT_FLAGS
+  readonly _op = OpCodes.OP_REVERT_FLAGS
   constructor(
     readonly patch: RuntimeFlagsPatch.RuntimeFlagsPatch,
-    readonly op: Primitive & { _tag: OpCodes.OP_UPDATE_RUNTIME_FLAGS }
+    readonly op: Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }
   ) {
   }
 }
@@ -150,7 +150,7 @@ class EffectPrimitive {
   public i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
-  constructor(readonly _tag: Primitive["_tag"]) {}
+  constructor(readonly _op: Primitive["_op"]) {}
   [Equal.symbol](this: {}, that: unknown) {
     return this === that
   }
@@ -163,7 +163,7 @@ class EffectPrimitive {
   toJSON() {
     return {
       _id: "Effect",
-      _tag: this._tag,
+      _op: this._op,
       i0: toJSON(this.i0),
       i1: toJSON(this.i1),
       i2: toJSON(this.i2)
@@ -184,7 +184,10 @@ class EffectPrimitiveFailure {
   public i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
-  constructor(readonly _tag: Primitive["_tag"]) {}
+  constructor(readonly _op: Primitive["_op"]) {
+    // @ts-expect-error
+    this._tag = _op
+  }
   [Equal.symbol](this: {}, that: unknown) {
     return this === that
   }
@@ -200,7 +203,7 @@ class EffectPrimitiveFailure {
   toJSON() {
     return {
       _id: "Exit",
-      _tag: this._tag,
+      _tag: this._op,
       cause: (this.cause as any).toJSON()
     }
   }
@@ -219,7 +222,10 @@ class EffectPrimitiveSuccess {
   public i2 = undefined
   public trace = undefined;
   [EffectTypeId] = effectVariance
-  constructor(readonly _tag: Primitive["_tag"]) {}
+  constructor(readonly _op: Primitive["_op"]) {
+    // @ts-expect-error
+    this._tag = _op
+  }
   [Equal.symbol](this: {}, that: unknown) {
     return this === that
   }
@@ -235,7 +241,7 @@ class EffectPrimitiveSuccess {
   toJSON() {
     return {
       _id: "Exit",
-      _tag: this._tag,
+      _tag: this._op,
       value: toJSON(this.value)
     }
   }
@@ -256,7 +262,7 @@ const effectVariance = {
 
 /** @internal */
 export type Op<Tag extends string, Body = {}> = Effect.Effect<never, never, never> & Body & {
-  readonly _tag: Tag
+  readonly _op: Tag
 }
 
 /** @internal */
@@ -406,7 +412,7 @@ export const acquireUseRelease = dual<
       acquire,
       (a) =>
         flatMap(exit(suspend(() => restore(step(use(a))))), (exit): Effect.Effect<R | R2 | R3, E | E2, A2> => {
-          if (exit._tag === "Success" && exit.value._tag === "Blocked") {
+          if (exit._tag === "Success" && exit.value._op === "Blocked") {
             const value = exit.value
             return blocked(
               value.i0,
@@ -923,7 +929,7 @@ export const interruptibleMask = <R, E, A>(
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.enable(_runtimeFlags.Interruption)
   const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
-    if (step._tag === "Blocked") {
+    if (step._op === "Blocked") {
       return blocked(step.i0, interruptible(step.i1))
     }
     return step
@@ -1217,7 +1223,7 @@ export const uninterruptibleMask = <R, E, A>(
   const effect = new EffectPrimitive(OpCodes.OP_UPDATE_RUNTIME_FLAGS) as any
   effect.i0 = RuntimeFlagsPatch.disable(_runtimeFlags.Interruption)
   const _continue = (step: Exit.Exit<E, A> | Effect.Blocked<R, E, A>): Exit.Exit<E, A> | Effect.Blocked<R, E, A> => {
-    if (step._tag === "Blocked") {
+    if (step._op === "Blocked") {
       return blocked(step.i0, uninterruptible(step.i1))
     }
     return step
@@ -1742,7 +1748,7 @@ export const fiberRefLocally: {
       (oldValue) => fiberRefSet(self, oldValue)
     ),
     (res) => {
-      if (res._tag === "Blocked") {
+      if (res._op === "Blocked") {
         return blocked(res.i0, fiberRefLocally(res.i1, self, value))
       }
       return res

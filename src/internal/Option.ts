@@ -29,6 +29,7 @@ const CommonProto = {
 
 const SomeProto = Object.assign(Object.create(CommonProto), {
   _tag: "Some",
+  _op: "Some",
   [Equal.symbol]<A>(this: Option.Some<A>, that: unknown): boolean {
     return isOption(that) && isSome(that) && Equal.equals(that.value, this.value)
   },
@@ -46,6 +47,7 @@ const SomeProto = Object.assign(Object.create(CommonProto), {
 
 const NoneProto = Object.assign(Object.create(CommonProto), {
   _tag: "None",
+  _op: "None",
   [Equal.symbol]<A>(this: Option.None<A>, that: unknown): boolean {
     return isOption(that) && isNone(that)
   },

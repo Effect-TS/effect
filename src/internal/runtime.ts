@@ -191,7 +191,7 @@ export const isFiberFailure = (u: unknown): u is Runtime.FiberFailure =>
 
 const fastPath = <R, E, A>(effect: Effect.Effect<R, E, A>): Exit.Exit<E, A> | undefined => {
   const op = effect as core.Primitive
-  switch (op._tag) {
+  switch (op._op) {
     case "Failure":
     case "Success": {
       // @ts-expect-error

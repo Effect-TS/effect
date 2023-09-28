@@ -39,6 +39,7 @@ export type TypeId = typeof TypeId
  */
 export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Left"
+  readonly _op: "Left"
   readonly left: E
   readonly [TypeId]: {
     readonly _A: (_: never) => A
@@ -55,6 +56,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
  */
 export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Right"
+  readonly _op: "Right"
   readonly right: A
   readonly [TypeId]: {
     readonly _A: (_: never) => A

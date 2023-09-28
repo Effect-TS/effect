@@ -876,7 +876,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
           }
         } catch (e) {
           if (core.isEffect(e)) {
-            if ((e as core.Primitive)._tag === OpCodes.OP_YIELD) {
+            if ((e as core.Primitive)._op === OpCodes.OP_YIELD) {
               if (_runtimeFlags.cooperativeYielding(this._runtimeFlags)) {
                 this.tell(FiberMessage.yieldNow())
                 this.tell(FiberMessage.resume(core.exitUnit))
@@ -884,7 +884,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
               } else {
                 effect = core.exitUnit
               }
-            } else if ((e as core.Primitive)._tag === OpCodes.OP_ASYNC) {
+            } else if ((e as core.Primitive)._op === OpCodes.OP_ASYNC) {
               // Terminate this evaluation, async resumption will continue evaluation:
               effect = null
             }
@@ -983,10 +983,10 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
 
   pushStack(cont: core.Continuation) {
     this._stack.push(cont)
-    if (cont._tag === "OnStep") {
+    if (cont._op === "OnStep") {
       this._steps.push(true)
     }
-    if (cont._tag === "RevertFlags") {
+    if (cont._op === "RevertFlags") {
       this._steps.push(false)
     }
   }
@@ -994,7 +994,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   popStack() {
     const item = this._stack.pop()
     if (item) {
-      if (item._tag === "OnStep" || item._tag === "RevertFlags") {
+      if (item._op === "OnStep" || item._op === "RevertFlags") {
         this._steps.pop()
       }
       return item
@@ -1005,7 +1005,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   getNextSuccessCont() {
     let frame = this.popStack()
     while (frame) {
-      if (frame._tag !== OpCodes.OP_ON_FAILURE) {
+      if (frame._op !== OpCodes.OP_ON_FAILURE) {
         return frame
       }
       frame = this.popStack()
@@ -1015,14 +1015,14 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
   getNextFailCont() {
     let frame = this.popStack()
     while (frame) {
-      if (frame._tag !== OpCodes.OP_ON_SUCCESS && frame._tag !== OpCodes.OP_WHILE) {
+      if (frame._op !== OpCodes.OP_ON_SUCCESS && frame._op !== OpCodes.OP_WHILE) {
         return frame
       }
       frame = this.popStack()
     }
   }
 
-  [OpCodes.OP_TAG](op: core.Primitive & { _tag: OpCodes.OP_SYNC }) {
+  [OpCodes.OP_TAG](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
     return core.map(
       core.fiberRefGet(core.currentContext),
       (context) => {
@@ -1036,57 +1036,57 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     )
   }
 
-  ["Left"](op: core.Primitive & { _tag: "Left" }) {
+  ["Left"](op: core.Primitive & { _op: "Left" }) {
     return core.exitFail(op.left)
   }
 
-  ["None"](_: core.Primitive & { _tag: "None" }) {
+  ["None"](_: core.Primitive & { _op: "None" }) {
     return core.exitFail(internalCause.NoSuchElementException())
   }
 
-  ["Right"](op: core.Primitive & { _tag: "Right" }) {
+  ["Right"](op: core.Primitive & { _op: "Right" }) {
     return core.exitSucceed(op.right)
   }
 
-  ["Some"](op: core.Primitive & { _tag: "Some" }) {
+  ["Some"](op: core.Primitive & { _op: "Some" }) {
     return core.exitSucceed(op.value)
   }
 
-  [OpCodes.OP_SYNC](op: core.Primitive & { _tag: OpCodes.OP_SYNC }) {
+  [OpCodes.OP_SYNC](op: core.Primitive & { _op: OpCodes.OP_SYNC }) {
     const value = op.i0()
     const cont = this.getNextSuccessCont()
     if (cont !== undefined) {
-      if (!(cont._tag in contOpSuccess)) {
+      if (!(cont._op in contOpSuccess)) {
         // @ts-expect-error
         absurd(cont)
       }
       // @ts-expect-error
-      return contOpSuccess[cont._tag](this, cont, value)
+      return contOpSuccess[cont._op](this, cont, value)
     } else {
       throw core.exitSucceed(value)
     }
   }
 
-  [OpCodes.OP_SUCCESS](op: core.Primitive & { _tag: OpCodes.OP_SUCCESS }) {
+  [OpCodes.OP_SUCCESS](op: core.Primitive & { _op: OpCodes.OP_SUCCESS }) {
     const oldCur = op
     const cont = this.getNextSuccessCont()
     if (cont !== undefined) {
-      if (!(cont._tag in contOpSuccess)) {
+      if (!(cont._op in contOpSuccess)) {
         // @ts-expect-error
         absurd(cont)
       }
       // @ts-expect-error
-      return contOpSuccess[cont._tag](this, cont, oldCur.i0)
+      return contOpSuccess[cont._op](this, cont, oldCur.i0)
     } else {
       throw oldCur
     }
   }
 
-  [OpCodes.OP_FAILURE](op: core.Primitive & { _tag: OpCodes.OP_FAILURE }) {
+  [OpCodes.OP_FAILURE](op: core.Primitive & { _op: OpCodes.OP_FAILURE }) {
     const cause = op.i0
     const cont = this.getNextFailCont()
     if (cont !== undefined) {
-      switch (cont._tag) {
+      switch (cont._op) {
         case OpCodes.OP_ON_FAILURE:
         case OpCodes.OP_ON_SUCCESS_AND_FAILURE: {
           if (!(_runtimeFlags.interruptible(this._runtimeFlags) && this.isInterrupted())) {
@@ -1119,18 +1119,18 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _tag: OpCodes.OP_WITH_RUNTIME }) {
+  [OpCodes.OP_WITH_RUNTIME](op: core.Primitive & { _op: OpCodes.OP_WITH_RUNTIME }) {
     return op.i0(
       this as FiberRuntime<unknown, unknown>,
       FiberStatus.running(this._runtimeFlags) as FiberStatus.Running
     )
   }
 
-  ["Blocked"](op: core.Primitive & { _tag: "Blocked" }) {
+  ["Blocked"](op: core.Primitive & { _op: "Blocked" }) {
     if (this._steps[this._steps.length - 1]) {
       const nextOp = this.popStack()
       if (nextOp) {
-        switch (nextOp._tag) {
+        switch (nextOp._op) {
           case "OnStep": {
             return nextOp.i1(op)
           }
@@ -1180,11 +1180,11 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     )
   }
 
-  ["RunBlocked"](op: core.Primitive & { _tag: "RunBlocked" }) {
+  ["RunBlocked"](op: core.Primitive & { _op: "RunBlocked" }) {
     return runBlockedRequests(op.i0)
   }
 
-  [OpCodes.OP_UPDATE_RUNTIME_FLAGS](op: core.Primitive & { _tag: OpCodes.OP_UPDATE_RUNTIME_FLAGS }) {
+  [OpCodes.OP_UPDATE_RUNTIME_FLAGS](op: core.Primitive & { _op: OpCodes.OP_UPDATE_RUNTIME_FLAGS }) {
     const updateFlags = op.i0
     const oldRuntimeFlags = this._runtimeFlags
     const newRuntimeFlags = _runtimeFlags.patch(oldRuntimeFlags, updateFlags)
@@ -1208,27 +1208,27 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  [OpCodes.OP_ON_SUCCESS](op: core.Primitive & { _tag: OpCodes.OP_ON_SUCCESS }) {
+  [OpCodes.OP_ON_SUCCESS](op: core.Primitive & { _op: OpCodes.OP_ON_SUCCESS }) {
     this.pushStack(op)
     return op.i0
   }
 
-  ["OnStep"](op: core.Primitive & { _tag: "OnStep" }) {
+  ["OnStep"](op: core.Primitive & { _op: "OnStep" }) {
     this.pushStack(op)
     return op.i0
   }
 
-  [OpCodes.OP_ON_FAILURE](op: core.Primitive & { _tag: OpCodes.OP_ON_FAILURE }) {
+  [OpCodes.OP_ON_FAILURE](op: core.Primitive & { _op: OpCodes.OP_ON_FAILURE }) {
     this.pushStack(op)
     return op.i0
   }
 
-  [OpCodes.OP_ON_SUCCESS_AND_FAILURE](op: core.Primitive & { _tag: OpCodes.OP_ON_SUCCESS_AND_FAILURE }) {
+  [OpCodes.OP_ON_SUCCESS_AND_FAILURE](op: core.Primitive & { _op: OpCodes.OP_ON_SUCCESS_AND_FAILURE }) {
     this.pushStack(op)
     return op.i0
   }
 
-  [OpCodes.OP_ASYNC](op: core.Primitive & { _tag: OpCodes.OP_ASYNC }) {
+  [OpCodes.OP_ASYNC](op: core.Primitive & { _op: OpCodes.OP_ASYNC }) {
     this._asyncBlockingOn = op.i1
     this.initiateAsync(this._runtimeFlags, op.i0)
     throw op
@@ -1238,7 +1238,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     throw op
   }
 
-  [OpCodes.OP_WHILE](op: core.Primitive & { _tag: OpCodes.OP_WHILE }) {
+  [OpCodes.OP_WHILE](op: core.Primitive & { _op: OpCodes.OP_WHILE }) {
     const check = op.i0
     const body = op.i1
     if (check()) {
@@ -1249,7 +1249,7 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
     }
   }
 
-  [OpCodes.OP_COMMIT](op: core.Primitive & { _tag: OpCodes.OP_COMMIT }) {
+  [OpCodes.OP_COMMIT](op: core.Primitive & { _op: OpCodes.OP_COMMIT }) {
     return op.commit()
   }
 
@@ -1277,7 +1277,10 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
         cur = core.flatMap(core.yieldNow({ priority: shouldYield }), () => oldCur)
       }
       try {
-        if (!((cur as core.Primitive)._tag in this)) {
+        if (!("_op" in cur)) {
+          console.log(cur)
+        }
+        if (!((cur as core.Primitive)._op in this)) {
           if (typeof cur === "function") {
             console.log((cur as any)())
           }
@@ -1287,20 +1290,20 @@ export class FiberRuntime<E, A> implements Fiber.RuntimeFiber<E, A> {
         // @ts-expect-error
         cur = this._tracer.context(
           // @ts-expect-error
-          () => this[(cur as core.Primitive)._tag](cur as core.Primitive),
+          () => this[(cur as core.Primitive)._op](cur as core.Primitive),
           this
         )
       } catch (e) {
         if (core.isEffect(e)) {
           if (
-            (e as core.Primitive)._tag === OpCodes.OP_YIELD ||
-            (e as core.Primitive)._tag === OpCodes.OP_ASYNC
+            (e as core.Primitive)._op === OpCodes.OP_YIELD ||
+            (e as core.Primitive)._op === OpCodes.OP_ASYNC
           ) {
             throw e
           }
           if (
-            (e as core.Primitive)._tag === OpCodes.OP_SUCCESS ||
-            (e as core.Primitive)._tag === OpCodes.OP_FAILURE
+            (e as core.Primitive)._op === OpCodes.OP_SUCCESS ||
+            (e as core.Primitive)._op === OpCodes.OP_FAILURE
           ) {
             return e as Exit.Exit<E, A>
           }
@@ -1901,10 +1904,10 @@ const forEachBatchedDiscard = <R, E, A, _>(
           return core.unit
         }) :
         core.flatMapStep(effects[i], (s) => {
-          if (s._tag === "Blocked") {
+          if (s._op === "Blocked") {
             blocked.push(s)
             return loop(i + 1)
-          } else if (s._tag === "Failure") {
+          } else if (s._op === "Failure") {
             return core.suspend(() => {
               if (blocked.length > 0) {
                 const requests = blocked.map((b) => b.i0).reduce(_RequestBlock.par)
@@ -1948,7 +1951,7 @@ export const forEachParUnboundedDiscard = <R, E, A, _>(
               core.suspend(() => restore((batching ? core.step : core.exit)(f(a, i)))),
               core.flatMap(
                 (exit) => {
-                  switch (exit._tag) {
+                  switch (exit._op) {
                     case "Failure": {
                       if (residual.length > 0) {
                         const requests = residual.map((blocked) => blocked.i0).reduce(_RequestBlock.par)
@@ -1975,7 +1978,7 @@ export const forEachParUnboundedDiscard = <R, E, A, _>(
                       )
                     }
                     default: {
-                      if (exit._tag === "Blocked") {
+                      if (exit._op === "Blocked") {
                         residual.push(exit)
                       }
                       if (ref + 1 === size) {
@@ -2060,7 +2063,7 @@ export const forEachParNDiscard = <A, R, E, _>(
         next.done ?
           core.unit :
           core.flatMap((batching ? core.step : core.exit)(core.asUnit(f(next.value, i++))), (res) => {
-            switch (res._tag) {
+            switch (res._op) {
               case "Blocked": {
                 residual.push(res)
                 return worker

@@ -28,6 +28,7 @@ export type TagTypeId = typeof TagTypeId
  */
 export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
   readonly _tag: "Tag"
+  readonly _op: "Tag"
   readonly [TagTypeId]: {
     readonly _S: (_: Service) => Service
     readonly _I: (_: Identifier) => Identifier

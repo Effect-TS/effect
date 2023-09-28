@@ -43,6 +43,7 @@ export type TypeId = typeof TypeId
  */
 export interface None<A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "None"
+  readonly _op: "None"
   readonly [TypeId]: {
     readonly _A: (_: never) => A
   }
@@ -57,6 +58,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
  */
 export interface Some<A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: "Some"
+  readonly _op: "Some"
   readonly value: A
   readonly [TypeId]: {
     readonly _A: (_: never) => A

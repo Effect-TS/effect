@@ -144,6 +144,7 @@ const stmVariance = {
 /** @internal */
 class STMPrimitive implements STM.STM<any, any, any> {
   public _tag = OP_COMMIT
+  public _op = OP_COMMIT
   public i1: any = undefined
   public i2: any = undefined;
   [Effect.EffectTypeId]: any;

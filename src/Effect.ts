@@ -141,7 +141,7 @@ export interface EffectTypeLambda extends TypeLambda {
  * @category models
  */
 export interface Blocked<R, E, A> extends Effect<R, E, A> {
-  readonly _tag: "Blocked"
+  readonly _op: "Blocked"
   readonly i0: RequestBlock<R>
   readonly i1: Effect<R, E, A>
 }
