@@ -1,5 +1,11 @@
 # @effect/schema
 
+## 0.37.2
+
+### Patch Changes
+
+- [#445](https://github.com/Effect-TS/schema/pull/445) [`e90d43b`](https://github.com/Effect-TS/schema/commit/e90d43badcfa577492766dfcfd3ab3910dacd41f) Thanks [@gcanti](https://github.com/gcanti)! - remove internal tag from MissingSelfGeneric utility type
+
 ## 0.37.1
 
 ### Patch Changes
