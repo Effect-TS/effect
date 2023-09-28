@@ -3,7 +3,7 @@ import * as Pretty from "@effect/schema/Pretty"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-const schema = S.number.pipe(S.int())
+const schema = S.Int
 
 describe("number/int", () => {
   it("property tests", () => {
@@ -15,6 +15,8 @@ describe("number/int", () => {
     expect(is(0)).toEqual(true)
     expect(is(1)).toEqual(true)
     expect(is(0.5)).toEqual(false)
+    expect(is(Number.MAX_SAFE_INTEGER + 1)).toEqual(false)
+    expect(is(Number.MIN_SAFE_INTEGER - 1)).toEqual(false)
   })
 
   it("decoding", async () => {

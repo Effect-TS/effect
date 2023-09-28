@@ -4,7 +4,7 @@ import * as Util from "@effect/schema/test/util"
 
 type Int = number & Brand.Brand<"Int">
 const Int = Brand.refined<Int>(
-  (n) => Number.isInteger(n),
+  (n) => Number.isSafeInteger(n),
   (n) => Brand.error(`Expected ${n} to be an integer`)
 )
 

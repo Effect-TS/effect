@@ -1973,7 +1973,7 @@ export const IntTypeId = Symbol.for("@effect/schema/TypeId/Int")
 export const int =
   <A extends number>(options?: FilterAnnotations<A>) => <I>(self: Schema<I, A>): Schema<I, A> =>
     self.pipe(
-      filter((a): a is A => Number.isInteger(a), {
+      filter((a): a is A => Number.isSafeInteger(a), {
         typeId: IntTypeId,
         description: "integer",
         jsonSchema: { type: "integer" },
