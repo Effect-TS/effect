@@ -19,7 +19,7 @@ import * as TestAnnotationMap from "./TestAnnotationMap"
 /**
  * @since 1.0.0
  */
-export const TestAnnotationsTypeId = Symbol.for("effect/Annotations")
+export const TestAnnotationsTypeId = Symbol.for("effect/TestAnnotations")
 
 /**
  * @since 1.0.0
