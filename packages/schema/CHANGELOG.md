@@ -1,5 +1,20 @@
 # @effect/schema
 
+## 0.38.0
+
+### Minor Changes
+
+- [#439](https://github.com/Effect-TS/schema/pull/439) [`2197496`](https://github.com/Effect-TS/schema/commit/21974960d957abad178c858b855bf9bd34c18d30) Thanks [@gcanti](https://github.com/gcanti)! - Schema: remove \*Result APIs
+
+  - decodeResult (use decode instead)
+  - encodeResult (use encode instead)
+  - parseResult (use parse instead)
+  - validateResult (use validate instead)
+
+### Patch Changes
+
+- [#447](https://github.com/Effect-TS/schema/pull/447) [`0252143`](https://github.com/Effect-TS/schema/commit/0252143fd081de940bc3fad7d6e1420ba016b3f0) Thanks [@gcanti](https://github.com/gcanti)! - int filter: use Number.isSafeInteger instead of Number.isInteger
+
 ## 0.37.2
 
 ### Patch Changes
