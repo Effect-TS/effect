@@ -1,6 +1,6 @@
 ---
 title: GlobalValue.ts
-nav_order: 42
+nav_order: 44
 parent: Modules
 ---
 

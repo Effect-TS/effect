@@ -104,6 +104,7 @@ Added in v1.0.0
 - [utils](#utils)
   - [Channel (namespace)](#channel-namespace)
     - [Variance (interface)](#variance-interface)
+    - [VarianceStruct (interface)](#variancestruct-interface)
   - [collect](#collect)
   - [concatMap](#concatmap)
   - [concatMapWith](#concatmapwith)
@@ -1677,15 +1678,25 @@ Added in v1.0.0
 
 ```ts
 export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-  readonly [ChannelTypeId]: {
-    _Env: (_: never) => Env
-    _InErr: (_: InErr) => void
-    _InElem: (_: InElem) => void
-    _InDone: (_: InDone) => void
-    _OutErr: (_: never) => OutErr
-    _OutElem: (_: never) => OutElem
-    _OutDone: (_: never) => OutDone
-  }
+  readonly [ChannelTypeId]: VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+}
+```
+
+Added in v1.0.0
+
+### VarianceStruct (interface)
+
+**Signature**
+
+```ts
+export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+  _Env: (_: never) => Env
+  _InErr: (_: InErr) => void
+  _InElem: (_: InElem) => void
+  _InDone: (_: InDone) => void
+  _OutErr: (_: never) => OutErr
+  _OutElem: (_: never) => OutElem
+  _OutDone: (_: never) => OutDone
 }
 ```
 

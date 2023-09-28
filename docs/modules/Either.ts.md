@@ -1,6 +1,6 @@
 ---
 title: Either.ts
-nav_order: 29
+nav_order: 30
 parent: Modules
 ---
 
@@ -595,6 +595,7 @@ Added in v1.0.0
 ```ts
 export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: 'Left'
+  readonly _op: 'Left'
   readonly left: E
   readonly [TypeId]: {
     readonly _A: (_: never) => A
@@ -615,6 +616,7 @@ Added in v1.0.0
 ```ts
 export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
   readonly _tag: 'Right'
+  readonly _op: 'Right'
   readonly right: A
   readonly [TypeId]: {
     readonly _A: (_: never) => A

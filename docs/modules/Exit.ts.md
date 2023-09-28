@@ -1,6 +1,6 @@
 ---
 title: Exit.ts
-nav_order: 34
+nav_order: 36
 parent: Modules
 ---
 
@@ -441,6 +441,7 @@ of type `E`.
 ```ts
 export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: 'Failure'
+  readonly _op: 'Failure'
   readonly cause: Cause.Cause<E>
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>
@@ -462,6 +463,7 @@ of type `A`.
 ```ts
 export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Inspectable {
   readonly _tag: 'Success'
+  readonly _op: 'Success'
   readonly value: A
   [Unify.typeSymbol]?: unknown
   [Unify.unifySymbol]?: ExitUnify<this>

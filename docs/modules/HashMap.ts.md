@@ -1,6 +1,6 @@
 ---
 title: HashMap.ts
-nav_order: 45
+nav_order: 47
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: Sink.ts
-nav_order: 102
+nav_order: 104
 parent: Modules
 ---
 
@@ -122,6 +122,7 @@ Added in v1.0.0
 - [utils](#utils)
   - [Sink (namespace)](#sink-namespace)
     - [Variance (interface)](#variance-interface)
+    - [VarianceStruct (interface)](#variancestruct-interface)
   - [collectAllFrom](#collectallfrom)
   - [collectAllWhileWith](#collectallwhilewith)
   - [collectLeftover](#collectleftover)
@@ -1679,13 +1680,23 @@ Added in v1.0.0
 
 ```ts
 export interface Variance<R, E, In, L, Z> {
-  readonly [SinkTypeId]: {
-    _R: (_: never) => R
-    _E: (_: never) => E
-    _In: (_: In) => void
-    _L: (_: never) => L
-    _Z: (_: never) => Z
-  }
+  readonly [SinkTypeId]: VarianceStruct<R, E, In, L, Z>
+}
+```
+
+Added in v1.0.0
+
+### VarianceStruct (interface)
+
+**Signature**
+
+```ts
+export interface VarianceStruct<R, E, In, L, Z> {
+  _R: (_: never) => R
+  _E: (_: never) => E
+  _In: (_: In) => void
+  _L: (_: never) => L
+  _Z: (_: never) => Z
 }
 ```
 
