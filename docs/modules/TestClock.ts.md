@@ -13,6 +13,7 @@ Added in v1.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [Data (interface)](#data-interface)
   - [TestClock](#testclock)
   - [TestClock (interface)](#testclock-interface)
   - [adjust](#adjust)
@@ -20,6 +21,7 @@ Added in v1.0.0
   - [currentTimeMillis](#currenttimemillis)
   - [defaultTestClock](#defaulttestclock)
   - [live](#live)
+  - [makeData](#makedata)
   - [save](#save)
   - [setTime](#settime)
   - [sleep](#sleep)
@@ -30,6 +32,21 @@ Added in v1.0.0
 ---
 
 # utils
+
+## Data (interface)
+
+`Data` represents the state of the `TestClock`, including the clock time.
+
+**Signature**
+
+```ts
+export interface Data {
+  readonly instant: number
+  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+}
+```
+
+Added in v1.0.1
 
 ## TestClock
 
@@ -136,7 +153,7 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const defaultTestClock: Layer.Layer<Live.TestLive | Annotations.TestAnnotations, never, TestClock>
+export declare const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
 ```
 
 Added in v1.0.0
@@ -146,9 +163,20 @@ Added in v1.0.0
 **Signature**
 
 ```ts
-export declare const live: (
-  data: Data.Data
-) => Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+export declare const live: (data: Data) => Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock>
+```
+
+Added in v1.0.0
+
+## makeData
+
+**Signature**
+
+```ts
+export declare const makeData: (
+  instant: number,
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+) => Data
 ```
 
 Added in v1.0.0
