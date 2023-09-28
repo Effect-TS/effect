@@ -3355,7 +3355,6 @@ export const data = <
 // classes
 // ---------------------------------------------
 
-/** @internal */
 type MissingSelfGeneric<Usage extends string> =
   `Missing \`Self\` generic - use \`class Self extends ${Usage}<Self>()({ ... })\``
 
