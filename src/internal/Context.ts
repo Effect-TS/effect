@@ -1,14 +1,17 @@
+import type { ChannelTypeId } from "../Channel"
 import type * as C from "../Context"
 import * as Equal from "../Equal"
 import { dual } from "../Function"
 import { globalValue } from "../GlobalValue"
 import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
-import { type Effectable, EffectTypeId, effectVariance } from "../internal/Effect"
 import type * as O from "../Option"
 import * as option from "../Option"
 import { pipeArguments } from "../Pipeable"
+import type { SinkTypeId } from "../Sink"
 import type * as STM from "../STM"
+import type { StreamTypeId } from "../Stream"
+import { type Effectable, EffectTypeId, effectVariance } from "./Effect"
 
 /** @internal */
 export const TagTypeId: C.TagTypeId = Symbol.for("effect/Context/Tag") as C.TagTypeId
@@ -26,6 +29,9 @@ export const TagProto: C.Tag<unknown, unknown> & Effectable = {
   _tag: "Tag",
   [EffectTypeId]: effectVariance,
   [STMTypeId]: effectVariance,
+  [Symbol.for("effect/Stream") as StreamTypeId]: effectVariance,
+  [Symbol.for("effect/Sink") as SinkTypeId]: effectVariance as any,
+  [Symbol.for("effect/Channel") as ChannelTypeId]: effectVariance as any,
   [TagTypeId]: {
     _S: (_: unknown) => _,
     _I: (_: unknown) => _

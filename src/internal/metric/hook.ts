@@ -12,7 +12,7 @@ import { pipeArguments } from "../../Pipeable"
 import * as ReadonlyArray from "../../ReadonlyArray"
 
 /** @internal */
-const MetricHookSymbolKey = "../../MetricHook"
+const MetricHookSymbolKey = "effect/MetricHook"
 
 /** @internal */
 export const MetricHookTypeId: MetricHook.MetricHookTypeId = Symbol.for(

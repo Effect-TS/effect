@@ -14,7 +14,7 @@ import * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
 
 /** @internal */
-const MetricKeySymbolKey = "../../MetricKey"
+const MetricKeySymbolKey = "effect/MetricKey"
 
 /** @internal */
 export const MetricKeyTypeId: MetricKey.MetricKeyTypeId = Symbol.for(

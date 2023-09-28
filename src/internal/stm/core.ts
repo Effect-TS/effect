@@ -23,6 +23,9 @@ import type * as Option from "../../Option"
 import { pipeArguments } from "../../Pipeable"
 import type * as Scheduler from "../../Scheduler"
 import type * as STM from "../../STM"
+import { StreamTypeId } from "../../Stream"
+import { ChannelTypeId } from "../core-stream"
+import { SinkTypeId } from "../sink"
 
 /** @internal */
 const STMSymbolKey = "effect/STM"
@@ -143,11 +146,19 @@ class STMPrimitive implements STM.STM<any, any, any> {
   public _tag = OP_COMMIT
   public i1: any = undefined
   public i2: any = undefined;
-  [Effect.EffectTypeId] = stmVariance
+  [Effect.EffectTypeId]: any;
+  [StreamTypeId]: any;
+  [SinkTypeId]: any;
+  [ChannelTypeId]: any
   get [STMTypeId]() {
     return stmVariance
   }
-  constructor(readonly i0: Primitive["i0"]) {}
+  constructor(readonly i0: Primitive["i0"]) {
+    this[Effect.EffectTypeId] = stmVariance
+    this[StreamTypeId] = stmVariance
+    this[SinkTypeId] = stmVariance
+    this[ChannelTypeId] = stmVariance
+  }
   [Equal.symbol](this: {}, that: unknown) {
     return this === that
   }

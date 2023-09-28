@@ -5,7 +5,7 @@ import type * as MetricLabel from "../../MetricLabel"
 import { pipeArguments } from "../../Pipeable"
 
 /** @internal */
-const MetricLabelSymbolKey = "../../MetricLabel"
+const MetricLabelSymbolKey = "effect/MetricLabel"
 
 /** @internal */
 export const MetricLabelTypeId: MetricLabel.MetricLabelTypeId = Symbol.for(

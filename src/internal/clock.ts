@@ -8,7 +8,7 @@ import * as core from "./core"
 import * as timeout from "./timeout"
 
 /** @internal */
-const ClockSymbolKey = "@effe../Clock"
+const ClockSymbolKey = "effect/Clock"
 
 /** @internal */
 export const ClockTypeId: Clock.ClockTypeId = Symbol.for(ClockSymbolKey) as Clock.ClockTypeId

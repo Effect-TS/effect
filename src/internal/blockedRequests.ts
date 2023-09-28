@@ -306,7 +306,7 @@ const merge = <R>(
 
 /** @internal */
 export const EntryTypeId: Request.EntryTypeId = Symbol.for(
-  "@effe../RequestBlock.Entry"
+  "effect/RequestBlock/Entry"
 ) as Request.EntryTypeId
 
 /** @internal */
@@ -346,7 +346,7 @@ export const makeEntry = <A extends Request.Request<any, any>>(
 
 /** @internal */
 export const RequestBlockParallelTypeId = Symbol.for(
-  "@effe../RequestBlockParallel"
+  "effect/RequestBlock/RequestBlockParallel"
 )
 
 const parallelVariance = {
@@ -412,7 +412,7 @@ export const parallelCollectionToChunk = <R>(
 
 /** @internal */
 export const SequentialCollectionTypeId = Symbol.for(
-  "@effe../RequestBlockSequential"
+  "effect/RequestBlock/RequestBlockSequential"
 )
 
 /** @internal */

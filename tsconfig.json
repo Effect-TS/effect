@@ -13,7 +13,7 @@
     "preserveSymlinks": true,
     "moduleResolution": "node",
     "noEmit": true,
-    "lib": ["ES2021"],
+    "lib": ["ES2021", "DOM"],
     "isolatedModules": true,
     "sourceMap": true,
     "declarationMap": true,

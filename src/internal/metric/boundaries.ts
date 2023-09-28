@@ -7,7 +7,7 @@ import { pipeArguments } from "../../Pipeable"
 import * as ReadonlyArray from "../../ReadonlyArray"
 
 /** @internal */
-const MetricBoundariesSymbolKey = "../../MetricBoundaries"
+const MetricBoundariesSymbolKey = "effect/MetricBoundaries"
 
 /** @internal */
 export const MetricBoundariesTypeId: MetricBoundaries.MetricBoundariesTypeId = Symbol.for(

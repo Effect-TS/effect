@@ -1,6 +1,6 @@
 {
   "typescript.tsdk": "node_modules/typescript/lib",
-  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
@@ -149,11 +149,7 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
-  "eslint.validate": [
-    "markdown",
-    "javascript",
-    "typescript"
-  ],
+  "eslint.validate": ["markdown", "javascript", "typescript"],
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": true
   },
