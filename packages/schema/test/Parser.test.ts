@@ -8,13 +8,6 @@ import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
 describe("Parser", () => {
-  it("exports", () => {
-    expect(S.parseResult).exist
-    expect(S.decodeResult).exist
-    expect(S.validateResult).exist
-    expect(S.encodeResult).exist
-  })
-
   it("asserts", () => {
     const schema = S.string
     expect(P.asserts(schema)("a")).toEqual(undefined)
@@ -119,14 +112,6 @@ describe("Parser", () => {
     )
   })
 
-  it("validateResult", () => {
-    const schema = S.NumberFromString
-    expect(P.validateResult(schema)(1)).toEqual(E.right(1))
-    expect(P.validateResult(schema)("1")).toEqual(
-      E.left(PR.parseError([PR.type(S.number.ast, "1")]))
-    )
-  })
-
   it("validatePromise", async () => {
     const schema = S.NumberFromString
     await Util.resolves(P.validatePromise(schema)(1), 1)
@@ -140,11 +125,6 @@ describe("Parser", () => {
     expect(await Effect.runPromise(Effect.either(P.validate(schema)("1")))).toEqual(
       E.left(PR.parseError([PR.type(S.number.ast, "1")]))
     )
-  })
-
-  it("encodeResult", () => {
-    const schema = S.NumberFromString
-    expect(P.encodeResult(schema)(1)).toEqual(E.right("1"))
   })
 
   it("encodeEither", () => {
@@ -176,7 +156,7 @@ describe("Parser", () => {
         S.declare(
           [],
           S.struct({ _tag: S.literal("a") }),
-          () => P.parseResult(S.struct({ _tag: S.literal("a") }))
+          () => P.parse(S.struct({ _tag: S.literal("a") }))
         ).ast
       )
     ).toEqual([["_tag", AST.createLiteral("a")]])

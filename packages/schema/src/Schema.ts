@@ -129,11 +129,6 @@ export {
    * @category decoding
    * @since 1.0.0
    */
-  decodeResult,
-  /**
-   * @category decoding
-   * @since 1.0.0
-   */
   decodeSync,
   /**
    * @category encoding
@@ -155,11 +150,6 @@ export {
    * @since 1.0.0
    */
   encodePromise,
-  /**
-   * @category encoding
-   * @since 1.0.0
-   */
-  encodeResult,
   /**
    * @category encoding
    * @since 1.0.0
@@ -194,11 +184,6 @@ export {
    * @category parsing
    * @since 1.0.0
    */
-  parseResult,
-  /**
-   * @category parsing
-   * @since 1.0.0
-   */
   parseSync,
   /**
    * @category validation
@@ -220,11 +205,6 @@ export {
    * @since 1.0.0
    */
   validatePromise,
-  /**
-   * @category validation
-   * @since 1.0.0
-   */
-  validateResult,
   /**
    * @category validation
    * @since 1.0.0
@@ -2995,7 +2975,7 @@ export const optionFromSelf = <I, A>(
     [value],
     optionInline(value),
     (isDecoding, value) => {
-      const parse = isDecoding ? Parser.parseResult(value) : Parser.encodeResult(value)
+      const parse = isDecoding ? Parser.parse(value) : Parser.encode(value)
       return (u, options, ast) =>
         !Option.isOption(u) ?
           ParseResult.failure(ParseResult.type(ast, u)) :
@@ -3080,8 +3060,8 @@ export const eitherFromSelf = <IE, E, IA, A>(
     [left, right],
     eitherInline(left, right),
     (isDecoding, left, right) => {
-      const parseLeft = isDecoding ? Parser.parseResult(left) : Parser.encodeResult(left)
-      const parseRight = isDecoding ? Parser.parseResult(right) : Parser.encodeResult(right)
+      const parseLeft = isDecoding ? Parser.parse(left) : Parser.encode(left)
+      const parseRight = isDecoding ? Parser.parse(right) : Parser.encode(right)
       return (u, options, ast) =>
         !Either.isEither(u) ?
           ParseResult.failure(ParseResult.type(ast, u)) :
@@ -3156,8 +3136,8 @@ export const readonlyMapFromSelf = <IK, K, IV, V>(
     }),
     (isDecoding, key, value) => {
       const parse = isDecoding
-        ? Parser.parseResult(array(tuple(key, value)))
-        : Parser.encodeResult(array(tuple(key, value)))
+        ? Parser.parse(array(tuple(key, value)))
+        : Parser.encode(array(tuple(key, value)))
       return (u, options, ast) =>
         !isMap(u) ?
           ParseResult.failure(ParseResult.type(ast, u)) :
@@ -3211,7 +3191,7 @@ export const readonlySetFromSelf = <I, A>(
       size: number
     }),
     (isDecoding, item) => {
-      const parse = isDecoding ? Parser.parseResult(array(item)) : Parser.encodeResult(array(item))
+      const parse = isDecoding ? Parser.parse(array(item)) : Parser.encode(array(item))
       return (u, options, ast) =>
         !isSet(u) ?
           ParseResult.failure(ParseResult.type(ast, u)) :
@@ -3259,7 +3239,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
       length: number
     }),
     (isDecoding, item) => {
-      const parse = isDecoding ? Parser.parseResult(array(item)) : Parser.encodeResult(array(item))
+      const parse = isDecoding ? Parser.parse(array(item)) : Parser.encode(array(item))
       return (u, options, ast) => {
         if (Chunk.isChunk(u)) {
           return Chunk.isEmpty(u)
@@ -3320,7 +3300,7 @@ export const dataFromSelf = <
     [item],
     item,
     (isDecoding, item) => {
-      const parse = isDecoding ? Parser.parseResult(item) : Parser.encodeResult(item)
+      const parse = isDecoding ? Parser.parse(item) : Parser.encode(item)
       return (u, options, ast) =>
         !Equal.isEqual(u) ?
           ParseResult.failure(ParseResult.type(ast, u)) :

@@ -14,15 +14,19 @@ import * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
 
+const getEither = (
+  ast: AST.AST,
+  isDecoding: boolean
+): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, any> =>
+  go(ast, isDecoding) as any
+
 const getSync = (ast: AST.AST, isDecoding: boolean) => {
-  const parser = go(ast, isDecoding)
+  const parser = getEither(ast, isDecoding)
   return (input: unknown, options?: AST.ParseOptions) => {
     const result = parser(input, options)
-    // @ts-expect-error
     if (Either.isLeft(result)) {
       throw new Error(TreeFormatter.formatErrors(result.left.errors))
     }
-    // @ts-expect-error
     return result.right
   }
 }
@@ -33,21 +37,15 @@ const getOption = (ast: AST.AST, isDecoding: boolean) => {
     Option.getRight(parser(input, options))
 }
 
-const getEither = (ast: AST.AST, isDecoding: boolean) => {
-  const parser = go(ast, isDecoding)
-  return (input: unknown, options?: AST.ParseOptions) => parser(input, options) as any
-}
-
-const getPromise = (ast: AST.AST, isDecoding: boolean) => {
-  const parser = go(ast, isDecoding)
-  return (input: unknown, options?: AST.ParseOptions) =>
-    Effect.runPromise(parser(input, { ...options, isEffectAllowed: true }))
-}
-
 const getEffect = (ast: AST.AST, isDecoding: boolean) => {
   const parser = go(ast, isDecoding)
   return (input: unknown, options?: AST.ParseOptions) =>
     parser(input, { ...options, isEffectAllowed: true })
+}
+
+const getPromise = (ast: AST.AST, isDecoding: boolean) => {
+  const parser = getEffect(ast, isDecoding)
+  return (input: unknown, options?: AST.ParseOptions) => Effect.runPromise(parser(input, options))
 }
 
 /**
@@ -74,14 +72,6 @@ export const parseEither = <_, A>(
   schema: Schema.Schema<_, A>
 ): (i: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> =>
   getEither(schema.ast, true)
-
-/**
- * @category parsing
- * @since 1.0.0
- */
-export const parseResult = <_, A>(
-  schema: Schema.Schema<_, A>
-): (i: unknown, options?: AST.ParseOptions) => ParseResult.ParseResult<A> => go(schema.ast, true)
 
 /**
  * @category parsing
@@ -128,14 +118,6 @@ export const decodeEither: <I, A>(
  * @category decoding
  * @since 1.0.0
  */
-export const decodeResult: <I, A>(
-  schema: Schema.Schema<I, A>
-) => (i: I, options?: AST.ParseOptions) => ParseResult.ParseResult<A> = parseResult
-
-/**
- * @category decoding
- * @since 1.0.0
- */
 export const decodePromise: <I, A>(
   schema: Schema.Schema<I, A>
 ) => (i: I, options?: AST.ParseOptions) => Promise<A> = parsePromise
@@ -173,15 +155,6 @@ export const validateEither = <_, A>(
   schema: Schema.Schema<_, A>
 ): (a: unknown, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, A> =>
   getEither(AST.to(schema.ast), true)
-
-/**
- * @category validation
- * @since 1.0.0
- */
-export const validateResult = <_, A>(
-  schema: Schema.Schema<_, A>
-): (a: unknown, options?: AST.ParseOptions) => ParseResult.ParseResult<A> =>
-  go(AST.to(schema.ast), true)
 
 /**
  * @category validation
@@ -244,14 +217,6 @@ export const encodeEither = <I, A>(
   schema: Schema.Schema<I, A>
 ): (a: A, options?: AST.ParseOptions) => Either.Either<ParseResult.ParseError, I> =>
   getEither(schema.ast, false)
-
-/**
- * @category encoding
- * @since 1.0.0
- */
-export const encodeResult = <I, A>(
-  schema: Schema.Schema<I, A>
-): (a: A, options?: AST.ParseOptions) => ParseResult.ParseResult<I> => go(schema.ast, false)
 
 /**
  * @category encoding

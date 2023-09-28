@@ -1,8 +1,6 @@
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
 
-console.log("isBun", Util.isBun)
-
 describe("Schema/ParseJson", () => {
   it("decoding", async () => {
     const schema = S.ParseJson

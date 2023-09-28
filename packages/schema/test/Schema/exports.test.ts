@@ -6,25 +6,21 @@ describe("Schema/exports", () => {
     expect(S.parseSync).exist
     expect(S.parseOption).exist
     expect(S.parseEither).exist
-    expect(S.parseResult).exist
 
     expect(S.decode).exist
     expect(S.decodeSync).exist
     expect(S.decodeOption).exist
     expect(S.decodeEither).exist
-    expect(S.decodeResult).exist
 
     expect(S.encode).exist
     expect(S.encodeSync).exist
     expect(S.encodeOption).exist
     expect(S.encodeEither).exist
-    expect(S.encodeResult).exist
 
     expect(S.validate).exist
     expect(S.validateSync).exist
     expect(S.validateOption).exist
     expect(S.validateEither).exist
-    expect(S.validateResult).exist
 
     expect(S.GreaterThanBigintTypeId).exist
     expect(S.GreaterThanOrEqualToBigintTypeId).exist
