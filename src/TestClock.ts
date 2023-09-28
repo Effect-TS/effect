@@ -4,7 +4,7 @@
 import * as Chunk from "./Chunk"
 import type * as Clock from "./Clock"
 import * as Context from "./Context"
-import type { Deferred } from "./Deferred"
+import type * as Deferred from "./Deferred"
 import * as Duration from "./Duration"
 import type * as Effect from "./Effect"
 import * as Equal from "./Equal"
@@ -22,7 +22,6 @@ import * as fiberRuntime from "./internal/fiberRuntime"
 import * as layer from "./internal/layer"
 import * as ref from "./internal/ref"
 import * as synchronized from "./internal/synchronizedRef"
-import * as Data from "./internal/testing/data"
 import * as SuspendedWarningData from "./internal/testing/suspendedWarningData"
 import * as WarningData from "./internal/testing/warningData"
 import type * as Layer from "./Layer"
@@ -85,6 +84,27 @@ export interface TestClock extends Clock.Clock {
 }
 
 /**
+ * `Data` represents the state of the `TestClock`, including the clock time.
+ *
+ * @since 1.0.1
+ */
+export interface Data {
+  readonly instant: number
+  readonly sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+}
+
+/**
+ * @since 1.0.0
+ */
+export const makeData = (
+  instant: number,
+  sleeps: Chunk.Chunk<readonly [number, Deferred.Deferred<never, void>]>
+): Data => ({
+  instant,
+  sleeps
+})
+
+/**
  * @since 1.0.0
  */
 export const TestClock: Context.Tag<TestClock, TestClock> = Context.Tag<TestClock>(
@@ -115,7 +135,7 @@ const suspendedWarning = "Warning: A test is advancing the test clock, " +
 export class TestClockImpl implements TestClock {
   [clock.ClockTypeId]: Clock.ClockTypeId = clock.ClockTypeId
   constructor(
-    readonly clockState: Ref.Ref<Data.Data>,
+    readonly clockState: Ref.Ref<Data>,
     readonly live: Live.TestLive,
     readonly annotations: Annotations.TestAnnotations,
     readonly warningState: Synchronized.SynchronizedRef<WarningData.WarningData>,
@@ -183,7 +203,7 @@ export class TestClockImpl implements TestClock {
           if (end > data.instant) {
             return [
               true,
-              Data.make(data.instant, pipe(data.sleeps, Chunk.prepend([end, deferred] as const)))
+              makeData(data.instant, pipe(data.sleeps, Chunk.prepend([end, deferred] as const)))
             ] as const
           }
           return [false, data] as const
@@ -373,18 +393,20 @@ export class TestClockImpl implements TestClock {
           const end = f(data.instant)
           const sorted = pipe(
             data.sleeps,
-            Chunk.sort<readonly [number, Deferred<never, void>]>(pipe(number.Order, Order.mapInput((_) => _[0])))
+            Chunk.sort<readonly [number, Deferred.Deferred<never, void>]>(
+              pipe(number.Order, Order.mapInput((_) => _[0]))
+            )
           )
           if (Chunk.isNonEmpty(sorted)) {
             const [instant, deferred] = Chunk.headNonEmpty(sorted)
             if (instant <= end) {
               return [
                 Option.some([end, deferred] as const),
-                Data.make(instant, Chunk.tailNonEmpty(sorted))
+                makeData(instant, Chunk.tailNonEmpty(sorted))
               ] as const
             }
           }
-          return [Option.none(), Data.make(end, data.sleeps)] as const
+          return [Option.none(), makeData(end, data.sleeps)] as const
         }),
         core.flatMap((option) => {
           switch (option._tag) {
@@ -409,7 +431,7 @@ export class TestClockImpl implements TestClock {
 /**
  * @since 1.0.0
  */
-export const live = (data: Data.Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
+export const live = (data: Data): Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> =>
   layer.scoped(
     TestClock,
     effect.gen(function*($) {
@@ -431,7 +453,7 @@ export const live = (data: Data.Data): Layer.Layer<Annotations.TestAnnotations |
  * @since 1.0.0
  */
 export const defaultTestClock: Layer.Layer<Annotations.TestAnnotations | Live.TestLive, never, TestClock> = live(
-  Data.make(new Date(0).getTime(), Chunk.empty())
+  makeData(new Date(0).getTime(), Chunk.empty())
 )
 
 /**

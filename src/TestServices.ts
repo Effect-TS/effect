@@ -22,7 +22,9 @@ import * as TestConfig from "./TestConfig"
 import * as Live from "./TestLive"
 import * as Sized from "./TestSized"
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export type TestServices =
   | Annotations.TestAnnotations
   | Live.TestLive
@@ -32,7 +34,7 @@ export type TestServices =
 /**
  * The default Effect test services.
  *
- * @internal
+ * @since 1.0.0
  */
 export const liveServices: Context.Context<TestServices> = pipe(
   Context.make(Annotations.TestAnnotations, Annotations.make(ref.unsafeMake(TestAnnotationMap.empty()))),
@@ -41,7 +43,9 @@ export const liveServices: Context.Context<TestServices> = pipe(
   Context.add(TestConfig.TestConfig, TestConfig.make({ repeats: 100, retries: 100, samples: 200, shrinks: 1000 }))
 )
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const currentServices: FiberRef.FiberRef<Context.Context<TestServices>> = core.fiberRefUnsafeMakeContext(
   liveServices
 )
@@ -49,7 +53,7 @@ export const currentServices: FiberRef.FiberRef<Context.Context<TestServices>> =
 /**
  * Retrieves the `Annotations` service for this test.
  *
- * @internal
+ * @since 1.0.0
  */
 export const annotations = (): Effect.Effect<never, never, Annotations.TestAnnotations> => annotationsWith(core.succeed)
 
@@ -57,7 +61,7 @@ export const annotations = (): Effect.Effect<never, never, Annotations.TestAnnot
  * Retrieves the `Annotations` service for this test and uses it to run the
  * specified workflow.
  *
- * @internal
+ * @since 1.0.0
  */
 export const annotationsWith = <R, E, A>(
   f: (annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>
@@ -71,7 +75,7 @@ export const annotationsWith = <R, E, A>(
  * Executes the specified workflow with the specified implementation of the
  * annotations service.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withAnnotations = dual<
   (annotations: Annotations.TestAnnotations) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -86,7 +90,7 @@ export const withAnnotations = dual<
  * Sets the implementation of the annotations service to the specified value
  * and restores it to its original value when the scope is closed.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withAnnotationsScoped = (
   annotations: Annotations.TestAnnotations
@@ -99,7 +103,7 @@ export const withAnnotationsScoped = (
 /**
  * Constructs a new `Annotations` service wrapped in a layer.
  *
- * @internal
+ * @since 1.0.0
  */
 export const annotationsLayer = (): Layer.Layer<never, never, Annotations.TestAnnotations> =>
   layer.scoped(
@@ -115,7 +119,7 @@ export const annotationsLayer = (): Layer.Layer<never, never, Annotations.TestAn
  * Accesses an `Annotations` instance in the context and retrieves the
  * annotation of the specified type, or its default value if there is none.
  *
- * @internal
+ * @since 1.0.0
  */
 export const get = <A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<never, never, A> =>
   annotationsWith((annotations) => annotations.get(key))
@@ -124,7 +128,7 @@ export const get = <A>(key: TestAnnotation.TestAnnotation<A>): Effect.Effect<nev
  * Accesses an `Annotations` instance in the context and appends the
  * specified annotation to the annotation map.
  *
- * @internal
+ * @since 1.0.0
  */
 export const annotate = <A>(key: TestAnnotation.TestAnnotation<A>, value: A): Effect.Effect<never, never, void> =>
   annotationsWith((annotations) => annotations.annotate(key, value))
@@ -132,7 +136,7 @@ export const annotate = <A>(key: TestAnnotation.TestAnnotation<A>, value: A): Ef
 /**
  * Returns the set of all fibers in this test.
  *
- * @internal
+ * @since 1.0.0
  */
 export const supervisedFibers = (): Effect.Effect<
   never,
@@ -141,26 +145,26 @@ export const supervisedFibers = (): Effect.Effect<
 > => annotationsWith((annotations) => annotations.supervisedFibers())
 
 /**
- * Retrieves the `Live` service for this test.
- *
- * @internal
- */
-export const live = (): Effect.Effect<never, never, Live.TestLive> => liveWith(core.succeed)
-
-/**
  * Retrieves the `Live` service for this test and uses it to run the specified
  * workflow.
  *
- * @internal
+ * @since 1.0.0
  */
 export const liveWith = <R, E, A>(f: (live: Live.TestLive) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(currentServices, (services) => f(Context.get(services, Live.TestLive)))
 
 /**
+ * Retrieves the `Live` service for this test.
+ *
+ * @since 1.0.0
+ */
+export const live: Effect.Effect<never, never, Live.TestLive> = liveWith(core.succeed)
+
+/**
  * Executes the specified workflow with the specified implementation of the
  * live service.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withLive = dual<
   (live: Live.TestLive) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -175,7 +179,7 @@ export const withLive = dual<
  * Sets the implementation of the live service to the specified value and
  * restores it to its original value when the scope is closed.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withLiveScoped = (live: Live.TestLive): Effect.Effect<Scope.Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Live.TestLive, live))
@@ -183,7 +187,7 @@ export const withLiveScoped = (live: Live.TestLive): Effect.Effect<Scope.Scope, 
 /**
  * Constructs a new `Live` service wrapped in a layer.
  *
- * @internal
+ * @since 1.0.0
  */
 export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive> =>
   layer.scoped(
@@ -198,7 +202,7 @@ export const liveLayer = (): Layer.Layer<DefaultServices.DefaultServices, never,
 /**
  * Provides a workflow with the "live" default Effect services.
  *
- * @internal
+ * @since 1.0.0
  */
 export const provideLive = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   liveWith((live) => live.provide(effect))
@@ -207,7 +211,7 @@ export const provideLive = <R, E, A>(effect: Effect.Effect<R, E, A>): Effect.Eff
  * Runs a transformation function with the live default Effect services while
  * ensuring that the workflow itself is run with the test services.
  *
- * @internal
+ * @since 1.0.0
  */
 export const provideWithLive = dual<
   <R, E, A, R2, E2, A2>(
@@ -224,17 +228,10 @@ export const provideWithLive = dual<
   ))
 
 /**
- * Retrieves the `Sized` service for this test.
- *
- * @internal
- */
-export const sized = (): Effect.Effect<never, never, Sized.TestSized> => sizedWith(core.succeed)
-
-/**
  * Retrieves the `Sized` service for this test and uses it to run the
  * specified workflow.
  *
- * @internal
+ * @since 1.0.0
  */
 export const sizedWith = <R, E, A>(f: (sized: Sized.TestSized) => Effect.Effect<R, E, A>): Effect.Effect<R, E, A> =>
   core.fiberRefGetWith(
@@ -243,10 +240,17 @@ export const sizedWith = <R, E, A>(f: (sized: Sized.TestSized) => Effect.Effect<
   )
 
 /**
+ * Retrieves the `Sized` service for this test.
+ *
+ * @since 1.0.0
+ */
+export const sized: Effect.Effect<never, never, Sized.TestSized> = sizedWith(core.succeed)
+
+/**
  * Executes the specified workflow with the specified implementation of the
  * sized service.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withSized = dual<
   (sized: Sized.TestSized) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -261,12 +265,14 @@ export const withSized = dual<
  * Sets the implementation of the sized service to the specified value and
  * restores it to its original value when the scope is closed.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withSizedScoped = (sized: Sized.TestSized): Effect.Effect<Scope.Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(Sized.TestSized, sized))
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSized> =>
   layer.scoped(
     Sized.TestSized,
@@ -277,27 +283,24 @@ export const sizedLayer = (size: number): Layer.Layer<never, never, Sized.TestSi
     )
   )
 
-/** @internal */
-export const size = (): Effect.Effect<never, never, number> => sizedWith((sized) => sized.size())
+/**
+ * @since 1.0.0
+ */
+export const size: Effect.Effect<never, never, number> = sizedWith((sized) => sized.size())
 
-/** @internal */
+/**
+ * @since 1.0.0
+ */
 export const withSize = dual<
   (size: number) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
   <R, E, A>(effect: Effect.Effect<R, E, A>, size: number) => Effect.Effect<R, E, A>
 >(2, (effect, size) => sizedWith((sized) => sized.withSize(size)(effect)))
 
 /**
- * Retrieves the `TestConfig` service for this test.
- *
- * @internal
- */
-export const testConfig = (): Effect.Effect<never, never, TestConfig.TestConfig> => testConfigWith(core.succeed)
-
-/**
  * Retrieves the `TestConfig` service for this test and uses it to run the
  * specified workflow.
  *
- * @internal
+ * @since 1.0.0
  */
 export const testConfigWith = <R, E, A>(
   f: (config: TestConfig.TestConfig) => Effect.Effect<R, E, A>
@@ -308,10 +311,17 @@ export const testConfigWith = <R, E, A>(
   )
 
 /**
+ * Retrieves the `TestConfig` service for this test.
+ *
+ * @since 1.0.0
+ */
+export const testConfig: Effect.Effect<never, never, TestConfig.TestConfig> = testConfigWith(core.succeed)
+
+/**
  * Executes the specified workflow with the specified implementation of the
  * config service.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withTestConfig = dual<
   (config: TestConfig.TestConfig) => <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>,
@@ -326,7 +336,7 @@ export const withTestConfig = dual<
  * Sets the implementation of the config service to the specified value and
  * restores it to its original value when the scope is closed.
  *
- * @internal
+ * @since 1.0.0
  */
 export const withTestConfigScoped = (config: TestConfig.TestConfig): Effect.Effect<Scope.Scope, never, void> =>
   fiberRuntime.fiberRefLocallyScopedWith(currentServices, Context.add(TestConfig.TestConfig, config))
@@ -334,7 +344,7 @@ export const withTestConfigScoped = (config: TestConfig.TestConfig): Effect.Effe
 /**
  * Constructs a new `TestConfig` service with the specified settings.
  *
- * @internal
+ * @since 1.0.0
  */
 export const testConfigLayer = (params: {
   readonly repeats: number
@@ -356,31 +366,27 @@ export const testConfigLayer = (params: {
 /**
  * The number of times to repeat tests to ensure they are stable.
  *
- * @internal
+ * @since 1.0.0
  */
-export const repeats = (): Effect.Effect<never, never, number> =>
-  testConfigWith((config) => core.succeed(config.repeats))
+export const repeats: Effect.Effect<never, never, number> = testConfigWith((config) => core.succeed(config.repeats))
 
 /**
  * The number of times to retry flaky tests.
  *
- * @internal
+ * @since 1.0.0
  */
-export const retries = (): Effect.Effect<never, never, number> =>
-  testConfigWith((config) => core.succeed(config.retries))
+export const retries: Effect.Effect<never, never, number> = testConfigWith((config) => core.succeed(config.retries))
 
 /**
  * The number of sufficient samples to check for a random variable.
  *
- * @internal
+ * @since 1.0.0
  */
-export const samples = (): Effect.Effect<never, never, number> =>
-  testConfigWith((config) => core.succeed(config.samples))
+export const samples: Effect.Effect<never, never, number> = testConfigWith((config) => core.succeed(config.samples))
 
 /**
  * The maximum number of shrinkings to minimize large failures.
  *
- * @internal
+ * @since 1.0.0
  */
-export const shrinks = (): Effect.Effect<never, never, number> =>
-  testConfigWith((config) => core.succeed(config.shrinks))
+export const shrinks: Effect.Effect<never, never, number> = testConfigWith((config) => core.succeed(config.shrinks))
