@@ -91,13 +91,18 @@ export declare namespace Sink {
    * @category models
    */
   export interface Variance<R, E, In, L, Z> {
-    readonly [SinkTypeId]: {
-      _R: (_: never) => R
-      _E: (_: never) => E
-      _In: (_: In) => void
-      _L: (_: never) => L
-      _Z: (_: never) => Z
-    }
+    readonly [SinkTypeId]: VarianceStruct<R, E, In, L, Z>
+  }
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface VarianceStruct<R, E, In, L, Z> {
+    _R: (_: never) => R
+    _E: (_: never) => E
+    _In: (_: In) => void
+    _L: (_: never) => L
+    _Z: (_: never) => Z
   }
 }
 

@@ -125,15 +125,20 @@ export declare namespace Channel {
    * @category models
    */
   export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
-    readonly [ChannelTypeId]: {
-      _Env: (_: never) => Env
-      _InErr: (_: InErr) => void
-      _InElem: (_: InElem) => void
-      _InDone: (_: InDone) => void
-      _OutErr: (_: never) => OutErr
-      _OutElem: (_: never) => OutElem
-      _OutDone: (_: never) => OutDone
-    }
+    readonly [ChannelTypeId]: VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
+  }
+  /**
+   * @since 1.0.0
+   * @category models
+   */
+  export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
+    _Env: (_: never) => Env
+    _InErr: (_: InErr) => void
+    _InElem: (_: InElem) => void
+    _InDone: (_: InDone) => void
+    _OutErr: (_: never) => OutErr
+    _OutElem: (_: never) => OutElem
+    _OutDone: (_: never) => OutDone
   }
 }
 

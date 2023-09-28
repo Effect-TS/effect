@@ -7,10 +7,9 @@ import * as Equal from "../Equal"
 import { dual } from "../Function"
 import * as Hash from "../Hash"
 import { NodeInspectSymbol, toJSON, toString } from "../Inspectable"
-import { EffectTypeId, effectVariance } from "../internal/Effect"
 import * as option from "../internal/Option"
 import type { Option } from "../Option"
-import { pipeArguments } from "../Pipeable"
+import { EffectProto } from "./Effectable"
 
 /**
  * @internal
@@ -18,15 +17,12 @@ import { pipeArguments } from "../Pipeable"
 export const TypeId: Either.TypeId = Symbol.for("effect/Either") as Either.TypeId
 
 const CommonProto = {
-  [EffectTypeId]: effectVariance,
+  ...EffectProto,
   [TypeId]: {
     _A: (_: never) => _
   },
   [NodeInspectSymbol]<E, A>(this: Either.Either<E, A>) {
     return this.toJSON()
-  },
-  pipe() {
-    return pipeArguments(this, arguments)
   },
   toString<E, A>(this: Either.Left<E, A>) {
     return toString(this.toJSON())
