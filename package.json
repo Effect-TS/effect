@@ -1,971 +1,1091 @@
 {
-    "name": "effect",
-    "version": "2.0.0-next.36",
-    "publishConfig": {
-        "access": "public"
-    },
-    "scripts": {
-        "build": "preconstruct fix && preconstruct build",
-        "clean": "sh scripts/clean.sh",
-        "test": "vitest",
-        "check": "tsc -p tsconfig.json",
-        "coverage": "vitest run --coverage",
-        "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
-        "update-version": "changeset version && pnpm install --no-frozen-lockfile",
-        "lint": "eslint src test",
-        "fix": "preconstruct fix"
-    },
-    "files": [
-        "dist",
-        "Bigint",
-        "Either",
-        "HashMap",
-        "MutableRef",
-        "Predicate",
-        "Symbol",
-        "Boolean",
-        "Encoding",
-        "HashSet",
-        "NonEmptyIterable",
-        "ReadonlyArray",
-        "Tuple",
-        "Brand",
-        "Equal",
-        "Inspectable",
-        "Number",
-        "ReadonlyRecord",
-        "Types",
-        "Chunk",
-        "Equivalence",
-        "List",
-        "Option",
-        "RedBlackTree",
-        "Unify",
-        "Context",
-        "Function",
-        "MutableHashMap",
-        "Order",
-        "SortedMap",
-        "Data",
-        "GlobalValue",
-        "MutableHashSet",
-        "Ordering",
-        "SortedSet",
-        "index",
-        "Differ",
-        "HKT",
-        "MutableList",
-        "String",
-        "Duration",
-        "Hash",
-        "MutableQueue",
-        "Pipeable",
-        "Struct",
-        "Cache",
-        "Hub",
-        "Request",
-        "Cause",
-        "KeyedPool",
-        "RequestBlock",
-        "Clock",
-        "Layer",
-        "RequestResolver",
-        "LogLevel",
-        "Resource",
-        "Config",
-        "LogSpan",
-        "Runtime",
-        "ConfigError",
-        "Logger",
-        "RuntimeFlags",
-        "ConfigProvider",
-        "Metric",
-        "RuntimeFlagsPatch",
-        "ConfigProviderPathPatch",
-        "MetricBoundaries",
-        "Schedule",
-        "ConfigSecret",
-        "MetricHook",
-        "ScheduleDecision",
-        "Console",
-        "MetricKey",
-        "ScheduleInterval",
-        "DefaultServices",
-        "MetricKeyType",
-        "ScheduleIntervals",
-        "Deferred",
-        "MetricLabel",
-        "Scheduler",
-        "Effect",
-        "MetricPair",
-        "Scope",
-        "ExecutionStrategy",
-        "MetricPolling",
-        "ScopedCache",
-        "Exit",
-        "MetricRegistry",
-        "ScopedRef",
-        "Fiber",
-        "MetricState",
-        "Supervisor",
-        "FiberId",
-        "Pool",
-        "SynchronizedRef",
-        "FiberRef",
-        "Queue",
-        "Tracer",
-        "FiberRefs",
-        "Random",
-        "FiberRefsPatch",
-        "Ref",
-        "FiberStatus",
-        "Reloadable",
-        "Utils",
-        "STM",
-        "THub",
-        "TQueue",
-        "TRef",
-        "TArray",
-        "TMap",
-        "TRandom",
-        "TSemaphore",
-        "TDeferred",
-        "TPriorityQueue",
-        "TReentrantLock",
-        "TSet",
-        "TestAnnotation",
-        "TestAnnotationMap",
-        "TestAnnotations",
-        "TestClock",
-        "TestConfig",
-        "TestContext",
-        "TestLive",
-        "TestServices",
-        "TestSized"
-    ],
-    "preconstruct": {
-        "distFilenameStrategy": "full",
-        "exports": {
-            "importConditionDefaultExport": "default"
-        },
-        "entrypoints": [
-            "index.ts",
-            "Bigint.ts",
-            "Either.ts",
-            "HashMap.ts",
-            "MutableRef.ts",
-            "Predicate.ts",
-            "Symbol.ts",
-            "Boolean.ts",
-            "Encoding.ts",
-            "HashSet.ts",
-            "NonEmptyIterable.ts",
-            "ReadonlyArray.ts",
-            "Tuple.ts",
-            "Brand.ts",
-            "Equal.ts",
-            "Inspectable.ts",
-            "Number.ts",
-            "ReadonlyRecord.ts",
-            "Types.ts",
-            "Chunk.ts",
-            "Equivalence.ts",
-            "List.ts",
-            "Option.ts",
-            "RedBlackTree.ts",
-            "Unify.ts",
-            "Context.ts",
-            "Function.ts",
-            "MutableHashMap.ts",
-            "Order.ts",
-            "SortedMap.ts",
-            "Utils.ts",
-            "Data.ts",
-            "GlobalValue.ts",
-            "MutableHashSet.ts",
-            "Ordering.ts",
-            "SortedSet.ts",
-            "index.ts",
-            "Differ.ts",
-            "HKT.ts",
-            "MutableList.ts",
-            "String.ts",
-            "Duration.ts",
-            "Hash.ts",
-            "MutableQueue.ts",
-            "Pipeable.ts",
-            "Struct.ts",
-            "Cache.ts",
-            "Hub.ts",
-            "Request.ts",
-            "Cause.ts",
-            "KeyedPool.ts",
-            "RequestBlock.ts",
-            "Clock.ts",
-            "Layer.ts",
-            "RequestResolver.ts",
-            "LogLevel.ts",
-            "Resource.ts",
-            "Config.ts",
-            "LogSpan.ts",
-            "Runtime.ts",
-            "ConfigError.ts",
-            "Logger.ts",
-            "RuntimeFlags.ts",
-            "ConfigProvider.ts",
-            "Metric.ts",
-            "RuntimeFlagsPatch.ts",
-            "ConfigProviderPathPatch.ts",
-            "MetricBoundaries.ts",
-            "Schedule.ts",
-            "ConfigSecret.ts",
-            "MetricHook.ts",
-            "ScheduleDecision.ts",
-            "Console.ts",
-            "MetricKey.ts",
-            "ScheduleInterval.ts",
-            "DefaultServices.ts",
-            "MetricKeyType.ts",
-            "ScheduleIntervals.ts",
-            "Deferred.ts",
-            "MetricLabel.ts",
-            "Scheduler.ts",
-            "Effect.ts",
-            "MetricPair.ts",
-            "Scope.ts",
-            "ExecutionStrategy.ts",
-            "MetricPolling.ts",
-            "ScopedCache.ts",
-            "Exit.ts",
-            "MetricRegistry.ts",
-            "ScopedRef.ts",
-            "Fiber.ts",
-            "MetricState.ts",
-            "Supervisor.ts",
-            "FiberId.ts",
-            "Pool.ts",
-            "SynchronizedRef.ts",
-            "FiberRef.ts",
-            "Queue.ts",
-            "Tracer.ts",
-            "FiberRefs.ts",
-            "Random.ts",
-            "FiberRefsPatch.ts",
-            "Ref.ts",
-            "FiberStatus.ts",
-            "Reloadable.ts",
-            "STM.ts",
-            "THub.ts",
-            "TQueue.ts",
-            "TRef.ts",
-            "TArray.ts",
-            "TMap.ts",
-            "TRandom.ts",
-            "TSemaphore.ts",
-            "TDeferred.ts",
-            "TPriorityQueue.ts",
-            "TReentrantLock.ts",
-            "TSet.ts",
-            "TestAnnotation.ts",
-            "TestAnnotationMap.ts",
-            "TestAnnotations.ts",
-            "TestClock.ts",
-            "TestConfig.ts",
-            "TestContext.ts",
-            "TestLive.ts",
-            "TestServices.ts",
-            "TestSized.ts"
-        ]
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/Effect-TS/effect.git"
-    },
-    "author": "Michael Arnaldi <ma@matechs.com>",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/Effect-TS/effect/issues"
-    },
-    "homepage": "https://github.com/Effect-TS/effect",
-    "description": "Functional programming in TypeScript",
-    "main": "dist/effect.cjs.js",
-    "module": "dist/effect.esm.js",
+  "name": "effect",
+  "version": "2.0.0-next.36",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "preconstruct fix && preconstruct build",
+    "gen": "pnpm run gen:gitignore && pnpm run gen:package",
+    "gen:gitignore": "node scripts/gen-gitignore.mjs > .gitignore",
+    "gen:package": "node scripts/gen-packagejson.mjs > package.json.new && mv package.json.new package.json",
+    "clean": "node scripts/clean.mjs",
+    "test": "vitest",
+    "check": "tsc -p tsconfig.json",
+    "coverage": "vitest run --coverage",
+    "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
+    "update-version": "changeset version && pnpm install --no-frozen-lockfile",
+    "lint": "eslint src test",
+    "fix": "preconstruct fix"
+  },
+  "files": [
+    "dist",
+    "Bigint",
+    "Boolean",
+    "Brand",
+    "Cache",
+    "Cause",
+    "Channel",
+    "ChannelChildExecutorDecision",
+    "ChannelMergeDecision",
+    "ChannelMergeState",
+    "ChannelMergeStrategy",
+    "ChannelSingleProducerAsyncInput",
+    "ChannelUpstreamPullRequest",
+    "ChannelUpstreamPullStrategy",
+    "Chunk",
+    "Clock",
+    "Config",
+    "ConfigError",
+    "ConfigProvider",
+    "ConfigProviderPathPatch",
+    "ConfigSecret",
+    "Console",
+    "Context",
+    "Data",
+    "DefaultServices",
+    "Deferred",
+    "Differ",
+    "Duration",
+    "Effect",
+    "Effectable",
+    "Either",
+    "Encoding",
+    "Equal",
+    "Equivalence",
+    "Error",
+    "ExecutionStrategy",
+    "Exit",
+    "Fiber",
+    "FiberId",
+    "FiberRef",
+    "FiberRefs",
+    "FiberRefsPatch",
+    "FiberStatus",
+    "Function",
+    "GlobalValue",
+    "GroupBy",
+    "HKT",
+    "Hash",
+    "HashMap",
+    "HashSet",
+    "Hub",
+    "Inspectable",
+    "KeyedPool",
+    "Layer",
+    "List",
+    "LogLevel",
+    "LogSpan",
+    "Logger",
+    "Metric",
+    "MetricBoundaries",
+    "MetricHook",
+    "MetricKey",
+    "MetricKeyType",
+    "MetricLabel",
+    "MetricPair",
+    "MetricPolling",
+    "MetricRegistry",
+    "MetricState",
+    "MutableHashMap",
+    "MutableHashSet",
+    "MutableList",
+    "MutableQueue",
+    "MutableRef",
+    "NonEmptyIterable",
+    "Number",
+    "Option",
+    "Order",
+    "Ordering",
+    "Pipeable",
+    "Pool",
+    "Predicate",
+    "Queue",
+    "Random",
+    "ReadonlyArray",
+    "ReadonlyRecord",
+    "RedBlackTree",
+    "Ref",
+    "Reloadable",
+    "Request",
+    "RequestBlock",
+    "RequestResolver",
+    "Resource",
+    "Runtime",
+    "RuntimeFlags",
+    "RuntimeFlagsPatch",
+    "STM",
+    "Schedule",
+    "ScheduleDecision",
+    "ScheduleInterval",
+    "ScheduleIntervals",
+    "Scheduler",
+    "Scope",
+    "ScopedCache",
+    "ScopedRef",
+    "Sink",
+    "SortedMap",
+    "SortedSet",
+    "Stream",
+    "StreamEmit",
+    "StreamHaltStrategy",
+    "String",
+    "Struct",
+    "SubscriptionRef",
+    "Supervisor",
+    "Symbol",
+    "SynchronizedRef",
+    "TArray",
+    "TDeferred",
+    "THub",
+    "TMap",
+    "TPriorityQueue",
+    "TQueue",
+    "TRandom",
+    "TReentrantLock",
+    "TRef",
+    "TSemaphore",
+    "TSet",
+    "Take",
+    "TestAnnotation",
+    "TestAnnotationMap",
+    "TestAnnotations",
+    "TestClock",
+    "TestConfig",
+    "TestContext",
+    "TestLive",
+    "TestServices",
+    "TestSized",
+    "Tracer",
+    "Tuple",
+    "Types",
+    "Unify",
+    "Utils"
+  ],
+  "preconstruct": {
+    "distFilenameStrategy": "full",
     "exports": {
-        "./HKT": {
-            "module": "./HKT/dist/effect-HKT.esm.js",
-            "import": "./HKT/dist/effect-HKT.cjs.mjs",
-            "default": "./HKT/dist/effect-HKT.cjs.js"
-        },
-        "./Hub": {
-            "module": "./Hub/dist/effect-Hub.esm.js",
-            "import": "./Hub/dist/effect-Hub.cjs.mjs",
-            "default": "./Hub/dist/effect-Hub.cjs.js"
-        },
-        "./Ref": {
-            "module": "./Ref/dist/effect-Ref.esm.js",
-            "import": "./Ref/dist/effect-Ref.cjs.mjs",
-            "default": "./Ref/dist/effect-Ref.cjs.js"
-        },
-        "./STM": {
-            "module": "./STM/dist/effect-STM.esm.js",
-            "import": "./STM/dist/effect-STM.cjs.mjs",
-            "default": "./STM/dist/effect-STM.cjs.js"
-        },
-        "./Data": {
-            "module": "./Data/dist/effect-Data.esm.js",
-            "import": "./Data/dist/effect-Data.cjs.mjs",
-            "default": "./Data/dist/effect-Data.cjs.js"
-        },
-        "./Exit": {
-            "module": "./Exit/dist/effect-Exit.esm.js",
-            "import": "./Exit/dist/effect-Exit.cjs.mjs",
-            "default": "./Exit/dist/effect-Exit.cjs.js"
-        },
-        "./Hash": {
-            "module": "./Hash/dist/effect-Hash.esm.js",
-            "import": "./Hash/dist/effect-Hash.cjs.mjs",
-            "default": "./Hash/dist/effect-Hash.cjs.js"
-        },
-        "./List": {
-            "module": "./List/dist/effect-List.esm.js",
-            "import": "./List/dist/effect-List.cjs.mjs",
-            "default": "./List/dist/effect-List.cjs.js"
-        },
-        "./Pool": {
-            "module": "./Pool/dist/effect-Pool.esm.js",
-            "import": "./Pool/dist/effect-Pool.cjs.mjs",
-            "default": "./Pool/dist/effect-Pool.cjs.js"
-        },
-        "./THub": {
-            "module": "./THub/dist/effect-THub.esm.js",
-            "import": "./THub/dist/effect-THub.cjs.mjs",
-            "default": "./THub/dist/effect-THub.cjs.js"
-        },
-        "./TMap": {
-            "module": "./TMap/dist/effect-TMap.esm.js",
-            "import": "./TMap/dist/effect-TMap.cjs.mjs",
-            "default": "./TMap/dist/effect-TMap.cjs.js"
-        },
-        "./TRef": {
-            "module": "./TRef/dist/effect-TRef.esm.js",
-            "import": "./TRef/dist/effect-TRef.cjs.mjs",
-            "default": "./TRef/dist/effect-TRef.cjs.js"
-        },
-        "./TSet": {
-            "module": "./TSet/dist/effect-TSet.esm.js",
-            "import": "./TSet/dist/effect-TSet.cjs.mjs",
-            "default": "./TSet/dist/effect-TSet.cjs.js"
-        },
-        "./Brand": {
-            "module": "./Brand/dist/effect-Brand.esm.js",
-            "import": "./Brand/dist/effect-Brand.cjs.mjs",
-            "default": "./Brand/dist/effect-Brand.cjs.js"
-        },
-        "./Cache": {
-            "module": "./Cache/dist/effect-Cache.esm.js",
-            "import": "./Cache/dist/effect-Cache.cjs.mjs",
-            "default": "./Cache/dist/effect-Cache.cjs.js"
-        },
-        "./Cause": {
-            "module": "./Cause/dist/effect-Cause.esm.js",
-            "import": "./Cause/dist/effect-Cause.cjs.mjs",
-            "default": "./Cause/dist/effect-Cause.cjs.js"
-        },
-        "./Chunk": {
-            "module": "./Chunk/dist/effect-Chunk.esm.js",
-            "import": "./Chunk/dist/effect-Chunk.cjs.mjs",
-            "default": "./Chunk/dist/effect-Chunk.cjs.js"
-        },
-        "./Clock": {
-            "module": "./Clock/dist/effect-Clock.esm.js",
-            "import": "./Clock/dist/effect-Clock.cjs.mjs",
-            "default": "./Clock/dist/effect-Clock.cjs.js"
-        },
-        "./Equal": {
-            "module": "./Equal/dist/effect-Equal.esm.js",
-            "import": "./Equal/dist/effect-Equal.cjs.mjs",
-            "default": "./Equal/dist/effect-Equal.cjs.js"
-        },
-        "./Fiber": {
-            "module": "./Fiber/dist/effect-Fiber.esm.js",
-            "import": "./Fiber/dist/effect-Fiber.cjs.mjs",
-            "default": "./Fiber/dist/effect-Fiber.cjs.js"
-        },
-        "./Layer": {
-            "module": "./Layer/dist/effect-Layer.esm.js",
-            "import": "./Layer/dist/effect-Layer.cjs.mjs",
-            "default": "./Layer/dist/effect-Layer.cjs.js"
-        },
-        "./Order": {
-            "module": "./Order/dist/effect-Order.esm.js",
-            "import": "./Order/dist/effect-Order.cjs.mjs",
-            "default": "./Order/dist/effect-Order.cjs.js"
-        },
-        "./Queue": {
-            "module": "./Queue/dist/effect-Queue.esm.js",
-            "import": "./Queue/dist/effect-Queue.cjs.mjs",
-            "default": "./Queue/dist/effect-Queue.cjs.js"
-        },
-        "./Scope": {
-            "module": "./Scope/dist/effect-Scope.esm.js",
-            "import": "./Scope/dist/effect-Scope.cjs.mjs",
-            "default": "./Scope/dist/effect-Scope.cjs.js"
-        },
-        "./Tuple": {
-            "module": "./Tuple/dist/effect-Tuple.esm.js",
-            "import": "./Tuple/dist/effect-Tuple.cjs.mjs",
-            "default": "./Tuple/dist/effect-Tuple.cjs.js"
-        },
-        "./Types": {
-            "module": "./Types/dist/effect-Types.esm.js",
-            "import": "./Types/dist/effect-Types.cjs.mjs",
-            "default": "./Types/dist/effect-Types.cjs.js"
-        },
-        "./Unify": {
-            "module": "./Unify/dist/effect-Unify.esm.js",
-            "import": "./Unify/dist/effect-Unify.cjs.mjs",
-            "default": "./Unify/dist/effect-Unify.cjs.js"
-        },
-        "./Utils": {
-            "module": "./Utils/dist/effect-Utils.esm.js",
-            "import": "./Utils/dist/effect-Utils.cjs.mjs",
-            "default": "./Utils/dist/effect-Utils.cjs.js"
-        },
-        ".": {
-            "module": "./dist/effect.esm.js",
-            "import": "./dist/effect.cjs.mjs",
-            "default": "./dist/effect.cjs.js"
-        },
-        "./Bigint": {
-            "module": "./Bigint/dist/effect-Bigint.esm.js",
-            "import": "./Bigint/dist/effect-Bigint.cjs.mjs",
-            "default": "./Bigint/dist/effect-Bigint.cjs.js"
-        },
-        "./Config": {
-            "module": "./Config/dist/effect-Config.esm.js",
-            "import": "./Config/dist/effect-Config.cjs.mjs",
-            "default": "./Config/dist/effect-Config.cjs.js"
-        },
-        "./Differ": {
-            "module": "./Differ/dist/effect-Differ.esm.js",
-            "import": "./Differ/dist/effect-Differ.cjs.mjs",
-            "default": "./Differ/dist/effect-Differ.cjs.js"
-        },
-        "./Effect": {
-            "module": "./Effect/dist/effect-Effect.esm.js",
-            "import": "./Effect/dist/effect-Effect.cjs.mjs",
-            "default": "./Effect/dist/effect-Effect.cjs.js"
-        },
-        "./Either": {
-            "module": "./Either/dist/effect-Either.esm.js",
-            "import": "./Either/dist/effect-Either.cjs.mjs",
-            "default": "./Either/dist/effect-Either.cjs.js"
-        },
-        "./Logger": {
-            "module": "./Logger/dist/effect-Logger.esm.js",
-            "import": "./Logger/dist/effect-Logger.cjs.mjs",
-            "default": "./Logger/dist/effect-Logger.cjs.js"
-        },
-        "./Metric": {
-            "module": "./Metric/dist/effect-Metric.esm.js",
-            "import": "./Metric/dist/effect-Metric.cjs.mjs",
-            "default": "./Metric/dist/effect-Metric.cjs.js"
-        },
-        "./Number": {
-            "module": "./Number/dist/effect-Number.esm.js",
-            "import": "./Number/dist/effect-Number.cjs.mjs",
-            "default": "./Number/dist/effect-Number.cjs.js"
-        },
-        "./Option": {
-            "module": "./Option/dist/effect-Option.esm.js",
-            "import": "./Option/dist/effect-Option.cjs.mjs",
-            "default": "./Option/dist/effect-Option.cjs.js"
-        },
-        "./Random": {
-            "module": "./Random/dist/effect-Random.esm.js",
-            "import": "./Random/dist/effect-Random.cjs.mjs",
-            "default": "./Random/dist/effect-Random.cjs.js"
-        },
-        "./String": {
-            "module": "./String/dist/effect-String.esm.js",
-            "import": "./String/dist/effect-String.cjs.mjs",
-            "default": "./String/dist/effect-String.cjs.js"
-        },
-        "./Struct": {
-            "module": "./Struct/dist/effect-Struct.esm.js",
-            "import": "./Struct/dist/effect-Struct.cjs.mjs",
-            "default": "./Struct/dist/effect-Struct.cjs.js"
-        },
-        "./Symbol": {
-            "module": "./Symbol/dist/effect-Symbol.esm.js",
-            "import": "./Symbol/dist/effect-Symbol.cjs.mjs",
-            "default": "./Symbol/dist/effect-Symbol.cjs.js"
-        },
-        "./TArray": {
-            "module": "./TArray/dist/effect-TArray.esm.js",
-            "import": "./TArray/dist/effect-TArray.cjs.mjs",
-            "default": "./TArray/dist/effect-TArray.cjs.js"
-        },
-        "./TQueue": {
-            "module": "./TQueue/dist/effect-TQueue.esm.js",
-            "import": "./TQueue/dist/effect-TQueue.cjs.mjs",
-            "default": "./TQueue/dist/effect-TQueue.cjs.js"
-        },
-        "./Tracer": {
-            "module": "./Tracer/dist/effect-Tracer.esm.js",
-            "import": "./Tracer/dist/effect-Tracer.cjs.mjs",
-            "default": "./Tracer/dist/effect-Tracer.cjs.js"
-        },
-        "./Boolean": {
-            "module": "./Boolean/dist/effect-Boolean.esm.js",
-            "import": "./Boolean/dist/effect-Boolean.cjs.mjs",
-            "default": "./Boolean/dist/effect-Boolean.cjs.js"
-        },
-        "./Console": {
-            "module": "./Console/dist/effect-Console.esm.js",
-            "import": "./Console/dist/effect-Console.cjs.mjs",
-            "default": "./Console/dist/effect-Console.cjs.js"
-        },
-        "./Context": {
-            "module": "./Context/dist/effect-Context.esm.js",
-            "import": "./Context/dist/effect-Context.cjs.mjs",
-            "default": "./Context/dist/effect-Context.cjs.js"
-        },
-        "./FiberId": {
-            "module": "./FiberId/dist/effect-FiberId.esm.js",
-            "import": "./FiberId/dist/effect-FiberId.cjs.mjs",
-            "default": "./FiberId/dist/effect-FiberId.cjs.js"
-        },
-        "./HashMap": {
-            "module": "./HashMap/dist/effect-HashMap.esm.js",
-            "import": "./HashMap/dist/effect-HashMap.cjs.mjs",
-            "default": "./HashMap/dist/effect-HashMap.cjs.js"
-        },
-        "./HashSet": {
-            "module": "./HashSet/dist/effect-HashSet.esm.js",
-            "import": "./HashSet/dist/effect-HashSet.cjs.mjs",
-            "default": "./HashSet/dist/effect-HashSet.cjs.js"
-        },
-        "./LogSpan": {
-            "module": "./LogSpan/dist/effect-LogSpan.esm.js",
-            "import": "./LogSpan/dist/effect-LogSpan.cjs.mjs",
-            "default": "./LogSpan/dist/effect-LogSpan.cjs.js"
-        },
-        "./Request": {
-            "module": "./Request/dist/effect-Request.esm.js",
-            "import": "./Request/dist/effect-Request.cjs.mjs",
-            "default": "./Request/dist/effect-Request.cjs.js"
-        },
-        "./Runtime": {
-            "module": "./Runtime/dist/effect-Runtime.esm.js",
-            "import": "./Runtime/dist/effect-Runtime.cjs.mjs",
-            "default": "./Runtime/dist/effect-Runtime.cjs.js"
-        },
-        "./TRandom": {
-            "module": "./TRandom/dist/effect-TRandom.esm.js",
-            "import": "./TRandom/dist/effect-TRandom.cjs.mjs",
-            "default": "./TRandom/dist/effect-TRandom.cjs.js"
-        },
-        "./Deferred": {
-            "module": "./Deferred/dist/effect-Deferred.esm.js",
-            "import": "./Deferred/dist/effect-Deferred.cjs.mjs",
-            "default": "./Deferred/dist/effect-Deferred.cjs.js"
-        },
-        "./Duration": {
-            "module": "./Duration/dist/effect-Duration.esm.js",
-            "import": "./Duration/dist/effect-Duration.cjs.mjs",
-            "default": "./Duration/dist/effect-Duration.cjs.js"
-        },
-        "./Encoding": {
-            "module": "./Encoding/dist/effect-Encoding.esm.js",
-            "import": "./Encoding/dist/effect-Encoding.cjs.mjs",
-            "default": "./Encoding/dist/effect-Encoding.cjs.js"
-        },
-        "./FiberRef": {
-            "module": "./FiberRef/dist/effect-FiberRef.esm.js",
-            "import": "./FiberRef/dist/effect-FiberRef.cjs.mjs",
-            "default": "./FiberRef/dist/effect-FiberRef.cjs.js"
-        },
-        "./Function": {
-            "module": "./Function/dist/effect-Function.esm.js",
-            "import": "./Function/dist/effect-Function.cjs.mjs",
-            "default": "./Function/dist/effect-Function.cjs.js"
-        },
-        "./LogLevel": {
-            "module": "./LogLevel/dist/effect-LogLevel.esm.js",
-            "import": "./LogLevel/dist/effect-LogLevel.cjs.mjs",
-            "default": "./LogLevel/dist/effect-LogLevel.cjs.js"
-        },
-        "./Ordering": {
-            "module": "./Ordering/dist/effect-Ordering.esm.js",
-            "import": "./Ordering/dist/effect-Ordering.cjs.mjs",
-            "default": "./Ordering/dist/effect-Ordering.cjs.js"
-        },
-        "./Pipeable": {
-            "module": "./Pipeable/dist/effect-Pipeable.esm.js",
-            "import": "./Pipeable/dist/effect-Pipeable.cjs.mjs",
-            "default": "./Pipeable/dist/effect-Pipeable.cjs.js"
-        },
-        "./Resource": {
-            "module": "./Resource/dist/effect-Resource.esm.js",
-            "import": "./Resource/dist/effect-Resource.cjs.mjs",
-            "default": "./Resource/dist/effect-Resource.cjs.js"
-        },
-        "./Schedule": {
-            "module": "./Schedule/dist/effect-Schedule.esm.js",
-            "import": "./Schedule/dist/effect-Schedule.cjs.mjs",
-            "default": "./Schedule/dist/effect-Schedule.cjs.js"
-        },
-        "./TestLive": {
-            "module": "./TestLive/dist/effect-TestLive.esm.js",
-            "import": "./TestLive/dist/effect-TestLive.cjs.mjs",
-            "default": "./TestLive/dist/effect-TestLive.cjs.js"
-        },
-        "./FiberRefs": {
-            "module": "./FiberRefs/dist/effect-FiberRefs.esm.js",
-            "import": "./FiberRefs/dist/effect-FiberRefs.cjs.mjs",
-            "default": "./FiberRefs/dist/effect-FiberRefs.cjs.js"
-        },
-        "./KeyedPool": {
-            "module": "./KeyedPool/dist/effect-KeyedPool.esm.js",
-            "import": "./KeyedPool/dist/effect-KeyedPool.cjs.mjs",
-            "default": "./KeyedPool/dist/effect-KeyedPool.cjs.js"
-        },
-        "./MetricKey": {
-            "module": "./MetricKey/dist/effect-MetricKey.esm.js",
-            "import": "./MetricKey/dist/effect-MetricKey.cjs.mjs",
-            "default": "./MetricKey/dist/effect-MetricKey.cjs.js"
-        },
-        "./Predicate": {
-            "module": "./Predicate/dist/effect-Predicate.esm.js",
-            "import": "./Predicate/dist/effect-Predicate.cjs.mjs",
-            "default": "./Predicate/dist/effect-Predicate.cjs.js"
-        },
-        "./Scheduler": {
-            "module": "./Scheduler/dist/effect-Scheduler.esm.js",
-            "import": "./Scheduler/dist/effect-Scheduler.cjs.mjs",
-            "default": "./Scheduler/dist/effect-Scheduler.cjs.js"
-        },
-        "./ScopedRef": {
-            "module": "./ScopedRef/dist/effect-ScopedRef.esm.js",
-            "import": "./ScopedRef/dist/effect-ScopedRef.cjs.mjs",
-            "default": "./ScopedRef/dist/effect-ScopedRef.cjs.js"
-        },
-        "./SortedMap": {
-            "module": "./SortedMap/dist/effect-SortedMap.esm.js",
-            "import": "./SortedMap/dist/effect-SortedMap.cjs.mjs",
-            "default": "./SortedMap/dist/effect-SortedMap.cjs.js"
-        },
-        "./SortedSet": {
-            "module": "./SortedSet/dist/effect-SortedSet.esm.js",
-            "import": "./SortedSet/dist/effect-SortedSet.cjs.mjs",
-            "default": "./SortedSet/dist/effect-SortedSet.cjs.js"
-        },
-        "./TDeferred": {
-            "module": "./TDeferred/dist/effect-TDeferred.esm.js",
-            "import": "./TDeferred/dist/effect-TDeferred.cjs.mjs",
-            "default": "./TDeferred/dist/effect-TDeferred.cjs.js"
-        },
-        "./TestClock": {
-            "module": "./TestClock/dist/effect-TestClock.esm.js",
-            "import": "./TestClock/dist/effect-TestClock.cjs.mjs",
-            "default": "./TestClock/dist/effect-TestClock.cjs.js"
-        },
-        "./TestSized": {
-            "module": "./TestSized/dist/effect-TestSized.esm.js",
-            "import": "./TestSized/dist/effect-TestSized.cjs.mjs",
-            "default": "./TestSized/dist/effect-TestSized.cjs.js"
-        },
-        "./MetricHook": {
-            "module": "./MetricHook/dist/effect-MetricHook.esm.js",
-            "import": "./MetricHook/dist/effect-MetricHook.cjs.mjs",
-            "default": "./MetricHook/dist/effect-MetricHook.cjs.js"
-        },
-        "./MetricPair": {
-            "module": "./MetricPair/dist/effect-MetricPair.esm.js",
-            "import": "./MetricPair/dist/effect-MetricPair.cjs.mjs",
-            "default": "./MetricPair/dist/effect-MetricPair.cjs.js"
-        },
-        "./MutableRef": {
-            "module": "./MutableRef/dist/effect-MutableRef.esm.js",
-            "import": "./MutableRef/dist/effect-MutableRef.cjs.mjs",
-            "default": "./MutableRef/dist/effect-MutableRef.cjs.js"
-        },
-        "./Reloadable": {
-            "module": "./Reloadable/dist/effect-Reloadable.esm.js",
-            "import": "./Reloadable/dist/effect-Reloadable.cjs.mjs",
-            "default": "./Reloadable/dist/effect-Reloadable.cjs.js"
-        },
-        "./Supervisor": {
-            "module": "./Supervisor/dist/effect-Supervisor.esm.js",
-            "import": "./Supervisor/dist/effect-Supervisor.cjs.mjs",
-            "default": "./Supervisor/dist/effect-Supervisor.cjs.js"
-        },
-        "./TSemaphore": {
-            "module": "./TSemaphore/dist/effect-TSemaphore.esm.js",
-            "import": "./TSemaphore/dist/effect-TSemaphore.cjs.mjs",
-            "default": "./TSemaphore/dist/effect-TSemaphore.cjs.js"
-        },
-        "./TestConfig": {
-            "module": "./TestConfig/dist/effect-TestConfig.esm.js",
-            "import": "./TestConfig/dist/effect-TestConfig.cjs.mjs",
-            "default": "./TestConfig/dist/effect-TestConfig.cjs.js"
-        },
-        "./ConfigError": {
-            "module": "./ConfigError/dist/effect-ConfigError.esm.js",
-            "import": "./ConfigError/dist/effect-ConfigError.cjs.mjs",
-            "default": "./ConfigError/dist/effect-ConfigError.cjs.js"
-        },
-        "./Equivalence": {
-            "module": "./Equivalence/dist/effect-Equivalence.esm.js",
-            "import": "./Equivalence/dist/effect-Equivalence.cjs.mjs",
-            "default": "./Equivalence/dist/effect-Equivalence.cjs.js"
-        },
-        "./FiberStatus": {
-            "module": "./FiberStatus/dist/effect-FiberStatus.esm.js",
-            "import": "./FiberStatus/dist/effect-FiberStatus.cjs.mjs",
-            "default": "./FiberStatus/dist/effect-FiberStatus.cjs.js"
-        },
-        "./GlobalValue": {
-            "module": "./GlobalValue/dist/effect-GlobalValue.esm.js",
-            "import": "./GlobalValue/dist/effect-GlobalValue.cjs.mjs",
-            "default": "./GlobalValue/dist/effect-GlobalValue.cjs.js"
-        },
-        "./Inspectable": {
-            "module": "./Inspectable/dist/effect-Inspectable.esm.js",
-            "import": "./Inspectable/dist/effect-Inspectable.cjs.mjs",
-            "default": "./Inspectable/dist/effect-Inspectable.cjs.js"
-        },
-        "./MetricLabel": {
-            "module": "./MetricLabel/dist/effect-MetricLabel.esm.js",
-            "import": "./MetricLabel/dist/effect-MetricLabel.cjs.mjs",
-            "default": "./MetricLabel/dist/effect-MetricLabel.cjs.js"
-        },
-        "./MetricState": {
-            "module": "./MetricState/dist/effect-MetricState.esm.js",
-            "import": "./MetricState/dist/effect-MetricState.cjs.mjs",
-            "default": "./MetricState/dist/effect-MetricState.cjs.js"
-        },
-        "./MutableList": {
-            "module": "./MutableList/dist/effect-MutableList.esm.js",
-            "import": "./MutableList/dist/effect-MutableList.cjs.mjs",
-            "default": "./MutableList/dist/effect-MutableList.cjs.js"
-        },
-        "./ScopedCache": {
-            "module": "./ScopedCache/dist/effect-ScopedCache.esm.js",
-            "import": "./ScopedCache/dist/effect-ScopedCache.cjs.mjs",
-            "default": "./ScopedCache/dist/effect-ScopedCache.cjs.js"
-        },
-        "./TestContext": {
-            "module": "./TestContext/dist/effect-TestContext.esm.js",
-            "import": "./TestContext/dist/effect-TestContext.cjs.mjs",
-            "default": "./TestContext/dist/effect-TestContext.cjs.js"
-        },
-        "./ConfigSecret": {
-            "module": "./ConfigSecret/dist/effect-ConfigSecret.esm.js",
-            "import": "./ConfigSecret/dist/effect-ConfigSecret.cjs.mjs",
-            "default": "./ConfigSecret/dist/effect-ConfigSecret.cjs.js"
-        },
-        "./MutableQueue": {
-            "module": "./MutableQueue/dist/effect-MutableQueue.esm.js",
-            "import": "./MutableQueue/dist/effect-MutableQueue.cjs.mjs",
-            "default": "./MutableQueue/dist/effect-MutableQueue.cjs.js"
-        },
-        "./RedBlackTree": {
-            "module": "./RedBlackTree/dist/effect-RedBlackTree.esm.js",
-            "import": "./RedBlackTree/dist/effect-RedBlackTree.cjs.mjs",
-            "default": "./RedBlackTree/dist/effect-RedBlackTree.cjs.js"
-        },
-        "./RequestBlock": {
-            "module": "./RequestBlock/dist/effect-RequestBlock.esm.js",
-            "import": "./RequestBlock/dist/effect-RequestBlock.cjs.mjs",
-            "default": "./RequestBlock/dist/effect-RequestBlock.cjs.js"
-        },
-        "./RuntimeFlags": {
-            "module": "./RuntimeFlags/dist/effect-RuntimeFlags.esm.js",
-            "import": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.mjs",
-            "default": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.js"
-        },
-        "./TestServices": {
-            "module": "./TestServices/dist/effect-TestServices.esm.js",
-            "import": "./TestServices/dist/effect-TestServices.cjs.mjs",
-            "default": "./TestServices/dist/effect-TestServices.cjs.js"
-        },
-        "./MetricKeyType": {
-            "module": "./MetricKeyType/dist/effect-MetricKeyType.esm.js",
-            "import": "./MetricKeyType/dist/effect-MetricKeyType.cjs.mjs",
-            "default": "./MetricKeyType/dist/effect-MetricKeyType.cjs.js"
-        },
-        "./MetricPolling": {
-            "module": "./MetricPolling/dist/effect-MetricPolling.esm.js",
-            "import": "./MetricPolling/dist/effect-MetricPolling.cjs.mjs",
-            "default": "./MetricPolling/dist/effect-MetricPolling.cjs.js"
-        },
-        "./ReadonlyArray": {
-            "module": "./ReadonlyArray/dist/effect-ReadonlyArray.esm.js",
-            "import": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.mjs",
-            "default": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.js"
-        },
-        "./ConfigProvider": {
-            "module": "./ConfigProvider/dist/effect-ConfigProvider.esm.js",
-            "import": "./ConfigProvider/dist/effect-ConfigProvider.cjs.mjs",
-            "default": "./ConfigProvider/dist/effect-ConfigProvider.cjs.js"
-        },
-        "./FiberRefsPatch": {
-            "module": "./FiberRefsPatch/dist/effect-FiberRefsPatch.esm.js",
-            "import": "./FiberRefsPatch/dist/effect-FiberRefsPatch.cjs.mjs",
-            "default": "./FiberRefsPatch/dist/effect-FiberRefsPatch.cjs.js"
-        },
-        "./MetricRegistry": {
-            "module": "./MetricRegistry/dist/effect-MetricRegistry.esm.js",
-            "import": "./MetricRegistry/dist/effect-MetricRegistry.cjs.mjs",
-            "default": "./MetricRegistry/dist/effect-MetricRegistry.cjs.js"
-        },
-        "./MutableHashMap": {
-            "module": "./MutableHashMap/dist/effect-MutableHashMap.esm.js",
-            "import": "./MutableHashMap/dist/effect-MutableHashMap.cjs.mjs",
-            "default": "./MutableHashMap/dist/effect-MutableHashMap.cjs.js"
-        },
-        "./MutableHashSet": {
-            "module": "./MutableHashSet/dist/effect-MutableHashSet.esm.js",
-            "import": "./MutableHashSet/dist/effect-MutableHashSet.cjs.mjs",
-            "default": "./MutableHashSet/dist/effect-MutableHashSet.cjs.js"
-        },
-        "./ReadonlyRecord": {
-            "module": "./ReadonlyRecord/dist/effect-ReadonlyRecord.esm.js",
-            "import": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.mjs",
-            "default": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.js"
-        },
-        "./TPriorityQueue": {
-            "module": "./TPriorityQueue/dist/effect-TPriorityQueue.esm.js",
-            "import": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.mjs",
-            "default": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.js"
-        },
-        "./TReentrantLock": {
-            "module": "./TReentrantLock/dist/effect-TReentrantLock.esm.js",
-            "import": "./TReentrantLock/dist/effect-TReentrantLock.cjs.mjs",
-            "default": "./TReentrantLock/dist/effect-TReentrantLock.cjs.js"
-        },
-        "./TestAnnotation": {
-            "module": "./TestAnnotation/dist/effect-TestAnnotation.esm.js",
-            "import": "./TestAnnotation/dist/effect-TestAnnotation.cjs.mjs",
-            "default": "./TestAnnotation/dist/effect-TestAnnotation.cjs.js"
-        },
-        "./DefaultServices": {
-            "module": "./DefaultServices/dist/effect-DefaultServices.esm.js",
-            "import": "./DefaultServices/dist/effect-DefaultServices.cjs.mjs",
-            "default": "./DefaultServices/dist/effect-DefaultServices.cjs.js"
-        },
-        "./RequestResolver": {
-            "module": "./RequestResolver/dist/effect-RequestResolver.esm.js",
-            "import": "./RequestResolver/dist/effect-RequestResolver.cjs.mjs",
-            "default": "./RequestResolver/dist/effect-RequestResolver.cjs.js"
-        },
-        "./SynchronizedRef": {
-            "module": "./SynchronizedRef/dist/effect-SynchronizedRef.esm.js",
-            "import": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.mjs",
-            "default": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.js"
-        },
-        "./TestAnnotations": {
-            "module": "./TestAnnotations/dist/effect-TestAnnotations.esm.js",
-            "import": "./TestAnnotations/dist/effect-TestAnnotations.cjs.mjs",
-            "default": "./TestAnnotations/dist/effect-TestAnnotations.cjs.js"
-        },
-        "./MetricBoundaries": {
-            "module": "./MetricBoundaries/dist/effect-MetricBoundaries.esm.js",
-            "import": "./MetricBoundaries/dist/effect-MetricBoundaries.cjs.mjs",
-            "default": "./MetricBoundaries/dist/effect-MetricBoundaries.cjs.js"
-        },
-        "./NonEmptyIterable": {
-            "module": "./NonEmptyIterable/dist/effect-NonEmptyIterable.esm.js",
-            "import": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.mjs",
-            "default": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.js"
-        },
-        "./ScheduleDecision": {
-            "module": "./ScheduleDecision/dist/effect-ScheduleDecision.esm.js",
-            "import": "./ScheduleDecision/dist/effect-ScheduleDecision.cjs.mjs",
-            "default": "./ScheduleDecision/dist/effect-ScheduleDecision.cjs.js"
-        },
-        "./ScheduleInterval": {
-            "module": "./ScheduleInterval/dist/effect-ScheduleInterval.esm.js",
-            "import": "./ScheduleInterval/dist/effect-ScheduleInterval.cjs.mjs",
-            "default": "./ScheduleInterval/dist/effect-ScheduleInterval.cjs.js"
-        },
-        "./ExecutionStrategy": {
-            "module": "./ExecutionStrategy/dist/effect-ExecutionStrategy.esm.js",
-            "import": "./ExecutionStrategy/dist/effect-ExecutionStrategy.cjs.mjs",
-            "default": "./ExecutionStrategy/dist/effect-ExecutionStrategy.cjs.js"
-        },
-        "./RuntimeFlagsPatch": {
-            "module": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.esm.js",
-            "import": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.cjs.mjs",
-            "default": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.cjs.js"
-        },
-        "./ScheduleIntervals": {
-            "module": "./ScheduleIntervals/dist/effect-ScheduleIntervals.esm.js",
-            "import": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.mjs",
-            "default": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.js"
-        },
-        "./TestAnnotationMap": {
-            "module": "./TestAnnotationMap/dist/effect-TestAnnotationMap.esm.js",
-            "import": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.mjs",
-            "default": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.js"
-        },
-        "./ConfigProviderPathPatch": {
-            "module": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.esm.js",
-            "import": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.cjs.mjs",
-            "default": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.cjs.js"
-        },
-        "./package.json": "./package.json"
+      "importConditionDefaultExport": "default"
     },
-    "tags": [
-        "typescript",
-        "algebraic-data-types",
-        "functional-programming"
-    ],
-    "keywords": [
-        "typescript",
-        "algebraic-data-types",
-        "functional-programming"
-    ],
-    "devDependencies": {
-        "@babel/cli": "^7.22.15",
-        "@babel/core": "^7.22.15",
-        "@babel/plugin-transform-modules-commonjs": "^7.22.15",
-        "@babel/preset-typescript": "^7.23.0",
-        "@changesets/changelog-github": "^0.4.8",
-        "@changesets/cli": "^2.26.2",
-        "@definitelytyped/dtslint": "^0.0.177",
-        "@effect/babel-plugin": "^0.2.0",
-        "@effect/build-utils": "^0.1.4",
-        "@effect/docgen": "^0.1.7",
-        "@effect/eslint-plugin": "^0.1.2",
-        "@effect/language-service": "^0.0.21",
-        "@preconstruct/cli": "^2.8.1",
-        "@rollup/pluginutils": "^5.0.4",
-        "@types/chai": "^4.3.6",
-        "@types/node": "^20.5.9",
-        "@types/prettier": "3.0.0",
-        "@typescript-eslint/eslint-plugin": "^6.6.0",
-        "@typescript-eslint/parser": "^6.6.0",
-        "@vitejs/plugin-react": "^4.0.4",
-        "@vitest/coverage-v8": "^0.34.3",
-        "babel-plugin-annotate-pure-calls": "^0.4.0",
-        "concurrently": "^8.2.1",
-        "eslint": "^8.48.0",
-        "eslint-import-resolver-typescript": "^3.6.0",
-        "eslint-plugin-codegen": "0.17.0",
-        "eslint-plugin-deprecation": "^1.5.0",
-        "eslint-plugin-import": "^2.28.1",
-        "eslint-plugin-simple-import-sort": "^10.0.0",
-        "eslint-plugin-sort-destructure-keys": "^1.5.0",
-        "fast-check": "^3.13.0",
-        "madge": "^6.1.0",
-        "prettier": "^3.0.3",
-        "rimraf": "^5.0.1",
-        "ts-node": "^10.9.1",
-        "typescript": "^5.2.2",
-        "vite": "^4.4.9",
-        "vitest": "0.34.3"
-    }
+    "entrypoints": [
+      "index.ts",
+      "Bigint.ts",
+      "Boolean.ts",
+      "Brand.ts",
+      "Cache.ts",
+      "Cause.ts",
+      "Channel.ts",
+      "ChannelChildExecutorDecision.ts",
+      "ChannelMergeDecision.ts",
+      "ChannelMergeState.ts",
+      "ChannelMergeStrategy.ts",
+      "ChannelSingleProducerAsyncInput.ts",
+      "ChannelUpstreamPullRequest.ts",
+      "ChannelUpstreamPullStrategy.ts",
+      "Chunk.ts",
+      "Clock.ts",
+      "Config.ts",
+      "ConfigError.ts",
+      "ConfigProvider.ts",
+      "ConfigProviderPathPatch.ts",
+      "ConfigSecret.ts",
+      "Console.ts",
+      "Context.ts",
+      "Data.ts",
+      "DefaultServices.ts",
+      "Deferred.ts",
+      "Differ.ts",
+      "Duration.ts",
+      "Effect.ts",
+      "Effectable.ts",
+      "Either.ts",
+      "Encoding.ts",
+      "Equal.ts",
+      "Equivalence.ts",
+      "Error.ts",
+      "ExecutionStrategy.ts",
+      "Exit.ts",
+      "Fiber.ts",
+      "FiberId.ts",
+      "FiberRef.ts",
+      "FiberRefs.ts",
+      "FiberRefsPatch.ts",
+      "FiberStatus.ts",
+      "Function.ts",
+      "GlobalValue.ts",
+      "GroupBy.ts",
+      "HKT.ts",
+      "Hash.ts",
+      "HashMap.ts",
+      "HashSet.ts",
+      "Hub.ts",
+      "Inspectable.ts",
+      "KeyedPool.ts",
+      "Layer.ts",
+      "List.ts",
+      "LogLevel.ts",
+      "LogSpan.ts",
+      "Logger.ts",
+      "Metric.ts",
+      "MetricBoundaries.ts",
+      "MetricHook.ts",
+      "MetricKey.ts",
+      "MetricKeyType.ts",
+      "MetricLabel.ts",
+      "MetricPair.ts",
+      "MetricPolling.ts",
+      "MetricRegistry.ts",
+      "MetricState.ts",
+      "MutableHashMap.ts",
+      "MutableHashSet.ts",
+      "MutableList.ts",
+      "MutableQueue.ts",
+      "MutableRef.ts",
+      "NonEmptyIterable.ts",
+      "Number.ts",
+      "Option.ts",
+      "Order.ts",
+      "Ordering.ts",
+      "Pipeable.ts",
+      "Pool.ts",
+      "Predicate.ts",
+      "Queue.ts",
+      "Random.ts",
+      "ReadonlyArray.ts",
+      "ReadonlyRecord.ts",
+      "RedBlackTree.ts",
+      "Ref.ts",
+      "Reloadable.ts",
+      "Request.ts",
+      "RequestBlock.ts",
+      "RequestResolver.ts",
+      "Resource.ts",
+      "Runtime.ts",
+      "RuntimeFlags.ts",
+      "RuntimeFlagsPatch.ts",
+      "STM.ts",
+      "Schedule.ts",
+      "ScheduleDecision.ts",
+      "ScheduleInterval.ts",
+      "ScheduleIntervals.ts",
+      "Scheduler.ts",
+      "Scope.ts",
+      "ScopedCache.ts",
+      "ScopedRef.ts",
+      "Sink.ts",
+      "SortedMap.ts",
+      "SortedSet.ts",
+      "Stream.ts",
+      "StreamEmit.ts",
+      "StreamHaltStrategy.ts",
+      "String.ts",
+      "Struct.ts",
+      "SubscriptionRef.ts",
+      "Supervisor.ts",
+      "Symbol.ts",
+      "SynchronizedRef.ts",
+      "TArray.ts",
+      "TDeferred.ts",
+      "THub.ts",
+      "TMap.ts",
+      "TPriorityQueue.ts",
+      "TQueue.ts",
+      "TRandom.ts",
+      "TReentrantLock.ts",
+      "TRef.ts",
+      "TSemaphore.ts",
+      "TSet.ts",
+      "Take.ts",
+      "TestAnnotation.ts",
+      "TestAnnotationMap.ts",
+      "TestAnnotations.ts",
+      "TestClock.ts",
+      "TestConfig.ts",
+      "TestContext.ts",
+      "TestLive.ts",
+      "TestServices.ts",
+      "TestSized.ts",
+      "Tracer.ts",
+      "Tuple.ts",
+      "Types.ts",
+      "Unify.ts",
+      "Utils.ts"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git"
+  },
+  "author": "Michael Arnaldi <ma@matechs.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Effect-TS/effect/issues"
+  },
+  "homepage": "https://github.com/Effect-TS/effect",
+  "description": "Functional programming in TypeScript",
+  "main": "dist/effect.cjs.js",
+  "module": "dist/effect.esm.js",
+  "exports": {
+    "./HKT": {
+      "module": "./HKT/dist/effect-HKT.esm.js",
+      "import": "./HKT/dist/effect-HKT.cjs.mjs",
+      "default": "./HKT/dist/effect-HKT.cjs.js"
+    },
+    "./Hub": {
+      "module": "./Hub/dist/effect-Hub.esm.js",
+      "import": "./Hub/dist/effect-Hub.cjs.mjs",
+      "default": "./Hub/dist/effect-Hub.cjs.js"
+    },
+    "./Ref": {
+      "module": "./Ref/dist/effect-Ref.esm.js",
+      "import": "./Ref/dist/effect-Ref.cjs.mjs",
+      "default": "./Ref/dist/effect-Ref.cjs.js"
+    },
+    "./STM": {
+      "module": "./STM/dist/effect-STM.esm.js",
+      "import": "./STM/dist/effect-STM.cjs.mjs",
+      "default": "./STM/dist/effect-STM.cjs.js"
+    },
+    "./Data": {
+      "module": "./Data/dist/effect-Data.esm.js",
+      "import": "./Data/dist/effect-Data.cjs.mjs",
+      "default": "./Data/dist/effect-Data.cjs.js"
+    },
+    "./Exit": {
+      "module": "./Exit/dist/effect-Exit.esm.js",
+      "import": "./Exit/dist/effect-Exit.cjs.mjs",
+      "default": "./Exit/dist/effect-Exit.cjs.js"
+    },
+    "./Hash": {
+      "module": "./Hash/dist/effect-Hash.esm.js",
+      "import": "./Hash/dist/effect-Hash.cjs.mjs",
+      "default": "./Hash/dist/effect-Hash.cjs.js"
+    },
+    "./List": {
+      "module": "./List/dist/effect-List.esm.js",
+      "import": "./List/dist/effect-List.cjs.mjs",
+      "default": "./List/dist/effect-List.cjs.js"
+    },
+    "./Pool": {
+      "module": "./Pool/dist/effect-Pool.esm.js",
+      "import": "./Pool/dist/effect-Pool.cjs.mjs",
+      "default": "./Pool/dist/effect-Pool.cjs.js"
+    },
+    "./Sink": {
+      "module": "./Sink/dist/effect-Sink.esm.js",
+      "import": "./Sink/dist/effect-Sink.cjs.mjs",
+      "default": "./Sink/dist/effect-Sink.cjs.js"
+    },
+    "./THub": {
+      "module": "./THub/dist/effect-THub.esm.js",
+      "import": "./THub/dist/effect-THub.cjs.mjs",
+      "default": "./THub/dist/effect-THub.cjs.js"
+    },
+    "./TMap": {
+      "module": "./TMap/dist/effect-TMap.esm.js",
+      "import": "./TMap/dist/effect-TMap.cjs.mjs",
+      "default": "./TMap/dist/effect-TMap.cjs.js"
+    },
+    "./TRef": {
+      "module": "./TRef/dist/effect-TRef.esm.js",
+      "import": "./TRef/dist/effect-TRef.cjs.mjs",
+      "default": "./TRef/dist/effect-TRef.cjs.js"
+    },
+    "./TSet": {
+      "module": "./TSet/dist/effect-TSet.esm.js",
+      "import": "./TSet/dist/effect-TSet.cjs.mjs",
+      "default": "./TSet/dist/effect-TSet.cjs.js"
+    },
+    "./Take": {
+      "module": "./Take/dist/effect-Take.esm.js",
+      "import": "./Take/dist/effect-Take.cjs.mjs",
+      "default": "./Take/dist/effect-Take.cjs.js"
+    },
+    "./Brand": {
+      "module": "./Brand/dist/effect-Brand.esm.js",
+      "import": "./Brand/dist/effect-Brand.cjs.mjs",
+      "default": "./Brand/dist/effect-Brand.cjs.js"
+    },
+    "./Cache": {
+      "module": "./Cache/dist/effect-Cache.esm.js",
+      "import": "./Cache/dist/effect-Cache.cjs.mjs",
+      "default": "./Cache/dist/effect-Cache.cjs.js"
+    },
+    "./Cause": {
+      "module": "./Cause/dist/effect-Cause.esm.js",
+      "import": "./Cause/dist/effect-Cause.cjs.mjs",
+      "default": "./Cause/dist/effect-Cause.cjs.js"
+    },
+    "./Chunk": {
+      "module": "./Chunk/dist/effect-Chunk.esm.js",
+      "import": "./Chunk/dist/effect-Chunk.cjs.mjs",
+      "default": "./Chunk/dist/effect-Chunk.cjs.js"
+    },
+    "./Clock": {
+      "module": "./Clock/dist/effect-Clock.esm.js",
+      "import": "./Clock/dist/effect-Clock.cjs.mjs",
+      "default": "./Clock/dist/effect-Clock.cjs.js"
+    },
+    "./Equal": {
+      "module": "./Equal/dist/effect-Equal.esm.js",
+      "import": "./Equal/dist/effect-Equal.cjs.mjs",
+      "default": "./Equal/dist/effect-Equal.cjs.js"
+    },
+    "./Error": {
+      "module": "./Error/dist/effect-Error.esm.js",
+      "import": "./Error/dist/effect-Error.cjs.mjs",
+      "default": "./Error/dist/effect-Error.cjs.js"
+    },
+    "./Fiber": {
+      "module": "./Fiber/dist/effect-Fiber.esm.js",
+      "import": "./Fiber/dist/effect-Fiber.cjs.mjs",
+      "default": "./Fiber/dist/effect-Fiber.cjs.js"
+    },
+    "./Layer": {
+      "module": "./Layer/dist/effect-Layer.esm.js",
+      "import": "./Layer/dist/effect-Layer.cjs.mjs",
+      "default": "./Layer/dist/effect-Layer.cjs.js"
+    },
+    "./Order": {
+      "module": "./Order/dist/effect-Order.esm.js",
+      "import": "./Order/dist/effect-Order.cjs.mjs",
+      "default": "./Order/dist/effect-Order.cjs.js"
+    },
+    "./Queue": {
+      "module": "./Queue/dist/effect-Queue.esm.js",
+      "import": "./Queue/dist/effect-Queue.cjs.mjs",
+      "default": "./Queue/dist/effect-Queue.cjs.js"
+    },
+    "./Scope": {
+      "module": "./Scope/dist/effect-Scope.esm.js",
+      "import": "./Scope/dist/effect-Scope.cjs.mjs",
+      "default": "./Scope/dist/effect-Scope.cjs.js"
+    },
+    "./Tuple": {
+      "module": "./Tuple/dist/effect-Tuple.esm.js",
+      "import": "./Tuple/dist/effect-Tuple.cjs.mjs",
+      "default": "./Tuple/dist/effect-Tuple.cjs.js"
+    },
+    "./Types": {
+      "module": "./Types/dist/effect-Types.esm.js",
+      "import": "./Types/dist/effect-Types.cjs.mjs",
+      "default": "./Types/dist/effect-Types.cjs.js"
+    },
+    "./Unify": {
+      "module": "./Unify/dist/effect-Unify.esm.js",
+      "import": "./Unify/dist/effect-Unify.cjs.mjs",
+      "default": "./Unify/dist/effect-Unify.cjs.js"
+    },
+    "./Utils": {
+      "module": "./Utils/dist/effect-Utils.esm.js",
+      "import": "./Utils/dist/effect-Utils.cjs.mjs",
+      "default": "./Utils/dist/effect-Utils.cjs.js"
+    },
+    ".": {
+      "module": "./dist/effect.esm.js",
+      "import": "./dist/effect.cjs.mjs",
+      "default": "./dist/effect.cjs.js"
+    },
+    "./Bigint": {
+      "module": "./Bigint/dist/effect-Bigint.esm.js",
+      "import": "./Bigint/dist/effect-Bigint.cjs.mjs",
+      "default": "./Bigint/dist/effect-Bigint.cjs.js"
+    },
+    "./Config": {
+      "module": "./Config/dist/effect-Config.esm.js",
+      "import": "./Config/dist/effect-Config.cjs.mjs",
+      "default": "./Config/dist/effect-Config.cjs.js"
+    },
+    "./Differ": {
+      "module": "./Differ/dist/effect-Differ.esm.js",
+      "import": "./Differ/dist/effect-Differ.cjs.mjs",
+      "default": "./Differ/dist/effect-Differ.cjs.js"
+    },
+    "./Effect": {
+      "module": "./Effect/dist/effect-Effect.esm.js",
+      "import": "./Effect/dist/effect-Effect.cjs.mjs",
+      "default": "./Effect/dist/effect-Effect.cjs.js"
+    },
+    "./Either": {
+      "module": "./Either/dist/effect-Either.esm.js",
+      "import": "./Either/dist/effect-Either.cjs.mjs",
+      "default": "./Either/dist/effect-Either.cjs.js"
+    },
+    "./Logger": {
+      "module": "./Logger/dist/effect-Logger.esm.js",
+      "import": "./Logger/dist/effect-Logger.cjs.mjs",
+      "default": "./Logger/dist/effect-Logger.cjs.js"
+    },
+    "./Metric": {
+      "module": "./Metric/dist/effect-Metric.esm.js",
+      "import": "./Metric/dist/effect-Metric.cjs.mjs",
+      "default": "./Metric/dist/effect-Metric.cjs.js"
+    },
+    "./Number": {
+      "module": "./Number/dist/effect-Number.esm.js",
+      "import": "./Number/dist/effect-Number.cjs.mjs",
+      "default": "./Number/dist/effect-Number.cjs.js"
+    },
+    "./Option": {
+      "module": "./Option/dist/effect-Option.esm.js",
+      "import": "./Option/dist/effect-Option.cjs.mjs",
+      "default": "./Option/dist/effect-Option.cjs.js"
+    },
+    "./Random": {
+      "module": "./Random/dist/effect-Random.esm.js",
+      "import": "./Random/dist/effect-Random.cjs.mjs",
+      "default": "./Random/dist/effect-Random.cjs.js"
+    },
+    "./Stream": {
+      "module": "./Stream/dist/effect-Stream.esm.js",
+      "import": "./Stream/dist/effect-Stream.cjs.mjs",
+      "default": "./Stream/dist/effect-Stream.cjs.js"
+    },
+    "./String": {
+      "module": "./String/dist/effect-String.esm.js",
+      "import": "./String/dist/effect-String.cjs.mjs",
+      "default": "./String/dist/effect-String.cjs.js"
+    },
+    "./Struct": {
+      "module": "./Struct/dist/effect-Struct.esm.js",
+      "import": "./Struct/dist/effect-Struct.cjs.mjs",
+      "default": "./Struct/dist/effect-Struct.cjs.js"
+    },
+    "./Symbol": {
+      "module": "./Symbol/dist/effect-Symbol.esm.js",
+      "import": "./Symbol/dist/effect-Symbol.cjs.mjs",
+      "default": "./Symbol/dist/effect-Symbol.cjs.js"
+    },
+    "./TArray": {
+      "module": "./TArray/dist/effect-TArray.esm.js",
+      "import": "./TArray/dist/effect-TArray.cjs.mjs",
+      "default": "./TArray/dist/effect-TArray.cjs.js"
+    },
+    "./TQueue": {
+      "module": "./TQueue/dist/effect-TQueue.esm.js",
+      "import": "./TQueue/dist/effect-TQueue.cjs.mjs",
+      "default": "./TQueue/dist/effect-TQueue.cjs.js"
+    },
+    "./Tracer": {
+      "module": "./Tracer/dist/effect-Tracer.esm.js",
+      "import": "./Tracer/dist/effect-Tracer.cjs.mjs",
+      "default": "./Tracer/dist/effect-Tracer.cjs.js"
+    },
+    "./Boolean": {
+      "module": "./Boolean/dist/effect-Boolean.esm.js",
+      "import": "./Boolean/dist/effect-Boolean.cjs.mjs",
+      "default": "./Boolean/dist/effect-Boolean.cjs.js"
+    },
+    "./Channel": {
+      "module": "./Channel/dist/effect-Channel.esm.js",
+      "import": "./Channel/dist/effect-Channel.cjs.mjs",
+      "default": "./Channel/dist/effect-Channel.cjs.js"
+    },
+    "./Console": {
+      "module": "./Console/dist/effect-Console.esm.js",
+      "import": "./Console/dist/effect-Console.cjs.mjs",
+      "default": "./Console/dist/effect-Console.cjs.js"
+    },
+    "./Context": {
+      "module": "./Context/dist/effect-Context.esm.js",
+      "import": "./Context/dist/effect-Context.cjs.mjs",
+      "default": "./Context/dist/effect-Context.cjs.js"
+    },
+    "./FiberId": {
+      "module": "./FiberId/dist/effect-FiberId.esm.js",
+      "import": "./FiberId/dist/effect-FiberId.cjs.mjs",
+      "default": "./FiberId/dist/effect-FiberId.cjs.js"
+    },
+    "./GroupBy": {
+      "module": "./GroupBy/dist/effect-GroupBy.esm.js",
+      "import": "./GroupBy/dist/effect-GroupBy.cjs.mjs",
+      "default": "./GroupBy/dist/effect-GroupBy.cjs.js"
+    },
+    "./HashMap": {
+      "module": "./HashMap/dist/effect-HashMap.esm.js",
+      "import": "./HashMap/dist/effect-HashMap.cjs.mjs",
+      "default": "./HashMap/dist/effect-HashMap.cjs.js"
+    },
+    "./HashSet": {
+      "module": "./HashSet/dist/effect-HashSet.esm.js",
+      "import": "./HashSet/dist/effect-HashSet.cjs.mjs",
+      "default": "./HashSet/dist/effect-HashSet.cjs.js"
+    },
+    "./LogSpan": {
+      "module": "./LogSpan/dist/effect-LogSpan.esm.js",
+      "import": "./LogSpan/dist/effect-LogSpan.cjs.mjs",
+      "default": "./LogSpan/dist/effect-LogSpan.cjs.js"
+    },
+    "./Request": {
+      "module": "./Request/dist/effect-Request.esm.js",
+      "import": "./Request/dist/effect-Request.cjs.mjs",
+      "default": "./Request/dist/effect-Request.cjs.js"
+    },
+    "./Runtime": {
+      "module": "./Runtime/dist/effect-Runtime.esm.js",
+      "import": "./Runtime/dist/effect-Runtime.cjs.mjs",
+      "default": "./Runtime/dist/effect-Runtime.cjs.js"
+    },
+    "./TRandom": {
+      "module": "./TRandom/dist/effect-TRandom.esm.js",
+      "import": "./TRandom/dist/effect-TRandom.cjs.mjs",
+      "default": "./TRandom/dist/effect-TRandom.cjs.js"
+    },
+    "./Deferred": {
+      "module": "./Deferred/dist/effect-Deferred.esm.js",
+      "import": "./Deferred/dist/effect-Deferred.cjs.mjs",
+      "default": "./Deferred/dist/effect-Deferred.cjs.js"
+    },
+    "./Duration": {
+      "module": "./Duration/dist/effect-Duration.esm.js",
+      "import": "./Duration/dist/effect-Duration.cjs.mjs",
+      "default": "./Duration/dist/effect-Duration.cjs.js"
+    },
+    "./Encoding": {
+      "module": "./Encoding/dist/effect-Encoding.esm.js",
+      "import": "./Encoding/dist/effect-Encoding.cjs.mjs",
+      "default": "./Encoding/dist/effect-Encoding.cjs.js"
+    },
+    "./FiberRef": {
+      "module": "./FiberRef/dist/effect-FiberRef.esm.js",
+      "import": "./FiberRef/dist/effect-FiberRef.cjs.mjs",
+      "default": "./FiberRef/dist/effect-FiberRef.cjs.js"
+    },
+    "./Function": {
+      "module": "./Function/dist/effect-Function.esm.js",
+      "import": "./Function/dist/effect-Function.cjs.mjs",
+      "default": "./Function/dist/effect-Function.cjs.js"
+    },
+    "./LogLevel": {
+      "module": "./LogLevel/dist/effect-LogLevel.esm.js",
+      "import": "./LogLevel/dist/effect-LogLevel.cjs.mjs",
+      "default": "./LogLevel/dist/effect-LogLevel.cjs.js"
+    },
+    "./Ordering": {
+      "module": "./Ordering/dist/effect-Ordering.esm.js",
+      "import": "./Ordering/dist/effect-Ordering.cjs.mjs",
+      "default": "./Ordering/dist/effect-Ordering.cjs.js"
+    },
+    "./Pipeable": {
+      "module": "./Pipeable/dist/effect-Pipeable.esm.js",
+      "import": "./Pipeable/dist/effect-Pipeable.cjs.mjs",
+      "default": "./Pipeable/dist/effect-Pipeable.cjs.js"
+    },
+    "./Resource": {
+      "module": "./Resource/dist/effect-Resource.esm.js",
+      "import": "./Resource/dist/effect-Resource.cjs.mjs",
+      "default": "./Resource/dist/effect-Resource.cjs.js"
+    },
+    "./Schedule": {
+      "module": "./Schedule/dist/effect-Schedule.esm.js",
+      "import": "./Schedule/dist/effect-Schedule.cjs.mjs",
+      "default": "./Schedule/dist/effect-Schedule.cjs.js"
+    },
+    "./TestLive": {
+      "module": "./TestLive/dist/effect-TestLive.esm.js",
+      "import": "./TestLive/dist/effect-TestLive.cjs.mjs",
+      "default": "./TestLive/dist/effect-TestLive.cjs.js"
+    },
+    "./FiberRefs": {
+      "module": "./FiberRefs/dist/effect-FiberRefs.esm.js",
+      "import": "./FiberRefs/dist/effect-FiberRefs.cjs.mjs",
+      "default": "./FiberRefs/dist/effect-FiberRefs.cjs.js"
+    },
+    "./KeyedPool": {
+      "module": "./KeyedPool/dist/effect-KeyedPool.esm.js",
+      "import": "./KeyedPool/dist/effect-KeyedPool.cjs.mjs",
+      "default": "./KeyedPool/dist/effect-KeyedPool.cjs.js"
+    },
+    "./MetricKey": {
+      "module": "./MetricKey/dist/effect-MetricKey.esm.js",
+      "import": "./MetricKey/dist/effect-MetricKey.cjs.mjs",
+      "default": "./MetricKey/dist/effect-MetricKey.cjs.js"
+    },
+    "./Predicate": {
+      "module": "./Predicate/dist/effect-Predicate.esm.js",
+      "import": "./Predicate/dist/effect-Predicate.cjs.mjs",
+      "default": "./Predicate/dist/effect-Predicate.cjs.js"
+    },
+    "./Scheduler": {
+      "module": "./Scheduler/dist/effect-Scheduler.esm.js",
+      "import": "./Scheduler/dist/effect-Scheduler.cjs.mjs",
+      "default": "./Scheduler/dist/effect-Scheduler.cjs.js"
+    },
+    "./ScopedRef": {
+      "module": "./ScopedRef/dist/effect-ScopedRef.esm.js",
+      "import": "./ScopedRef/dist/effect-ScopedRef.cjs.mjs",
+      "default": "./ScopedRef/dist/effect-ScopedRef.cjs.js"
+    },
+    "./SortedMap": {
+      "module": "./SortedMap/dist/effect-SortedMap.esm.js",
+      "import": "./SortedMap/dist/effect-SortedMap.cjs.mjs",
+      "default": "./SortedMap/dist/effect-SortedMap.cjs.js"
+    },
+    "./SortedSet": {
+      "module": "./SortedSet/dist/effect-SortedSet.esm.js",
+      "import": "./SortedSet/dist/effect-SortedSet.cjs.mjs",
+      "default": "./SortedSet/dist/effect-SortedSet.cjs.js"
+    },
+    "./TDeferred": {
+      "module": "./TDeferred/dist/effect-TDeferred.esm.js",
+      "import": "./TDeferred/dist/effect-TDeferred.cjs.mjs",
+      "default": "./TDeferred/dist/effect-TDeferred.cjs.js"
+    },
+    "./TestClock": {
+      "module": "./TestClock/dist/effect-TestClock.esm.js",
+      "import": "./TestClock/dist/effect-TestClock.cjs.mjs",
+      "default": "./TestClock/dist/effect-TestClock.cjs.js"
+    },
+    "./TestSized": {
+      "module": "./TestSized/dist/effect-TestSized.esm.js",
+      "import": "./TestSized/dist/effect-TestSized.cjs.mjs",
+      "default": "./TestSized/dist/effect-TestSized.cjs.js"
+    },
+    "./Effectable": {
+      "module": "./Effectable/dist/effect-Effectable.esm.js",
+      "import": "./Effectable/dist/effect-Effectable.cjs.mjs",
+      "default": "./Effectable/dist/effect-Effectable.cjs.js"
+    },
+    "./MetricHook": {
+      "module": "./MetricHook/dist/effect-MetricHook.esm.js",
+      "import": "./MetricHook/dist/effect-MetricHook.cjs.mjs",
+      "default": "./MetricHook/dist/effect-MetricHook.cjs.js"
+    },
+    "./MetricPair": {
+      "module": "./MetricPair/dist/effect-MetricPair.esm.js",
+      "import": "./MetricPair/dist/effect-MetricPair.cjs.mjs",
+      "default": "./MetricPair/dist/effect-MetricPair.cjs.js"
+    },
+    "./MutableRef": {
+      "module": "./MutableRef/dist/effect-MutableRef.esm.js",
+      "import": "./MutableRef/dist/effect-MutableRef.cjs.mjs",
+      "default": "./MutableRef/dist/effect-MutableRef.cjs.js"
+    },
+    "./Reloadable": {
+      "module": "./Reloadable/dist/effect-Reloadable.esm.js",
+      "import": "./Reloadable/dist/effect-Reloadable.cjs.mjs",
+      "default": "./Reloadable/dist/effect-Reloadable.cjs.js"
+    },
+    "./StreamEmit": {
+      "module": "./StreamEmit/dist/effect-StreamEmit.esm.js",
+      "import": "./StreamEmit/dist/effect-StreamEmit.cjs.mjs",
+      "default": "./StreamEmit/dist/effect-StreamEmit.cjs.js"
+    },
+    "./Supervisor": {
+      "module": "./Supervisor/dist/effect-Supervisor.esm.js",
+      "import": "./Supervisor/dist/effect-Supervisor.cjs.mjs",
+      "default": "./Supervisor/dist/effect-Supervisor.cjs.js"
+    },
+    "./TSemaphore": {
+      "module": "./TSemaphore/dist/effect-TSemaphore.esm.js",
+      "import": "./TSemaphore/dist/effect-TSemaphore.cjs.mjs",
+      "default": "./TSemaphore/dist/effect-TSemaphore.cjs.js"
+    },
+    "./TestConfig": {
+      "module": "./TestConfig/dist/effect-TestConfig.esm.js",
+      "import": "./TestConfig/dist/effect-TestConfig.cjs.mjs",
+      "default": "./TestConfig/dist/effect-TestConfig.cjs.js"
+    },
+    "./ConfigError": {
+      "module": "./ConfigError/dist/effect-ConfigError.esm.js",
+      "import": "./ConfigError/dist/effect-ConfigError.cjs.mjs",
+      "default": "./ConfigError/dist/effect-ConfigError.cjs.js"
+    },
+    "./Equivalence": {
+      "module": "./Equivalence/dist/effect-Equivalence.esm.js",
+      "import": "./Equivalence/dist/effect-Equivalence.cjs.mjs",
+      "default": "./Equivalence/dist/effect-Equivalence.cjs.js"
+    },
+    "./FiberStatus": {
+      "module": "./FiberStatus/dist/effect-FiberStatus.esm.js",
+      "import": "./FiberStatus/dist/effect-FiberStatus.cjs.mjs",
+      "default": "./FiberStatus/dist/effect-FiberStatus.cjs.js"
+    },
+    "./GlobalValue": {
+      "module": "./GlobalValue/dist/effect-GlobalValue.esm.js",
+      "import": "./GlobalValue/dist/effect-GlobalValue.cjs.mjs",
+      "default": "./GlobalValue/dist/effect-GlobalValue.cjs.js"
+    },
+    "./Inspectable": {
+      "module": "./Inspectable/dist/effect-Inspectable.esm.js",
+      "import": "./Inspectable/dist/effect-Inspectable.cjs.mjs",
+      "default": "./Inspectable/dist/effect-Inspectable.cjs.js"
+    },
+    "./MetricLabel": {
+      "module": "./MetricLabel/dist/effect-MetricLabel.esm.js",
+      "import": "./MetricLabel/dist/effect-MetricLabel.cjs.mjs",
+      "default": "./MetricLabel/dist/effect-MetricLabel.cjs.js"
+    },
+    "./MetricState": {
+      "module": "./MetricState/dist/effect-MetricState.esm.js",
+      "import": "./MetricState/dist/effect-MetricState.cjs.mjs",
+      "default": "./MetricState/dist/effect-MetricState.cjs.js"
+    },
+    "./MutableList": {
+      "module": "./MutableList/dist/effect-MutableList.esm.js",
+      "import": "./MutableList/dist/effect-MutableList.cjs.mjs",
+      "default": "./MutableList/dist/effect-MutableList.cjs.js"
+    },
+    "./ScopedCache": {
+      "module": "./ScopedCache/dist/effect-ScopedCache.esm.js",
+      "import": "./ScopedCache/dist/effect-ScopedCache.cjs.mjs",
+      "default": "./ScopedCache/dist/effect-ScopedCache.cjs.js"
+    },
+    "./TestContext": {
+      "module": "./TestContext/dist/effect-TestContext.esm.js",
+      "import": "./TestContext/dist/effect-TestContext.cjs.mjs",
+      "default": "./TestContext/dist/effect-TestContext.cjs.js"
+    },
+    "./ConfigSecret": {
+      "module": "./ConfigSecret/dist/effect-ConfigSecret.esm.js",
+      "import": "./ConfigSecret/dist/effect-ConfigSecret.cjs.mjs",
+      "default": "./ConfigSecret/dist/effect-ConfigSecret.cjs.js"
+    },
+    "./MutableQueue": {
+      "module": "./MutableQueue/dist/effect-MutableQueue.esm.js",
+      "import": "./MutableQueue/dist/effect-MutableQueue.cjs.mjs",
+      "default": "./MutableQueue/dist/effect-MutableQueue.cjs.js"
+    },
+    "./RedBlackTree": {
+      "module": "./RedBlackTree/dist/effect-RedBlackTree.esm.js",
+      "import": "./RedBlackTree/dist/effect-RedBlackTree.cjs.mjs",
+      "default": "./RedBlackTree/dist/effect-RedBlackTree.cjs.js"
+    },
+    "./RequestBlock": {
+      "module": "./RequestBlock/dist/effect-RequestBlock.esm.js",
+      "import": "./RequestBlock/dist/effect-RequestBlock.cjs.mjs",
+      "default": "./RequestBlock/dist/effect-RequestBlock.cjs.js"
+    },
+    "./RuntimeFlags": {
+      "module": "./RuntimeFlags/dist/effect-RuntimeFlags.esm.js",
+      "import": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.mjs",
+      "default": "./RuntimeFlags/dist/effect-RuntimeFlags.cjs.js"
+    },
+    "./TestServices": {
+      "module": "./TestServices/dist/effect-TestServices.esm.js",
+      "import": "./TestServices/dist/effect-TestServices.cjs.mjs",
+      "default": "./TestServices/dist/effect-TestServices.cjs.js"
+    },
+    "./MetricKeyType": {
+      "module": "./MetricKeyType/dist/effect-MetricKeyType.esm.js",
+      "import": "./MetricKeyType/dist/effect-MetricKeyType.cjs.mjs",
+      "default": "./MetricKeyType/dist/effect-MetricKeyType.cjs.js"
+    },
+    "./MetricPolling": {
+      "module": "./MetricPolling/dist/effect-MetricPolling.esm.js",
+      "import": "./MetricPolling/dist/effect-MetricPolling.cjs.mjs",
+      "default": "./MetricPolling/dist/effect-MetricPolling.cjs.js"
+    },
+    "./ReadonlyArray": {
+      "module": "./ReadonlyArray/dist/effect-ReadonlyArray.esm.js",
+      "import": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.mjs",
+      "default": "./ReadonlyArray/dist/effect-ReadonlyArray.cjs.js"
+    },
+    "./ConfigProvider": {
+      "module": "./ConfigProvider/dist/effect-ConfigProvider.esm.js",
+      "import": "./ConfigProvider/dist/effect-ConfigProvider.cjs.mjs",
+      "default": "./ConfigProvider/dist/effect-ConfigProvider.cjs.js"
+    },
+    "./FiberRefsPatch": {
+      "module": "./FiberRefsPatch/dist/effect-FiberRefsPatch.esm.js",
+      "import": "./FiberRefsPatch/dist/effect-FiberRefsPatch.cjs.mjs",
+      "default": "./FiberRefsPatch/dist/effect-FiberRefsPatch.cjs.js"
+    },
+    "./MetricRegistry": {
+      "module": "./MetricRegistry/dist/effect-MetricRegistry.esm.js",
+      "import": "./MetricRegistry/dist/effect-MetricRegistry.cjs.mjs",
+      "default": "./MetricRegistry/dist/effect-MetricRegistry.cjs.js"
+    },
+    "./MutableHashMap": {
+      "module": "./MutableHashMap/dist/effect-MutableHashMap.esm.js",
+      "import": "./MutableHashMap/dist/effect-MutableHashMap.cjs.mjs",
+      "default": "./MutableHashMap/dist/effect-MutableHashMap.cjs.js"
+    },
+    "./MutableHashSet": {
+      "module": "./MutableHashSet/dist/effect-MutableHashSet.esm.js",
+      "import": "./MutableHashSet/dist/effect-MutableHashSet.cjs.mjs",
+      "default": "./MutableHashSet/dist/effect-MutableHashSet.cjs.js"
+    },
+    "./ReadonlyRecord": {
+      "module": "./ReadonlyRecord/dist/effect-ReadonlyRecord.esm.js",
+      "import": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.mjs",
+      "default": "./ReadonlyRecord/dist/effect-ReadonlyRecord.cjs.js"
+    },
+    "./TPriorityQueue": {
+      "module": "./TPriorityQueue/dist/effect-TPriorityQueue.esm.js",
+      "import": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.mjs",
+      "default": "./TPriorityQueue/dist/effect-TPriorityQueue.cjs.js"
+    },
+    "./TReentrantLock": {
+      "module": "./TReentrantLock/dist/effect-TReentrantLock.esm.js",
+      "import": "./TReentrantLock/dist/effect-TReentrantLock.cjs.mjs",
+      "default": "./TReentrantLock/dist/effect-TReentrantLock.cjs.js"
+    },
+    "./TestAnnotation": {
+      "module": "./TestAnnotation/dist/effect-TestAnnotation.esm.js",
+      "import": "./TestAnnotation/dist/effect-TestAnnotation.cjs.mjs",
+      "default": "./TestAnnotation/dist/effect-TestAnnotation.cjs.js"
+    },
+    "./DefaultServices": {
+      "module": "./DefaultServices/dist/effect-DefaultServices.esm.js",
+      "import": "./DefaultServices/dist/effect-DefaultServices.cjs.mjs",
+      "default": "./DefaultServices/dist/effect-DefaultServices.cjs.js"
+    },
+    "./RequestResolver": {
+      "module": "./RequestResolver/dist/effect-RequestResolver.esm.js",
+      "import": "./RequestResolver/dist/effect-RequestResolver.cjs.mjs",
+      "default": "./RequestResolver/dist/effect-RequestResolver.cjs.js"
+    },
+    "./SubscriptionRef": {
+      "module": "./SubscriptionRef/dist/effect-SubscriptionRef.esm.js",
+      "import": "./SubscriptionRef/dist/effect-SubscriptionRef.cjs.mjs",
+      "default": "./SubscriptionRef/dist/effect-SubscriptionRef.cjs.js"
+    },
+    "./SynchronizedRef": {
+      "module": "./SynchronizedRef/dist/effect-SynchronizedRef.esm.js",
+      "import": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.mjs",
+      "default": "./SynchronizedRef/dist/effect-SynchronizedRef.cjs.js"
+    },
+    "./TestAnnotations": {
+      "module": "./TestAnnotations/dist/effect-TestAnnotations.esm.js",
+      "import": "./TestAnnotations/dist/effect-TestAnnotations.cjs.mjs",
+      "default": "./TestAnnotations/dist/effect-TestAnnotations.cjs.js"
+    },
+    "./MetricBoundaries": {
+      "module": "./MetricBoundaries/dist/effect-MetricBoundaries.esm.js",
+      "import": "./MetricBoundaries/dist/effect-MetricBoundaries.cjs.mjs",
+      "default": "./MetricBoundaries/dist/effect-MetricBoundaries.cjs.js"
+    },
+    "./NonEmptyIterable": {
+      "module": "./NonEmptyIterable/dist/effect-NonEmptyIterable.esm.js",
+      "import": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.mjs",
+      "default": "./NonEmptyIterable/dist/effect-NonEmptyIterable.cjs.js"
+    },
+    "./ScheduleDecision": {
+      "module": "./ScheduleDecision/dist/effect-ScheduleDecision.esm.js",
+      "import": "./ScheduleDecision/dist/effect-ScheduleDecision.cjs.mjs",
+      "default": "./ScheduleDecision/dist/effect-ScheduleDecision.cjs.js"
+    },
+    "./ScheduleInterval": {
+      "module": "./ScheduleInterval/dist/effect-ScheduleInterval.esm.js",
+      "import": "./ScheduleInterval/dist/effect-ScheduleInterval.cjs.mjs",
+      "default": "./ScheduleInterval/dist/effect-ScheduleInterval.cjs.js"
+    },
+    "./ChannelMergeState": {
+      "module": "./ChannelMergeState/dist/effect-ChannelMergeState.esm.js",
+      "import": "./ChannelMergeState/dist/effect-ChannelMergeState.cjs.mjs",
+      "default": "./ChannelMergeState/dist/effect-ChannelMergeState.cjs.js"
+    },
+    "./ExecutionStrategy": {
+      "module": "./ExecutionStrategy/dist/effect-ExecutionStrategy.esm.js",
+      "import": "./ExecutionStrategy/dist/effect-ExecutionStrategy.cjs.mjs",
+      "default": "./ExecutionStrategy/dist/effect-ExecutionStrategy.cjs.js"
+    },
+    "./RuntimeFlagsPatch": {
+      "module": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.esm.js",
+      "import": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.cjs.mjs",
+      "default": "./RuntimeFlagsPatch/dist/effect-RuntimeFlagsPatch.cjs.js"
+    },
+    "./ScheduleIntervals": {
+      "module": "./ScheduleIntervals/dist/effect-ScheduleIntervals.esm.js",
+      "import": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.mjs",
+      "default": "./ScheduleIntervals/dist/effect-ScheduleIntervals.cjs.js"
+    },
+    "./TestAnnotationMap": {
+      "module": "./TestAnnotationMap/dist/effect-TestAnnotationMap.esm.js",
+      "import": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.mjs",
+      "default": "./TestAnnotationMap/dist/effect-TestAnnotationMap.cjs.js"
+    },
+    "./StreamHaltStrategy": {
+      "module": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.esm.js",
+      "import": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.cjs.mjs",
+      "default": "./StreamHaltStrategy/dist/effect-StreamHaltStrategy.cjs.js"
+    },
+    "./ChannelMergeDecision": {
+      "module": "./ChannelMergeDecision/dist/effect-ChannelMergeDecision.esm.js",
+      "import": "./ChannelMergeDecision/dist/effect-ChannelMergeDecision.cjs.mjs",
+      "default": "./ChannelMergeDecision/dist/effect-ChannelMergeDecision.cjs.js"
+    },
+    "./ChannelMergeStrategy": {
+      "module": "./ChannelMergeStrategy/dist/effect-ChannelMergeStrategy.esm.js",
+      "import": "./ChannelMergeStrategy/dist/effect-ChannelMergeStrategy.cjs.mjs",
+      "default": "./ChannelMergeStrategy/dist/effect-ChannelMergeStrategy.cjs.js"
+    },
+    "./ConfigProviderPathPatch": {
+      "module": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.esm.js",
+      "import": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.cjs.mjs",
+      "default": "./ConfigProviderPathPatch/dist/effect-ConfigProviderPathPatch.cjs.js"
+    },
+    "./ChannelUpstreamPullRequest": {
+      "module": "./ChannelUpstreamPullRequest/dist/effect-ChannelUpstreamPullRequest.esm.js",
+      "import": "./ChannelUpstreamPullRequest/dist/effect-ChannelUpstreamPullRequest.cjs.mjs",
+      "default": "./ChannelUpstreamPullRequest/dist/effect-ChannelUpstreamPullRequest.cjs.js"
+    },
+    "./ChannelUpstreamPullStrategy": {
+      "module": "./ChannelUpstreamPullStrategy/dist/effect-ChannelUpstreamPullStrategy.esm.js",
+      "import": "./ChannelUpstreamPullStrategy/dist/effect-ChannelUpstreamPullStrategy.cjs.mjs",
+      "default": "./ChannelUpstreamPullStrategy/dist/effect-ChannelUpstreamPullStrategy.cjs.js"
+    },
+    "./ChannelChildExecutorDecision": {
+      "module": "./ChannelChildExecutorDecision/dist/effect-ChannelChildExecutorDecision.esm.js",
+      "import": "./ChannelChildExecutorDecision/dist/effect-ChannelChildExecutorDecision.cjs.mjs",
+      "default": "./ChannelChildExecutorDecision/dist/effect-ChannelChildExecutorDecision.cjs.js"
+    },
+    "./ChannelSingleProducerAsyncInput": {
+      "module": "./ChannelSingleProducerAsyncInput/dist/effect-ChannelSingleProducerAsyncInput.esm.js",
+      "import": "./ChannelSingleProducerAsyncInput/dist/effect-ChannelSingleProducerAsyncInput.cjs.mjs",
+      "default": "./ChannelSingleProducerAsyncInput/dist/effect-ChannelSingleProducerAsyncInput.cjs.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "tags": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "keywords": [
+    "typescript",
+    "algebraic-data-types",
+    "functional-programming"
+  ],
+  "devDependencies": {
+    "@babel/cli": "^7.22.15",
+    "@babel/core": "^7.22.15",
+    "@babel/plugin-transform-modules-commonjs": "^7.22.15",
+    "@babel/preset-typescript": "^7.23.0",
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.2",
+    "@definitelytyped/dtslint": "^0.0.177",
+    "@effect/babel-plugin": "^0.2.0",
+    "@effect/build-utils": "^0.1.4",
+    "@effect/docgen": "^0.1.7",
+    "@effect/eslint-plugin": "^0.1.2",
+    "@effect/language-service": "^0.0.21",
+    "@preconstruct/cli": "^2.8.1",
+    "@rollup/pluginutils": "^5.0.4",
+    "@types/chai": "^4.3.6",
+    "@types/node": "^20.5.9",
+    "@types/prettier": "3.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.6.0",
+    "@typescript-eslint/parser": "^6.6.0",
+    "@vitejs/plugin-react": "^4.0.4",
+    "@vitest/coverage-v8": "^0.34.3",
+    "babel-plugin-annotate-pure-calls": "^0.4.0",
+    "concurrently": "^8.2.1",
+    "eslint": "^8.48.0",
+    "eslint-import-resolver-typescript": "^3.6.0",
+    "eslint-plugin-codegen": "0.17.0",
+    "eslint-plugin-deprecation": "^1.5.0",
+    "eslint-plugin-import": "^2.28.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "eslint-plugin-sort-destructure-keys": "^1.5.0",
+    "fast-check": "^3.13.0",
+    "madge": "^6.1.0",
+    "prettier": "^3.0.3",
+    "rimraf": "^5.0.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2",
+    "vite": "^4.4.9",
+    "vitest": "0.34.3"
+  }
 }
