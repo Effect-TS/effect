@@ -27,6 +27,7 @@ Added in v2.0.0
   - [toHrTime](#tohrtime)
   - [toMillis](#tomillis)
   - [toNanos](#tonanos)
+  - [toSeconds](#toseconds)
   - [unsafeToNanos](#unsafetonanos)
 - [guards](#guards)
   - [isDuration](#isduration)
@@ -195,6 +196,16 @@ If the duration is infinite, returns `Option.none()`
 
 ```ts
 export declare const toNanos: (self: DurationInput) => Option.Option<bigint>
+```
+
+Added in v2.0.0
+
+## toSeconds
+
+**Signature**
+
+```ts
+export declare const toSeconds: (self: DurationInput) => number
 ```
 
 Added in v2.0.0

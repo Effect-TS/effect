@@ -257,6 +257,16 @@ describe.concurrent("Duration", () => {
     expect(Duration.toMillis("1 millis")).toBe(1)
   })
 
+  it("toSeconds", () => {
+    expect(Duration.millis(1).pipe(Duration.toSeconds)).toBe(0.001)
+    expect(Duration.nanos(1n).pipe(Duration.toSeconds)).toBe(9.999999999999999e-10)
+    expect(Duration.infinity.pipe(Duration.toSeconds)).toBe(Infinity)
+
+    expect(Duration.toSeconds("1 seconds")).toBe(1)
+    expect(Duration.toSeconds("3 seconds")).toBe(3)
+    expect(Duration.toSeconds("3 minutes")).toBe(180)
+  })
+
   it("toNanos", () => {
     expect(Duration.nanos(1n).pipe(Duration.toNanos)).toEqual(Option.some(1n))
     expect(Duration.infinity.pipe(Duration.toNanos)).toEqual(Option.none())

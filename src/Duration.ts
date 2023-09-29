@@ -241,6 +241,12 @@ export const toMillis = (self: DurationInput): number => {
 }
 
 /**
+ * @since 2.0.0
+ * @category getters
+ */
+export const toSeconds = (self: DurationInput): number => toMillis(self) / 1_000
+
+/**
  * Get the duration in nanoseconds as a bigint.
  *
  * If the duration is infinite, returns `Option.none()`
