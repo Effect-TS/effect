@@ -77,7 +77,7 @@
     "@changesets/cli": "^2.26.2",
     "@definitelytyped/dtslint": "^0.0.178",
     "@effect/build-utils": "^0.1.4",
-    "@effect/docgen": "^0.1.7",
+    "@effect/docgen": "^0.1.8",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@types/benchmark": "^2.1.2",
