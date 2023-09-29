@@ -7,10 +7,10 @@ const modules = Fs.readdirSync("src").filter(
 const files = ["dist", "internal", ...modules.map((_) => _.slice(0, -3))];
 const exports = {
   ".": {
+    types: "./dist/declarations/src/index.d.ts",
     module: "./dist/effect.esm.js",
     import: "./dist/effect.cjs.mjs",
     default: "./dist/effect.cjs.js",
-    types: "./dist/declarations/src/index.d.ts",
   },
   "./package.json": "./package.json",
 };
@@ -19,10 +19,10 @@ modules
   .map((_) => _.slice(0, -3))
   .forEach((module) => {
     exports[`./${module}`] = {
+      types: `./dist/declarations/src/${module}.d.ts`,
       module: `./${module}/dist/effect-${module}.esm.js`,
       import: `./${module}/dist/effect-${module}.cjs.mjs`,
       default: `./${module}/dist/effect-${module}.cjs.js`,
-      types: `./dist/declarations/src/${module}.d.ts`,
     };
   });
 
