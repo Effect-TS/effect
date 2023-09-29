@@ -6,6 +6,10 @@ parent: Modules
 
 ## index overview
 
+This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
+
 Added in v1.0.0
 
 ---
@@ -18,6 +22,14 @@ Added in v1.0.0
   - [From "./Brand"](#from-brand)
   - [From "./Cache"](#from-cache)
   - [From "./Cause"](#from-cause)
+  - [From "./Channel"](#from-channel)
+  - [From "./ChannelChildExecutorDecision"](#from-channelchildexecutordecision)
+  - [From "./ChannelMergeDecision"](#from-channelmergedecision)
+  - [From "./ChannelMergeState"](#from-channelmergestate)
+  - [From "./ChannelMergeStrategy"](#from-channelmergestrategy)
+  - [From "./ChannelSingleProducerAsyncInput"](#from-channelsingleproducerasyncinput)
+  - [From "./ChannelUpstreamPullRequest"](#from-channelupstreampullrequest)
+  - [From "./ChannelUpstreamPullStrategy"](#from-channelupstreampullstrategy)
   - [From "./Chunk"](#from-chunk)
   - [From "./Clock"](#from-clock)
   - [From "./Config"](#from-config)
@@ -33,9 +45,12 @@ Added in v1.0.0
   - [From "./Differ"](#from-differ)
   - [From "./Duration"](#from-duration)
   - [From "./Effect"](#from-effect)
+  - [From "./Effectable"](#from-effectable)
   - [From "./Either"](#from-either)
+  - [From "./Encoding"](#from-encoding)
   - [From "./Equal"](#from-equal)
   - [From "./Equivalence"](#from-equivalence)
+  - [From "./Error"](#from-error)
   - [From "./ExecutionStrategy"](#from-executionstrategy)
   - [From "./Exit"](#from-exit)
   - [From "./Fiber"](#from-fiber)
@@ -46,11 +61,13 @@ Added in v1.0.0
   - [From "./FiberStatus"](#from-fiberstatus)
   - [From "./Function"](#from-function)
   - [From "./GlobalValue"](#from-globalvalue)
+  - [From "./GroupBy"](#from-groupby)
   - [From "./HKT"](#from-hkt)
   - [From "./Hash"](#from-hash)
   - [From "./HashMap"](#from-hashmap)
   - [From "./HashSet"](#from-hashset)
   - [From "./Hub"](#from-hub)
+  - [From "./Inspectable"](#from-inspectable)
   - [From "./KeyedPool"](#from-keyedpool)
   - [From "./Layer"](#from-layer)
   - [From "./List"](#from-list)
@@ -103,10 +120,15 @@ Added in v1.0.0
   - [From "./Scope"](#from-scope)
   - [From "./ScopedCache"](#from-scopedcache)
   - [From "./ScopedRef"](#from-scopedref)
+  - [From "./Sink"](#from-sink)
   - [From "./SortedMap"](#from-sortedmap)
   - [From "./SortedSet"](#from-sortedset)
+  - [From "./Stream"](#from-stream)
+  - [From "./StreamEmit"](#from-streamemit)
+  - [From "./StreamHaltStrategy"](#from-streamhaltstrategy)
   - [From "./String"](#from-string)
   - [From "./Struct"](#from-struct)
+  - [From "./SubscriptionRef"](#from-subscriptionref)
   - [From "./Supervisor"](#from-supervisor)
   - [From "./Symbol"](#from-symbol)
   - [From "./SynchronizedRef"](#from-synchronizedref)
@@ -121,6 +143,7 @@ Added in v1.0.0
   - [From "./TRef"](#from-tref)
   - [From "./TSemaphore"](#from-tsemaphore)
   - [From "./TSet"](#from-tset)
+  - [From "./Take"](#from-take)
   - [From "./TestAnnotation"](#from-testannotation)
   - [From "./TestAnnotationMap"](#from-testannotationmap)
   - [From "./TestAnnotations"](#from-testannotations)
@@ -142,7 +165,9 @@ Added in v1.0.0
 
 ## From "./Bigint"
 
-Re-exports all named exports from the "./Bigint" module.
+This module provides utility functions and type class instances for working with the `bigint` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
@@ -154,7 +179,9 @@ Added in v1.0.0
 
 ## From "./Boolean"
 
-Re-exports all named exports from the "./Boolean" module.
+This module provides utility functions and type class instances for working with the `boolean` type in TypeScript.
+It includes functions for basic boolean operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
@@ -166,7 +193,20 @@ Added in v1.0.0
 
 ## From "./Brand"
 
-Re-exports all named exports from the "./Brand" module.
+This module provides types and utility functions to create and work with branded types,
+which are TypeScript types with an added type tag to prevent accidental usage of a value in the wrong context.
+
+The `refined` and `nominal` functions are both used to create branded types in TypeScript.
+The main difference between them is that `refined` allows for validation of the data, while `nominal` does not.
+
+The `nominal` function is used to create a new branded type that has the same underlying type as the input, but with a different name.
+This is useful when you want to distinguish between two values of the same type that have different meanings.
+The `nominal` function does not perform any validation of the input data.
+
+On the other hand, the `refined` function is used to create a new branded type that has the same underlying type as the input,
+but with a different name, and it also allows for validation of the input data.
+The `refined` function takes a predicate that is used to validate the input data.
+If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
 
 **Signature**
 
@@ -190,12 +230,126 @@ Added in v1.0.0
 
 ## From "./Cause"
 
-Re-exports all named exports from the "./Cause" module.
+The `Effect<R, E, A>` type is polymorphic in values of type `E` and we can
+work with any error type that we want. However, there is a lot of information
+that is not inside an arbitrary `E` value. So as a result, an `Effect` needs
+somewhere to store things like unexpected errors or defects, stack and
+execution traces, causes of fiber interruptions, and so forth.
+
+Effect-TS is very strict about preserving the full information related to a
+failure. It captures all type of errors into the `Cause` data type. `Effect`
+uses the `Cause<E>` data type to store the full story of failure. So its
+error model is lossless. It doesn't throw information related to the failure
+result. So we can figure out exactly what happened during the operation of
+our effects.
+
+It is important to note that `Cause` is an underlying data type representing
+errors occuring within an `Effect` workflow. Thus, we don't usually deal with
+`Cause`s directly. Even though it is not a data type that we deal with very
+often, the `Cause` of a failing `Effect` workflow can be accessed at any
+time, which gives us total access to all parallel and sequential errors in
+occurring within our codebase.
 
 **Signature**
 
 ```ts
 export * from './Cause'
+```
+
+Added in v1.0.0
+
+## From "./Channel"
+
+Re-exports all named exports from the "./Channel" module.
+
+**Signature**
+
+```ts
+export * from './Channel'
+```
+
+Added in v1.0.0
+
+## From "./ChannelChildExecutorDecision"
+
+Re-exports all named exports from the "./ChannelChildExecutorDecision" module.
+
+**Signature**
+
+```ts
+export * from './ChannelChildExecutorDecision'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeDecision"
+
+Re-exports all named exports from the "./ChannelMergeDecision" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeDecision'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeState"
+
+Re-exports all named exports from the "./ChannelMergeState" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeState'
+```
+
+Added in v1.0.0
+
+## From "./ChannelMergeStrategy"
+
+Re-exports all named exports from the "./ChannelMergeStrategy" module.
+
+**Signature**
+
+```ts
+export * from './ChannelMergeStrategy'
+```
+
+Added in v1.0.0
+
+## From "./ChannelSingleProducerAsyncInput"
+
+Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module.
+
+**Signature**
+
+```ts
+export * from './ChannelSingleProducerAsyncInput'
+```
+
+Added in v1.0.0
+
+## From "./ChannelUpstreamPullRequest"
+
+Re-exports all named exports from the "./ChannelUpstreamPullRequest" module.
+
+**Signature**
+
+```ts
+export * from './ChannelUpstreamPullRequest'
+```
+
+Added in v1.0.0
+
+## From "./ChannelUpstreamPullStrategy"
+
+Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module.
+
+**Signature**
+
+```ts
+export * from './ChannelUpstreamPullStrategy'
 ```
 
 Added in v1.0.0
@@ -298,7 +452,11 @@ Added in v1.0.0
 
 ## From "./Context"
 
-Re-exports all named exports from the "./Context" module.
+This module provides a data structure called `Context` that can be used for dependency injection in effectful
+programs. It is essentially a table mapping `Tag`s to their implementations (called `Service`s), and can be used to
+manage dependencies in a type-safe way. The `Context` data structure is essentially a way of providing access to a set
+of related services that can be passed around as a single unit. This module provides functions to create, modify, and
+query the contents of a `Context`, as well as a number of utility types for working with tags and services.
 
 **Signature**
 
@@ -380,6 +538,18 @@ export * from './Effect'
 
 Added in v1.0.0
 
+## From "./Effectable"
+
+Re-exports all named exports from the "./Effectable" module.
+
+**Signature**
+
+```ts
+export * from './Effectable'
+```
+
+Added in v1.0.0
+
 ## From "./Either"
 
 Re-exports all named exports from the "./Either" module.
@@ -388,6 +558,22 @@ Re-exports all named exports from the "./Either" module.
 
 ```ts
 export * from './Either'
+```
+
+Added in v1.0.0
+
+## From "./Encoding"
+
+This module provides encoding & decoding functionality for:
+
+- base64 (RFC4648)
+- base64 (URL)
+- hex
+
+**Signature**
+
+```ts
+export * from './Encoding'
 ```
 
 Added in v1.0.0
@@ -406,12 +592,26 @@ Added in v1.0.0
 
 ## From "./Equivalence"
 
-Re-exports all named exports from the "./Equivalence" module.
+This module provides an implementation of the `Equivalence` type class, which defines a binary relation
+that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
+These properties are also known in mathematics as an "equivalence relation".
 
 **Signature**
 
 ```ts
 export * from './Equivalence'
+```
+
+Added in v1.0.0
+
+## From "./Error"
+
+Re-exports all named exports from the "./Error" module.
+
+**Signature**
+
+```ts
+export * from './Error'
 ```
 
 Added in v1.0.0
@@ -536,6 +736,18 @@ export * from './GlobalValue'
 
 Added in v1.0.0
 
+## From "./GroupBy"
+
+Re-exports all named exports from the "./GroupBy" module.
+
+**Signature**
+
+```ts
+export * from './GroupBy'
+```
+
+Added in v1.0.0
+
 ## From "./HKT"
 
 Re-exports all named exports from the "./HKT" module.
@@ -596,6 +808,18 @@ export * from './Hub'
 
 Added in v1.0.0
 
+## From "./Inspectable"
+
+Re-exports all named exports from the "./Inspectable" module.
+
+**Signature**
+
+```ts
+export * from './Inspectable'
+```
+
+Added in v1.0.0
+
 ## From "./KeyedPool"
 
 Re-exports all named exports from the "./KeyedPool" module.
@@ -610,7 +834,21 @@ Added in v1.0.0
 
 ## From "./Layer"
 
-Re-exports all named exports from the "./Layer" module.
+A `Layer<RIn, E, ROut>` describes how to build one or more services in your
+application. Services can be injected into effects via
+`Effect.provideService`. Effects can require services via `Effect.service`.
+
+Layer can be thought of as recipes for producing bundles of services, given
+their dependencies (other services).
+
+Construction of services can be effectful and utilize resources that must be
+acquired and safely released when the services are done being utilized.
+
+By default layers are shared, meaning that if the same layer is used twice
+the layer will only be allocated a single time.
+
+Because of their excellent composition properties, layers are the idiomatic
+way in Effect-TS to create services that depend on other services.
 
 **Signature**
 
@@ -622,7 +860,14 @@ Added in v1.0.0
 
 ## From "./List"
 
-Re-exports all named exports from the "./List" module.
+A data type for immutable linked lists representing ordered collections of elements of type `A`.
+
+This data type is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
+
+**Performance**
+
+- Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
+- Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
 
 **Signature**
 
@@ -862,7 +1107,9 @@ Added in v1.0.0
 
 ## From "./Number"
 
-Re-exports all named exports from the "./Number" module.
+This module provides utility functions and type class instances for working with the `number` type in TypeScript.
+It includes functions for basic arithmetic operations, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
@@ -970,7 +1217,7 @@ Added in v1.0.0
 
 ## From "./ReadonlyArray"
 
-Re-exports all named exports from the "./ReadonlyArray" module.
+This module provides utility functions for working with arrays in TypeScript.
 
 **Signature**
 
@@ -982,7 +1229,7 @@ Added in v1.0.0
 
 ## From "./ReadonlyRecord"
 
-Re-exports all named exports from the "./ReadonlyRecord" module.
+This module provides utility functions for working with records in TypeScript.
 
 **Signature**
 
@@ -1220,6 +1467,18 @@ export * from './ScopedRef'
 
 Added in v1.0.0
 
+## From "./Sink"
+
+Re-exports all named exports from the "./Sink" module.
+
+**Signature**
+
+```ts
+export * from './Sink'
+```
+
+Added in v1.0.0
+
 ## From "./SortedMap"
 
 Re-exports all named exports from the "./SortedMap" module.
@@ -1244,9 +1503,47 @@ export * from './SortedSet'
 
 Added in v1.0.0
 
+## From "./Stream"
+
+Re-exports all named exports from the "./Stream" module.
+
+**Signature**
+
+```ts
+export * from './Stream'
+```
+
+Added in v1.0.0
+
+## From "./StreamEmit"
+
+Re-exports all named exports from the "./StreamEmit" module.
+
+**Signature**
+
+```ts
+export * from './StreamEmit'
+```
+
+Added in v1.0.0
+
+## From "./StreamHaltStrategy"
+
+Re-exports all named exports from the "./StreamHaltStrategy" module.
+
+**Signature**
+
+```ts
+export * from './StreamHaltStrategy'
+```
+
+Added in v1.0.0
+
 ## From "./String"
 
-Re-exports all named exports from the "./String" module.
+This module provides utility functions and type class instances for working with the `string` type in TypeScript.
+It includes functions for basic string manipulation, as well as type class instances for
+`Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
 **Signature**
 
@@ -1258,7 +1555,7 @@ Added in v1.0.0
 
 ## From "./Struct"
 
-Re-exports all named exports from the "./Struct" module.
+This module provides utility functions for working with structs in TypeScript.
 
 **Signature**
 
@@ -1268,9 +1565,22 @@ export * from './Struct'
 
 Added in v1.0.0
 
+## From "./SubscriptionRef"
+
+Re-exports all named exports from the "./SubscriptionRef" module.
+
+**Signature**
+
+```ts
+export * from './SubscriptionRef'
+```
+
+Added in v1.0.0
+
 ## From "./Supervisor"
 
-Re-exports all named exports from the "./Supervisor" module.
+A `Supervisor<T>` is allowed to supervise the launching and termination of
+fibers, producing some visible value of type `T` from the supervision.
 
 **Signature**
 
@@ -1436,6 +1746,18 @@ export * from './TSet'
 
 Added in v1.0.0
 
+## From "./Take"
+
+Re-exports all named exports from the "./Take" module.
+
+**Signature**
+
+```ts
+export * from './Take'
+```
+
+Added in v1.0.0
+
 ## From "./TestAnnotation"
 
 Re-exports all named exports from the "./TestAnnotation" module.
@@ -1558,7 +1880,7 @@ Added in v1.0.0
 
 ## From "./Tuple"
 
-Re-exports all named exports from the "./Tuple" module.
+This module provides utility functions for working with tuples in TypeScript.
 
 **Signature**
 
@@ -1570,7 +1892,7 @@ Added in v1.0.0
 
 ## From "./Types"
 
-Re-exports all named exports from the "./Types" module.
+A collection of types that are commonly used types.
 
 **Signature**
 
