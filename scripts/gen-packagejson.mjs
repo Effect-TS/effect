@@ -2,7 +2,7 @@ import * as Fs from "node:fs";
 import Package from "../package.json" assert { type: "json" };
 
 const modules = Fs.readdirSync("src").filter(
-  (_) => _.endsWith(".ts") && _ !== "index.ts",
+  (_) => _.endsWith(".ts") && _ !== "index.ts"
 );
 const files = ["dist", "internal", ...modules.map((_) => _.slice(0, -3))];
 const exports = {
@@ -10,6 +10,7 @@ const exports = {
     module: "./dist/effect.esm.js",
     import: "./dist/effect.cjs.mjs",
     default: "./dist/effect.cjs.js",
+    types: "./dist/declarations/src/index.d.ts",
   },
   "./package.json": "./package.json",
 };
@@ -21,6 +22,7 @@ modules
       module: `./${module}/dist/effect-${module}.esm.js`,
       import: `./${module}/dist/effect-${module}.cjs.mjs`,
       default: `./${module}/dist/effect-${module}.cjs.js`,
+      types: `./dist/declarations/src/${module}.d.ts`,
     };
   });
 
@@ -39,6 +41,6 @@ console.log(
       },
     },
     null,
-    2,
-  ),
+    2
+  )
 );
