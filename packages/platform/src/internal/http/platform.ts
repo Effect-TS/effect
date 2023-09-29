@@ -1,11 +1,11 @@
-import * as Context from "@effect/data/Context"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Etag from "@effect/platform/Http/Etag"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 
 /** @internal */
 export const TypeId: Platform.TypeId = Symbol.for("@effect/platform/Http/Platform") as Platform.TypeId

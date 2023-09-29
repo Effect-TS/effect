@@ -1,11 +1,11 @@
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
-import * as FiberRef from "@effect/io/FiberRef"
 import * as NodeStream from "@effect/platform-node/Stream"
 import * as Headers from "@effect/platform/Http/Headers"
 import * as IncomingMessage from "@effect/platform/Http/IncomingMessage"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
-import type * as Stream from "@effect/stream/Stream"
+import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import * as Option from "effect/Option"
+import type * as Stream from "effect/Stream"
 import type * as Http from "node:http"
 
 /** @internal */

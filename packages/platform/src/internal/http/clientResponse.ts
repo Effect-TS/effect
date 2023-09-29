@@ -1,5 +1,3 @@
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
@@ -9,7 +7,9 @@ import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalError from "@effect/platform/internal/http/clientError"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import * as Stream from "@effect/stream/Stream"
+import * as Effect from "effect/Effect"
+import * as Option from "effect/Option"
+import * as Stream from "effect/Stream"
 
 /** @internal */
 export const TypeId: ClientResponse.TypeId = Symbol.for("@effect/platform/Http/ClientResponse") as ClientResponse.TypeId

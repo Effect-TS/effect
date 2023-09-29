@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@effect/data/Function"
-import * as Layer from "@effect/io/Layer"
 import * as CommandExecutor from "@effect/platform-node/CommandExecutor"
 import * as FileSystem from "@effect/platform-node/FileSystem"
 import * as Path from "@effect/platform-node/Path"
+import { pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0

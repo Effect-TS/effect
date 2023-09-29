@@ -1,15 +1,15 @@
 /**
  * @since 1.0.0
  */
-import * as Brand from "@effect/data/Brand"
-import type { Tag } from "@effect/data/Context"
-import type { Option } from "@effect/data/Option"
-import type * as Effect from "@effect/io/Effect"
-import type { Scope } from "@effect/io/Scope"
 import type { PlatformError } from "@effect/platform/Error"
 import * as internal from "@effect/platform/internal/fileSystem"
-import type { Sink } from "@effect/stream/Sink"
-import type { Stream } from "@effect/stream/Stream"
+import * as Brand from "effect/Brand"
+import type { Tag } from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type { Option } from "effect/Option"
+import type { Scope } from "effect/Scope"
+import type { Sink } from "effect/Sink"
+import type { Stream } from "effect/Stream"
 
 /**
  * @since 1.0.0

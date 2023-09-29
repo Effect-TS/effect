@@ -1,19 +1,19 @@
 /**
  * @since 1.0.0
  */
-import * as Context from "@effect/data/Context"
-import { dual, flow } from "@effect/data/Function"
-import * as Global from "@effect/data/GlobalValue"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
-import * as FiberRef from "@effect/io/FiberRef"
-import type { ExternalSpan } from "@effect/io/Tracer"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as Headers from "@effect/platform/Http/Headers"
 import type * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
-import type * as Stream from "@effect/stream/Stream"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as FiberRef from "effect/FiberRef"
+import { dual, flow } from "effect/Function"
+import * as Global from "effect/GlobalValue"
+import * as Option from "effect/Option"
+import type * as Stream from "effect/Stream"
+import type { ExternalSpan } from "effect/Tracer"
 
 /**
  * @since 1.0.0

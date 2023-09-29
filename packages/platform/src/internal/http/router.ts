@@ -1,13 +1,3 @@
-import * as Chunk from "@effect/data/Chunk"
-import * as Context from "@effect/data/Context"
-import * as Equal from "@effect/data/Equal"
-import { dual } from "@effect/data/Function"
-import * as Hash from "@effect/data/Hash"
-import * as Inspectable from "@effect/data/Inspectable"
-import * as Option from "@effect/data/Option"
-import { pipeArguments } from "@effect/data/Pipeable"
-import type * as Cause from "@effect/io/Cause"
-import * as Effect from "@effect/io/Effect"
 import type * as App from "@effect/platform/Http/App"
 import type * as Method from "@effect/platform/Http/Method"
 import type * as Router from "@effect/platform/Http/Router"
@@ -15,9 +5,14 @@ import * as Error from "@effect/platform/Http/ServerError"
 import * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as Schema from "@effect/schema/Schema"
-import * as Channel from "@effect/stream/Channel"
-import * as Sink from "@effect/stream/Sink"
-import * as Stream from "@effect/stream/Stream"
+import type * as Cause from "effect/Cause"
+import * as Chunk from "effect/Chunk"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Effectable from "effect/Effectable"
+import { dual } from "effect/Function"
+import * as Inspectable from "effect/Inspectable"
+import * as Option from "effect/Option"
 import type { HTTPMethod } from "find-my-way"
 import FindMyWay from "find-my-way"
 
@@ -54,43 +49,27 @@ export const schemaParams = <I extends Readonly<Record<string, string>>, A>(sche
   )
 }
 
-class RouterImpl<R, E> implements Router.Router<R, E> {
+class RouterImpl<R, E> extends Effectable.Effectable<
+  Exclude<R, Router.RouteContext>,
+  E | Error.RouteNotFound,
+  ServerResponse.ServerResponse
+> implements Router.Router<R, E> {
   readonly [TypeId]: Router.TypeId
   constructor(
     readonly routes: Chunk.Chunk<Router.Route<R, E>>,
     readonly mounts: Chunk.Chunk<readonly [string, App.Default<R, E>]>
   ) {
+    super()
     this[TypeId] = TypeId
-    this[Effect.EffectTypeId] = undefined
-    this[Stream.StreamTypeId] = undefined
-    this[Sink.SinkTypeId] = undefined
-    this[Channel.ChannelTypeId] = undefined
   }
-  pipe() {
-    return pipeArguments(this, arguments)
-  }
-  private httpApp: App.Default<Router.Router.ExcludeProvided<R>, E | Error.RouteNotFound> | undefined
+  private httpApp:
+    | Effect.Effect<Exclude<R, Router.RouteContext>, E | Error.RouteNotFound, ServerResponse.ServerResponse>
+    | undefined
   commit() {
     if (this.httpApp === undefined) {
-      this.httpApp = toHttpApp(this)
+      this.httpApp = toHttpApp(this) as any
     }
-    return this.httpApp
-  }
-
-  // implements HttpApp/Effect
-  public _tag = "Commit" // OP_COMMIT
-  readonly [Effect.EffectTypeId]: any
-  readonly [Stream.StreamTypeId]: any
-  readonly [Sink.SinkTypeId]: any
-  readonly [Channel.ChannelTypeId]: any;
-  [Equal.symbol](
-    this: RouterImpl<R, E>,
-    that: RouterImpl<R, E>
-  ): boolean {
-    return this === that
-  }
-  [Hash.symbol](this: RouterImpl<R, E>): number {
-    return Hash.random(this)
+    return this.httpApp!
   }
   toJSON() {
     return {

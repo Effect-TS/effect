@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import type * as Effect from "@effect/io/Effect"
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
+import type * as Effect from "effect/Effect"
 
 /**
  * @since 1.0.0

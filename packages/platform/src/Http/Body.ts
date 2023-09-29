@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as Data from "@effect/data/Data"
-import type * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as internal from "@effect/platform/internal/http/body"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
-import type * as Stream_ from "@effect/stream/Stream"
+import type * as Data from "effect/Data"
+import type * as Effect from "effect/Effect"
+import type * as Stream_ from "effect/Stream"
 
 /**
  * @since 1.0.0

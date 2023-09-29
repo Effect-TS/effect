@@ -1,12 +1,12 @@
-import * as Context from "@effect/data/Context"
-import { dual, pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as FileSystem from "@effect/platform/FileSystem"
 import type * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Path from "@effect/platform/Path"
 import * as Schema from "@effect/schema/Schema"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import { dual, pipe } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 
 /** @internal */
 export const TypeId: KeyValueStore.TypeId = Symbol.for(

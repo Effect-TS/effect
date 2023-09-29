@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 
-import type { Tag } from "@effect/data/Context"
-import type { Effect } from "@effect/io/Effect"
-import type { Layer } from "@effect/io/Layer"
 import type { BadArgument } from "@effect/platform/Error"
 import * as internal from "@effect/platform/internal/path"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Layer } from "effect/Layer"
 
 /**
  * @since 1.0.0

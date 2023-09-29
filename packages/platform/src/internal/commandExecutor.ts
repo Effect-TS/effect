@@ -1,11 +1,11 @@
-import * as Brand from "@effect/data/Brand"
-import * as Chunk from "@effect/data/Chunk"
-import { Tag } from "@effect/data/Context"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import type * as _CommandExecutor from "@effect/platform/CommandExecutor"
-import * as Sink from "@effect/stream/Sink"
-import * as Stream from "@effect/stream/Stream"
+import * as Brand from "effect/Brand"
+import * as Chunk from "effect/Chunk"
+import { Tag } from "effect/Context"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Sink from "effect/Sink"
+import * as Stream from "effect/Stream"
 
 /** @internal */
 export const ProcessTypeId: _CommandExecutor.ProcessTypeId = Symbol.for(

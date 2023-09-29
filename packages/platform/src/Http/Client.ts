@@ -1,19 +1,19 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "@effect/data/Context"
-import type { Pipeable } from "@effect/data/Pipeable"
-import type * as Predicate from "@effect/data/Predicate"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
-import type * as Schedule from "@effect/io/Schedule"
-import type * as Scope from "@effect/io/Scope"
 import type * as Error from "@effect/platform/Http/ClientError"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
 import * as internal from "@effect/platform/internal/http/client"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Predicate from "effect/Predicate"
+import type * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 1.0.0

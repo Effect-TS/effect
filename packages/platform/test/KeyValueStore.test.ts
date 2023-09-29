@@ -1,9 +1,9 @@
-import { identity } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import { afterEach } from "vitest"
 
 export const testLayer = <E>(layer: Layer.Layer<never, E, KeyValueStore.KeyValueStore>) => {

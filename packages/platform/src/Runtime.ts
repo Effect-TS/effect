@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Cause from "@effect/io/Cause"
-import type { Effect } from "@effect/io/Effect"
-import * as Exit from "@effect/io/Exit"
+import * as Cause from "effect/Cause"
+import type { Effect } from "effect/Effect"
+import * as Exit from "effect/Exit"
 
 /**
  * @category model

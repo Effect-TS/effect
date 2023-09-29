@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type { Layer } from "@effect/io/Layer"
 import * as internal from "@effect/platform-node/internal/commandExecutor"
 import type { CommandExecutor } from "@effect/platform/CommandExecutor"
 import type { FileSystem } from "@effect/platform/FileSystem"
+import type { Layer } from "effect/Layer"
 
 export type {
   /**

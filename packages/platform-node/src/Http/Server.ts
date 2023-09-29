@@ -3,15 +3,15 @@
  *
  * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
  */
-import type { LazyArg } from "@effect/data/Function"
-import type * as Config from "@effect/io/Config"
-import type * as ConfigError from "@effect/io/ConfigError"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
-import type * as Scope from "@effect/io/Scope"
 import * as internal from "@effect/platform-node/internal/http/server"
 import type * as Platform from "@effect/platform/Http/Platform"
 import type * as Server from "@effect/platform/Http/Server"
+import type * as Config from "effect/Config"
+import type * as ConfigError from "effect/ConfigError"
+import type * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import type * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
 import type * as Http from "node:http"
 import type * as Net from "node:net"
 

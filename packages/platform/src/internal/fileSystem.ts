@@ -1,11 +1,11 @@
-import { Tag } from "@effect/data/Context"
-import { identity, pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
 import * as Error from "@effect/platform/Error"
 import type { File, FileSystem, Size as Size_, SizeInput, StreamOptions } from "@effect/platform/FileSystem"
-import * as Sink from "@effect/stream/Sink"
-import * as Stream from "@effect/stream/Stream"
+import { Tag } from "effect/Context"
+import * as Effect from "effect/Effect"
+import { identity, pipe } from "effect/Function"
+import * as Option from "effect/Option"
+import * as Sink from "effect/Sink"
+import * as Stream from "effect/Stream"
 
 /** @internal */
 export const tag = Tag<FileSystem>("@effect/platform/FileSystem")

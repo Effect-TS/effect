@@ -1,9 +1,9 @@
-import * as Context from "@effect/data/Context"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as Http from "@effect/platform/HttpClient"
 import * as Schema from "@effect/schema/Schema"
-import * as Stream from "@effect/stream/Stream"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Stream from "effect/Stream"
 import { describe, it } from "vitest"
 
 const Todo = Schema.struct({

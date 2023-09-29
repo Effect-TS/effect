@@ -1,4 +1,4 @@
-import * as Effect from "@effect/io/Effect"
+import * as Effect from "effect/Effect"
 import * as Http from "@effect/platform-node/HttpServer"
 import { runMain } from "@effect/platform-node/Runtime"
 import { createServer } from "node:http"

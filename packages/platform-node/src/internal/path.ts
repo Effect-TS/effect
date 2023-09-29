@@ -1,7 +1,7 @@
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import { BadArgument } from "@effect/platform/Error"
 import { Path } from "@effect/platform/Path"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as NodePath from "node:path"
 import * as NodeUrl from "node:url"
 

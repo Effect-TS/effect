@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 
-import type { Tag } from "@effect/data/Context"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
 import * as internal from "@effect/platform-browser/internal/clipboard"
 import type { PlatformError } from "@effect/platform/Error"
+import type { Tag } from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
 
 /**
  * @since 1.0.0

@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import type * as Data from "@effect/data/Data"
 import type * as ClientRequest from "@effect/platform/Http/ClientRequest"
 import type * as ClientResponse from "@effect/platform/Http/ClientResponse"
 import * as internal from "@effect/platform/internal/http/clientError"
+import type * as Data from "effect/Data"
 
 /**
  * @since 1.0.0

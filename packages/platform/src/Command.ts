@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import type { HashMap } from "@effect/data/HashMap"
-import type { Option } from "@effect/data/Option"
-import type { Pipeable } from "@effect/data/Pipeable"
-import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import type { Effect } from "@effect/io/Effect"
 import type { CommandExecutor, ExitCode, Process } from "@effect/platform/CommandExecutor"
 import type { PlatformError } from "@effect/platform/Error"
 import * as internal from "@effect/platform/internal/command"
-import type { Sink } from "@effect/stream/Sink"
-import type { Stream } from "@effect/stream/Stream"
+import type { Effect } from "effect/Effect"
+import type { HashMap } from "effect/HashMap"
+import type { Option } from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
+import type { Sink } from "effect/Sink"
+import type { Stream } from "effect/Stream"
 
 /**
  * @since 1.0.0

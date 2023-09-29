@@ -1,10 +1,10 @@
 /**
  * @since 1.0.0
  */
-import { dual } from "@effect/data/Function"
-import type * as Option from "@effect/data/Option"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
-import * as ReadonlyRecord from "@effect/data/ReadonlyRecord"
+import { dual } from "effect/Function"
+import type * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as ReadonlyRecord from "effect/ReadonlyRecord"
 
 /**
  * @since 1.0.0

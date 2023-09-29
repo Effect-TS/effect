@@ -1,9 +1,9 @@
-import { Tag } from "@effect/data/Context"
-import { identity } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import { BadArgument } from "@effect/platform/Error"
 import type { Path as _Path } from "@effect/platform/Path"
+import { Tag } from "effect/Context"
+import * as Effect from "effect/Effect"
+import { identity } from "effect/Function"
+import * as Layer from "effect/Layer"
 import * as PathB from "path-browserify"
 
 /** @internal */

@@ -1,10 +1,10 @@
-import * as Context from "@effect/data/Context"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as Http from "@effect/platform-bun/HttpClient"
 import { runMain } from "@effect/platform-bun/Runtime"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 class Todo extends Schema.Class<Todo>()({
   userId: Schema.number,

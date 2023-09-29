@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "@effect/data/Context"
-import type * as Effect from "@effect/io/Effect"
 import type * as Error from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import type * as Etag from "@effect/platform/Http/Etag"
 import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as internal from "@effect/platform/internal/http/platform"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
 
 /**
  * @since 1.0.0

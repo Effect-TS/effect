@@ -1,8 +1,8 @@
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
 import * as Etag from "@effect/platform/Http/Etag"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 const fromFileInfo = (info: FileSystem.File.Info) => {
   const mtime = info.mtime._tag === "Some"

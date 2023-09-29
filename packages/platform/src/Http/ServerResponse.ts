@@ -1,8 +1,6 @@
 /**
  * @since 1.0.0
  */
-import type { Pipeable } from "@effect/data/Pipeable"
-import type * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
@@ -11,7 +9,9 @@ import type * as Platform from "@effect/platform/Http/Platform"
 import type * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internal from "@effect/platform/internal/http/serverResponse"
 import type * as Schema from "@effect/schema/Schema"
-import type * as Stream from "@effect/stream/Stream"
+import type * as Effect from "effect/Effect"
+import type { Pipeable } from "effect/Pipeable"
+import type * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0

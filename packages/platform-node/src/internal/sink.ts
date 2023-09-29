@@ -1,8 +1,8 @@
-import type { LazyArg } from "@effect/data/Function"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import type { FromWritableOptions } from "@effect/platform-node/Sink"
-import * as Sink from "@effect/stream/Sink"
+import * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import { pipe } from "effect/Function"
+import * as Sink from "effect/Sink"
 import type { Writable } from "node:stream"
 
 /** @internal */

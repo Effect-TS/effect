@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { LazyArg } from "@effect/data/Function"
-import type { Effect } from "@effect/io/Effect"
 import * as internal from "@effect/platform-node/internal/stream"
 import type { SizeInput } from "@effect/platform/FileSystem"
-import type { Stream } from "@effect/stream/Stream"
+import type { Effect } from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import type { Stream } from "effect/Stream"
 import type { Readable } from "stream"
 
 /**

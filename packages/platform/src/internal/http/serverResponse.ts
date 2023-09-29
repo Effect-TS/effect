@@ -1,6 +1,3 @@
-import { dual } from "@effect/data/Function"
-import { pipeArguments } from "@effect/data/Pipeable"
-import * as Effect from "@effect/io/Effect"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import type * as Body from "@effect/platform/Http/Body"
@@ -10,7 +7,10 @@ import type * as ServerResponse from "@effect/platform/Http/ServerResponse"
 import * as UrlParams from "@effect/platform/Http/UrlParams"
 import * as internalBody from "@effect/platform/internal/http/body"
 import type * as Schema from "@effect/schema/Schema"
-import type * as Stream from "@effect/stream/Stream"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import { pipeArguments } from "effect/Pipeable"
+import type * as Stream from "effect/Stream"
 
 /** @internal */
 export const TypeId: ServerResponse.TypeId = Symbol.for("@effect/platform/Http/ServerResponse") as ServerResponse.TypeId

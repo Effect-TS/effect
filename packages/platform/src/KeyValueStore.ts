@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "@effect/data/Context"
-import type * as Option from "@effect/data/Option"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
 import type * as PlatformError from "@effect/platform/Error"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as internal from "@effect/platform/internal/keyValueStore"
 import type * as Path from "@effect/platform/Path"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
+import type * as Option from "effect/Option"
 
 /**
  * @since 1.0.0

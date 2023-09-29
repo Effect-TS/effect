@@ -3,15 +3,15 @@
  *
  * Also includes exports from [`@effect/platform/Http/Server`](https://effect-ts.github.io/platform/platform/Http/Server.ts.html).
  */
-import type * as Config from "@effect/io/Config"
-import type * as ConfigError from "@effect/io/ConfigError"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
-import type * as Scope from "@effect/io/Scope"
 import type * as Platform from "@effect/platform-bun/Http/Platform"
 import * as internal from "@effect/platform-bun/internal/http/server"
 import type * as Server from "@effect/platform/Http/Server"
 import type { ServeOptions } from "bun"
+import type * as Config from "effect/Config"
+import type * as ConfigError from "effect/ConfigError"
+import type * as Effect from "effect/Effect"
+import type * as Layer from "effect/Layer"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 1.0.0

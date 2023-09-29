@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as Brand from "@effect/data/Brand"
-import type { Tag } from "@effect/data/Context"
-import type { Effect } from "@effect/io/Effect"
 import type { Command } from "@effect/platform/Command"
 import type { PlatformError } from "@effect/platform/Error"
 import * as internal from "@effect/platform/internal/commandExecutor"
-import type { Sink } from "@effect/stream/Sink"
-import type { Stream } from "@effect/stream/Stream"
+import type * as Brand from "effect/Brand"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Sink } from "effect/Sink"
+import type { Stream } from "effect/Stream"
 
 /**
  * @since 1.0.0

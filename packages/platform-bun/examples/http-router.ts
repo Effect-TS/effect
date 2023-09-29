@@ -1,9 +1,9 @@
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as NodeContext from "@effect/platform-bun/BunContext"
 import * as Http from "@effect/platform-bun/HttpServer"
 import { runMain } from "@effect/platform-bun/Runtime"
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 
 const ServerLive = Http.server.layer({ port: 3000 })
 

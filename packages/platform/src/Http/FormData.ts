@@ -1,16 +1,16 @@
 /**
  * @since 1.0.0
  */
-import type * as Chunk from "@effect/data/Chunk"
-import type * as Data from "@effect/data/Data"
-import type * as Option from "@effect/data/Option"
-import type * as Effect from "@effect/io/Effect"
-import type * as FiberRef from "@effect/io/FiberRef"
 import type * as FileSystem from "@effect/platform/FileSystem"
 import * as internal from "@effect/platform/internal/http/formData"
 import type * as ParseResult from "@effect/schema/ParseResult"
 import type * as Schema from "@effect/schema/Schema"
-import type * as Stream from "@effect/stream/Stream"
+import type * as Chunk from "effect/Chunk"
+import type * as Data from "effect/Data"
+import type * as Effect from "effect/Effect"
+import type * as FiberRef from "effect/FiberRef"
+import type * as Option from "effect/Option"
+import type * as Stream from "effect/Stream"
 
 /**
  * @since 1.0.0

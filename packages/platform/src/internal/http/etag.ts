@@ -1,5 +1,5 @@
-import * as Context from "@effect/data/Context"
 import type * as Etag from "@effect/platform/Http/Etag"
+import * as Context from "effect/Context"
 
 /** @internal */
 export const GeneratorTypeId: Etag.GeneratorTypeId = Symbol.for(

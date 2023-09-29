@@ -1,9 +1,9 @@
 /**
  * @since 1.0.0
  */
-import * as Chunk from "@effect/data/Chunk"
-import { dual } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
+import * as Chunk from "effect/Chunk"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 
 /**
  * @since 1.0.0

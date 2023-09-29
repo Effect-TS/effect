@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type * as Context from "@effect/data/Context"
-import type * as Effect from "@effect/io/Effect"
-import type * as Scope from "@effect/io/Scope"
 import type * as App from "@effect/platform/Http/App"
 import type * as Middleware from "@effect/platform/Http/Middleware"
 import type * as Error from "@effect/platform/Http/ServerError"
 import type * as ServerRequest from "@effect/platform/Http/ServerRequest"
 import * as internal from "@effect/platform/internal/http/server"
+import type * as Context from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Scope from "effect/Scope"
 
 /**
  * @since 1.0.0

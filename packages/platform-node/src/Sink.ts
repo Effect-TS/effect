@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { LazyArg } from "@effect/data/Function"
 import * as internal from "@effect/platform-node/internal/sink"
-import type { Sink } from "@effect/stream/Sink"
+import type { LazyArg } from "effect/Function"
+import type { Sink } from "effect/Sink"
 import type { Writable } from "stream"
 
 /**

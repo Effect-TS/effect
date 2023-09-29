@@ -1,8 +1,8 @@
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as PlatformError from "@effect/platform/Error"
 import * as KeyValueStore from "@effect/platform/KeyValueStore"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 
 const storageError = (props: Omit<Parameters<typeof PlatformError.SystemError>[0], "reason" | "module">) =>
   PlatformError.SystemError({

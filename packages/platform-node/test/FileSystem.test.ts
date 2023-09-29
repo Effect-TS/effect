@@ -1,7 +1,7 @@
-import * as Chunk from "@effect/data/Chunk"
-import * as Effect from "@effect/io/Effect"
 import * as Fs from "@effect/platform-node/FileSystem"
-import * as Stream from "@effect/stream/Stream"
+import * as Chunk from "effect/Chunk"
+import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
 
 const runPromise = <E, A>(self: Effect.Effect<Fs.FileSystem, E, A>) =>
   Effect.runPromise(

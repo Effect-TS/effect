@@ -1,7 +1,7 @@
-import * as Effect from "@effect/io/Effect"
-import * as Fiber from "@effect/io/Fiber"
-import type * as FiberId from "@effect/io/FiberId"
 import { defaultTeardown, type RunMain } from "@effect/platform/Runtime"
+import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import type * as FiberId from "effect/FiberId"
 
 /** @internal */
 export const runMain: RunMain = <E, A>(

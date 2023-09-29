@@ -2,9 +2,9 @@
  * @since 1.0.0
  */
 
-import type { Layer } from "@effect/io/Layer"
 import * as internal from "@effect/platform-node/internal/path"
 import type { Path } from "@effect/platform/Path"
+import type { Layer } from "effect/Layer"
 
 export {
   /**
