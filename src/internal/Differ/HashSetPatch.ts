@@ -15,21 +15,22 @@ function variance<A, B>(a: A): B {
 }
 
 /** @internal */
-const PatchProto = Object.setPrototypeOf({
+const PatchProto = {
+  ...Structural.prototype,
   [HashSetPatchTypeId]: {
     _Value: variance,
     _Key: variance,
     _Patch: variance
   }
-}, Structural.prototype)
+}
 
 interface Empty<Value> extends Differ.HashSet.Patch<Value> {
   readonly _tag: "Empty"
 }
 
-const EmptyProto = Object.setPrototypeOf({
+const EmptyProto = Object.assign(Object.create(PatchProto), {
   _tag: "Empty"
-}, PatchProto)
+})
 
 const _empty = Object.create(EmptyProto)
 
@@ -42,9 +43,9 @@ interface AndThen<Value> extends Differ.HashSet.Patch<Value> {
   readonly second: Differ.HashSet.Patch<Value>
 }
 
-const AndThenProto = Object.setPrototypeOf({
+const AndThenProto = Object.assign(Object.create(PatchProto), {
   _tag: "AndThen"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeAndThen = <Value>(
@@ -62,9 +63,9 @@ interface Add<Value> extends Differ.HashSet.Patch<Value> {
   readonly value: Value
 }
 
-const AddProto = Object.setPrototypeOf({
+const AddProto = Object.assign(Object.create(PatchProto), {
   _tag: "Add"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeAdd = <Value>(
@@ -80,9 +81,9 @@ interface Remove<Value> extends Differ.HashSet.Patch<Value> {
   readonly value: Value
 }
 
-const RemoveProto = Object.setPrototypeOf({
+const RemoveProto = Object.assign(Object.create(PatchProto), {
   _tag: "Remove"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeRemove = <Value>(

@@ -14,22 +14,23 @@ function variance<A, B>(a: A): B {
 }
 
 /** @internal */
-const PatchProto = Object.setPrototypeOf({
+const PatchProto = {
+  ...Structural.prototype,
   [OrPatchTypeId]: {
     _Value: variance,
     _Key: variance,
     _Patch: variance
   }
-}, Structural.prototype)
+}
 
 /** @internal */
 export interface Empty<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<Value, Value2, Patch, Patch2> {
   readonly _tag: "Empty"
 }
 
-const EmptyProto = Object.setPrototypeOf({
+const EmptyProto = Object.assign(Object.create(PatchProto), {
   _tag: "Empty"
-}, PatchProto)
+})
 
 const _empty = Object.create(EmptyProto)
 
@@ -48,9 +49,9 @@ export interface AndThen<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<V
   readonly second: Differ.Or.Patch<Value, Value2, Patch, Patch2>
 }
 
-const AndThenProto = Object.setPrototypeOf({
+const AndThenProto = Object.assign(Object.create(PatchProto), {
   _tag: "AndThen"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeAndThen = <Value, Value2, Patch, Patch2>(
@@ -74,9 +75,9 @@ export interface SetLeft<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<V
   readonly value: Value
 }
 
-const SetLeftProto = Object.setPrototypeOf({
+const SetLeftProto = Object.assign(Object.create(PatchProto), {
   _tag: "SetLeft"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeSetLeft = <Value, Value2, Patch, Patch2>(
@@ -98,9 +99,9 @@ export interface SetRight<Value, Value2, Patch, Patch2> extends Differ.Or.Patch<
   readonly value: Value2
 }
 
-const SetRightProto = Object.setPrototypeOf({
+const SetRightProto = Object.assign(Object.create(PatchProto), {
   _tag: "SetRight"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeSetRight = <Value, Value2, Patch, Patch2>(
@@ -122,9 +123,9 @@ export interface UpdateLeft<Value, Value2, Patch, Patch2> extends Differ.Or.Patc
   readonly patch: Patch
 }
 
-const UpdateLeftProto = Object.setPrototypeOf({
+const UpdateLeftProto = Object.assign(Object.create(PatchProto), {
   _tag: "UpdateLeft"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeUpdateLeft = <Value, Value2, Patch, Patch2>(
@@ -146,9 +147,9 @@ export interface UpdateRight<Value, Value2, Patch, Patch2> extends Differ.Or.Pat
   readonly patch: Patch2
 }
 
-const UpdateRightProto = Object.setPrototypeOf({
+const UpdateRightProto = Object.assign(Object.create(PatchProto), {
   _tag: "UpdateRight"
-}, PatchProto)
+})
 
 /** @internal */
 export const makeUpdateRight = <Value, Value2, Patch, Patch2>(

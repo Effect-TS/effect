@@ -15,21 +15,22 @@ function variance<A, B>(a: A): B {
 }
 
 /** @internal */
-const PatchProto = Object.setPrototypeOf({
+const PatchProto = {
+  ...Structural.prototype,
   [HashMapPatchTypeId]: {
     _Value: variance,
     _Key: variance,
     _Patch: variance
   }
-}, Structural.prototype)
+}
 
 interface Empty<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value, Patch> {
   readonly _tag: "Empty"
 }
 
-const EmptyProto = Object.setPrototypeOf({
+const EmptyProto = Object.assign(Object.create(PatchProto), {
   _tag: "Empty"
-}, PatchProto)
+})
 
 const _empty = Object.create(EmptyProto)
 
@@ -42,9 +43,9 @@ interface AndThen<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Va
   readonly second: Differ.Differ.HashMap.Patch<Key, Value, Patch>
 }
 
-const AndThenProto = Object.setPrototypeOf({
+const AndThenProto = Object.assign(Object.create(PatchProto), {
   _tag: "AndThen"
-}, PatchProto)
+})
 
 const makeAndThen = <Key, Value, Patch>(
   first: Differ.Differ.HashMap.Patch<Key, Value, Patch>,
@@ -62,9 +63,9 @@ interface Add<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Value,
   readonly value: Value
 }
 
-const AddProto = Object.setPrototypeOf({
+const AddProto = Object.assign(Object.create(PatchProto), {
   _tag: "Add"
-}, PatchProto)
+})
 
 const makeAdd = <Key, Value, Patch>(key: Key, value: Value): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(AddProto)
@@ -78,9 +79,9 @@ interface Remove<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Val
   readonly key: Key
 }
 
-const RemoveProto = Object.setPrototypeOf({
+const RemoveProto = Object.assign(Object.create(PatchProto), {
   _tag: "Remove"
-}, PatchProto)
+})
 
 const makeRemove = <Key, Value, Patch>(key: Key): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(RemoveProto)
@@ -94,9 +95,9 @@ interface Update<Key, Value, Patch> extends Differ.Differ.HashMap.Patch<Key, Val
   readonly patch: Patch
 }
 
-const UpdateProto = Object.setPrototypeOf({
+const UpdateProto = Object.assign(Object.create(PatchProto), {
   _tag: "Update"
-}, PatchProto)
+})
 
 const makeUpdate = <Key, Value, Patch>(key: Key, patch: Patch): Differ.Differ.HashMap.Patch<Key, Value, Patch> => {
   const o = Object.create(UpdateProto)

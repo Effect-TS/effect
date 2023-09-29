@@ -15,20 +15,21 @@ function variance<A, B>(a: A): B {
   return a as unknown as B
 }
 
-const PatchProto = Object.setPrototypeOf({
+const PatchProto = {
+  ...Data.Structural.prototype,
   [ChunkPatchTypeId]: {
     _Value: variance,
     _Patch: variance
   }
-}, Data.Structural.prototype)
+}
 
 interface Empty<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
   readonly _tag: "Empty"
 }
 
-const EmptyProto = Object.setPrototypeOf({
+const EmptyProto = Object.assign(Object.create(PatchProto), {
   _tag: "Empty"
-}, PatchProto)
+})
 
 const _empty = Object.create(EmptyProto)
 
@@ -43,9 +44,9 @@ interface AndThen<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> 
   readonly second: Differ.Differ.Chunk.Patch<Value, Patch>
 }
 
-const AndThenProto = Object.setPrototypeOf({
+const AndThenProto = Object.assign(Object.create(PatchProto), {
   _tag: "AndThen"
-}, PatchProto)
+})
 
 const makeAndThen = <Value, Patch>(
   first: Differ.Differ.Chunk.Patch<Value, Patch>,
@@ -62,9 +63,9 @@ interface Append<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
   readonly values: Chunk.Chunk<Value>
 }
 
-const AppendProto = Object.setPrototypeOf({
+const AppendProto = Object.assign(Object.create(PatchProto), {
   _tag: "Append"
-}, PatchProto)
+})
 
 const makeAppend = <Value, Patch>(values: Chunk.Chunk<Value>): Differ.Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(AppendProto)
@@ -78,9 +79,9 @@ interface Slice<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
   readonly until: number
 }
 
-const SliceProto = Object.setPrototypeOf({
+const SliceProto = Object.assign(Object.create(PatchProto), {
   _tag: "Slice"
-}, PatchProto)
+})
 
 const makeSlice = <Value, Patch>(from: number, until: number): Differ.Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(SliceProto)
@@ -95,9 +96,9 @@ interface Update<Value, Patch> extends Differ.Differ.Chunk.Patch<Value, Patch> {
   readonly patch: Patch
 }
 
-const UpdateProto = Object.setPrototypeOf({
+const UpdateProto = Object.assign(Object.create(PatchProto), {
   _tag: "Update"
-}, PatchProto)
+})
 
 const makeUpdate = <Value, Patch>(index: number, patch: Patch): Differ.Differ.Chunk.Patch<Value, Patch> => {
   const o = Object.create(UpdateProto)

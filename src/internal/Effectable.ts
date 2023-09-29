@@ -74,7 +74,7 @@ export const EffectProtoCommit = {
 /** @internal */
 export const EffectProtoCommitStructural = {
   ...EffectProtoCommit,
-  ...Object.getPrototypeOf(Data.struct({}))
+  ...Data.Structural.prototype
 }
 
 /** @internal */

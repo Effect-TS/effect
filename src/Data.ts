@@ -1,8 +1,8 @@
 /**
  * @since 1.0.0
  */
-import * as Equal from "./Equal"
-import * as Hash from "./Hash"
+import type * as Equal from "./Equal"
+import * as internal from "./internal/Data"
 import type * as Types from "./Types"
 
 /**
@@ -36,51 +36,19 @@ export declare namespace Case {
   }
 }
 
-const protoArr: Equal.Equal = Object.assign(Object.create(Array.prototype), {
-  [Hash.symbol](this: Array<any>) {
-    return Hash.array(this)
-  },
-  [Equal.symbol](this: Array<any>, that: Equal.Equal) {
-    if (Array.isArray(that) && this.length === that.length) {
-      return this.every((v, i) => Equal.equals(v, (that as Array<any>)[i]))
-    } else {
-      return false
-    }
-  }
-})
-
-const protoStruct: Equal.Equal = {
-  [Hash.symbol](this: Equal.Equal) {
-    return Hash.structure(this)
-  },
-  [Equal.symbol](this: Equal.Equal, that: Equal.Equal) {
-    const selfKeys = Object.keys(this)
-    const thatKeys = Object.keys(that as object)
-    if (selfKeys.length !== thatKeys.length) {
-      return false
-    }
-    for (const key of selfKeys) {
-      if (!(key in (that as object) && Equal.equals((this as any)[key], (that as any)[key]))) {
-        return false
-      }
-    }
-    return true
-  }
-}
-
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const struct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
-  Object.assign(Object.create(protoStruct), as)
+  Object.assign(Object.create(internal.StructProto), as)
 
 /**
  * @category constructors
  * @since 1.0.0
  */
 export const unsafeStruct = <As extends Readonly<Record<string, any>>>(as: As): Data<As> =>
-  Object.setPrototypeOf(as, protoStruct)
+  Object.setPrototypeOf(as, internal.StructProto)
 
 /**
  * @category constructors
@@ -98,10 +66,11 @@ export const array = <As extends ReadonlyArray<any>>(as: As): Data<As> => unsafe
  * @category constructors
  * @since 1.0.0
  */
-export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<As> => Object.setPrototypeOf(as, protoArr)
+export const unsafeArray = <As extends ReadonlyArray<any>>(as: As): Data<As> =>
+  Object.setPrototypeOf(as, internal.ArrayProto)
 
 const _case = <A extends Case>(): Case.Constructor<A> => (args) =>
-  (args === undefined ? Object.create(protoStruct) : struct(args)) as any
+  (args === undefined ? Object.create(internal.StructProto) : struct(args)) as any
 
 export {
   /**
@@ -123,7 +92,7 @@ export const tagged = <A extends Case & { _tag: string }>(
   tag: A["_tag"]
 ): Case.Constructor<A, "_tag"> =>
 (args) => {
-  const value = args === undefined ? Object.create(protoStruct) : struct(args)
+  const value = args === undefined ? Object.create(internal.StructProto) : struct(args)
   value._tag = tag
   return value
 }
@@ -146,40 +115,6 @@ export const TaggedClass = <Key extends string>(
 }
 
 /**
- * @since 1.0.0
- * @category constructors
- */
-export class Structural<A> {
-  constructor(args: Omit<A, keyof Equal.Equal>) {
-    if (args) {
-      Object.assign(this, args)
-    }
-  }
-  /**
-   * @since 1.0.0
-   */
-  [Hash.symbol](this: Equal.Equal) {
-    return Hash.structure(this)
-  }
-  /**
-   * @since 1.0.0
-   */
-  [Equal.symbol](this: Equal.Equal, that: Equal.Equal) {
-    const selfKeys = Object.keys(this)
-    const thatKeys = Object.keys(that as object)
-    if (selfKeys.length !== thatKeys.length) {
-      return false
-    }
-    for (const key of selfKeys) {
-      if (!(key in (that as object) && Equal.equals((this as any)[key], (that as any)[key]))) {
-        return false
-      }
-    }
-    return true
-  }
-}
-
-/**
  * Provides a constructor for a Case Class.
  *
  * @since 1.0.0
@@ -187,7 +122,15 @@ export class Structural<A> {
  */
 export const Class: new<A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Data<A> = Structural as any
+) => Data<A> = internal.Structural as any
+
+/**
+ * @since 1.0.0
+ * @category constructors
+ */
+export const Structural: new<A>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => Case = internal.Structural
 
 /**
  * Create a tagged enum data type, which is a union of `Data` structs.

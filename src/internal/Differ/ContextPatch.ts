@@ -16,20 +16,21 @@ function variance<A, B>(a: A): B {
 }
 
 /** @internal */
-const PatchProto = Object.setPrototypeOf({
+const PatchProto = {
+  ...Structural.prototype,
   [ContextPatchTypeId]: {
     _Value: variance,
     _Patch: variance
   }
-}, Structural.prototype)
+}
 
 interface Empty<Input, Output> extends Differ.Context.Patch<Input, Output> {
   readonly _tag: "Empty"
 }
 
-const EmptyProto = Object.setPrototypeOf({
+const EmptyProto = Object.assign(Object.create(PatchProto), {
   _tag: "Empty"
-}, PatchProto)
+})
 
 const _empty = Object.create(EmptyProto)
 
@@ -45,9 +46,9 @@ export interface AndThen<Input, Output, Output2> extends Differ.Context.Patch<In
   readonly second: Differ.Context.Patch<Output, Output2>
 }
 
-const AndThenProto = Object.setPrototypeOf({
+const AndThenProto = Object.assign(Object.create(PatchProto), {
   _tag: "AndThen"
-}, PatchProto)
+})
 
 const makeAndThen = <Input, Output, Output2>(
   first: Differ.Context.Patch<Input, Output>,
@@ -66,9 +67,9 @@ export interface AddService<Env, T, I> extends Differ.Context.Patch<Env, Env | I
   readonly service: T
 }
 
-const AddServiceProto = Object.setPrototypeOf({
+const AddServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "AddService"
-}, PatchProto)
+})
 
 const makeAddService = <Env, I, T>(
   tag: Tag<T, I>,
@@ -86,9 +87,9 @@ export interface RemoveService<Env, T, I> extends Differ.Context.Patch<Env, Excl
   readonly tag: Tag<T, I>
 }
 
-const RemoveServiceProto = Object.setPrototypeOf({
+const RemoveServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "RemoveService"
-}, PatchProto)
+})
 
 const makeRemoveService = <Env, I, T>(
   tag: Tag<T, I>
@@ -105,9 +106,9 @@ export interface UpdateService<Env, T, I> extends Differ.Context.Patch<Env | I, 
   readonly update: (service: T) => T
 }
 
-const UpdateServiceProto = Object.setPrototypeOf({
+const UpdateServiceProto = Object.assign(Object.create(PatchProto), {
   _tag: "UpdateService"
-}, PatchProto)
+})
 
 const makeUpdateService = <Env, I, T>(
   tag: Tag<T, I>,
