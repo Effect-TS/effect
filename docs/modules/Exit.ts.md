@@ -6,7 +6,7 @@ parent: Modules
 
 ## Exit overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -82,7 +82,7 @@ export declare const all: <E, A>(
 ) => Option.Option<Exit<E, A[]>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -94,7 +94,7 @@ Constructs a new `Exit.Failure` from the specified unrecoverable defect.
 export declare const die: (defect: unknown) => Exit<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -107,7 +107,7 @@ Constructs a new `Exit.Failure` from the specified recoverable error of type
 export declare const fail: <E>(error: E) => Exit<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -119,7 +119,7 @@ Constructs a new `Exit.Failure` from the specified `Cause` of type `E`.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Exit<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupt
 
@@ -132,7 +132,7 @@ the `Fiber` running an `Effect` workflow was terminated due to interruption.
 export declare const interrupt: (fiberId: FiberId.FiberId) => Exit<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -144,7 +144,7 @@ Constructs a new `Exit.Success` containing the specified value of type `A`.
 export declare const succeed: <A>(value: A) => Exit<never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -156,7 +156,7 @@ Represents an `Exit` which succeeds with `undefined`.
 export declare const unit: Exit<never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -170,7 +170,7 @@ Converts an `Either<E, A>` into an `Exit<E, A>`.
 export declare const fromEither: <E, A>(either: Either.Either<E, A>) => Exit<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromOption
 
@@ -182,7 +182,7 @@ Converts an `Option<A>` into an `Exit<void, A>`.
 export declare const fromOption: <A>(option: Option.Option<A>) => Exit<void, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -200,7 +200,7 @@ export declare const exists: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -220,7 +220,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchEffect
 
@@ -242,7 +242,7 @@ export declare const matchEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -257,7 +257,7 @@ otherwise.
 export declare const causeOption: <E, A>(self: Exit<E, A>) => Option.Option<Cause.Cause<E>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrElse
 
@@ -274,7 +274,7 @@ export declare const getOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isInterrupted
 
@@ -287,7 +287,7 @@ the failure was due to interruption, `false` otherwise.
 export declare const isInterrupted: <E, A>(self: Exit<E, A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -305,7 +305,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asUnit
 
@@ -317,7 +317,7 @@ Maps the `Success` value of the specified exit to a void.
 export declare const asUnit: <E, A>(self: Exit<E, A>) => Exit<E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -333,7 +333,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -354,7 +354,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -370,7 +370,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapErrorCause
 
@@ -386,7 +386,7 @@ export declare const mapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -405,7 +405,7 @@ There are two possible values for an `Exit<E, A>`:
 export type Exit<E, A> = Failure<E, A> | Success<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ExitUnify (interface)
 
@@ -417,7 +417,7 @@ export interface ExitUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ExitUnifyBlackList (interface)
 
@@ -429,7 +429,7 @@ export interface ExitUnifyBlackList extends Effect.EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Failure (interface)
 
@@ -451,7 +451,7 @@ export interface Failure<E, A> extends Effect.Effect<never, E, A>, Pipeable, Ins
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Success (interface)
 
@@ -473,7 +473,7 @@ export interface Success<E, A> extends Effect.Effect<never, E, A>, Pipeable, Ins
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -487,7 +487,7 @@ Returns `true` if the specified value is an `Exit`, `false` otherwise.
 export declare const isExit: (u: unknown) => u is Exit<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFailure
 
@@ -499,7 +499,7 @@ Returns `true` if the specified `Exit` is a `Failure`, `false` otherwise.
 export declare const isFailure: <E, A>(self: Exit<E, A>) => self is Failure<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSuccess
 
@@ -511,7 +511,7 @@ Returns `true` if the specified `Exit` is a `Success`, `false` otherwise.
 export declare const isSuccess: <E, A>(self: Exit<E, A>) => self is Success<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -526,7 +526,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapEffect
 
@@ -541,7 +541,7 @@ export declare const flatMapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -551,7 +551,7 @@ Added in v1.0.0
 export declare const flatten: <E, E1, A>(self: Exit<E, Exit<E1, A>>) => Exit<E | E1, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -566,7 +566,7 @@ export declare const forEachEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -584,7 +584,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -600,7 +600,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipPar
 
@@ -616,7 +616,7 @@ export declare const zipPar: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipParLeft
 
@@ -632,7 +632,7 @@ export declare const zipParLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipParRight
 
@@ -648,7 +648,7 @@ export declare const zipParRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -664,7 +664,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -693,4 +693,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

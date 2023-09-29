@@ -10,7 +10,7 @@ This module provides an implementation of the `Equivalence` type class, which de
 that is reflexive, symmetric, and transitive. In other words, it defines a notion of equivalence between values of a certain type.
 These properties are also known in mathematics as an "equivalence relation".
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -57,7 +57,7 @@ Creates a new `Equivalence` for an array of values based on a given `Equivalence
 export declare const array: <A>(item: Equivalence<A>) => Equivalence<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -70,7 +70,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## struct
 
@@ -85,7 +85,7 @@ export declare const struct: <R extends Record<string, Equivalence<any>>>(
 ) => Equivalence<{ readonly [K in keyof R]: [R[K]] extends [Equivalence<infer A>] ? A : never }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tuple
 
@@ -106,7 +106,7 @@ export declare const tuple: <T extends readonly Equivalence<any>[]>(
 ) => Equivalence<Readonly<{ [I in keyof T]: [T[I]] extends [Equivalence<infer A>] ? A : never }>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # combining
 
@@ -118,7 +118,7 @@ Added in v1.0.0
 export declare const all: <A>(collection: Iterable<Equivalence<A>>) => Equivalence<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combine
 
@@ -131,7 +131,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineAll
 
@@ -141,7 +141,7 @@ Added in v1.0.0
 export declare const combineAll: <A>(collection: Iterable<Equivalence<A>>) => Equivalence<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineMany
 
@@ -154,7 +154,7 @@ export declare const combineMany: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## product
 
@@ -167,7 +167,7 @@ export declare const product: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## productMany
 
@@ -180,7 +180,7 @@ export declare const productMany: <A>(
 ) => Equivalence<readonly [A, ...A[]]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -192,7 +192,7 @@ Added in v1.0.0
 export declare const make: <A>(isEquivalent: (self: A, that: A) => boolean) => Equivalence<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## strict
 
@@ -204,7 +204,7 @@ Return an `Equivalence` that uses strict equality (===) to compare values.
 export declare const strict: <A>() => Equivalence<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -216,7 +216,7 @@ Added in v1.0.0
 export declare const Date: Equivalence<Date>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bigint
 
@@ -226,7 +226,7 @@ Added in v1.0.0
 export declare const bigint: Equivalence<bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## boolean
 
@@ -236,7 +236,7 @@ Added in v1.0.0
 export declare const boolean: Equivalence<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## number
 
@@ -246,7 +246,7 @@ Added in v1.0.0
 export declare const number: Equivalence<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## string
 
@@ -256,7 +256,7 @@ Added in v1.0.0
 export declare const string: Equivalence<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## symbol
 
@@ -266,7 +266,7 @@ Added in v1.0.0
 export declare const symbol: Equivalence<symbol>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type class
 
@@ -280,7 +280,7 @@ export interface Equivalence<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -294,4 +294,4 @@ export interface EquivalenceTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

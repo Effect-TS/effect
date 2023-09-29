@@ -6,7 +6,7 @@ parent: Modules
 
 ## Pool overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -49,7 +49,7 @@ export declare const invalidate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -69,7 +69,7 @@ export declare const make: <R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWithTTL
 
@@ -113,7 +113,7 @@ export declare const makeWithTTL: <R, E, A>(options: {
 }) => Effect.Effect<Scope.Scope | R, never, Pool<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -129,7 +129,7 @@ Retrying a failed acquisition attempt will repeat the acquisition attempt.
 export declare const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -159,7 +159,7 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -173,7 +173,7 @@ Returns `true` if the specified value is a `Pool`, `false` otherwise.
 export declare const isPool: (u: unknown) => u is Pool<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -185,7 +185,7 @@ Added in v1.0.0
 export declare const PoolTypeId: typeof PoolTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PoolTypeId (type alias)
 
@@ -195,13 +195,13 @@ Added in v1.0.0
 export type PoolTypeId = typeof PoolTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Pool (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -216,4 +216,4 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

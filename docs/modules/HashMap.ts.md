@@ -6,7 +6,7 @@ parent: Modules
 
 ## HashMap overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -77,7 +77,7 @@ Creates a new `HashMap`.
 export declare const empty: <K = never, V = never>() => HashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -89,7 +89,7 @@ Constructs a new `HashMap` from an iterable of key/value pairs.
 export declare const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => HashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -106,7 +106,7 @@ export declare const make: <Entries extends readonly (readonly [any, any])[]>(
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -124,7 +124,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -140,7 +140,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getHash
 
@@ -155,7 +155,7 @@ export declare const getHash: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -170,7 +170,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hasHash
 
@@ -186,7 +186,7 @@ export declare const hasHash: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -198,7 +198,7 @@ Checks if the `HashMap` contains any entries.
 export declare const isEmpty: <K, V>(self: HashMap<K, V>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -212,7 +212,7 @@ Filters out `None` values from a `HashMap` of `Options`s.
 export declare const compact: <K, A>(self: HashMap<K, Option<A>>) => HashMap<K, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -229,7 +229,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -245,7 +245,7 @@ export declare const filterMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -262,7 +262,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getter
 
@@ -276,7 +276,7 @@ Returns a `HashSet` of keys within the `HashMap`.
 export declare const keySet: <K, V>(self: HashMap<K, V>) => HashSet<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -290,7 +290,7 @@ Returns an `IterableIterator` of the keys within the `HashMap`.
 export declare const keys: <K, V>(self: HashMap<K, V>) => IterableIterator<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -302,7 +302,7 @@ Returns the number of entries within the `HashMap`.
 export declare const size: <K, V>(self: HashMap<K, V>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -314,7 +314,7 @@ Returns an `IterableIterator` of the values within the `HashMap`.
 export declare const values: <K, V>(self: HashMap<K, V>) => IterableIterator<V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -331,7 +331,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -345,7 +345,7 @@ export interface HashMap<Key, Value> extends Iterable<[Key, Value]>, Equal, Pipe
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -360,7 +360,7 @@ export declare const isHashMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -379,7 +379,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -391,7 +391,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -408,7 +408,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -426,13 +426,13 @@ export declare const unsafeGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## HashMap (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### UpdateFn (type alias)
 
@@ -442,7 +442,7 @@ Added in v1.0.0
 export type UpdateFn<V> = (option: Option<V>) => Option<V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## beginMutation
 
@@ -454,7 +454,7 @@ Marks the `HashMap` as mutable.
 export declare const beginMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## endMutation
 
@@ -466,7 +466,7 @@ Marks the `HashMap` as immutable.
 export declare const endMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -481,7 +481,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyAt
 
@@ -501,7 +501,7 @@ export declare const modifyAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyHash
 
@@ -523,7 +523,7 @@ export declare const modifyHash: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mutate
 
@@ -538,7 +538,7 @@ export declare const mutate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -554,7 +554,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeMany
 
@@ -569,7 +569,7 @@ export declare const removeMany: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -585,7 +585,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -600,4 +600,4 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

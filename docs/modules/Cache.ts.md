@@ -6,7 +6,7 @@ parent: Modules
 
 ## Cache overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -49,7 +49,7 @@ export declare const make: <Key, Environment, Error, Value>(options: {
 }) => Effect.Effect<Environment, never, Cache<Key, Error, Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeCacheStats
 
@@ -65,7 +65,7 @@ export declare const makeCacheStats: (options: {
 }) => CacheStats
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeEntryStats
 
@@ -77,7 +77,7 @@ Constructs a new `EntryStats` from the specified values.
 export declare const makeEntryStats: (loadedMillis: number) => EntryStats
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWith
 
@@ -95,7 +95,7 @@ export declare const makeWith: <Key, Environment, Error, Value>(options: {
 }) => Effect.Effect<Environment, never, Cache<Key, Error, Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -154,7 +154,7 @@ export interface Cache<Key, Error, Value> extends ConsumerCache<Key, Error, Valu
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CacheStats (interface)
 
@@ -171,7 +171,7 @@ export interface CacheStats {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConsumerCache (interface)
 
@@ -248,7 +248,7 @@ export interface ConsumerCache<Key, Error, Value> extends Cache.Variance<Key, Er
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EntryStats (interface)
 
@@ -262,7 +262,7 @@ export interface EntryStats {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Lookup (type alias)
 
@@ -276,7 +276,7 @@ with an error of type `Error` using an environment of type `Environment`.
 export type Lookup<Key, Environment, Error, Value> = (key: Key) => Effect.Effect<Environment, Error, Value>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -288,7 +288,7 @@ Added in v1.0.0
 export declare const CacheTypeId: typeof CacheTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CacheTypeId (type alias)
 
@@ -298,13 +298,13 @@ Added in v1.0.0
 export type CacheTypeId = typeof CacheTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Cache (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -320,4 +320,4 @@ export interface Variance<Key, Error, Value> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

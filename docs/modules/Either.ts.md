@@ -6,7 +6,7 @@ parent: Modules
 
 ## Either overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -100,7 +100,7 @@ assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.right('hello')
 assert.deepStrictEqual(Either.all({ a: Either.right(1), b: Either.left('error') }), Either.left('error'))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMap
 
@@ -113,7 +113,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -146,7 +146,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromOption
 
@@ -175,7 +175,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## left
 
@@ -188,7 +188,7 @@ structure.
 export declare const left: <E>(e: E) => Either<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## right
 
@@ -201,7 +201,7 @@ of this structure.
 export declare const right: <A>(a: A) => Either<never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## try
 
@@ -214,7 +214,7 @@ thrown exceptions into typed failed eithers creating with `Either.left`.
 export declare const try: { <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E; }): Either<E, A>; <A>(evaluate: LazyArg<A>): Either<unknown, A>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # equivalence
 
@@ -229,7 +229,7 @@ export declare const getEquivalence: <E, A>(
 ) => Equivalence.Equivalence<Either<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -246,7 +246,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # generators
 
@@ -258,7 +258,7 @@ Added in v1.0.0
 export declare const gen: Gen.Gen<EitherTypeLambda, Gen.Adapter<EitherTypeLambda>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -282,7 +282,7 @@ assert.deepStrictEqual(E.getLeft(E.right('ok')), O.none())
 assert.deepStrictEqual(E.getLeft(E.left('err')), O.some('err'))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrElse
 
@@ -312,7 +312,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrNull
 
@@ -331,7 +331,7 @@ assert.deepStrictEqual(Either.getOrNull(Either.right(1)), 1)
 assert.deepStrictEqual(Either.getOrNull(Either.left('a')), null)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrThrow
 
@@ -354,7 +354,7 @@ assert.deepStrictEqual(E.getOrThrow(E.right(1)), 1)
 assert.throws(() => E.getOrThrow(E.left('error')))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrThrowWith
 
@@ -383,7 +383,7 @@ assert.deepStrictEqual(
 assert.throws(() => E.getOrThrowWith(E.left('error'), () => new Error('Unexpected Left')))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrUndefined
 
@@ -402,7 +402,7 @@ assert.deepStrictEqual(Either.getOrUndefined(Either.right(1)), 1)
 assert.deepStrictEqual(Either.getOrUndefined(Either.left('a')), undefined)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getRight
 
@@ -426,7 +426,7 @@ assert.deepStrictEqual(E.getRight(E.right('ok')), O.some('ok'))
 assert.deepStrictEqual(E.getRight(E.left('err')), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -436,7 +436,7 @@ Added in v1.0.0
 export declare const merge: <E, A>(self: Either<E, A>) => E | A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -460,7 +460,7 @@ assert.deepStrictEqual(isEither(left('a')), true)
 assert.deepStrictEqual(isEither({ right: 1 }), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isLeft
 
@@ -481,7 +481,7 @@ assert.deepStrictEqual(isLeft(right(1)), false)
 assert.deepStrictEqual(isLeft(left('a')), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRight
 
@@ -502,7 +502,7 @@ assert.deepStrictEqual(isRight(right(1)), true)
 assert.deepStrictEqual(isRight(left('a')), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -519,7 +519,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -537,7 +537,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapLeft
 
@@ -552,7 +552,7 @@ export declare const mapLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -564,7 +564,7 @@ Added in v1.0.0
 export type Either<E, A> = Left<E, A> | Right<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EitherUnify (interface)
 
@@ -576,7 +576,7 @@ export interface EitherUnify<A extends { [Unify.typeSymbol]?: any }> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EitherUnifyBlacklist (interface)
 
@@ -586,7 +586,7 @@ Added in v1.0.0
 export interface EitherUnifyBlacklist {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Left (interface)
 
@@ -607,7 +607,7 @@ export interface Left<E, A> extends Data.Case, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Right (interface)
 
@@ -628,7 +628,7 @@ export interface Right<E, A> extends Data.Case, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -665,7 +665,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -677,7 +677,7 @@ Added in v1.0.0
 export declare const TypeId: typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -687,7 +687,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -701,7 +701,7 @@ export interface EitherTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -713,4 +713,4 @@ Added in v1.0.0
 export declare const reverse: <E, A>(self: Either<E, A>) => Either<A, E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

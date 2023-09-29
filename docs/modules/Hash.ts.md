@@ -6,7 +6,7 @@ parent: Modules
 
 ## Hash overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -41,7 +41,7 @@ Added in v1.0.0
 export declare const isHash: (u: unknown) => u is Hash
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # hashing
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const array: <A>(arr: readonly A[]) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combine
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export declare const combine: (b: number) => (self: number) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hash
 
@@ -73,7 +73,7 @@ Added in v1.0.0
 export declare const hash: <A>(self: A) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## number
 
@@ -83,7 +83,7 @@ Added in v1.0.0
 export declare const number: (n: number) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## optimize
 
@@ -93,7 +93,7 @@ Added in v1.0.0
 export declare const optimize: (n: number) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## random
 
@@ -103,7 +103,7 @@ Added in v1.0.0
 export declare const random: <A extends object>(self: A) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## string
 
@@ -113,7 +113,7 @@ Added in v1.0.0
 export declare const string: (str: string) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## structure
 
@@ -123,7 +123,7 @@ Added in v1.0.0
 export declare const structure: <A extends object>(o: A) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## structureKeys
 
@@ -133,7 +133,7 @@ Added in v1.0.0
 export declare const structureKeys: <A extends object>(o: A, keys: readonly (keyof A)[]) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -147,7 +147,7 @@ export interface Hash {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -159,4 +159,4 @@ Added in v1.0.0
 export declare const symbol: typeof symbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -22,7 +22,7 @@ the layer will only be allocated a single time.
 Because of their excellent composition properties, layers are the idiomatic
 way in Effect-TS to create services that depend on other services.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -126,7 +126,7 @@ output.
 export declare const context: <R>() => Layer<R, never, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -138,7 +138,7 @@ Constructs a layer that dies with the specified defect.
 export declare const die: (defect: unknown) => Layer<never, never, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -150,7 +150,7 @@ Constructs a layer that dies with the specified defect.
 export declare const dieSync: (evaluate: LazyArg<unknown>) => Layer<never, never, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## effect
 
@@ -171,7 +171,7 @@ export declare const effect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## effectContext
 
@@ -184,7 +184,7 @@ services.
 export declare const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Context<A>>) => Layer<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## effectDiscard
 
@@ -196,7 +196,7 @@ Constructs a layer from the specified effect discarding it's output.
 export declare const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -208,7 +208,7 @@ Constructs a layer that fails with the specified error.
 export declare const fail: <E>(error: E) => Layer<never, E, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -220,7 +220,7 @@ Constructs a layer that fails with the specified cause.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Layer<never, E, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -232,7 +232,7 @@ Constructs a layer that fails with the specified cause.
 export declare const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Layer<never, E, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -244,7 +244,7 @@ Constructs a layer that fails with the specified error.
 export declare const failSync: <E>(evaluate: LazyArg<E>) => Layer<never, E, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## function
 
@@ -256,7 +256,7 @@ Constructs a layer from the context using the specified function.
 export declare const function: <A extends Context.Tag<any, any>, B extends Context.Tag<any, any>>(tagA: A, tagB: B, f: (a: Context.Tag.Service<A>) => Context.Tag.Service<B>) => Layer<Context.Tag.Identifier<A>, never, Context.Tag.Identifier<B>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scope
 
@@ -271,7 +271,7 @@ workflow.
 export declare const scope: Layer<never, never, Scope.CloseableScope>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scoped
 
@@ -292,7 +292,7 @@ export declare const scoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scopedContext
 
@@ -307,7 +307,7 @@ export declare const scopedContext: <R, E, A>(
 ) => Layer<Exclude<R, Scope.Scope>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scopedDiscard
 
@@ -321,7 +321,7 @@ export declare const scopedDiscard: <R, E, T>(
 ) => Layer<Exclude<R, Scope.Scope>, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## service
 
@@ -336,7 +336,7 @@ export declare const service: <T extends Context.Tag<any, any>>(
 ) => Layer<Context.Tag.Identifier<T>, never, Context.Tag.Identifier<T>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -357,7 +357,7 @@ export declare const succeed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeedContext
 
@@ -370,7 +370,7 @@ services.
 export declare const succeedContext: <A>(context: Context.Context<A>) => Layer<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -383,7 +383,7 @@ creating layers that refer to themselves.
 export declare const suspend: <RIn, E, ROut>(evaluate: LazyArg<Layer<RIn, E, ROut>>) => Layer<RIn, E, ROut>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -404,7 +404,7 @@ export declare const sync: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## syncContext
 
@@ -417,7 +417,7 @@ services.
 export declare const syncContext: <A>(evaluate: LazyArg<Context.Context<A>>) => Layer<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -432,7 +432,7 @@ your entire application is a layer, such as an HTTP server.
 export declare const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toRuntime
 
@@ -447,7 +447,7 @@ export declare const toRuntime: <RIn, E, ROut>(
 ) => Effect.Effect<Scope.Scope | RIn, E, Runtime.Runtime<ROut>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -463,7 +463,7 @@ export declare const build: <RIn, E, ROut>(
 ) => Effect.Effect<Scope.Scope | RIn, E, Context.Context<ROut>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## buildWithScope
 
@@ -482,7 +482,7 @@ export declare const buildWithScope: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -499,7 +499,7 @@ export declare const catchAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAllCause
 
@@ -520,7 +520,7 @@ export declare const catchAllCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDie
 
@@ -533,7 +533,7 @@ unchecked and not a part of the type of the layer.
 export declare const orDie: <R, E, A>(self: Layer<R, E, A>) => Layer<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -549,7 +549,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -577,7 +577,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchCause
 
@@ -603,7 +603,7 @@ export declare const matchCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -618,7 +618,7 @@ shared, `false` otherwise.
 export declare const isFresh: <R, E, A>(self: Layer<R, E, A>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isLayer
 
@@ -630,7 +630,7 @@ Returns `true` if the specified value is a `Layer`, `false` otherwise.
 export declare const isLayer: (u: unknown) => u is Layer<unknown, unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -645,7 +645,7 @@ side-effects.
 export declare const discard: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -660,7 +660,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -675,7 +675,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -687,7 +687,7 @@ Added in v1.0.0
 export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # retrying
 
@@ -710,7 +710,7 @@ export declare const retry: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -733,7 +733,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -748,7 +748,7 @@ export declare const flatten: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tap
 
@@ -768,7 +768,7 @@ export declare const tap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapError
 
@@ -789,7 +789,7 @@ export declare const tapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapErrorCause
 
@@ -809,7 +809,7 @@ export declare const tapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -821,7 +821,7 @@ Added in v1.0.0
 export declare const LayerTypeId: typeof LayerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LayerTypeId (type alias)
 
@@ -831,13 +831,13 @@ Added in v1.0.0
 export type LayerTypeId = typeof LayerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Layer (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -853,7 +853,7 @@ export interface Variance<RIn, E, ROut> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Context (type alias)
 
@@ -863,7 +863,7 @@ Added in v1.0.0
 export type Context<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _R : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Error (type alias)
 
@@ -873,7 +873,7 @@ Added in v1.0.0
 export type Error<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _E : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Success (type alias)
 
@@ -883,7 +883,7 @@ Added in v1.0.0
 export type Success<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _A : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## extendScope
 
@@ -898,7 +898,7 @@ effect depends on is closed.
 export declare const extendScope: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<Scope.Scope | RIn, E, ROut>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberRefLocallyScopedWith
 
@@ -908,7 +908,7 @@ Added in v1.0.0
 export declare const fiberRefLocallyScopedWith: <A>(self: FiberRef<A>, value: (_: A) => A) => Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fresh
 
@@ -920,7 +920,7 @@ Creates a fresh version of this layer that will not be shared.
 export declare const fresh: <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locally
 
@@ -933,7 +933,7 @@ export declare const locally: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyEffect
 
@@ -951,7 +951,7 @@ export declare const locallyEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyScoped
 
@@ -961,7 +961,7 @@ Added in v1.0.0
 export declare const locallyScoped: <A>(self: FiberRef<A>, value: A) => Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyWith
 
@@ -974,7 +974,7 @@ export declare const locallyWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## memoize
 
@@ -989,7 +989,7 @@ export declare const memoize: <RIn, E, ROut>(
 ) => Effect.Effect<Scope.Scope, never, Layer<RIn, E, ROut>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -1011,7 +1011,7 @@ export declare const merge: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## passthrough
 
@@ -1024,7 +1024,7 @@ passes through the inputs.
 export declare const passthrough: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E, RIn | ROut>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## project
 
@@ -1049,7 +1049,7 @@ export declare const project: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provide
 
@@ -1072,7 +1072,7 @@ export declare const provide: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideMerge
 
@@ -1095,7 +1095,7 @@ export declare const provideMerge: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrapEffect
 
@@ -1107,7 +1107,7 @@ export declare const unwrapEffect: <R, E, R1, E1, A>(
 ) => Layer<R | R1, E | E1, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrapScoped
 
@@ -1119,7 +1119,7 @@ export declare const unwrapScoped: <R, E, R1, E1, A>(
 ) => Layer<R1 | Exclude<R, Scope.Scope>, E | E1, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## use
 
@@ -1142,7 +1142,7 @@ export declare const use: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## useMerge
 
@@ -1165,7 +1165,7 @@ export declare const useMerge: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -1185,7 +1185,7 @@ export declare const mergeAll: <Layers extends [Layer<any, any, never>, ...Layer
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWithPar
 
@@ -1211,4 +1211,4 @@ export declare const zipWithPar: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

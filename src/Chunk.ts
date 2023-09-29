@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Either } from "./Either"
 import * as Equal from "./Equal"
@@ -23,13 +23,13 @@ const TypeId: unique symbol = Symbol.for("effect/Chunk") as TypeId
 
 /**
  * @category symbol
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TypeId = typeof TypeId
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
   readonly [TypeId]: {
@@ -48,13 +48,13 @@ export interface Chunk<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectabl
 
 /**
  * @category model
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface NonEmptyChunk<A> extends Chunk<A>, NonEmptyIterable<A> {}
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ChunkTypeLambda extends TypeLambda {
   readonly type: Chunk<this["Target"]>
@@ -113,7 +113,7 @@ const emptyArray: ReadonlyArray<never> = []
  * Compares the two chunks of equal length using the specified function
  *
  * @category equivalence
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const getEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Equivalence.Equivalence<Chunk<A>> =>
   Equivalence.make((self, that) => toReadonlyArray(self).every((value, i) => isEquivalent(value, unsafeGet(that, i))))
@@ -207,7 +207,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
  * Checks if `u` is a `Chunk<unknown>`
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isChunk: {
   <A>(u: Iterable<A>): u is Chunk<A>
@@ -218,7 +218,7 @@ const _empty = makeChunk<never>({ _tag: "IEmpty" })
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty: <A = never>() => Chunk<A> = () => _empty
 
@@ -226,7 +226,7 @@ export const empty: <A = never>() => Chunk<A> = () => _empty
  * Builds a `NonEmptyChunk` from an non-empty collection of elements.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = <As extends readonly [any, ...ReadonlyArray<any>]>(
   ...as: As
@@ -236,7 +236,7 @@ export const make = <As extends readonly [any, ...ReadonlyArray<any>]>(
  * Builds a `NonEmptyChunk` from a single element.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton", a }) as any
 
@@ -244,7 +244,7 @@ export const of = <A>(a: A): NonEmptyChunk<A> => makeChunk({ _tag: "ISingleton",
  * Converts from an `Iterable<A>`
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fromIterable = <A>(self: Iterable<A>): Chunk<A> =>
   isChunk(self) ? self : makeChunk({ _tag: "IArray", array: RA.fromIterable(self) })
@@ -281,7 +281,7 @@ const copyToArray = <A>(self: Chunk<A>, array: Array<any>, initial: number): voi
  * Converts the specified `Chunk` to a `ReadonlyArray`.
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toReadonlyArray = <A>(self: Chunk<A>): ReadonlyArray<A> => {
   switch (self.backing._tag) {
@@ -307,7 +307,7 @@ export const toReadonlyArray = <A>(self: Chunk<A>): ReadonlyArray<A> => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const reverse = <A>(self: Chunk<A>): Chunk<A> => {
@@ -330,7 +330,7 @@ export const reverse = <A>(self: Chunk<A>): Chunk<A> => {
  * This function provides a safe way to read a value at a particular index from a `Chunk`.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const get: {
   (index: number): <A>(self: Chunk<A>) => Option<A>
@@ -344,7 +344,7 @@ export const get: {
 /**
  * Wraps an array into a chunk without copying, unsafe on mutable arrays
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeFromArray = <A>(self: ReadonlyArray<A>): Chunk<A> => makeChunk({ _tag: "IArray", array: self })
@@ -352,7 +352,7 @@ export const unsafeFromArray = <A>(self: ReadonlyArray<A>): Chunk<A> => makeChun
 /**
  * Wraps an array into a chunk without copying, unsafe on mutable arrays
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeFromNonEmptyArray = <A>(self: NonEmptyReadonlyArray<A>): NonEmptyChunk<A> =>
@@ -361,7 +361,7 @@ export const unsafeFromNonEmptyArray = <A>(self: NonEmptyReadonlyArray<A>): NonE
 /**
  * Gets an element unsafely, will throw on out of bounds
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeGet: {
@@ -399,7 +399,7 @@ export const unsafeGet: {
  * Appends the specified element to the end of the `Chunk`.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const append: {
   <A2>(a: A2): <A>(self: Chunk<A>) => NonEmptyChunk<A2 | A>
@@ -410,7 +410,7 @@ export const append: {
  * Prepend an element to the front of a `Chunk`, creating a new `NonEmptyChunk`.
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prepend: {
   <B>(elem: B): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
@@ -420,7 +420,7 @@ export const prepend: {
 /**
  * Takes the first up to `n` elements from the chunk
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const take: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
@@ -466,7 +466,7 @@ export const take: {
 /**
  * Drops the first up to `n` elements from the chunk
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const drop: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
@@ -511,7 +511,7 @@ export const drop: {
 /**
  * Drops the last `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const dropRight: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
@@ -521,7 +521,7 @@ export const dropRight: {
 /**
  * Drops all elements so long as the predicate returns true.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const dropWhile: {
   <A>(f: (a: A) => boolean): (self: Chunk<A>) => Chunk<A>
@@ -538,7 +538,7 @@ export const dropWhile: {
 
 /**
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prependAll: {
   <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<B | A>
@@ -547,7 +547,7 @@ export const prependAll: {
 
 /**
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const prependAllNonEmpty: {
   <B>(that: NonEmptyChunk<B>): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
@@ -560,7 +560,7 @@ export const prependAllNonEmpty: {
  * Concatenates the two chunks
  *
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const appendAll: {
   <B>(that: Chunk<B>): <A>(self: Chunk<A>) => Chunk<B | A>
@@ -608,7 +608,7 @@ export const appendAll: {
 
 /**
  * @category concatenating
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const appendAllNonEmpty: {
   <B>(that: NonEmptyChunk<B>): <A>(self: Chunk<A>) => NonEmptyChunk<B | A>
@@ -620,7 +620,7 @@ export const appendAllNonEmpty: {
 /**
  * Returns a filtered and mapped subset of the elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterMap: {
@@ -634,7 +634,7 @@ export const filterMap: {
 /**
  * Returns a filtered and mapped subset of the elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filter: {
@@ -651,7 +651,7 @@ export const filter: {
 /**
  * Transforms all elements of the chunk for as long as the specified function returns some value
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filterMapWhile: {
@@ -662,7 +662,7 @@ export const filterMapWhile: {
 /**
  * Filter out optional values
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, identity)
@@ -670,7 +670,7 @@ export const compact = <A>(self: Chunk<Option<A>>): Chunk<A> => filterMap(self, 
 /**
  * Returns a chunk with the elements mapped by the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -690,7 +690,7 @@ export const flatMap: {
 
 /**
  * @category sequencing
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flatMapNonEmpty: {
   <A, B>(f: (a: A, i: number) => NonEmptyChunk<B>): (self: NonEmptyChunk<A>) => NonEmptyChunk<B>
@@ -700,7 +700,7 @@ export const flatMapNonEmpty: {
 /**
  * Applies the specified function to each element of the `List`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const forEach: {
@@ -711,14 +711,14 @@ export const forEach: {
 /**
  * Flattens a chunk of chunks into a single chunk by concatenating all chunks.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatten: <A>(self: Chunk<Chunk<A>>) => Chunk<A> = flatMap(identity)
 
 /**
  * @category sequencing
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const flattenNonEmpty: <A>(
   self: NonEmptyChunk<NonEmptyChunk<A>>
@@ -727,7 +727,7 @@ export const flattenNonEmpty: <A>(
 /**
  * Groups elements in chunks of up to `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const chunksOf: {
@@ -754,7 +754,7 @@ export const chunksOf: {
  *
  * The order and references of result values are determined by the Chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const intersection: {
@@ -769,7 +769,7 @@ export const intersection: {
 /**
  * Determines if the chunk is empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isEmpty = <A>(self: Chunk<A>): boolean => self.length === 0
@@ -777,7 +777,7 @@ export const isEmpty = <A>(self: Chunk<A>): boolean => self.length === 0
 /**
  * Determines if the chunk is not empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isNonEmpty = <A>(self: Chunk<A>): self is NonEmptyChunk<A> => self.length > 0
@@ -785,7 +785,7 @@ export const isNonEmpty = <A>(self: Chunk<A>): self is NonEmptyChunk<A> => self.
 /**
  * Returns the first element of this chunk if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const head: <A>(self: Chunk<A>) => Option<A> = get(0)
@@ -793,7 +793,7 @@ export const head: <A>(self: Chunk<A>) => Option<A> = get(0)
 /**
  * Returns the first element of this chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeHead = <A>(self: Chunk<A>): A => unsafeGet(self, 0)
@@ -801,7 +801,7 @@ export const unsafeHead = <A>(self: Chunk<A>): A => unsafeGet(self, 0)
 /**
  * Returns the first element of this non empty chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A = unsafeHead
@@ -809,7 +809,7 @@ export const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A = unsafeHead
 /**
  * Returns the last element of this chunk if it exists.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
@@ -817,7 +817,7 @@ export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
 /**
  * Returns the last element of this chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length - 1)
@@ -825,7 +825,7 @@ export const unsafeLast = <A>(self: Chunk<A>): A => unsafeGet(self, self.length 
 /**
  * Returns an effect whose success is mapped by the specified f function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -839,7 +839,7 @@ export const map: {
 /**
  * Statefully maps over the chunk, producing new elements of type `B`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const mapAccum: {
@@ -854,7 +854,7 @@ export const mapAccum: {
  * Separate elements based on a predicate that also exposes the index of the element.
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const partition: {
   <C extends A, B extends A, A = C>(refinement: Refinement<A, B>): (self: Chunk<C>) => [Chunk<Exclude<C, B>>, Chunk<B>]
@@ -874,7 +874,7 @@ export const partition: {
  * Partitions the elements of this chunk into two chunks using f.
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const partitionMap: {
   <A, B, C>(f: (a: A) => Either<B, C>): (self: Chunk<A>) => [Chunk<B>, Chunk<C>]
@@ -889,7 +889,7 @@ export const partitionMap: {
  * Partitions the elements of this chunk into two chunks.
  *
  * @category filtering
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const separate = <A, B>(self: Chunk<Either<A, B>>): [Chunk<A>, Chunk<B>] =>
   pipe(
@@ -900,7 +900,7 @@ export const separate = <A, B>(self: Chunk<Either<A, B>>): [Chunk<A>, Chunk<B>] 
 /**
  * Retireves the size of the chunk
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const size = <A>(self: Chunk<A>): number => self.length
@@ -908,7 +908,7 @@ export const size = <A>(self: Chunk<A>): number => self.length
 /**
  * Sort the elements of a Chunk in increasing order, creating a new Chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const sort: {
@@ -920,7 +920,7 @@ export const sort: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const sortWith: {
@@ -934,7 +934,7 @@ export const sortWith: {
 /**
  *  Returns two splits of this chunk at the specified index.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const splitAt: {
@@ -945,7 +945,7 @@ export const splitAt: {
 /**
  * Splits this chunk into `n` equally sized chunks.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const split: {
@@ -957,7 +957,7 @@ export const split: {
  * Splits this chunk on the first element that matches this predicate.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const splitWhere: {
   <A>(predicate: Predicate<A>): (self: Chunk<A>) => [Chunk<A>, Chunk<A>]
@@ -977,7 +977,7 @@ export const splitWhere: {
 /**
  * Returns every elements after the first.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const tail = <A>(self: Chunk<A>): Option<Chunk<A>> => self.length > 0 ? O.some(drop(self, 1)) : O.none()
@@ -985,7 +985,7 @@ export const tail = <A>(self: Chunk<A>): Option<Chunk<A>> => self.length > 0 ? O
 /**
  * Returns every elements after the first.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const tailNonEmpty = <A>(self: NonEmptyChunk<A>): Chunk<A> => drop(self, 1)
@@ -993,7 +993,7 @@ export const tailNonEmpty = <A>(self: NonEmptyChunk<A>): Chunk<A> => drop(self, 
 /**
  * Takes the last `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const takeRight: {
@@ -1004,7 +1004,7 @@ export const takeRight: {
 /**
  * Takes all elements so long as the predicate returns true.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const takeWhile: {
@@ -1025,7 +1025,7 @@ export const takeWhile: {
 /**
  * Creates a Chunks of unique values, in order, from all given Chunks.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const union: {
@@ -1039,7 +1039,7 @@ export const union: {
 /**
  * Remove duplicates from an array, keeping the first occurrence of an element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const dedupe = <A>(self: Chunk<A>): Chunk<A> => unsafeFromArray(RA.dedupe(toReadonlyArray(self)))
@@ -1047,7 +1047,7 @@ export const dedupe = <A>(self: Chunk<A>): Chunk<A> => unsafeFromArray(RA.dedupe
 /**
  * Deduplicates adjacent elements that are identical.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => unsafeFromArray(RA.dedupeAdjacent(self))
@@ -1057,7 +1057,7 @@ export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => unsafeFromArray(R
  *
  * Note: The function is reverse of `zip`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] => {
@@ -1068,7 +1068,7 @@ export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] 
 /**
  * Zips this chunk pointwise with the specified chunk using the specified combiner.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const zipWith: {
@@ -1083,7 +1083,7 @@ export const zipWith: {
 /**
  * Zips this chunk pointwise with the specified chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const zip: {
@@ -1098,7 +1098,7 @@ export const zip: {
  * Delete the element at the specified index, creating a new `Chunk`,
  * or returning the input if the index is out of bounds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const remove: {
   (i: number): <A>(self: Chunk<A>) => Chunk<A>
@@ -1109,7 +1109,7 @@ export const remove: {
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const modifyOption: {
   <A, B>(i: number, f: (a: A) => B): (self: Chunk<A>) => Option<Chunk<A | B>>
@@ -1124,7 +1124,7 @@ export const modifyOption: {
  * Apply a function to the element at the specified index, creating a new `Chunk`,
  * or returning the input if the index is out of bounds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const modify: {
   <A, B>(i: number, f: (a: A) => B): (self: Chunk<A>) => Chunk<A | B>
@@ -1138,7 +1138,7 @@ export const modify: {
  * Change the element at the specified index, creating a new `Chunk`,
  * or returning the input if the index is out of bounds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const replace: {
   <B>(i: number, b: B): <A>(self: Chunk<A>) => Chunk<B | A>
@@ -1146,7 +1146,7 @@ export const replace: {
 } = dual(3, <A, B>(self: Chunk<A>, i: number, b: B): Chunk<B | A> => modify(self, i, () => b))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const replaceOption: {
   <B>(i: number, b: B): <A>(self: Chunk<A>) => Option<Chunk<B | A>>
@@ -1159,7 +1159,7 @@ export const replaceOption: {
  * **Note**. `n` is normalized to an integer >= 1.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const makeBy: {
   <A>(f: (i: number) => A): (n: number) => NonEmptyChunk<A>
@@ -1170,7 +1170,7 @@ export const makeBy: {
  * Create a non empty `Chunk` containing a range of integers, including both endpoints.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const range = (start: number, end: number): NonEmptyChunk<number> =>
   start <= end ? makeBy(end - start + 1, (i) => start + i) : of(start)
@@ -1183,7 +1183,7 @@ export const range = (start: number, end: number): NonEmptyChunk<number> =>
  * Returns a function that checks if a `Chunk` contains a given value using the default `Equivalence`.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const contains: {
   <A>(a: A): (self: Chunk<A>) => boolean
@@ -1194,7 +1194,7 @@ export const contains: {
  * Returns a function that checks if a `Chunk` contains a given value using a provided `isEquivalent` function.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const containsWith: <A>(
   isEquivalent: (self: A, that: A) => boolean
@@ -1208,7 +1208,7 @@ export const containsWith: <A>(
  * predicate, or `None` if no such element exists.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const findFirst: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
@@ -1221,7 +1221,7 @@ export const findFirst: {
  * Return the first index for which a predicate holds.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const findFirstIndex: {
   <A>(predicate: Predicate<A>): (self: Chunk<A>) => Option<number>
@@ -1232,7 +1232,7 @@ export const findFirstIndex: {
  * Find the last element for which a predicate holds.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const findLast: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => Option<B>
@@ -1245,7 +1245,7 @@ export const findLast: {
  * Return the last index for which a predicate holds.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const findLastIndex: {
   <A>(predicate: Predicate<A>): (self: Chunk<A>) => Option<number>
@@ -1256,7 +1256,7 @@ export const findLastIndex: {
  * Check if a predicate holds true for every `Chunk` element.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const every: {
   <A, B extends A>(refinement: Refinement<A, B>): (self: Chunk<A>) => self is Chunk<B>
@@ -1273,7 +1273,7 @@ export const every: {
  * Check if a predicate holds true for some `Chunk` element.
  *
  * @category elements
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const some: {
   <A>(predicate: Predicate<A>): <B extends A>(self: Chunk<B>) => self is NonEmptyChunk<B>
@@ -1288,7 +1288,7 @@ export const some: {
  * Joins the elements together with "sep" in the middle.
  *
  * @category folding
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const join: {
   (sep: string): (self: Chunk<string>) => string
@@ -1297,7 +1297,7 @@ export const join: {
 
 /**
  * @category folding
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reduce: {
   <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Chunk<A>) => B
@@ -1306,7 +1306,7 @@ export const reduce: {
 
 /**
  * @category folding
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reduceRight: {
   <B, A>(b: B, f: (b: B, a: A, i: number) => B): (self: Chunk<A>) => B

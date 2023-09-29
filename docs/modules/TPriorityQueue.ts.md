@@ -6,7 +6,7 @@ parent: Modules
 
 ## TPriorityQueue overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -57,7 +57,7 @@ Constructs a new empty `TPriorityQueue` with the specified `Order`.
 export declare const empty: <A>(order: Order.Order<A>) => STM.STM<never, never, TPriorityQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -71,7 +71,7 @@ export declare const fromIterable: <A>(
 ) => (iterable: Iterable<A>) => STM.STM<never, never, TPriorityQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -83,7 +83,7 @@ Makes a new `TPriorityQueue` that is initialized with specified values.
 export declare const make: <A>(order: Order.Order<A>) => (...elements: A[]) => STM.STM<never, never, TPriorityQueue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -97,7 +97,7 @@ Collects all values into a chunk.
 export declare const toArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyArray
 
@@ -109,7 +109,7 @@ Collects all values into an array.
 export declare const toReadonlyArray: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -123,7 +123,7 @@ Checks whether the queue is empty.
 export declare const isEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -135,7 +135,7 @@ Checks whether the queue is not empty.
 export declare const isNonEmpty: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## peek
 
@@ -148,7 +148,7 @@ value is in the queue.
 export declare const peek: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## peekOption
 
@@ -161,7 +161,7 @@ if there is not a value in the queue.
 export declare const peekOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeIf
 
@@ -176,7 +176,7 @@ export declare const removeIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retainIf
 
@@ -191,7 +191,7 @@ export declare const retainIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -203,7 +203,7 @@ Returns the size of the queue.
 export declare const size: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -221,7 +221,7 @@ be taken from the queue is not guaranteed.
 export interface TPriorityQueue<A> extends TPriorityQueue.Variance<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -238,7 +238,7 @@ export declare const offer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## offerAll
 
@@ -253,7 +253,7 @@ export declare const offerAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -265,7 +265,7 @@ Takes a value from the queue, retrying until a value is in the queue.
 export declare const take: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeAll
 
@@ -277,7 +277,7 @@ Takes all values from the queue.
 export declare const takeAll: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeOption
 
@@ -290,7 +290,7 @@ the queue.
 export declare const takeOption: <A>(self: TPriorityQueue<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUpTo
 
@@ -305,7 +305,7 @@ export declare const takeUpTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -317,7 +317,7 @@ Added in v1.0.0
 export declare const TPriorityQueueTypeId: typeof TPriorityQueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TPriorityQueueTypeId (type alias)
 
@@ -327,13 +327,13 @@ Added in v1.0.0
 export type TPriorityQueueTypeId = typeof TPriorityQueueTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TPriorityQueue (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -347,4 +347,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

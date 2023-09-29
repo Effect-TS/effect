@@ -6,7 +6,7 @@ parent: Modules
 
 ## Clock overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -41,7 +41,7 @@ Added in v1.0.0
 export declare const clockWith: <R, E, A>(f: (clock: Clock) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTimeMillis
 
@@ -51,7 +51,7 @@ Added in v1.0.0
 export declare const currentTimeMillis: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTimeNanos
 
@@ -61,7 +61,7 @@ Added in v1.0.0
 export declare const currentTimeNanos: Effect.Effect<never, never, bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -71,7 +71,7 @@ Added in v1.0.0
 export declare const make: (_: void) => Clock
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sleep
 
@@ -81,7 +81,7 @@ Added in v1.0.0
 export declare const sleep: (duration: Duration.DurationInput) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -93,7 +93,7 @@ Added in v1.0.0
 export declare const Clock: Context.Tag<Clock, Clock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -105,7 +105,7 @@ Added in v1.0.0
 export type CancelToken = () => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Clock (interface)
 
@@ -140,7 +140,7 @@ export interface Clock {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ClockScheduler (interface)
 
@@ -155,7 +155,7 @@ export interface ClockScheduler {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Task (type alias)
 
@@ -165,7 +165,7 @@ Added in v1.0.0
 export type Task = () => void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -177,7 +177,7 @@ Added in v1.0.0
 export declare const ClockTypeId: typeof ClockTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ClockTypeId (type alias)
 
@@ -187,4 +187,4 @@ Added in v1.0.0
 export type ClockTypeId = typeof ClockTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

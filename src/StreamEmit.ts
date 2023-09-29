@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Chunk from "./Chunk"
@@ -15,7 +15,7 @@ import type * as Option from "./Option"
  * terminate with that error, and failing with `None` indicates to terminate
  * with an end of stream signal.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
@@ -23,7 +23,7 @@ export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface EmitOps<R, E, A, B> {

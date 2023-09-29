@@ -6,7 +6,7 @@ parent: Modules
 
 ## Pipeable overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -305,7 +305,7 @@ export interface Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -317,4 +317,4 @@ Added in v1.0.0
 export declare const pipeArguments: <A>(self: A, args: IArguments) => unknown
 ```
 
-Added in v1.0.0
+Added in v2.0.0

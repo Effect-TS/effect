@@ -6,7 +6,7 @@ parent: Modules
 
 ## Effectable overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ Added in v1.0.0
 export declare class Effectable<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### commit (method)
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 abstract commit(): Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Structural (class)
 
@@ -64,7 +64,7 @@ Added in v1.0.0
 export declare class Structural<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### commit (method)
 
@@ -74,7 +74,7 @@ Added in v1.0.0
 abstract commit(): Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -88,7 +88,7 @@ export interface CommitPrimitive {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type ids
 
@@ -100,7 +100,7 @@ Added in v1.0.0
 export declare const ChannelTypeId: typeof Channel.ChannelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChannelTypeId (type alias)
 
@@ -110,7 +110,7 @@ Added in v1.0.0
 export type ChannelTypeId = Channel.ChannelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectTypeId
 
@@ -120,7 +120,7 @@ Added in v1.0.0
 export declare const EffectTypeId: typeof Effect.EffectTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectTypeId (type alias)
 
@@ -130,7 +130,7 @@ Added in v1.0.0
 export type EffectTypeId = Effect.EffectTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SinkTypeId
 
@@ -140,7 +140,7 @@ Added in v1.0.0
 export declare const SinkTypeId: typeof Sink.SinkTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SinkTypeId (type alias)
 
@@ -150,7 +150,7 @@ Added in v1.0.0
 export type SinkTypeId = Sink.SinkTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StreamTypeId
 
@@ -160,7 +160,7 @@ Added in v1.0.0
 export declare const StreamTypeId: typeof Stream.StreamTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StreamTypeId (type alias)
 
@@ -170,7 +170,7 @@ Added in v1.0.0
 export type StreamTypeId = Stream.StreamTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -182,7 +182,7 @@ Added in v1.0.0
 export declare const Base: CommitPrimitive
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## StructuralBase
 
@@ -192,4 +192,4 @@ Added in v1.0.0
 export declare const StructuralBase: CommitPrimitive
 ```
 
-Added in v1.0.0
+Added in v2.0.0

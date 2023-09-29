@@ -6,7 +6,7 @@ parent: Modules
 
 ## StreamHaltStrategy overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -45,7 +45,7 @@ Added in v1.0.0
 export declare const Both: HaltStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Either
 
@@ -55,7 +55,7 @@ Added in v1.0.0
 export declare const Either: HaltStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Left
 
@@ -65,7 +65,7 @@ Added in v1.0.0
 export declare const Left: HaltStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Right
 
@@ -75,7 +75,7 @@ Added in v1.0.0
 export declare const Right: HaltStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromInput
 
@@ -85,7 +85,7 @@ Added in v1.0.0
 export declare const fromInput: (input: HaltStrategyInput) => HaltStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -100,7 +100,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -114,7 +114,7 @@ export interface Both {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Either (interface)
 
@@ -126,7 +126,7 @@ export interface Either {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HaltStrategy (type alias)
 
@@ -136,7 +136,7 @@ Added in v1.0.0
 export type HaltStrategy = Left | Right | Both | Either
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HaltStrategyInput (type alias)
 
@@ -146,7 +146,7 @@ Added in v1.0.0
 export type HaltStrategyInput = HaltStrategy | 'left' | 'right' | 'both' | 'either'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Left (interface)
 
@@ -158,7 +158,7 @@ export interface Left {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Right (interface)
 
@@ -170,7 +170,7 @@ export interface Right {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -182,7 +182,7 @@ Added in v1.0.0
 export declare const isBoth: (self: HaltStrategy) => self is Both
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEither
 
@@ -192,7 +192,7 @@ Added in v1.0.0
 export declare const isEither: (self: HaltStrategy) => self is Either
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isLeft
 
@@ -202,7 +202,7 @@ Added in v1.0.0
 export declare const isLeft: (self: HaltStrategy) => self is Left
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRight
 
@@ -212,4 +212,4 @@ Added in v1.0.0
 export declare const isRight: (self: HaltStrategy) => self is Right
 ```
 
-Added in v1.0.0
+Added in v2.0.0

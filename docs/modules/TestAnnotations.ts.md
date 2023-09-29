@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestAnnotations overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -32,7 +32,7 @@ Added in v1.0.0
 export declare const TestAnnotations: Context.Tag<TestAnnotations, TestAnnotations>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotations (interface)
 
@@ -70,7 +70,7 @@ export interface TestAnnotations {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationsTypeId
 
@@ -80,7 +80,7 @@ Added in v1.0.0
 export declare const TestAnnotationsTypeId: typeof TestAnnotationsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationsTypeId (type alias)
 
@@ -90,7 +90,7 @@ Added in v1.0.0
 export type TestAnnotationsTypeId = typeof TestAnnotationsTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTestAnnotations
 
@@ -100,7 +100,7 @@ Added in v1.0.0
 export declare const isTestAnnotations: (u: unknown) => u is TestAnnotations
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -110,4 +110,4 @@ Added in v1.0.0
 export declare const make: (ref: Ref.Ref<TestAnnotationMap.TestAnnotationMap>) => TestAnnotations
 ```
 
-Added in v1.0.0
+Added in v2.0.0

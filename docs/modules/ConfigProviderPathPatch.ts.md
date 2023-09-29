@@ -6,7 +6,7 @@ parent: Modules
 
 ## ConfigProviderPathPatch overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -41,7 +41,7 @@ export declare const andThen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -51,7 +51,7 @@ Added in v1.0.0
 export declare const empty: PathPatch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapName
 
@@ -64,7 +64,7 @@ export declare const mapName: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nested
 
@@ -77,7 +77,7 @@ export declare const nested: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unnested
 
@@ -90,7 +90,7 @@ export declare const unnested: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -106,7 +106,7 @@ export interface AndThen {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Empty (interface)
 
@@ -118,7 +118,7 @@ export interface Empty {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MapName (interface)
 
@@ -131,7 +131,7 @@ export interface MapName {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Nested (interface)
 
@@ -144,7 +144,7 @@ export interface Nested {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PathPatch (type alias)
 
@@ -157,7 +157,7 @@ value.
 export type PathPatch = Empty | AndThen | MapName | Nested | Unnested
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Unnested (interface)
 
@@ -170,4 +170,4 @@ export interface Unnested {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

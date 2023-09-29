@@ -1,32 +1,32 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/channel/childExecutorDecision"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ChildExecutorDecisionTypeId: unique symbol = internal.ChildExecutorDecisionTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ChildExecutorDecision = Continue | Close | Yield
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace ChildExecutorDecision {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -37,7 +37,7 @@ export declare namespace ChildExecutorDecision {
 /**
  * Continue executing the current substream
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Continue extends ChildExecutorDecision.Proto {
@@ -48,7 +48,7 @@ export interface Continue extends ChildExecutorDecision.Proto {
  * Close the current substream with a given value and pass execution to the
  * next substream
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Close extends ChildExecutorDecision.Proto {
@@ -60,7 +60,7 @@ export interface Close extends ChildExecutorDecision.Proto {
  * Pass execution to the next substream. This either pulls a new element
  * from upstream, or yields to an already created active substream.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Yield extends ChildExecutorDecision.Proto {
@@ -68,19 +68,19 @@ export interface Yield extends ChildExecutorDecision.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Continue: (_: void) => ChildExecutorDecision = internal.Continue
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Close: (value: unknown) => ChildExecutorDecision = internal.Close
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Yield: (_: void) => ChildExecutorDecision = internal.Yield
@@ -89,7 +89,7 @@ export const Yield: (_: void) => ChildExecutorDecision = internal.Yield
  * Returns `true` if the specified value is a `ChildExecutorDecision`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isChildExecutorDecision: (u: unknown) => u is ChildExecutorDecision = internal.isChildExecutorDecision
@@ -98,7 +98,7 @@ export const isChildExecutorDecision: (u: unknown) => u is ChildExecutorDecision
  * Returns `true` if the specified `ChildExecutorDecision` is a `Continue`,
  * `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isContinue: (self: ChildExecutorDecision) => self is Continue = internal.isContinue
@@ -107,7 +107,7 @@ export const isContinue: (self: ChildExecutorDecision) => self is Continue = int
  * Returns `true` if the specified `ChildExecutorDecision` is a `Close`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isClose: (self: ChildExecutorDecision) => self is Close = internal.isClose
@@ -116,7 +116,7 @@ export const isClose: (self: ChildExecutorDecision) => self is Close = internal.
  * Returns `true` if the specified `ChildExecutorDecision` is a `Yield`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isYield: (self: ChildExecutorDecision) => self is Yield = internal.isYield
@@ -124,7 +124,7 @@ export const isYield: (self: ChildExecutorDecision) => self is Yield = internal.
 /**
  * Folds over a `ChildExecutorDecision` to produce a value of type `A`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {

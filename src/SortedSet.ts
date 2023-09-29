@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Equal from "./Equal"
 import * as Dual from "./Function"
@@ -17,13 +17,13 @@ import * as RBT from "./RedBlackTree"
 const TypeId: unique symbol = Symbol.for("effect/SortedSet")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SortedSet<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable {
@@ -71,7 +71,7 @@ const fromTree = <A>(keyTree: RBT.RedBlackTree<A, boolean>): SortedSet<A> => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSortedSet: {
@@ -80,20 +80,20 @@ export const isSortedSet: {
 } = (u: unknown): u is SortedSet<unknown> => isObject(u) && TypeId in u
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty = <A>(O: Order<A>): SortedSet<A> => fromTree(RBT.empty(O))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromIterable = <K>(ord: Order<K>) => (iterable: Iterable<K>): SortedSet<K> =>
   fromTree(RBT.fromIterable<K, boolean>(ord)(Array.from(iterable).map((k) => [k, true])))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make =
@@ -101,7 +101,7 @@ export const make =
     fromIterable(ord)(entries)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const add: {
@@ -116,7 +116,7 @@ export const add: {
     : fromTree(RBT.insert(self.keyTree, value, true)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const difference: {
   <A, B extends A>(that: Iterable<B>): (self: SortedSet<A>) => SortedSet<A>
@@ -135,7 +135,7 @@ export const difference: {
 /**
  * Check if a predicate holds true for every `SortedSet` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const every: {
@@ -153,7 +153,7 @@ export const every: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const filter: {
@@ -182,7 +182,7 @@ export const filter: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -202,7 +202,7 @@ export const flatMap: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category traversing
  */
 export const forEach: {
@@ -214,7 +214,7 @@ export const forEach: {
 >(2, (self, f) => RBT.forEach(self.keyTree, f))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const has: {
@@ -226,7 +226,7 @@ export const has: {
 >(2, (self, value) => RBT.has(self.keyTree, value))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const intersection: {
   <A>(that: Iterable<A>): (self: SortedSet<A>) => SortedSet<A>
@@ -246,7 +246,7 @@ export const intersection: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isSubset: {
@@ -258,7 +258,7 @@ export const isSubset: {
 >(2, (self, that) => every(self, (a) => has(that, a)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -279,7 +279,7 @@ export const map: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category filtering
  */
 export const partition: {
@@ -307,7 +307,7 @@ export const partition: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const remove: {
@@ -319,7 +319,7 @@ export const remove: {
 >(2, (self, value) => fromTree(RBT.removeFirst(self.keyTree, value)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size = <A>(self: SortedSet<A>): number => RBT.size(self.keyTree)
@@ -327,7 +327,7 @@ export const size = <A>(self: SortedSet<A>): number => RBT.size(self.keyTree)
 /**
  * Check if a predicate holds true for some `SortedSet` element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const some: {
@@ -346,7 +346,7 @@ export const some: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const toggle: {
@@ -358,7 +358,7 @@ export const toggle: {
 >(2, (self, value) => has(self, value) ? remove(self, value) : add(self, value))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const union: {
   <A>(that: Iterable<A>): (self: SortedSet<A>) => SortedSet<A>
@@ -379,7 +379,7 @@ export const union: {
 })
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const values = <A>(self: SortedSet<A>): IterableIterator<A> => RBT.keys(self.keyTree)

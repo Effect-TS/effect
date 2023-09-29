@@ -6,7 +6,7 @@ parent: Modules
 
 ## ConfigSecret overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export declare const fromChunk: (chunk: Chunk.Chunk<string>) => ConfigSecret
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromString
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const fromString: (text: string) => ConfigSecret
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export declare const make: (bytes: Array<number>) => ConfigSecret
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -75,7 +75,7 @@ Added in v1.0.0
 export declare const value: (self: ConfigSecret) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -90,7 +90,7 @@ export interface ConfigSecret extends ConfigSecret.Proto, Equal.Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -102,7 +102,7 @@ Added in v1.0.0
 export declare const isConfigSecret: (u: unknown) => u is ConfigSecret
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -114,7 +114,7 @@ Added in v1.0.0
 export declare const ConfigSecretTypeId: typeof ConfigSecretTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigSecretTypeId (type alias)
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 export type ConfigSecretTypeId = typeof ConfigSecretTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -136,13 +136,13 @@ Added in v1.0.0
 export declare const unsafeWipe: (self: ConfigSecret) => void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ConfigSecret (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -154,4 +154,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

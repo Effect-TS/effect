@@ -29,7 +29,7 @@ export const liveServices: Context.Context<DefaultServices.DefaultServices> = pi
 /**
  * The `FiberRef` holding the default `Effect` services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category fiberRefs
  */
 export const currentServices = core.fiberRefUnsafeMakeContext(liveServices)

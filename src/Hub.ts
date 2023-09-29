@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import * as internal from "./internal/hub"
@@ -12,7 +12,7 @@ import type * as Scope from "./Scope"
  * messages of type `A` and subscribers can subscribe to take messages of type
  * `A`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Hub<A> extends Queue.Enqueue<A>, Pipeable {
@@ -43,7 +43,7 @@ export interface Hub<A> extends Queue.Enqueue<A>, Pipeable {
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const bounded: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>> = internal.bounded
@@ -54,7 +54,7 @@ export const bounded: <A>(requestedCapacity: number) => Effect.Effect<never, nev
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dropping: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>> = internal.dropping
@@ -65,7 +65,7 @@ export const dropping: <A>(requestedCapacity: number) => Effect.Effect<never, ne
  *
  * For best performance use capacities that are powers of two.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sliding: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>> = internal.sliding
@@ -73,7 +73,7 @@ export const sliding: <A>(requestedCapacity: number) => Effect.Effect<never, nev
 /**
  * Creates an unbounded hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unbounded: <A>() => Effect.Effect<never, never, Hub<A>> = internal.unbounded
@@ -81,7 +81,7 @@ export const unbounded: <A>() => Effect.Effect<never, never, Hub<A>> = internal.
 /**
  *  Returns the number of elements the queue can hold.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const capacity: <A>(self: Hub<A>) => number = internal.capacity
@@ -91,7 +91,7 @@ export const capacity: <A>(self: Hub<A>) => number = internal.capacity
  * in the queue. This may be negative if fibers are suspended waiting for
  * elements to be added to the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const size: <A>(self: Hub<A>) => Effect.Effect<never, never, number> = internal.size
@@ -100,7 +100,7 @@ export const size: <A>(self: Hub<A>) => Effect.Effect<never, never, number> = in
  * Returns `true` if the `Queue` contains at least one element, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFull: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean> = internal.isFull
@@ -108,7 +108,7 @@ export const isFull: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean> =
 /**
  * Returns `true` if the `Queue` contains zero elements, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean> = internal.isEmpty
@@ -117,7 +117,7 @@ export const isEmpty: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean> 
  * Interrupts any fibers that are suspended on `offer` or `take`. Future calls
  * to `offer*` and `take*` will be interrupted immediately.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const shutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, void> = internal.shutdown
@@ -125,7 +125,7 @@ export const shutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, void> = 
 /**
  * Returns `true` if `shutdown` has been called, otherwise returns `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean> = internal.isShutdown
@@ -135,7 +135,7 @@ export const isShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, boolea
  * not resume until the queue has been shutdown. If the queue is already
  * shutdown, the `Effect` will resume right away.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const awaitShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, void> = internal.awaitShutdown
@@ -144,7 +144,7 @@ export const awaitShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, voi
  * Publishes a message to the hub, returning whether the message was published
  * to the hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const publish: {
@@ -156,7 +156,7 @@ export const publish: {
  * Publishes all of the specified messages to the hub, returning whether they
  * were published to the hub.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const publishAll: {
@@ -169,7 +169,7 @@ export const publishAll: {
  * be evaluated multiple times within the scope to take a message from the hub
  * each time.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const subscribe: <A>(self: Hub<A>) => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>> = internal.subscribe

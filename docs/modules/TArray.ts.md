@@ -6,7 +6,7 @@ parent: Modules
 
 ## TArray overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -80,7 +80,7 @@ Makes an empty `TArray`.
 export declare const empty: <A>() => STM.STM<never, never, TArray<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -92,7 +92,7 @@ Makes a new `TArray` initialized with provided iterable.
 export declare const fromIterable: <A>(iterable: Iterable<A>) => STM.STM<never, never, TArray<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -106,7 +106,7 @@ export declare const make: <Elements extends [any, ...any[]]>(
 ) => STM.STM<never, never, TArray<Elements[number]>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -120,7 +120,7 @@ Collects all elements into a chunk.
 export declare const toArray: <A>(self: TArray<A>) => STM.STM<never, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -138,7 +138,7 @@ export declare const collectFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectFirstSTM
 
@@ -154,7 +154,7 @@ export declare const collectFirstSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contains
 
@@ -169,7 +169,7 @@ export declare const contains: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -185,7 +185,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## everySTM
 
@@ -201,7 +201,7 @@ export declare const everySTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -216,7 +216,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndex
 
@@ -231,7 +231,7 @@ export declare const findFirstIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndexFrom
 
@@ -247,7 +247,7 @@ export declare const findFirstIndexFrom: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndexWhere
 
@@ -262,7 +262,7 @@ export declare const findFirstIndexWhere: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndexWhereFrom
 
@@ -278,7 +278,7 @@ export declare const findFirstIndexWhereFrom: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndexWhereFromSTM
 
@@ -300,7 +300,7 @@ export declare const findFirstIndexWhereFromSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndexWhereSTM
 
@@ -315,7 +315,7 @@ export declare const findFirstIndexWhereSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstSTM
 
@@ -330,7 +330,7 @@ export declare const findFirstSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLast
 
@@ -345,7 +345,7 @@ export declare const findLast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLastIndex
 
@@ -361,7 +361,7 @@ export declare const findLastIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLastIndexFrom
 
@@ -377,7 +377,7 @@ export declare const findLastIndexFrom: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLastSTM
 
@@ -392,7 +392,7 @@ export declare const findLastSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -407,7 +407,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -422,7 +422,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## headOption
 
@@ -434,7 +434,7 @@ The first entry of the array, if it exists.
 export declare const headOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lastOption
 
@@ -446,7 +446,7 @@ The last entry in the array, if it exists.
 export declare const lastOption: <A>(self: TArray<A>) => STM.STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## maxOption
 
@@ -461,7 +461,7 @@ export declare const maxOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## minOption
 
@@ -476,7 +476,7 @@ export declare const minOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceOption
 
@@ -491,7 +491,7 @@ export declare const reduceOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceOptionSTM
 
@@ -507,7 +507,7 @@ export declare const reduceOptionSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -522,7 +522,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## someSTM
 
@@ -538,7 +538,7 @@ export declare const someSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transform
 
@@ -553,7 +553,7 @@ export declare const transform: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transformSTM
 
@@ -568,7 +568,7 @@ export declare const transformSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -583,7 +583,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSTM
 
@@ -598,7 +598,7 @@ export declare const updateSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -615,7 +615,7 @@ export declare const count: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## countSTM
 
@@ -630,7 +630,7 @@ export declare const countSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -645,7 +645,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceSTM
 
@@ -660,7 +660,7 @@ export declare const reduceSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -674,7 +674,7 @@ Returns the size of the `TArray`.
 export declare const size: <A>(self: TArray<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -686,7 +686,7 @@ Added in v1.0.0
 export interface TArray<A> extends TArray.Variance<A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -698,7 +698,7 @@ Added in v1.0.0
 export declare const TArrayTypeId: typeof TArrayTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TArrayTypeId (type alias)
 
@@ -708,13 +708,13 @@ Added in v1.0.0
 export type TArrayTypeId = typeof TArrayTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TArray (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -728,4 +728,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

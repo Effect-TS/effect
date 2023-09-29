@@ -6,7 +6,7 @@ parent: Modules
 
 ## Effect overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -412,7 +412,7 @@ unchecked and not a part of the type of the effect.
 export declare const orDie: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDieWith
 
@@ -428,7 +428,7 @@ export declare const orDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -444,7 +444,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseFail
 
@@ -460,7 +460,7 @@ export declare const orElseFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseSucceed
 
@@ -476,7 +476,7 @@ export declare const orElseSucceed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # caching
 
@@ -491,7 +491,7 @@ result of this effect.
 export declare const cached: <R, E, A>(self: Effect<R, E, A>) => Effect<never, never, Effect<R, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cachedFunction
 
@@ -506,7 +506,7 @@ export declare const cachedFunction: <R, E, A, B>(
 ) => Effect<never, never, (a: A) => Effect<R, E, B>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cachedInvalidateWithTTL
 
@@ -530,7 +530,7 @@ export declare const cachedInvalidateWithTTL: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cachedWithTTL
 
@@ -546,7 +546,7 @@ export declare const cachedWithTTL: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## once
 
@@ -559,7 +559,7 @@ evaluated multiple times.
 export declare const once: <R, E, A>(self: Effect<R, E, A>) => Effect<never, never, Effect<R, E, void>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # clock
 
@@ -573,7 +573,7 @@ Retreives the `Clock` service from the context
 export declare const clock: Effect<never, never, Clock.Clock>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## clockWith
 
@@ -586,7 +586,7 @@ specified effectful function.
 export declare const clockWith: <R, E, A>(f: (clock: Clock.Clock) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setClock
 
@@ -596,7 +596,7 @@ Added in v1.0.0
 export declare const setClock: <A extends Clock.Clock>(clock: A) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withClock
 
@@ -612,7 +612,7 @@ export declare const withClock: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # collecting & elements
 
@@ -639,7 +639,7 @@ export declare const all: <
 ) => All.Return<Arg, O>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## allSuccesses
 
@@ -655,7 +655,7 @@ export declare const allSuccesses: <R, E, A>(
 ) => Effect<R, never, A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## allWith
 
@@ -682,7 +682,7 @@ export declare const allWith: <
 ) => All.Return<Arg, O>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropUntil
 
@@ -697,7 +697,7 @@ export declare const dropUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhile
 
@@ -712,7 +712,7 @@ export declare const dropWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -728,7 +728,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## exists
 
@@ -751,7 +751,7 @@ export declare const exists: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -773,7 +773,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -788,7 +788,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## firstSuccessOf
 
@@ -807,7 +807,7 @@ will determine the outcome of the resulting `Effect` value.
 export declare const firstSuccessOf: <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -836,7 +836,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## head
 
@@ -849,7 +849,7 @@ is non-empty, or fails with the error `None` if the collection is empty.
 export declare const head: <R, E, A>(self: Effect<R, E, Iterable<A>>) => Effect<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAll
 
@@ -874,7 +874,7 @@ export declare const mergeAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -897,7 +897,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -913,7 +913,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceEffect
 
@@ -937,7 +937,7 @@ export declare const reduceEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceRight
 
@@ -952,7 +952,7 @@ export declare const reduceRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceWhile
 
@@ -975,7 +975,7 @@ export declare const reduceWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicate
 
@@ -990,7 +990,7 @@ export declare const replicate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicateEffect
 
@@ -1022,7 +1022,7 @@ export declare const replicateEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeUntil
 
@@ -1037,7 +1037,7 @@ export declare const takeUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeWhile
 
@@ -1052,7 +1052,7 @@ export declare const takeWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validateAll
 
@@ -1087,7 +1087,7 @@ export declare const validateAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validateFirst
 
@@ -1130,7 +1130,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # config
 
@@ -1145,7 +1145,7 @@ an error of type Config.Error.
 export declare const config: <A>(config: Config<A>) => Effect<never, ConfigError, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## configProviderWith
 
@@ -1161,7 +1161,7 @@ export declare const configProviderWith: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setConfigProvider
 
@@ -1173,7 +1173,7 @@ Sets the current `ConfigProvider`.
 export declare const setConfigProvider: (configProvider: ConfigProvider) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withConfigProvider
 
@@ -1188,7 +1188,7 @@ export declare const withConfigProvider: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withConfigProviderScoped
 
@@ -1201,7 +1201,7 @@ when the scope is closed.
 export declare const withConfigProviderScoped: (value: ConfigProvider) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -1228,7 +1228,7 @@ export declare const async: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncEffect
 
@@ -1245,7 +1245,7 @@ export declare const asyncEffect: <R, E, A, R2, E2, X>(
 ) => Effect<R | R2, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncEither
 
@@ -1272,7 +1272,7 @@ export declare const asyncEither: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asyncOption
 
@@ -1295,7 +1295,7 @@ export declare const asyncOption: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -1305,7 +1305,7 @@ Added in v1.0.0
 export declare const die: (defect: unknown) => Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieMessage
 
@@ -1319,7 +1319,7 @@ defect has been detected in the code.
 export declare const dieMessage: (message: string) => Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -1329,7 +1329,7 @@ Added in v1.0.0
 export declare const dieSync: (evaluate: LazyArg<unknown>) => Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -1339,7 +1339,7 @@ Added in v1.0.0
 export declare const fail: <E>(error: E) => Effect<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -1349,7 +1349,7 @@ Added in v1.0.0
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -1359,7 +1359,7 @@ Added in v1.0.0
 export declare const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Effect<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -1369,7 +1369,7 @@ Added in v1.0.0
 export declare const failSync: <E>(evaluate: LazyArg<E>) => Effect<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gen
 
@@ -1393,7 +1393,7 @@ export declare const gen: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -1406,7 +1406,7 @@ Returns a effect that will never produce anything. The moral equivalent of
 export declare const never: Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -1418,7 +1418,7 @@ Requires the option produced by this value to be `None`.
 export declare const none: <R, E, A>(self: Effect<R, E, Option.Option<A>>) => Effect<R, Option.Option<E>, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## promise
 
@@ -1433,7 +1433,7 @@ wrapped Promise api.
 export declare const promise: <A>(evaluate: (signal: AbortSignal) => Promise<A>) => Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -1443,7 +1443,7 @@ Added in v1.0.0
 export declare const succeed: <A>(value: A) => Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeedNone
 
@@ -1455,7 +1455,7 @@ Returns an effect which succeeds with `None`.
 export declare const succeedNone: Effect<never, never, Option.Option<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeedSome
 
@@ -1467,7 +1467,7 @@ Returns an effect which succeeds with the value wrapped in a `Some`.
 export declare const succeedSome: <A>(value: A) => Effect<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -1477,7 +1477,7 @@ Added in v1.0.0
 export declare const suspend: <R, E, A>(effect: LazyArg<Effect<R, E, A>>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -1487,7 +1487,7 @@ Added in v1.0.0
 export declare const sync: <A>(evaluate: LazyArg<A>) => Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -1497,7 +1497,7 @@ Added in v1.0.0
 export declare const unit: Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withClockScoped
 
@@ -1510,7 +1510,7 @@ restores it to its original value when the scope is closed.
 export declare const withClockScoped: <A extends Clock.Clock>(value: A) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## yieldNow
 
@@ -1520,7 +1520,7 @@ Added in v1.0.0
 export declare const yieldNow: (options?: { readonly priority?: number }) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -1532,7 +1532,7 @@ Added in v1.0.0
 export declare const context: <R>() => Effect<R, never, Context.Context<R>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWith
 
@@ -1544,7 +1544,7 @@ Accesses the context of the effect.
 export declare const contextWith: <R, A>(f: (context: Context.Context<R>) => A) => Effect<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithEffect
 
@@ -1558,7 +1558,7 @@ export declare const contextWithEffect: <R, R0, E, A>(
 ) => Effect<R | R0, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputContext
 
@@ -1574,7 +1574,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provide
 
@@ -1596,7 +1596,7 @@ export declare const provide: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideService
 
@@ -1618,7 +1618,7 @@ export declare const provideService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideServiceEffect
 
@@ -1640,7 +1640,7 @@ export declare const provideServiceEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceConstants
 
@@ -1660,7 +1660,7 @@ export declare const serviceConstants: <I, S>(
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceFunction
 
@@ -1673,7 +1673,7 @@ export declare const serviceFunction: <T extends Context.Tag<any, any>, Args ext
 ) => (...args: Args) => Effect<Context.Tag.Identifier<T>, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceFunctionEffect
 
@@ -1686,7 +1686,7 @@ export declare const serviceFunctionEffect: <T extends Context.Tag<any, any>, Ar
 ) => (...args: Args) => Effect<R | Context.Tag.Identifier<T>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceFunctions
 
@@ -1704,7 +1704,7 @@ export declare const serviceFunctions: <I, S>(
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceMembers
 
@@ -1733,7 +1733,7 @@ export declare const serviceMembers: <I, S>(
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## serviceOption
 
@@ -1743,7 +1743,7 @@ Added in v1.0.0
 export declare const serviceOption: <I, A>(tag: Context.Tag<I, A>) => Effect<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateService
 
@@ -1764,7 +1764,7 @@ export declare const updateService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -1785,7 +1785,7 @@ guaranteed the effect does not model failure.
 export declare const either: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Either.Either<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## exit
 
@@ -1795,7 +1795,7 @@ Added in v1.0.0
 export declare const exit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Exit.Exit<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intoDeferred
 
@@ -1808,7 +1808,7 @@ export declare const intoDeferred: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## option
 
@@ -1821,7 +1821,7 @@ success.
 export declare const option: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # delays & timeouts
 
@@ -1839,7 +1839,7 @@ export declare const delay: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sleep
 
@@ -1852,7 +1852,7 @@ asynchronous, and does not actually block the fiber executing the effect.
 export declare const sleep: (duration: Duration.DurationInput) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timed
 
@@ -1864,7 +1864,7 @@ Returns a new effect that executes this one and times the execution.
 export declare const timed: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, readonly [Duration.Duration, A]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timedWith
 
@@ -1885,7 +1885,7 @@ export declare const timedWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeout
 
@@ -1913,7 +1913,7 @@ export declare const timeout: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutFail
 
@@ -1934,7 +1934,7 @@ export declare const timeoutFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutFailCause
 
@@ -1955,7 +1955,7 @@ export declare const timeoutFailCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeoutTo
 
@@ -1987,7 +1987,7 @@ export declare const timeoutTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # do notation
 
@@ -1999,7 +1999,7 @@ Added in v1.0.0
 export declare const Do: Effect<never, never, {}>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bind
 
@@ -2020,7 +2020,7 @@ export declare const bind: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bindTo
 
@@ -2033,7 +2033,7 @@ export declare const bindTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## let
 
@@ -2054,7 +2054,7 @@ export declare const let: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -2068,7 +2068,7 @@ Recovers from specified error.
 export declare const catch: { <N extends keyof E, K extends E[N] & string, E, R1, E1, A1>(discriminator: N, options: { readonly failure: K; readonly onFailure: (error: Extract<E, { [n in N]: K; }>) => Effect<R1, E1, A1>; }): <R, A>(self: Effect<R, E, A>) => Effect<R1 | R, E1 | Exclude<E, { [n in N]: K; }>, A1 | A>; <R, E, A, N extends keyof E, K extends E[N] & string, R1, E1, A1>(self: Effect<R, E, A>, discriminator: N, options: { readonly failure: K; readonly onFailure: (error: Extract<E, { [n in N]: K; }>) => Effect<R1, E1, A1>; }): Effect<R | R1, E1 | Exclude<E, { [n in N]: K; }>, A | A1>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAll
 
@@ -2087,7 +2087,7 @@ export declare const catchAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAllCause
 
@@ -2111,7 +2111,7 @@ export declare const catchAllCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchAllDefect
 
@@ -2137,7 +2137,7 @@ export declare const catchAllDefect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchIf
 
@@ -2169,7 +2169,7 @@ export declare const catchIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSome
 
@@ -2190,7 +2190,7 @@ export declare const catchSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSomeCause
 
@@ -2211,7 +2211,7 @@ export declare const catchSomeCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSomeDefect
 
@@ -2237,7 +2237,7 @@ export declare const catchSomeDefect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTag
 
@@ -2259,7 +2259,7 @@ export declare const catchTag: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTags
 
@@ -2319,7 +2319,7 @@ export declare const catchTags: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cause
 
@@ -2332,7 +2332,7 @@ or `Cause.empty` if the effect did succeed.
 export declare const cause: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Cause.Cause<E>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eventually
 
@@ -2345,7 +2345,7 @@ eventually succeeds.
 export declare const eventually: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ignore
 
@@ -2357,7 +2357,7 @@ Returns a new effect that ignores the success or failure of this effect.
 export declare const ignore: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ignoreLogged
 
@@ -2371,7 +2371,7 @@ turns out to be important.
 export declare const ignoreLogged: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## parallelErrors
 
@@ -2383,7 +2383,7 @@ Exposes all parallel errors in a single call.
 export declare const parallelErrors: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E[], A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retry
 
@@ -2401,7 +2401,7 @@ export declare const retry: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryN
 
@@ -2416,7 +2416,7 @@ export declare const retryN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryOrElse
 
@@ -2440,7 +2440,7 @@ export declare const retryOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryUntil
 
@@ -2457,7 +2457,7 @@ export declare const retryUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryUntilEffect
 
@@ -2473,7 +2473,7 @@ export declare const retryUntilEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryWhile
 
@@ -2488,7 +2488,7 @@ export declare const retryWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryWhileEffect
 
@@ -2504,7 +2504,7 @@ export declare const retryWhileEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sandbox
 
@@ -2516,7 +2516,7 @@ Exposes the full `Cause` of failure for the specified effect.
 export declare const sandbox: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Cause.Cause<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## try
 
@@ -2529,7 +2529,7 @@ thrown exceptions into typed failed effects creating with `Effect.fail`.
 export declare const try: { <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (error: unknown) => E; }): Effect<never, E, A>; <A>(evaluate: LazyArg<A>): Effect<never, unknown, A>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tryMap
 
@@ -2551,7 +2551,7 @@ export declare const tryMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tryMapPromise
 
@@ -2577,7 +2577,7 @@ export declare const tryMapPromise: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tryPromise
 
@@ -2600,7 +2600,7 @@ export declare const tryPromise: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsandbox
 
@@ -2615,7 +2615,7 @@ exists. Otherwise extracts the contained `Effect<R, E, A>`
 export declare const unsandbox: <R, E, A>(self: Effect<R, Cause.Cause<E>, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # execution
 
@@ -2630,7 +2630,7 @@ export declare const runCallback: <E, A>(
 ) => Runtime.Cancel<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFork
 
@@ -2640,7 +2640,7 @@ Added in v1.0.0
 export declare const runFork: <E, A>(effect: Effect<never, E, A>) => Fiber.RuntimeFiber<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runPromise
 
@@ -2653,7 +2653,7 @@ result of the workflow or rejects with an error.
 export declare const runPromise: <E, A>(effect: Effect<never, E, A>) => Promise<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runPromiseExit
 
@@ -2666,7 +2666,7 @@ Runs an `Effect` workflow, returning a `Promise` which resolves with the
 export declare const runPromiseExit: <E, A>(effect: Effect<never, E, A>) => Promise<Exit.Exit<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runSync
 
@@ -2676,7 +2676,7 @@ Added in v1.0.0
 export declare const runSync: <E, A>(effect: Effect<never, E, A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runSyncExit
 
@@ -2686,7 +2686,7 @@ Added in v1.0.0
 export declare const runSyncExit: <E, A>(effect: Effect<never, E, A>) => Exit.Exit<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # fiber refs
 
@@ -2701,7 +2701,7 @@ effect.
 export declare const getFiberRefs: Effect<never, never, FiberRefs.FiberRefs>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## inheritFiberRefs
 
@@ -2713,7 +2713,7 @@ Inherits values from all `FiberRef` instances into current fiber.
 export declare const inheritFiberRefs: (childFiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locally
 
@@ -2726,7 +2726,7 @@ export declare const locally: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyScoped
 
@@ -2739,7 +2739,7 @@ export declare const locallyScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyScopedWith
 
@@ -2752,7 +2752,7 @@ export declare const locallyScopedWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## locallyWith
 
@@ -2765,7 +2765,7 @@ export declare const locallyWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## patchFiberRefs
 
@@ -2778,7 +2778,7 @@ running this workflow.
 export declare const patchFiberRefs: (patch: FiberRefsPatch.FiberRefsPatch) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setFiberRefs
 
@@ -2791,7 +2791,7 @@ in the specified collection of `FiberRef` values.
 export declare const setFiberRefs: (fiberRefs: FiberRefs.FiberRefs) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateFiberRefs
 
@@ -2806,7 +2806,7 @@ export declare const updateFiberRefs: (
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering & conditionals
 
@@ -2838,7 +2838,7 @@ export declare const filterOrDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrDieMessage
 
@@ -2856,7 +2856,7 @@ export declare const filterOrDieMessage: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrElse
 
@@ -2886,7 +2886,7 @@ export declare const filterOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrFail
 
@@ -2916,7 +2916,7 @@ export declare const filterOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## if
 
@@ -2928,7 +2928,7 @@ Runs `onTrue` if the result of `self` is `true` and `onFalse` otherwise.
 export declare const if: { <R1, R2, E1, E2, A, A1>(options: { readonly onTrue: Effect<R1, E1, A>; readonly onFalse: Effect<R2, E2, A1>; }): <R = never, E = never>(self: boolean | Effect<R, E, boolean>) => Effect<R1 | R2 | R, E1 | E2 | E, A | A1>; <R1, R2, E1, E2, A, A1>(self: boolean, options: { readonly onTrue: Effect<R1, E1, A>; readonly onFalse: Effect<R2, E2, A1>; }): Effect<R1 | R2, E1 | E2, A | A1>; <R, E, R1, R2, E1, E2, A, A1>(self: Effect<R, E, boolean>, options: { readonly onTrue: Effect<R1, E1, A>; readonly onFalse: Effect<R2, E2, A1>; }): Effect<R | R1 | R2, E | E1 | E2, A | A1>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unless
 
@@ -2943,7 +2943,7 @@ export declare const unless: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unlessEffect
 
@@ -2960,7 +2960,7 @@ export declare const unlessEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## when
 
@@ -2975,7 +2975,7 @@ export declare const when: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenEffect
 
@@ -2990,7 +2990,7 @@ export declare const whenEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenFiberRef
 
@@ -3012,7 +3012,7 @@ export declare const whenFiberRef: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenRef
 
@@ -3033,7 +3033,7 @@ export declare const whenRef: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters & folding
 
@@ -3047,7 +3047,7 @@ Returns `true` if this effect is a failure, `false` otherwise.
 export declare const isFailure: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSuccess
 
@@ -3059,7 +3059,7 @@ Returns `true` if this effect is a success, `false` otherwise.
 export declare const isSuccess: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## match
 
@@ -3081,7 +3081,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchCause
 
@@ -3099,7 +3099,7 @@ export declare const matchCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchCauseEffect
 
@@ -3121,7 +3121,7 @@ export declare const matchCauseEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchEffect
 
@@ -3140,7 +3140,7 @@ export declare const matchEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # interruption
 
@@ -3157,7 +3157,7 @@ Note that this allows for interruption to occur in uninterruptible regions.
 export declare const allowInterrupt: Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## checkInterruptible
 
@@ -3170,7 +3170,7 @@ specified callback.
 export declare const checkInterruptible: <R, E, A>(f: (isInterruptible: boolean) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## disconnect
 
@@ -3192,7 +3192,7 @@ See timeout and race for other applications.
 export declare const disconnect: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupt
 
@@ -3202,7 +3202,7 @@ Added in v1.0.0
 export declare const interrupt: Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptWith
 
@@ -3212,7 +3212,7 @@ Added in v1.0.0
 export declare const interruptWith: (fiberId: FiberId.FiberId) => Effect<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptible
 
@@ -3222,7 +3222,7 @@ Added in v1.0.0
 export declare const interruptible: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptibleMask
 
@@ -3234,7 +3234,7 @@ export declare const interruptibleMask: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onInterrupt
 
@@ -3252,7 +3252,7 @@ export declare const onInterrupt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## uninterruptible
 
@@ -3262,7 +3262,7 @@ Added in v1.0.0
 export declare const uninterruptible: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## uninterruptibleMask
 
@@ -3274,7 +3274,7 @@ export declare const uninterruptibleMask: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # logging
 
@@ -3293,7 +3293,7 @@ export declare const annotateLogs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## log
 
@@ -3310,7 +3310,7 @@ export declare const log: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logAnnotations
 
@@ -3322,7 +3322,7 @@ Retrieves the log annotations associated with the current scope.
 export declare const logAnnotations: Effect<never, never, HashMap.HashMap<string, Logger.AnnotationValue>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logDebug
 
@@ -3337,7 +3337,7 @@ export declare const logDebug: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logError
 
@@ -3352,7 +3352,7 @@ export declare const logError: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logFatal
 
@@ -3367,7 +3367,7 @@ export declare const logFatal: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logInfo
 
@@ -3382,7 +3382,7 @@ export declare const logInfo: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logTrace
 
@@ -3397,7 +3397,7 @@ export declare const logTrace: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logWarning
 
@@ -3412,7 +3412,7 @@ export declare const logWarning: <A>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setUnhandledErrorLogLevel
 
@@ -3422,7 +3422,7 @@ Added in v1.0.0
 export declare const setUnhandledErrorLogLevel: (level: Option.Option<LogLevel>) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withLogSpan
 
@@ -3437,7 +3437,7 @@ export declare const withLogSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withUnhandledErrorLogLevel
 
@@ -3452,7 +3452,7 @@ export declare const withUnhandledErrorLogLevel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -3470,7 +3470,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asSome
 
@@ -3484,7 +3484,7 @@ in an `Option` value. If the original `Effect` value fails, the returned
 export declare const asSome: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asSomeError
 
@@ -3498,7 +3498,7 @@ in an `Option` value. If the original `Effect` value succeeds, the returned
 export declare const asSomeError: <R, E, A>(self: Effect<R, E, A>) => Effect<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asUnit
 
@@ -3513,7 +3513,7 @@ will fail with the same error.
 export declare const asUnit: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flip
 
@@ -3526,7 +3526,7 @@ use all methods on the error channel, possibly before flipping back.
 export declare const flip: <R, E, A>(self: Effect<R, E, A>) => Effect<R, A, E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flipWith
 
@@ -3544,7 +3544,7 @@ export declare const flipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -3557,7 +3557,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAccum
 
@@ -3579,7 +3579,7 @@ export declare const mapAccum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -3600,7 +3600,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -3615,7 +3615,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapErrorCause
 
@@ -3635,7 +3635,7 @@ export declare const mapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -3648,7 +3648,7 @@ success channel to their common combined type.
 export declare const merge: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, E | A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## negate
 
@@ -3660,7 +3660,7 @@ Returns a new effect where boolean value of this effect is negated.
 export declare const negate: <R, E>(self: Effect<R, E, boolean>) => Effect<R, E, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # metrics
 
@@ -3677,7 +3677,7 @@ export declare const labelMetrics: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## labelMetricsScoped
 
@@ -3691,7 +3691,7 @@ export declare const labelMetricsScoped: (
 ) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## labelMetricsScopedSet
 
@@ -3705,7 +3705,7 @@ export declare const labelMetricsScopedSet: (
 ) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## labelMetricsSet
 
@@ -3720,7 +3720,7 @@ export declare const labelMetricsSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## metricLabels
 
@@ -3732,7 +3732,7 @@ Retrieves the metric labels associated with the current scope.
 export declare const metricLabels: Effect<never, never, HashSet.HashSet<MetricLabel.MetricLabel>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagMetrics
 
@@ -3747,7 +3747,7 @@ export declare const tagMetrics: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagMetricsScoped
 
@@ -3759,7 +3759,7 @@ Tags each metric in a scope with a the specific tag.
 export declare const tagMetricsScoped: (key: string, value: string) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withMetric
 
@@ -3772,7 +3772,7 @@ export declare const withMetric: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -4044,7 +4044,7 @@ export interface Adapter {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Blocked (interface)
 
@@ -4058,7 +4058,7 @@ export interface Blocked<R, E, A> extends Effect<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Effect (interface)
 
@@ -4084,7 +4084,7 @@ export interface Effect<R, E, A> extends Effect.Variance<R, E, A>, Equal.Equal, 
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectGen (interface)
 
@@ -4101,7 +4101,7 @@ export interface EffectGen<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectUnify (interface)
 
@@ -4116,7 +4116,7 @@ export interface EffectUnify<A extends { [Unify.typeSymbol]?: any }>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectUnifyBlacklist (interface)
 
@@ -4130,7 +4130,7 @@ export interface EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # optionality
 
@@ -4145,7 +4145,7 @@ null or undefined, otherwise succeeds with the value.
 export declare const fromNullable: <A>(value: A) => Effect<never, Cause.NoSuchElementException, NonNullable<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## optionFromOptional
 
@@ -4160,7 +4160,7 @@ export declare const optionFromOptional: <R, E, A>(
 ) => Effect<R, Exclude<E, Cause.NoSuchElementException>, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # random
 
@@ -4174,7 +4174,7 @@ Retreives the `Random` service from the context.
 export declare const random: Effect<never, never, Random.Random>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## randomWith
 
@@ -4187,7 +4187,7 @@ specified workflow.
 export declare const randomWith: <R, E, A>(f: (random: Random.Random) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -4207,7 +4207,7 @@ argument to a function that expects an `Effect` value.
 export declare const isEffect: (u: unknown) => u is Effect<unknown, unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # repetition / recursion
 
@@ -4221,7 +4221,7 @@ Repeats this effect forever (until the first error).
 export declare const forever: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## iterate
 
@@ -4246,7 +4246,7 @@ export declare const iterate: <Z, R, E>(
 ) => Effect<R, E, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## loop
 
@@ -4290,7 +4290,7 @@ export declare const loop: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeat
 
@@ -4311,7 +4311,7 @@ export declare const repeat: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatN
 
@@ -4329,7 +4329,7 @@ export declare const repeatN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatOrElse
 
@@ -4357,7 +4357,7 @@ export declare const repeatOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatUntil
 
@@ -4375,7 +4375,7 @@ export declare const repeatUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatUntilEffect
 
@@ -4391,7 +4391,7 @@ export declare const repeatUntilEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatWhile
 
@@ -4407,7 +4407,7 @@ export declare const repeatWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatWhileEffect
 
@@ -4423,7 +4423,7 @@ export declare const repeatWhileEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## schedule
 
@@ -4441,7 +4441,7 @@ export declare const schedule: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scheduleForked
 
@@ -4463,7 +4463,7 @@ export declare const scheduleForked: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scheduleFrom
 
@@ -4485,7 +4485,7 @@ export declare const scheduleFrom: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whileLoop
 
@@ -4499,7 +4499,7 @@ export declare const whileLoop: <R, E, A>(options: {
 }) => Effect<R, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # requests & batching
 
@@ -4514,7 +4514,7 @@ export declare const blocked: <R, E, A>(
 ) => Blocked<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cacheRequestResult
 
@@ -4527,7 +4527,7 @@ export declare const cacheRequestResult: <A extends Request.Request<any, any>>(
 ) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapStep
 
@@ -4540,7 +4540,7 @@ export declare const flatMapStep: <R, E, A, R1, E1, B>(
 ) => Effect<R | R1, E1, B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## request
 
@@ -4560,7 +4560,7 @@ export declare const request: <
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runRequestBlock
 
@@ -4570,7 +4570,7 @@ Added in v1.0.0
 export declare const runRequestBlock: <R>(blockedRequests: RequestBlock<R>) => Blocked<R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setRequestBatching
 
@@ -4580,7 +4580,7 @@ Added in v1.0.0
 export declare const setRequestBatching: (requestBatching: boolean) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setRequestCache
 
@@ -4593,7 +4593,7 @@ export declare const setRequestCache: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setRequestCaching
 
@@ -4603,7 +4603,7 @@ Added in v1.0.0
 export declare const setRequestCaching: (requestCaching: boolean) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## step
 
@@ -4613,7 +4613,7 @@ Added in v1.0.0
 export declare const step: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, Exit.Exit<E, A> | Blocked<R, E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withRequestBatching
 
@@ -4626,7 +4626,7 @@ export declare const withRequestBatching: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withRequestCache
 
@@ -4639,7 +4639,7 @@ export declare const withRequestCache: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withRequestCaching
 
@@ -4652,7 +4652,7 @@ export declare const withRequestCaching: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # runtime
 
@@ -4667,7 +4667,7 @@ govern behavior and features of the runtime system.
 export declare const getRuntimeFlags: Effect<never, never, RuntimeFlags.RuntimeFlags>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## patchRuntimeFlags
 
@@ -4677,7 +4677,7 @@ Added in v1.0.0
 export declare const patchRuntimeFlags: (patch: RuntimeFlagsPatch.RuntimeFlagsPatch) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runtime
 
@@ -4691,7 +4691,7 @@ that must call back into Effect code.
 export declare const runtime: <R>() => Effect<R, never, Runtime.Runtime<R>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withRuntimeFlagsPatch
 
@@ -4704,7 +4704,7 @@ export declare const withRuntimeFlagsPatch: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withRuntimeFlagsPatchScoped
 
@@ -4716,7 +4716,7 @@ export declare const withRuntimeFlagsPatchScoped: (
 ) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # scheduler
 
@@ -4728,7 +4728,7 @@ Added in v1.0.0
 export declare const setScheduler: (scheduler: Scheduler.Scheduler) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withScheduler
 
@@ -4743,7 +4743,7 @@ export declare const withScheduler: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # scoping, resources & finalization
 
@@ -4775,7 +4775,7 @@ export declare const acquireRelease: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## acquireReleaseInterruptible
 
@@ -4807,7 +4807,7 @@ export declare const acquireReleaseInterruptible: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## acquireUseRelease
 
@@ -4849,7 +4849,7 @@ export declare const acquireUseRelease: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addFinalizer
 
@@ -4865,7 +4865,7 @@ export declare const addFinalizer: <R, X>(
 ) => Effect<Scope.Scope | R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuring
 
@@ -4888,7 +4888,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## finalizersMask
 
@@ -4902,7 +4902,7 @@ export declare const finalizersMask: (
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onError
 
@@ -4924,7 +4924,7 @@ export declare const onError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## onExit
 
@@ -4946,7 +4946,7 @@ export declare const onExit: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## parallelFinalizers
 
@@ -4956,7 +4956,7 @@ Added in v1.0.0
 export declare const parallelFinalizers: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scope
 
@@ -4966,7 +4966,7 @@ Added in v1.0.0
 export declare const scope: Effect<Scope.Scope, never, Scope.Scope>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scopeWith
 
@@ -4978,7 +4978,7 @@ Accesses the current scope and uses it to perform the specified effect.
 export declare const scopeWith: <R, E, A>(f: (scope: Scope.Scope) => Effect<R, E, A>) => Effect<Scope.Scope | R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scoped
 
@@ -4992,7 +4992,7 @@ execution, whether by success, failure, or interruption.
 export declare const scoped: <R, E, A>(effect: Effect<R, E, A>) => Effect<Exclude<R, Scope.Scope>, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sequentialFinalizers
 
@@ -5008,7 +5008,7 @@ parallel.
 export declare const sequentialFinalizers: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## using
 
@@ -5030,7 +5030,7 @@ export declare const using: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withEarlyRelease
 
@@ -5045,7 +5045,7 @@ export declare const withEarlyRelease: <R, E, A>(
 ) => Effect<Scope.Scope | R, E, readonly [Effect<never, never, void>, A]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # semaphore
 
@@ -5059,7 +5059,7 @@ export interface Permit {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Semaphore (interface)
 
@@ -5073,7 +5073,7 @@ export interface Semaphore {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeSemaphore
 
@@ -5085,7 +5085,7 @@ Creates a new Semaphore
 export declare const makeSemaphore: (permits: number) => Effect<never, never, Semaphore>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMakeSemaphore
 
@@ -5097,7 +5097,7 @@ Unsafely creates a new Semaphore
 export declare const unsafeMakeSemaphore: (permits: number) => Semaphore
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -5115,7 +5115,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -5125,7 +5125,7 @@ Added in v1.0.0
 export declare const flatten: <R, E, R1, E1, A>(self: Effect<R, E, Effect<R1, E1, A>>) => Effect<R | R1, E | E1, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## race
 
@@ -5143,7 +5143,7 @@ export declare const race: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## raceAll
 
@@ -5157,7 +5157,7 @@ the race will be interrupted immediately
 export declare const raceAll: <R, E, A>(effects: Iterable<Effect<R, E, A>>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## raceFirst
 
@@ -5181,7 +5181,7 @@ export declare const raceFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## raceWith
 
@@ -5210,7 +5210,7 @@ export declare const raceWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summarized
 
@@ -5233,7 +5233,7 @@ export declare const summarized: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tap
 
@@ -5248,7 +5248,7 @@ export declare const tap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapBoth
 
@@ -5270,7 +5270,7 @@ export declare const tapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapDefect
 
@@ -5291,7 +5291,7 @@ export declare const tapDefect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapError
 
@@ -5308,7 +5308,7 @@ export declare const tapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapErrorCause
 
@@ -5330,7 +5330,7 @@ export declare const tapErrorCause: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapErrorTag
 
@@ -5352,7 +5352,7 @@ export declare const tapErrorTag: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # supervision & fibers
 
@@ -5367,7 +5367,7 @@ waiting for the end of all child fibers forked by the effect.
 export declare const awaitAllChildren: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## daemonChildren
 
@@ -5380,7 +5380,7 @@ workflow.
 export declare const daemonChildren: <R, E, A>(self: Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## descriptor
 
@@ -5392,7 +5392,7 @@ Constructs an effect with information about the current `Fiber`.
 export declare const descriptor: Effect<never, never, Fiber.Fiber.Descriptor>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## descriptorWith
 
@@ -5406,7 +5406,7 @@ export declare const descriptorWith: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## diffFiberRefs
 
@@ -5421,7 +5421,7 @@ export declare const diffFiberRefs: <R, E, A>(
 ) => Effect<R, E, readonly [FiberRefsPatch.FiberRefsPatch, A]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuringChild
 
@@ -5443,7 +5443,7 @@ export declare const ensuringChild: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuringChildren
 
@@ -5464,7 +5464,7 @@ export declare const ensuringChildren: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberId
 
@@ -5474,7 +5474,7 @@ Added in v1.0.0
 export declare const fiberId: Effect<never, never, FiberId.FiberId>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberIdWith
 
@@ -5484,7 +5484,7 @@ Added in v1.0.0
 export declare const fiberIdWith: <R, E, A>(f: (descriptor: FiberId.Runtime) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fork
 
@@ -5514,7 +5514,7 @@ behavior is not desired, you may use the `forkDaemon` or `forkIn` methods.
 export declare const fork: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkAll
 
@@ -5538,7 +5538,7 @@ export declare const forkAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkDaemon
 
@@ -5552,7 +5552,7 @@ returned effect terminates, the forked fiber will continue running.
 export declare const forkDaemon: <R, E, A>(self: Effect<R, E, A>) => Effect<R, never, Fiber.RuntimeFiber<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkIn
 
@@ -5568,7 +5568,7 @@ export declare const forkIn: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkScoped
 
@@ -5582,7 +5582,7 @@ export declare const forkScoped: <R, E, A>(
 ) => Effect<Scope.Scope | R, never, Fiber.RuntimeFiber<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forkWithErrorHandler
 
@@ -5603,7 +5603,7 @@ export declare const forkWithErrorHandler: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFiber
 
@@ -5616,7 +5616,7 @@ fiber.
 export declare const fromFiber: <E, A>(fiber: Fiber.Fiber<E, A>) => Effect<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFiberEffect
 
@@ -5629,7 +5629,7 @@ fiber.
 export declare const fromFiberEffect: <R, E, A>(fiber: Effect<R, E, Fiber.Fiber<E, A>>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## supervised
 
@@ -5645,7 +5645,7 @@ export declare const supervised: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transplant
 
@@ -5664,7 +5664,7 @@ export declare const transplant: <R, E, A>(
 ) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withConcurrency
 
@@ -5677,7 +5677,7 @@ export declare const withConcurrency: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -5689,7 +5689,7 @@ Added in v1.0.0
 export declare const EffectTypeId: typeof EffectTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EffectTypeId (type alias)
 
@@ -5699,7 +5699,7 @@ Added in v1.0.0
 export type EffectTypeId = typeof EffectTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # tracing
 
@@ -5716,7 +5716,7 @@ export declare const annotateCurrentSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotateSpans
 
@@ -5733,7 +5733,7 @@ export declare const annotateSpans: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentParentSpan
 
@@ -5743,7 +5743,7 @@ Added in v1.0.0
 export declare const currentParentSpan: Effect<never, never, Option.Option<Tracer.ParentSpan>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentSpan
 
@@ -5753,7 +5753,7 @@ Added in v1.0.0
 export declare const currentSpan: Effect<never, never, Option.Option<Tracer.Span>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## linkSpans
 
@@ -5774,7 +5774,7 @@ export declare const linkSpans: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeSpan
 
@@ -5795,7 +5795,7 @@ export declare const makeSpan: (
 ) => Effect<never, never, Tracer.Span>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setParentSpan
 
@@ -5807,7 +5807,7 @@ Adds the provided span to the span stack.
 export declare const setParentSpan: (span: Tracer.ParentSpan) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setSpan
 
@@ -5830,7 +5830,7 @@ export declare const setSpan: (
 ) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setTracer
 
@@ -5842,7 +5842,7 @@ Create a Layer that sets the current Tracer
 export declare const setTracer: (tracer: Tracer.Tracer) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setTracerTiming
 
@@ -5852,7 +5852,7 @@ Added in v1.0.0
 export declare const setTracerTiming: (enabled: boolean) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## spanAnnotations
 
@@ -5862,7 +5862,7 @@ Added in v1.0.0
 export declare const spanAnnotations: Effect<never, never, HashMap.HashMap<string, Tracer.AttributeValue>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## spanLinks
 
@@ -5872,7 +5872,7 @@ Added in v1.0.0
 export declare const spanLinks: Effect<never, never, Chunk.Chunk<Tracer.SpanLink>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tracer
 
@@ -5882,7 +5882,7 @@ Added in v1.0.0
 export declare const tracer: Effect<never, never, Tracer.Tracer>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tracerWith
 
@@ -5892,7 +5892,7 @@ Added in v1.0.0
 export declare const tracerWith: <R, E, A>(f: (tracer: Tracer.Tracer) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## useSpan
 
@@ -5921,7 +5921,7 @@ export declare const useSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## useSpanScoped
 
@@ -5946,7 +5946,7 @@ export declare const useSpanScoped: (
 ) => Effect<Scope.Scope, never, Tracer.Span>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withParentSpan
 
@@ -5961,7 +5961,7 @@ export declare const withParentSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withParentSpanScoped
 
@@ -5973,7 +5973,7 @@ Adds the provided span to the current span stack.
 export declare const withParentSpanScoped: (span: Tracer.ParentSpan) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSpan
 
@@ -6007,7 +6007,7 @@ export declare const withSpan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSpanScoped
 
@@ -6030,7 +6030,7 @@ export declare const withSpanScoped: (
 ) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTracer
 
@@ -6043,7 +6043,7 @@ export declare const withTracer: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTracerScoped
 
@@ -6053,7 +6053,7 @@ Added in v1.0.0
 export declare const withTracerScoped: (value: Tracer.Tracer) => Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTracerTiming
 
@@ -6066,7 +6066,7 @@ export declare const withTracerTiming: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -6080,7 +6080,7 @@ export interface EffectTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unify
 
@@ -6094,7 +6094,7 @@ Used to unify effects that would otherwise be `Effect<A, B, C> | Effect<D, E, F>
 export declare const unified: <Ret extends Effect<any, any, any>>(f: Ret) => Effect.Unify<Ret>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unifiedFn
 
@@ -6108,13 +6108,13 @@ export declare const unifiedFn: <Args extends readonly any[], Ret extends Effect
 ) => (...args: Args) => Effect.Unify<Ret>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## All (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### EffectAny (type alias)
 
@@ -6124,7 +6124,7 @@ Added in v1.0.0
 export type EffectAny = Effect<any, any, any>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### ExtractMode (type alias)
 
@@ -6134,7 +6134,7 @@ Added in v1.0.0
 export type ExtractMode<A> = [A] extends [{ mode: infer M }] ? M : 'default'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### IsDiscard (type alias)
 
@@ -6144,7 +6144,7 @@ Added in v1.0.0
 export type IsDiscard<A> = [Extract<A, { readonly discard: true }>] extends [never] ? false : true
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Return (type alias)
 
@@ -6168,7 +6168,7 @@ export type Return<
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### ReturnIterable (type alias)
 
@@ -6186,7 +6186,7 @@ export type ReturnIterable<T extends Iterable<EffectAny>, Discard extends boolea
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### ReturnObject (type alias)
 
@@ -6226,7 +6226,7 @@ export type ReturnObject<T, Discard extends boolean, Mode> = [T] extends [{ [K: 
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### ReturnTuple (type alias)
 
@@ -6264,11 +6264,11 @@ export type ReturnTuple<T extends ReadonlyArray<unknown>, Discard extends boolea
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Effect (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -6280,7 +6280,7 @@ export interface Variance<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### VarianceStruct (interface)
 
@@ -6294,7 +6294,7 @@ export interface VarianceStruct<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Context (type alias)
 
@@ -6304,7 +6304,7 @@ Added in v1.0.0
 export type Context<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _R : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Error (type alias)
 
@@ -6314,7 +6314,7 @@ Added in v1.0.0
 export type Error<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _E : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Success (type alias)
 
@@ -6324,7 +6324,7 @@ Added in v1.0.0
 export type Success<T extends Effect<any, any, any>> = [T] extends [Effect<infer _R, infer _E, infer _A>] ? _A : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Unify (type alias)
 
@@ -6334,7 +6334,7 @@ Added in v1.0.0
 export type Unify<Ret extends Effect<any, any, any>> = Effect<Context<Ret>, Error<Ret>, Success<Ret>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MergeRecord (type alias)
 
@@ -6348,7 +6348,7 @@ export type MergeRecord<K, H> = {
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withMaxOpsBeforeYield
 
@@ -6363,7 +6363,7 @@ export declare const withMaxOpsBeforeYield: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSchedulingPriority
 
@@ -6378,7 +6378,7 @@ export declare const withSchedulingPriority: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -6403,7 +6403,7 @@ export declare const validate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validateWith
 
@@ -6428,7 +6428,7 @@ export declare const validateWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -6448,7 +6448,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -6468,7 +6468,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -6488,7 +6488,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -6510,4 +6510,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

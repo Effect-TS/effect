@@ -6,7 +6,7 @@ parent: Modules
 
 ## TRef overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const make: <A>(value: A) => STM.STM<never, never, TRef<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -73,7 +73,7 @@ export interface TRef<A> extends TRef.Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -85,7 +85,7 @@ Added in v1.0.0
 export declare const get: <A>(self: TRef<A>) => STM.STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndSet
 
@@ -98,7 +98,7 @@ export declare const getAndSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdate
 
@@ -111,7 +111,7 @@ export declare const getAndUpdate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdateSome
 
@@ -124,7 +124,7 @@ export declare const getAndUpdateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -137,7 +137,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifySome
 
@@ -150,7 +150,7 @@ export declare const modifySome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -163,7 +163,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setAndGet
 
@@ -176,7 +176,7 @@ export declare const setAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -189,7 +189,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateAndGet
 
@@ -202,7 +202,7 @@ export declare const updateAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSome
 
@@ -215,7 +215,7 @@ export declare const updateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSomeAndGet
 
@@ -228,7 +228,7 @@ export declare const updateSomeAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -240,7 +240,7 @@ Added in v1.0.0
 export declare const TRefTypeId: typeof TRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TRefTypeId (type alias)
 
@@ -250,13 +250,13 @@ Added in v1.0.0
 export type TRefTypeId = typeof TRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TRef (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -270,4 +270,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

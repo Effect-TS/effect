@@ -6,7 +6,7 @@ parent: Modules
 
 ## SortedMap overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const empty: <K, V = never>(ord: Order<K>) => SortedMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -64,7 +64,7 @@ Added in v1.0.0
 export declare const fromIterable: <K>(ord: Order<K>) => <V>(iterable: Iterable<readonly [K, V]>) => SortedMap<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -78,7 +78,7 @@ export declare const make: <K>(
 ) => SortedMap<K, Entries[number] extends readonly [any, infer V] ? V : never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -93,7 +93,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -106,7 +106,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## headOption
 
@@ -116,7 +116,7 @@ Added in v1.0.0
 export declare const headOption: <K, V>(self: SortedMap<K, V>) => Option.Option<readonly [K, V]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -129,7 +129,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -142,7 +142,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -157,7 +157,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -169,7 +169,7 @@ Added in v1.0.0
 export declare const entries: <K, V>(self: SortedMap<K, V>) => Iterator<readonly [K, V], any, undefined>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrder
 
@@ -181,7 +181,7 @@ Gets the `Order<K>` that the `SortedMap<K, V>` is using.
 export declare const getOrder: <K, V>(self: SortedMap<K, V>) => Order<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## keys
 
@@ -191,7 +191,7 @@ Added in v1.0.0
 export declare const keys: <K, V>(self: SortedMap<K, V>) => IterableIterator<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -201,7 +201,7 @@ Added in v1.0.0
 export declare const size: <K, V>(self: SortedMap<K, V>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -211,7 +211,7 @@ Added in v1.0.0
 export declare const values: <K, V>(self: SortedMap<K, V>) => IterableIterator<V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -226,7 +226,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -242,7 +242,7 @@ export interface SortedMap<K, V> extends Iterable<readonly [K, V]>, Equal.Equal,
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # predicates
 
@@ -254,7 +254,7 @@ Added in v1.0.0
 export declare const isEmpty: <K, V>(self: SortedMap<K, V>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -264,7 +264,7 @@ Added in v1.0.0
 export declare const isNonEmpty: <K, V>(self: SortedMap<K, V>) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -279,7 +279,7 @@ export declare const isSortedMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -291,4 +291,4 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

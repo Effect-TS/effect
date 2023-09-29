@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestSized overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -32,7 +32,7 @@ Added in v1.0.0
 export declare const TestSized: Context.Tag<TestSized, TestSized>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestSized (interface)
 
@@ -47,7 +47,7 @@ export interface TestSized {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestSizedTypeId
 
@@ -57,7 +57,7 @@ Added in v1.0.0
 export declare const TestSizedTypeId: typeof TestSizedTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestSizedTypeId (type alias)
 
@@ -67,7 +67,7 @@ Added in v1.0.0
 export type TestSizedTypeId = typeof TestSizedTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromFiberRef
 
@@ -77,7 +77,7 @@ Added in v1.0.0
 export declare const fromFiberRef: (fiberRef: FiberRef.FiberRef<number>) => TestSized
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -87,4 +87,4 @@ Added in v1.0.0
 export declare const make: (size: number) => TestSized
 ```
 
-Added in v1.0.0
+Added in v2.0.0

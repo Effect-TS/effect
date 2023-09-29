@@ -6,7 +6,7 @@ parent: Modules
 
 ## Config overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -81,7 +81,7 @@ export declare const all: <const Arg extends Iterable<Config<any>> | Record<stri
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## array
 
@@ -93,7 +93,7 @@ Constructs a config for an array of values.
 export declare const array: <A>(config: Config<A>, name?: string | undefined) => Config<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## boolean
 
@@ -105,7 +105,7 @@ Constructs a config for a boolean value.
 export declare const boolean: (name?: string | undefined) => Config<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## chunk
 
@@ -117,7 +117,7 @@ Constructs a config for a sequence of values.
 export declare const chunk: <A>(config: Config<A>, name?: string | undefined) => Config<Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## date
 
@@ -129,7 +129,7 @@ Constructs a config for a date value.
 export declare const date: (name?: string | undefined) => Config<Date>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -141,7 +141,7 @@ Constructs a config that fails with the specified message.
 export declare const fail: (message: string) => Config<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hashMap
 
@@ -153,7 +153,7 @@ Constructs a config for a sequence of values.
 export declare const hashMap: <A>(config: Config<A>, name?: string | undefined) => Config<HashMap.HashMap<string, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hashSet
 
@@ -165,7 +165,7 @@ Constructs a config for a sequence of values.
 export declare const hashSet: <A>(config: Config<A>, name?: string | undefined) => Config<HashSet.HashSet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## integer
 
@@ -177,7 +177,7 @@ Constructs a config for a integer value.
 export declare const integer: (name?: string | undefined) => Config<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logLevel
 
@@ -189,7 +189,7 @@ Constructs a config for a `LogLevel` value.
 export declare const logLevel: (name?: string | undefined) => Config<LogLevel.LogLevel>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## number
 
@@ -201,7 +201,7 @@ Constructs a config for a float value.
 export declare const number: (name?: string | undefined) => Config<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## primitive
 
@@ -216,7 +216,7 @@ export declare const primitive: <A>(
 ) => Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## secret
 
@@ -228,7 +228,7 @@ Constructs a config for a secret value.
 export declare const secret: (name?: string | undefined) => Config<ConfigSecret.ConfigSecret>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## string
 
@@ -240,7 +240,7 @@ Constructs a config for a string value.
 export declare const string: (name?: string | undefined) => Config<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -252,7 +252,7 @@ Constructs a config which contains the specified value.
 export declare const succeed: <A>(value: A) => Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -264,7 +264,7 @@ Lazily constructs a config.
 export declare const suspend: <A>(config: LazyArg<Config<A>>) => Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -276,7 +276,7 @@ Constructs a config which contains the specified lazy value.
 export declare const sync: <A>(value: LazyArg<A>) => Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrap
 
@@ -298,7 +298,7 @@ const makeConfig = (config: Config.Wrap<Options>): Config<Options> => unwrap(con
 export declare const unwrap: <A>(wrapped: Config.Wrap<A>) => Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -312,7 +312,7 @@ A `Config` describes the structure of some configuration data.
 export interface Config<A> extends Config.Variance<A>, Pipeable {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -332,7 +332,7 @@ argument to a function that expects an `Config` value.
 export declare const isConfig: (u: unknown) => u is Config<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -344,7 +344,7 @@ Added in v1.0.0
 export declare const ConfigTypeId: typeof ConfigTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ConfigTypeId (type alias)
 
@@ -354,13 +354,13 @@ Added in v1.0.0
 export type ConfigTypeId = typeof ConfigTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Config (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Primitive (interface)
 
@@ -373,7 +373,7 @@ export interface Primitive<A> extends Config<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -387,7 +387,7 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Wrap (type alias)
 
@@ -409,7 +409,7 @@ export type Wrap<A> =
   | Config<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -425,7 +425,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAttempt
 
@@ -442,7 +442,7 @@ export declare const mapAttempt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapOrFail
 
@@ -459,7 +459,7 @@ export declare const mapOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nested
 
@@ -475,7 +475,7 @@ export declare const nested: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## option
 
@@ -488,7 +488,7 @@ data is missing from configuration, and `Some` otherwise.
 export declare const option: <A>(self: Config<A>) => Config<Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -505,7 +505,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseIf
 
@@ -527,7 +527,7 @@ export declare const orElseIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeat
 
@@ -540,7 +540,7 @@ structure of this config.
 export declare const repeat: <A>(self: Config<A>) => Config<A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validate
 
@@ -563,7 +563,7 @@ export declare const validate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withDefault
 
@@ -579,7 +579,7 @@ export declare const withDefault: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withDescription
 
@@ -594,7 +594,7 @@ export declare const withDescription: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -610,7 +610,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -626,4 +626,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

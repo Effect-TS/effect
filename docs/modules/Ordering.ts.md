@@ -6,7 +6,7 @@ parent: Modules
 
 ## Ordering overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -38,7 +38,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineAll
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const combineAll: (collection: Iterable<Ordering>) => Ordering
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineMany
 
@@ -61,7 +61,7 @@ export declare const combineMany: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -73,7 +73,7 @@ Added in v1.0.0
 export type Ordering = -1 | 0 | 1
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -114,7 +114,7 @@ assert.deepStrictEqual(toMessage(0), 'equal')
 assert.deepStrictEqual(toMessage(1), 'greater than')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -138,4 +138,4 @@ assert.deepStrictEqual(reverse(-1), 1)
 assert.deepStrictEqual(reverse(0), 0)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

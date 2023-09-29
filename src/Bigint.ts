@@ -3,7 +3,7 @@
  * It includes functions for basic arithmetic operations, as well as type class instances for
  * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import * as equivalence from "./Equivalence"
@@ -24,7 +24,7 @@ import * as predicate from "./Predicate"
  * assert.deepStrictEqual(isBigint(1), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isBigint: (u: unknown) => u is bigint = predicate.isBigint
 
@@ -40,7 +40,7 @@ export const isBigint: (u: unknown) => u is bigint = predicate.isBigint
  * assert.deepStrictEqual(sum(2n, 3n), 5n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sum: {
   (that: bigint): (self: bigint) => bigint
@@ -59,7 +59,7 @@ export const sum: {
  * assert.deepStrictEqual(multiply(2n, 3n), 6n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiply: {
   (that: bigint): (self: bigint) => bigint
@@ -78,7 +78,7 @@ export const multiply: {
  * assert.deepStrictEqual(subtract(2n, 3n), -1n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const subtract: {
   (that: bigint): (self: bigint) => bigint
@@ -101,8 +101,8 @@ export const subtract: {
  * assert.deepStrictEqual(divide(6n, 4n), 1n)
  *
  * @category math
- * @since 1.0.0
- * @since 1.0.0
+ * @since 2.0.0
+ * @since 2.0.0
  */
 export const divide: {
   (that: bigint): (self: bigint) => bigint
@@ -120,7 +120,7 @@ export const divide: {
  * assert.deepStrictEqual(increment(2n), 3n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const increment = (n: bigint): bigint => n + 1n
 
@@ -135,19 +135,19 @@ export const increment = (n: bigint): bigint => n + 1n
  * assert.deepStrictEqual(decrement(3n), 2n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const decrement = (n: bigint): bigint => n - 1n
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<bigint> = equivalence.bigint
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Order: order.Order<bigint> = order.bigint
 
@@ -165,7 +165,7 @@ export const Order: order.Order<bigint> = order.bigint
  * assert.deepStrictEqual(lessThan(4n, 3n), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThan: {
   (that: bigint): (self: bigint) => boolean
@@ -186,7 +186,7 @@ export const lessThan: {
  * assert.deepStrictEqual(lessThanOrEqualTo(4n, 3n), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThanOrEqualTo: {
   (that: bigint): (self: bigint) => boolean
@@ -207,7 +207,7 @@ export const lessThanOrEqualTo: {
  * assert.deepStrictEqual(greaterThan(4n, 3n), true)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThan: {
   (that: bigint): (self: bigint) => boolean
@@ -228,7 +228,7 @@ export const greaterThan: {
  * assert.deepStrictEqual(greaterThanOrEqualTo(4n, 3n), true)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThanOrEqualTo: {
   (that: bigint): (self: bigint) => boolean
@@ -250,7 +250,7 @@ export const greaterThanOrEqualTo: {
  * assert.deepStrictEqual(between(0n, 5n)(6n), false)
  *
  * @category predicates
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const between: {
   (minimum: bigint, maximum: bigint): (self: bigint) => boolean
@@ -275,7 +275,7 @@ export const between: {
  * assert.deepStrictEqual(clamp(0n, 5n)(-1n), 0n)
  * assert.deepStrictEqual(clamp(0n, 5n)(6n), 5n)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const clamp: {
   (minimum: bigint, maximum: bigint): (self: bigint) => bigint
@@ -293,7 +293,7 @@ export const clamp: {
  *
  * assert.deepStrictEqual(min(2n, 3n), 2n)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const min: {
   (that: bigint): (self: bigint) => bigint
@@ -311,7 +311,7 @@ export const min: {
  *
  * assert.deepStrictEqual(max(2n, 3n), 3n)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const max: {
   (that: bigint): (self: bigint) => bigint
@@ -331,7 +331,7 @@ export const max: {
  * assert.deepStrictEqual(sign(5n), 1)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sign = (n: bigint): Ordering => Order(n, 0n)
 
@@ -346,7 +346,7 @@ export const sign = (n: bigint): Ordering => Order(n, 0n)
  * assert.deepStrictEqual(sumAll([2n, 3n, 4n]), 9n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const sumAll = (collection: Iterable<bigint>): bigint => {
   let out = 0n
@@ -367,7 +367,7 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  * assert.deepStrictEqual(multiplyAll([2n, 3n, 4n]), 24n)
  *
  * @category math
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const multiplyAll = (collection: Iterable<bigint>): bigint => {
   let out = 1n

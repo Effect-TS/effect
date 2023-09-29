@@ -9,7 +9,7 @@ parent: Modules
 A `Supervisor<T>` is allowed to supervise the launching and termination of
 fibers, producing some visible value of type `T` from the supervision.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -56,7 +56,7 @@ Added in v1.0.0
 export declare class AbstractSupervisor<T>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### value (method)
 
@@ -66,7 +66,7 @@ Added in v1.0.0
 abstract value(): Effect.Effect<never, never, T>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onStart (method)
 
@@ -81,7 +81,7 @@ onStart<R, E, A>(
   ): void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onEnd (method)
 
@@ -94,7 +94,7 @@ onEnd<E, A>(
   ): void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onEffect (method)
 
@@ -107,7 +107,7 @@ onEffect<E, A>(
   ): void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onSuspend (method)
 
@@ -119,7 +119,7 @@ onSuspend<E, A>(
   ): void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onResume (method)
 
@@ -131,7 +131,7 @@ onResume<E, A>(
   ): void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### map (method)
 
@@ -141,7 +141,7 @@ Added in v1.0.0
 map<B>(f: (a: T) => B): Supervisor<B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### zip (method)
 
@@ -153,7 +153,7 @@ zip<A>(
   ): Supervisor<readonly [T, A]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### onRun (method)
 
@@ -163,7 +163,7 @@ Added in v1.0.0
 onRun<E, A, X>(execution: () => X, _fiber: Fiber.RuntimeFiber<E, A>): X
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### [SupervisorTypeId] (property)
 
@@ -173,7 +173,7 @@ Added in v1.0.0
 readonly [SupervisorTypeId]: { _T: (_: never) => never; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fibersIn
 
@@ -187,7 +187,7 @@ export declare const fibersIn: (
 ) => Effect.Effect<never, never, Supervisor<SortedSet.SortedSet<Fiber.RuntimeFiber<any, any>>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffect
 
@@ -199,7 +199,7 @@ Creates a new supervisor that constantly yields effect when polled
 export declare const fromEffect: <A>(effect: Effect.Effect<never, never, A>) => Supervisor<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -211,7 +211,7 @@ A supervisor that doesn't do anything in response to supervision events.
 export declare const none: Supervisor<void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## track
 
@@ -223,7 +223,7 @@ Creates a new supervisor that tracks children in a set.
 export declare const track: Effect.Effect<never, never, Supervisor<Fiber.RuntimeFiber<any, any>[]>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -235,7 +235,7 @@ Added in v1.0.0
 export declare const addSupervisor: <A>(supervisor: Supervisor<A>) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -297,7 +297,7 @@ export interface Supervisor<T> extends Supervisor.Variance<T> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -309,7 +309,7 @@ Added in v1.0.0
 export declare const SupervisorTypeId: typeof SupervisorTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SupervisorTypeId (type alias)
 
@@ -319,7 +319,7 @@ Added in v1.0.0
 export type SupervisorTypeId = typeof SupervisorTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -333,13 +333,13 @@ Unsafely creates a new supervisor that tracks children in a set.
 export declare const unsafeTrack: () => Supervisor<Array<Fiber.RuntimeFiber<any, any>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Supervisor (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -353,4 +353,4 @@ export interface Variance<T> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

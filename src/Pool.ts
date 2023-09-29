@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Data from "./Data"
 import type * as Duration from "./Duration"
@@ -9,13 +9,13 @@ import type { Pipeable } from "./Pipeable"
 import type * as Scope from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const PoolTypeId: unique symbol = internal.PoolTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type PoolTypeId = typeof PoolTypeId
@@ -25,7 +25,7 @@ export type PoolTypeId = typeof PoolTypeId
  * associated with the acquisition and release of resources. An attempt to get
  * an item `A` from a pool may fail with an error of type `E`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
@@ -45,11 +45,11 @@ export interface Pool<E, A> extends Data.Case, Pool.Variance<E, A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Pool {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<E, A> {
@@ -63,7 +63,7 @@ export declare namespace Pool {
 /**
  * Returns `true` if the specified value is a `Pool`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPool
@@ -74,7 +74,7 @@ export const isPool: (u: unknown) => u is Pool<unknown, unknown> = internal.isPo
  * because the `Scope` is closed, the individual items allocated by the pool
  * will be released in some unspecified order.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <R, E, A>(
@@ -114,7 +114,7 @@ export const make: <R, E, A>(
  * )
  * ```
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWithTTL: <R, E, A>(options: {
@@ -129,7 +129,7 @@ export const makeWithTTL: <R, E, A>(options: {
  * acquisition fails, then the returned effect will fail for that same reason.
  * Retrying a failed acquisition attempt will repeat the acquisition attempt.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> = internal.get
@@ -139,7 +139,7 @@ export const get: <E, A>(self: Pool<E, A>) => Effect.Effect<Scope.Scope, E, A> =
  * reallocate the item, although this reallocation may occur lazily rather
  * than eagerly.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combinators
  */
 export const invalidate: {

@@ -14,7 +14,7 @@
  * The `refined` function takes a predicate that is used to validate the input data.
  * If the input data fails the validation, a `BrandErrors` is returned, which provides information about the specific validation failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Either from "./Either"
 import { identity } from "./Function"
@@ -24,25 +24,25 @@ import * as ReadonlyArray from "./ReadonlyArray"
 import type * as Types from "./Types"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const BrandTypeId: unique symbol = Symbol.for("effect/Brand")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type BrandTypeId = typeof BrandTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const RefinedConstructorsTypeId: unique symbol = Symbol.for("effect/Brand/Refined")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
@@ -50,7 +50,7 @@ export type RefinedConstructorsTypeId = typeof RefinedConstructorsTypeId
 /**
  * A generic interface that defines a branded type.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Brand<in out K extends string | symbol> {
@@ -60,13 +60,13 @@ export interface Brand<in out K extends string | symbol> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Brand {
   /**
    * Represents a list of refinement errors.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface BrandErrors extends ReadonlyArray<RefinementError> {}
@@ -74,7 +74,7 @@ export declare namespace Brand {
   /**
    * Represents an error that occurs when the provided value of the branded type does not pass the refinement predicate.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface RefinementError {
@@ -83,7 +83,7 @@ export declare namespace Brand {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Constructor<in out A extends Brand<any>> {
@@ -113,7 +113,7 @@ export declare namespace Brand {
   /**
    * A utility type to extract a branded type from a `Brand.Constructor`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type FromConstructor<A> = A extends Brand.Constructor<infer B> ? B : never
@@ -121,7 +121,7 @@ export declare namespace Brand {
   /**
    * A utility type to extract the value type from a brand.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P
@@ -129,7 +129,7 @@ export declare namespace Brand {
   /**
    * A utility type to extract the brands from a branded type.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Brands<P> = P extends Brand<any> ? Types.UnionToIntersection<
@@ -143,7 +143,7 @@ export declare namespace Brand {
   /**
    * A utility type that checks that all brands have the same base type.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type EnsureCommonBase<
@@ -160,14 +160,14 @@ export declare namespace Brand {
 
 /**
  * @category alias
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Branded<A, K extends string | symbol> = A & Brand<K>
 
 /**
  * Returns a `BrandErrors` that contains a single `RefinementError`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const error: (message: string, meta?: unknown) => Brand.BrandErrors = (
@@ -181,7 +181,7 @@ export const error: (message: string, meta?: unknown) => Brand.BrandErrors = (
 /**
  * Takes a variable number of `BrandErrors` and returns a single `BrandErrors` that contains all refinement errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors = (
@@ -211,7 +211,7 @@ export const errors: (...errors: Array<Brand.BrandErrors>) => Brand.BrandErrors 
  * assert.strictEqual(Int(1), 1)
  * assert.throws(() => Int(1.1))
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const refined: <A extends Brand<any>>(
@@ -253,7 +253,7 @@ export const refined: <A extends Brand<any>>(
  *
  * assert.strictEqual(UserId(1), 1)
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A extends Brand<any>>(): Brand.Constructor<
@@ -291,7 +291,7 @@ export const nominal: <A extends Brand<any>>() => Brand.Constructor<A> = <A exte
  * assert.strictEqual(PositiveInt(1), 1)
  * assert.throws(() => PositiveInt(1.1))
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category combining
  */
 export const all: <Brands extends readonly [Brand.Constructor<any>, ...Array<Brand.Constructor<any>>]>(

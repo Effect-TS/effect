@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as Fiber from "./Fiber"
@@ -10,13 +10,13 @@ import type * as Schedule from "./Schedule"
 import type * as Scope from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const PollingMetricTypeId: unique symbol = internal.PollingMetricTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type PollingMetricTypeId = typeof PollingMetricTypeId
@@ -25,7 +25,7 @@ export type PollingMetricTypeId = typeof PollingMetricTypeId
  * A `PollingMetric` is a combination of a metric and an effect that polls for
  * updates to the metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
@@ -43,7 +43,7 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
 /**
  * Constructs a new polling metric from a metric and poll effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Type, In, Out, R, E>(
@@ -55,7 +55,7 @@ export const make: <Type, In, Out, R, E>(
  * Collects all of the polling metrics into a single polling metric, which
  * polls for, updates, and produces the outputs of all individual metrics.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const collectAll: <R, E, Out>(
@@ -66,7 +66,7 @@ export const collectAll: <R, E, Out>(
  * Returns an effect that will launch the polling metric in a background
  * fiber, using the specified schedule.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const launch: {
@@ -84,7 +84,7 @@ export const launch: {
 /**
  * An effect that polls a value that may be fed to the metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In> =
@@ -93,7 +93,7 @@ export const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out
 /**
  * An effect that polls for a value and uses the value to update the metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pollAndUpdate: <Type, In, R, E, Out>(
@@ -104,7 +104,7 @@ export const pollAndUpdate: <Type, In, R, E, Out>(
  * Returns a new polling metric whose poll function will be retried with the
  * specified retry policy.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const retry: {
@@ -120,7 +120,7 @@ export const retry: {
 /**
  * Zips this polling metric with the specified polling metric.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const zip: {

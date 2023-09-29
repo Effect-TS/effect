@@ -1,17 +1,17 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import * as internal from "./internal/configError"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ConfigErrorTypeId: unique symbol = internal.ConfigErrorTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ConfigErrorTypeId = typeof ConfigErrorTypeId
@@ -19,7 +19,7 @@ export type ConfigErrorTypeId = typeof ConfigErrorTypeId
 /**
  * The possible ways that loading configuration data may fail.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ConfigError =
@@ -31,11 +31,11 @@ export type ConfigError =
   | Unsupported
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace ConfigError {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -43,14 +43,14 @@ export declare namespace ConfigError {
   }
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Reducer<C, Z> = ConfigErrorReducer<C, Z>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ConfigErrorReducer<C, Z> {
@@ -68,7 +68,7 @@ export interface ConfigErrorReducer<C, Z> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface And extends ConfigError.Proto {
@@ -78,7 +78,7 @@ export interface And extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Or extends ConfigError.Proto {
@@ -88,7 +88,7 @@ export interface Or extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface InvalidData extends ConfigError.Proto {
@@ -98,7 +98,7 @@ export interface InvalidData extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MissingData extends ConfigError.Proto {
@@ -108,7 +108,7 @@ export interface MissingData extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SourceUnavailable extends ConfigError.Proto {
@@ -119,7 +119,7 @@ export interface SourceUnavailable extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Unsupported extends ConfigError.Proto {
@@ -129,7 +129,7 @@ export interface Unsupported extends ConfigError.Proto {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Options {
@@ -137,33 +137,33 @@ export interface Options {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const And: (self: ConfigError, that: ConfigError) => ConfigError = internal.And
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Or: (self: ConfigError, that: ConfigError) => ConfigError = internal.Or
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const MissingData: (path: Array<string>, message: string, options?: Options) => ConfigError =
   internal.MissingData
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const InvalidData: (path: Array<string>, message: string, options?: Options) => ConfigError =
   internal.InvalidData
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const SourceUnavailable: (
@@ -174,7 +174,7 @@ export const SourceUnavailable: (
 ) => ConfigError = internal.SourceUnavailable
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Unsupported: (path: Array<string>, message: string, options?: Options) => ConfigError =
@@ -183,7 +183,7 @@ export const Unsupported: (path: Array<string>, message: string, options?: Optio
 /**
  * Returns `true` if the specified value is a `ConfigError`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isConfigError: (u: unknown) => u is ConfigError = internal.isConfigError
@@ -191,7 +191,7 @@ export const isConfigError: (u: unknown) => u is ConfigError = internal.isConfig
 /**
  * Returns `true` if the specified `ConfigError` is an `And`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isAnd: (self: ConfigError) => self is And = internal.isAnd
@@ -199,7 +199,7 @@ export const isAnd: (self: ConfigError) => self is And = internal.isAnd
 /**
  * Returns `true` if the specified `ConfigError` is an `Or`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isOr: (self: ConfigError) => self is Or = internal.isOr
@@ -208,7 +208,7 @@ export const isOr: (self: ConfigError) => self is Or = internal.isOr
  * Returns `true` if the specified `ConfigError` is an `InvalidData`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isInvalidData: (self: ConfigError) => self is InvalidData = internal.isInvalidData
@@ -217,7 +217,7 @@ export const isInvalidData: (self: ConfigError) => self is InvalidData = interna
  * Returns `true` if the specified `ConfigError` is an `MissingData`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMissingData: (self: ConfigError) => self is MissingData = internal.isMissingData
@@ -225,7 +225,7 @@ export const isMissingData: (self: ConfigError) => self is MissingData = interna
 /**
  * Returns `true` if the specified `ConfigError` contains only `MissingData` errors, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @categer getters
  */
 export const isMissingDataOnly: (self: ConfigError) => boolean = internal.isMissingDataOnly
@@ -234,7 +234,7 @@ export const isMissingDataOnly: (self: ConfigError) => boolean = internal.isMiss
  * Returns `true` if the specified `ConfigError` is a `SourceUnavailable`,
  * `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSourceUnavailable: (self: ConfigError) => self is SourceUnavailable = internal.isSourceUnavailable
@@ -243,13 +243,13 @@ export const isSourceUnavailable: (self: ConfigError) => self is SourceUnavailab
  * Returns `true` if the specified `ConfigError` is an `Unsupported`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isUnsupported: (self: ConfigError) => self is Unsupported = internal.isUnsupported
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const prefixed: {
@@ -258,7 +258,7 @@ export const prefixed: {
 } = internal.prefixed
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const reduceWithContext: {

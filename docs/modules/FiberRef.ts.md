@@ -6,7 +6,7 @@ parent: Modules
 
 ## FiberRef overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -85,7 +85,7 @@ export declare const make: <A>(
 ) => Effect.Effect<Scope.Scope, never, FiberRef<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeContext
 
@@ -97,7 +97,7 @@ export declare const makeContext: <A>(
 ) => Effect.Effect<Scope.Scope, never, FiberRef<Context.Context<A>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeRuntimeFlags
 
@@ -109,7 +109,7 @@ export declare const makeRuntimeFlags: (
 ) => Effect.Effect<Scope.Scope, never, FiberRef<RuntimeFlags.RuntimeFlags>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWith
 
@@ -121,7 +121,7 @@ export declare const makeWith: <Value>(
 ) => Effect.Effect<Scope.Scope, never, FiberRef<Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMake
 
@@ -139,7 +139,7 @@ export declare const unsafeMake: <Value>(
 ) => FiberRef<Value>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMakeContext
 
@@ -149,7 +149,7 @@ Added in v1.0.0
 export declare const unsafeMakeContext: <A>(initial: Context.Context<A>) => FiberRef<Context.Context<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMakeHashSet
 
@@ -159,7 +159,7 @@ Added in v1.0.0
 export declare const unsafeMakeHashSet: <A>(initial: HashSet.HashSet<A>) => FiberRef<HashSet.HashSet<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMakePatch
 
@@ -176,7 +176,7 @@ export declare const unsafeMakePatch: <Value, Patch>(
 ) => FiberRef<Value>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeMakeSupervisor
 
@@ -186,7 +186,7 @@ Added in v1.0.0
 export declare const unsafeMakeSupervisor: (initial: Supervisor.Supervisor<any>) => FiberRef<Supervisor.Supervisor<any>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # fiberRefs
 
@@ -198,7 +198,7 @@ Added in v1.0.0
 export declare const currentContext: FiberRef<Context.Context<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentLogAnnotations
 
@@ -208,7 +208,7 @@ Added in v1.0.0
 export declare const currentLogAnnotations: FiberRef<HashMap.HashMap<string, Logger.AnnotationValue>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentLogLevel
 
@@ -218,7 +218,7 @@ Added in v1.0.0
 export declare const currentLogLevel: FiberRef<LogLevel.LogLevel>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentLogSpan
 
@@ -228,7 +228,7 @@ Added in v1.0.0
 export declare const currentLogSpan: FiberRef<List.List<LogSpan.LogSpan>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentLoggers
 
@@ -238,7 +238,7 @@ Added in v1.0.0
 export declare const currentLoggers: FiberRef<HashSet.HashSet<Logger.Logger<unknown, any>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentMaxOpsBeforeYield
 
@@ -248,7 +248,7 @@ Added in v1.0.0
 export declare const currentMaxOpsBeforeYield: FiberRef<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentMetricLabels
 
@@ -258,7 +258,7 @@ Added in v1.0.0
 export declare const currentMetricLabels: FiberRef<HashSet.HashSet<MetricLabel.MetricLabel>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentMinimumLogLevel
 
@@ -268,7 +268,7 @@ Added in v1.0.0
 export declare const currentMinimumLogLevel: FiberRef<LogLevel.LogLevel>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentRequestBatchingEnabled
 
@@ -278,7 +278,7 @@ Added in v1.0.0
 export declare const currentRequestBatchingEnabled: FiberRef<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentRequestCache
 
@@ -288,7 +288,7 @@ Added in v1.0.0
 export declare const currentRequestCache: FiberRef<Request.Cache>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentRequestCacheEnabled
 
@@ -298,7 +298,7 @@ Added in v1.0.0
 export declare const currentRequestCacheEnabled: FiberRef<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentRuntimeFlags
 
@@ -308,7 +308,7 @@ Added in v1.0.0
 export declare const currentRuntimeFlags: FiberRef<RuntimeFlags.RuntimeFlags>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentScheduler
 
@@ -318,7 +318,7 @@ Added in v1.0.0
 export declare const currentScheduler: FiberRef<Scheduler.Scheduler>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentSchedulingPriority
 
@@ -328,7 +328,7 @@ Added in v1.0.0
 export declare const currentSchedulingPriority: FiberRef<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentSupervisor
 
@@ -338,7 +338,7 @@ Added in v1.0.0
 export declare const currentSupervisor: FiberRef<Supervisor.Supervisor<any>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTracerSpan
 
@@ -348,7 +348,7 @@ Added in v1.0.0
 export declare const currentTracerSpan: FiberRef<List.List<Tracer.ParentSpan>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTracerSpanAnnotations
 
@@ -358,7 +358,7 @@ Added in v1.0.0
 export declare const currentTracerSpanAnnotations: FiberRef<HashMap.HashMap<string, Tracer.AttributeValue>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTracerSpanLinks
 
@@ -368,7 +368,7 @@ Added in v1.0.0
 export declare const currentTracerSpanLinks: FiberRef<Chunk.Chunk<Tracer.SpanLink>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentTracerTimingEnabled
 
@@ -378,7 +378,7 @@ Added in v1.0.0
 export declare const currentTracerTimingEnabled: FiberRef<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptedCause
 
@@ -388,7 +388,7 @@ Added in v1.0.0
 export declare const interruptedCause: FiberRef<Cause.Cause<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unhandledErrorLogLevel
 
@@ -398,7 +398,7 @@ Added in v1.0.0
 export declare const unhandledErrorLogLevel: FiberRef<Option.Option<LogLevel.LogLevel>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -410,7 +410,7 @@ Added in v1.0.0
 export declare const get: <A>(self: FiberRef<A>) => Effect.Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -435,7 +435,7 @@ export interface FiberRef<A> extends Variance<A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -451,7 +451,7 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -463,7 +463,7 @@ Added in v1.0.0
 export declare const FiberRefTypeId: typeof FiberRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberRefTypeId (type alias)
 
@@ -473,7 +473,7 @@ Added in v1.0.0
 export type FiberRefTypeId = typeof FiberRefTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -485,7 +485,7 @@ Added in v1.0.0
 export declare const delete: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndSet
 
@@ -498,7 +498,7 @@ export declare const getAndSet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdate
 
@@ -511,7 +511,7 @@ export declare const getAndUpdate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAndUpdateSome
 
@@ -524,7 +524,7 @@ export declare const getAndUpdateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getWith
 
@@ -537,7 +537,7 @@ export declare const getWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -550,7 +550,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifySome
 
@@ -564,7 +564,7 @@ export declare const modifySome: <A, B>(
 ) => Effect.Effect<never, never, B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reset
 
@@ -574,7 +574,7 @@ Added in v1.0.0
 export declare const reset: <A>(self: FiberRef<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -587,7 +587,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -600,7 +600,7 @@ export declare const update: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateAndGet
 
@@ -613,7 +613,7 @@ export declare const updateAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSome
 
@@ -626,7 +626,7 @@ export declare const updateSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateSomeAndGet
 
@@ -639,4 +639,4 @@ export declare const updateSomeAndGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

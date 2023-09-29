@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricPolling overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ export declare const collectAll: <R, E, Out>(
 ) => PollingMetric<any[], any[], R, E, Out[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -59,7 +59,7 @@ export declare const make: <Type, In, Out, R, E>(
 ) => PollingMetric<Type, In, R, E, Out>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retry
 
@@ -80,7 +80,7 @@ export declare const retry: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -105,7 +105,7 @@ export interface PollingMetric<Type, In, R, E, Out> extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -117,7 +117,7 @@ Added in v1.0.0
 export declare const PollingMetricTypeId: typeof PollingMetricTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## PollingMetricTypeId (type alias)
 
@@ -127,7 +127,7 @@ Added in v1.0.0
 export type PollingMetricTypeId = typeof PollingMetricTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -150,7 +150,7 @@ export declare const launch: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -162,7 +162,7 @@ An effect that polls a value that may be fed to the metric.
 export declare const poll: <Type, In, R, E, Out>(self: PollingMetric<Type, In, R, E, Out>) => Effect.Effect<R, E, In>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pollAndUpdate
 
@@ -176,7 +176,7 @@ export declare const pollAndUpdate: <Type, In, R, E, Out>(
 ) => Effect.Effect<R, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -196,4 +196,4 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

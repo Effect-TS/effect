@@ -6,7 +6,7 @@ parent: Modules
 
 ## Option overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -136,7 +136,7 @@ assert.deepStrictEqual(O.all({ a: O.some(1), b: O.some('hello') }), O.some({ a: 
 assert.deepStrictEqual(O.all({ a: O.some(1), b: O.none() }), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ap
 
@@ -149,7 +149,7 @@ export declare const ap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## product
 
@@ -159,7 +159,7 @@ Added in v1.0.0
 export declare const product: <A, B>(self: Option<A>, that: Option<B>) => Option<[A, B]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## productMany
 
@@ -169,7 +169,7 @@ Added in v1.0.0
 export declare const productMany: <A>(self: Option<A>, collection: Iterable<Option<A>>) => Option<[A, ...A[]]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -201,7 +201,7 @@ assert.deepStrictEqual(O.zipWith(O.some(1), O.some(2), complex), O.some([1, 2]))
 assert.deepStrictEqual(O.zipWith(O.some(1), complex)(O.some(2)), O.some([2, 1]))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -215,7 +215,7 @@ Creates a new `Option` that represents the absence of a value.
 export declare const none: <A = never>() => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -227,7 +227,7 @@ Creates a new `Option` that wraps the given value.
 export declare const some: <A>(value: A) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -251,7 +251,7 @@ assert.deepStrictEqual(fromIterable([1, 2, 3]), some(1))
 assert.deepStrictEqual(fromIterable([]), none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromNullable
 
@@ -274,7 +274,7 @@ assert.deepStrictEqual(O.fromNullable(null), O.none())
 assert.deepStrictEqual(O.fromNullable(1), O.some(1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getLeft
 
@@ -296,7 +296,7 @@ assert.deepStrictEqual(O.getLeft(E.right('ok')), O.none())
 assert.deepStrictEqual(O.getLeft(E.left('a')), O.some('a'))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrThrow
 
@@ -319,7 +319,7 @@ assert.deepStrictEqual(O.getOrThrow(O.some(1)), 1)
 assert.throws(() => O.getOrThrow(O.none()))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrThrowWith
 
@@ -348,7 +348,7 @@ assert.deepStrictEqual(
 assert.throws(() => O.getOrThrowWith(O.none(), () => new Error('Unexpected None')))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getRight
 
@@ -372,7 +372,7 @@ assert.deepStrictEqual(O.getRight(E.right('ok')), O.some('ok'))
 assert.deepStrictEqual(O.getRight(E.left('err')), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftNullable
 
@@ -402,7 +402,7 @@ assert.deepStrictEqual(parseOption('1'), O.some(1))
 assert.deepStrictEqual(parseOption('not a number'), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftThrowable
 
@@ -428,7 +428,7 @@ assert.deepStrictEqual(parse('1'), O.some(1))
 assert.deepStrictEqual(parse(''), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toArray
 
@@ -451,7 +451,7 @@ assert.deepStrictEqual(O.toArray(O.some(1)), [1])
 assert.deepStrictEqual(O.toArray(O.none()), [])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toRefinement
 
@@ -477,7 +477,7 @@ assert.deepStrictEqual(isPositive(1), true)
 assert.deepStrictEqual(isPositive(-1), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # do notation
 
@@ -489,7 +489,7 @@ Added in v1.0.0
 export declare const Do: Option<{}>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bind
 
@@ -506,7 +506,7 @@ export declare const bind: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bindTo
 
@@ -519,7 +519,7 @@ export declare const bindTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## let
 
@@ -536,7 +536,7 @@ export declare const let: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -550,7 +550,7 @@ Returns a function that checks if an `Option` contains a given value using the d
 export declare const contains: { <A>(a: A): (self: Option<A>) => boolean; <A>(self: Option<A>, a: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## containsWith
 
@@ -577,7 +577,7 @@ assert.deepStrictEqual(pipe(some(1), containsWith(Equivalence)(2)), false)
 assert.deepStrictEqual(pipe(none(), containsWith(Equivalence)(2)), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # equivalence
 
@@ -603,7 +603,7 @@ assert.deepStrictEqual(isEquivalent(some(1), some(2)), false)
 assert.deepStrictEqual(isEquivalent(some(1), some(1)), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -625,7 +625,7 @@ import * as O from 'effect/Option'
 assert.deepStrictEqual(O.firstSomeOf([O.none(), O.some(1), O.some(2)]), O.some(1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -676,7 +676,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseEither
 
@@ -694,7 +694,7 @@ export declare const orElseEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -735,7 +735,7 @@ assert.deepStrictEqual(O.filter(O.some('hello'), isNumber), O.none())
 assert.deepStrictEqual(O.filter(O.some(2), isNumber), O.some(2))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -764,7 +764,7 @@ assert.deepStrictEqual(O.filterMap(O.some(3), evenNumber), O.none())
 assert.deepStrictEqual(O.filterMap(O.some(2), evenNumber), O.some(2))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionMap
 
@@ -777,7 +777,7 @@ export declare const partitionMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -810,7 +810,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # generators
 
@@ -822,7 +822,7 @@ Added in v1.0.0
 export declare const gen: Gen.Gen<OptionTypeLambda, Gen.Adapter<OptionTypeLambda>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -861,7 +861,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrNull
 
@@ -882,7 +882,7 @@ assert.deepStrictEqual(O.getOrNull(O.some(1)), 1)
 assert.deepStrictEqual(O.getOrNull(O.none()), null)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrUndefined
 
@@ -903,7 +903,7 @@ assert.deepStrictEqual(O.getOrUndefined(O.some(1)), 1)
 assert.deepStrictEqual(O.getOrUndefined(O.none()), undefined)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -926,7 +926,7 @@ assert.deepStrictEqual(isNone(some(1)), false)
 assert.deepStrictEqual(isNone(none()), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isOption
 
@@ -948,7 +948,7 @@ assert.deepStrictEqual(isOption(none()), true)
 assert.deepStrictEqual(isOption({}), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSome
 
@@ -969,7 +969,7 @@ assert.deepStrictEqual(isSome(some(1)), true)
 assert.deepStrictEqual(isSome(none()), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # lifting
 
@@ -985,7 +985,7 @@ export declare const lift2: <A, B, C>(
 ) => { (that: Option<B>): (self: Option<A>) => Option<C>; (self: Option<A>, that: Option<B>): Option<C> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftPredicate
 
@@ -1012,7 +1012,7 @@ assert.deepStrictEqual(getOption(-1), O.none())
 assert.deepStrictEqual(getOption(1), O.some(1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # math
 
@@ -1027,7 +1027,7 @@ export declare const divide: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiply
 
@@ -1040,7 +1040,7 @@ export declare const multiply: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## multiplyCompact
 
@@ -1061,7 +1061,7 @@ const iterable = [some(2), none(), some(3), none()]
 assert.deepStrictEqual(multiplyCompact(iterable), 6)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subtract
 
@@ -1074,7 +1074,7 @@ export declare const subtract: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sum
 
@@ -1087,7 +1087,7 @@ export declare const sum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sumCompact
 
@@ -1108,7 +1108,7 @@ const iterable = [some(2), none(), some(3), none()]
 assert.deepStrictEqual(sumCompact(iterable), 5)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1129,7 +1129,7 @@ export interface None<A> extends Data.Case, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Option (type alias)
 
@@ -1139,7 +1139,7 @@ Added in v1.0.0
 export type Option<A> = None<A> | Some<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## OptionUnify (interface)
 
@@ -1151,7 +1151,7 @@ export interface OptionUnify<A extends { [Unify.typeSymbol]?: any }> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## OptionUnifyBlacklist (interface)
 
@@ -1161,7 +1161,7 @@ Added in v1.0.0
 export interface OptionUnifyBlacklist {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Some (interface)
 
@@ -1181,7 +1181,7 @@ export interface Some<A> extends Data.Case, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -1216,7 +1216,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sorting
 
@@ -1249,7 +1249,7 @@ assert.deepStrictEqual(O(some(1), some(2)), -1)
 assert.deepStrictEqual(O(some(1), some(1)), 0)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -1261,7 +1261,7 @@ Added in v1.0.0
 export declare const TypeId: typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -1271,7 +1271,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # transforming
 
@@ -1285,7 +1285,7 @@ Maps the `Some` value of this `Option` to the specified constant value.
 export declare const as: <B>(b: B) => <_>(self: Option<_>) => Option<B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asUnit
 
@@ -1299,7 +1299,7 @@ This is useful when the value of the `Option` is not needed, but the presence or
 export declare const asUnit: <_>(self: Option<_>) => Option<void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## composeK
 
@@ -1312,7 +1312,7 @@ export declare const composeK: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMap
 
@@ -1327,7 +1327,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapNullable
 
@@ -1379,7 +1379,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -1389,7 +1389,7 @@ Added in v1.0.0
 export declare const flatten: <A>(self: Option<Option<A>>) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -1404,7 +1404,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tap
 
@@ -1434,7 +1434,7 @@ assert.deepStrictEqual(O.tap(O.some(1), getInteger), O.some(1))
 assert.deepStrictEqual(O.tap(O.some(1.14), getInteger), O.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -1451,7 +1451,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -1464,7 +1464,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -1478,7 +1478,7 @@ export interface OptionTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -1508,7 +1508,7 @@ assert.deepStrictEqual(pipe(some(1), exists(isEven)), false)
 assert.deepStrictEqual(pipe(none(), exists(isEven)), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -1518,4 +1518,4 @@ Added in v1.0.0
 export declare const unit: Option<void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

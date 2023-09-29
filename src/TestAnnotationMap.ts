@@ -1,23 +1,23 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { dual, pipe } from "./Function"
 import type * as TestAnnotation from "./TestAnnotation"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestAnnotationMapTypeId = Symbol.for("effect/TestAnnotationMap")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TestAnnotationMapTypeId = typeof TestAnnotationMapTypeId
 
 /**
  * An annotation map keeps track of annotations of different types.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestAnnotationMap {
   readonly [TestAnnotationMapTypeId]: TestAnnotationMapTypeId
@@ -33,26 +33,26 @@ class TestAnnotationMapImpl implements TestAnnotationMap {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isTestAnnotationMap = (u: unknown): u is TestAnnotationMap => {
   return typeof u === "object" && u != null && TestAnnotationMapTypeId in u
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty: (_: void) => TestAnnotationMap = () => new TestAnnotationMapImpl(new Map())
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = (map: ReadonlyMap<TestAnnotation.TestAnnotation<unknown>, unknown>): TestAnnotationMap => {
   return new TestAnnotationMapImpl(map)
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const overwrite = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
@@ -64,7 +64,7 @@ export const overwrite = dual<
   ))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const update = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>, f: (value: A) => A) => (self: TestAnnotationMap) => TestAnnotationMap,
@@ -81,7 +81,7 @@ export const update = dual<
  * Retrieves the annotation of the specified type, or its default value if
  * there is none.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const get = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>) => (self: TestAnnotationMap) => A,
@@ -97,7 +97,7 @@ export const get = dual<
 /**
  * Appends the specified annotation to the annotation map.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const annotate = dual<
   <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => (self: TestAnnotationMap) => TestAnnotationMap,
@@ -105,7 +105,7 @@ export const annotate = dual<
 >(3, (self, key, value) => update(self, key, (_) => key.combine(_, value)))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combine = dual<
   (that: TestAnnotationMap) => (self: TestAnnotationMap) => TestAnnotationMap,

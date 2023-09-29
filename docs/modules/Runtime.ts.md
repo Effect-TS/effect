@@ -6,7 +6,7 @@ parent: Modules
 
 ## Runtime overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -52,7 +52,7 @@ Added in v1.0.0
 export declare const defaultRuntime: Runtime<never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## defaultRuntimeFlags
 
@@ -62,7 +62,7 @@ Added in v1.0.0
 export declare const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -76,7 +76,7 @@ export declare const make: <R>(options: {
 }) => Runtime<R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeFiberFailure
 
@@ -86,7 +86,7 @@ Added in v1.0.0
 export declare const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # execution
 
@@ -109,7 +109,7 @@ export declare const runCallback: <R>(
 ) => (fiberId?: FiberId.FiberId | undefined, onExit?: ((exit: Exit.Exit<E, A>) => void) | undefined) => void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runFork
 
@@ -124,7 +124,7 @@ export declare const runFork: <R>(
 ) => <E, A>(self: Effect.Effect<R, E, A>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runPromise
 
@@ -141,7 +141,7 @@ program.
 export declare const runPromise: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runPromiseExit
 
@@ -159,7 +159,7 @@ export declare const runPromiseExit: <R>(
 ) => <E, A>(effect: Effect.Effect<R, E, A>) => Promise<Exit.Exit<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runSync
 
@@ -174,7 +174,7 @@ program.
 export declare const runSync: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## runSyncExit
 
@@ -189,7 +189,7 @@ program.
 export declare const runSyncExit: <R>(runtime: Runtime<R>) => <E, A>(effect: Effect.Effect<R, E, A>) => Exit.Exit<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # exports
 
@@ -201,7 +201,7 @@ Added in v1.0.0
 export type FiberFailureCauseId = typeof FiberFailureCauseId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -213,7 +213,7 @@ Added in v1.0.0
 export declare const isAsyncFiberException: (u: unknown) => u is AsyncFiberException<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFiberFailure
 
@@ -223,7 +223,7 @@ Added in v1.0.0
 export declare const isFiberFailure: (u: unknown) => u is FiberFailure
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -238,7 +238,7 @@ export interface AsyncFiberException<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Cancel (interface)
 
@@ -250,7 +250,7 @@ export interface Cancel<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberFailure (interface)
 
@@ -263,7 +263,7 @@ export interface FiberFailure extends Error, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RunForkOptions (interface)
 
@@ -276,7 +276,7 @@ export interface RunForkOptions {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Runtime (interface)
 
@@ -299,7 +299,7 @@ export interface Runtime<R> extends Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -311,7 +311,7 @@ Added in v1.0.0
 export declare const FiberFailureCauseId: typeof FiberFailureCauseId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberFailureId
 
@@ -321,7 +321,7 @@ Added in v1.0.0
 export declare const FiberFailureId: typeof FiberFailureId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberFailureId (type alias)
 
@@ -331,4 +331,4 @@ Added in v1.0.0
 export type FiberFailureId = typeof FiberFailureId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

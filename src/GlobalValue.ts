@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 const globalStoreId = Symbol.for("effect/GlobalValue/globalStoreId")
 
@@ -10,7 +10,7 @@ if (!(globalStoreId in globalThis)) {
 const globalStore = (globalThis as any)[globalStoreId] as Map<unknown, any>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const globalValue = <A>(id: unknown, compute: () => A): A => {
   if (!globalStore.has(id)) {

@@ -6,7 +6,7 @@ parent: Modules
 
 ## Error overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -34,7 +34,7 @@ export declare const Class: new <A extends Record<string, any>>(
 ) => YieldableError & A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Tagged
 
@@ -48,7 +48,7 @@ export declare const Tagged: <Tag extends string>(
 ) => YieldableError & { readonly _tag: Tag } & A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -73,4 +73,4 @@ export interface YieldableError extends Data.Case, Pipeable, Inspectable.Inspect
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

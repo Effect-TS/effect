@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Context from "./Context"
 import type * as Effect from "./Effect"
@@ -10,17 +10,17 @@ import * as internal from "./internal/tracer"
 import type * as Option from "./Option"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TracerTypeId: unique symbol = internal.TracerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TracerTypeId = typeof TracerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Tracer {
   readonly [TracerTypeId]: TracerTypeId
@@ -35,7 +35,7 @@ export interface Tracer {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type SpanStatus = {
@@ -49,13 +49,13 @@ export type SpanStatus = {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ParentSpan = Span | ExternalSpan
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ExternalSpan {
@@ -66,7 +66,7 @@ export interface ExternalSpan {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Span {
@@ -84,13 +84,13 @@ export interface Span {
   readonly event: (name: string, startTime: bigint, attributes?: Record<string, AttributeValue>) => void
 }
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type AttributeValue = string | boolean | number
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface SpanLink {
@@ -100,19 +100,19 @@ export interface SpanLink {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category tags
  */
 export const Tracer: Context.Tag<Tracer, Tracer> = internal.tracerTag
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (options: Omit<Tracer, typeof TracerTypeId>) => Tracer = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A> =

@@ -1,34 +1,34 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as Exit from "./Exit"
 import * as internal from "./internal/channel/mergeDecision"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MergeDecisionTypeId: unique symbol = internal.MergeDecisionTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MergeDecisionTypeId = typeof MergeDecisionTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MergeDecision<R, E0, Z0, E, Z> extends MergeDecision.Variance<R, E0, Z0, E, Z> {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace MergeDecision {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<R, E0, Z0, E, Z> {
@@ -43,13 +43,13 @@ export declare namespace MergeDecision {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Done: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> = internal.Done
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Await: <R, E0, Z0, E, Z>(
@@ -57,7 +57,7 @@ export const Await: <R, E0, Z0, E, Z>(
 ) => MergeDecision<R, E0, Z0, E, Z> = internal.Await
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const AwaitConst: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecision<R, unknown, unknown, E, Z> =
@@ -67,14 +67,14 @@ export const AwaitConst: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => MergeDecis
  * Returns `true` if the specified value is a `MergeDecision`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMergeDecision: (u: unknown) => u is MergeDecision<unknown, unknown, unknown, unknown, unknown> =
   internal.isMergeDecision
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {

@@ -6,7 +6,7 @@ parent: Modules
 
 ## HashSet overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -67,7 +67,7 @@ Creates an empty `HashSet`.
 export declare const empty: <A = never>() => HashSet<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -79,7 +79,7 @@ Construct a new `HashSet` from a `Collection` of values
 export declare const fromIterable: <A>(elements: Iterable<A>) => HashSet<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -91,7 +91,7 @@ Construct a new `HashSet` from a variable number of values.
 export declare const make: <As extends readonly any[]>(...elements: As) => HashSet<As[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -110,7 +110,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -122,7 +122,7 @@ Checks if the specified value exists in the `HashSet`.
 export declare const has: { <A>(value: A): (self: HashSet<A>) => boolean; <A>(self: HashSet<A>, value: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSubset
 
@@ -140,7 +140,7 @@ export declare const isSubset: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -155,7 +155,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -174,7 +174,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -191,7 +191,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -205,7 +205,7 @@ Calculates the number of values in the `HashSet`.
 export declare const size: <A>(self: HashSet<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -217,7 +217,7 @@ Returns an `IterableIterator` of the values in the `HashSet`.
 export declare const values: <A>(self: HashSet<A>) => IterableIterator<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -234,7 +234,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -248,7 +248,7 @@ export interface HashSet<A> extends Iterable<A>, Equal, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # partitioning
 
@@ -276,7 +276,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -288,7 +288,7 @@ Added in v1.0.0
 export declare const isHashSet: { <A>(u: Iterable<A>): u is HashSet<A>; (u: unknown): u is HashSet<unknown> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -305,7 +305,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -317,7 +317,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -334,7 +334,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -351,7 +351,7 @@ export declare const add: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## beginMutation
 
@@ -363,7 +363,7 @@ Marks the `HashSet` as mutable.
 export declare const beginMutation: <A>(self: HashSet<A>) => HashSet<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## difference
 
@@ -382,7 +382,7 @@ export declare const difference: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## endMutation
 
@@ -394,7 +394,7 @@ Marks the `HashSet` as immutable.
 export declare const endMutation: <A>(self: HashSet<A>) => HashSet<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersection
 
@@ -413,7 +413,7 @@ export declare const intersection: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mutate
 
@@ -428,7 +428,7 @@ export declare const mutate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -443,7 +443,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toggle
 
@@ -460,7 +460,7 @@ export declare const toggle: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -479,4 +479,4 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

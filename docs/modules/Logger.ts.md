@@ -6,7 +6,7 @@ parent: Modules
 
 ## Logger overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -65,7 +65,7 @@ Added in v1.0.0
 export declare const defaultLogger: Logger<unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logFmt
 
@@ -75,7 +75,7 @@ Added in v1.0.0
 export declare const logFmt: Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## logfmtLogger
 
@@ -85,7 +85,7 @@ Added in v1.0.0
 export declare const logfmtLogger: Logger<unknown, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -106,7 +106,7 @@ export declare const make: <Message, Output>(
 ) => Logger<Message, Output>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -118,7 +118,7 @@ A logger that does nothing in response to logging events.
 export declare const none: Logger<unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## simple
 
@@ -128,7 +128,7 @@ Added in v1.0.0
 export declare const simple: <A, B>(log: (a: A) => B) => Logger<A, B>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stringLogger
 
@@ -138,7 +138,7 @@ Added in v1.0.0
 export declare const stringLogger: Logger<unknown, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -148,7 +148,7 @@ Added in v1.0.0
 export declare const succeed: <A>(value: A) => Logger<unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -158,7 +158,7 @@ Added in v1.0.0
 export declare const sync: <A>(evaluate: LazyArg<A>) => Logger<unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## test
 
@@ -171,7 +171,7 @@ export declare const test: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tracerLogger
 
@@ -181,7 +181,7 @@ Added in v1.0.0
 export declare const tracerLogger: Logger<unknown, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -193,7 +193,7 @@ Added in v1.0.0
 export declare const add: <B>(logger: Logger<unknown, B>) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addEffect
 
@@ -203,7 +203,7 @@ Added in v1.0.0
 export declare const addEffect: <R, E, A>(effect: Effect<R, E, Logger<unknown, A>>) => Layer.Layer<R, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## addScoped
 
@@ -215,7 +215,7 @@ export declare const addScoped: <R, E, A>(
 ) => Layer.Layer<Exclude<R, Scope>, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## minimumLogLevel
 
@@ -225,7 +225,7 @@ Added in v1.0.0
 export declare const minimumLogLevel: (level: LogLevel.LogLevel) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -235,7 +235,7 @@ Added in v1.0.0
 export declare const remove: <A>(logger: Logger<unknown, A>) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replace
 
@@ -248,7 +248,7 @@ export declare const replace: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceEffect
 
@@ -261,7 +261,7 @@ export declare const replaceEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceScoped
 
@@ -280,7 +280,7 @@ export declare const replaceScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withMinimumLogLevel
 
@@ -293,7 +293,7 @@ export declare const withMinimumLogLevel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -316,7 +316,7 @@ export declare const filterLogLevel: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -333,7 +333,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -351,7 +351,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -363,7 +363,7 @@ Added in v1.0.0
 export type AnnotationValue = string | number | boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Logger (interface)
 
@@ -384,7 +384,7 @@ export interface Logger<Message, Output> extends Logger.Variance<Message, Output
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -396,7 +396,7 @@ Added in v1.0.0
 export declare const LoggerTypeId: typeof LoggerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## LoggerTypeId (type alias)
 
@@ -406,13 +406,13 @@ Added in v1.0.0
 export type LoggerTypeId = typeof LoggerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Logger (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -427,7 +427,7 @@ export interface Variance<Message, Output> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -450,7 +450,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -468,7 +468,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -486,4 +486,4 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

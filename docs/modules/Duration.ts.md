@@ -6,7 +6,7 @@ parent: Modules
 
 ## Duration overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -71,7 +71,7 @@ Added in v1.0.0
 export declare const days: (days: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hours
 
@@ -81,7 +81,7 @@ Added in v1.0.0
 export declare const hours: (hours: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## infinity
 
@@ -91,7 +91,7 @@ Added in v1.0.0
 export declare const infinity: Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## micros
 
@@ -101,7 +101,7 @@ Added in v1.0.0
 export declare const micros: (micros: bigint) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## millis
 
@@ -111,7 +111,7 @@ Added in v1.0.0
 export declare const millis: (millis: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## minutes
 
@@ -121,7 +121,7 @@ Added in v1.0.0
 export declare const minutes: (minutes: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nanos
 
@@ -131,7 +131,7 @@ Added in v1.0.0
 export declare const nanos: (nanos: bigint) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## seconds
 
@@ -141,7 +141,7 @@ Added in v1.0.0
 export declare const seconds: (seconds: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## weeks
 
@@ -151,7 +151,7 @@ Added in v1.0.0
 export declare const weeks: (weeks: number) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zero
 
@@ -161,7 +161,7 @@ Added in v1.0.0
 export declare const zero: Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -173,7 +173,7 @@ Added in v1.0.0
 export declare const toHrTime: (self: DurationInput) => readonly [seconds: number, nanos: number]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toMillis
 
@@ -183,7 +183,7 @@ Added in v1.0.0
 export declare const toMillis: (self: DurationInput) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toNanos
 
@@ -197,7 +197,7 @@ If the duration is infinite, returns `Option.none()`
 export declare const toNanos: (self: DurationInput) => Option.Option<bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeToNanos
 
@@ -211,7 +211,7 @@ If the duration is infinite, it throws an error.
 export declare const unsafeToNanos: (self: DurationInput) => bigint
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -223,7 +223,7 @@ Added in v1.0.0
 export declare const isDuration: (u: unknown) => u is Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -235,7 +235,7 @@ Added in v1.0.0
 export declare const Equivalence: equivalence.Equivalence<Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Order
 
@@ -245,7 +245,7 @@ Added in v1.0.0
 export declare const Order: order.Order<Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # math
 
@@ -260,7 +260,7 @@ export declare const sum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## times
 
@@ -273,7 +273,7 @@ export declare const times: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -288,7 +288,7 @@ export interface Duration extends Equal.Equal, Pipeable, Inspectable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## DurationInput (type alias)
 
@@ -302,7 +302,7 @@ export type DurationInput =
   | `${number} ${Unit}`
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## DurationValue (type alias)
 
@@ -312,7 +312,7 @@ Added in v1.0.0
 export type DurationValue = { _tag: 'Millis'; millis: number } | { _tag: 'Nanos'; nanos: bigint } | { _tag: 'Infinity' }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Unit (type alias)
 
@@ -322,7 +322,7 @@ Added in v1.0.0
 export type Unit = 'nanos' | 'micros' | 'millis' | 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks'
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -342,7 +342,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchWith
 
@@ -368,7 +368,7 @@ export declare const matchWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # predicates
 
@@ -385,7 +385,7 @@ export declare const between: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## equals
 
@@ -398,7 +398,7 @@ export declare const equals: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThan
 
@@ -411,7 +411,7 @@ export declare const greaterThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanOrEqualTo
 
@@ -424,7 +424,7 @@ export declare const greaterThanOrEqualTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -437,7 +437,7 @@ export declare const lessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanOrEqualTo
 
@@ -450,7 +450,7 @@ export declare const lessThanOrEqualTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -462,7 +462,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -477,7 +477,7 @@ export declare const clamp: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## decode
 
@@ -487,7 +487,7 @@ Added in v1.0.0
 export declare const decode: (input: DurationInput) => Duration
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -500,7 +500,7 @@ export declare const max: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -513,4 +513,4 @@ export declare const min: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

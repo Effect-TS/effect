@@ -6,7 +6,7 @@ parent: Modules
 
 ## Hub overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -50,7 +50,7 @@ For best performance use capacities that are powers of two.
 export declare const bounded: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropping
 
@@ -65,7 +65,7 @@ For best performance use capacities that are powers of two.
 export declare const dropping: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sliding
 
@@ -80,7 +80,7 @@ For best performance use capacities that are powers of two.
 export declare const sliding: <A>(requestedCapacity: number) => Effect.Effect<never, never, Hub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unbounded
 
@@ -92,7 +92,7 @@ Creates an unbounded hub.
 export declare const unbounded: <A>() => Effect.Effect<never, never, Hub<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -106,7 +106,7 @@ Returns the number of elements the queue can hold.
 export declare const capacity: <A>(self: Hub<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -118,7 +118,7 @@ Returns `true` if the `Queue` contains zero elements, `false` otherwise.
 export declare const isEmpty: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFull
 
@@ -131,7 +131,7 @@ otherwise.
 export declare const isFull: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isShutdown
 
@@ -143,7 +143,7 @@ Returns `true` if `shutdown` has been called, otherwise returns `false`.
 export declare const isShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -157,7 +157,7 @@ elements to be added to the queue.
 export declare const size: <A>(self: Hub<A>) => Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -192,7 +192,7 @@ export interface Hub<A> extends Queue.Enqueue<A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -208,7 +208,7 @@ shutdown, the `Effect` will resume right away.
 export declare const awaitShutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## publish
 
@@ -224,7 +224,7 @@ export declare const publish: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## publishAll
 
@@ -240,7 +240,7 @@ export declare const publishAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shutdown
 
@@ -253,7 +253,7 @@ to `offer*` and `take*` will be interrupted immediately.
 export declare const shutdown: <A>(self: Hub<A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## subscribe
 
@@ -267,4 +267,4 @@ each time.
 export declare const subscribe: <A>(self: Hub<A>) => Effect.Effect<Scope.Scope, never, Queue.Dequeue<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

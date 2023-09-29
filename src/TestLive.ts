@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Context from "./Context"
 import type * as DefaultServices from "./DefaultServices"
@@ -8,12 +8,12 @@ import * as core from "./internal/core"
 import * as defaultServices from "./internal/defaultServices"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestLiveTypeId = Symbol.for("effect/TestLive")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TestLiveTypeId = typeof TestLiveTypeId
 
@@ -23,7 +23,7 @@ export type TestLiveTypeId = typeof TestLiveTypeId
  * timing out tests where it is necessary to access the real implementations of
  * these services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestLive {
   readonly [TestLiveTypeId]: TestLiveTypeId
@@ -31,7 +31,7 @@ export interface TestLive {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestLive: Context.Tag<TestLive, TestLive> = Context.Tag<TestLive>(
   Symbol.for("effect/TestLive")
@@ -50,6 +50,6 @@ class LiveImpl implements TestLive {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = (services: Context.Context<DefaultServices.DefaultServices>): TestLive => new LiveImpl(services)

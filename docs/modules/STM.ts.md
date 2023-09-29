@@ -6,7 +6,7 @@ parent: Modules
 
 ## STM overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -195,7 +195,7 @@ export declare const acquireUseRelease: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## all
 
@@ -211,7 +211,7 @@ struct.
 export declare const all: All.Signature
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## attempt
 
@@ -223,7 +223,7 @@ Creates an `STM` value from a partial (but pure) function.
 export declare const attempt: <A>(evaluate: LazyArg<A>) => STM<never, unknown, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## check
 
@@ -235,7 +235,7 @@ Checks the condition, and if it's true, returns unit, otherwise, retries.
 export declare const check: (predicate: LazyArg<boolean>) => STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cond
 
@@ -252,7 +252,7 @@ export declare const cond: <E, A>(
 ) => STM<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## context
 
@@ -264,7 +264,7 @@ Retrieves the environment inside an stm.
 export declare const context: <R>() => STM<R, never, Context.Context<R>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWith
 
@@ -276,7 +276,7 @@ Accesses the environment of the transaction to perform a transaction.
 export declare const contextWith: <R0, R>(f: (environment: Context.Context<R0>) => R) => STM<R0, never, R>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithSTM
 
@@ -290,7 +290,7 @@ export declare const contextWithSTM: <R0, R, E, A>(
 ) => STM<R0 | R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -302,7 +302,7 @@ Fails the transactional effect with the specified defect.
 export declare const die: (defect: unknown) => STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieMessage
 
@@ -315,7 +315,7 @@ contains the specified message.
 export declare const dieMessage: (message: string) => STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -327,7 +327,7 @@ Fails the transactional effect with the specified lazily evaluated defect.
 export declare const dieSync: (evaluate: LazyArg<unknown>) => STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -343,7 +343,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## exists
 
@@ -359,7 +359,7 @@ export declare const exists: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -371,7 +371,7 @@ Fails the transactional effect with the specified error.
 export declare const fail: <E>(error: E) => STM<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -383,7 +383,7 @@ Fails the transactional effect with the specified lazily evaluated error.
 export declare const failSync: <E>(evaluate: LazyArg<E>) => STM<never, E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fiberId
 
@@ -395,7 +395,7 @@ Returns the fiber id of the fiber committing the transaction.
 export declare const fiberId: STM<never, never, FiberId.FiberId>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -410,7 +410,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterNot
 
@@ -426,7 +426,7 @@ export declare const filterNot: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEither
 
@@ -438,7 +438,7 @@ Lifts an `Either` into a `STM`.
 export declare const fromEither: <E, A>(either: Either.Either<E, A>) => STM<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromOption
 
@@ -450,7 +450,7 @@ Lifts an `Option` into a `STM`.
 export declare const fromOption: <A>(option: Option.Option<A>) => STM<never, Option.Option<never>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gen
 
@@ -466,7 +466,7 @@ export declare const gen: <Eff extends STMGen<any, any, any>, AEff>(
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupt
 
@@ -478,7 +478,7 @@ Interrupts the fiber running the effect.
 export declare const interrupt: STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAs
 
@@ -490,7 +490,7 @@ Interrupts the fiber running the effect with the specified `FiberId`.
 export declare const interruptAs: (fiberId: FiberId.FiberId) => STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## iterate
 
@@ -516,7 +516,7 @@ export declare const iterate: <R, E, Z>(
 ) => STM<R, E, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## loop
 
@@ -560,7 +560,7 @@ export declare const loop: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mergeAll
 
@@ -575,7 +575,7 @@ export declare const mergeAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -591,7 +591,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceAll
 
@@ -612,7 +612,7 @@ export declare const reduceAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceRight
 
@@ -628,7 +628,7 @@ export declare const reduceRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicate
 
@@ -644,7 +644,7 @@ export declare const replicate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicateSTM
 
@@ -660,7 +660,7 @@ export declare const replicateSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicateSTMDiscard
 
@@ -676,7 +676,7 @@ export declare const replicateSTMDiscard: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -688,7 +688,7 @@ Returns an `STM` effect that succeeds with the specified value.
 export declare const succeed: <A>(value: A) => STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeedNone
 
@@ -700,7 +700,7 @@ Returns an effect with the empty value.
 export declare const succeedNone: STM<never, never, Option.Option<never>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeedSome
 
@@ -712,7 +712,7 @@ Returns an effect with the optional value.
 export declare const succeedSome: <A>(value: A) => STM<never, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -724,7 +724,7 @@ Suspends creation of the specified transaction lazily.
 export declare const suspend: <R, E, A>(evaluate: LazyArg<STM<R, E, A>>) => STM<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -737,7 +737,7 @@ value.
 export declare const sync: <A>(evaluate: () => A) => STM<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## try
 
@@ -750,7 +750,7 @@ exceptions into typed failed effects.
 export declare const try: { <A, E>(options: { readonly try: LazyArg<A>; readonly catch: (u: unknown) => E; }): STM<never, E, A>; <A>(try_: LazyArg<A>): STM<never, unknown, A>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -762,7 +762,7 @@ Returns an `STM` effect that succeeds with `Unit`.
 export declare const unit: STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -780,7 +780,7 @@ export declare const mapInputContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideContext
 
@@ -796,7 +796,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideService
 
@@ -818,7 +818,7 @@ export declare const provideService: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideServiceSTM
 
@@ -840,7 +840,7 @@ export declare const provideServiceSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideSomeContext
 
@@ -856,7 +856,7 @@ export declare const provideSomeContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -870,7 +870,7 @@ Commits this transaction atomically.
 export declare const commit: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## commitEither
 
@@ -883,7 +883,7 @@ is a success or a failure.
 export declare const commitEither: <R, E, A>(self: STM<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # do notation
 
@@ -895,7 +895,7 @@ Added in v1.0.0
 export declare const Do: STM<never, never, {}>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bind
 
@@ -914,7 +914,7 @@ export declare const bind: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bindTo
 
@@ -927,7 +927,7 @@ export declare const bindTo: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## let
 
@@ -946,7 +946,7 @@ export declare const let: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -967,7 +967,7 @@ will determine the outcome of the resulting `STM` value.
 export declare const firstSuccessOf: <R, E, A>(effects: Iterable<STM<R, E, A>>) => STM<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -984,7 +984,7 @@ export declare const catchAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchSome
 
@@ -1005,7 +1005,7 @@ export declare const catchSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTag
 
@@ -1027,7 +1027,7 @@ export declare const catchTag: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## catchTags
 
@@ -1071,7 +1071,7 @@ export declare const catchTags: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDie
 
@@ -1084,7 +1084,7 @@ failures unchecked and not a part of the type of the effect.
 export declare const orDie: <R, E, A>(self: STM<R, E, A>) => STM<R, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orDieWith
 
@@ -1100,7 +1100,7 @@ export declare const orDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElse
 
@@ -1116,7 +1116,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseEither
 
@@ -1133,7 +1133,7 @@ export declare const orElseEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseFail
 
@@ -1149,7 +1149,7 @@ export declare const orElseFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseOptional
 
@@ -1172,7 +1172,7 @@ export declare const orElseOptional: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseSucceed
 
@@ -1188,7 +1188,7 @@ export declare const orElseSucceed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orTry
 
@@ -1204,7 +1204,7 @@ export declare const orTry: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retry
 
@@ -1217,7 +1217,7 @@ transactional variables have changed.
 export declare const retry: STM<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -1236,7 +1236,7 @@ export declare const filterOrDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrDieMessage
 
@@ -1254,7 +1254,7 @@ export declare const filterOrDieMessage: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrElse
 
@@ -1283,7 +1283,7 @@ export declare const filterOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterOrFail
 
@@ -1312,7 +1312,7 @@ export declare const filterOrFail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # finalization
 
@@ -1331,7 +1331,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -1354,7 +1354,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchSTM
 
@@ -1375,7 +1375,7 @@ export declare const matchSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -1390,7 +1390,7 @@ non-empty or fails with the error `None` if the list is empty.
 export declare const head: <R, E, A>(self: STM<R, E, Iterable<A>>) => STM<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFailure
 
@@ -1402,7 +1402,7 @@ Returns whether this transactional effect is a failure.
 export declare const isFailure: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSuccess
 
@@ -1414,7 +1414,7 @@ Returns whether this transactional effect is a success.
 export declare const isSuccess: <R, E, A>(self: STM<R, E, A>) => STM<R, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -1426,7 +1426,7 @@ Converts an option on values into an option on errors.
 export declare const some: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsome
 
@@ -1438,7 +1438,7 @@ Converts an option on errors into an option on values.
 export declare const unsome: <R, E, A>(self: STM<R, Option.Option<E>, A>) => STM<R, E, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -1455,7 +1455,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asSome
 
@@ -1467,7 +1467,7 @@ Maps the success value of this effect to an optional value.
 export declare const asSome: <R, E, A>(self: STM<R, E, A>) => STM<R, E, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asSomeError
 
@@ -1479,7 +1479,7 @@ Maps the error value of this effect to an optional value.
 export declare const asSomeError: <R, E, A>(self: STM<R, E, A>) => STM<R, Option.Option<E>, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## asUnit
 
@@ -1493,7 +1493,7 @@ fails, the returned `STM` will fail with the same error.
 export declare const asUnit: <R, E, A>(self: STM<R, E, A>) => STM<R, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -1508,7 +1508,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAttempt
 
@@ -1525,7 +1525,7 @@ export declare const mapAttempt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapBoth
 
@@ -1546,7 +1546,7 @@ export declare const mapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -1561,7 +1561,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1833,7 +1833,7 @@ export interface Adapter {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STM (interface)
 
@@ -1880,7 +1880,7 @@ export interface STM<R, E, A> extends Effect.Effect<R, E, A>, STM.Variance<R, E,
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STMGen (interface)
 
@@ -1896,7 +1896,7 @@ export interface STMGen<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STMUnify (interface)
 
@@ -1908,7 +1908,7 @@ export interface STMUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STMUnifyBlacklist (interface)
 
@@ -1920,7 +1920,7 @@ export interface STMUnifyBlacklist extends Effect.EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -1937,7 +1937,7 @@ export declare const collect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectSTM
 
@@ -1952,7 +1952,7 @@ export declare const collectSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## either
 
@@ -1964,7 +1964,7 @@ Converts the failure channel into an `Either`.
 export declare const either: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Either.Either<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## eventually
 
@@ -1977,7 +1977,7 @@ eventually succeeds.
 export declare const eventually: <R, E, A>(self: STM<R, E, A>) => STM<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flip
 
@@ -1991,7 +1991,7 @@ flipping back.
 export declare const flip: <R, E, A>(self: STM<R, E, A>) => STM<R, A, E>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flipWith
 
@@ -2007,7 +2007,7 @@ export declare const flipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## if
 
@@ -2019,7 +2019,7 @@ Runs `onTrue` if the result of `b` is `true` and `onFalse` otherwise.
 export declare const if: { <R1, R2, E1, E2, A, A1>(options: { readonly onTrue: STM<R1, E1, A>; readonly onFalse: STM<R2, E2, A1>; }): <R = never, E = never>(self: boolean | STM<R, E, boolean>) => STM<R1 | R2 | R, E1 | E2 | E, A | A1>; <R, E, R1, R2, E1, E2, A, A1>(self: boolean, options: { readonly onTrue: STM<R1, E1, A>; readonly onFalse: STM<R2, E2, A1>; }): STM<R | R1 | R2, E | E1 | E2, A | A1>; <R, E, R1, R2, E1, E2, A, A1>(self: STM<R, E, boolean>, options: { readonly onTrue: STM<R1, E1, A>; readonly onFalse: STM<R2, E2, A1>; }): STM<R | R1 | R2, E | E1 | E2, A | A1>; }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ignore
 
@@ -2031,7 +2031,7 @@ Returns a new effect that ignores the success or failure of this effect.
 export declare const ignore: <R, E, A>(self: STM<R, E, A>) => STM<R, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## merge
 
@@ -2044,7 +2044,7 @@ success channel to their common combined type.
 export declare const merge: <R, E, A>(self: STM<R, E, A>) => STM<R, never, E | A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## negate
 
@@ -2056,7 +2056,7 @@ Returns a new effect where boolean value of this effect is negated.
 export declare const negate: <R, E>(self: STM<R, E, boolean>) => STM<R, E, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## none
 
@@ -2068,7 +2068,7 @@ Requires the option produced by this value to be `None`.
 export declare const none: <R, E, A>(self: STM<R, E, Option.Option<A>>) => STM<R, Option.Option<E>, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## option
 
@@ -2080,7 +2080,7 @@ Converts the failure channel into an `Option`.
 export declare const option: <R, E, A>(self: STM<R, E, A>) => STM<R, never, Option.Option<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDie
 
@@ -2095,7 +2095,7 @@ export declare const refineOrDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDieWith
 
@@ -2111,7 +2111,7 @@ export declare const refineOrDieWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reject
 
@@ -2127,7 +2127,7 @@ export declare const reject: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## rejectSTM
 
@@ -2144,7 +2144,7 @@ export declare const rejectSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatUntil
 
@@ -2169,7 +2169,7 @@ export declare const repeatUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeatWhile
 
@@ -2195,7 +2195,7 @@ export declare const repeatWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryUntil
 
@@ -2211,7 +2211,7 @@ export declare const retryUntil: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retryWhile
 
@@ -2227,7 +2227,7 @@ export declare const retryWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summarized
 
@@ -2250,7 +2250,7 @@ export declare const summarized: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unless
 
@@ -2265,7 +2265,7 @@ export declare const unless: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unlessSTM
 
@@ -2280,7 +2280,7 @@ export declare const unlessSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validateAll
 
@@ -2299,7 +2299,7 @@ export declare const validateAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## validateFirst
 
@@ -2315,7 +2315,7 @@ export declare const validateFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## when
 
@@ -2330,7 +2330,7 @@ export declare const when: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## whenSTM
 
@@ -2345,7 +2345,7 @@ export declare const whenSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -2359,7 +2359,7 @@ Returns `true` if the provided value is an `STM`, `false` otherwise.
 export declare const isSTM: (u: unknown) => u is STM<unknown, unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -2377,7 +2377,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -2389,7 +2389,7 @@ Flattens out a nested `STM` effect.
 export declare const flatten: <R, E, R2, E2, A>(self: STM<R, E, STM<R2, E2, A>>) => STM<R | R2, E | E2, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tap
 
@@ -2404,7 +2404,7 @@ export declare const tap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapBoth
 
@@ -2425,7 +2425,7 @@ export declare const tapBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tapError
 
@@ -2440,7 +2440,7 @@ export declare const tapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -2452,7 +2452,7 @@ Added in v1.0.0
 export declare const STMTypeId: typeof STMTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STMTypeId (type alias)
 
@@ -2462,7 +2462,7 @@ Added in v1.0.0
 export type STMTypeId = typeof STMTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -2490,7 +2490,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -2506,7 +2506,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -2520,13 +2520,13 @@ export interface STMTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## All (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Signature (interface)
 
@@ -2547,7 +2547,7 @@ export interface Signature {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Options (type alias)
 
@@ -2557,11 +2557,11 @@ Added in v1.0.0
 export type Options = { readonly discard?: boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## STM (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -2577,7 +2577,7 @@ export interface Variance<R, E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -2594,7 +2594,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -2610,7 +2610,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -2626,7 +2626,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -2644,4 +2644,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,21 +1,21 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type NodeInspectSymbol = typeof NodeInspectSymbol
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Inspectable {
@@ -25,7 +25,7 @@ export interface Inspectable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toJSON = (x: unknown): unknown => {
   if (
@@ -40,6 +40,6 @@ export const toJSON = (x: unknown): unknown => {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toString = (x: unknown): string => JSON.stringify(x, null, 2)

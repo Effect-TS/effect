@@ -6,7 +6,7 @@ parent: Modules
 
 ## TMap overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -82,7 +82,7 @@ Makes an empty `TMap`.
 export declare const empty: <K, V>() => STM.STM<never, never, TMap<K, V>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -94,7 +94,7 @@ Makes a new `TMap` initialized with provided iterable.
 export declare const fromIterable: <K, V>(iterable: Iterable<readonly [K, V]>) => STM.STM<never, never, TMap<K, V>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -106,7 +106,7 @@ Makes a new `TMap` that is initialized with specified values.
 export declare const make: <K, V>(...entries: (readonly [K, V])[]) => STM.STM<never, never, TMap<K, V>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -120,7 +120,7 @@ Collects all bindings into a `Chunk`.
 export declare const toChunk: <K, V>(self: TMap<K, V>) => STM.STM<never, never, (readonly [K, V])[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toHashMap
 
@@ -132,7 +132,7 @@ Collects all bindings into a `HashMap`.
 export declare const toHashMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, HashMap.HashMap<K, V>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyArray
 
@@ -144,7 +144,7 @@ Collects all bindings into a `ReadonlyArray`.
 export declare const toReadonlyArray: <K, V>(self: TMap<K, V>) => STM.STM<never, never, readonly (readonly [K, V])[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyMap
 
@@ -156,7 +156,7 @@ Collects all bindings into a `ReadonlyMap`.
 export declare const toReadonlyMap: <K, V>(self: TMap<K, V>) => STM.STM<never, never, ReadonlyMap<K, V>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -174,7 +174,7 @@ export declare const find: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findAll
 
@@ -190,7 +190,7 @@ export declare const findAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findAllSTM
 
@@ -206,7 +206,7 @@ export declare const findAllSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findSTM
 
@@ -228,7 +228,7 @@ export declare const findSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -243,7 +243,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -258,7 +258,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrElse
 
@@ -274,7 +274,7 @@ export declare const getOrElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -289,7 +289,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## keys
 
@@ -301,7 +301,7 @@ Collects all keys stored in map.
 export declare const keys: <K, V>(self: TMap<K, V>) => STM.STM<never, never, K[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -313,7 +313,7 @@ Collects all values stored in map.
 export declare const values: <K, V>(self: TMap<K, V>) => STM.STM<never, never, V[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -330,7 +330,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceSTM
 
@@ -345,7 +345,7 @@ export declare const reduceSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceWithIndex
 
@@ -360,7 +360,7 @@ export declare const reduceWithIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceWithIndexSTM
 
@@ -375,7 +375,7 @@ export declare const reduceWithIndexSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -389,7 +389,7 @@ Tests if the map is empty or not.
 export declare const isEmpty: <K, V>(self: TMap<K, V>) => STM.STM<never, never, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -401,7 +401,7 @@ Returns the number of bindings.
 export declare const size: <K, V>(self: TMap<K, V>) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -416,7 +416,7 @@ conflicts via chaining.
 export interface TMap<K, V> extends TMap.Variance<K, V> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -435,7 +435,7 @@ export declare const merge: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -450,7 +450,7 @@ export declare const remove: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeAll
 
@@ -465,7 +465,7 @@ export declare const removeAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeIf
 
@@ -480,7 +480,7 @@ export declare const removeIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeIfDiscard
 
@@ -495,7 +495,7 @@ export declare const removeIfDiscard: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retainIf
 
@@ -510,7 +510,7 @@ export declare const retainIf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retainIfDiscard
 
@@ -525,7 +525,7 @@ export declare const retainIfDiscard: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## set
 
@@ -540,7 +540,7 @@ export declare const set: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setIfAbsent
 
@@ -555,7 +555,7 @@ export declare const setIfAbsent: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeFirst
 
@@ -570,7 +570,7 @@ export declare const takeFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeFirstSTM
 
@@ -585,7 +585,7 @@ export declare const takeFirstSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeSome
 
@@ -600,7 +600,7 @@ export declare const takeSome: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeSomeSTM
 
@@ -621,7 +621,7 @@ export declare const takeSomeSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transform
 
@@ -636,7 +636,7 @@ export declare const transform: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transformSTM
 
@@ -651,7 +651,7 @@ export declare const transformSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transformValues
 
@@ -666,7 +666,7 @@ export declare const transformValues: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transformValuesSTM
 
@@ -681,7 +681,7 @@ export declare const transformValuesSTM: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateWith
 
@@ -706,7 +706,7 @@ export declare const updateWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -718,7 +718,7 @@ Added in v1.0.0
 export declare const TMapTypeId: typeof TMapTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TMapTypeId (type alias)
 
@@ -728,13 +728,13 @@ Added in v1.0.0
 export type TMapTypeId = typeof TMapTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TMap (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -749,4 +749,4 @@ export interface Variance<K, V> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

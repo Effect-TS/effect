@@ -8,7 +8,7 @@ parent: Modules
 
 This module provides utility functions for working with structs in TypeScript.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -57,7 +57,7 @@ assert.deepStrictEqual(PersonEquivalence({ name: 'John', age: 25 }, { name: 'Joh
 assert.deepStrictEqual(PersonEquivalence({ name: 'John', age: 25 }, { name: 'John', age: 40 }), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrder
 
@@ -74,7 +74,7 @@ export declare const getOrder: <R extends { readonly [x: string]: order.Order<an
 ) => order.Order<{ [K in keyof R]: [R[K]] extends [order.Order<infer A>] ? A : never }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -114,7 +114,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## omit
 
@@ -137,7 +137,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe({ a: 'a', b: 1, c: true }, omit('c')), { a: 'a', b: 1 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pick
 
@@ -160,4 +160,4 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe({ a: 'a', b: 1, c: true }, pick('a', 'b')), { a: 'a', b: 1 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import { dual, pipe } from "./Function"
@@ -14,7 +14,7 @@ import type { Pipeable } from "./Pipeable"
  * importance) of individual log statements, as well as to enable tuning
  * verbosity of log output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  * @property ordinal - The priority of the log message. Larger values indicate higher priority.
  * @property label - A label associated with the log level.
@@ -23,13 +23,13 @@ import type { Pipeable } from "./Pipeable"
 export type LogLevel = All | Fatal | Error | Warning | Info | Debug | Trace | None
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export type Literal = LogLevel["_tag"]
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface All extends Pipeable {
@@ -40,7 +40,7 @@ export interface All extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Fatal extends Pipeable {
@@ -51,7 +51,7 @@ export interface Fatal extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Error extends Pipeable {
@@ -62,7 +62,7 @@ export interface Error extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Warning extends Pipeable {
@@ -73,7 +73,7 @@ export interface Warning extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Info extends Pipeable {
@@ -84,7 +84,7 @@ export interface Info extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Debug extends Pipeable {
@@ -95,7 +95,7 @@ export interface Debug extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface Trace extends Pipeable {
@@ -106,7 +106,7 @@ export interface Trace extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface None extends Pipeable {
@@ -117,55 +117,55 @@ export interface None extends Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const All: LogLevel = core.logLevelAll
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Fatal: LogLevel = core.logLevelFatal
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Error: LogLevel = core.logLevelError
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Warning: LogLevel = core.logLevelWarning
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Info: LogLevel = core.logLevelInfo
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Debug: LogLevel = core.logLevelDebug
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Trace: LogLevel = core.logLevelTrace
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const None: LogLevel = core.logLevelNone
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const allLevels = core.allLogLevels
@@ -174,7 +174,7 @@ export const allLevels = core.allLogLevels
  * Locally applies the specified `LogLevel` to an `Effect` workflow, reverting
  * to the previous `LogLevel` after the `Effect` workflow completes.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locally: {
@@ -186,7 +186,7 @@ export const locally: {
 >(2, (use, self) => core.fiberRefLocally(use, core.currentLogLevel, self))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category instances
  */
 export const Order: order.Order<LogLevel> = pipe(
@@ -195,7 +195,7 @@ export const Order: order.Order<LogLevel> = pipe(
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const lessThan: {
@@ -204,7 +204,7 @@ export const lessThan: {
 } = order.lessThan(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const lessThanEqual: {
@@ -213,7 +213,7 @@ export const lessThanEqual: {
 } = order.lessThanOrEqualTo(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const greaterThan: {
@@ -222,7 +222,7 @@ export const greaterThan: {
 } = order.greaterThan(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category ordering
  */
 export const greaterThanEqual: {
@@ -231,7 +231,7 @@ export const greaterThanEqual: {
 } = order.greaterThanOrEqualTo(Order)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category conversions
  */
 export const fromLiteral = (

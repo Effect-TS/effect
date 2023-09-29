@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestLive overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -31,7 +31,7 @@ Added in v1.0.0
 export declare const TestLive: Context.Tag<TestLive, TestLive>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestLive (interface)
 
@@ -49,7 +49,7 @@ export interface TestLive {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestLiveTypeId
 
@@ -59,7 +59,7 @@ Added in v1.0.0
 export declare const TestLiveTypeId: typeof TestLiveTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestLiveTypeId (type alias)
 
@@ -69,7 +69,7 @@ Added in v1.0.0
 export type TestLiveTypeId = typeof TestLiveTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -79,4 +79,4 @@ Added in v1.0.0
 export declare const make: (services: Context.Context<DefaultServices.DefaultServices>) => TestLive
 ```
 
-Added in v1.0.0
+Added in v2.0.0

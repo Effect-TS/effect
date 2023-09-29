@@ -6,7 +6,7 @@ parent: Modules
 
 ## TSemaphore overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -48,7 +48,7 @@ Added in v1.0.0
 export declare const make: (permits: number) => STM.STM<never, never, TSemaphore>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -60,7 +60,7 @@ Added in v1.0.0
 export declare const available: (self: TSemaphore) => STM.STM<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -72,7 +72,7 @@ Added in v1.0.0
 export interface TSemaphore extends TSemaphore.Proto {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -84,7 +84,7 @@ Added in v1.0.0
 export declare const acquire: (self: TSemaphore) => STM.STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## acquireN
 
@@ -97,7 +97,7 @@ export declare const acquireN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## release
 
@@ -107,7 +107,7 @@ Added in v1.0.0
 export declare const release: (self: TSemaphore) => STM.STM<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## releaseN
 
@@ -120,7 +120,7 @@ export declare const releaseN: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withPermit
 
@@ -133,7 +133,7 @@ export declare const withPermit: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withPermitScoped
 
@@ -143,7 +143,7 @@ Added in v1.0.0
 export declare const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withPermits
 
@@ -156,7 +156,7 @@ export declare const withPermits: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withPermitsScoped
 
@@ -169,7 +169,7 @@ export declare const withPermitsScoped: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -181,7 +181,7 @@ Added in v1.0.0
 export declare const TSemaphoreTypeId: typeof TSemaphoreTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TSemaphoreTypeId (type alias)
 
@@ -191,7 +191,7 @@ Added in v1.0.0
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -203,13 +203,13 @@ Added in v1.0.0
 export declare const unsafeMake: (permits: number) => TSemaphore
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TSemaphore (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -221,4 +221,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

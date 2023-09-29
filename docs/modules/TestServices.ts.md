@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestServices overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -60,7 +60,7 @@ Added in v1.0.0
 export type TestServices = Annotations.TestAnnotations | Live.TestLive | Sized.TestSized | TestConfig.TestConfig
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotate
 
@@ -73,7 +73,7 @@ specified annotation to the annotation map.
 export declare const annotate: <A>(key: TestAnnotation.TestAnnotation<A>, value: A) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotations
 
@@ -85,7 +85,7 @@ Retrieves the `Annotations` service for this test.
 export declare const annotations: () => Effect.Effect<never, never, Annotations.TestAnnotations>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotationsLayer
 
@@ -97,7 +97,7 @@ Constructs a new `Annotations` service wrapped in a layer.
 export declare const annotationsLayer: () => Layer.Layer<never, never, Annotations.TestAnnotations>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## annotationsWith
 
@@ -112,7 +112,7 @@ export declare const annotationsWith: <R, E, A>(
 ) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## currentServices
 
@@ -122,7 +122,7 @@ Added in v1.0.0
 export declare const currentServices: FiberRef.FiberRef<Context.Context<TestServices>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -135,7 +135,7 @@ annotation of the specified type, or its default value if there is none.
 export declare const get: <A>(key: TestAnnotation.TestAnnotation<A>) => Effect.Effect<never, never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## live
 
@@ -147,7 +147,7 @@ Retrieves the `Live` service for this test.
 export declare const live: Effect.Effect<never, never, Live.TestLive>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liveLayer
 
@@ -159,7 +159,7 @@ Constructs a new `Live` service wrapped in a layer.
 export declare const liveLayer: () => Layer.Layer<DefaultServices.DefaultServices, never, Live.TestLive>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liveServices
 
@@ -171,7 +171,7 @@ The default Effect test services.
 export declare const liveServices: Context.Context<TestServices>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liveWith
 
@@ -184,7 +184,7 @@ workflow.
 export declare const liveWith: <R, E, A>(f: (live: Live.TestLive) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideLive
 
@@ -196,7 +196,7 @@ Provides a workflow with the "live" default Effect services.
 export declare const provideLive: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## provideWithLive
 
@@ -215,7 +215,7 @@ export declare const provideWithLive: (<R, E, A, R2, E2, A2>(
   ) => Effect.Effect<R | R2, E | E2, A2>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeats
 
@@ -227,7 +227,7 @@ The number of times to repeat tests to ensure they are stable.
 export declare const repeats: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retries
 
@@ -239,7 +239,7 @@ The number of times to retry flaky tests.
 export declare const retries: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## samples
 
@@ -251,7 +251,7 @@ The number of sufficient samples to check for a random variable.
 export declare const samples: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## shrinks
 
@@ -263,7 +263,7 @@ The maximum number of shrinkings to minimize large failures.
 export declare const shrinks: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -273,7 +273,7 @@ Added in v1.0.0
 export declare const size: Effect.Effect<never, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sized
 
@@ -285,7 +285,7 @@ Retrieves the `Sized` service for this test.
 export declare const sized: Effect.Effect<never, never, Sized.TestSized>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sizedLayer
 
@@ -295,7 +295,7 @@ Added in v1.0.0
 export declare const sizedLayer: (size: number) => Layer.Layer<never, never, Sized.TestSized>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sizedWith
 
@@ -310,7 +310,7 @@ export declare const sizedWith: <R, E, A>(
 ) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## supervisedFibers
 
@@ -326,7 +326,7 @@ export declare const supervisedFibers: () => Effect.Effect<
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## testConfig
 
@@ -338,7 +338,7 @@ Retrieves the `TestConfig` service for this test.
 export declare const testConfig: Effect.Effect<never, never, TestConfig.TestConfig>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## testConfigLayer
 
@@ -355,7 +355,7 @@ export declare const testConfigLayer: (params: {
 }) => Layer.Layer<never, never, TestConfig.TestConfig>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## testConfigWith
 
@@ -370,7 +370,7 @@ export declare const testConfigWith: <R, E, A>(
 ) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withAnnotations
 
@@ -386,7 +386,7 @@ export declare const withAnnotations: ((
   (<R, E, A>(effect: Effect.Effect<R, E, A>, annotations: Annotations.TestAnnotations) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withAnnotationsScoped
 
@@ -401,7 +401,7 @@ export declare const withAnnotationsScoped: (
 ) => Effect.Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withLive
 
@@ -417,7 +417,7 @@ export declare const withLive: ((
   (<R, E, A>(effect: Effect.Effect<R, E, A>, live: Live.TestLive) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withLiveScoped
 
@@ -430,7 +430,7 @@ restores it to its original value when the scope is closed.
 export declare const withLiveScoped: (live: Live.TestLive) => Effect.Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSize
 
@@ -441,7 +441,7 @@ export declare const withSize: ((size: number) => <R, E, A>(effect: Effect.Effec
   (<R, E, A>(effect: Effect.Effect<R, E, A>, size: number) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSized
 
@@ -457,7 +457,7 @@ export declare const withSized: ((
   (<R, E, A>(effect: Effect.Effect<R, E, A>, sized: Sized.TestSized) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withSizedScoped
 
@@ -470,7 +470,7 @@ restores it to its original value when the scope is closed.
 export declare const withSizedScoped: (sized: Sized.TestSized) => Effect.Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTestConfig
 
@@ -486,7 +486,7 @@ export declare const withTestConfig: ((
   (<R, E, A>(effect: Effect.Effect<R, E, A>, config: TestConfig.TestConfig) => Effect.Effect<R, E, A>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTestConfigScoped
 
@@ -499,4 +499,4 @@ restores it to its original value when the scope is closed.
 export declare const withTestConfigScoped: (config: TestConfig.TestConfig) => Effect.Effect<Scope.Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

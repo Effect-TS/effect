@@ -6,7 +6,7 @@ parent: Modules
 
 ## Order overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -65,7 +65,7 @@ It is useful when you need to compare two arrays of the same type and you have a
 export declare const array: <A>(O: Order<A>) => Order<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -78,7 +78,7 @@ export declare const mapInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## struct
 
@@ -93,7 +93,7 @@ export declare const struct: <R extends { readonly [x: string]: Order<any> }>(
 ) => Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tuple
 
@@ -116,7 +116,7 @@ export declare const tuple: <T extends readonly Order<any>[]>(
 ) => Order<Readonly<{ [I in keyof T]: [T[I]] extends [Order<infer A>] ? A : never }>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # combining
 
@@ -128,7 +128,7 @@ Added in v1.0.0
 export declare const all: <A>(collection: Iterable<Order<A>>) => Order<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combine
 
@@ -141,7 +141,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineAll
 
@@ -151,7 +151,7 @@ Added in v1.0.0
 export declare const combineAll: <A>(collection: Iterable<Order<A>>) => Order<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## combineMany
 
@@ -164,7 +164,7 @@ export declare const combineMany: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## product
 
@@ -177,7 +177,7 @@ export declare const product: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## productMany
 
@@ -190,7 +190,7 @@ export declare const productMany: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -202,7 +202,7 @@ Added in v1.0.0
 export declare const make: <A>(compare: (self: A, that: A) => -1 | 0 | 1) => Order<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -214,7 +214,7 @@ Added in v1.0.0
 export declare const Date: Order<Date>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## bigint
 
@@ -224,7 +224,7 @@ Added in v1.0.0
 export declare const bigint: Order<bigint>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## boolean
 
@@ -234,7 +234,7 @@ Added in v1.0.0
 export declare const boolean: Order<boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## number
 
@@ -244,7 +244,7 @@ Added in v1.0.0
 export declare const number: Order<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## string
 
@@ -254,7 +254,7 @@ Added in v1.0.0
 export declare const string: Order<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type class
 
@@ -268,7 +268,7 @@ export interface Order<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -282,7 +282,7 @@ export interface OrderTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -299,7 +299,7 @@ export declare const between: <A>(O: Order<A>) => {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## clamp
 
@@ -314,7 +314,7 @@ export declare const clamp: <A>(O: Order<A>) => {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -324,7 +324,7 @@ Added in v1.0.0
 export declare const empty: <A>() => Order<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThan
 
@@ -336,7 +336,7 @@ Test whether one value is _strictly greater than_ another.
 export declare const greaterThan: <A>(O: Order<A>) => { (that: A): (self: A) => boolean; (self: A, that: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanOrEqualTo
 
@@ -351,7 +351,7 @@ export declare const greaterThanOrEqualTo: <A>(O: Order<A>) => {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -363,7 +363,7 @@ Test whether one value is _strictly less than_ another.
 export declare const lessThan: <A>(O: Order<A>) => { (that: A): (self: A) => boolean; (self: A, that: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanOrEqualTo
 
@@ -378,7 +378,7 @@ export declare const lessThanOrEqualTo: <A>(O: Order<A>) => {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -390,7 +390,7 @@ Take the maximum of two values. If they are considered equal, the first argument
 export declare const max: <A>(O: Order<A>) => { (that: A): (self: A) => A; (self: A, that: A): A }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -402,7 +402,7 @@ Take the minimum of two values. If they are considered equal, the first argument
 export declare const min: <A>(O: Order<A>) => { (that: A): (self: A) => A; (self: A, that: A): A }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reverse
 
@@ -412,4 +412,4 @@ Added in v1.0.0
 export declare const reverse: <A>(O: Order<A>) => Order<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

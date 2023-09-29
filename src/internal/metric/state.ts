@@ -252,7 +252,7 @@ export const isCounterState = (u: unknown): u is MetricState.MetricState.Counter
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequency => {
@@ -260,7 +260,7 @@ export const isFrequencyState = (u: unknown): u is MetricState.MetricState.Frequ
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge => {
@@ -268,7 +268,7 @@ export const isGaugeState = (u: unknown): u is MetricState.MetricState.Gauge => 
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histogram => {
@@ -276,7 +276,7 @@ export const isHistogramState = (u: unknown): u is MetricState.MetricState.Histo
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isSummaryState = (u: unknown): u is MetricState.MetricState.Summary => {

@@ -6,7 +6,7 @@ parent: Modules
 
 ## Differ overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -68,7 +68,7 @@ export declare const chunk: <Value, Patch>(
 ) => Differ<Chunk<Value>, Differ.Chunk.Patch<Value, Patch>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## environment
 
@@ -80,7 +80,7 @@ Constructs a differ that knows how to diff `Env` values.
 export declare const environment: <A>() => Differ<Context<A>, Differ.Context.Patch<A, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hashMap
 
@@ -95,7 +95,7 @@ export declare const hashMap: <Key, Value, Patch>(
 ) => Differ<HashMap<Key, Value>, Differ.HashMap.Patch<Key, Value, Patch>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## hashSet
 
@@ -107,7 +107,7 @@ Constructs a differ that knows how to diff a `HashSet` of values.
 export declare const hashSet: <Value>() => Differ<HashSet<Value>, Differ.HashSet.Patch<Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -124,7 +124,7 @@ export declare const make: <Value, Patch>(params: {
 }) => Differ<Value, Patch>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -160,7 +160,7 @@ export interface Differ<Value, Patch> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # patch
 
@@ -181,7 +181,7 @@ export declare const combine: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## diff
 
@@ -194,7 +194,7 @@ export declare const diff: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -206,7 +206,7 @@ An empty patch that describes no changes.
 export declare const empty: <Value, Patch>(self: Differ<Value, Patch>) => Patch
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## patch
 
@@ -222,7 +222,7 @@ export declare const patch: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -234,7 +234,7 @@ Added in v1.0.0
 export declare const TypeId: typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -244,17 +244,17 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Differ (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Chunk (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### Patch (interface)
 
@@ -271,7 +271,7 @@ export interface Patch<Value, Patch> extends Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### TypeId (type alias)
 
@@ -281,11 +281,11 @@ Added in v1.0.0
 export type TypeId = typeof ChunkPatchTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Context (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### Patch (interface)
 
@@ -304,7 +304,7 @@ export interface Patch<Input, Output> extends Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### TypeId (type alias)
 
@@ -314,11 +314,11 @@ Added in v1.0.0
 export type TypeId = typeof ContextPatchTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### HashMap (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### Patch (interface)
 
@@ -336,7 +336,7 @@ export interface Patch<Key, Value, Patch> extends Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### TypeId (type alias)
 
@@ -346,11 +346,11 @@ Added in v1.0.0
 export type TypeId = typeof HashMapPatchTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### HashSet (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### Patch (interface)
 
@@ -366,7 +366,7 @@ export interface Patch<Value> extends Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### TypeId (type alias)
 
@@ -376,11 +376,11 @@ Added in v1.0.0
 export type TypeId = typeof HashSetPatchTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Or (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### Patch (interface)
 
@@ -399,7 +399,7 @@ export interface Patch<Value, Value2, Patch, Patch2> extends Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 #### TypeId (type alias)
 
@@ -409,7 +409,7 @@ Added in v1.0.0
 export type TypeId = typeof OrPatchTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseEither
 
@@ -430,7 +430,7 @@ export declare const orElseEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## transform
 
@@ -453,7 +453,7 @@ export declare const transform: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## update
 
@@ -468,7 +468,7 @@ there is no compositional way to update them.
 export declare const update: <A>() => Differ<A, (a: A) => A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## updateWith
 
@@ -481,7 +481,7 @@ to combine old values with new values.
 export declare const updateWith: <A>(f: (x: A, y: A) => A) => Differ<A, (a: A) => A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -502,4 +502,4 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

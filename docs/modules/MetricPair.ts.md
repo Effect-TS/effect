@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricPair overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -41,7 +41,7 @@ export declare const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
 ) => MetricPair.Untyped
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -58,7 +58,7 @@ export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -70,7 +70,7 @@ Added in v1.0.0
 export declare const MetricPairTypeId: typeof MetricPairTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricPairTypeId (type alias)
 
@@ -80,7 +80,7 @@ Added in v1.0.0
 export type MetricPairTypeId = typeof MetricPairTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -95,13 +95,13 @@ export declare const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, 
 ) => MetricPair.Untyped
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MetricPair (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Untyped (interface)
 
@@ -111,7 +111,7 @@ Added in v1.0.0
 export interface Untyped extends MetricPair<MetricKeyType.MetricKeyType<any, any>> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -125,4 +125,4 @@ export interface Variance<Type extends MetricKeyType.MetricKeyType<any, any>> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

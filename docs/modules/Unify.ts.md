@@ -6,7 +6,7 @@ parent: Modules
 
 ## Unify overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -33,7 +33,7 @@ export type Unify<A> = Values<ExtractTypes<FilterIn<A> & { [typeSymbol]: A }>> e
   : never
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## blacklistSymbol (type alias)
 
@@ -43,7 +43,7 @@ Added in v1.0.0
 export type blacklistSymbol = typeof blacklistSymbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## typeSymbol (type alias)
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export type typeSymbol = typeof typeSymbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unify
 
@@ -78,7 +78,7 @@ export declare const unify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unifySymbol (type alias)
 
@@ -88,4 +88,4 @@ Added in v1.0.0
 export type unifySymbol = typeof unifySymbol
 ```
 
-Added in v1.0.0
+Added in v2.0.0

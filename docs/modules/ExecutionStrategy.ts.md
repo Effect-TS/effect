@@ -6,7 +6,7 @@ parent: Modules
 
 ## ExecutionStrategy overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -42,7 +42,7 @@ Execute effects in parallel.
 export declare const parallel: ExecutionStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## parallelN
 
@@ -54,7 +54,7 @@ Execute effects in parallel, up to the specified number of concurrent fibers.
 export declare const parallelN: (parallelism: number) => ExecutionStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sequential
 
@@ -66,7 +66,7 @@ Execute effects sequentially.
 export declare const sequential: ExecutionStrategy
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -84,7 +84,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -102,7 +102,7 @@ There are 3 possible execution strategies: `Sequential`, `Parallel`,
 export type ExecutionStrategy = Sequential | Parallel | ParallelN
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Parallel (interface)
 
@@ -116,7 +116,7 @@ export interface Parallel {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ParallelN (interface)
 
@@ -131,7 +131,7 @@ export interface ParallelN {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Sequential (interface)
 
@@ -145,7 +145,7 @@ export interface Sequential {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -160,7 +160,7 @@ Returns `true` if the specified `ExecutionStrategy` is an instance of
 export declare const isParallel: (self: ExecutionStrategy) => self is Parallel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isParallelN
 
@@ -173,7 +173,7 @@ Returns `true` if the specified `ExecutionStrategy` is an instance of
 export declare const isParallelN: (self: ExecutionStrategy) => self is ParallelN
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSequential
 
@@ -186,4 +186,4 @@ Returns `true` if the specified `ExecutionStrategy` is an instance of
 export declare const isSequential: (self: ExecutionStrategy) => self is Sequential
 ```
 
-Added in v1.0.0
+Added in v2.0.0

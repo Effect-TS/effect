@@ -1,18 +1,18 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Equal from "./Equal"
 import * as internal from "./internal/metric/label"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricLabelTypeId: unique symbol = internal.MetricLabelTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricLabelTypeId = typeof MetricLabelTypeId
@@ -25,7 +25,7 @@ export type MetricLabelTypeId = typeof MetricLabelTypeId
  * be used to create separate versions that track response times for different
  * clients.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MetricLabel extends Equal.Equal, Pipeable {
@@ -35,13 +35,13 @@ export interface MetricLabel extends Equal.Equal, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (key: string, value: string) => MetricLabel = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMetricLabel: (u: unknown) => u is MetricLabel = internal.isMetricLabel

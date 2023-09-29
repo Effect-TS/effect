@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as internal from "./internal/metric/pair"
 import type * as MetricKey from "./MetricKey"
@@ -8,19 +8,19 @@ import type * as MetricState from "./MetricState"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricPairTypeId: unique symbol = internal.MetricPairTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricPairTypeId = typeof MetricPairTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
@@ -31,17 +31,17 @@ export interface MetricPair<Type extends MetricKeyType.MetricKeyType<any, any>>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace MetricPair {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Untyped extends MetricPair<MetricKeyType.MetricKeyType<any, any>> {}
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Type extends MetricKeyType.MetricKeyType<any, any>> {
@@ -52,7 +52,7 @@ export declare namespace MetricPair {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
@@ -61,7 +61,7 @@ export const make: <Type extends MetricKeyType.MetricKeyType<any, any>>(
 ) => MetricPair.Untyped = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: <Type extends MetricKeyType.MetricKeyType<any, any>>(

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Effect from "./Effect"
 import type * as FiberId from "./FiberId"
@@ -11,13 +11,13 @@ import type { Pipeable } from "./Pipeable"
 import type * as Arr from "./ReadonlyArray"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const FiberRefsSym: unique symbol = internal.FiberRefsSym
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type FiberRefsSym = typeof FiberRefsSym
@@ -28,7 +28,7 @@ export type FiberRefsSym = typeof FiberRefsSym
  * This allows safely propagating `FiberRef` values across fiber boundaries, for
  * example between an asynchronous producer and consumer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface FiberRefs extends Pipeable {
@@ -45,7 +45,7 @@ export {
   /**
    * Deletes the specified `FiberRef` from the `FibterRefs`.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category utils
    */
   delete_ as delete
@@ -54,7 +54,7 @@ export {
 /**
  * Returns a set of each `FiberRef` in this collection.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<any>> = internal.fiberRefs
@@ -64,7 +64,7 @@ export const fiberRefs: (self: FiberRefs) => HashSet.HashSet<FiberRef.FiberRef<a
  * will potentially modify the value of the fiber refs, as determined by the
  * individual fiber refs that make up the collection.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const forkAs: {
@@ -76,7 +76,7 @@ export const forkAs: {
  * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
  * values if it exists or `None` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: {
@@ -88,7 +88,7 @@ export const get: {
  * Gets the value of the specified `FiberRef` in this collection of `FiberRef`
  * values if it exists or the `initial` value of the `FiberRef` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const getOrDefault: {
@@ -101,7 +101,7 @@ export const getOrDefault: {
  * specified fiber id. This will perform diffing and merging to ensure
  * preservation of maximum information from both child and parent refs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const joinAs: {
@@ -112,7 +112,7 @@ export const joinAs: {
 /**
  * Set each ref to either its value or its default.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = internal.setAll
@@ -120,7 +120,7 @@ export const setAll: (self: FiberRefs) => Effect.Effect<never, never, void> = in
 /**
  * Updates the value of the specified `FiberRef` using the provided `FiberId`
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const updatedAs: {
@@ -144,7 +144,7 @@ export const updatedAs: {
 /**
  * Note: it will not copy the provided Map, make sure to provide a fresh one.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: (
@@ -155,6 +155,6 @@ export const unsafeMake: (
  * The empty collection of `FiberRef` values.
  *
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty: () => FiberRefs = internal.empty

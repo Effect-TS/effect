@@ -6,7 +6,7 @@ parent: Modules
 
 ## Scheduler overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -61,7 +61,7 @@ Added in v1.0.0
 export declare class ControlledScheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### scheduleTask (method)
 
@@ -71,7 +71,7 @@ Added in v1.0.0
 scheduleTask(task: Task, priority: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### shouldYield (method)
 
@@ -81,7 +81,7 @@ Added in v1.0.0
 shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### step (method)
 
@@ -91,7 +91,7 @@ Added in v1.0.0
 step()
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### tasks (property)
 
@@ -101,7 +101,7 @@ Added in v1.0.0
 tasks: PriorityBuckets<Task>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### deferred (property)
 
@@ -111,7 +111,7 @@ Added in v1.0.0
 deferred: boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MixedScheduler (class)
 
@@ -121,14 +121,14 @@ Added in v1.0.0
 export declare class MixedScheduler {
   constructor(
     /**
-     * @since 1.0.0
+     * @since 2.0.0
      */
     readonly maxNextTickBeforeTimer: number
   )
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### starveInternal (method)
 
@@ -138,7 +138,7 @@ Added in v1.0.0
 private starveInternal(depth: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### starve (method)
 
@@ -148,7 +148,7 @@ Added in v1.0.0
 private starve(depth = 0)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### shouldYield (method)
 
@@ -158,7 +158,7 @@ Added in v1.0.0
 shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### scheduleTask (method)
 
@@ -168,7 +168,7 @@ Added in v1.0.0
 scheduleTask(task: Task, priority: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### running (property)
 
@@ -178,7 +178,7 @@ Added in v1.0.0
 running: boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### tasks (property)
 
@@ -188,7 +188,7 @@ Added in v1.0.0
 tasks: PriorityBuckets<Task>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SyncScheduler (class)
 
@@ -198,7 +198,7 @@ Added in v1.0.0
 export declare class SyncScheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### scheduleTask (method)
 
@@ -208,7 +208,7 @@ Added in v1.0.0
 scheduleTask(task: Task, priority: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### shouldYield (method)
 
@@ -218,7 +218,7 @@ Added in v1.0.0
 shouldYield(fiber: RuntimeFiber<unknown, unknown>): number | false
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### flush (method)
 
@@ -228,7 +228,7 @@ Added in v1.0.0
 flush()
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### tasks (property)
 
@@ -238,7 +238,7 @@ Added in v1.0.0
 tasks: PriorityBuckets<Task>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### deferred (property)
 
@@ -248,7 +248,7 @@ Added in v1.0.0
 deferred: boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -261,7 +261,7 @@ export declare const make: (
 ) => Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeBatched
 
@@ -274,7 +274,7 @@ export declare const makeBatched: (
 ) => Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeMatrix
 
@@ -284,7 +284,7 @@ Added in v1.0.0
 export declare const makeMatrix: (...record: Array<[number, Scheduler]>) => Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timer
 
@@ -294,7 +294,7 @@ Added in v1.0.0
 export declare const timer: (ms: number, shouldYield?: Scheduler['shouldYield']) => Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timerBatched
 
@@ -304,7 +304,7 @@ Added in v1.0.0
 export declare const timerBatched: (ms: number, shouldYield?: Scheduler['shouldYield']) => Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -319,7 +319,7 @@ export interface Scheduler {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Task (type alias)
 
@@ -329,7 +329,7 @@ Added in v1.0.0
 export type Task = () => void
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # schedulers
 
@@ -341,7 +341,7 @@ Added in v1.0.0
 export declare const defaultScheduler: Scheduler
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utilities
 
@@ -353,7 +353,7 @@ Added in v1.0.0
 export declare const defaultShouldYield: (fiber: RuntimeFiber<unknown, unknown>) => number | false
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -365,7 +365,7 @@ Added in v1.0.0
 export declare class PriorityBuckets<T>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### scheduleTask (method)
 
@@ -375,7 +375,7 @@ Added in v1.0.0
 scheduleTask(task: T, priority: number)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### buckets (property)
 
@@ -385,4 +385,4 @@ Added in v1.0.0
 buckets: [number, T[]][]
 ```
 
-Added in v1.0.0
+Added in v2.0.0

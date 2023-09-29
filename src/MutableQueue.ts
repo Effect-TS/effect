@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Chunk from "./Chunk"
 import * as Dual from "./Function"
@@ -11,19 +11,19 @@ import { pipeArguments } from "./Pipeable"
 const TypeId: unique symbol = Symbol.for("effect/MutableQueue") as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export const EmptyMutableQueue = Symbol.for("effect/mutable/MutableQueue/Empty")
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category model
  */
 export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
@@ -36,11 +36,11 @@ export interface MutableQueue<A> extends Iterable<A>, Pipeable, Inspectable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace MutableQueue {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Empty = typeof EmptyMutableQueue
 }
@@ -77,7 +77,7 @@ const make = <A>(capacity: number | undefined): MutableQueue<A> => {
 /**
  * Creates a new bounded `MutableQueue`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const bounded = <A>(capacity: number): MutableQueue<A> => make(capacity)
@@ -85,7 +85,7 @@ export const bounded = <A>(capacity: number): MutableQueue<A> => make(capacity)
 /**
  * Creates a new unbounded `MutableQueue`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unbounded = <A>(): MutableQueue<A> => make(undefined)
@@ -93,7 +93,7 @@ export const unbounded = <A>(): MutableQueue<A> => make(undefined)
 /**
  * Returns the current number of elements in the queue.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const length = <A>(self: MutableQueue<A>): number => MutableList.length(self.queue)
@@ -101,7 +101,7 @@ export const length = <A>(self: MutableQueue<A>): number => MutableList.length(s
 /**
  * Returns `true` if the queue is empty, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isEmpty = <A>(self: MutableQueue<A>): boolean => MutableList.isEmpty(self.queue)
@@ -109,7 +109,7 @@ export const isEmpty = <A>(self: MutableQueue<A>): boolean => MutableList.isEmpt
 /**
  * Returns `true` if the queue is full, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFull = <A>(self: MutableQueue<A>): boolean =>
@@ -121,7 +121,7 @@ export const isFull = <A>(self: MutableQueue<A>): boolean =>
  * **Note**: unbounded queues can still implement this interface with
  * `capacity = Infinity`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const capacity = <A>(self: MutableQueue<A>): number => self.capacity === undefined ? Infinity : self.capacity
@@ -131,7 +131,7 @@ export const capacity = <A>(self: MutableQueue<A>): number => self.capacity === 
  *
  * Returns whether the enqueue was successful or not.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const offer: {
   <A>(self: MutableQueue<A>, value: A): boolean
@@ -153,7 +153,7 @@ export const offer: {
  *
  * Returns a `Chunk` of the values that were **not** able to be enqueued.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const offerAll: {
   <A>(values: Iterable<A>): (self: MutableQueue<A>) => Chunk.Chunk<A>
@@ -184,7 +184,7 @@ export const offerAll: {
  * **Note**: if there is no meaningful default for your type, you can always
  * use `poll(MutableQueue.EmptyMutableQueue)`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const poll: {
   <D>(def: D): <A>(self: MutableQueue<A>) => D | A
@@ -204,7 +204,7 @@ export const poll: {
  *
  * Returns a `List` of up to `n` elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const pollUpTo: {
   (n: number): <A>(self: MutableQueue<A>) => Chunk.Chunk<A>

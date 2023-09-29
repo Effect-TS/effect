@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Chunk from "./Chunk"
 import type * as Equal from "./Equal"
@@ -7,19 +7,19 @@ import * as internal from "./internal/metric/boundaries"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricBoundariesTypeId: unique symbol = internal.MetricBoundariesTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricBoundariesTypeId = typeof MetricBoundariesTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MetricBoundaries extends Equal.Equal, Pipeable {
@@ -28,13 +28,13 @@ export interface MetricBoundaries extends Equal.Equal, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMetricBoundaries: (u: unknown) => u is MetricBoundaries = internal.isMetricBoundaries
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries = internal.fromChunk
@@ -43,7 +43,7 @@ export const fromChunk: (chunk: Chunk.Chunk<number>) => MetricBoundaries = inter
  * A helper method to create histogram bucket boundaries for a histogram
  * with linear increasing values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const linear: (
@@ -58,7 +58,7 @@ export const linear: (
  * A helper method to create histogram bucket boundaries for a histogram
  * with exponentially increasing values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const exponential: (

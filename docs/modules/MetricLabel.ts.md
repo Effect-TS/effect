@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricLabel overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -34,7 +34,7 @@ Added in v1.0.0
 export declare const make: (key: string, value: string) => MetricLabel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -57,7 +57,7 @@ export interface MetricLabel extends Equal.Equal, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -69,7 +69,7 @@ Added in v1.0.0
 export declare const isMetricLabel: (u: unknown) => u is MetricLabel
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -81,7 +81,7 @@ Added in v1.0.0
 export declare const MetricLabelTypeId: typeof MetricLabelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricLabelTypeId (type alias)
 
@@ -91,4 +91,4 @@ Added in v1.0.0
 export type MetricLabelTypeId = typeof MetricLabelTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

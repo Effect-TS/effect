@@ -6,7 +6,7 @@ parent: Modules
 
 ## Sink overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -153,7 +153,7 @@ A sink that collects all elements into a `Chunk`.
 export declare const collectAll: <In>() => Sink<never, never, In, never, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllN
 
@@ -165,7 +165,7 @@ A sink that collects first `n` elements into a chunk.
 export declare const collectAllN: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllToMap
 
@@ -182,7 +182,7 @@ export declare const collectAllToMap: <In, K>(
 ) => Sink<never, never, In, never, HashMap.HashMap<K, In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllToMapN
 
@@ -200,7 +200,7 @@ export declare const collectAllToMapN: <In, K>(
 ) => Sink<never, never, In, In, HashMap.HashMap<K, In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllToSet
 
@@ -212,7 +212,7 @@ A sink that collects all of its inputs into a set.
 export declare const collectAllToSet: <In>() => Sink<never, never, In, never, HashSet.HashSet<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllToSetN
 
@@ -224,7 +224,7 @@ A sink that collects first `n` distinct inputs into a set.
 export declare const collectAllToSetN: <In>(n: number) => Sink<never, never, In, In, HashSet.HashSet<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllUntil
 
@@ -237,7 +237,7 @@ satisfied.
 export declare const collectAllUntil: <In>(p: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllUntilEffect
 
@@ -252,7 +252,7 @@ export declare const collectAllUntilEffect: <In, R, E>(
 ) => Sink<R, E, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllWhile
 
@@ -265,7 +265,7 @@ Accumulates incoming elements into a chunk as long as they verify predicate
 export declare const collectAllWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllWhileEffect
 
@@ -280,7 +280,7 @@ export declare const collectAllWhileEffect: <In, R, E>(
 ) => Sink<R, E, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## context
 
@@ -292,7 +292,7 @@ Accesses the whole context of the sink.
 export declare const context: <R>() => Sink<R, never, unknown, never, Context.Context<R>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWith
 
@@ -304,7 +304,7 @@ Accesses the context of the sink.
 export declare const contextWith: <R, Z>(f: (context: Context.Context<R>) => Z) => Sink<R, never, unknown, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithEffect
 
@@ -318,7 +318,7 @@ export declare const contextWithEffect: <R, R2, E, Z>(
 ) => Sink<R | R2, E, unknown, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contextWithSink
 
@@ -332,7 +332,7 @@ export declare const contextWithSink: <R0, R, E, In, L, Z>(
 ) => Sink<R0 | R, E, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## count
 
@@ -344,7 +344,7 @@ A sink that counts the number of elements fed to it.
 export declare const count: Sink<never, never, unknown, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## die
 
@@ -356,7 +356,7 @@ Creates a sink halting with the specified defect.
 export declare const die: (defect: unknown) => Sink<never, never, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieMessage
 
@@ -369,7 +369,7 @@ Creates a sink halting with the specified message, wrapped in a
 export declare const dieMessage: (message: string) => Sink<never, never, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dieSync
 
@@ -381,7 +381,7 @@ Creates a sink halting with the specified defect.
 export declare const dieSync: (evaluate: LazyArg<unknown>) => Sink<never, never, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drain
 
@@ -393,7 +393,7 @@ A sink that ignores its inputs.
 export declare const drain: Sink<never, never, unknown, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drop
 
@@ -405,7 +405,7 @@ Creates a sink that drops `n` elements.
 export declare const drop: <In>(n: number) => Sink<never, never, In, In, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropUntil
 
@@ -417,7 +417,7 @@ Drops incoming elements until the predicate is satisfied.
 export declare const dropUntil: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropUntilEffect
 
@@ -431,7 +431,7 @@ export declare const dropUntilEffect: <In, R, E>(
 ) => Sink<R, E, In, In, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhile
 
@@ -443,7 +443,7 @@ Drops incoming elements as long as the predicate is satisfied.
 export declare const dropWhile: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhileEffect
 
@@ -457,7 +457,7 @@ export declare const dropWhileEffect: <In, R, E>(
 ) => Sink<R, E, In, In, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -469,7 +469,7 @@ A sink that returns whether all elements satisfy the specified predicate.
 export declare const every: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -481,7 +481,7 @@ A sink that always fails with the specified error.
 export declare const fail: <E>(e: E) => Sink<never, E, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -493,7 +493,7 @@ Creates a sink halting with a specified `Cause`.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Sink<never, E, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCauseSync
 
@@ -505,7 +505,7 @@ Creates a sink halting with a specified lazily evaluated `Cause`.
 export declare const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Sink<never, E, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failSync
 
@@ -517,7 +517,7 @@ A sink that always fails with the specified lazily evaluated error.
 export declare const failSync: <E>(evaluate: LazyArg<E>) => Sink<never, E, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldChunks
 
@@ -536,7 +536,7 @@ export declare const foldChunks: <S, In>(
 ) => Sink<never, never, In, never, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldChunksEffect
 
@@ -555,7 +555,7 @@ export declare const foldChunksEffect: <S, R, E, In>(
 ) => Sink<R, E, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldEffect
 
@@ -572,7 +572,7 @@ export declare const foldEffect: <S, R, E, In>(
 ) => Sink<R, E, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldLeft
 
@@ -584,7 +584,7 @@ A sink that folds its inputs with the provided function and initial state.
 export declare const foldLeft: <S, In>(s: S, f: (s: S, input: In) => S) => Sink<never, never, In, never, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldLeftChunks
 
@@ -600,7 +600,7 @@ export declare const foldLeftChunks: <S, In>(
 ) => Sink<never, never, In, never, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldLeftChunksEffect
 
@@ -616,7 +616,7 @@ export declare const foldLeftChunksEffect: <S, R, E, In>(
 ) => Sink<R, E, In, never, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldLeftEffect
 
@@ -632,7 +632,7 @@ export declare const foldLeftEffect: <S, R, E, In>(
 ) => Sink<R, E, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldUntil
 
@@ -647,7 +647,7 @@ Like `Sink.foldWeighted`, but with a constant cost function of `1`.
 export declare const foldUntil: <In, S>(s: S, max: number, f: (z: S, input: In) => S) => Sink<never, never, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldUntilEffect
 
@@ -666,7 +666,7 @@ export declare const foldUntilEffect: <S, R, E, In>(
 ) => Sink<R, E, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldWeighted
 
@@ -685,7 +685,7 @@ export declare const foldWeighted: <S, In>(options: {
 }) => Sink<never, never, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldWeightedDecompose
 
@@ -734,7 +734,7 @@ export declare const foldWeightedDecompose: <S, In>(options: {
 }) => Sink<never, never, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldWeightedDecomposeEffect
 
@@ -763,7 +763,7 @@ export declare const foldWeightedDecomposeEffect: <S, In, R, E, R2, E2, R3, E3>(
 }) => Sink<R | R2 | R3, E | E2 | E3, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldWeightedEffect
 
@@ -782,7 +782,7 @@ export declare const foldWeightedEffect: <S, In, R, E, R2, E2>(options: {
 }) => Sink<R | R2, E | E2, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -795,7 +795,7 @@ to it.
 export declare const forEach: <In, R, E, _>(f: (input: In) => Effect.Effect<R, E, _>) => Sink<R, E, In, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachChunk
 
@@ -810,7 +810,7 @@ export declare const forEachChunk: <In, R, E, _>(
 ) => Sink<R, E, In, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachChunkWhile
 
@@ -825,7 +825,7 @@ export declare const forEachChunkWhile: <In, R, E>(
 ) => Sink<R, E, In, In, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachWhile
 
@@ -840,7 +840,7 @@ export declare const forEachWhile: <In, R, E>(
 ) => Sink<R, E, In, In, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromChannel
 
@@ -854,7 +854,7 @@ export declare const fromChannel: <R, E, In, L, Z>(
 ) => Sink<R, E, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEffect
 
@@ -866,7 +866,7 @@ Creates a single-value sink produced from an effect.
 export declare const fromEffect: <R, E, Z>(effect: Effect.Effect<R, E, Z>) => Sink<R, E, unknown, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromHub
 
@@ -881,7 +881,7 @@ export declare const fromHub: <In>(
 ) => Sink<never, never, In, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromPush
 
@@ -899,7 +899,7 @@ export declare const fromPush: <R, E, In, L, Z>(
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromQueue
 
@@ -914,7 +914,7 @@ export declare const fromQueue: <In>(
 ) => Sink<never, never, In, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## head
 
@@ -926,7 +926,7 @@ Creates a sink containing the first value.
 export declare const head: <In>() => Sink<never, never, In, In, Option.Option<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## last
 
@@ -938,7 +938,7 @@ Creates a sink containing the last value.
 export declare const last: <In>() => Sink<never, never, In, In, Option.Option<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## leftover
 
@@ -951,7 +951,7 @@ as its leftovers
 export declare const leftover: <L>(chunk: Chunk.Chunk<L>) => Sink<never, never, unknown, L, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mkString
 
@@ -963,7 +963,7 @@ Creates a sink which transforms it's inputs into a string.
 export declare const mkString: Sink<never, never, unknown, never, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -975,7 +975,7 @@ Creates a sink which never terminates.
 export declare const never: Sink<never, never, unknown, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -987,7 +987,7 @@ A sink that returns whether an element satisfies the specified predicate.
 export declare const some: <In>(predicate: Predicate<In>) => Sink<never, never, In, In, boolean>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -999,7 +999,7 @@ A sink that immediately ends with the specified value.
 export declare const succeed: <Z>(z: Z) => Sink<never, never, unknown, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sum
 
@@ -1011,7 +1011,7 @@ A sink that sums incoming numeric values.
 export declare const sum: Sink<never, never, number, never, number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## suspend
 
@@ -1024,7 +1024,7 @@ creation.
 export declare const suspend: <R, E, In, L, Z>(evaluate: LazyArg<Sink<R, E, In, L, Z>>) => Sink<R, E, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sync
 
@@ -1036,7 +1036,7 @@ A sink that immediately ends with the specified lazy value.
 export declare const sync: <Z>(evaluate: LazyArg<Z>) => Sink<never, never, unknown, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -1048,7 +1048,7 @@ A sink that takes the specified number of values.
 export declare const take: <In>(n: number) => Sink<never, never, In, In, Chunk.Chunk<In>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timed
 
@@ -1058,7 +1058,7 @@ Added in v1.0.0
 export declare const timed: Sink<never, never, unknown, never, Duration.Duration>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toChannel
 
@@ -1072,7 +1072,7 @@ export declare const toChannel: <R, E, In, L, Z>(
 ) => Channel.Channel<R, never, Chunk.Chunk<In>, unknown, E, Chunk.Chunk<L>, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrap
 
@@ -1086,7 +1086,7 @@ export declare const unwrap: <R, E, R2, E2, In, L, Z>(
 ) => Sink<R | R2, E | E2, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unwrapScoped
 
@@ -1100,7 +1100,7 @@ export declare const unwrapScoped: <R, E, In, L, Z>(
 ) => Sink<Exclude<R, Scope.Scope>, E, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # context
 
@@ -1118,7 +1118,7 @@ export declare const provideContext: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -1143,7 +1143,7 @@ export declare const findEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # error handling
 
@@ -1168,7 +1168,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDie
 
@@ -1181,7 +1181,7 @@ export declare const refineOrDie: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refineOrDieWith
 
@@ -1194,7 +1194,7 @@ export declare const refineOrDieWith: <E, E2>(
 ) => <R, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E2, In, L, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -1213,7 +1213,7 @@ export declare const filterInput: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterInputEffect
 
@@ -1233,7 +1233,7 @@ export declare const filterInputEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # finalization
 
@@ -1254,7 +1254,7 @@ export declare const ensuring: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ensuringWith
 
@@ -1276,7 +1276,7 @@ export declare const ensuringWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -1295,7 +1295,7 @@ export declare const fold: <S, In>(
 ) => Sink<never, never, In, In, S>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## foldSink
 
@@ -1319,7 +1319,7 @@ export declare const foldSink: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -1336,7 +1336,7 @@ export declare const as: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dimap
 
@@ -1357,7 +1357,7 @@ export declare const dimap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dimapChunks
 
@@ -1379,7 +1379,7 @@ export declare const dimapChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dimapChunksEffect
 
@@ -1404,7 +1404,7 @@ export declare const dimapChunksEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dimapEffect
 
@@ -1429,7 +1429,7 @@ export declare const dimapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -1444,7 +1444,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapEffect
 
@@ -1467,7 +1467,7 @@ export declare const mapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapError
 
@@ -1482,7 +1482,7 @@ export declare const mapError: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInput
 
@@ -1497,7 +1497,7 @@ export declare const mapInput: (<In0, In>(
   (<R, E, L, Z, In0, In>(self: Sink<R, E, In, L, Z>, f: (input: In0) => In) => Sink<R, E, In0, L, Z>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputChunks
 
@@ -1520,7 +1520,7 @@ export declare const mapInputChunks: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputChunksEffect
 
@@ -1541,7 +1541,7 @@ export declare const mapInputChunksEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapInputEffect
 
@@ -1559,7 +1559,7 @@ export declare const mapInputEffect: (<In0, R2, E2, In>(
   ) => Sink<R | R2, E | E2, In0, L, Z>)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapLeftover
 
@@ -1574,7 +1574,7 @@ export declare const mapLeftover: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1592,7 +1592,7 @@ type `L` (i.e. any leftovers).
 export interface Sink<R, E, In, L, Z> extends Sink.Variance<R, E, In, L, Z>, Pipeable {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SinkUnify (interface)
 
@@ -1606,7 +1606,7 @@ export interface SinkUnify<A extends { [Unify.typeSymbol]?: any }> extends Effec
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SinkUnifyBlacklist (interface)
 
@@ -1618,7 +1618,7 @@ export interface SinkUnifyBlacklist extends Effect.EffectUnifyBlacklist {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1644,7 +1644,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -1656,7 +1656,7 @@ Added in v1.0.0
 export declare const SinkTypeId: typeof SinkTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SinkTypeId (type alias)
 
@@ -1666,13 +1666,13 @@ Added in v1.0.0
 export type SinkTypeId = typeof SinkTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Sink (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -1684,7 +1684,7 @@ export interface Variance<R, E, In, L, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### VarianceStruct (interface)
 
@@ -1700,7 +1700,7 @@ export interface VarianceStruct<R, E, In, L, Z> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllFrom
 
@@ -1714,7 +1714,7 @@ export declare const collectAllFrom: <R, E, In, L extends In, Z>(
 ) => Sink<R, E, In, L, Chunk.Chunk<Z>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectAllWhileWith
 
@@ -1740,7 +1740,7 @@ export declare const collectAllWhileWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## collectLeftover
 
@@ -1755,7 +1755,7 @@ export declare const collectLeftover: <R, E, In, L, Z>(
 ) => Sink<R, E, In, never, readonly [Z, Chunk.Chunk<L>]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ignoreLeftover
 
@@ -1767,7 +1767,7 @@ Drains the remaining elements from the stream after the sink finishes
 export declare const ignoreLeftover: <R, E, In, L, Z>(self: Sink<R, E, In, L, Z>) => Sink<R, E, In, never, Z>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## race
 
@@ -1791,7 +1791,7 @@ export declare const race: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## raceBoth
 
@@ -1813,7 +1813,7 @@ export declare const raceBoth: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## raceWith
 
@@ -1842,7 +1842,7 @@ export declare const raceWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitWhere
 
@@ -1859,7 +1859,7 @@ export declare const splitWhere: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summarized
 
@@ -1881,7 +1881,7 @@ export declare const summarized: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withDuration
 
@@ -1895,7 +1895,7 @@ export declare const withDuration: <R, E, In, L, Z>(
 ) => Sink<R, E, In, L, readonly [Z, Duration.Duration]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -1921,7 +1921,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -1943,7 +1943,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -1965,7 +1965,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -1991,4 +1991,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

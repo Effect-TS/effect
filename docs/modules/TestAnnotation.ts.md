@@ -6,7 +6,7 @@ parent: Modules
 
 ## TestAnnotation overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ export interface TestAnnotation<A> extends Equal.Equal {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationTypeId
 
@@ -53,7 +53,7 @@ Added in v1.0.0
 export declare const TestAnnotationTypeId: typeof TestAnnotationTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TestAnnotationTypeId (type alias)
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## compose
 
@@ -76,7 +76,7 @@ export declare const compose: <A>(
 ) => Either.Either<number, Chunk.Chunk<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fibers
 
@@ -88,7 +88,7 @@ export declare const fibers: TestAnnotation<
 >
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ignored
 
@@ -100,7 +100,7 @@ An annotation which counts ignored tests.
 export declare const ignored: TestAnnotation<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isTestAnnotation
 
@@ -110,7 +110,7 @@ Added in v1.0.0
 export declare const isTestAnnotation: (u: unknown) => u is TestAnnotation<unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -125,7 +125,7 @@ export declare const make: <A>(
 ) => TestAnnotation<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeated
 
@@ -137,7 +137,7 @@ An annotation which counts repeated tests.
 export declare const repeated: TestAnnotation<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## retried
 
@@ -149,7 +149,7 @@ An annotation which counts retried tests.
 export declare const retried: TestAnnotation<number>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tagged
 
@@ -161,4 +161,4 @@ An annotation which tags tests with strings.
 export declare const tagged: TestAnnotation<HashSet.HashSet<string>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

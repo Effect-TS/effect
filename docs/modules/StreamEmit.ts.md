@@ -6,7 +6,7 @@ parent: Modules
 
 ## StreamEmit overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -37,7 +37,7 @@ export interface Emit<R, E, A, B> extends EmitOps<R, E, A, B> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## EmitOps (interface)
 
@@ -101,4 +101,4 @@ export interface EmitOps<R, E, A, B> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

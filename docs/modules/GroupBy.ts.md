@@ -6,7 +6,7 @@ parent: Modules
 
 ## GroupBy overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -43,7 +43,7 @@ export declare const make: <R, E, K, V>(
 ) => GroupBy<R, E, K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -68,7 +68,7 @@ export declare const evaluate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -86,7 +86,7 @@ export interface GroupBy<R, E, K, V> extends GroupBy.Variance<R, E, K, V>, Pipea
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -98,7 +98,7 @@ Added in v1.0.0
 export declare const GroupByTypeId: typeof GroupByTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GroupByTypeId (type alias)
 
@@ -108,13 +108,13 @@ Added in v1.0.0
 export type GroupByTypeId = typeof GroupByTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## GroupBy (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -131,7 +131,7 @@ export interface Variance<R, E, K, V> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -146,7 +146,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## first
 
@@ -161,4 +161,4 @@ export declare const first: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

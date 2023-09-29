@@ -6,7 +6,7 @@ parent: Modules
 
 ## ChannelChildExecutorDecision overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -47,7 +47,7 @@ Added in v1.0.0
 export declare const Close: (value: unknown) => ChildExecutorDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Continue
 
@@ -57,7 +57,7 @@ Added in v1.0.0
 export declare const Continue: (_: void) => ChildExecutorDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Yield
 
@@ -67,7 +67,7 @@ Added in v1.0.0
 export declare const Yield: (_: void) => ChildExecutorDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -89,7 +89,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -101,7 +101,7 @@ Added in v1.0.0
 export type ChildExecutorDecision = Continue | Close | Yield
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Close (interface)
 
@@ -117,7 +117,7 @@ export interface Close extends ChildExecutorDecision.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Continue (interface)
 
@@ -131,7 +131,7 @@ export interface Continue extends ChildExecutorDecision.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Yield (interface)
 
@@ -146,7 +146,7 @@ export interface Yield extends ChildExecutorDecision.Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -161,7 +161,7 @@ otherwise.
 export declare const isChildExecutorDecision: (u: unknown) => u is ChildExecutorDecision
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isClose
 
@@ -174,7 +174,7 @@ otherwise.
 export declare const isClose: (self: ChildExecutorDecision) => self is Close
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isContinue
 
@@ -187,7 +187,7 @@ Returns `true` if the specified `ChildExecutorDecision` is a `Continue`,
 export declare const isContinue: (self: ChildExecutorDecision) => self is Continue
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isYield
 
@@ -200,7 +200,7 @@ otherwise.
 export declare const isYield: (self: ChildExecutorDecision) => self is Yield
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -212,7 +212,7 @@ Added in v1.0.0
 export declare const ChildExecutorDecisionTypeId: typeof ChildExecutorDecisionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ChildExecutorDecisionTypeId (type alias)
 
@@ -222,13 +222,13 @@ Added in v1.0.0
 export type ChildExecutorDecisionTypeId = typeof ChildExecutorDecisionTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ChildExecutorDecision (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Proto (interface)
 
@@ -240,4 +240,4 @@ export interface Proto {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

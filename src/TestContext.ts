@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as DefaultServices from "./DefaultServices"
 import { pipe } from "./Function"
@@ -23,13 +23,13 @@ export const live: Layer.Layer<DefaultServices.DefaultServices, never, TestServi
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const LiveContext: Layer.Layer<never, never, DefaultServices.DefaultServices> = layer.syncContext(() =>
   defaultServices.liveServices
 )
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestContext: Layer.Layer<never, never, TestServices.TestServices> = layer.provideMerge(LiveContext, live)

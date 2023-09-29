@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Chunk from "./Chunk"
 import type * as Duration from "./Duration"
@@ -13,13 +13,13 @@ import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const MetricKeyTypeId: unique symbol = internal.MetricKeyTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type MetricKeyTypeId = typeof MetricKeyTypeId
@@ -31,7 +31,7 @@ export type MetricKeyTypeId = typeof MetricKeyTypeId
  * describe a metric, such as the boundaries of a histogram. In this way, it is
  * impossible to ever create different metrics with conflicting keys.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
@@ -44,47 +44,47 @@ export interface MetricKey<Type extends MetricKeyType.MetricKeyType<any, any>>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace MetricKey {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Untyped = MetricKey<any>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Counter = MetricKey<MetricKeyType.MetricKeyType.Counter>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Gauge = MetricKey<MetricKeyType.MetricKeyType.Gauge>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Frequency = MetricKey<MetricKeyType.MetricKeyType.Frequency>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Histogram = MetricKey<MetricKeyType.MetricKeyType.Histogram>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export type Summary = MetricKey<MetricKeyType.MetricKeyType.Summary>
 
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Type> {
@@ -95,7 +95,7 @@ export declare namespace MetricKey {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKeyType<unknown, unknown>> =
@@ -104,7 +104,7 @@ export const isMetricKey: (u: unknown) => u is MetricKey<MetricKeyType.MetricKey
 /**
  * Creates a metric key for a counter, with the specified name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const counter: (name: string, description?: string) => MetricKey.Counter = internal.counter
@@ -113,7 +113,7 @@ export const counter: (name: string, description?: string) => MetricKey.Counter 
  * Creates a metric key for a categorical frequency table, with the specified
  * name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const frequency: (name: string, description?: string) => MetricKey.Frequency = internal.frequency
@@ -121,7 +121,7 @@ export const frequency: (name: string, description?: string) => MetricKey.Freque
 /**
  * Creates a metric key for a gauge, with the specified name.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const gauge: (name: string, description?: string) => MetricKey.Gauge = internal.gauge
@@ -129,7 +129,7 @@ export const gauge: (name: string, description?: string) => MetricKey.Gauge = in
 /**
  * Creates a metric key for a histogram, with the specified name and boundaries.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const histogram: (
@@ -142,7 +142,7 @@ export const histogram: (
  * Creates a metric key for a summary, with the specified name, maxAge,
  * maxSize, error, and quantiles.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const summary: (
@@ -159,7 +159,7 @@ export const summary: (
 /**
  * Returns a new `MetricKey` with the specified tag appended.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const tagged: {
@@ -177,7 +177,7 @@ export const tagged: {
 /**
  * Returns a new `MetricKey` with the specified tags appended.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const taggedWithLabels: {
@@ -193,7 +193,7 @@ export const taggedWithLabels: {
 /**
  * Returns a new `MetricKey` with the specified tags appended.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const taggedWithLabelSet: {

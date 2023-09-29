@@ -15,7 +15,7 @@
  * Because of their excellent composition properties, layers are the idiomatic
  * way in Effect-TS to create services that depend on other services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import * as Context from "./Context"
@@ -29,29 +29,29 @@ import type * as Schedule from "./Schedule"
 import type * as Scope from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const LayerTypeId: unique symbol = internal.LayerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type LayerTypeId = typeof LayerTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Layer<RIn, E, ROut> extends Layer.Variance<RIn, E, ROut>, Pipeable {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Layer {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<RIn, E, ROut> {
@@ -62,17 +62,17 @@ export declare namespace Layer {
     }
   }
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Context<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _R : never
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Error<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _E : never
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category type-level
    */
   export type Success<T extends Layer<any, any, never>> = [T] extends [Layer<infer _R, infer _E, infer _A>] ? _A : never
@@ -81,7 +81,7 @@ export declare namespace Layer {
 /**
  * Returns `true` if the specified value is a `Layer`, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isLayer: (u: unknown) => u is Layer<unknown, unknown, unknown> = internal.isLayer
@@ -90,7 +90,7 @@ export const isLayer: (u: unknown) => u is Layer<unknown, unknown, unknown> = in
  * Returns `true` if the specified `Layer` is a fresh version that will not be
  * shared, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFresh: <R, E, A>(self: Layer<R, E, A>) => boolean = internal.isFresh
@@ -98,7 +98,7 @@ export const isFresh: <R, E, A>(self: Layer<R, E, A>) => boolean = internal.isFr
 /**
  * Builds a layer into a scoped value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const build: <RIn, E, ROut>(
@@ -112,7 +112,7 @@ export const build: <RIn, E, ROut>(
  * the services output by the layer exceed the lifetime of the effect the
  * layer is provided to.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const buildWithScope: {
@@ -123,7 +123,7 @@ export const buildWithScope: {
 /**
  * Recovers from all errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAll: {
@@ -134,7 +134,7 @@ export const catchAll: {
 /**
  * Recovers from all errors.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAllCause: {
@@ -151,7 +151,7 @@ export const catchAllCause: {
  * Constructs a `Layer` that passes along the specified context as an
  * output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const context: <R>() => Layer<R, never, R> = internal.context
@@ -159,7 +159,7 @@ export const context: <R>() => Layer<R, never, R> = internal.context
 /**
  * Constructs a layer that dies with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const die: (defect: unknown) => Layer<never, never, unknown> = internal.die
@@ -167,7 +167,7 @@ export const die: (defect: unknown) => Layer<never, never, unknown> = internal.d
 /**
  * Constructs a layer that dies with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieSync: (evaluate: LazyArg<unknown>) => Layer<never, never, unknown> = internal.dieSync
@@ -176,7 +176,7 @@ export const dieSync: (evaluate: LazyArg<unknown>) => Layer<never, never, unknow
  * Replaces the layer's output with `void` and includes the layer only for its
  * side-effects.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const discard: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E, never> = internal.discard
@@ -184,7 +184,7 @@ export const discard: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E,
 /**
  * Constructs a layer from the specified effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const effect: {
@@ -200,7 +200,7 @@ export const effect: {
 /**
  * Constructs a layer from the specified effect discarding it's output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R, E, never> = internal.fromEffectDiscard
@@ -209,7 +209,7 @@ export const effectDiscard: <R, E, _>(effect: Effect.Effect<R, E, _>) => Layer<R
  * Constructs a layer from the specified effect, which must return one or more
  * services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Context<A>>) => Layer<R, E, A> =
@@ -221,7 +221,7 @@ export const effectContext: <R, E, A>(effect: Effect.Effect<R, E, Context.Contex
  * that effect completes execution but instead when the scope the resulting
  * effect depends on is closed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const extendScope: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<Scope.Scope | RIn, E, ROut> =
@@ -230,7 +230,7 @@ export const extendScope: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<Sco
 /**
  * Constructs a layer that fails with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(error: E) => Layer<never, E, unknown> = internal.fail
@@ -238,7 +238,7 @@ export const fail: <E>(error: E) => Layer<never, E, unknown> = internal.fail
 /**
  * Constructs a layer that fails with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => Layer<never, E, unknown> = internal.failSync
@@ -246,7 +246,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Layer<never, E, unknown> = i
 /**
  * Constructs a layer that fails with the specified cause.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Layer<never, E, unknown> = internal.failCause
@@ -254,7 +254,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Layer<never, E, unknown> =
 /**
  * Constructs a layer that fails with the specified cause.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Layer<never, E, unknown> = internal.failCauseSync
@@ -262,7 +262,7 @@ export const failCauseSync: <E>(evaluate: LazyArg<Cause.Cause<E>>) => Layer<neve
 /**
  * Constructs a layer dynamically based on the output of this layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -278,7 +278,7 @@ export const flatMap: {
 /**
  * Flattens layers nested in the context of an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatten: {
@@ -289,7 +289,7 @@ export const flatten: {
 /**
  * Creates a fresh version of this layer that will not be shared.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const fresh: <R, E, A>(self: Layer<R, E, A>) => Layer<R, E, A> = internal.fresh
@@ -304,7 +304,7 @@ export {
   /**
    * Constructs a layer from the context using the specified function.
    *
-   * @since 1.0.0
+   * @since 2.0.0
    * @category constructors
    */
   fromFunction as function
@@ -314,7 +314,7 @@ export {
  * Builds this layer and uses it until it is interrupted. This is useful when
  * your entire application is a layer, such as an HTTP server.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category conversions
  */
 export const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<RIn, E, never> = internal.launch
@@ -322,7 +322,7 @@ export const launch: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Effect.Effect<
 /**
  * Returns a new layer whose output is mapped by the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -333,7 +333,7 @@ export const map: {
 /**
  * Returns a layer with its error channel mapped using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapError: {
@@ -346,7 +346,7 @@ export const mapError: {
  * the specified `failure` or `success` layers, resulting in a new layer with
  * the inputs of this layer, and the error or outputs of the specified layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const match: {
@@ -370,7 +370,7 @@ export const match: {
  * the specified `failure` or `success` layers, resulting in a new layer with
  * the inputs of this layer, and the error or outputs of the specified layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category folding
  */
 export const matchCause: {
@@ -393,7 +393,7 @@ export const matchCause: {
  * Returns a scoped effect that, if evaluated, will return the lazily computed
  * result of this layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const memoize: <RIn, E, ROut>(
@@ -404,7 +404,7 @@ export const memoize: <RIn, E, ROut>(
  * Combines this layer with the specified layer, producing a new layer that
  * has the inputs and outputs of both.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const merge: {
@@ -420,7 +420,7 @@ export const merge: {
 /**
  * Merges all the layers together in parallel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const mergeAll: <Layers extends [Layer<any, any, never>, ...Array<Layer<any, any, never>>]>(
@@ -435,7 +435,7 @@ export const mergeAll: <Layers extends [Layer<any, any, never>, ...Array<Layer<a
  * Translates effect failure into death of the fiber, making all failures
  * unchecked and not a part of the type of the layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDie: <R, E, A>(self: Layer<R, E, A>) => Layer<R, never, A> = internal.orDie
@@ -444,7 +444,7 @@ export const orDie: <R, E, A>(self: Layer<R, E, A>) => Layer<R, never, A> = inte
  * Executes this layer and returns its output, if it succeeds, but otherwise
  * executes the specified layer.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElse: {
@@ -456,7 +456,7 @@ export const orElse: {
  * Returns a new layer that produces the outputs of this layer but also
  * passes through the inputs.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const passthrough: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn, E, RIn | ROut> = internal.passthrough
@@ -465,7 +465,7 @@ export const passthrough: <RIn, E, ROut>(self: Layer<RIn, E, ROut>) => Layer<RIn
  * Projects out part of one of the services output by this layer using the
  * specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const project: {
@@ -487,7 +487,7 @@ export const project: {
  * builder, resulting in a new builder with the inputs of this builder as
  * well as any leftover inputs, and the outputs of the specified builder.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const provide: {
@@ -501,7 +501,7 @@ export const provide: {
 } = internal.provide
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locallyEffect: {
@@ -515,7 +515,7 @@ export const locallyEffect: {
 } = internal.locallyEffect
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locally: {
@@ -531,7 +531,7 @@ export const locally: {
 } = internal.fiberRefLocally
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locallyWith: {
@@ -540,14 +540,14 @@ export const locallyWith: {
 } = internal.fiberRefLocallyWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const locallyScoped: <A>(self: FiberRef<A>, value: A) => Layer<never, never, never> =
   internal.fiberRefLocallyScoped
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const fiberRefLocallyScopedWith: <A>(self: FiberRef<A>, value: (_: A) => A) => Layer<never, never, never> =
@@ -558,7 +558,7 @@ export const fiberRefLocallyScopedWith: <A>(self: FiberRef<A>, value: (_: A) => 
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const provideMerge: {
@@ -574,7 +574,7 @@ export const provideMerge: {
 /**
  * Retries constructing this layer according to the specified schedule.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category retrying
  */
 export const retry: {
@@ -593,7 +593,7 @@ export const retry: {
  * interruption. This can be used to close a scope when providing a layer to a
  * workflow.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scope: Layer<never, never, Scope.CloseableScope> = internal.scope
@@ -601,7 +601,7 @@ export const scope: Layer<never, never, Scope.CloseableScope> = internal.scope
 /**
  * Constructs a layer from the specified scoped effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scoped: {
@@ -619,7 +619,7 @@ export const scoped: {
 /**
  * Constructs a layer from the specified scoped effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scopedDiscard: <R, E, T>(effect: Effect.Effect<R, E, T>) => Layer<Exclude<R, Scope.Scope>, E, never> =
@@ -629,7 +629,7 @@ export const scopedDiscard: <R, E, T>(effect: Effect.Effect<R, E, T>) => Layer<E
  * Constructs a layer from the specified scoped effect, which must return one
  * or more services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scopedContext: <R, E, A>(
@@ -640,7 +640,7 @@ export const scopedContext: <R, E, A>(
  * Constructs a layer that accesses and returns the specified service from the
  * context.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const service: <T extends Context.Tag<any, any>>(
@@ -650,7 +650,7 @@ export const service: <T extends Context.Tag<any, any>>(
 /**
  * Constructs a layer from the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: {
@@ -667,7 +667,7 @@ export const succeed: {
  * Constructs a layer from the specified value, which must return one or more
  * services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeedContext: <A>(context: Context.Context<A>) => Layer<never, never, A> = internal.succeedContext
@@ -676,7 +676,7 @@ export const succeedContext: <A>(context: Context.Context<A>) => Layer<never, ne
  * Lazily constructs a layer. This is useful to avoid infinite recursion when
  * creating layers that refer to themselves.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const suspend: <RIn, E, ROut>(evaluate: LazyArg<Layer<RIn, E, ROut>>) => Layer<RIn, E, ROut> = internal.suspend
@@ -684,7 +684,7 @@ export const suspend: <RIn, E, ROut>(evaluate: LazyArg<Layer<RIn, E, ROut>>) => 
 /**
  * Lazily constructs a layer from the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: {
@@ -701,7 +701,7 @@ export const sync: {
  * Lazily constructs a layer from the specified value, which must return one or more
  * services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const syncContext: <A>(evaluate: LazyArg<Context.Context<A>>) => Layer<never, never, A> = internal.syncContext
@@ -709,7 +709,7 @@ export const syncContext: <A>(evaluate: LazyArg<Context.Context<A>>) => Layer<ne
 /**
  * Performs the specified effect if this layer succeeds.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tap: {
@@ -725,7 +725,7 @@ export const tap: {
 /**
  * Performs the specified effect if this layer fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapError: {
@@ -741,7 +741,7 @@ export const tapError: {
 /**
  * Performs the specified effect if this layer fails.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tapErrorCause: {
@@ -758,7 +758,7 @@ export const tapErrorCause: {
  * Converts a layer that requires no services into a scoped runtime, which can
  * be used to execute effects.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category conversions
  */
 export const toRuntime: <RIn, E, ROut>(
@@ -770,7 +770,7 @@ export const toRuntime: <RIn, E, ROut>(
  * builder, resulting in a new builder with the inputs of this builder as
  * well as any leftover inputs, and the outputs of the specified builder.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const use: {
@@ -788,7 +788,7 @@ export const use: {
  * layer, resulting in a new layer with the inputs of this layer, and the
  * outputs of both layers.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const useMerge: {
@@ -806,7 +806,7 @@ export const useMerge: {
  * inputs of both, and the outputs of both combined using the specified
  * function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipWithPar: {
@@ -822,7 +822,7 @@ export const zipWithPar: {
 } = internal.zipWithPar
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const unwrapEffect = <R, E, R1, E1, A>(
@@ -833,7 +833,7 @@ export const unwrapEffect = <R, E, R1, E1, A>(
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const unwrapScoped = <R, E, R1, E1, A>(

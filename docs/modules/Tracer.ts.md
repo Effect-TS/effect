@@ -6,7 +6,7 @@ parent: Modules
 
 ## Tracer overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -41,7 +41,7 @@ Added in v1.0.0
 export declare const make: (options: Omit<Tracer, typeof TracerTypeId>) => Tracer
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tracerWith
 
@@ -51,7 +51,7 @@ Added in v1.0.0
 export declare const tracerWith: <R, E, A>(f: (tracer: Tracer) => Effect.Effect<R, E, A>) => Effect.Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -63,7 +63,7 @@ Added in v1.0.0
 export type AttributeValue = string | boolean | number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ExternalSpan (interface)
 
@@ -78,7 +78,7 @@ export interface ExternalSpan {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ParentSpan (type alias)
 
@@ -88,7 +88,7 @@ Added in v1.0.0
 export type ParentSpan = Span | ExternalSpan
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Span (interface)
 
@@ -111,7 +111,7 @@ export interface Span {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SpanLink (interface)
 
@@ -125,7 +125,7 @@ export interface SpanLink {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SpanStatus (type alias)
 
@@ -145,7 +145,7 @@ export type SpanStatus =
     }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # tags
 
@@ -157,7 +157,7 @@ Added in v1.0.0
 export declare const Tracer: Context.Tag<Tracer, Tracer>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -179,7 +179,7 @@ export interface Tracer {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TracerTypeId
 
@@ -189,7 +189,7 @@ Added in v1.0.0
 export declare const TracerTypeId: typeof TracerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TracerTypeId (type alias)
 
@@ -199,4 +199,4 @@ Added in v1.0.0
 export type TracerTypeId = typeof TracerTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

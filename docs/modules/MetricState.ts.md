@@ -6,7 +6,7 @@ parent: Modules
 
 ## MetricState overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -62,7 +62,7 @@ Added in v1.0.0
 export declare const counter: (count: number) => MetricState.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## frequency
 
@@ -72,7 +72,7 @@ Added in v1.0.0
 export declare const frequency: (occurrences: HashMap.HashMap<string, number>) => MetricState.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## gauge
 
@@ -82,7 +82,7 @@ Added in v1.0.0
 export declare const gauge: (value: number) => MetricState.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## histogram
 
@@ -98,7 +98,7 @@ export declare const histogram: (options: {
 }) => MetricState.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## summary
 
@@ -115,7 +115,7 @@ export declare const summary: (options: {
 }) => MetricState.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -131,7 +131,7 @@ This phantom type parameter is used to tie keys to their expected states.
 export interface MetricState<A> extends MetricState.Variance<A>, Equal.Equal, Pipeable {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -143,7 +143,7 @@ Added in v1.0.0
 export declare const isCounterState: (u: unknown) => u is MetricState.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isFrequencyState
 
@@ -153,7 +153,7 @@ Added in v1.0.0
 export declare const isFrequencyState: (u: unknown) => u is MetricState.Frequency
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isGaugeState
 
@@ -163,7 +163,7 @@ Added in v1.0.0
 export declare const isGaugeState: (u: unknown) => u is MetricState.Gauge
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isHistogramState
 
@@ -173,7 +173,7 @@ Added in v1.0.0
 export declare const isHistogramState: (u: unknown) => u is MetricState.Histogram
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isMetricState
 
@@ -183,7 +183,7 @@ Added in v1.0.0
 export declare const isMetricState: (u: unknown) => u is MetricState.Counter
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isSummaryState
 
@@ -193,7 +193,7 @@ Added in v1.0.0
 export declare const isSummaryState: (u: unknown) => u is MetricState.Summary
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -205,7 +205,7 @@ Added in v1.0.0
 export declare const CounterStateTypeId: typeof CounterStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## CounterStateTypeId (type alias)
 
@@ -215,7 +215,7 @@ Added in v1.0.0
 export type CounterStateTypeId = typeof CounterStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FrequencyStateTypeId
 
@@ -225,7 +225,7 @@ Added in v1.0.0
 export declare const FrequencyStateTypeId: typeof FrequencyStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FrequencyStateTypeId (type alias)
 
@@ -235,7 +235,7 @@ Added in v1.0.0
 export type FrequencyStateTypeId = typeof FrequencyStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GaugeStateTypeId
 
@@ -245,7 +245,7 @@ Added in v1.0.0
 export declare const GaugeStateTypeId: typeof GaugeStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## GaugeStateTypeId (type alias)
 
@@ -255,7 +255,7 @@ Added in v1.0.0
 export type GaugeStateTypeId = typeof GaugeStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HistogramStateTypeId
 
@@ -265,7 +265,7 @@ Added in v1.0.0
 export declare const HistogramStateTypeId: typeof HistogramStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## HistogramStateTypeId (type alias)
 
@@ -275,7 +275,7 @@ Added in v1.0.0
 export type HistogramStateTypeId = typeof HistogramStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricStateTypeId
 
@@ -285,7 +285,7 @@ Added in v1.0.0
 export declare const MetricStateTypeId: typeof MetricStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## MetricStateTypeId (type alias)
 
@@ -295,7 +295,7 @@ Added in v1.0.0
 export type MetricStateTypeId = typeof MetricStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SummaryStateTypeId
 
@@ -305,7 +305,7 @@ Added in v1.0.0
 export declare const SummaryStateTypeId: typeof SummaryStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## SummaryStateTypeId (type alias)
 
@@ -315,13 +315,13 @@ Added in v1.0.0
 export type SummaryStateTypeId = typeof SummaryStateTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## MetricState (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Counter (interface)
 
@@ -334,7 +334,7 @@ export interface Counter extends MetricState<MetricKeyType.MetricKeyType.Counter
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Frequency (interface)
 
@@ -347,7 +347,7 @@ export interface Frequency extends MetricState<MetricKeyType.MetricKeyType.Frequ
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Gauge (interface)
 
@@ -360,7 +360,7 @@ export interface Gauge extends MetricState<MetricKeyType.MetricKeyType.Gauge> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Histogram (interface)
 
@@ -377,7 +377,7 @@ export interface Histogram extends MetricState<MetricKeyType.MetricKeyType.Histo
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Summary (interface)
 
@@ -395,7 +395,7 @@ export interface Summary extends MetricState<MetricKeyType.MetricKeyType.Summary
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Untyped (interface)
 
@@ -405,7 +405,7 @@ Added in v1.0.0
 export interface Untyped extends MetricState<any> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -419,4 +419,4 @@ export interface Variance<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Channel from "./Channel"
 import type * as Data from "./Data"
@@ -12,7 +12,7 @@ import type * as Sink from "./Sink"
 import type * as Types from "./Types"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface YieldableError extends Data.Case, Pipeable, Inspectable.Inspectable {
@@ -40,7 +40,7 @@ const YieldableErrorProto = {
 /**
  * Provides a constructor for a Case Class.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Class: new<A extends Record<string, any>>(
@@ -56,7 +56,7 @@ export const Class: new<A extends Record<string, any>>(
 })()
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Tagged = <Tag extends string>(tag: Tag): new<A extends Record<string, any>>(

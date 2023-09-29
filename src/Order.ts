@@ -1,12 +1,12 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import { dual } from "./Function"
 import type { TypeLambda } from "./HKT"
 
 /**
  * @category type class
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface Order<A> {
   (self: A, that: A): -1 | 0 | 1
@@ -14,7 +14,7 @@ export interface Order<A> {
 
 /**
  * @category type lambdas
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface OrderTypeLambda extends TypeLambda {
   readonly type: Order<this["Target"]>
@@ -22,7 +22,7 @@ export interface OrderTypeLambda extends TypeLambda {
 
 /**
  * @category constructors
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = <A>(
   compare: (self: A, that: A) => -1 | 0 | 1
@@ -31,36 +31,36 @@ export const make = <A>(
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const string: Order<string> = make((self, that) => self < that ? -1 : 1)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const number: Order<number> = make((self, that) => self < that ? -1 : 1)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const boolean: Order<boolean> = make((self, that) => self < that ? -1 : 1)
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const bigint: Order<bigint> = make((self, that) => self < that ? -1 : 1)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const reverse = <A>(O: Order<A>): Order<A> => make((self, that) => O(that, self))
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combine: {
   <A>(that: Order<A>): (self: Order<A>) => Order<A>
@@ -76,7 +76,7 @@ export const combine: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineMany: {
   <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<A>
@@ -97,19 +97,19 @@ export const combineMany: {
   }))
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty = <A>(): Order<A> => make(() => 0)
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const combineAll = <A>(collection: Iterable<Order<A>>): Order<A> => combineMany(empty(), collection)
 
 /**
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const mapInput: {
   <B, A>(f: (b: B) => A): (self: Order<A>) => Order<B>
@@ -121,13 +121,13 @@ export const mapInput: {
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Date: Order<Date> = mapInput(number, (date) => date.getTime())
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const product: {
   <B>(that: Order<B>): <A>(self: Order<A>) => Order<readonly [A, B]>
@@ -140,7 +140,7 @@ export const product: {
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const all = <A>(collection: Iterable<Order<A>>): Order<ReadonlyArray<A>> => {
   return make((x, y) => {
@@ -162,7 +162,7 @@ export const all = <A>(collection: Iterable<Order<A>>): Order<ReadonlyArray<A>> 
 
 /**
  * @category combining
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const productMany: {
   <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<readonly [A, ...Array<A>]>
@@ -188,7 +188,7 @@ export const productMany: {
  * of the tuple.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tuple = <T extends ReadonlyArray<Order<any>>>(
   ...elements: T
@@ -201,7 +201,7 @@ export const tuple = <T extends ReadonlyArray<Order<any>>>(
  * It is useful when you need to compare two arrays of the same type and you have a specific way of comparing each element of the array.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const array = <A>(O: Order<A>): Order<ReadonlyArray<A>> =>
   make((self, that) => {
@@ -222,7 +222,7 @@ export const array = <A>(O: Order<A>): Order<ReadonlyArray<A>> =>
  * for each property in the struct.
  *
  * @category combinators
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const struct = <R extends { readonly [x: string]: Order<any> }>(
   fields: R
@@ -242,7 +242,7 @@ export const struct = <R extends { readonly [x: string]: Order<any> }>(
 /**
  * Test whether one value is _strictly less than_ another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThan = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
@@ -252,7 +252,7 @@ export const lessThan = <A>(O: Order<A>): {
 /**
  * Test whether one value is _strictly greater than_ another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThan = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
@@ -262,7 +262,7 @@ export const greaterThan = <A>(O: Order<A>): {
 /**
  * Test whether one value is _non-strictly less than_ another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lessThanOrEqualTo = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
@@ -272,7 +272,7 @@ export const lessThanOrEqualTo = <A>(O: Order<A>): {
 /**
  * Test whether one value is _non-strictly greater than_ another.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const greaterThanOrEqualTo = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
@@ -282,7 +282,7 @@ export const greaterThanOrEqualTo = <A>(O: Order<A>): {
 /**
  * Take the minimum of two values. If they are considered equal, the first argument is chosen.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const min = <A>(O: Order<A>): {
   (that: A): (self: A) => A
@@ -292,7 +292,7 @@ export const min = <A>(O: Order<A>): {
 /**
  * Take the maximum of two values. If they are considered equal, the first argument is chosen.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const max = <A>(O: Order<A>): {
   (that: A): (self: A) => A
@@ -302,7 +302,7 @@ export const max = <A>(O: Order<A>): {
 /**
  * Clamp a value between a minimum and a maximum.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const clamp = <A>(O: Order<A>): {
   (minimum: A, maximum: A): (self: A) => A
@@ -316,7 +316,7 @@ export const clamp = <A>(O: Order<A>): {
 /**
  * Test whether a value is between a minimum and a maximum (inclusive).
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const between = <A>(O: Order<A>): {
   (minimum: A, maximum: A): (self: A) => boolean

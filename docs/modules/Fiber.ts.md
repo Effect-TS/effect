@@ -6,7 +6,7 @@ parent: Modules
 
 ## Fiber overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -103,7 +103,7 @@ export declare const orElse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## orElseEither
 
@@ -120,7 +120,7 @@ export declare const orElseEither: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -135,7 +135,7 @@ results.
 export declare const all: <E, A>(fibers: Iterable<Fiber<E, A>>) => Fiber<E, readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## done
 
@@ -147,7 +147,7 @@ A fiber that is done with the specified `Exit` value.
 export declare const done: <E, A>(exit: Exit.Exit<E, A>) => Fiber<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -159,7 +159,7 @@ A fiber that has already failed with the specified value.
 export declare const fail: <E>(error: E) => Fiber<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## failCause
 
@@ -171,7 +171,7 @@ Creates a `Fiber` that has already failed with the specified cause.
 export declare const failCause: <E>(cause: Cause.Cause<E>) => Fiber<E, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interrupted
 
@@ -183,7 +183,7 @@ Constructrs a `Fiber` that is already interrupted.
 export declare const interrupted: (fiberId: FiberId.FiberId) => Fiber<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## never
 
@@ -195,7 +195,7 @@ A fiber that never fails or succeeds.
 export declare const never: Fiber<never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## roots
 
@@ -207,7 +207,7 @@ Returns a chunk containing all root fibers.
 export declare const roots: Effect.Effect<never, never, RuntimeFiber<any, any>[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -219,7 +219,7 @@ Returns a fiber that has already succeeded with the specified value.
 export declare const succeed: <A>(value: A) => Fiber<never, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unit
 
@@ -231,7 +231,7 @@ A fiber that has already succeeded with unit.
 export declare const unit: Fiber<never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeRoots
 
@@ -243,7 +243,7 @@ Returns a chunk containing all root fibers.
 export declare const unsafeRoots: (_: void) => Array<RuntimeFiber<any, any>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -257,7 +257,7 @@ Lifts an `Effect` into a `Fiber`.
 export declare const fromEffect: <E, A>(effect: Effect.Effect<never, E, A>) => Effect.Effect<never, never, Fiber<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # destructors
 
@@ -271,7 +271,7 @@ Awaits on all fibers to be completed, successfully or not.
 export declare const awaitAll: (fibers: Iterable<Fiber<any, any>>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dump
 
@@ -281,7 +281,7 @@ Added in v1.0.0
 export declare const dump: <E, A>(self: RuntimeFiber<E, A>) => Effect.Effect<never, never, Fiber.Dump>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dumpAll
 
@@ -293,7 +293,7 @@ export declare const dumpAll: (
 ) => Effect.Effect<never, never, Array<Fiber.Dump>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## inheritAll
 
@@ -306,7 +306,7 @@ will resume immediately.
 export declare const inheritAll: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## join
 
@@ -322,7 +322,7 @@ another fiber, "inner interruption" can be caught and recovered.
 export declare const join: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## joinAll
 
@@ -336,7 +336,7 @@ error does not result from interruption.
 export declare const joinAll: <E, A>(fibers: Iterable<Fiber<E, A>>) => Effect.Effect<never, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## pretty
 
@@ -348,7 +348,7 @@ Pretty-prints a `RuntimeFiber`.
 export declare const pretty: <E, A>(self: RuntimeFiber<E, A>) => Effect.Effect<never, never, string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scoped
 
@@ -361,7 +361,7 @@ scope is closed.
 export declare const scoped: <E, A>(self: Fiber<E, A>) => Effect.Effect<Scope.Scope, never, Fiber<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -384,7 +384,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -399,7 +399,7 @@ fiber has been determined.
 export declare const await: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, Exit.Exit<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## children
 
@@ -411,7 +411,7 @@ Retrieves the immediate children of the fiber.
 export declare const children: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, Array<RuntimeFiber<any, any>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## id
 
@@ -423,7 +423,7 @@ The identity of the fiber.
 export declare const id: <E, A>(self: Fiber<E, A>) => FiberId.FiberId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -436,7 +436,7 @@ already done.
 export declare const poll: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, Option.Option<Exit.Exit<E, A>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## status
 
@@ -448,7 +448,7 @@ Returns the `FiberStatus` of a `RuntimeFiber`.
 export declare const status: <E, A>(self: RuntimeFiber<E, A>) => Effect.Effect<never, never, FiberStatus.FiberStatus>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -460,7 +460,7 @@ Added in v1.0.0
 export declare const Order: order.Order<RuntimeFiber<unknown, unknown>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # interruption
 
@@ -476,7 +476,7 @@ Otherwise, the effect will resume when the fiber exits.
 export declare const interrupt: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, Exit.Exit<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAll
 
@@ -488,7 +488,7 @@ Interrupts all fibers, awaiting their interruption.
 export declare const interruptAll: (fibers: Iterable<Fiber<any, any>>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAllAs
 
@@ -504,7 +504,7 @@ export declare const interruptAllAs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAs
 
@@ -521,7 +521,7 @@ export declare const interruptAs: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptAsFork
 
@@ -538,7 +538,7 @@ export declare const interruptAsFork: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## interruptFork
 
@@ -552,7 +552,7 @@ effect will always resume immediately without waiting.
 export declare const interruptFork: <E, A>(self: Fiber<E, A>) => Effect.Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -569,7 +569,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapEffect
 
@@ -584,7 +584,7 @@ export declare const mapEffect: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapFiber
 
@@ -600,7 +600,7 @@ export declare const mapFiber: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -655,7 +655,7 @@ export interface Fiber<E, A> extends Fiber.Variance<E, A>, Pipeable {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeFiber (interface)
 
@@ -715,7 +715,7 @@ export interface RuntimeFiber<E, A> extends Fiber<E, A>, Fiber.RuntimeVariance<E
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -729,7 +729,7 @@ Returns `true` if the specified value is a `Fiber`, `false` otherwise.
 export declare const isFiber: (u: unknown) => u is Fiber<unknown, unknown>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isRuntimeFiber
 
@@ -742,7 +742,7 @@ otherwise.
 export declare const isRuntimeFiber: <E, A>(self: Fiber<E, A>) => self is RuntimeFiber<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -754,7 +754,7 @@ Added in v1.0.0
 export declare const FiberTypeId: typeof FiberTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## FiberTypeId (type alias)
 
@@ -764,7 +764,7 @@ Added in v1.0.0
 export type FiberTypeId = typeof FiberTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeFiberTypeId
 
@@ -774,7 +774,7 @@ Added in v1.0.0
 export declare const RuntimeFiberTypeId: typeof RuntimeFiberTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## RuntimeFiberTypeId (type alias)
 
@@ -784,7 +784,7 @@ Added in v1.0.0
 export type RuntimeFiberTypeId = typeof RuntimeFiberTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utilities
 
@@ -798,13 +798,13 @@ Gets the current fiber if one is running.
 export declare const getCurrentFiber: () => Option.Option<RuntimeFiber<any, any>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Fiber (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Descriptor (interface)
 
@@ -829,7 +829,7 @@ export interface Descriptor {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Dump (interface)
 
@@ -848,7 +848,7 @@ export interface Dump {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### RuntimeVariance (interface)
 
@@ -863,7 +863,7 @@ export interface RuntimeVariance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -878,7 +878,7 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Runtime (type alias)
 
@@ -888,7 +888,7 @@ Added in v1.0.0
 export type Runtime<E, A> = RuntimeFiber<E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # zipping
 
@@ -906,7 +906,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipLeft
 
@@ -921,7 +921,7 @@ export declare const zipLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipRight
 
@@ -936,7 +936,7 @@ export declare const zipRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -953,4 +953,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

@@ -8,7 +8,7 @@ parent: Modules
 
 This module provides utility functions for working with records in TypeScript.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -61,7 +61,7 @@ Creates a new, empty record.
 export declare const empty: <A>() => Record<string, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -94,7 +94,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromEntries
 
@@ -122,7 +122,7 @@ const input: Array<[string, number]> = [
 assert.deepStrictEqual(fromEntries(input), { a: 1, b: 2 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -151,7 +151,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toArray
 
@@ -178,7 +178,7 @@ assert.deepStrictEqual(toArray(x), [
 ])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toEntries
 
@@ -203,7 +203,7 @@ assert.deepStrictEqual(toEntries(x), [
 ])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -226,7 +226,7 @@ import { some, none } from 'effect/Option'
 assert.deepStrictEqual(compact({ a: some(1), b: none(), c: some(2) }), { a: 1, c: 2 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -262,7 +262,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -300,7 +300,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionMap
 
@@ -331,7 +331,7 @@ const f = (n: number) => (n % 2 === 0 ? right(n) : left(n))
 assert.deepStrictEqual(partitionMap(x, f), [{ a: 1, c: 3 }, { b: 2 }])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## separate
 
@@ -353,7 +353,7 @@ import { left, right } from 'effect/Either'
 assert.deepStrictEqual(separate({ a: left('e'), b: right(1) }), [{ a: 'e' }, { b: 1 }])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -376,7 +376,7 @@ assert.deepStrictEqual(isEmptyReadonlyRecord({}), true)
 assert.deepStrictEqual(isEmptyReadonlyRecord({ a: 3 }), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmptyRecord
 
@@ -397,7 +397,7 @@ assert.deepStrictEqual(isEmptyRecord({}), true)
 assert.deepStrictEqual(isEmptyRecord({ a: 3 }), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -411,7 +411,7 @@ export interface ReadonlyRecord<A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # record
 
@@ -440,7 +440,7 @@ assert.deepStrictEqual(pop({ a: 1, b: 2 }, 'a'), some([1, { b: 2 }]))
 assert.deepStrictEqual(pop({ a: 1, b: 2 }, 'c'), none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -454,7 +454,7 @@ export interface ReadonlyRecordTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -483,7 +483,7 @@ const f = (a: number, key: string) => (a > 2 ? some(a * 2) : none())
 assert.deepStrictEqual(filterMap(x, f), { c: 6 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -510,7 +510,7 @@ assert.deepStrictEqual(get(person, 'name'), some('John Doe'))
 assert.deepStrictEqual(get(person, 'email'), none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -534,7 +534,7 @@ assert.deepStrictEqual(has({ a: 1, b: 2 }, 'a'), true)
 assert.deepStrictEqual(has({ a: 1, b: 2 }, 'c'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -563,7 +563,7 @@ const g = (n: number, key: string) => `${key.toUpperCase()}-${n}`
 assert.deepStrictEqual(map({ a: 3, b: 5 }, g), { a: 'A-3', b: 'B-5' })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyOption
 
@@ -591,7 +591,7 @@ assert.deepStrictEqual(modifyOption({ a: 3 }, 'a', f), some({ a: 6 }))
 assert.deepStrictEqual(modifyOption({ a: 3 }, 'b', f), none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -614,7 +614,7 @@ import { remove } from 'effect/ReadonlyRecord'
 assert.deepStrictEqual(remove({ a: 1, b: 2 }, 'a'), { b: 2 })
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceOption
 
@@ -639,7 +639,7 @@ assert.deepStrictEqual(replaceOption({ a: 1, b: 2, c: 3 }, 'a', 10), some({ a: 1
 assert.deepStrictEqual(replaceOption({}, 'a', 10), none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -659,4 +659,4 @@ import { size } from 'effect/ReadonlyRecord'
 assert.deepStrictEqual(size({ a: 'a', b: 1, c: true }), 3)
 ```
 
-Added in v1.0.0
+Added in v2.0.0

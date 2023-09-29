@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as Chunk from "./Chunk"
@@ -10,13 +10,13 @@ import type * as Option from "./Option"
 import type { Pipeable } from "./Pipeable"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TakeTypeId: unique symbol = internal.TakeTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TakeTypeId = typeof TakeTypeId
@@ -26,7 +26,7 @@ export type TakeTypeId = typeof TakeTypeId
  * values. A `Take` may be a failure cause `Cause<E>`, a chunk value `Chunk<A>`,
  * or an end-of-stream marker.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
@@ -35,11 +35,11 @@ export interface Take<E, A> extends Take.Variance<E, A>, Pipeable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Take {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<E, A> {
@@ -53,7 +53,7 @@ export declare namespace Take {
 /**
  * Creates a `Take` with the specified chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A> = internal.chunk
@@ -61,7 +61,7 @@ export const chunk: <A>(chunk: Chunk.Chunk<A>) => Take<never, A> = internal.chun
 /**
  * Creates a failing `Take` with the specified defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const die: (defect: unknown) => Take<never, never> = internal.die
@@ -69,7 +69,7 @@ export const die: (defect: unknown) => Take<never, never> = internal.die
 /**
  * Creates a failing `Take` with the specified error message.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const dieMessage: (message: string) => Take<never, never> = internal.dieMessage
@@ -77,7 +77,7 @@ export const dieMessage: (message: string) => Take<never, never> = internal.dieM
 /**
  * Transforms a `Take<E, A>` to an `Effect<never, E, A>`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Option<E>, Chunk.Chunk<A>> = internal.done
@@ -85,7 +85,7 @@ export const done: <E, A>(self: Take<E, A>) => Effect.Effect<never, Option.Optio
 /**
  * Represents the end-of-stream marker.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const end: Take<never, never> = internal.end
@@ -93,7 +93,7 @@ export const end: Take<never, never> = internal.end
 /**
  * Creates a failing `Take` with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(error: E) => Take<E, never> = internal.fail
@@ -101,7 +101,7 @@ export const fail: <E>(error: E) => Take<E, never> = internal.fail
 /**
  * Creates a failing `Take` with the specified cause.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.failCause
@@ -111,7 +111,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Take<E, never> = internal.
  * the `Take<E, A>`. Error from stream when pulling is converted to
  * `Take.failCause`. Creates a single value chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Effect<R, never, Take<E, A>> =
@@ -120,7 +120,7 @@ export const fromEffect: <R, E, A>(effect: Effect.Effect<R, E, A>) => Effect.Eff
 /**
  * Creates a `Take` from an `Exit`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fromExit
@@ -130,7 +130,7 @@ export const fromExit: <E, A>(exit: Exit.Exit<E, A>) => Take<E, A> = internal.fr
  * succeeds with the `Take<E, A>`. Errors from stream when pulling are converted
  * to `Take.failCause`, and the end-of-stream is converted to `Take.end`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromPull: <R, E, A>(
@@ -140,7 +140,7 @@ export const fromPull: <R, E, A>(
 /**
  * Checks if this `take` is done (`Take.end`).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isDone: <E, A>(self: Take<E, A>) => boolean = internal.isDone
@@ -148,7 +148,7 @@ export const isDone: <E, A>(self: Take<E, A>) => boolean = internal.isDone
 /**
  * Checks if this `take` is a failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isFailure: <E, A>(self: Take<E, A>) => boolean = internal.isFailure
@@ -156,7 +156,7 @@ export const isFailure: <E, A>(self: Take<E, A>) => boolean = internal.isFailure
 /**
  * Checks if this `take` is a success.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
@@ -164,7 +164,7 @@ export const isSuccess: <E, A>(self: Take<E, A>) => boolean = internal.isSuccess
 /**
  * Constructs a `Take`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => Take<E, A> = internal.make
@@ -172,7 +172,7 @@ export const make: <E, A>(exit: Exit.Exit<Option.Option<E>, Chunk.Chunk<A>>) => 
 /**
  * Transforms `Take<E, A>` to `Take<E, B>` by applying function `f`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -184,7 +184,7 @@ export const map: {
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield a value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const match: {
@@ -211,7 +211,7 @@ export const match: {
  * Folds over the failure cause, success value and end-of-stream marker to
  * yield an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const matchEffect: {
@@ -235,7 +235,7 @@ export const matchEffect: {
 /**
  * Creates a `Take` with a single value chunk.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const of: <A>(value: A) => Take<never, A> = internal.of
@@ -243,7 +243,7 @@ export const of: <A>(value: A) => Take<never, A> = internal.of
 /**
  * Returns an effect that effectfully "peeks" at the success of this take.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const tap: {

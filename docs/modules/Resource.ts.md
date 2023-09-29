@@ -6,7 +6,7 @@ parent: Modules
 
 ## Resource overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -48,7 +48,7 @@ export declare const auto: <R, E, A, R2, Out>(
 ) => Effect.Effect<Scope.Scope | R | R2, never, Resource<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## manual
 
@@ -66,7 +66,7 @@ export declare const manual: <R, E, A>(
 ) => Effect.Effect<Scope.Scope | R, never, Resource<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -80,7 +80,7 @@ Retrieves the current value stored in the cache.
 export declare const get: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -100,7 +100,7 @@ export interface Resource<E, A> extends Resource.Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -112,7 +112,7 @@ Added in v1.0.0
 export declare const ResourceTypeId: typeof ResourceTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ResourceTypeId (type alias)
 
@@ -122,13 +122,13 @@ Added in v1.0.0
 export type ResourceTypeId = typeof ResourceTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## Resource (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -143,7 +143,7 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## refresh
 
@@ -156,4 +156,4 @@ is successful, or the refresh operation fails.
 export declare const refresh: <E, A>(self: Resource<E, A>) => Effect.Effect<never, E, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

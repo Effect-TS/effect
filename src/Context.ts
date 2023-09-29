@@ -5,7 +5,7 @@
  * of related services that can be passed around as a single unit. This module provides functions to create, modify, and
  * query the contents of a `Context`, as well as a number of utility types for working with tags and services.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type { Equal } from "./Equal"
 import type { Inspectable } from "./Inspectable"
@@ -17,13 +17,13 @@ import type * as Unify from "./Unify"
 const TagTypeId: unique symbol = C.TagTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TagTypeId = typeof TagTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
@@ -44,7 +44,7 @@ export interface Tag<Identifier, Service> extends Pipeable, Inspectable {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
   Tag?: () => A[Unify.typeSymbol] extends Tag<infer I0, infer S0> | infer _ ? Tag<I0, S0> : never
@@ -52,20 +52,20 @@ export interface TagUnify<A extends { [Unify.typeSymbol]?: any }> {
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TagUnifyBlacklist {}
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Tag {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Service<T extends Tag<any, any>> = T extends Tag<any, infer A> ? A : never
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    */
   export type Identifier<T extends Tag<any, any>> = T extends Tag<infer A, any> ? A : never
 }
@@ -87,7 +87,7 @@ export declare namespace Tag {
  * assert.strictEqual(Context.Tag() === Context.Tag(), false)
  * assert.strictEqual(Context.Tag("PORT") === Context.Tag("PORT"), true)
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Tag<Identifier, Service> = C.makeTag
@@ -95,19 +95,19 @@ export const Tag: <Identifier, Service = Identifier>(identifier?: unknown) => Ta
 const TypeId: unique symbol = C.TypeId as TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbol
  */
 export type TypeId = typeof TypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type ValidTagsById<R> = R extends infer S ? Tag<S, any> : never
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Context<Services> extends Equal, Pipeable, Inspectable {
@@ -118,7 +118,7 @@ export interface Context<Services> extends Equal, Pipeable, Inspectable {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Context<Services> = C.makeContext
@@ -133,7 +133,7 @@ export const unsafeMake: <Services>(unsafeMap: Map<Tag<any, any>, any>) => Conte
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isContext: (input: unknown) => input is Context<never> = C.isContext
@@ -148,7 +148,7 @@ export const isContext: (input: unknown) => input is Context<never> = C.isContex
  *
  * assert.strictEqual(Context.isTag(Context.Tag()), true)
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category guards
  */
 export const isTag: (input: unknown) => input is Tag<any, any> = C.isTag
@@ -161,7 +161,7 @@ export const isTag: (input: unknown) => input is Tag<any, any> = C.isTag
  *
  * assert.strictEqual(Context.isContext(Context.empty()), true)
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const empty: () => Context<never> = C.empty
@@ -178,7 +178,7 @@ export const empty: () => Context<never> = C.empty
  *
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) => Context<Tag.Identifier<T>> = C.make
@@ -203,7 +203,7 @@ export const make: <T extends Tag<any, any>>(tag: T, service: Tag.Service<T>) =>
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const add: {
   <T extends Tag<any, any>>(
@@ -237,7 +237,7 @@ export const add: {
  *
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const get: {
@@ -265,7 +265,7 @@ export const get: {
  * assert.deepStrictEqual(Context.unsafeGet(Services, Port), { PORT: 8080 })
  * assert.throws(() => Context.unsafeGet(Services, Timeout))
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeGet: {
@@ -292,7 +292,7 @@ export const unsafeGet: {
  * assert.deepStrictEqual(Context.getOption(Services, Port), O.some({ PORT: 8080 }))
  * assert.deepStrictEqual(Context.getOption(Services, Timeout), O.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const getOption: {
@@ -320,7 +320,7 @@ export const getOption: {
  * assert.deepStrictEqual(Context.get(Services, Port), { PORT: 8080 })
  * assert.deepStrictEqual(Context.get(Services, Timeout), { TIMEOUT: 5000 })
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
@@ -351,14 +351,14 @@ export const merge: {
  * assert.deepStrictEqual(Context.getOption(Services, Port), O.some({ PORT: 8080 }))
  * assert.deepStrictEqual(Context.getOption(Services, Timeout), O.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const pick: <Services, S extends Array<ValidTagsById<Services>>>(
   ...tags: S
 ) => (self: Context<Services>) => Context<{ [k in keyof S]: Tag.Identifier<S[k]> }[number]> = C.pick
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const omit: <Services, S extends Array<ValidTagsById<Services>>>(
   ...tags: S

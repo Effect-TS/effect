@@ -10,7 +10,7 @@ This module provides utility functions and type class instances for working with
 It includes functions for basic string manipulation, as well as type class instances for
 `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -91,7 +91,7 @@ assert.deepStrictEqual(isString('a'), true)
 assert.deepStrictEqual(isString(1), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -103,7 +103,7 @@ Added in v1.0.0
 export declare const Equivalence: equivalence.Equivalence<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Order
 
@@ -113,7 +113,7 @@ Added in v1.0.0
 export declare const Order: order.Order<string>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -127,7 +127,7 @@ Concatenates two strings at the type level.
 export type Concat<A extends string, B extends string> = `${A}${B}`
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Trim (type alias)
 
@@ -137,7 +137,7 @@ Added in v1.0.0
 export type Trim<A extends string> = TrimEnd<TrimStart<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TrimEnd (type alias)
 
@@ -155,7 +155,7 @@ export type TrimEnd<A extends string> = A extends `${infer B} `
   : A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TrimStart (type alias)
 
@@ -173,7 +173,7 @@ export type TrimStart<A extends string> = A extends ` ${infer B}`
   : A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## at
 
@@ -197,7 +197,7 @@ assert.deepStrictEqual(pipe('abc', S.at(1)), Option.some('b'))
 assert.deepStrictEqual(pipe('abc', S.at(4)), Option.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## capitalize
 
@@ -216,7 +216,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('abc', S.capitalize), 'Abc')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## charAt
 
@@ -240,7 +240,7 @@ assert.deepStrictEqual(pipe('abc', S.charAt(1)), Option.some('b'))
 assert.deepStrictEqual(pipe('abc', S.charAt(4)), Option.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## charCodeAt
 
@@ -264,7 +264,7 @@ assert.deepStrictEqual(pipe('abc', S.charCodeAt(1)), Option.some(98))
 assert.deepStrictEqual(pipe('abc', S.charCodeAt(4)), Option.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## codePointAt
 
@@ -287,7 +287,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('abc', S.codePointAt(1)), Option.some(98))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## concat
 
@@ -302,7 +302,7 @@ export declare const concat: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -314,7 +314,7 @@ The empty string `""`.
 export declare const empty: ''
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## endsWith
 
@@ -324,7 +324,7 @@ Added in v1.0.0
 export declare const endsWith: (searchString: string, position?: number) => (self: string) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## includes
 
@@ -337,7 +337,7 @@ greater than or equal to `position`; otherwise, returns `false`.
 export declare const includes: (searchString: string, position?: number) => (self: string) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## indexOf
 
@@ -357,7 +357,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('abbbc', S.indexOf('b')), Option.some(1))
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmpty
 
@@ -378,7 +378,7 @@ assert.deepStrictEqual(S.isEmpty(''), true)
 assert.deepStrictEqual(S.isEmpty('a'), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmpty
 
@@ -390,7 +390,7 @@ Test whether a `string` is non empty.
 export declare const isNonEmpty: (self: string) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lastIndexOf
 
@@ -411,7 +411,7 @@ assert.deepStrictEqual(pipe('abbbc', S.lastIndexOf('b')), Option.some(3))
 assert.deepStrictEqual(pipe('abbbc', S.lastIndexOf('d')), Option.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## length
 
@@ -431,7 +431,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.length('abc'), 3)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## linesWithSeparators
 
@@ -444,7 +444,7 @@ string as well as the trailing newline character.
 export declare const linesWithSeparators: (s: string) => LinesIterator
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## localeCompare
 
@@ -469,7 +469,7 @@ assert.deepStrictEqual(pipe('b', S.localeCompare('a')), 1)
 assert.deepStrictEqual(pipe('a', S.localeCompare('a')), 0)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## match
 
@@ -481,7 +481,7 @@ It is the `pipe`-able version of the native `match` method.
 export declare const match: (regexp: RegExp | string) => (self: string) => Option.Option<RegExpMatchArray>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchAll
 
@@ -493,7 +493,7 @@ It is the `pipe`-able version of the native `matchAll` method.
 export declare const matchAll: (regexp: RegExp) => (self: string) => IterableIterator<RegExpMatchArray>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## normalize
 
@@ -517,7 +517,7 @@ assert.deepStrictEqual(pipe(str, S.normalize('NFKC')), '\u1E69')
 assert.deepStrictEqual(pipe(str, S.normalize('NFKD')), '\u0073\u0323\u0307')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## padEnd
 
@@ -537,7 +537,7 @@ assert.deepStrictEqual(pipe('a', S.padEnd(5)), 'a    ')
 assert.deepStrictEqual(pipe('a', S.padEnd(5, '_')), 'a____')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## padStart
 
@@ -557,7 +557,7 @@ assert.deepStrictEqual(pipe('a', S.padStart(5)), '    a')
 assert.deepStrictEqual(pipe('a', S.padStart(5, '_')), '____a')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## repeat
 
@@ -576,7 +576,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('a', S.repeat(5)), 'aaaaa')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replace
 
@@ -595,7 +595,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('abc', S.replace('b', 'd')), 'adc')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceAll
 
@@ -615,7 +615,7 @@ assert.deepStrictEqual(pipe('ababb', S.replaceAll('b', 'c')), 'acacc')
 assert.deepStrictEqual(pipe('ababb', S.replaceAll(/ba/g, 'cc')), 'accbb')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## search
 
@@ -640,7 +640,7 @@ assert.deepStrictEqual(pipe('ababb', S.search(/abb/)), Option.some(2))
 assert.deepStrictEqual(pipe('ababb', S.search('d')), Option.none())
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## slice
 
@@ -659,7 +659,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('abcd', S.slice(1, 3)), 'bc')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## split
 
@@ -682,7 +682,7 @@ assert.deepStrictEqual(pipe('abc', S.split('')), ['a', 'b', 'c'])
 assert.deepStrictEqual(pipe('', S.split('')), [''])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## startsWith
 
@@ -692,7 +692,7 @@ Added in v1.0.0
 export declare const startsWith: (searchString: string, position?: number) => (self: string) => boolean
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stripMargin
 
@@ -705,7 +705,7 @@ or control characters followed by the `"|"` character from the line.
 export declare const stripMargin: (self: string) => string
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## stripMarginWith
 
@@ -722,7 +722,7 @@ export declare const stripMarginWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## substring
 
@@ -742,7 +742,7 @@ assert.deepStrictEqual(pipe('abcd', S.substring(1)), 'bcd')
 assert.deepStrictEqual(pipe('abcd', S.substring(1, 3)), 'bc')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeLeft
 
@@ -769,7 +769,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.takeLeft('Hello World', 5), 'Hello')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeRight
 
@@ -796,7 +796,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.takeRight('Hello World', 5), 'World')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toLocaleLowerCase
 
@@ -816,7 +816,7 @@ const str = '\u0130'
 assert.deepStrictEqual(pipe(str, S.toLocaleLowerCase('tr')), 'i')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toLocaleUpperCase
 
@@ -836,7 +836,7 @@ const str = 'i\u0307'
 assert.deepStrictEqual(pipe(str, S.toLocaleUpperCase('lt-LT')), 'I')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toLowerCase
 
@@ -855,7 +855,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('A', S.toLowerCase), 'a')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toUpperCase
 
@@ -874,7 +874,7 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('a', S.toUpperCase), 'A')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trim
 
@@ -892,7 +892,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.trim(' a '), 'a')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trimEnd
 
@@ -910,7 +910,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.trimEnd(' a '), ' a')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trimStart
 
@@ -928,7 +928,7 @@ import * as S from 'effect/String'
 assert.deepStrictEqual(S.trimStart(' a '), 'a ')
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## uncapitalize
 
@@ -947,4 +947,4 @@ import { pipe } from 'effect/Function'
 assert.deepStrictEqual(pipe('ABC', S.uncapitalize), 'aBC')
 ```
 
-Added in v1.0.0
+Added in v2.0.0

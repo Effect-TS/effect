@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cause from "./Cause"
 import type * as ChildExecutorDecision from "./ChannelChildExecutorDecision"
@@ -33,13 +33,13 @@ import type * as Tracer from "./Tracer"
 import type * as Unify from "./Unify"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ChannelTypeId: unique symbol = core.ChannelTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ChannelTypeId = typeof ChannelTypeId
@@ -67,7 +67,7 @@ export type ChannelTypeId = typeof ChannelTypeId
  *    channels, which are all concatenated together. The first channel and the
  *    function that makes the other channels can be composed into a channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
@@ -79,7 +79,7 @@ export interface Channel<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Effect.EffectUnify<A> {
@@ -99,14 +99,14 @@ export interface ChannelUnify<A extends { [Unify.typeSymbol]?: any }> extends Ef
 
 /**
  * @category models
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface ChannelUnifyBlacklist extends Effect.EffectUnifyBlacklist {
   Channel?: true
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 declare module "./Effect" {
@@ -117,18 +117,18 @@ declare module "./Effect" {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace Channel {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
     readonly [ChannelTypeId]: VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
   }
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface VarianceStruct<Env, InErr, InElem, InDone, OutErr, OutElem, OutDone> {
@@ -143,13 +143,13 @@ export declare namespace Channel {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ChannelExceptionTypeId: unique symbol = channel.ChannelExceptionTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ChannelExceptionTypeId = typeof ChannelExceptionTypeId
@@ -158,7 +158,7 @@ export type ChannelExceptionTypeId = typeof ChannelExceptionTypeId
  * Represents a generic checked exception which occurs when a `Channel` is
  * executed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ChannelException<E> {
@@ -168,7 +168,7 @@ export interface ChannelException<E> {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone, Acquired>(
@@ -178,7 +178,7 @@ export const acquireUseRelease: <Env, InErr, InElem, InDone, OutErr, OutElem1, O
 ) => Channel<Env, InErr, InElem, InDone, OutErr, OutElem1, OutDone> = channel.acquireUseRelease
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const acquireReleaseOut: <R, R2, E, Z>(
@@ -193,7 +193,7 @@ export const acquireReleaseOut: <R, R2, E, Z>(
  * This method produces the same result as mapping this channel to the
  * specified constant value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const as: {
@@ -209,7 +209,7 @@ export const as: {
 } = channel.as
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const asUnit: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -221,7 +221,7 @@ export const asUnit: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * will simply passthrough its input as output. However, when the buffer is
  * non-empty, the value inside the buffer will be passed along as output.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const buffer: <InErr, InElem, InDone>(
@@ -233,7 +233,7 @@ export const buffer: <InErr, InElem, InDone>(
 ) => Channel<never, InErr, InElem, InDone, InErr, InElem, InDone> = channel.buffer
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const bufferChunk: <InErr, InElem, InDone>(
@@ -245,7 +245,7 @@ export const bufferChunk: <InErr, InElem, InDone>(
  * errors for any typed error, then the returned channel will switch over to
  * using the fallback channel returned by the specified error handler.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAll: {
@@ -281,7 +281,7 @@ export const catchAll: {
  * errors for any typed error, then the returned channel will switch over to
  * using the fallback channel returned by the specified error handler.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const catchAllCause: {
@@ -315,7 +315,7 @@ export const catchAllCause: {
 /**
  * Concat sequentially a channel of channels.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const concatAll: <Env, InErr, InElem, InDone, OutErr, OutElem>(
@@ -325,7 +325,7 @@ export const concatAll: <Env, InErr, InElem, InDone, OutErr, OutElem>(
 /**
  * Concat sequentially a channel of channels.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const concatAllWith: <
@@ -364,7 +364,7 @@ export const concatAllWith: <
  * sequentially concatenated together, and all their outputs appear as outputs
  * of the newly returned channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const concatMap: {
@@ -387,7 +387,7 @@ export const concatMap: {
  * merge the terminal values of all channels into the single terminal value of
  * the returned channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const concatMapWith: {
@@ -430,7 +430,7 @@ export const concatMapWith: {
  * merge the terminal values of all channels into the single terminal value of
  * the returned channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const concatMapWithCustom: {
@@ -477,7 +477,7 @@ export const concatMapWithCustom: {
  * Returns a new channel, which is the same as this one, except its outputs
  * are filtered and transformed by the specified partial function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const collect: {
@@ -497,7 +497,7 @@ export const collect: {
  * are written out by this channel. This method may only be called on channels
  * that output other channels.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const concatOut: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -516,7 +516,7 @@ export const concatOut: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * Returns a new channel which is the same as this one but applies the given
  * function to the input channel's done value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInput: {
@@ -535,7 +535,7 @@ export const mapInput: {
  * Returns a new channel which is the same as this one but applies the given
  * effectual function to the input channel's done value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputEffect: {
@@ -554,7 +554,7 @@ export const mapInputEffect: {
  * Returns a new channel which is the same as this one but applies the given
  * function to the input channel's error value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputError: {
@@ -573,7 +573,7 @@ export const mapInputError: {
  * Returns a new channel which is the same as this one but applies the given
  * effectual function to the input channel's error value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputErrorEffect: {
@@ -592,7 +592,7 @@ export const mapInputErrorEffect: {
  * Returns a new channel which is the same as this one but applies the given
  * function to the input channel's output elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputIn: {
@@ -611,7 +611,7 @@ export const mapInputIn: {
  * Returns a new channel which is the same as this one but applies the given
  * effectual function to the input channel's output elements.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mapInputInEffect: {
@@ -635,7 +635,7 @@ export const mapInputInEffect: {
  * output into an in- memory chunk, it is not safe to call this method on
  * channels that output a large or unbounded number of values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const doneCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -646,7 +646,7 @@ export const doneCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
  * Returns a new channel which reads all the elements from upstream's output
  * channel and ignores them, then terminates with the upstream result value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const drain: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -657,7 +657,7 @@ export const drain: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
  * Returns a new channel which connects the given `AsyncInputProducer` as
  * this channel's input.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const embedInput: {
@@ -676,7 +676,7 @@ export const embedInput: {
  * Returns a new channel that collects the output and terminal value of this
  * channel, which it then writes as output of the returned channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const emitCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -688,7 +688,7 @@ export const emitCollect: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>
  * guaranteed to be executed so long as the channel begins execution (and
  * regardless of whether or not it completes).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const ensuring: {
@@ -708,7 +708,7 @@ export const ensuring: {
  * guaranteed to be executed so long as the channel begins execution (and
  * regardless of whether or not it completes).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const ensuringWith: {
@@ -726,7 +726,7 @@ export const ensuringWith: {
 /**
  * Accesses the whole context of the channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const context: <Env>() => Channel<Env, unknown, unknown, unknown, never, never, Context.Context<Env>> =
@@ -735,7 +735,7 @@ export const context: <Env>() => Channel<Env, unknown, unknown, unknown, never, 
 /**
  * Accesses the context of the channel with the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWith: <Env, OutDone>(
@@ -745,7 +745,7 @@ export const contextWith: <Env, OutDone>(
 /**
  * Accesses the context of the channel in the context of a channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWithChannel: <Env, Env1, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -755,7 +755,7 @@ export const contextWithChannel: <Env, Env1, InErr, InElem, InDone, OutErr, OutE
 /**
  * Accesses the context of the channel in the context of an effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const contextWithEffect: <Env, Env1, OutErr, OutDone>(
@@ -765,7 +765,7 @@ export const contextWithEffect: <Env, Env1, OutErr, OutDone>(
 /**
  * Constructs a channel that fails immediately with the specified error.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fail: <E>(error: E) => Channel<never, unknown, unknown, unknown, E, never, never> = core.fail
@@ -774,7 +774,7 @@ export const fail: <E>(error: E) => Channel<never, unknown, unknown, unknown, E,
  * Constructs a channel that succeeds immediately with the specified lazily
  * evaluated value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failSync: <E>(evaluate: LazyArg<E>) => Channel<never, unknown, unknown, unknown, E, never, never> =
@@ -783,7 +783,7 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Channel<never, unknown, unkn
 /**
  * Constructs a channel that fails immediately with the specified `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCause: <E>(cause: Cause.Cause<E>) => Channel<never, unknown, unknown, unknown, E, never, never> =
@@ -793,7 +793,7 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Channel<never, unknown, un
  * Constructs a channel that succeeds immediately with the specified lazily
  * evaluated `Cause`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const failCauseSync: <E>(
@@ -807,7 +807,7 @@ export const failCauseSync: <E>(
  * perform the functions of this channel, before performing the functions of
  * the created channel (including yielding its terminal value).
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatMap: {
@@ -843,7 +843,7 @@ export const flatMap: {
  * This function may only be called if the terminal value of this channel is
  * another channel of compatible types.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category sequencing
  */
 export const flatten: <
@@ -883,7 +883,7 @@ export const flatten: <
 /**
  * Folds over the result of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const foldChannel: {
@@ -962,7 +962,7 @@ export const foldChannel: {
 /**
  * Folds over the result of this channel including any cause of termination.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const foldCauseChannel: {
@@ -1045,7 +1045,7 @@ export const foldCauseChannel: {
 /**
  * Use an effect to end a channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEffect: <R, E, A>(
@@ -1055,7 +1055,7 @@ export const fromEffect: <R, E, A>(
 /**
  * Constructs a channel from an `Either`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromEither: <E, A>(either: Either.Either<E, A>) => Channel<never, unknown, unknown, unknown, E, never, A> =
@@ -1064,7 +1064,7 @@ export const fromEither: <E, A>(either: Either.Either<E, A>) => Channel<never, u
 /**
  * Construct a `Channel` from an `AsyncInputConsumer`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromInput: <Err, Elem, Done>(
@@ -1074,7 +1074,7 @@ export const fromInput: <Err, Elem, Done>(
 /**
  * Construct a `Channel` from a `Hub`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromHub: <Err, Done, Elem>(
@@ -1084,7 +1084,7 @@ export const fromHub: <Err, Done, Elem>(
 /**
  * Construct a `Channel` from a `Hub` within a scoped effect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromHubScoped: <Err, Done, Elem>(
@@ -1095,7 +1095,7 @@ export const fromHubScoped: <Err, Done, Elem>(
 /**
  * Construct a `Channel` from an `Option`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromOption: <A>(
@@ -1105,7 +1105,7 @@ export const fromOption: <A>(
 /**
  * Construct a `Channel` from a `Queue`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const fromQueue: <Err, Elem, Done>(
@@ -1113,7 +1113,7 @@ export const fromQueue: <Err, Elem, Done>(
 ) => Channel<never, unknown, unknown, unknown, Err, Elem, Done> = channel.fromQueue
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const identity: <Err, Elem, Done>() => Channel<never, Err, Elem, Done, Err, Elem, Done> = channel.identityChannel
@@ -1127,7 +1127,7 @@ export const identity: <Err, Elem, Done>() => Channel<never, Err, Elem, Done, Er
  * returned channel will yield the success value of the underlying channel as
  * its terminal value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptWhen: {
@@ -1150,7 +1150,7 @@ export const interruptWhen: {
  * finishes first, then the returned channel will yield the value of the
  * underlying channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const interruptWhenDeferred: {
@@ -1170,7 +1170,7 @@ export const interruptWhenDeferred: {
  * value of the returned channel is created by applying the specified function
  * to the terminal value of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map: {
@@ -1190,7 +1190,7 @@ export const map: {
  * value of the returned channel is created by applying the specified
  * effectful function to the terminal value of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapEffect: {
@@ -1210,7 +1210,7 @@ export const mapEffect: {
  * value of the returned channel is created by applying the specified function
  * to the failure value of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapError: {
@@ -1229,7 +1229,7 @@ export const mapError: {
  * A more powerful version of `mapError` which also surfaces the `Cause`
  * of the channel failure.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapErrorCause: {
@@ -1247,7 +1247,7 @@ export const mapErrorCause: {
 /**
  * Maps the output of this channel using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapOut: {
@@ -1266,7 +1266,7 @@ export const mapOut: {
  * Creates a channel that is like this channel but the given effectful function
  * gets applied to each emitted output element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapOutEffect: {
@@ -1286,7 +1286,7 @@ export const mapOutEffect: {
  * applied to each emitted output element, taking `n` elements at once and
  * mapping them in parallel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mapOutEffectPar: {
@@ -1304,7 +1304,7 @@ export const mapOutEffectPar: {
 } = channel.mapOutEffectPar
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeAll: (
@@ -1327,7 +1327,7 @@ export const mergeAll: (
   channel.mergeAll
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeAllUnbounded: <Env, Env1, InErr, InErr1, InElem, InElem1, InDone, InDone1, OutErr, OutErr1, OutElem>(
@@ -1344,7 +1344,7 @@ export const mergeAllUnbounded: <Env, Env1, InErr, InErr1, InElem, InElem1, InDo
   channel.mergeAllUnbounded
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeAllUnboundedWith: <
@@ -1375,7 +1375,7 @@ export const mergeAllUnboundedWith: <
   channel.mergeAllUnboundedWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeAllWith: (
@@ -1406,7 +1406,7 @@ export const mergeAllWith: (
  *
  * @param n The maximum number of channels to merge.
  * @param f The function that creates a new channel from each emitted element.
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const mergeMap: {
@@ -1435,7 +1435,7 @@ export const mergeMap: {
  * Returns a new channel which merges a number of channels emitted by this
  * channel using the back pressuring merge strategy. See `Channel.mergeAll`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeOut: {
@@ -1472,7 +1472,7 @@ export const mergeOut: {
  * to merge each completed subchannel's result value. See
  * `Channel.mergeAll`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeOutWith: {
@@ -1511,7 +1511,7 @@ export const mergeOutWith: {
  * termination is decided by the specified `leftDone` and `rightDone` merge
  * decisions.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const mergeWith: {
@@ -1580,7 +1580,7 @@ export const mergeWith: {
 /**
  * Returns a channel that never completes
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const never: Channel<never, unknown, unknown, unknown, never, never, never> = channel.never
@@ -1589,7 +1589,7 @@ export const never: Channel<never, unknown, unknown, unknown, never, never, neve
  * Translates channel failure into death of the fiber, making all failures
  * unchecked and not a part of the type of the channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDie: {
@@ -1608,7 +1608,7 @@ export const orDie: {
  * Keeps none of the errors, and terminates the fiber with them, using the
  * specified function to convert the `OutErr` into a defect.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orDieWith: {
@@ -1628,7 +1628,7 @@ export const orDieWith: {
  * failure, and then it will switch over to the operations of the specified
  * fallback channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category error handling
  */
 export const orElse: {
@@ -1665,7 +1665,7 @@ export const orElse: {
  * and the output type of the specified channel, terminating with the value of
  * the specified channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pipeTo: {
@@ -1685,7 +1685,7 @@ export const pipeTo: {
  * specified channel and preserves this channel's failures without providing
  * them to the other channel for observation.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const pipeToOrFail: {
@@ -1704,7 +1704,7 @@ export const pipeToOrFail: {
  * Provides the channel with its required context, which eliminates its
  * dependency on `Env`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideContext: {
@@ -1722,7 +1722,7 @@ export const provideContext: {
 /**
  * Provides a layer to the channel, which translates it to another level.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideLayer: {
@@ -1741,7 +1741,7 @@ export const provideLayer: {
  * Transforms the context being provided to the channel with the specified
  * function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const mapInputContext: {
@@ -1760,7 +1760,7 @@ export const mapInputContext: {
  * Splits the context into two parts, providing one part using the
  * specified layer and leaving the remainder `Env0`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideSomeLayer: {
@@ -1779,7 +1779,7 @@ export const provideSomeLayer: {
  * Provides the effect with the single service it requires. If the effect
  * requires more than one service use `provideContext` instead.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const provideService: {
@@ -1797,19 +1797,19 @@ export const provideService: {
 } = channel.provideService
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const read: <In>() => Channel<never, unknown, In, unknown, Option.Option<never>, never, In> = channel.read
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const readOrFail: <In, E>(error: E) => Channel<never, unknown, In, unknown, E, never, In> = core.readOrFail
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const readWith: <
@@ -1845,7 +1845,7 @@ export const readWith: <
 > = core.readWith
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const readWithCause: <
@@ -1883,7 +1883,7 @@ export const readWithCause: <
 /**
  * Creates a channel which repeatedly runs this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const repeated: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -1893,7 +1893,7 @@ export const repeated: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 /**
  * Runs a channel until the end is received.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const run: <Env, InErr, InDone, OutErr, OutDone>(
@@ -1906,7 +1906,7 @@ export const run: <Env, InErr, InDone, OutErr, OutDone>(
  *
  * The channel must not read any input.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
@@ -1916,7 +1916,7 @@ export const runCollect: <Env, InErr, InDone, OutErr, OutElem, OutDone>(
 /**
  * Runs a channel until the end is received.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
@@ -1926,7 +1926,7 @@ export const runDrain: <Env, InErr, InDone, OutElem, OutErr, OutDone>(
 /**
  * Use a scoped effect to emit an output element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const scoped: <R, E, A>(
@@ -1936,7 +1936,7 @@ export const scoped: <R, E, A>(
 /**
  * Constructs a channel that succeeds immediately with the specified value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const succeed: <A>(value: A) => Channel<never, unknown, unknown, unknown, never, never, A> = core.succeed
@@ -1944,7 +1944,7 @@ export const succeed: <A>(value: A) => Channel<never, unknown, unknown, unknown,
 /**
  * Constructs a channel that succeeds immediately with the specified lazy value.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const sync: <OutDone>(
@@ -1954,7 +1954,7 @@ export const sync: <OutDone>(
 /**
  * Converts a `Channel` to a `Hub`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toHub: <Err, Done, Elem>(
@@ -1967,7 +1967,7 @@ export const toHub: <Err, Done, Elem>(
  * in case the channel fails, or returns either the channel's done value or an
  * emitted element.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -1978,7 +1978,7 @@ export const toPull: <Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
 /**
  * Converts a `Channel` to a `Queue`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toQueue: <Err, Done, Elem>(
@@ -1987,7 +1987,7 @@ export const toQueue: <Err, Done, Elem>(
 
 /** Converts this channel to a `Sink`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toSink: <Env, InErr, InElem, OutErr, OutElem, OutDone>(
@@ -1997,7 +1997,7 @@ export const toSink: <Env, InErr, InElem, OutErr, OutElem, OutDone>(
 /**
  * Converts this channel to a `Stream`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category destructors
  */
 export const toStream: <Env, OutErr, OutElem, OutDone>(
@@ -2005,7 +2005,7 @@ export const toStream: <Env, OutErr, OutElem, OutDone>(
 ) => Stream.Stream<Env, OutErr, OutElem> = stream.channelToStream
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unit: Channel<never, unknown, unknown, unknown, never, never, void> = core.unit
@@ -2013,7 +2013,7 @@ export const unit: Channel<never, unknown, unknown, unknown, never, never, void>
 /**
  * Makes a channel from an effect that returns a channel in case of success.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrap: <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -2023,7 +2023,7 @@ export const unwrap: <R, E, R2, InErr, InElem, InDone, OutErr, OutElem, OutDone>
 /**
  * Makes a channel from a managed that returns a channel in case of success.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const unwrapScoped: <R, E, Env, InErr, InElem, InDone, OutErr, OutElem, OutDone>(
@@ -2033,7 +2033,7 @@ export const unwrapScoped: <R, E, Env, InErr, InElem, InDone, OutErr, OutElem, O
 /**
  * Updates a service in the context of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const updateService: {
@@ -2053,7 +2053,7 @@ export const updateService: {
 /**
  * Wraps the channel with a new span for tracing.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category tracing
  */
 export const withSpan: {
@@ -2085,7 +2085,7 @@ export const withSpan: {
 /**
  * Writes a single value to the channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const write: <OutElem>(out: OutElem) => Channel<never, unknown, unknown, unknown, never, OutElem, void> =
@@ -2094,7 +2094,7 @@ export const write: <OutElem>(out: OutElem) => Channel<never, unknown, unknown, 
 /**
  * Writes a sequence of values to the channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const writeAll: <OutElems extends Array<any>>(
@@ -2104,7 +2104,7 @@ export const writeAll: <OutElems extends Array<any>>(
 /**
  * Writes a `Chunk` of values to the channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const writeChunk: <OutElem>(
@@ -2116,7 +2116,7 @@ export const writeChunk: <OutElem>(
  * and the specified channel. The returned channel terminates with a tuple of
  * the terminal values of both channels.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zip: {
@@ -2154,7 +2154,7 @@ export const zip: {
  * and the specified channel. The returned channel terminates with the
  * terminal value of this channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipLeft: {
@@ -2192,7 +2192,7 @@ export const zipLeft: {
  * and the specified channel. The returned channel terminates with the
  * terminal value of that channel.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category zipping
  */
 export const zipRight: {
@@ -2229,7 +2229,7 @@ export const zipRight: {
  * Represents a generic checked exception which occurs when a `Channel` is
  * executed.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category errors
  */
 export const ChannelException: <E>(error: E) => ChannelException<E> = channel.ChannelException
@@ -2238,7 +2238,7 @@ export const ChannelException: <E>(error: E) => ChannelException<E> = channel.Ch
  * Returns `true` if the specified value is an `ChannelException`, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category refinements
  */
 export const isChannelException: (u: unknown) => u is ChannelException<unknown> = channel.isChannelException

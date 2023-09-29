@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type * as Effect from "./Effect"
@@ -9,25 +9,25 @@ import type * as STM from "./STM"
 import type * as TRef from "./TRef"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const TSemaphoreTypeId: unique symbol = internal.TSemaphoreTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type TSemaphoreTypeId = typeof TSemaphoreTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface TSemaphore extends TSemaphore.Proto {}
 /**
  * @internal
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TSemaphore {
   /** @internal */
@@ -35,11 +35,11 @@ export interface TSemaphore {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace TSemaphore {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Proto {
@@ -48,13 +48,13 @@ export declare namespace TSemaphore {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const acquire: (self: TSemaphore) => STM.STM<never, never, void> = internal.acquire
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const acquireN: {
@@ -63,25 +63,25 @@ export const acquireN: {
 } = internal.acquireN
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const available: (self: TSemaphore) => STM.STM<never, never, number> = internal.available
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (permits: number) => STM.STM<never, never, TSemaphore> = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const release: (self: TSemaphore) => STM.STM<never, never, void> = internal.release
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const releaseN: {
@@ -90,7 +90,7 @@ export const releaseN: {
 } = internal.releaseN
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withPermit: {
@@ -99,7 +99,7 @@ export const withPermit: {
 } = internal.withPermit
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withPermits: {
@@ -108,13 +108,13 @@ export const withPermits: {
 } = internal.withPermits
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withPermitScoped: (self: TSemaphore) => Effect.Effect<Scope.Scope, never, void> = internal.withPermitScoped
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category mutations
  */
 export const withPermitsScoped: {
@@ -123,7 +123,7 @@ export const withPermitsScoped: {
 } = internal.withPermitsScoped
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category unsafe
  */
 export const unsafeMake: (permits: number) => TSemaphore = internal.unsafeMakeSemaphore

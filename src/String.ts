@@ -3,7 +3,7 @@
  * It includes functions for basic string manipulation, as well as type class instances for
  * `Equivalence`, `Order`, `Semigroup`, and `Monoid`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import * as equivalence from "./Equivalence"
@@ -29,40 +29,40 @@ import type { NonEmptyArray } from "./ReadonlyArray"
  * assert.deepStrictEqual(isString(1), false)
  *
  * @category guards
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isString: Refinement<unknown, string> = predicate.isString
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Equivalence: equivalence.Equivalence<string> = equivalence.string
 
 /**
  * @category instances
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const Order: order.Order<string> = order.string
 
 /**
  * The empty string `""`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const empty: "" = "" as const
 
 /**
  * Concatenates two strings at the type level.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Concat<A extends string, B extends string> = `${A}${B}`
 
 /**
  * Concatenates two strings at runtime.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const concat: {
   <B extends string>(that: B): <A extends string>(self: A) => Concat<A, B>
@@ -76,7 +76,7 @@ export const concat: {
  *
  * assert.deepStrictEqual(pipe('a', S.toUpperCase), 'A')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toUpperCase() as Uppercase<S>
 
@@ -87,7 +87,7 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
  *
  * assert.deepStrictEqual(pipe('A', S.toLowerCase), 'a')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toLowerCase() as Lowercase<T>
 
@@ -98,7 +98,7 @@ export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toL
  *
  * assert.deepStrictEqual(pipe('abc', S.capitalize), 'Abc')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const capitalize = <T extends string>(self: T): Capitalize<T> => {
   if (self.length === 0) return self as Capitalize<T>
@@ -113,7 +113,7 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
  *
  * assert.deepStrictEqual(pipe('ABC', S.uncapitalize), 'aBC')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
   if (self.length === 0) return self as Uncapitalize<T>
@@ -128,13 +128,13 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
  *
  * assert.deepStrictEqual(pipe('abc', S.replace('b', 'd')), 'adc')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const replace = (searchValue: string | RegExp, replaceValue: string) => (self: string): string =>
   self.replace(searchValue, replaceValue)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type Trim<A extends string> = TrimEnd<TrimStart<A>>
 
@@ -144,12 +144,12 @@ export type Trim<A extends string> = TrimEnd<TrimStart<A>>
  *
  * assert.deepStrictEqual(S.trim(' a '), 'a')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<A>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TrimStart<A extends string> = A extends ` ${infer B}` ? TrimStart<B>
   : A extends `\n${infer B}` ? TrimStart<B>
@@ -163,12 +163,12 @@ export type TrimStart<A extends string> = A extends ` ${infer B}` ? TrimStart<B>
  *
  * assert.deepStrictEqual(S.trimStart(' a '), 'a ')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimStart() as TrimStart<A>
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TrimEnd<A extends string> = A extends `${infer B} ` ? TrimEnd<B>
   : A extends `${infer B}\n` ? TrimEnd<B>
@@ -182,7 +182,7 @@ export type TrimEnd<A extends string> = A extends `${infer B} ` ? TrimEnd<B>
  *
  * assert.deepStrictEqual(S.trimEnd(' a '), ' a')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd() as TrimEnd<A>
 
@@ -193,7 +193,7 @@ export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd()
  *
  * assert.deepStrictEqual(pipe('abcd', S.slice(1, 3)), 'bc')
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const slice = (start?: number, end?: number) => (self: string): string => self.slice(start, end)
 
@@ -206,14 +206,14 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  * assert.deepStrictEqual(S.isEmpty(''), true)
  * assert.deepStrictEqual(S.isEmpty('a'), false)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isEmpty = (self: string): self is "" => self.length === 0
 
 /**
  * Test whether a `string` is non empty.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isNonEmpty = (self: string): boolean => self.length > 0
 
@@ -225,7 +225,7 @@ export const isNonEmpty = (self: string): boolean => self.length > 0
  *
  * assert.deepStrictEqual(S.length('abc'), 3)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const length = (self: string): number => self.length
 
@@ -237,7 +237,7 @@ export const length = (self: string): number => self.length
  * assert.deepStrictEqual(pipe('abc', S.split('')), ['a', 'b', 'c'])
  * assert.deepStrictEqual(pipe('', S.split('')), [''])
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const split: {
   (separator: string | RegExp): (self: string) => NonEmptyArray<string>
@@ -251,19 +251,19 @@ export const split: {
  * Returns `true` if `searchString` appears as a substring of `self`, at one or more positions that are
  * greater than or equal to `position`; otherwise, returns `false`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const includes = (searchString: string, position?: number) => (self: string): boolean =>
   self.includes(searchString, position)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const startsWith = (searchString: string, position?: number) => (self: string): boolean =>
   self.startsWith(searchString, position)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const endsWith = (searchString: string, position?: number) => (self: string): boolean =>
   self.endsWith(searchString, position)
@@ -277,7 +277,7 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * assert.deepStrictEqual(pipe("abc", S.charCodeAt(1)), Option.some(98))
  * assert.deepStrictEqual(pipe("abc", S.charCodeAt(4)), Option.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const charCodeAt: {
   (index: number): (self: string) => Option.Option<number>
@@ -296,7 +296,7 @@ export const charCodeAt: {
  * assert.deepStrictEqual(pipe("abcd", S.substring(1)), "bcd")
  * assert.deepStrictEqual(pipe("abcd", S.substring(1, 3)), "bc")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const substring = (start: number, end?: number) => (self: string): string => self.substring(start, end)
 
@@ -309,7 +309,7 @@ export const substring = (start: number, end?: number) => (self: string): string
  * assert.deepStrictEqual(pipe("abc", S.at(1)), Option.some("b"))
  * assert.deepStrictEqual(pipe("abc", S.at(4)), Option.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const at: {
   (index: number): (self: string) => Option.Option<string>
@@ -325,7 +325,7 @@ export const at: {
  * assert.deepStrictEqual(pipe("abc", S.charAt(1)), Option.some("b"))
  * assert.deepStrictEqual(pipe("abc", S.charAt(4)), Option.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const charAt: {
   (index: number): (self: string) => Option.Option<string>
@@ -343,7 +343,7 @@ export const charAt: {
  *
  * assert.deepStrictEqual(pipe("abc", S.codePointAt(1)), Option.some(98))
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const codePointAt: {
   (index: number): (self: string) => Option.Option<number>
@@ -358,7 +358,7 @@ export const codePointAt: {
  *
  * assert.deepStrictEqual(pipe("abbbc", S.indexOf("b")), Option.some(1))
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const indexOf = (searchString: string) => (self: string): Option.Option<number> =>
   Option.filter(Option.some(self.indexOf(searchString)), number.greaterThanOrEqualTo(0))
@@ -372,7 +372,7 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
  * assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("b")), Option.some(3))
  * assert.deepStrictEqual(pipe("abbbc", S.lastIndexOf("d")), Option.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const lastIndexOf = (searchString: string) => (self: string): Option.Option<number> =>
   Option.filter(Option.some(self.lastIndexOf(searchString)), number.greaterThanOrEqualTo(0))
@@ -386,7 +386,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * assert.deepStrictEqual(pipe("b", S.localeCompare("a")), 1)
  * assert.deepStrictEqual(pipe("a", S.localeCompare("a")), 0)
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const localeCompare =
   (that: string, locales?: Array<string>, options?: Intl.CollatorOptions) => (self: string): Ordering.Ordering =>
@@ -395,7 +395,7 @@ export const localeCompare =
 /**
  * It is the `pipe`-able version of the native `match` method.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const match = (regexp: RegExp | string) => (self: string): Option.Option<RegExpMatchArray> =>
   Option.fromNullable(self.match(regexp))
@@ -403,7 +403,7 @@ export const match = (regexp: RegExp | string) => (self: string): Option.Option<
 /**
  * It is the `pipe`-able version of the native `matchAll` method.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const matchAll = (regexp: RegExp) => (self: string): IterableIterator<RegExpMatchArray> => self.matchAll(regexp)
 
@@ -419,7 +419,7 @@ export const matchAll = (regexp: RegExp) => (self: string): IterableIterator<Reg
  * assert.deepStrictEqual(pipe(str, S.normalize("NFKC")), "\u1E69")
  * assert.deepStrictEqual(pipe(str, S.normalize("NFKD")), "\u0073\u0323\u0307")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: string): string => self.normalize(form)
 
@@ -431,7 +431,7 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
  * assert.deepStrictEqual(pipe("a", S.padEnd(5)), "a    ")
  * assert.deepStrictEqual(pipe("a", S.padEnd(5, "_")), "a____")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const padEnd = (maxLength: number, fillString?: string) => (self: string): string =>
   self.padEnd(maxLength, fillString)
@@ -444,7 +444,7 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
  * assert.deepStrictEqual(pipe("a", S.padStart(5)), "    a")
  * assert.deepStrictEqual(pipe("a", S.padStart(5, "_")), "____a")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const padStart = (maxLength: number, fillString?: string) => (self: string): string =>
   self.padStart(maxLength, fillString)
@@ -456,7 +456,7 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
  *
  * assert.deepStrictEqual(pipe("a", S.repeat(5)), "aaaaa")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const repeat = (count: number) => (self: string): string => self.repeat(count)
 
@@ -468,7 +468,7 @@ export const repeat = (count: number) => (self: string): string => self.repeat(c
  * assert.deepStrictEqual(pipe("ababb", S.replaceAll("b", "c")), "acacc")
  * assert.deepStrictEqual(pipe("ababb", S.replaceAll(/ba/g, "cc")), "accbb")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const replaceAll = (searchValue: string | RegExp, replaceValue: string) => (self: string): string =>
   self.replaceAll(searchValue, replaceValue)
@@ -483,7 +483,7 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
  * assert.deepStrictEqual(pipe("ababb", S.search(/abb/)), Option.some(2))
  * assert.deepStrictEqual(pipe("ababb", S.search("d")), Option.none())
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const search: {
   (regexp: RegExp | string): (self: string) => Option.Option<number>
@@ -502,7 +502,7 @@ export const search: {
  * const str = "\u0130"
  * assert.deepStrictEqual(pipe(str, S.toLocaleLowerCase("tr")), "i")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: string): string =>
   self.toLocaleLowerCase(locale)
@@ -515,7 +515,7 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  * const str = "i\u0307"
  * assert.deepStrictEqual(pipe(str, S.toLocaleUpperCase("lt-LT")), "I")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: string): string =>
   self.toLocaleUpperCase(locale)
@@ -535,7 +535,7 @@ export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: str
  *
  * assert.deepStrictEqual(S.takeLeft("Hello World", 5), "Hello")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const takeLeft: {
   (n: number): (self: string) => string
@@ -557,7 +557,7 @@ export const takeLeft: {
  *
  * assert.deepStrictEqual(S.takeRight("Hello World", 5), "World")
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const takeRight: {
   (n: number): (self: string) => string
@@ -574,7 +574,7 @@ const LF = 0x0a
  * Returns an `IterableIterator` which yields each line contained within the
  * string, trimming off the trailing newline character.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 // export const linesIterator = (self: string): LinesIterator => linesSeparated(self, true)
 
@@ -582,7 +582,7 @@ const LF = 0x0a
  * Returns an `IterableIterator` which yields each line contained within the
  * string as well as the trailing newline character.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const linesWithSeparators = (s: string): LinesIterator => linesSeparated(s, false)
 
@@ -591,7 +591,7 @@ export const linesWithSeparators = (s: string): LinesIterator => linesSeparated(
  * or control characters followed by the character specified by `marginChar`
  * from the line.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const stripMarginWith: {
   (marginChar: string): (self: string) => string
@@ -620,7 +620,7 @@ export const stripMarginWith: {
  * For every line in this string, strip a leading prefix consisting of blanks
  * or control characters followed by the `"|"` character from the line.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const stripMargin = (self: string): string => stripMarginWith(self, "|")
 

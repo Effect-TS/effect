@@ -6,7 +6,7 @@ parent: Modules
 
 ## RedBlackTree overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -74,7 +74,7 @@ Added in v1.0.0
 export declare const Direction: { readonly Forward: RedBlackTree.Direction; readonly Backward: RedBlackTree.Direction }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -88,7 +88,7 @@ Creates an empty `RedBlackTree`.
 export declare const empty: <K, V = never>(ord: Order<K>) => RedBlackTree<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -100,7 +100,7 @@ Constructs a new tree from an iterable of key-value pairs.
 export declare const fromIterable: <K, V>(ord: Order<K>) => (entries: Iterable<readonly [K, V]>) => RedBlackTree<K, V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -116,7 +116,7 @@ export declare const make: <K>(
 ) => RedBlackTree<K, Entries[number] extends readonly [any, infer V] ? V : never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -133,7 +133,7 @@ export declare const findAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -148,7 +148,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getAt
 
@@ -164,7 +164,7 @@ export declare const getAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## has
 
@@ -179,7 +179,7 @@ export declare const has: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -196,7 +196,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -210,7 +210,7 @@ Returns the first entry in the tree, if it exists.
 export declare const first: <K, V>(self: RedBlackTree<K, V>) => Option<readonly [K, V]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrder
 
@@ -222,7 +222,7 @@ Gets the `Order<K>` that the `RedBlackTree<K, V>` is using.
 export declare const getOrder: <K, V>(self: RedBlackTree<K, V>) => Order<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## keys
 
@@ -234,7 +234,7 @@ Get all the keys present in the tree in order.
 export declare const keys: <K, V>(self: RedBlackTree<K, V>) => IterableIterator<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## keysReversed
 
@@ -246,7 +246,7 @@ Get all the keys present in the tree in reverse order.
 export declare const keysReversed: <K, V>(self: RedBlackTree<K, V>) => IterableIterator<K>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## last
 
@@ -258,7 +258,7 @@ Returns the last entry in the tree, if it exists.
 export declare const last: <K, V>(self: RedBlackTree<K, V>) => Option<readonly [K, V]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -270,7 +270,7 @@ Returns the size of the tree.
 export declare const size: <K, V>(self: RedBlackTree<K, V>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## values
 
@@ -282,7 +282,7 @@ Get all values present in the tree in order.
 export declare const values: <K, V>(self: RedBlackTree<K, V>) => IterableIterator<V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## valuesReversed
 
@@ -294,7 +294,7 @@ Get all values present in the tree in reverse order.
 export declare const valuesReversed: <K, V>(self: RedBlackTree<K, V>) => IterableIterator<V>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -310,7 +310,7 @@ export interface RedBlackTree<Key, Value> extends Iterable<readonly [Key, Value]
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -325,7 +325,7 @@ export declare const isRedBlackTree: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -337,7 +337,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # traversing
 
@@ -357,7 +357,7 @@ export declare const at: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## atReversed
 
@@ -375,7 +375,7 @@ export declare const atReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -390,7 +390,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachBetween
 
@@ -411,7 +411,7 @@ export declare const forEachBetween: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachGreaterThanEqual
 
@@ -426,7 +426,7 @@ export declare const forEachGreaterThanEqual: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEachLessThan
 
@@ -441,7 +441,7 @@ export declare const forEachLessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThan
 
@@ -457,7 +457,7 @@ export declare const greaterThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanEqual
 
@@ -473,7 +473,7 @@ export declare const greaterThanEqual: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanEqualReversed
 
@@ -489,7 +489,7 @@ export declare const greaterThanEqualReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## greaterThanReversed
 
@@ -505,7 +505,7 @@ export declare const greaterThanReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThan
 
@@ -521,7 +521,7 @@ export declare const lessThan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanEqual
 
@@ -537,7 +537,7 @@ export declare const lessThanEqual: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanEqualReversed
 
@@ -553,7 +553,7 @@ export declare const lessThanEqualReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lessThanReversed
 
@@ -569,7 +569,7 @@ export declare const lessThanReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reversed
 
@@ -581,13 +581,13 @@ Traverse the tree in reverse order.
 export declare const reversed: <K, V>(self: RedBlackTree<K, V>) => Iterable<readonly [K, V]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## RedBlackTree (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Direction (type alias)
 
@@ -599,7 +599,7 @@ export type Direction = number & {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## insert
 
@@ -614,7 +614,7 @@ export declare const insert: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## removeFirst
 
@@ -629,4 +629,4 @@ export declare const removeFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

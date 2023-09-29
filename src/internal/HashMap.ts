@@ -412,7 +412,7 @@ export const removeMany = Dual.dual<
 /**
  * Maps over the entries of the `HashMap` using the specified function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category mapping
  */
 export const map = Dual.dual<

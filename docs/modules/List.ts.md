@@ -15,7 +15,7 @@ This data type is optimal for last-in-first-out (LIFO), stack-like access patter
 - Time: `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list. This includes the index-based lookup of elements, `length`, `append` and `reverse`.
 - Space: `List` implements structural sharing of the tail list. This means that many operations are either zero- or constant-memory cost.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -98,7 +98,7 @@ Removes all `None` values from the specified list.
 export declare const compact: <A>(self: List<Option.Option<A>>) => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drop
 
@@ -110,7 +110,7 @@ Drops the first `n` elements from the specified list.
 export declare const drop: { (n: number): <A>(self: List<A>) => List<A>; <A>(self: List<A>, n: number): List<A> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -127,7 +127,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -144,7 +144,7 @@ export declare const filterMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -159,7 +159,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## map
 
@@ -174,7 +174,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -193,7 +193,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionMap
 
@@ -210,7 +210,7 @@ export declare const partitionMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitAt
 
@@ -225,7 +225,7 @@ export declare const splitAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -238,7 +238,7 @@ list.
 export declare const take: { (n: number): <A>(self: List<A>) => List<A>; <A>(self: List<A>, n: number): List<A> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # concatenating
 
@@ -255,7 +255,7 @@ export declare const append: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAll
 
@@ -270,7 +270,7 @@ export declare const appendAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAllNonEmpty
 
@@ -285,7 +285,7 @@ export declare const appendAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prepend
 
@@ -300,7 +300,7 @@ export declare const prepend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAll
 
@@ -315,7 +315,7 @@ export declare const prependAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAllNonEmpty
 
@@ -330,7 +330,7 @@ export declare const prependAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAllReversed
 
@@ -346,7 +346,7 @@ export declare const prependAllReversed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -360,7 +360,7 @@ Constructs a new `List.Cons<A>` from the specified `head` and `tail` values.
 export declare const cons: <A>(head: A, tail: List<A>) => Cons<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## empty
 
@@ -374,7 +374,7 @@ Alias of {@link nil}.
 export declare const empty: <A = never>() => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromIterable
 
@@ -386,7 +386,7 @@ Constructs a new `List<A>` from the specified `Iterable<A>`.
 export declare const fromIterable: <A>(prefix: Iterable<A>) => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -398,7 +398,7 @@ Constructs a new `List<A>` from the specified values.
 export declare const make: <Elements extends readonly [any, ...any[]]>(...elements: Elements) => Cons<Elements[number]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## nil
 
@@ -410,7 +410,7 @@ Constructs a new empty `List<A>`.
 export declare const nil: <A = never>() => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## of
 
@@ -422,7 +422,7 @@ Constructs a new `List<A>` from the specified value.
 export declare const of: <A>(value: A) => Cons<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -436,7 +436,7 @@ Converts the specified `List` to a `Chunk`.
 export declare const toChunk: <A>(self: List<A>) => Chunk.Chunk<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## toReadonlyArray
 
@@ -448,7 +448,7 @@ Converts the specified `List` to a `ReadonlyArray`.
 export declare const toReadonlyArray: <A>(self: List<A>) => readonly A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -467,7 +467,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -485,7 +485,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reverse
 
@@ -497,7 +497,7 @@ Returns a new list with the elements of the specified list in reverse order.
 export declare const reverse: <A>(self: List<A>) => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -512,7 +512,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # equivalence
 
@@ -524,7 +524,7 @@ Added in v1.0.0
 export declare const getEquivalence: <A>(isEquivalent: Equivalence.Equivalence<A>) => Equivalence.Equivalence<List<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -542,7 +542,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceRight
 
@@ -558,7 +558,7 @@ export declare const reduceRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -573,7 +573,7 @@ empty.
 export declare const head: <A>(self: List<A>) => Option.Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## last
 
@@ -586,7 +586,7 @@ empty.
 export declare const last: <A>(self: List<A>) => Option.Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## size
 
@@ -598,7 +598,7 @@ Returns the number of elements contained in the specified `List`
 export declare const size: <A>(self: List<A>) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tail
 
@@ -610,7 +610,7 @@ Returns the tail of the specified list, or `None` if the list is empty.
 export declare const tail: <A>(self: List<A>) => Option.Option<List<A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -627,7 +627,7 @@ export interface Cons<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## List (type alias)
 
@@ -643,7 +643,7 @@ consider using a collection more suited for that other than `List`.
 export type List<A> = Cons<A> | Nil<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## Nil (interface)
 
@@ -656,7 +656,7 @@ export interface Nil<A> extends Iterable<A>, Equal.Equal, Pipeable, Inspectable 
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # refinements
 
@@ -670,7 +670,7 @@ Returns `true` if the specified value is a `List.Cons<A>`, `false` otherwise.
 export declare const isCons: <A>(self: List<A>) => self is Cons<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isList
 
@@ -682,7 +682,7 @@ Returns `true` if the specified value is a `List`, `false` otherwise.
 export declare const isList: { <A>(u: Iterable<A>): u is List<A>; (u: unknown): u is List<unknown> }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNil
 
@@ -694,7 +694,7 @@ Returns `true` if the specified value is a `List.Nil<A>`, `false` otherwise.
 export declare const isNil: <A>(self: List<A>) => self is Nil<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -711,7 +711,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapNonEmpty
 
@@ -724,7 +724,7 @@ export declare const flatMapNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbol
 
@@ -736,7 +736,7 @@ Added in v1.0.0
 export declare const TypeId: typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -746,7 +746,7 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -760,7 +760,7 @@ Unsafely returns the first element of the specified `List`.
 export declare const unsafeHead: <A>(self: List<A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeLast
 
@@ -772,7 +772,7 @@ Unsafely returns the last element of the specified `List`.
 export declare const unsafeLast: <A>(self: List<A>) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unsafeTail
 
@@ -784,4 +784,4 @@ Unsafely returns the tail of the specified `List`.
 export declare const unsafeTail: <A>(self: List<A>) => List<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0

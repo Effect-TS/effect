@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import * as Chunk from "./Chunk"
 import * as Context from "./Context"
@@ -16,17 +16,17 @@ import type * as SortedSet from "./SortedSet"
 const TestAnnotationSymbolKey = "effect/TestAnnotation"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const TestAnnotationTypeId = Symbol.for(TestAnnotationSymbolKey)
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export type TestAnnotationTypeId = typeof TestAnnotationTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export interface TestAnnotation<A> extends Equal.Equal {
   readonly [TestAnnotationTypeId]: TestAnnotationTypeId
@@ -60,14 +60,14 @@ class TestAnnotationImpl<A> implements Equal.Equal {
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const isTestAnnotation = (u: unknown): u is TestAnnotation<unknown> => {
   return typeof u === "object" && u != null && TestAnnotationTypeId in u
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const make = <A>(
   identifier: string,
@@ -79,7 +79,7 @@ export const make = <A>(
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const compose = <A>(
   left: Either.Either<number, Chunk.Chunk<A>>,
@@ -101,7 +101,7 @@ export const compose = <A>(
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const fibers: TestAnnotation<
   Either.Either<
@@ -120,7 +120,7 @@ export const fibers: TestAnnotation<
 /**
  * An annotation which counts ignored tests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const ignored: TestAnnotation<number> = make(
   "ignored",
@@ -132,7 +132,7 @@ export const ignored: TestAnnotation<number> = make(
 /**
  * An annotation which counts repeated tests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const repeated: TestAnnotation<number> = make(
   "repeated",
@@ -144,7 +144,7 @@ export const repeated: TestAnnotation<number> = make(
 /**
  * An annotation which counts retried tests.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const retried: TestAnnotation<number> = make(
   "retried",
@@ -156,7 +156,7 @@ export const retried: TestAnnotation<number> = make(
 /**
  * An annotation which tags tests with strings.
  *
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const tagged: TestAnnotation<HashSet.HashSet<string>> = make(
   "tagged",

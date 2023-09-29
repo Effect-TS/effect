@@ -6,7 +6,7 @@ parent: Modules
 
 ## HKT overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ export type Kind<F extends TypeLambda, In, Out2, Out1, Target> = F extends {
     }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeClass (interface)
 
@@ -56,7 +56,7 @@ export interface TypeClass<F extends TypeLambda> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeLambda (interface)
 
@@ -71,4 +71,4 @@ export interface TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

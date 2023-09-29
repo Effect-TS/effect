@@ -6,7 +6,7 @@ parent: Modules
 
 ## Console overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const assert: (condition: boolean, ...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## clear
 
@@ -64,7 +64,7 @@ Added in v1.0.0
 export declare const clear: Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## consoleWith
 
@@ -74,7 +74,7 @@ Added in v1.0.0
 export declare const consoleWith: <R, E, A>(f: (console: Console) => Effect<R, E, A>) => Effect<R, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## count
 
@@ -84,7 +84,7 @@ Added in v1.0.0
 export declare const count: (label?: string) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## countReset
 
@@ -94,7 +94,7 @@ Added in v1.0.0
 export declare const countReset: (label?: string) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## debug
 
@@ -104,7 +104,7 @@ Added in v1.0.0
 export declare const debug: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dir
 
@@ -114,7 +114,7 @@ Added in v1.0.0
 export declare const dir: (item: any, options?: any) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dirxml
 
@@ -124,7 +124,7 @@ Added in v1.0.0
 export declare const dirxml: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## error
 
@@ -134,7 +134,7 @@ Added in v1.0.0
 export declare const error: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## group
 
@@ -144,7 +144,7 @@ Added in v1.0.0
 export declare const group: (options?: { label?: string; collapsed?: boolean }) => Effect<Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## info
 
@@ -154,7 +154,7 @@ Added in v1.0.0
 export declare const info: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## log
 
@@ -164,7 +164,7 @@ Added in v1.0.0
 export declare const log: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## table
 
@@ -174,7 +174,7 @@ Added in v1.0.0
 export declare const table: (tabularData: any, properties?: ReadonlyArray<string>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## time
 
@@ -184,7 +184,7 @@ Added in v1.0.0
 export declare const time: (label?: string) => Effect<Scope, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## timeLog
 
@@ -194,7 +194,7 @@ Added in v1.0.0
 export declare const timeLog: (label?: string, ...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## trace
 
@@ -204,7 +204,7 @@ Added in v1.0.0
 export declare const trace: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## warn
 
@@ -214,7 +214,7 @@ Added in v1.0.0
 export declare const warn: (...args: ReadonlyArray<any>) => Effect<never, never, void>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withGroup
 
@@ -229,7 +229,7 @@ export declare const withGroup: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withTime
 
@@ -242,7 +242,7 @@ export declare const withTime: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # default services
 
@@ -254,7 +254,7 @@ Added in v1.0.0
 export declare const setConsole: <A extends Console>(console: A) => Layer.Layer<never, never, never>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## withConsole
 
@@ -267,7 +267,7 @@ export declare const withConsole: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # model
 
@@ -300,7 +300,7 @@ export interface Console {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## UnsafeConsole (interface)
 
@@ -329,7 +329,7 @@ export interface UnsafeConsole {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type ids
 
@@ -341,7 +341,7 @@ Added in v1.0.0
 export declare const TypeId: typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TypeId (type alias)
 
@@ -351,4 +351,4 @@ Added in v1.0.0
 export type TypeId = typeof TypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0

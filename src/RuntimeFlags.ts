@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 
 import type * as Differ from "./Differ"
@@ -13,7 +13,7 @@ import type * as RuntimeFlagsPatch from "./RuntimeFlagsPatch"
  * the Effect runtime system. They are exposed to application-level code because
  * they affect the behavior and performance of application code.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type RuntimeFlags = number & {
@@ -24,7 +24,7 @@ export type RuntimeFlags = number & {
  * Represents a flag that can be set to enable or disable a particular feature
  * of the Effect runtime.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type RuntimeFlag = number & {
@@ -34,7 +34,7 @@ export type RuntimeFlag = number & {
 /**
  * No runtime flags.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const None: RuntimeFlag = internal.None
@@ -43,7 +43,7 @@ export const None: RuntimeFlag = internal.None
  * The interruption flag determines whether or not the Effect runtime system will
  * interrupt a fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const Interruption: RuntimeFlag = internal.Interruption
@@ -54,7 +54,7 @@ export const Interruption: RuntimeFlag = internal.Interruption
  * negatively impact performance, but is required for some operations, such as
  * profiling.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const OpSupervision: RuntimeFlag = internal.OpSupervision
@@ -66,7 +66,7 @@ export const OpSupervision: RuntimeFlag = internal.OpSupervision
  * operational insight into running Effect applications that can be exported to
  * Prometheus or other tools via Effect Metrics.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const RuntimeMetrics: RuntimeFlag = internal.RuntimeMetrics
@@ -77,7 +77,7 @@ export const RuntimeMetrics: RuntimeFlag = internal.RuntimeMetrics
  * enabled and a fiber has been interrupted, the fiber will continue its
  * execution uninterrupted.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const WindDown: RuntimeFlag = internal.WindDown
@@ -86,7 +86,7 @@ export const WindDown: RuntimeFlag = internal.WindDown
  * The cooperative yielding flag determines whether the Effect runtime will
  * yield to another fiber.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const CooperativeYielding: RuntimeFlag = internal.CooperativeYielding
@@ -95,7 +95,7 @@ export const CooperativeYielding: RuntimeFlag = internal.CooperativeYielding
  * Returns `true` if the `CooperativeYielding` `RuntimeFlag` is enabled, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const cooperativeYielding: (self: RuntimeFlags) => boolean = internal.cooperativeYielding
@@ -104,7 +104,7 @@ export const cooperativeYielding: (self: RuntimeFlags) => boolean = internal.coo
  * Creates a `RuntimeFlagsPatch` which describes the difference between `self`
  * and `that`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category diffing
  */
 export const diff: {
@@ -115,7 +115,7 @@ export const diff: {
 /**
  * Constructs a differ that knows how to diff `RuntimeFlags` values.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsPatch> = internal.differ
@@ -123,7 +123,7 @@ export const differ: Differ.Differ<RuntimeFlags, RuntimeFlagsPatch.RuntimeFlagsP
 /**
  * Disables the specified `RuntimeFlag`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const disable: {
@@ -134,7 +134,7 @@ export const disable: {
 /**
  * Disables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const disableAll: {
@@ -143,31 +143,31 @@ export const disableAll: {
 } = internal.disableAll
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const disableCooperativeYielding: Layer.Layer<never, never, never> = circular.disableCooperativeYielding
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const disableInterruption: Layer.Layer<never, never, never> = circular.disableInterruption
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const disableOpSupervision: Layer.Layer<never, never, never> = circular.disableOpSupervision
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const disableRuntimeMetrics: Layer.Layer<never, never, never> = circular.disableRuntimeMetrics
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const disableWindDown: Layer.Layer<never, never, never> = circular.disableWindDown
@@ -175,7 +175,7 @@ export const disableWindDown: Layer.Layer<never, never, never> = circular.disabl
 /**
  * Enables the specified `RuntimeFlag`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const enable: {
@@ -186,7 +186,7 @@ export const enable: {
 /**
  * Enables all of the `RuntimeFlag`s in the specified set of `RuntimeFlags`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const enableAll: {
@@ -195,31 +195,31 @@ export const enableAll: {
 } = internal.enableAll
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const enableCooperativeYielding: Layer.Layer<never, never, never> = circular.enableCooperativeYielding
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const enableInterruption: Layer.Layer<never, never, never> = circular.enableInterruption
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const enableOpSupervision: Layer.Layer<never, never, never> = circular.enableOpSupervision
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const enableRuntimeMetrics: Layer.Layer<never, never, never> = circular.enableRuntimeMetrics
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category context
  */
 export const enableWindDown: Layer.Layer<never, never, never> = circular.enableWindDown
@@ -232,7 +232,7 @@ export const enableWindDown: Layer.Layer<never, never, never> = circular.enableW
  * is not in its wind-down phase, in which it takes care of cleanup activities
  * related to fiber shutdown.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const interruptible: (self: RuntimeFlags) => boolean = internal.interruptible
@@ -241,7 +241,7 @@ export const interruptible: (self: RuntimeFlags) => boolean = internal.interrupt
  * Returns `true` if the `Interruption` `RuntimeFlag` is enabled, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const interruption: (self: RuntimeFlags) => boolean = internal.interruption
@@ -249,7 +249,7 @@ export const interruption: (self: RuntimeFlags) => boolean = internal.interrupti
 /**
  * Returns `true` if the specified `RuntimeFlag` is enabled, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isEnabled: {
@@ -260,7 +260,7 @@ export const isEnabled: {
 /**
  * Returns `true` if the specified `RuntimeFlag` is disabled, `false` otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category elements
  */
 export const isDisabled: {
@@ -269,13 +269,13 @@ export const isDisabled: {
 } = internal.isDisabled
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: (...flags: ReadonlyArray<RuntimeFlag>) => RuntimeFlags = internal.make
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const none: RuntimeFlags = internal.none
@@ -284,7 +284,7 @@ export const none: RuntimeFlags = internal.none
  * Returns `true` if the `OpSupervision` `RuntimeFlag` is enabled, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const opSupervision: (self: RuntimeFlags) => boolean = internal.opSupervision
@@ -293,7 +293,7 @@ export const opSupervision: (self: RuntimeFlags) => boolean = internal.opSupervi
  * Patches a set of `RuntimeFlag`s with a `RuntimeFlagsPatch`, returning the
  * patched set of `RuntimeFlag`s.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category utils
  */
 export const patch: {
@@ -305,7 +305,7 @@ export const patch: {
  * Converts the provided `RuntimeFlags` into a `string`.
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const render: (self: RuntimeFlags) => string = internal.render
 
@@ -313,7 +313,7 @@ export const render: (self: RuntimeFlags) => string = internal.render
  * Returns `true` if the `RuntimeMetrics` `RuntimeFlag` is enabled, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const runtimeMetrics: (self: RuntimeFlags) => boolean = internal.runtimeMetrics
@@ -322,7 +322,7 @@ export const runtimeMetrics: (self: RuntimeFlags) => boolean = internal.runtimeM
  * Converts the provided `RuntimeFlags` into a `ReadonlySet<number>`.
  *
  * @category conversions
- * @since 1.0.0
+ * @since 2.0.0
  */
 export const toSet: (self: RuntimeFlags) => ReadonlySet<RuntimeFlag> = internal.toSet
 
@@ -330,7 +330,7 @@ export const toSet: (self: RuntimeFlags) => ReadonlySet<RuntimeFlag> = internal.
  * Returns `true` if the `WindDown` `RuntimeFlag` is enabled, `false`
  * otherwise.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category getters
  */
 export const windDown: (self: RuntimeFlags) => boolean = internal.windDown

@@ -8,7 +8,7 @@ parent: Modules
 
 This module provides utility functions for working with arrays in TypeScript.
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -188,7 +188,7 @@ export declare const flatMapNullable: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # concatenating
 
@@ -205,7 +205,7 @@ export declare const append: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAll
 
@@ -218,7 +218,7 @@ export declare const appendAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## appendAllNonEmpty
 
@@ -233,7 +233,7 @@ export declare const appendAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prepend
 
@@ -248,7 +248,7 @@ export declare const prepend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAll
 
@@ -261,7 +261,7 @@ export declare const prependAll: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## prependAllNonEmpty
 
@@ -276,7 +276,7 @@ export declare const prependAllNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # constructors
 
@@ -288,7 +288,7 @@ Added in v1.0.0
 export declare const empty: <A = never>() => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## make
 
@@ -302,7 +302,7 @@ export declare const make: <Elements extends [any, ...any[]]>(
 ) => [Elements[number], ...Elements[number][]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeBy
 
@@ -327,7 +327,7 @@ assert.deepStrictEqual(
 )
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## of
 
@@ -339,7 +339,7 @@ Constructs a new `NonEmptyArray<A>` from the specified value.
 export declare const of: <A>(a: A) => [A, ...A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## range
 
@@ -359,7 +359,7 @@ import { range } from 'effect/ReadonlyArray'
 assert.deepStrictEqual(range(1, 3), [1, 2, 3])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replicate
 
@@ -381,7 +381,7 @@ import { replicate } from 'effect/ReadonlyArray'
 assert.deepStrictEqual(replicate('a', 3), ['a', 'a', 'a'])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unfold
 
@@ -391,7 +391,7 @@ Added in v1.0.0
 export declare const unfold: <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # conversions
 
@@ -403,7 +403,7 @@ Added in v1.0.0
 export declare const fromIterable: <A>(collection: Iterable<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromNullable
 
@@ -413,7 +413,7 @@ Added in v1.0.0
 export declare const fromNullable: <A>(a: A) => NonNullable<A>[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromOption
 
@@ -423,7 +423,7 @@ Added in v1.0.0
 export declare const fromOption: <A>(self: Option<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fromRecord
 
@@ -448,7 +448,7 @@ assert.deepStrictEqual(fromRecord(x), [
 ])
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # elements
 
@@ -465,7 +465,7 @@ export declare const cartesian: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## cartesianWith
 
@@ -480,7 +480,7 @@ export declare const cartesianWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## contains
 
@@ -492,7 +492,7 @@ Returns a function that checks if a `ReadonlyArray` contains a given value using
 export declare const contains: { <A>(a: A): (self: Iterable<A>) => boolean; <A>(self: Iterable<A>, a: A): boolean }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## containsWith
 
@@ -507,7 +507,7 @@ export declare const containsWith: <A>(isEquivalent: (self: A, that: A) => boole
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## every
 
@@ -524,7 +524,7 @@ export declare const every: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirst
 
@@ -542,7 +542,7 @@ export declare const findFirst: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findFirstIndex
 
@@ -557,7 +557,7 @@ export declare const findFirstIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLast
 
@@ -574,7 +574,7 @@ export declare const findLast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## findLastIndex
 
@@ -589,7 +589,7 @@ export declare const findLastIndex: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reverse
 
@@ -601,7 +601,7 @@ Reverse an `Iterable`, creating a new `Array`.
 export declare const reverse: <A>(self: Iterable<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reverseNonEmpty
 
@@ -611,7 +611,7 @@ Added in v1.0.0
 export declare const reverseNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## some
 
@@ -626,7 +626,7 @@ export declare const some: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sortWith
 
@@ -639,7 +639,7 @@ export declare const sortWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # filtering
 
@@ -651,7 +651,7 @@ Added in v1.0.0
 export declare const compact: <A>(self: Iterable<Option<A>>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filter
 
@@ -666,7 +666,7 @@ export declare const filter: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMap
 
@@ -679,7 +679,7 @@ export declare const filterMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## filterMapWhile
 
@@ -694,7 +694,7 @@ export declare const filterMapWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partition
 
@@ -709,7 +709,7 @@ export declare const partition: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## partitionMap
 
@@ -722,7 +722,7 @@ export declare const partitionMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## separate
 
@@ -732,7 +732,7 @@ Added in v1.0.0
 export declare const separate: <E, A>(self: Iterable<Either<E, A>>) => [E[], A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## span
 
@@ -752,7 +752,7 @@ export declare const span: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # folding
 
@@ -769,7 +769,7 @@ export declare const join: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapAccum
 
@@ -784,7 +784,7 @@ export declare const mapAccum: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduce
 
@@ -797,7 +797,7 @@ export declare const reduce: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## reduceRight
 
@@ -810,7 +810,7 @@ export declare const reduceRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scan
 
@@ -825,7 +825,7 @@ export declare const scan: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## scanRight
 
@@ -840,7 +840,7 @@ export declare const scanRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -865,7 +865,7 @@ export declare const chunksOf: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## chunksOfNonEmpty
 
@@ -881,7 +881,7 @@ export declare const chunksOfNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## drop
 
@@ -895,7 +895,7 @@ Drop a max number of elements from the start of an `Iterable`, creating a new `A
 export declare const drop: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropRight
 
@@ -909,7 +909,7 @@ Drop a max number of elements from the end of an `Iterable`, creating a new `Arr
 export declare const dropRight: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dropWhile
 
@@ -926,7 +926,7 @@ export declare const dropWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## get
 
@@ -941,7 +941,7 @@ export declare const get: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## head
 
@@ -953,7 +953,7 @@ Get the first element of a `ReadonlyArray`, or `None` if the `ReadonlyArray` is 
 export declare const head: <A>(self: readonly A[]) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## headNonEmpty
 
@@ -963,7 +963,7 @@ Added in v1.0.0
 export declare const headNonEmpty: <A>(self: readonly [A, ...A[]]) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## init
 
@@ -975,7 +975,7 @@ Get all but the last element of an `Iterable`, creating a new `Array`, or `None`
 export declare const init: <A>(self: Iterable<A>) => Option<A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## initNonEmpty
 
@@ -987,7 +987,7 @@ Get all but the last element of a non empty array, creating a new array.
 export declare const initNonEmpty: <A>(self: readonly [A, ...A[]]) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## last
 
@@ -999,7 +999,7 @@ Get the last element in a `ReadonlyArray`, or `None` if the `ReadonlyArray` is e
 export declare const last: <A>(self: readonly A[]) => Option<A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## lastNonEmpty
 
@@ -1009,7 +1009,7 @@ Added in v1.0.0
 export declare const lastNonEmpty: <A>(self: readonly [A, ...A[]]) => A
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## length
 
@@ -1021,7 +1021,7 @@ Return the number of elements in a `ReadonlyArray`.
 export declare const length: <A>(self: readonly A[]) => number
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitAt
 
@@ -1036,7 +1036,7 @@ export declare const splitAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## splitNonEmptyAt
 
@@ -1051,7 +1051,7 @@ export declare const splitNonEmptyAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tail
 
@@ -1063,7 +1063,7 @@ Get all but the first element of an `Iterable`, creating a new `Array`, or `None
 export declare const tail: <A>(self: Iterable<A>) => Option<A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## tailNonEmpty
 
@@ -1073,7 +1073,7 @@ Added in v1.0.0
 export declare const tailNonEmpty: <A>(self: readonly [A, ...A[]]) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## take
 
@@ -1087,7 +1087,7 @@ Keep only a max number of elements from the start of an `Iterable`, creating a n
 export declare const take: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeRight
 
@@ -1101,7 +1101,7 @@ Keep only a max number of elements from the end of an `Iterable`, creating a new
 export declare const takeRight: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## takeWhile
 
@@ -1118,7 +1118,7 @@ export declare const takeWhile: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unappend
 
@@ -1130,7 +1130,7 @@ Return a tuple containing a copy of the `NonEmptyReadonlyArray` without its last
 export declare const unappend: <A>(self: readonly [A, ...A[]]) => [A[], A]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unprepend
 
@@ -1142,7 +1142,7 @@ Return a tuple containing the first element, and a new `Array` of the remaining 
 export declare const unprepend: <A>(self: readonly [A, ...A[]]) => [A, A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # grouping
 
@@ -1156,7 +1156,7 @@ Group equal, consecutive elements of a `NonEmptyReadonlyArray` into `NonEmptyArr
 export declare const group: <A>(self: readonly [A, ...A[]]) => [[A, ...A[]], ...[A, ...A[]][]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## groupBy
 
@@ -1172,7 +1172,7 @@ export declare const groupBy: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## groupWith
 
@@ -1187,7 +1187,7 @@ export declare const groupWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # guards
 
@@ -1210,7 +1210,7 @@ assert.deepStrictEqual(isEmptyArray([]), true)
 assert.deepStrictEqual(isEmptyArray([1, 2, 3]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isEmptyReadonlyArray
 
@@ -1231,7 +1231,7 @@ assert.deepStrictEqual(isEmptyReadonlyArray([]), true)
 assert.deepStrictEqual(isEmptyReadonlyArray([1, 2, 3]), false)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmptyArray
 
@@ -1254,7 +1254,7 @@ assert.deepStrictEqual(isNonEmptyArray([]), false)
 assert.deepStrictEqual(isNonEmptyArray([1, 2, 3]), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## isNonEmptyReadonlyArray
 
@@ -1277,7 +1277,7 @@ assert.deepStrictEqual(isNonEmptyReadonlyArray([]), false)
 assert.deepStrictEqual(isNonEmptyReadonlyArray([1, 2, 3]), true)
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # instances
 
@@ -1291,7 +1291,7 @@ export declare const getEquivalence: <A>(
 ) => Equivalence.Equivalence<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## getOrder
 
@@ -1306,7 +1306,7 @@ It is useful when you need to compare two arrays of the same type and you have a
 export declare const getOrder: <A>(O: Order.Order<A>) => Order.Order<readonly A[]>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # lifting
 
@@ -1318,7 +1318,7 @@ Added in v1.0.0
 export declare const liftEither: <A extends unknown[], E, B>(f: (...a: A) => Either<E, B>) => (...a: A) => B[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftNullable
 
@@ -1330,7 +1330,7 @@ export declare const liftNullable: <A extends unknown[], B>(
 ) => (...a: A) => NonNullable<B>[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftOption
 
@@ -1340,7 +1340,7 @@ Added in v1.0.0
 export declare const liftOption: <A extends unknown[], B>(f: (...a: A) => Option<B>) => (...a: A) => B[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## liftPredicate
 
@@ -1353,7 +1353,7 @@ export declare const liftPredicate: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mapping
 
@@ -1368,7 +1368,7 @@ export declare const map: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## mapNonEmpty
 
@@ -1381,7 +1381,7 @@ export declare const mapNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -1393,7 +1393,7 @@ Added in v1.0.0
 export type NonEmptyArray<A> = [A, ...Array<A>]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## NonEmptyReadonlyArray (type alias)
 
@@ -1403,7 +1403,7 @@ Added in v1.0.0
 export type NonEmptyReadonlyArray<A> = readonly [A, ...Array<A>]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # pattern matching
 
@@ -1423,7 +1423,7 @@ export declare const match: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchLeft
 
@@ -1441,7 +1441,7 @@ export declare const matchLeft: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## matchRight
 
@@ -1459,7 +1459,7 @@ export declare const matchRight: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sequencing
 
@@ -1474,7 +1474,7 @@ export declare const flatMap: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatMapNonEmpty
 
@@ -1487,7 +1487,7 @@ export declare const flatMapNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flatten
 
@@ -1497,7 +1497,7 @@ Added in v1.0.0
 export declare const flatten: <A>(self: readonly (readonly A[])[]) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## flattenNonEmpty
 
@@ -1509,7 +1509,7 @@ export declare const flattenNonEmpty: <A>(
 ) => [A, ...A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # sorting
 
@@ -1526,7 +1526,7 @@ export declare const sort: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sortBy
 
@@ -1539,7 +1539,7 @@ using first `orders[0]`, then `orders[1]`, etc...
 export declare const sortBy: <B>(...orders: readonly Order.Order<B>[]) => <A extends B>(self: Iterable<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sortByNonEmpty
 
@@ -1551,7 +1551,7 @@ export declare const sortByNonEmpty: <B>(
 ) => <A extends B>(as: readonly [A, ...A[]]) => [A, ...A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## sortNonEmpty
 
@@ -1566,7 +1566,7 @@ export declare const sortNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # type lambdas
 
@@ -1580,7 +1580,7 @@ export interface ReadonlyArrayTypeLambda extends TypeLambda {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # unsafe
 
@@ -1597,7 +1597,7 @@ export declare const unsafeGet: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
@@ -1616,7 +1616,7 @@ export declare const chop: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## chopNonEmpty
 
@@ -1633,7 +1633,7 @@ export declare const chopNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## copy
 
@@ -1643,7 +1643,7 @@ Added in v1.0.0
 export declare const copy: { <A>(self: readonly [A, ...A[]]): [A, ...A[]]; <A>(self: readonly A[]): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupe
 
@@ -1655,7 +1655,7 @@ Remove duplicates from am `Iterable`, keeping the first occurrence of an element
 export declare const dedupe: <A>(self: Iterable<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeAdjacent
 
@@ -1667,7 +1667,7 @@ Deduplicates adjacent elements that are identical.
 export declare const dedupeAdjacent: <A>(self: Iterable<A>) => A[]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeAdjacentWith
 
@@ -1682,7 +1682,7 @@ export declare const dedupeAdjacentWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeNonEmpty
 
@@ -1694,7 +1694,7 @@ Remove duplicates from a `NonEmptyReadonlyArray`, keeping the first occurrence o
 export declare const dedupeNonEmpty: <A>(self: readonly [A, ...A[]]) => [A, ...A[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeNonEmptyWith
 
@@ -1709,7 +1709,7 @@ export declare const dedupeNonEmptyWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## dedupeWith
 
@@ -1724,7 +1724,7 @@ export declare const dedupeWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## difference
 
@@ -1740,7 +1740,7 @@ export declare const difference: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## differenceWith
 
@@ -1756,7 +1756,7 @@ export declare const differenceWith: <A>(isEquivalent: (self: A, that: A) => boo
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## extend
 
@@ -1769,7 +1769,7 @@ export declare const extend: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## forEach
 
@@ -1784,7 +1784,7 @@ export declare const forEach: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## insertAt
 
@@ -1800,7 +1800,7 @@ export declare const insertAt: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersection
 
@@ -1816,7 +1816,7 @@ export declare const intersection: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersectionWith
 
@@ -1832,7 +1832,7 @@ export declare const intersectionWith: <A>(isEquivalent: (self: A, that: A) => b
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersperse
 
@@ -1847,7 +1847,7 @@ export declare const intersperse: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## intersperseNonEmpty
 
@@ -1862,7 +1862,7 @@ export declare const intersperseNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## max
 
@@ -1875,7 +1875,7 @@ export declare const max: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## min
 
@@ -1888,7 +1888,7 @@ export declare const min: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modify
 
@@ -1904,7 +1904,7 @@ export declare const modify: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyNonEmptyHead
 
@@ -1919,7 +1919,7 @@ export declare const modifyNonEmptyHead: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyNonEmptyLast
 
@@ -1934,7 +1934,7 @@ export declare const modifyNonEmptyLast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## modifyOption
 
@@ -1950,7 +1950,7 @@ export declare const modifyOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## remove
 
@@ -1963,7 +1963,7 @@ or return a copy of the input if the index is out of bounds.
 export declare const remove: { (i: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, i: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replace
 
@@ -1979,7 +1979,7 @@ export declare const replace: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## replaceOption
 
@@ -1992,7 +1992,7 @@ export declare const replaceOption: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## rotate
 
@@ -2004,7 +2004,7 @@ Rotate an `Iterable` by `n` steps.
 export declare const rotate: { (n: number): <A>(self: Iterable<A>) => A[]; <A>(self: Iterable<A>, n: number): A[] }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## rotateNonEmpty
 
@@ -2019,7 +2019,7 @@ export declare const rotateNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setNonEmptyHead
 
@@ -2034,7 +2034,7 @@ export declare const setNonEmptyHead: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## setNonEmptyLast
 
@@ -2049,7 +2049,7 @@ export declare const setNonEmptyLast: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## union
 
@@ -2062,7 +2062,7 @@ export declare const union: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unionNonEmpty
 
@@ -2077,7 +2077,7 @@ export declare const unionNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unionNonEmptyWith
 
@@ -2092,7 +2092,7 @@ export declare const unionNonEmptyWith: <A>(isEquivalent: (self: A, that: A) => 
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unionWith
 
@@ -2105,7 +2105,7 @@ export declare const unionWith: <A>(isEquivalent: (self: A, that: A) => boolean)
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unzip
 
@@ -2117,7 +2117,7 @@ This function is the inverse of `zip`. Takes an `Iterable` of pairs and return t
 export declare const unzip: <A, B>(self: Iterable<readonly [A, B]>) => [A[], B[]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## unzipNonEmpty
 
@@ -2129,7 +2129,7 @@ export declare const unzipNonEmpty: <A, B>(
 ) => [[A, ...A[]], [B, ...B[]]]
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zip
 
@@ -2146,7 +2146,7 @@ export declare const zip: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipNonEmpty
 
@@ -2159,7 +2159,7 @@ export declare const zipNonEmpty: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipNonEmptyWith
 
@@ -2172,7 +2172,7 @@ export declare const zipNonEmptyWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## zipWith
 
@@ -2188,4 +2188,4 @@ export declare const zipWith: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

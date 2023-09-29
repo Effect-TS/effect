@@ -6,7 +6,7 @@ parent: Modules
 
 ## TDeferred overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -42,7 +42,7 @@ Added in v1.0.0
 export declare const make: <E, A>() => STM.STM<never, never, TDeferred<E, A>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # getters
 
@@ -54,7 +54,7 @@ Added in v1.0.0
 export declare const await: <E, A>(self: TDeferred<E, A>) => STM.STM<never, E, A>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## poll
 
@@ -64,7 +64,7 @@ Added in v1.0.0
 export declare const poll: <E, A>(self: TDeferred<E, A>) => STM.STM<never, never, Option.Option<Either.Either<E, A>>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -76,7 +76,7 @@ Added in v1.0.0
 export interface TDeferred<E, A> extends TDeferred.Variance<E, A> {}
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # mutations
 
@@ -91,7 +91,7 @@ export declare const done: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## fail
 
@@ -104,7 +104,7 @@ export declare const fail: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## succeed
 
@@ -117,7 +117,7 @@ export declare const succeed: {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -129,7 +129,7 @@ Added in v1.0.0
 export declare const TDeferredTypeId: typeof TDeferredTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## TDeferredTypeId (type alias)
 
@@ -139,13 +139,13 @@ Added in v1.0.0
 export type TDeferredTypeId = typeof TDeferredTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## TDeferred (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -160,4 +160,4 @@ export interface Variance<E, A> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

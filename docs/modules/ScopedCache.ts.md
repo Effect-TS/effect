@@ -6,7 +6,7 @@ parent: Modules
 
 ## ScopedCache overview
 
-Added in v1.0.0
+Added in v2.0.0
 
 ---
 
@@ -44,7 +44,7 @@ export declare const make: <Key, Environment, Error, Value>(options: {
 }) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## makeWith
 
@@ -62,7 +62,7 @@ export declare const makeWith: <Key, Environment, Error, Value>(options: {
 }) => Effect.Effect<Scope.Scope | Environment, never, ScopedCache<Key, Error, Value>>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # models
 
@@ -78,7 +78,7 @@ export type Lookup<Key, Environment, Error, Value> = (
 ) => Effect.Effect<Environment | Scope.Scope, Error, Value>
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScopedCache (interface)
 
@@ -149,7 +149,7 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # symbols
 
@@ -161,7 +161,7 @@ Added in v1.0.0
 export declare const ScopedCacheTypeId: typeof ScopedCacheTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 ## ScopedCacheTypeId (type alias)
 
@@ -171,13 +171,13 @@ Added in v1.0.0
 export type ScopedCacheTypeId = typeof ScopedCacheTypeId
 ```
 
-Added in v1.0.0
+Added in v2.0.0
 
 # utils
 
 ## ScopedCache (namespace)
 
-Added in v1.0.0
+Added in v2.0.0
 
 ### Variance (interface)
 
@@ -193,4 +193,4 @@ export interface Variance<Key, Error, Value> {
 }
 ```
 
-Added in v1.0.0
+Added in v2.0.0

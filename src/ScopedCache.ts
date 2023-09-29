@@ -1,5 +1,5 @@
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 import type * as Cache from "./Cache"
 import type * as Duration from "./Duration"
@@ -11,19 +11,19 @@ import type { Pipeable } from "./Pipeable"
 import type * as Scope from "./Scope"
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export const ScopedCacheTypeId: unique symbol = internal.ScopedCacheTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category symbols
  */
 export type ScopedCacheTypeId = typeof ScopedCacheTypeId
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key, Error, Value>, Pipeable {
@@ -90,11 +90,11 @@ export interface ScopedCache<Key, Error, Value> extends ScopedCache.Variance<Key
 }
 
 /**
- * @since 1.0.0
+ * @since 2.0.0
  */
 export declare namespace ScopedCache {
   /**
-   * @since 1.0.0
+   * @since 2.0.0
    * @category models
    */
   export interface Variance<Key, Error, Value> {
@@ -110,7 +110,7 @@ export declare namespace ScopedCache {
  * Constructs a new cache with the specified capacity, time to live, and
  * lookup function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const make: <Key, Environment, Error, Value>(
@@ -126,7 +126,7 @@ export const make: <Key, Environment, Error, Value>(
  * lookup function, where the time to live can depend on the `Exit` value
  * returned by the lookup function.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category constructors
  */
 export const makeWith: <Key, Environment, Error, Value>(
@@ -140,7 +140,7 @@ export const makeWith: <Key, Environment, Error, Value>(
 /**
  * Similar to `Cache.Lookup`, but executes the lookup function within a `Scope`.
  *
- * @since 1.0.0
+ * @since 2.0.0
  * @category models
  */
 export type Lookup<Key, Environment, Error, Value> = (
