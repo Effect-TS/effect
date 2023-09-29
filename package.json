@@ -4,6 +4,7 @@
   "publishConfig": {
     "access": "public"
   },
+  "sideEffects": false,
   "scripts": {
     "build": "preconstruct fix && preconstruct build",
     "gen": "pnpm run gen:gitignore && pnpm run gen:package && pnpm run gen:index",
