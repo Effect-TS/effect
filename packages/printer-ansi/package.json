@@ -63,10 +63,10 @@
   },
   "devDependencies": {
     "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.37"
+    "effect": "2.0.0-next.38"
   },
   "peerDependencies": {
     "@effect/typeclass": "^0.6.0",
-    "effect": "2.0.0-next.37"
+    "effect": "2.0.0-next.38"
   }
 }
