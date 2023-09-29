@@ -1,12 +1,12 @@
-import { pipe } from "@effect/data/Function"
 import * as RS from "@effect/rpc-http-node/Schema"
 import * as S from "@effect/schema/Schema"
+import { pipe } from "effect/Function"
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Brand } from "@effect/data/Brand"
+import type { Brand } from "effect/Brand"
 // @ts-ignore
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { Chunk } from "@effect/data/Chunk"
+import type { Chunk } from "effect/Chunk"
 
 export const UserId = pipe(S.number, S.int(), S.brand("UserId"))
 export type UserId = S.Schema.To<typeof UserId>

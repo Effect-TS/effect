@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import * as Data from "@effect/data/Data"
-import type { Either } from "@effect/data/Either"
-import { dual, identity } from "@effect/data/Function"
-import type { Option } from "@effect/data/Option"
-import type { Effect } from "@effect/io/Effect"
 import type { ParseError } from "@effect/schema/ParseResult"
 import * as Schema from "@effect/schema/Schema"
+import * as Data from "effect/Data"
+import type { Effect } from "effect/Effect"
+import type { Either } from "effect/Either"
+import { dual, identity } from "effect/Function"
+import type { Option } from "effect/Option"
 
 /**
  * @category models

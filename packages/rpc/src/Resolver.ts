@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import { Tag } from "@effect/data/Context"
-import type * as Effect from "@effect/io/Effect"
-import type * as Request from "@effect/io/Request"
-import type * as Resolver from "@effect/io/RequestResolver"
 import type { RpcError, RpcTransportError } from "@effect/rpc/Error"
 import * as internal from "@effect/rpc/internal/resolver"
 import type { RpcSchema } from "@effect/rpc/Schema"
+import { Tag } from "effect/Context"
+import type * as Effect from "effect/Effect"
+import type * as Request from "effect/Request"
+import type * as Resolver from "effect/RequestResolver"
 
 /**
  * @category models

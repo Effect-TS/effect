@@ -1,10 +1,10 @@
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import * as Client from "@effect/rpc-http-node/Client"
 import * as Router from "@effect/rpc-http-node/Router"
 import * as _ from "@effect/rpc-http-node/Server"
 import * as RpcSchema from "@effect/rpc/Schema"
 import * as S from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 import * as Http from "node:http"
 import { describe, expect, it } from "vitest"
 

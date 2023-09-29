@@ -1,7 +1,7 @@
-import * as Data from "@effect/data/Data"
 import * as _ from "@effect/rpc/SchemaC"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
+import * as Data from "effect/Data"
 import { describe, expect, it } from "vitest"
 
 describe("SchemaC", () => {

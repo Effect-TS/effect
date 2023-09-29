@@ -1,7 +1,7 @@
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import * as Router from "@effect/rpc-webworkers/Router"
 import * as Server from "@effect/rpc-webworkers/Server"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import { Name, schemaWithSetup } from "./schema"
 
 const router = Router.make(schemaWithSetup, {

@@ -1,17 +1,17 @@
 /**
  * @since 1.0.0
  */
-import type { Tag } from "@effect/data/Context"
-import type { LazyArg } from "@effect/data/Function"
-import type { Deferred } from "@effect/io/Deferred"
-import type * as Effect from "@effect/io/Effect"
-import type * as Layer from "@effect/io/Layer"
-import type { Pool } from "@effect/io/Pool"
-import type { Scope } from "@effect/io/Scope"
 import * as internal from "@effect/rpc-webworkers/internal/resolver"
 import * as worker from "@effect/rpc-webworkers/internal/worker"
 import type { RpcTransportError } from "@effect/rpc/Error"
 import type * as Resolver from "@effect/rpc/Resolver"
+import type { Tag } from "effect/Context"
+import type { Deferred } from "effect/Deferred"
+import type * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import type * as Layer from "effect/Layer"
+import type { Pool } from "effect/Pool"
+import type { Scope } from "effect/Scope"
 
 /**
  * @category models

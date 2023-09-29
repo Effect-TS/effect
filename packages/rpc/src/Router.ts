@@ -1,13 +1,13 @@
 /**
  * @since 1.0.0
  */
-import type { Context, Tag } from "@effect/data/Context"
-import type { LazyArg } from "@effect/data/Function"
-import type { Effect } from "@effect/io/Effect"
-import type { Layer } from "@effect/io/Layer"
 import * as internal from "@effect/rpc/internal/router"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import type { RpcUndecodedClient } from "@effect/rpc/Server"
+import type { Context, Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import type { Layer } from "effect/Layer"
 
 /**
  * @category handler models

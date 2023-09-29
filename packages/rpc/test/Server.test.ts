@@ -1,10 +1,10 @@
-import * as Either from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import * as Router from "@effect/rpc/Router"
 import * as RS from "@effect/rpc/Schema"
 import * as _ from "@effect/rpc/Server"
 import * as S from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import { pipe } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
 const SomeError = S.struct({

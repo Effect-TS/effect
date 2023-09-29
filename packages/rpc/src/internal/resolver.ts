@@ -1,14 +1,14 @@
-import * as Equal from "@effect/data/Equal"
-import { pipe } from "@effect/data/Function"
-import * as Hash from "@effect/data/Hash"
-import * as Effect from "@effect/io/Effect"
-import * as Exit from "@effect/io/Exit"
-import * as Request from "@effect/io/Request"
-import * as Resolver from "@effect/io/RequestResolver"
 import type { RpcError, RpcTransportError } from "@effect/rpc/Error"
 import { decodeEffect } from "@effect/rpc/internal/codec"
 import type * as resolver from "@effect/rpc/Resolver"
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
+import * as Exit from "effect/Exit"
+import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
+import * as Request from "effect/Request"
+import * as Resolver from "effect/RequestResolver"
 
 const requestProto: Request.Request<any, any> = {
   [Request.RequestTypeId]: {

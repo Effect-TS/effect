@@ -1,9 +1,9 @@
-import * as Either from "@effect/data/Either"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import { pipe } from "effect/Function"
 
 /** @internal */
 export const decode = <I, A>(schema: Schema.Schema<I, A>) => {

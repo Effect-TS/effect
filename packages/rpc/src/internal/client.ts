@@ -1,5 +1,3 @@
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import type * as client from "@effect/rpc/Client"
 import { RpcError } from "@effect/rpc/Error"
 import * as codec from "@effect/rpc/internal/codec"
@@ -9,6 +7,8 @@ import { RpcResolver } from "@effect/rpc/Resolver"
 import type { RpcSchema, RpcService } from "@effect/rpc/Schema"
 import { RpcServiceErrorId, RpcServiceId } from "@effect/rpc/Schema"
 import type * as Schema from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
 
 const unsafeDecode = <S extends RpcService.DefinitionWithId>(schemas: S) => {
   const map = schemaInternal.methodClientCodecs(schemas)

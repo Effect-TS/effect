@@ -1,10 +1,10 @@
-import type { LazyArg } from "@effect/data/Function"
-import { pipe } from "@effect/data/Function"
-import * as Deferred from "@effect/io/Deferred"
-import * as Effect from "@effect/io/Effect"
-import * as Exit from "@effect/io/Exit"
-import * as Queue from "@effect/io/Queue"
 import type { WebWorker, WebWorkerOptions, WebWorkerQueue } from "@effect/rpc-webworkers/Resolver"
+import * as Deferred from "effect/Deferred"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import type { LazyArg } from "effect/Function"
+import { pipe } from "effect/Function"
+import * as Queue from "effect/Queue"
 
 /** @internal */
 export const defaultQueue = <E, I, O>() =>

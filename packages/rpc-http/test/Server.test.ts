@@ -1,8 +1,8 @@
-import * as Effect from "@effect/io/Effect"
 import * as _ from "@effect/rpc-http/Server"
 import * as Router from "@effect/rpc/Router"
 import * as RS from "@effect/rpc/Schema"
 import * as S from "@effect/schema/Schema"
+import * as Effect from "effect/Effect"
 import { describe, expect, it } from "vitest"
 
 const schema = RS.make({

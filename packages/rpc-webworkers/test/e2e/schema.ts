@@ -1,6 +1,6 @@
-import { Tag } from "@effect/data/Context"
 import * as Schema from "@effect/rpc-webworkers/Schema"
 import * as S from "@effect/schema/Schema"
+import { Tag } from "effect/Context"
 
 export const schema = Schema.make({
   currentDate: {

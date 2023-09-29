@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import type { Span } from "@effect/io/Tracer"
 import type { HttpRequest } from "@effect/rpc-http/Server"
 import * as Server from "@effect/rpc-http/Server"
 import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import type { Span } from "effect/Tracer"
 import type { NextApiRequest, NextApiResponse } from "next"
 
 export {

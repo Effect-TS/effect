@@ -1,11 +1,11 @@
-import type { Tag } from "@effect/data/Context"
-import type { LazyArg } from "@effect/data/Function"
-import { dual } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as Layer from "@effect/io/Layer"
 import { makeUndecodedClient } from "@effect/rpc/internal/server"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type { RpcService } from "@effect/rpc/Schema"
+import type { Tag } from "effect/Context"
+import * as Effect from "effect/Effect"
+import type { LazyArg } from "effect/Function"
+import { dual } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 /** @internal */
 export const make = <

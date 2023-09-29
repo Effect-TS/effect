@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import type { Context } from "@effect/data/Context"
 import * as internal from "@effect/rpc/internal/schema"
 import type { Json } from "@effect/rpc/internal/schema"
 import type { RpcRequest } from "@effect/rpc/Resolver"
 import * as Schema from "@effect/schema/Schema"
+import type { Context } from "effect/Context"
 
 /**
  * @since 1.0.0

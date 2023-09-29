@@ -1,11 +1,11 @@
 /**
  * @since 1.0.0
  */
-import { dual, pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
 import * as Schema from "@effect/rpc/Schema"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
+import { dual, pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 export {
   /**

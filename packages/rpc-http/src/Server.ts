@@ -1,12 +1,12 @@
 /**
  * @since 1.0.0
  */
-import type { Tag } from "@effect/data/Context"
-import type { Effect } from "@effect/io/Effect"
-import type { Span } from "@effect/io/Tracer"
 import * as internal from "@effect/rpc-http/internal/server"
 import type { RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandlers, RpcRouter } from "@effect/rpc/Router"
+import type { Tag } from "effect/Context"
+import type { Effect } from "effect/Effect"
+import type { Span } from "effect/Tracer"
 
 /**
  * @category models

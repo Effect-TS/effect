@@ -1,7 +1,7 @@
-import * as Duration from "@effect/data/Duration"
-import * as Effect from "@effect/io/Effect"
 import * as Router from "@effect/rpc-webworkers/Router"
 import * as Server from "@effect/rpc-webworkers/Server"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
 import { schema } from "./schema"
 
 const router = Router.make(schema, {

@@ -1,15 +1,15 @@
 /**
  * @since 1.0.0
  */
-import type { Option } from "@effect/data/Option"
-import type { Effect } from "@effect/io/Effect"
-import type { Scope } from "@effect/io/Scope"
-import type { Span } from "@effect/io/Tracer"
 import type { RpcDecodeFailure, RpcEncodeFailure } from "@effect/rpc/Error"
 import * as internal from "@effect/rpc/internal/server"
 import type { RpcResponse } from "@effect/rpc/Resolver"
 import type { RpcHandler, RpcHandlers, RpcRouter } from "@effect/rpc/Router"
 import type { RpcRequestSchema, RpcSchema, RpcService } from "@effect/rpc/Schema"
+import type { Effect } from "effect/Effect"
+import type { Option } from "effect/Option"
+import type { Scope } from "effect/Scope"
+import type { Span } from "effect/Tracer"
 
 /**
  * @category constructors

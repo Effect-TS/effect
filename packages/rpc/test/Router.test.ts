@@ -1,10 +1,10 @@
-import { Tag } from "@effect/data/Context"
-import * as Either from "@effect/data/Either"
-import * as Effect from "@effect/io/Effect"
 import * as _ from "@effect/rpc/Router"
 import * as RS from "@effect/rpc/Schema"
 import { typeEquals } from "@effect/rpc/test/utils"
 import * as S from "@effect/schema/Schema"
+import { Tag } from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
 import { describe, it } from "vitest"
 
 const makeCounter = () => {
