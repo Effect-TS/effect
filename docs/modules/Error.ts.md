@@ -13,85 +13,25 @@ Added in v1.0.0
 <h2 class="text-delta">Table of contents</h2>
 
 - [constructors](#constructors)
-  - [Structural (class)](#structural-class)
-    - [commit (method)](#commit-method)
-    - [pipe (method)](#pipe-method)
-    - [toJSON (method)](#tojson-method)
-    - [toString (method)](#tostring-method)
-    - [[Inspectable.NodeInspectSymbol] (method)](#inspectablenodeinspectsymbol-method)
-    - [\_op (property)](#_op-property)
+  - [Class](#class)
   - [Tagged](#tagged)
+- [models](#models)
+  - [YieldableError (interface)](#yieldableerror-interface)
 
 ---
 
 # constructors
 
-## Structural (class)
+## Class
+
+Provides a constructor for a Case Class.
 
 **Signature**
 
 ```ts
-export declare class Structural<A>
-```
-
-Added in v1.0.0
-
-### commit (method)
-
-**Signature**
-
-```ts
-commit(): Effect.Effect<never, this, never>
-```
-
-Added in v1.0.0
-
-### pipe (method)
-
-**Signature**
-
-```ts
-pipe()
-```
-
-Added in v1.0.0
-
-### toJSON (method)
-
-**Signature**
-
-```ts
-toJSON()
-```
-
-Added in v1.0.0
-
-### toString (method)
-
-**Signature**
-
-```ts
-toString()
-```
-
-Added in v1.0.0
-
-### [Inspectable.NodeInspectSymbol] (method)
-
-**Signature**
-
-```ts
-;[Inspectable.NodeInspectSymbol]()
-```
-
-Added in v1.0.0
-
-### \_op (property)
-
-**Signature**
-
-```ts
-_op: 'Commit'
+export declare const Class: new <A extends Record<string, any>>(
+  args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
+) => YieldableError & A
 ```
 
 Added in v1.0.0
@@ -105,7 +45,32 @@ export declare const Tagged: <Tag extends string>(
   tag: Tag
 ) => new <A extends Record<string, any>>(
   args: Types.Equals<Omit<A, keyof Equal.Equal>, {}> extends true ? void : Omit<A, keyof Equal.Equal>
-) => Structural<{ readonly _tag: Tag } & A>
+) => YieldableError & { readonly _tag: Tag } & A
+```
+
+Added in v1.0.0
+
+# models
+
+## YieldableError (interface)
+
+**Signature**
+
+```ts
+export interface YieldableError extends Data.Case, Pipeable, Inspectable.Inspectable {
+  readonly [Effectable.EffectTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.StreamTypeId]: Effect.Effect.VarianceStruct<never, this, never>
+  readonly [Effectable.SinkTypeId]: Sink.Sink.VarianceStruct<never, this, unknown, never, never>
+  readonly [Effectable.ChannelTypeId]: Channel.Channel.VarianceStruct<
+    never,
+    unknown,
+    unknown,
+    unknown,
+    this,
+    never,
+    never
+  >
+}
 ```
 
 Added in v1.0.0

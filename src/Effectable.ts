@@ -17,7 +17,19 @@ export const EffectTypeId: Effect.EffectTypeId = internal.EffectTypeId
  * @since 1.0.0
  * @category type ids
  */
+export type EffectTypeId = Effect.EffectTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
 export const StreamTypeId: Stream.StreamTypeId = internal.StreamTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type StreamTypeId = Stream.StreamTypeId
 
 /**
  * @since 1.0.0
@@ -29,7 +41,19 @@ export const SinkTypeId: Sink.SinkTypeId = internal.SinkTypeId
  * @since 1.0.0
  * @category type ids
  */
+export type SinkTypeId = Sink.SinkTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
 export const ChannelTypeId: Channel.ChannelTypeId = internal.ChannelTypeId
+
+/**
+ * @since 1.0.0
+ * @category type ids
+ */
+export type ChannelTypeId = Channel.ChannelTypeId
 
 /**
  * @since 1.0.0

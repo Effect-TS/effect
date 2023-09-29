@@ -13,6 +13,7 @@ describe.concurrent("Error", () => {
       const error = new MyError({ message: "foo" })
       const result = yield* _(Effect.either(error))
       assert(Either.isLeft(result))
+      assert.equal(result.left._tag, "MyError")
       assert.equal(Equal.equals(result.left, new MyError({ message: "foo" })), true)
     }))
 })
