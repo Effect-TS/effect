@@ -1,8 +1,8 @@
-import * as Either from "@effect/data/Either"
-import * as Option from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Either from "effect/Either"
+import * as Option from "effect/Option"
 
 describe("Schema/brand", () => {
   describe("annotations", () => {

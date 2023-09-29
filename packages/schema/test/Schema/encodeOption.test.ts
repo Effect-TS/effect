@@ -1,6 +1,6 @@
-import * as O from "@effect/data/Option"
 import * as P from "@effect/schema/Parser"
 import * as S from "@effect/schema/Schema"
+import * as O from "effect/Option"
 
 describe("Schema/encodeOption", () => {
   it("should return none for invalid values", () => {

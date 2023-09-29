@@ -1,5 +1,5 @@
-import * as Option from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
+import * as Option from "effect/Option"
 
 describe("AST/appendElement", () => {
   it("should append an element (rest element)", () => {

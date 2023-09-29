@@ -1,6 +1,6 @@
-import { identity } from "@effect/data/Function"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import { identity } from "effect/Function"
 
 const NumberFromString = S.NumberFromString
 

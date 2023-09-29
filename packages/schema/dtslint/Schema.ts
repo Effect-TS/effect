@@ -1,5 +1,5 @@
-import * as Brand from "@effect/data/Brand"
-import { pipe } from "@effect/data/Function";
+import * as Brand from "effect/Brand"
+import { pipe } from "effect/Function";
 import * as S from "@effect/schema/Schema";
 
 // ---------------------------------------------

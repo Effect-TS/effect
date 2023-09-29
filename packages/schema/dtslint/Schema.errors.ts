@@ -1,4 +1,4 @@
-import { pipe } from "@effect/data/Function";
+import { pipe } from "effect/Function";
 import * as S from "@effect/schema/Schema";
 
 // optional/ should not allow combinators afterwards

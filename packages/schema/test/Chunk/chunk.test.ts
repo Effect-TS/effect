@@ -1,6 +1,6 @@
-import * as C from "@effect/data/Chunk"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as C from "effect/Chunk"
 
 describe("Chunk/chunk", () => {
   it("property tests", () => {

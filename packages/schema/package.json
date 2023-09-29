@@ -50,6 +50,9 @@
     "test-heap": "vitest run --logHeapUsage"
   },
   "exports": {
+    ".": {
+      "require": "./build/cjs/index.js"
+    },
     "./*": {
       "require": "./build/cjs/*.js"
     }
@@ -64,8 +67,7 @@
     "fast-check": "^3.12.0"
   },
   "peerDependencies": {
-    "@effect/data": "^0.18.6",
-    "@effect/io": "^0.41.1"
+    "effect": "2.0.0-next.37"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.9",
@@ -75,10 +77,8 @@
     "@changesets/cli": "^2.26.2",
     "@definitelytyped/dtslint": "^0.0.178",
     "@effect/build-utils": "^0.1.4",
-    "@effect/data": "^0.18.6",
     "@effect/docgen": "^0.1.7",
     "@effect/eslint-plugin": "^0.1.2",
-    "@effect/io": "^0.41.1",
     "@effect/language-service": "^0.0.21",
     "@types/benchmark": "^2.1.2",
     "@types/chai": "^4.3.5",
@@ -91,6 +91,7 @@
     "babel-plugin-annotate-pure-calls": "^0.4.0",
     "benchmark": "^2.1.4",
     "concurrently": "^8.2.0",
+    "effect": "2.0.0-next.37",
     "eslint": "^8.46.0",
     "eslint-import-resolver-typescript": "^3.5.5",
     "eslint-plugin-codegen": "0.17.0",

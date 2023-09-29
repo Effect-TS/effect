@@ -1,10 +1,10 @@
-import * as Data from "@effect/data/Data"
-import * as Equal from "@effect/data/Equal"
-import * as O from "@effect/data/Option"
 import * as AST from "@effect/schema/AST"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Data from "effect/Data"
+import * as Equal from "effect/Equal"
+import * as O from "effect/Option"
 
 class Person extends S.Class<Person>()({
   id: S.number,

@@ -1,7 +1,7 @@
-import * as Effect from "@effect/io/Effect"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Effect from "effect/Effect"
 
 describe("dev", () => {
   it.skip("tmp", async () => {

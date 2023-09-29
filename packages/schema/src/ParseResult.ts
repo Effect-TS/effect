@@ -2,11 +2,11 @@
  * @since 1.0.0
  */
 
-import * as Either from "@effect/data/Either"
-import * as Option from "@effect/data/Option"
-import type * as ReadonlyArray from "@effect/data/ReadonlyArray"
-import * as Effect from "@effect/io/Effect"
 import type * as AST from "@effect/schema/AST"
+import * as Effect from "effect/Effect"
+import * as Either from "effect/Either"
+import * as Option from "effect/Option"
+import type * as ReadonlyArray from "effect/ReadonlyArray"
 
 /**
  * @since 1.0.0

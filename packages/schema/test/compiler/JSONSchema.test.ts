@@ -1,13 +1,13 @@
-import { pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
-import { isRecord } from "@effect/data/Predicate"
-import * as RA from "@effect/data/ReadonlyArray"
 import * as A from "@effect/schema/Arbitrary"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import type { Schema } from "@effect/schema/Schema"
 import * as S from "@effect/schema/Schema"
 import Ajv from "ajv"
+import { pipe } from "effect/Function"
+import * as O from "effect/Option"
+import { isRecord } from "effect/Predicate"
+import * as RA from "effect/ReadonlyArray"
 import * as fc from "fast-check"
 
 export type JsonSchema7AnyType = {}

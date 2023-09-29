@@ -1,6 +1,6 @@
-import * as E from "@effect/data/Either"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as E from "effect/Either"
 
 describe("Schema/attachPropertySignature", () => {
   it("baseline", () => {

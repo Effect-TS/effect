@@ -1,6 +1,6 @@
-import * as O from "@effect/data/Option"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as O from "effect/Option"
 
 describe("optional", () => {
   it("should add annotations (optional)", () => {

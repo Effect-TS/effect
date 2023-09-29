@@ -1,5 +1,5 @@
 import * as S from "@effect/schema/Schema";
-import { pipe } from "@effect/data/Function";
+import { pipe } from "effect/Function";
 
 const Int1 = Symbol.for('Int')
 const Int2 = Symbol.for('Int')

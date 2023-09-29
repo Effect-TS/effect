@@ -2,23 +2,6 @@
  * @since 1.0.0
  */
 
-import * as Bigint from "@effect/data/Bigint"
-import * as Brand from "@effect/data/Brand"
-import * as Chunk from "@effect/data/Chunk"
-import * as Data from "@effect/data/Data"
-import * as Either from "@effect/data/Either"
-import * as Encoding from "@effect/data/Encoding"
-import * as Equal from "@effect/data/Equal"
-import type { LazyArg } from "@effect/data/Function"
-import { dual, identity } from "@effect/data/Function"
-import * as N from "@effect/data/Number"
-import * as Option from "@effect/data/Option"
-import type { Pipeable } from "@effect/data/Pipeable"
-import { pipeArguments } from "@effect/data/Pipeable"
-import * as Predicate from "@effect/data/Predicate"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
-import * as S from "@effect/data/String"
-import type { Simplify } from "@effect/data/Types"
 import type { Arbitrary } from "@effect/schema/Arbitrary"
 import type { ParseOptions } from "@effect/schema/AST"
 import * as AST from "@effect/schema/AST"
@@ -27,6 +10,23 @@ import * as Parser from "@effect/schema/Parser"
 import * as ParseResult from "@effect/schema/ParseResult"
 import type { Pretty } from "@effect/schema/Pretty"
 import * as TreeFormatter from "@effect/schema/TreeFormatter"
+import * as Bigint from "effect/Bigint"
+import * as Brand from "effect/Brand"
+import * as Chunk from "effect/Chunk"
+import * as Data from "effect/Data"
+import * as Either from "effect/Either"
+import * as Encoding from "effect/Encoding"
+import * as Equal from "effect/Equal"
+import type { LazyArg } from "effect/Function"
+import { dual, identity } from "effect/Function"
+import * as N from "effect/Number"
+import * as Option from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import { pipeArguments } from "effect/Pipeable"
+import * as Predicate from "effect/Predicate"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as S from "effect/String"
+import type { Simplify } from "effect/Types"
 
 // ---------------------------------------------
 // model
@@ -1249,7 +1249,7 @@ export const transform: {
  *
  * @example
  * import * as S from "@effect/schema/Schema"
- * import { pipe } from "@effect/data/Function"
+ * import { pipe } from "effect/Function"
  *
  * const Circle = S.struct({ radius: S.number })
  * const Square = S.struct({ sideLength: S.number })
@@ -3235,7 +3235,7 @@ export const chunkFromSelf = <I, A>(item: Schema<I, A>): Schema<Chunk.Chunk<I>, 
   return declare(
     [item],
     struct({
-      _id: uniqueSymbol(Symbol.for("@effect/data/Chunk")),
+      _id: uniqueSymbol(Symbol.for("effect/Chunk")),
       length: number
     }),
     (isDecoding, item) => {

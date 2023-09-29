@@ -1,8 +1,8 @@
-import { dual, pipe } from "@effect/data/Function"
-import * as O from "@effect/data/Option"
-import * as RA from "@effect/data/ReadonlyArray"
 import * as AST from "@effect/schema/AST"
 import * as S from "@effect/schema/Schema"
+import { dual, pipe } from "effect/Function"
+import * as O from "effect/Option"
+import * as RA from "effect/ReadonlyArray"
 import ts from "typescript"
 
 const printNode = (node: ts.Node, printerOptions?: ts.PrinterOptions): string => {

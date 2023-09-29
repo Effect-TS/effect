@@ -1,11 +1,11 @@
-import * as E from "@effect/data/Either"
-import * as O from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
 import * as AST from "@effect/schema/AST"
 import * as P from "@effect/schema/Parser"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Effect from "effect/Effect"
+import * as E from "effect/Either"
+import * as O from "effect/Option"
 
 describe("Parser", () => {
   it("asserts", () => {

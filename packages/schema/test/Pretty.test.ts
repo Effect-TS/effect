@@ -69,7 +69,7 @@ describe("Pretty", () => {
 
   it("symbol", () => {
     const pretty = P.to(S.symbolFromSelf)
-    expect(pretty(Symbol.for("@effect/data/test/a"))).toEqual("Symbol(@effect/data/test/a)")
+    expect(pretty(Symbol.for("effect/test/a"))).toEqual("Symbol(effect/test/a)")
   })
 
   it("void", () => {

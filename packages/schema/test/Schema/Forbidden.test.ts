@@ -1,7 +1,7 @@
-import * as E from "@effect/data/Either"
 import * as PR from "@effect/schema/ParseResult"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as E from "effect/Either"
 
 const expectMessage = <I, A>(
   schema: S.Schema<I, A>,

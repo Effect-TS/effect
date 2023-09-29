@@ -1,6 +1,6 @@
-import * as Data from "@effect/data/Data"
 import * as S from "@effect/schema/Schema"
 import * as Util from "@effect/schema/test/util"
+import * as Data from "effect/Data"
 
 describe("Data/data", () => {
   it("property tests", () => {
