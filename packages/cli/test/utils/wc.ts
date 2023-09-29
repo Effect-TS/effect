@@ -1,8 +1,8 @@
 import * as Args from "@effect/cli/Args"
 import * as Command from "@effect/cli/Command"
 import * as Options from "@effect/cli/Options"
-import type { Chunk } from "@effect/data/Chunk"
-import { pipe } from "@effect/data/Function"
+import type { Chunk } from "effect/Chunk"
+import { pipe } from "effect/Function"
 
 const bytesFlag = Options.boolean("c")
 const linesFlag = Options.boolean("l")

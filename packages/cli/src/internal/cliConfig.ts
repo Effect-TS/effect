@@ -1,7 +1,7 @@
 import type * as CliConfig from "@effect/cli/CliConfig"
-import * as Context from "@effect/data/Context"
-import { dual } from "@effect/data/Function"
-import * as Layer from "@effect/io/Layer"
+import * as Context from "effect/Context"
+import { dual } from "effect/Function"
+import * as Layer from "effect/Layer"
 
 /** @internal */
 export const make = (isCaseSensitive: boolean, autoCorrectLimit: number): CliConfig.CliConfig => ({

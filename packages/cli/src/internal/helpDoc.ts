@@ -1,13 +1,13 @@
 import type * as HelpDoc from "@effect/cli/HelpDoc"
 import type * as Span from "@effect/cli/HelpDoc/Span"
 import * as span from "@effect/cli/internal/helpDoc/span"
-import { dual } from "@effect/data/Function"
-import * as RA from "@effect/data/ReadonlyArray"
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Doc from "@effect/printer/Doc"
 import * as Optimize from "@effect/printer/Optimize"
+import { dual } from "effect/Function"
+import * as RA from "effect/ReadonlyArray"
 
 /** @internal */
 export const isEmpty = (helpDoc: HelpDoc.HelpDoc): helpDoc is HelpDoc.Empty => helpDoc._tag === "Empty"

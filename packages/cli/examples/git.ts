@@ -4,10 +4,10 @@ import * as Command from "@effect/cli/Command"
 import * as HelpDoc from "@effect/cli/HelpDoc"
 import * as Span from "@effect/cli/HelpDoc/Span"
 import * as Options from "@effect/cli/Options"
-import * as Data from "@effect/data/Data"
-import { pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
+import * as Data from "effect/Data"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 export interface Git extends Data.Case {
   readonly version: boolean

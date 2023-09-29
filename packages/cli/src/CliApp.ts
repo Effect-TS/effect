@@ -6,7 +6,7 @@ import type { HelpDoc } from "@effect/cli/HelpDoc"
 import type { Span } from "@effect/cli/HelpDoc/Span"
 import * as internal from "@effect/cli/internal/cliApp"
 import type { ValidationError } from "@effect/cli/ValidationError"
-import type { Effect } from "@effect/io/Effect"
+import type { Effect } from "effect/Effect"
 
 /**
  * A `CliApp<A>` is a complete description of a command-line application.

@@ -6,7 +6,7 @@ import * as _shellType from "@effect/cli/internal/shellType"
 import type * as Options from "@effect/cli/Options"
 import type * as ShellType from "@effect/cli/ShellType"
 import type * as Usage from "@effect/cli/Usage"
-import * as Option from "@effect/data/Option"
+import * as Option from "effect/Option"
 
 /** @internal */
 export const showCompletions = (index: number, shellType: ShellType.ShellType): BuiltInOption.BuiltInOption => ({

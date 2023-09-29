@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 import * as internal from "@effect/cli/internal/cliConfig"
-import type * as Context from "@effect/data/Context"
-import type * as Layer from "@effect/io/Layer"
+import type * as Context from "effect/Context"
+import type * as Layer from "effect/Layer"
 
 /**
  * Represents how arguments from the command-line are to be parsed.

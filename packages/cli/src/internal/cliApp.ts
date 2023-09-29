@@ -11,11 +11,11 @@ import * as span from "@effect/cli/internal/helpDoc/span"
 import * as _usage from "@effect/cli/internal/usage"
 import * as validationError from "@effect/cli/internal/validationError"
 import type * as ValidationError from "@effect/cli/ValidationError"
-import * as Context from "@effect/data/Context"
-import { dual, pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Console from "@effect/io/Console"
-import * as Effect from "@effect/io/Effect"
+import * as Console from "effect/Console"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import { dual, pipe } from "effect/Function"
+import * as Option from "effect/Option"
 
 const defaultConfig = {
   summary: span.empty,

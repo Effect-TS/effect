@@ -3,9 +3,9 @@ import type * as Span from "@effect/cli/HelpDoc/Span"
 import * as _helpDoc from "@effect/cli/internal/helpDoc"
 import * as span from "@effect/cli/internal/helpDoc/span"
 import type * as Usage from "@effect/cli/Usage"
-import * as Chunk from "@effect/data/Chunk"
-import { dual } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
+import * as Chunk from "effect/Chunk"
+import { dual } from "effect/Function"
+import * as Option from "effect/Option"
 
 /** @internal */
 export const empty: Usage.Usage = {

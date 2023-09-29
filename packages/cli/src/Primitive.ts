@@ -3,10 +3,10 @@
  */
 import type { Span } from "@effect/cli/HelpDoc/Span"
 import * as internal from "@effect/cli/internal/primitive"
-import type { Option } from "@effect/data/Option"
-import type { Pipeable } from "@effect/data/Pipeable"
-import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import type { Effect } from "@effect/io/Effect"
+import type { Effect } from "effect/Effect"
+import type { Option } from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 /**
  * @since 1.0.0

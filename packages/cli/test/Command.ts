@@ -10,9 +10,9 @@ import * as Grep from "@effect/cli/test/utils/grep"
 import * as Tail from "@effect/cli/test/utils/tail"
 import * as WC from "@effect/cli/test/utils/wc"
 import * as ValidationError from "@effect/cli/ValidationError"
-import { pipe } from "@effect/data/Function"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Option from "effect/Option"
 import { describe, expect } from "vitest"
 
 describe.concurrent("Command", () => {

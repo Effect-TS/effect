@@ -5,12 +5,12 @@ import type { HelpDoc } from "@effect/cli/HelpDoc"
 import * as internal from "@effect/cli/internal/args"
 import type { Usage } from "@effect/cli/Usage"
 import type { ValidationError } from "@effect/cli/ValidationError"
-import type { Chunk, NonEmptyChunk } from "@effect/data/Chunk"
-import type { Either } from "@effect/data/Either"
-import type { Option } from "@effect/data/Option"
-import type { Pipeable } from "@effect/data/Pipeable"
-import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
-import type { Effect } from "@effect/io/Effect"
+import type { Chunk, NonEmptyChunk } from "effect/Chunk"
+import type { Effect } from "effect/Effect"
+import type { Either } from "effect/Either"
+import type { Option } from "effect/Option"
+import type { Pipeable } from "effect/Pipeable"
+import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 /**
  * @since 1.0.0

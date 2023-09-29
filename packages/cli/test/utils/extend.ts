@@ -1,10 +1,10 @@
-import * as Duration from "@effect/data/Duration"
-import { pipe } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
-import * as TestEnvironment from "@effect/io/internal/testing/testEnvironment"
-import type * as TestServices from "@effect/io/internal/testing/testServices"
-import * as Schedule from "@effect/io/Schedule"
-import type * as Scope from "@effect/io/Scope"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as Schedule from "effect/Schedule"
+import type * as Scope from "effect/Scope"
+import * as TestEnvironment from "effect/TestContext"
+import type * as TestServices from "effect/TestServices"
 import type { TestAPI } from "vitest"
 import * as V from "vitest"
 
@@ -23,7 +23,7 @@ export const effect = (() => {
       () =>
         pipe(
           Effect.suspend(self),
-          Effect.provide(TestEnvironment.testContext()),
+          Effect.provide(TestEnvironment.TestContext),
           Effect.runPromise
         ),
       timeout
@@ -40,7 +40,7 @@ export const effect = (() => {
         () =>
           pipe(
             Effect.suspend(self),
-            Effect.provide(TestEnvironment.testContext()),
+            Effect.provide(TestEnvironment.TestContext),
             Effect.runPromise
           ),
         timeout
@@ -56,7 +56,7 @@ export const effect = (() => {
         () =>
           pipe(
             Effect.suspend(self),
-            Effect.provide(TestEnvironment.testContext()),
+            Effect.provide(TestEnvironment.TestContext),
             Effect.runPromise
           ),
         timeout
@@ -109,7 +109,7 @@ export const scoped = <E, A>(
       pipe(
         Effect.suspend(self),
         Effect.scoped,
-        Effect.provide(TestEnvironment.testContext()),
+        Effect.provide(TestEnvironment.TestContext),
         Effect.runPromise
       ),
     timeout

@@ -3,8 +3,8 @@
  */
 import type { Span } from "@effect/cli/HelpDoc/Span"
 import * as internal from "@effect/cli/internal/helpDoc"
-import type { NonEmptyReadonlyArray } from "@effect/data/ReadonlyArray"
 import type { AnsiDoc } from "@effect/printer-ansi/AnsiDoc"
+import type { NonEmptyReadonlyArray } from "effect/ReadonlyArray"
 
 /**
  * A `HelpDoc` models the full documentation for a command-line application.
