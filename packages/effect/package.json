@@ -17,7 +17,8 @@
     "circular": "madge --ts-config ./tsconfig.json --circular --no-color --no-spinner --warning src",
     "update-version": "changeset version && pnpm install --no-frozen-lockfile",
     "lint": "eslint src test",
-    "fix": "preconstruct fix"
+    "fix": "preconstruct fix",
+    "docgen": "docgen"
   },
   "files": [
     "dist",
@@ -1059,7 +1060,7 @@
     "@definitelytyped/dtslint": "^0.0.177",
     "@effect/babel-plugin": "^0.2.0",
     "@effect/build-utils": "^0.1.4",
-    "@effect/docgen": "^0.1.7",
+    "@effect/docgen": "^0.1.8",
     "@effect/eslint-plugin": "^0.1.2",
     "@effect/language-service": "^0.0.21",
     "@preconstruct/cli": "^2.8.1",
