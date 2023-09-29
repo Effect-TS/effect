@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.8.1
+
+### Patch Changes
+
+- [#96](https://github.com/Effect-TS/rpc/pull/96) [`0d0494d`](https://github.com/Effect-TS/rpc/commit/0d0494df52786a90d9d079c2dd732daa3c38f217) Thanks [@tim-smart](https://github.com/tim-smart)! - update effect
+
 ## 0.8.0
 
 ### Minor Changes
