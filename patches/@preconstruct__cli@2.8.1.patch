@@ -1,0 +1,78 @@
+diff --git a/cli/dist/preconstruct-cli-cli.cjs.js b/cli/dist/preconstruct-cli-cli.cjs.js
+index b18c560863966454aab77816b147401f4ee875e1..2a8665507dbc386eaa886f567eed6ff090518c6c 100644
+--- a/cli/dist/preconstruct-cli-cli.cjs.js
++++ b/cli/dist/preconstruct-cli-cli.cjs.js
+@@ -3065,6 +3065,7 @@ function getRollupConfigs(pkg) {
+           interop
+         }, {
+           format: "es",
++          preserveModules: true,
+           entryFileNames: `[name].${getDistExtensionForConditions(conditions.concat("module"))}`,
+           chunkFileNames: `dist/[name]-[hash].${getDistExtensionForConditions(conditions.concat("module"))}`,
+           dir: pkg.directory
+@@ -3091,6 +3092,7 @@ function getRollupConfigs(pkg) {
+       interop
+     }, ...(hasModuleField ? [{
+       format: "es",
++      preserveModules: true,
+       entryFileNames: `[name].${getDistExtension("esm")}`,
+       chunkFileNames: `dist/[name]-[hash].${getDistExtension("esm")}`,
+       dir: pkg.directory
+@@ -3125,6 +3127,7 @@ function getRollupConfigs(pkg) {
+         interop
+       }, hasModuleField && {
+         format: "es",
++        preserveModules: true,
+         entryFileNames: `[name].${getDistExtension("browser-esm")}`,
+         chunkFileNames: `dist/[name]-[hash].${getDistExtension("browser-esm")}`,
+         dir: pkg.directory
+@@ -3140,6 +3143,7 @@ function getRollupConfigs(pkg) {
+       }, () => {}),
+       outputs: [{
+         format: "es",
++        preserveModules: true,
+         entryFileNames: `[name].${getDistExtension("worker")}`,
+         chunkFileNames: `dist/[name]-[hash].${getDistExtension("worker")}`,
+         dir: pkg.directory
+diff --git a/cli/dist/preconstruct-cli-cli.esm.js b/cli/dist/preconstruct-cli-cli.esm.js
+index f54aa61f8445c990c215ef9934845741ea6bf591..d86dce28d7164b5a6900e48235880986f4224264 100644
+--- a/cli/dist/preconstruct-cli-cli.esm.js
++++ b/cli/dist/preconstruct-cli-cli.esm.js
+@@ -3015,6 +3015,7 @@ function getRollupConfigs(pkg) {
+           interop
+         }, {
+           format: "es",
++          preserveModules: true,
+           entryFileNames: `[name].${getDistExtensionForConditions(conditions.concat("module"))}`,
+           chunkFileNames: `dist/[name]-[hash].${getDistExtensionForConditions(conditions.concat("module"))}`,
+           dir: pkg.directory
+@@ -3041,6 +3042,7 @@ function getRollupConfigs(pkg) {
+       interop
+     }, ...(hasModuleField ? [{
+       format: "es",
++      preserveModules: true,
+       entryFileNames: `[name].${getDistExtension("esm")}`,
+       chunkFileNames: `dist/[name]-[hash].${getDistExtension("esm")}`,
+       dir: pkg.directory
+@@ -3075,6 +3077,7 @@ function getRollupConfigs(pkg) {
+         interop
+       }, hasModuleField && {
+         format: "es",
++        preserveModules: true,
+         entryFileNames: `[name].${getDistExtension("browser-esm")}`,
+         chunkFileNames: `dist/[name]-[hash].${getDistExtension("browser-esm")}`,
+         dir: pkg.directory
+@@ -3090,6 +3093,7 @@ function getRollupConfigs(pkg) {
+       }, () => {}),
+       outputs: [{
+         format: "es",
++        preserveModules: true,
+         entryFileNames: `[name].${getDistExtension("worker")}`,
+         chunkFileNames: `dist/[name]-[hash].${getDistExtension("worker")}`,
+         dir: pkg.directory
+diff --git a/dist/declarations/src/cli.d.ts b/dist/declarations/src/cli.d.ts
+deleted file mode 100644
+index cb0ff5c3b541f646105198ee23ac0fc3d805023e..0000000000000000000000000000000000000000
+diff --git a/dist/declarations/src/worker.d.ts b/dist/declarations/src/worker.d.ts
+deleted file mode 100644
+index 9cd1f2dbb0325b78d77a6f2d93b066baf080fa6f..0000000000000000000000000000000000000000

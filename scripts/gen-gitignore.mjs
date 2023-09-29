@@ -12,7 +12,8 @@ dist/
 .direnv/
 
 # files
-/dist`;
+/dist
+/internal`;
 
 const modules = Fs.readdirSync("src")
   .filter((_) => _.endsWith(".ts") && _ !== "index.ts")
