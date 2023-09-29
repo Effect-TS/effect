@@ -78,14 +78,14 @@ export const EffectProtoCommitStructural = {
 }
 
 /** @internal */
-export const Commit: Effectable.Commit = (function() {
+export const Base: Effectable.CommitPrimitive = (function() {
   function Base() {}
   Base.prototype = EffectProtoCommit
   return Base as any
 })()
 
 /** @internal */
-export const CommitStructural: Effectable.Commit = (function() {
+export const StructuralBase: Effectable.CommitPrimitive = (function() {
   function Base() {}
   Base.prototype = EffectProtoCommitStructural
   return Base as any

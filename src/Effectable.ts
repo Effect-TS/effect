@@ -59,18 +59,25 @@ export type ChannelTypeId = Channel.ChannelTypeId
  * @since 1.0.0
  * @category models
  */
-export interface Commit {
+export interface CommitPrimitive {
   new<R, E, A>(): Effect.Effect<R, E, A>
 }
 
-const Commit: Commit = internal.Commit
-const CommitStructural: Commit = internal.CommitStructural
+/**
+ * @since 1.0.0
+ */
+export const Base: CommitPrimitive = internal.Base
+
+/**
+ * @since 1.0.0
+ */
+export const StructuralBase: CommitPrimitive = internal.StructuralBase
 
 /**
  * @since 1.0.0
  * @category constructors
  */
-export abstract class Effectable<R, E, A> extends Commit<R, E, A> {
+export abstract class Effectable<R, E, A> extends Base<R, E, A> {
   /**
    * @since 1.0.0
    */
@@ -81,7 +88,7 @@ export abstract class Effectable<R, E, A> extends Commit<R, E, A> {
  * @since 1.0.0
  * @category constructors
  */
-export abstract class Structural<R, E, A> extends CommitStructural<R, E, A> {
+export abstract class Structural<R, E, A> extends StructuralBase<R, E, A> {
   /**
    * @since 1.0.0
    */

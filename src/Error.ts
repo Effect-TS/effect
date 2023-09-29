@@ -4,10 +4,9 @@
 import type * as Channel from "./Channel"
 import type * as Data from "./Data"
 import * as Effect from "./Effect"
-import type * as Effectable from "./Effectable"
+import * as Effectable from "./Effectable"
 import type * as Equal from "./Equal"
 import type * as Inspectable from "./Inspectable"
-import * as internalEffectable from "./internal/Effectable"
 import { type Pipeable } from "./Pipeable"
 import type * as Sink from "./Sink"
 import type * as Types from "./Types"
@@ -32,7 +31,7 @@ export interface YieldableError extends Data.Case, Pipeable, Inspectable.Inspect
 }
 
 const YieldableErrorProto = {
-  ...internalEffectable.EffectProtoCommitStructural,
+  ...Effectable.StructuralBase.prototype,
   commit() {
     return Effect.fail(this)
   }

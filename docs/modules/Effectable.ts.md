@@ -18,7 +18,7 @@ Added in v1.0.0
   - [Structural (class)](#structural-class)
     - [commit (method)](#commit-method-1)
 - [models](#models)
-  - [Commit (interface)](#commit-interface)
+  - [CommitPrimitive (interface)](#commitprimitive-interface)
 - [type ids](#type-ids)
   - [ChannelTypeId](#channeltypeid)
   - [ChannelTypeId (type alias)](#channeltypeid-type-alias)
@@ -28,6 +28,9 @@ Added in v1.0.0
   - [SinkTypeId (type alias)](#sinktypeid-type-alias)
   - [StreamTypeId](#streamtypeid)
   - [StreamTypeId (type alias)](#streamtypeid-type-alias)
+- [utils](#utils)
+  - [Base](#base)
+  - [StructuralBase](#structuralbase)
 
 ---
 
@@ -75,12 +78,12 @@ Added in v1.0.0
 
 # models
 
-## Commit (interface)
+## CommitPrimitive (interface)
 
 **Signature**
 
 ```ts
-export interface Commit {
+export interface CommitPrimitive {
   new <R, E, A>(): Effect.Effect<R, E, A>
 }
 ```
@@ -165,6 +168,28 @@ Added in v1.0.0
 
 ```ts
 export type StreamTypeId = Stream.StreamTypeId
+```
+
+Added in v1.0.0
+
+# utils
+
+## Base
+
+**Signature**
+
+```ts
+export declare const Base: CommitPrimitive
+```
+
+Added in v1.0.0
+
+## StructuralBase
+
+**Signature**
+
+```ts
+export declare const StructuralBase: CommitPrimitive
 ```
 
 Added in v1.0.0
