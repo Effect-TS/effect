@@ -175,7 +175,7 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * from './Bigint'
+export * as Bigint from './Bigint'
 ```
 
 Added in v2.0.0
@@ -189,7 +189,7 @@ It includes functions for basic boolean operations, as well as type class instan
 **Signature**
 
 ```ts
-export * from './Boolean'
+export * as Boolean from './Boolean'
 ```
 
 Added in v2.0.0
@@ -214,19 +214,19 @@ If the input data fails the validation, a `BrandErrors` is returned, which provi
 **Signature**
 
 ```ts
-export * from './Brand'
+export * as Brand from './Brand'
 ```
 
 Added in v2.0.0
 
 ## From "./Cache"
 
-Re-exports all named exports from the "./Cache" module.
+Re-exports all named exports from the "./Cache" module as "Cache".
 
 **Signature**
 
 ```ts
-export * from './Cache'
+export * as Cache from './Cache'
 ```
 
 Added in v2.0.0
@@ -256,199 +256,199 @@ occurring within our codebase.
 **Signature**
 
 ```ts
-export * from './Cause'
+export * as Cause from './Cause'
 ```
 
 Added in v2.0.0
 
 ## From "./Channel"
 
-Re-exports all named exports from the "./Channel" module.
+Re-exports all named exports from the "./Channel" module as "Channel".
 
 **Signature**
 
 ```ts
-export * from './Channel'
+export * as Channel from './Channel'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelChildExecutorDecision"
 
-Re-exports all named exports from the "./ChannelChildExecutorDecision" module.
+Re-exports all named exports from the "./ChannelChildExecutorDecision" module as "ChannelChildExecutorDecision".
 
 **Signature**
 
 ```ts
-export * from './ChannelChildExecutorDecision'
+export * as ChannelChildExecutorDecision from './ChannelChildExecutorDecision'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelMergeDecision"
 
-Re-exports all named exports from the "./ChannelMergeDecision" module.
+Re-exports all named exports from the "./ChannelMergeDecision" module as "ChannelMergeDecision".
 
 **Signature**
 
 ```ts
-export * from './ChannelMergeDecision'
+export * as ChannelMergeDecision from './ChannelMergeDecision'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelMergeState"
 
-Re-exports all named exports from the "./ChannelMergeState" module.
+Re-exports all named exports from the "./ChannelMergeState" module as "ChannelMergeState".
 
 **Signature**
 
 ```ts
-export * from './ChannelMergeState'
+export * as ChannelMergeState from './ChannelMergeState'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelMergeStrategy"
 
-Re-exports all named exports from the "./ChannelMergeStrategy" module.
+Re-exports all named exports from the "./ChannelMergeStrategy" module as "ChannelMergeStrategy".
 
 **Signature**
 
 ```ts
-export * from './ChannelMergeStrategy'
+export * as ChannelMergeStrategy from './ChannelMergeStrategy'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelSingleProducerAsyncInput"
 
-Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module.
+Re-exports all named exports from the "./ChannelSingleProducerAsyncInput" module as "ChannelSingleProducerAsyncInput".
 
 **Signature**
 
 ```ts
-export * from './ChannelSingleProducerAsyncInput'
+export * as ChannelSingleProducerAsyncInput from './ChannelSingleProducerAsyncInput'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelUpstreamPullRequest"
 
-Re-exports all named exports from the "./ChannelUpstreamPullRequest" module.
+Re-exports all named exports from the "./ChannelUpstreamPullRequest" module as "ChannelUpstreamPullRequest".
 
 **Signature**
 
 ```ts
-export * from './ChannelUpstreamPullRequest'
+export * as ChannelUpstreamPullRequest from './ChannelUpstreamPullRequest'
 ```
 
 Added in v2.0.0
 
 ## From "./ChannelUpstreamPullStrategy"
 
-Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module.
+Re-exports all named exports from the "./ChannelUpstreamPullStrategy" module as "ChannelUpstreamPullStrategy".
 
 **Signature**
 
 ```ts
-export * from './ChannelUpstreamPullStrategy'
+export * as ChannelUpstreamPullStrategy from './ChannelUpstreamPullStrategy'
 ```
 
 Added in v2.0.0
 
 ## From "./Chunk"
 
-Re-exports all named exports from the "./Chunk" module.
+Re-exports all named exports from the "./Chunk" module as "Chunk".
 
 **Signature**
 
 ```ts
-export * from './Chunk'
+export * as Chunk from './Chunk'
 ```
 
 Added in v2.0.0
 
 ## From "./Clock"
 
-Re-exports all named exports from the "./Clock" module.
+Re-exports all named exports from the "./Clock" module as "Clock".
 
 **Signature**
 
 ```ts
-export * from './Clock'
+export * as Clock from './Clock'
 ```
 
 Added in v2.0.0
 
 ## From "./Config"
 
-Re-exports all named exports from the "./Config" module.
+Re-exports all named exports from the "./Config" module as "Config".
 
 **Signature**
 
 ```ts
-export * from './Config'
+export * as Config from './Config'
 ```
 
 Added in v2.0.0
 
 ## From "./ConfigError"
 
-Re-exports all named exports from the "./ConfigError" module.
+Re-exports all named exports from the "./ConfigError" module as "ConfigError".
 
 **Signature**
 
 ```ts
-export * from './ConfigError'
+export * as ConfigError from './ConfigError'
 ```
 
 Added in v2.0.0
 
 ## From "./ConfigProvider"
 
-Re-exports all named exports from the "./ConfigProvider" module.
+Re-exports all named exports from the "./ConfigProvider" module as "ConfigProvider".
 
 **Signature**
 
 ```ts
-export * from './ConfigProvider'
+export * as ConfigProvider from './ConfigProvider'
 ```
 
 Added in v2.0.0
 
 ## From "./ConfigProviderPathPatch"
 
-Re-exports all named exports from the "./ConfigProviderPathPatch" module.
+Re-exports all named exports from the "./ConfigProviderPathPatch" module as "ConfigProviderPathPatch".
 
 **Signature**
 
 ```ts
-export * from './ConfigProviderPathPatch'
+export * as ConfigProviderPathPatch from './ConfigProviderPathPatch'
 ```
 
 Added in v2.0.0
 
 ## From "./ConfigSecret"
 
-Re-exports all named exports from the "./ConfigSecret" module.
+Re-exports all named exports from the "./ConfigSecret" module as "ConfigSecret".
 
 **Signature**
 
 ```ts
-export * from './ConfigSecret'
+export * as ConfigSecret from './ConfigSecret'
 ```
 
 Added in v2.0.0
 
 ## From "./Console"
 
-Re-exports all named exports from the "./Console" module.
+Re-exports all named exports from the "./Console" module as "Console".
 
 **Signature**
 
 ```ts
-export * from './Console'
+export * as Console from './Console'
 ```
 
 Added in v2.0.0
@@ -464,103 +464,103 @@ query the contents of a `Context`, as well as a number of utility types for work
 **Signature**
 
 ```ts
-export * from './Context'
+export * as Context from './Context'
 ```
 
 Added in v2.0.0
 
 ## From "./Data"
 
-Re-exports all named exports from the "./Data" module.
+Re-exports all named exports from the "./Data" module as "Data".
 
 **Signature**
 
 ```ts
-export * from './Data'
+export * as Data from './Data'
 ```
 
 Added in v2.0.0
 
 ## From "./DefaultServices"
 
-Re-exports all named exports from the "./DefaultServices" module.
+Re-exports all named exports from the "./DefaultServices" module as "DefaultServices".
 
 **Signature**
 
 ```ts
-export * from './DefaultServices'
+export * as DefaultServices from './DefaultServices'
 ```
 
 Added in v2.0.0
 
 ## From "./Deferred"
 
-Re-exports all named exports from the "./Deferred" module.
+Re-exports all named exports from the "./Deferred" module as "Deferred".
 
 **Signature**
 
 ```ts
-export * from './Deferred'
+export * as Deferred from './Deferred'
 ```
 
 Added in v2.0.0
 
 ## From "./Differ"
 
-Re-exports all named exports from the "./Differ" module.
+Re-exports all named exports from the "./Differ" module as "Differ".
 
 **Signature**
 
 ```ts
-export * from './Differ'
+export * as Differ from './Differ'
 ```
 
 Added in v2.0.0
 
 ## From "./Duration"
 
-Re-exports all named exports from the "./Duration" module.
+Re-exports all named exports from the "./Duration" module as "Duration".
 
 **Signature**
 
 ```ts
-export * from './Duration'
+export * as Duration from './Duration'
 ```
 
 Added in v2.0.0
 
 ## From "./Effect"
 
-Re-exports all named exports from the "./Effect" module.
+Re-exports all named exports from the "./Effect" module as "Effect".
 
 **Signature**
 
 ```ts
-export * from './Effect'
+export * as Effect from './Effect'
 ```
 
 Added in v2.0.0
 
 ## From "./Effectable"
 
-Re-exports all named exports from the "./Effectable" module.
+Re-exports all named exports from the "./Effectable" module as "Effectable".
 
 **Signature**
 
 ```ts
-export * from './Effectable'
+export * as Effectable from './Effectable'
 ```
 
 Added in v2.0.0
 
 ## From "./Either"
 
-Re-exports all named exports from the "./Either" module.
+Re-exports all named exports from the "./Either" module as "Either".
 
 **Signature**
 
 ```ts
-export * from './Either'
+export * as Either from './Either'
 ```
 
 Added in v2.0.0
@@ -576,19 +576,19 @@ This module provides encoding & decoding functionality for:
 **Signature**
 
 ```ts
-export * from './Encoding'
+export * as Encoding from './Encoding'
 ```
 
 Added in v2.0.0
 
 ## From "./Equal"
 
-Re-exports all named exports from the "./Equal" module.
+Re-exports all named exports from the "./Equal" module as "Equal".
 
 **Signature**
 
 ```ts
-export * from './Equal'
+export * as Equal from './Equal'
 ```
 
 Added in v2.0.0
@@ -602,235 +602,235 @@ These properties are also known in mathematics as an "equivalence relation".
 **Signature**
 
 ```ts
-export * from './Equivalence'
+export * as Equivalence from './Equivalence'
 ```
 
 Added in v2.0.0
 
 ## From "./Error"
 
-Re-exports all named exports from the "./Error" module.
+Re-exports all named exports from the "./Error" module as "Error".
 
 **Signature**
 
 ```ts
-export * from './Error'
+export * as Error from './Error'
 ```
 
 Added in v2.0.0
 
 ## From "./ExecutionStrategy"
 
-Re-exports all named exports from the "./ExecutionStrategy" module.
+Re-exports all named exports from the "./ExecutionStrategy" module as "ExecutionStrategy".
 
 **Signature**
 
 ```ts
-export * from './ExecutionStrategy'
+export * as ExecutionStrategy from './ExecutionStrategy'
 ```
 
 Added in v2.0.0
 
 ## From "./Exit"
 
-Re-exports all named exports from the "./Exit" module.
+Re-exports all named exports from the "./Exit" module as "Exit".
 
 **Signature**
 
 ```ts
-export * from './Exit'
+export * as Exit from './Exit'
 ```
 
 Added in v2.0.0
 
 ## From "./Fiber"
 
-Re-exports all named exports from the "./Fiber" module.
+Re-exports all named exports from the "./Fiber" module as "Fiber".
 
 **Signature**
 
 ```ts
-export * from './Fiber'
+export * as Fiber from './Fiber'
 ```
 
 Added in v2.0.0
 
 ## From "./FiberId"
 
-Re-exports all named exports from the "./FiberId" module.
+Re-exports all named exports from the "./FiberId" module as "FiberId".
 
 **Signature**
 
 ```ts
-export * from './FiberId'
+export * as FiberId from './FiberId'
 ```
 
 Added in v2.0.0
 
 ## From "./FiberRef"
 
-Re-exports all named exports from the "./FiberRef" module.
+Re-exports all named exports from the "./FiberRef" module as "FiberRef".
 
 **Signature**
 
 ```ts
-export * from './FiberRef'
+export * as FiberRef from './FiberRef'
 ```
 
 Added in v2.0.0
 
 ## From "./FiberRefs"
 
-Re-exports all named exports from the "./FiberRefs" module.
+Re-exports all named exports from the "./FiberRefs" module as "FiberRefs".
 
 **Signature**
 
 ```ts
-export * from './FiberRefs'
+export * as FiberRefs from './FiberRefs'
 ```
 
 Added in v2.0.0
 
 ## From "./FiberRefsPatch"
 
-Re-exports all named exports from the "./FiberRefsPatch" module.
+Re-exports all named exports from the "./FiberRefsPatch" module as "FiberRefsPatch".
 
 **Signature**
 
 ```ts
-export * from './FiberRefsPatch'
+export * as FiberRefsPatch from './FiberRefsPatch'
 ```
 
 Added in v2.0.0
 
 ## From "./FiberStatus"
 
-Re-exports all named exports from the "./FiberStatus" module.
+Re-exports all named exports from the "./FiberStatus" module as "FiberStatus".
 
 **Signature**
 
 ```ts
-export * from './FiberStatus'
+export * as FiberStatus from './FiberStatus'
 ```
 
 Added in v2.0.0
 
 ## From "./Function"
 
-Re-exports all named exports from the "./Function" module.
+Re-exports all named exports from the "./Function" module as "Function".
 
 **Signature**
 
 ```ts
-export * from './Function'
+export * as Function from './Function'
 ```
 
 Added in v2.0.0
 
 ## From "./GlobalValue"
 
-Re-exports all named exports from the "./GlobalValue" module.
+Re-exports all named exports from the "./GlobalValue" module as "GlobalValue".
 
 **Signature**
 
 ```ts
-export * from './GlobalValue'
+export * as GlobalValue from './GlobalValue'
 ```
 
 Added in v2.0.0
 
 ## From "./GroupBy"
 
-Re-exports all named exports from the "./GroupBy" module.
+Re-exports all named exports from the "./GroupBy" module as "GroupBy".
 
 **Signature**
 
 ```ts
-export * from './GroupBy'
+export * as GroupBy from './GroupBy'
 ```
 
 Added in v2.0.0
 
 ## From "./HKT"
 
-Re-exports all named exports from the "./HKT" module.
+Re-exports all named exports from the "./HKT" module as "HKT".
 
 **Signature**
 
 ```ts
-export * from './HKT'
+export * as HKT from './HKT'
 ```
 
 Added in v2.0.0
 
 ## From "./Hash"
 
-Re-exports all named exports from the "./Hash" module.
+Re-exports all named exports from the "./Hash" module as "Hash".
 
 **Signature**
 
 ```ts
-export * from './Hash'
+export * as Hash from './Hash'
 ```
 
 Added in v2.0.0
 
 ## From "./HashMap"
 
-Re-exports all named exports from the "./HashMap" module.
+Re-exports all named exports from the "./HashMap" module as "HashMap".
 
 **Signature**
 
 ```ts
-export * from './HashMap'
+export * as HashMap from './HashMap'
 ```
 
 Added in v2.0.0
 
 ## From "./HashSet"
 
-Re-exports all named exports from the "./HashSet" module.
+Re-exports all named exports from the "./HashSet" module as "HashSet".
 
 **Signature**
 
 ```ts
-export * from './HashSet'
+export * as HashSet from './HashSet'
 ```
 
 Added in v2.0.0
 
 ## From "./Hub"
 
-Re-exports all named exports from the "./Hub" module.
+Re-exports all named exports from the "./Hub" module as "Hub".
 
 **Signature**
 
 ```ts
-export * from './Hub'
+export * as Hub from './Hub'
 ```
 
 Added in v2.0.0
 
 ## From "./Inspectable"
 
-Re-exports all named exports from the "./Inspectable" module.
+Re-exports all named exports from the "./Inspectable" module as "Inspectable".
 
 **Signature**
 
 ```ts
-export * from './Inspectable'
+export * as Inspectable from './Inspectable'
 ```
 
 Added in v2.0.0
 
 ## From "./KeyedPool"
 
-Re-exports all named exports from the "./KeyedPool" module.
+Re-exports all named exports from the "./KeyedPool" module as "KeyedPool".
 
 **Signature**
 
 ```ts
-export * from './KeyedPool'
+export * as KeyedPool from './KeyedPool'
 ```
 
 Added in v2.0.0
@@ -856,7 +856,7 @@ way in Effect-TS to create services that depend on other services.
 **Signature**
 
 ```ts
-export * from './Layer'
+export * as Layer from './Layer'
 ```
 
 Added in v2.0.0
@@ -875,235 +875,235 @@ This data type is optimal for last-in-first-out (LIFO), stack-like access patter
 **Signature**
 
 ```ts
-export * from './List'
+export * as List from './List'
 ```
 
 Added in v2.0.0
 
 ## From "./LogLevel"
 
-Re-exports all named exports from the "./LogLevel" module.
+Re-exports all named exports from the "./LogLevel" module as "LogLevel".
 
 **Signature**
 
 ```ts
-export * from './LogLevel'
+export * as LogLevel from './LogLevel'
 ```
 
 Added in v2.0.0
 
 ## From "./LogSpan"
 
-Re-exports all named exports from the "./LogSpan" module.
+Re-exports all named exports from the "./LogSpan" module as "LogSpan".
 
 **Signature**
 
 ```ts
-export * from './LogSpan'
+export * as LogSpan from './LogSpan'
 ```
 
 Added in v2.0.0
 
 ## From "./Logger"
 
-Re-exports all named exports from the "./Logger" module.
+Re-exports all named exports from the "./Logger" module as "Logger".
 
 **Signature**
 
 ```ts
-export * from './Logger'
+export * as Logger from './Logger'
 ```
 
 Added in v2.0.0
 
 ## From "./Metric"
 
-Re-exports all named exports from the "./Metric" module.
+Re-exports all named exports from the "./Metric" module as "Metric".
 
 **Signature**
 
 ```ts
-export * from './Metric'
+export * as Metric from './Metric'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricBoundaries"
 
-Re-exports all named exports from the "./MetricBoundaries" module.
+Re-exports all named exports from the "./MetricBoundaries" module as "MetricBoundaries".
 
 **Signature**
 
 ```ts
-export * from './MetricBoundaries'
+export * as MetricBoundaries from './MetricBoundaries'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricHook"
 
-Re-exports all named exports from the "./MetricHook" module.
+Re-exports all named exports from the "./MetricHook" module as "MetricHook".
 
 **Signature**
 
 ```ts
-export * from './MetricHook'
+export * as MetricHook from './MetricHook'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricKey"
 
-Re-exports all named exports from the "./MetricKey" module.
+Re-exports all named exports from the "./MetricKey" module as "MetricKey".
 
 **Signature**
 
 ```ts
-export * from './MetricKey'
+export * as MetricKey from './MetricKey'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricKeyType"
 
-Re-exports all named exports from the "./MetricKeyType" module.
+Re-exports all named exports from the "./MetricKeyType" module as "MetricKeyType".
 
 **Signature**
 
 ```ts
-export * from './MetricKeyType'
+export * as MetricKeyType from './MetricKeyType'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricLabel"
 
-Re-exports all named exports from the "./MetricLabel" module.
+Re-exports all named exports from the "./MetricLabel" module as "MetricLabel".
 
 **Signature**
 
 ```ts
-export * from './MetricLabel'
+export * as MetricLabel from './MetricLabel'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricPair"
 
-Re-exports all named exports from the "./MetricPair" module.
+Re-exports all named exports from the "./MetricPair" module as "MetricPair".
 
 **Signature**
 
 ```ts
-export * from './MetricPair'
+export * as MetricPair from './MetricPair'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricPolling"
 
-Re-exports all named exports from the "./MetricPolling" module.
+Re-exports all named exports from the "./MetricPolling" module as "MetricPolling".
 
 **Signature**
 
 ```ts
-export * from './MetricPolling'
+export * as MetricPolling from './MetricPolling'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricRegistry"
 
-Re-exports all named exports from the "./MetricRegistry" module.
+Re-exports all named exports from the "./MetricRegistry" module as "MetricRegistry".
 
 **Signature**
 
 ```ts
-export * from './MetricRegistry'
+export * as MetricRegistry from './MetricRegistry'
 ```
 
 Added in v2.0.0
 
 ## From "./MetricState"
 
-Re-exports all named exports from the "./MetricState" module.
+Re-exports all named exports from the "./MetricState" module as "MetricState".
 
 **Signature**
 
 ```ts
-export * from './MetricState'
+export * as MetricState from './MetricState'
 ```
 
 Added in v2.0.0
 
 ## From "./MutableHashMap"
 
-Re-exports all named exports from the "./MutableHashMap" module.
+Re-exports all named exports from the "./MutableHashMap" module as "MutableHashMap".
 
 **Signature**
 
 ```ts
-export * from './MutableHashMap'
+export * as MutableHashMap from './MutableHashMap'
 ```
 
 Added in v2.0.0
 
 ## From "./MutableHashSet"
 
-Re-exports all named exports from the "./MutableHashSet" module.
+Re-exports all named exports from the "./MutableHashSet" module as "MutableHashSet".
 
 **Signature**
 
 ```ts
-export * from './MutableHashSet'
+export * as MutableHashSet from './MutableHashSet'
 ```
 
 Added in v2.0.0
 
 ## From "./MutableList"
 
-Re-exports all named exports from the "./MutableList" module.
+Re-exports all named exports from the "./MutableList" module as "MutableList".
 
 **Signature**
 
 ```ts
-export * from './MutableList'
+export * as MutableList from './MutableList'
 ```
 
 Added in v2.0.0
 
 ## From "./MutableQueue"
 
-Re-exports all named exports from the "./MutableQueue" module.
+Re-exports all named exports from the "./MutableQueue" module as "MutableQueue".
 
 **Signature**
 
 ```ts
-export * from './MutableQueue'
+export * as MutableQueue from './MutableQueue'
 ```
 
 Added in v2.0.0
 
 ## From "./MutableRef"
 
-Re-exports all named exports from the "./MutableRef" module.
+Re-exports all named exports from the "./MutableRef" module as "MutableRef".
 
 **Signature**
 
 ```ts
-export * from './MutableRef'
+export * as MutableRef from './MutableRef'
 ```
 
 Added in v2.0.0
 
 ## From "./NonEmptyIterable"
 
-Re-exports all named exports from the "./NonEmptyIterable" module.
+Re-exports all named exports from the "./NonEmptyIterable" module as "NonEmptyIterable".
 
 **Signature**
 
 ```ts
-export * from './NonEmptyIterable'
+export * as NonEmptyIterable from './NonEmptyIterable'
 ```
 
 Added in v2.0.0
@@ -1117,103 +1117,103 @@ It includes functions for basic arithmetic operations, as well as type class ins
 **Signature**
 
 ```ts
-export * from './Number'
+export * as Number from './Number'
 ```
 
 Added in v2.0.0
 
 ## From "./Option"
 
-Re-exports all named exports from the "./Option" module.
+Re-exports all named exports from the "./Option" module as "Option".
 
 **Signature**
 
 ```ts
-export * from './Option'
+export * as Option from './Option'
 ```
 
 Added in v2.0.0
 
 ## From "./Order"
 
-Re-exports all named exports from the "./Order" module.
+Re-exports all named exports from the "./Order" module as "Order".
 
 **Signature**
 
 ```ts
-export * from './Order'
+export * as Order from './Order'
 ```
 
 Added in v2.0.0
 
 ## From "./Ordering"
 
-Re-exports all named exports from the "./Ordering" module.
+Re-exports all named exports from the "./Ordering" module as "Ordering".
 
 **Signature**
 
 ```ts
-export * from './Ordering'
+export * as Ordering from './Ordering'
 ```
 
 Added in v2.0.0
 
 ## From "./Pipeable"
 
-Re-exports all named exports from the "./Pipeable" module.
+Re-exports all named exports from the "./Pipeable" module as "Pipeable".
 
 **Signature**
 
 ```ts
-export * from './Pipeable'
+export * as Pipeable from './Pipeable'
 ```
 
 Added in v2.0.0
 
 ## From "./Pool"
 
-Re-exports all named exports from the "./Pool" module.
+Re-exports all named exports from the "./Pool" module as "Pool".
 
 **Signature**
 
 ```ts
-export * from './Pool'
+export * as Pool from './Pool'
 ```
 
 Added in v2.0.0
 
 ## From "./Predicate"
 
-Re-exports all named exports from the "./Predicate" module.
+Re-exports all named exports from the "./Predicate" module as "Predicate".
 
 **Signature**
 
 ```ts
-export * from './Predicate'
+export * as Predicate from './Predicate'
 ```
 
 Added in v2.0.0
 
 ## From "./Queue"
 
-Re-exports all named exports from the "./Queue" module.
+Re-exports all named exports from the "./Queue" module as "Queue".
 
 **Signature**
 
 ```ts
-export * from './Queue'
+export * as Queue from './Queue'
 ```
 
 Added in v2.0.0
 
 ## From "./Random"
 
-Re-exports all named exports from the "./Random" module.
+Re-exports all named exports from the "./Random" module as "Random".
 
 **Signature**
 
 ```ts
-export * from './Random'
+export * as Random from './Random'
 ```
 
 Added in v2.0.0
@@ -1225,7 +1225,7 @@ This module provides utility functions for working with arrays in TypeScript.
 **Signature**
 
 ```ts
-export * from './ReadonlyArray'
+export * as ReadonlyArray from './ReadonlyArray'
 ```
 
 Added in v2.0.0
@@ -1237,307 +1237,307 @@ This module provides utility functions for working with records in TypeScript.
 **Signature**
 
 ```ts
-export * from './ReadonlyRecord'
+export * as ReadonlyRecord from './ReadonlyRecord'
 ```
 
 Added in v2.0.0
 
 ## From "./RedBlackTree"
 
-Re-exports all named exports from the "./RedBlackTree" module.
+Re-exports all named exports from the "./RedBlackTree" module as "RedBlackTree".
 
 **Signature**
 
 ```ts
-export * from './RedBlackTree'
+export * as RedBlackTree from './RedBlackTree'
 ```
 
 Added in v2.0.0
 
 ## From "./Ref"
 
-Re-exports all named exports from the "./Ref" module.
+Re-exports all named exports from the "./Ref" module as "Ref".
 
 **Signature**
 
 ```ts
-export * from './Ref'
+export * as Ref from './Ref'
 ```
 
 Added in v2.0.0
 
 ## From "./Reloadable"
 
-Re-exports all named exports from the "./Reloadable" module.
+Re-exports all named exports from the "./Reloadable" module as "Reloadable".
 
 **Signature**
 
 ```ts
-export * from './Reloadable'
+export * as Reloadable from './Reloadable'
 ```
 
 Added in v2.0.0
 
 ## From "./Request"
 
-Re-exports all named exports from the "./Request" module.
+Re-exports all named exports from the "./Request" module as "Request".
 
 **Signature**
 
 ```ts
-export * from './Request'
+export * as Request from './Request'
 ```
 
 Added in v2.0.0
 
 ## From "./RequestBlock"
 
-Re-exports all named exports from the "./RequestBlock" module.
+Re-exports all named exports from the "./RequestBlock" module as "RequestBlock".
 
 **Signature**
 
 ```ts
-export * from './RequestBlock'
+export * as RequestBlock from './RequestBlock'
 ```
 
 Added in v2.0.0
 
 ## From "./RequestResolver"
 
-Re-exports all named exports from the "./RequestResolver" module.
+Re-exports all named exports from the "./RequestResolver" module as "RequestResolver".
 
 **Signature**
 
 ```ts
-export * from './RequestResolver'
+export * as RequestResolver from './RequestResolver'
 ```
 
 Added in v2.0.0
 
 ## From "./Resource"
 
-Re-exports all named exports from the "./Resource" module.
+Re-exports all named exports from the "./Resource" module as "Resource".
 
 **Signature**
 
 ```ts
-export * from './Resource'
+export * as Resource from './Resource'
 ```
 
 Added in v2.0.0
 
 ## From "./Runtime"
 
-Re-exports all named exports from the "./Runtime" module.
+Re-exports all named exports from the "./Runtime" module as "Runtime".
 
 **Signature**
 
 ```ts
-export * from './Runtime'
+export * as Runtime from './Runtime'
 ```
 
 Added in v2.0.0
 
 ## From "./RuntimeFlags"
 
-Re-exports all named exports from the "./RuntimeFlags" module.
+Re-exports all named exports from the "./RuntimeFlags" module as "RuntimeFlags".
 
 **Signature**
 
 ```ts
-export * from './RuntimeFlags'
+export * as RuntimeFlags from './RuntimeFlags'
 ```
 
 Added in v2.0.0
 
 ## From "./RuntimeFlagsPatch"
 
-Re-exports all named exports from the "./RuntimeFlagsPatch" module.
+Re-exports all named exports from the "./RuntimeFlagsPatch" module as "RuntimeFlagsPatch".
 
 **Signature**
 
 ```ts
-export * from './RuntimeFlagsPatch'
+export * as RuntimeFlagsPatch from './RuntimeFlagsPatch'
 ```
 
 Added in v2.0.0
 
 ## From "./STM"
 
-Re-exports all named exports from the "./STM" module.
+Re-exports all named exports from the "./STM" module as "STM".
 
 **Signature**
 
 ```ts
-export * from './STM'
+export * as STM from './STM'
 ```
 
 Added in v2.0.0
 
 ## From "./Schedule"
 
-Re-exports all named exports from the "./Schedule" module.
+Re-exports all named exports from the "./Schedule" module as "Schedule".
 
 **Signature**
 
 ```ts
-export * from './Schedule'
+export * as Schedule from './Schedule'
 ```
 
 Added in v2.0.0
 
 ## From "./ScheduleDecision"
 
-Re-exports all named exports from the "./ScheduleDecision" module.
+Re-exports all named exports from the "./ScheduleDecision" module as "ScheduleDecision".
 
 **Signature**
 
 ```ts
-export * from './ScheduleDecision'
+export * as ScheduleDecision from './ScheduleDecision'
 ```
 
 Added in v2.0.0
 
 ## From "./ScheduleInterval"
 
-Re-exports all named exports from the "./ScheduleInterval" module.
+Re-exports all named exports from the "./ScheduleInterval" module as "ScheduleInterval".
 
 **Signature**
 
 ```ts
-export * from './ScheduleInterval'
+export * as ScheduleInterval from './ScheduleInterval'
 ```
 
 Added in v2.0.0
 
 ## From "./ScheduleIntervals"
 
-Re-exports all named exports from the "./ScheduleIntervals" module.
+Re-exports all named exports from the "./ScheduleIntervals" module as "ScheduleIntervals".
 
 **Signature**
 
 ```ts
-export * from './ScheduleIntervals'
+export * as ScheduleIntervals from './ScheduleIntervals'
 ```
 
 Added in v2.0.0
 
 ## From "./Scheduler"
 
-Re-exports all named exports from the "./Scheduler" module.
+Re-exports all named exports from the "./Scheduler" module as "Scheduler".
 
 **Signature**
 
 ```ts
-export * from './Scheduler'
+export * as Scheduler from './Scheduler'
 ```
 
 Added in v2.0.0
 
 ## From "./Scope"
 
-Re-exports all named exports from the "./Scope" module.
+Re-exports all named exports from the "./Scope" module as "Scope".
 
 **Signature**
 
 ```ts
-export * from './Scope'
+export * as Scope from './Scope'
 ```
 
 Added in v2.0.0
 
 ## From "./ScopedCache"
 
-Re-exports all named exports from the "./ScopedCache" module.
+Re-exports all named exports from the "./ScopedCache" module as "ScopedCache".
 
 **Signature**
 
 ```ts
-export * from './ScopedCache'
+export * as ScopedCache from './ScopedCache'
 ```
 
 Added in v2.0.0
 
 ## From "./ScopedRef"
 
-Re-exports all named exports from the "./ScopedRef" module.
+Re-exports all named exports from the "./ScopedRef" module as "ScopedRef".
 
 **Signature**
 
 ```ts
-export * from './ScopedRef'
+export * as ScopedRef from './ScopedRef'
 ```
 
 Added in v2.0.0
 
 ## From "./Sink"
 
-Re-exports all named exports from the "./Sink" module.
+Re-exports all named exports from the "./Sink" module as "Sink".
 
 **Signature**
 
 ```ts
-export * from './Sink'
+export * as Sink from './Sink'
 ```
 
 Added in v2.0.0
 
 ## From "./SortedMap"
 
-Re-exports all named exports from the "./SortedMap" module.
+Re-exports all named exports from the "./SortedMap" module as "SortedMap".
 
 **Signature**
 
 ```ts
-export * from './SortedMap'
+export * as SortedMap from './SortedMap'
 ```
 
 Added in v2.0.0
 
 ## From "./SortedSet"
 
-Re-exports all named exports from the "./SortedSet" module.
+Re-exports all named exports from the "./SortedSet" module as "SortedSet".
 
 **Signature**
 
 ```ts
-export * from './SortedSet'
+export * as SortedSet from './SortedSet'
 ```
 
 Added in v2.0.0
 
 ## From "./Stream"
 
-Re-exports all named exports from the "./Stream" module.
+Re-exports all named exports from the "./Stream" module as "Stream".
 
 **Signature**
 
 ```ts
-export * from './Stream'
+export * as Stream from './Stream'
 ```
 
 Added in v2.0.0
 
 ## From "./StreamEmit"
 
-Re-exports all named exports from the "./StreamEmit" module.
+Re-exports all named exports from the "./StreamEmit" module as "StreamEmit".
 
 **Signature**
 
 ```ts
-export * from './StreamEmit'
+export * as StreamEmit from './StreamEmit'
 ```
 
 Added in v2.0.0
 
 ## From "./StreamHaltStrategy"
 
-Re-exports all named exports from the "./StreamHaltStrategy" module.
+Re-exports all named exports from the "./StreamHaltStrategy" module as "StreamHaltStrategy".
 
 **Signature**
 
 ```ts
-export * from './StreamHaltStrategy'
+export * as StreamHaltStrategy from './StreamHaltStrategy'
 ```
 
 Added in v2.0.0
@@ -1551,7 +1551,7 @@ It includes functions for basic string manipulation, as well as type class insta
 **Signature**
 
 ```ts
-export * from './String'
+export * as String from './String'
 ```
 
 Added in v2.0.0
@@ -1563,19 +1563,19 @@ This module provides utility functions for working with structs in TypeScript.
 **Signature**
 
 ```ts
-export * from './Struct'
+export * as Struct from './Struct'
 ```
 
 Added in v2.0.0
 
 ## From "./SubscriptionRef"
 
-Re-exports all named exports from the "./SubscriptionRef" module.
+Re-exports all named exports from the "./SubscriptionRef" module as "SubscriptionRef".
 
 **Signature**
 
 ```ts
-export * from './SubscriptionRef'
+export * as SubscriptionRef from './SubscriptionRef'
 ```
 
 Added in v2.0.0
@@ -1588,295 +1588,295 @@ fibers, producing some visible value of type `T` from the supervision.
 **Signature**
 
 ```ts
-export * from './Supervisor'
+export * as Supervisor from './Supervisor'
 ```
 
 Added in v2.0.0
 
 ## From "./Symbol"
 
-Re-exports all named exports from the "./Symbol" module.
+Re-exports all named exports from the "./Symbol" module as "Symbol".
 
 **Signature**
 
 ```ts
-export * from './Symbol'
+export * as Symbol from './Symbol'
 ```
 
 Added in v2.0.0
 
 ## From "./SynchronizedRef"
 
-Re-exports all named exports from the "./SynchronizedRef" module.
+Re-exports all named exports from the "./SynchronizedRef" module as "SynchronizedRef".
 
 **Signature**
 
 ```ts
-export * from './SynchronizedRef'
+export * as SynchronizedRef from './SynchronizedRef'
 ```
 
 Added in v2.0.0
 
 ## From "./TArray"
 
-Re-exports all named exports from the "./TArray" module.
+Re-exports all named exports from the "./TArray" module as "TArray".
 
 **Signature**
 
 ```ts
-export * from './TArray'
+export * as TArray from './TArray'
 ```
 
 Added in v2.0.0
 
 ## From "./TDeferred"
 
-Re-exports all named exports from the "./TDeferred" module.
+Re-exports all named exports from the "./TDeferred" module as "TDeferred".
 
 **Signature**
 
 ```ts
-export * from './TDeferred'
+export * as TDeferred from './TDeferred'
 ```
 
 Added in v2.0.0
 
 ## From "./THub"
 
-Re-exports all named exports from the "./THub" module.
+Re-exports all named exports from the "./THub" module as "THub".
 
 **Signature**
 
 ```ts
-export * from './THub'
+export * as THub from './THub'
 ```
 
 Added in v2.0.0
 
 ## From "./TMap"
 
-Re-exports all named exports from the "./TMap" module.
+Re-exports all named exports from the "./TMap" module as "TMap".
 
 **Signature**
 
 ```ts
-export * from './TMap'
+export * as TMap from './TMap'
 ```
 
 Added in v2.0.0
 
 ## From "./TPriorityQueue"
 
-Re-exports all named exports from the "./TPriorityQueue" module.
+Re-exports all named exports from the "./TPriorityQueue" module as "TPriorityQueue".
 
 **Signature**
 
 ```ts
-export * from './TPriorityQueue'
+export * as TPriorityQueue from './TPriorityQueue'
 ```
 
 Added in v2.0.0
 
 ## From "./TQueue"
 
-Re-exports all named exports from the "./TQueue" module.
+Re-exports all named exports from the "./TQueue" module as "TQueue".
 
 **Signature**
 
 ```ts
-export * from './TQueue'
+export * as TQueue from './TQueue'
 ```
 
 Added in v2.0.0
 
 ## From "./TRandom"
 
-Re-exports all named exports from the "./TRandom" module.
+Re-exports all named exports from the "./TRandom" module as "TRandom".
 
 **Signature**
 
 ```ts
-export * from './TRandom'
+export * as TRandom from './TRandom'
 ```
 
 Added in v2.0.0
 
 ## From "./TReentrantLock"
 
-Re-exports all named exports from the "./TReentrantLock" module.
+Re-exports all named exports from the "./TReentrantLock" module as "TReentrantLock".
 
 **Signature**
 
 ```ts
-export * from './TReentrantLock'
+export * as TReentrantLock from './TReentrantLock'
 ```
 
 Added in v2.0.0
 
 ## From "./TRef"
 
-Re-exports all named exports from the "./TRef" module.
+Re-exports all named exports from the "./TRef" module as "TRef".
 
 **Signature**
 
 ```ts
-export * from './TRef'
+export * as TRef from './TRef'
 ```
 
 Added in v2.0.0
 
 ## From "./TSemaphore"
 
-Re-exports all named exports from the "./TSemaphore" module.
+Re-exports all named exports from the "./TSemaphore" module as "TSemaphore".
 
 **Signature**
 
 ```ts
-export * from './TSemaphore'
+export * as TSemaphore from './TSemaphore'
 ```
 
 Added in v2.0.0
 
 ## From "./TSet"
 
-Re-exports all named exports from the "./TSet" module.
+Re-exports all named exports from the "./TSet" module as "TSet".
 
 **Signature**
 
 ```ts
-export * from './TSet'
+export * as TSet from './TSet'
 ```
 
 Added in v2.0.0
 
 ## From "./Take"
 
-Re-exports all named exports from the "./Take" module.
+Re-exports all named exports from the "./Take" module as "Take".
 
 **Signature**
 
 ```ts
-export * from './Take'
+export * as Take from './Take'
 ```
 
 Added in v2.0.0
 
 ## From "./TestAnnotation"
 
-Re-exports all named exports from the "./TestAnnotation" module.
+Re-exports all named exports from the "./TestAnnotation" module as "TestAnnotation".
 
 **Signature**
 
 ```ts
-export * from './TestAnnotation'
+export * as TestAnnotation from './TestAnnotation'
 ```
 
 Added in v2.0.0
 
 ## From "./TestAnnotationMap"
 
-Re-exports all named exports from the "./TestAnnotationMap" module.
+Re-exports all named exports from the "./TestAnnotationMap" module as "TestAnnotationMap".
 
 **Signature**
 
 ```ts
-export * from './TestAnnotationMap'
+export * as TestAnnotationMap from './TestAnnotationMap'
 ```
 
 Added in v2.0.0
 
 ## From "./TestAnnotations"
 
-Re-exports all named exports from the "./TestAnnotations" module.
+Re-exports all named exports from the "./TestAnnotations" module as "TestAnnotations".
 
 **Signature**
 
 ```ts
-export * from './TestAnnotations'
+export * as TestAnnotations from './TestAnnotations'
 ```
 
 Added in v2.0.0
 
 ## From "./TestClock"
 
-Re-exports all named exports from the "./TestClock" module.
+Re-exports all named exports from the "./TestClock" module as "TestClock".
 
 **Signature**
 
 ```ts
-export * from './TestClock'
+export * as TestClock from './TestClock'
 ```
 
 Added in v2.0.0
 
 ## From "./TestConfig"
 
-Re-exports all named exports from the "./TestConfig" module.
+Re-exports all named exports from the "./TestConfig" module as "TestConfig".
 
 **Signature**
 
 ```ts
-export * from './TestConfig'
+export * as TestConfig from './TestConfig'
 ```
 
 Added in v2.0.0
 
 ## From "./TestContext"
 
-Re-exports all named exports from the "./TestContext" module.
+Re-exports all named exports from the "./TestContext" module as "TestContext".
 
 **Signature**
 
 ```ts
-export * from './TestContext'
+export * as TestContext from './TestContext'
 ```
 
 Added in v2.0.0
 
 ## From "./TestLive"
 
-Re-exports all named exports from the "./TestLive" module.
+Re-exports all named exports from the "./TestLive" module as "TestLive".
 
 **Signature**
 
 ```ts
-export * from './TestLive'
+export * as TestLive from './TestLive'
 ```
 
 Added in v2.0.0
 
 ## From "./TestServices"
 
-Re-exports all named exports from the "./TestServices" module.
+Re-exports all named exports from the "./TestServices" module as "TestServices".
 
 **Signature**
 
 ```ts
-export * from './TestServices'
+export * as TestServices from './TestServices'
 ```
 
 Added in v2.0.0
 
 ## From "./TestSized"
 
-Re-exports all named exports from the "./TestSized" module.
+Re-exports all named exports from the "./TestSized" module as "TestSized".
 
 **Signature**
 
 ```ts
-export * from './TestSized'
+export * as TestSized from './TestSized'
 ```
 
 Added in v2.0.0
 
 ## From "./Tracer"
 
-Re-exports all named exports from the "./Tracer" module.
+Re-exports all named exports from the "./Tracer" module as "Tracer".
 
 **Signature**
 
 ```ts
-export * from './Tracer'
+export * as Tracer from './Tracer'
 ```
 
 Added in v2.0.0
@@ -1888,7 +1888,7 @@ This module provides utility functions for working with tuples in TypeScript.
 **Signature**
 
 ```ts
-export * from './Tuple'
+export * as Tuple from './Tuple'
 ```
 
 Added in v2.0.0
@@ -1900,31 +1900,31 @@ A collection of types that are commonly used types.
 **Signature**
 
 ```ts
-export * from './Types'
+export * as Types from './Types'
 ```
 
 Added in v2.0.0
 
 ## From "./Unify"
 
-Re-exports all named exports from the "./Unify" module.
+Re-exports all named exports from the "./Unify" module as "Unify".
 
 **Signature**
 
 ```ts
-export * from './Unify'
+export * as Unify from './Unify'
 ```
 
 Added in v2.0.0
 
 ## From "./Utils"
 
-Re-exports all named exports from the "./Utils" module.
+Re-exports all named exports from the "./Utils" module as "Utils".
 
 **Signature**
 
 ```ts
-export * from './Utils'
+export * as Utils from './Utils'
 ```
 
 Added in v2.0.0
