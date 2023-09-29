@@ -2,9 +2,9 @@ import * as Fs from "node:fs";
 import Package from "../package.json" assert { type: "json" };
 
 const modules = Fs.readdirSync("src").filter(
-  (_) => _.endsWith(".ts") && _ !== "index.ts"
+  (_) => _.endsWith(".ts") && _ !== "index.ts",
 );
-const files = ["dist", ...modules.map((_) => _.slice(0, -3))];
+const files = ["dist", "internal", ...modules.map((_) => _.slice(0, -3))];
 const exports = {
   ".": {
     module: "./dist/effect.esm.js",
@@ -39,6 +39,6 @@ console.log(
       },
     },
     null,
-    2
-  )
+    2,
+  ),
 );

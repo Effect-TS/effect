@@ -11,6 +11,7 @@ dist/
 
 # files
 /dist
+/internal
 /Bigint
 /Boolean
 /Brand

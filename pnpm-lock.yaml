@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@preconstruct/cli@2.8.1':
+    hash: pjrzkut55ezbyfaebnxnr6ctpe
+    path: patches/@preconstruct__cli@2.8.1.patch
+
 devDependencies:
   '@babel/cli':
     specifier: ^7.22.15
@@ -43,7 +48,7 @@ devDependencies:
     version: 0.0.21
   '@preconstruct/cli':
     specifier: ^2.8.1
-    version: 2.8.1
+    version: 2.8.1(patch_hash=pjrzkut55ezbyfaebnxnr6ctpe)
   '@rollup/pluginutils':
     specifier: ^5.0.4
     version: 5.0.4(rollup@2.79.1)
@@ -1249,7 +1254,7 @@ packages:
     dev: true
     optional: true
 
-  /@preconstruct/cli@2.8.1:
+  /@preconstruct/cli@2.8.1(patch_hash=pjrzkut55ezbyfaebnxnr6ctpe):
     resolution: {integrity: sha512-PX5w+au06iY/QaT+9RLmRlIfavRCRoMTC/krwtNrgPEnubR9e6P+QlywrKmwiEvkzbR9AEzGnRZL8uNRDDMzrQ==}
     hasBin: true
     dependencies:
@@ -1294,6 +1299,7 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+    patched: true
 
   /@preconstruct/hook@0.4.0:
     resolution: {integrity: sha512-a7mrlPTM3tAFJyz43qb4pPVpUx8j8TzZBFsNFqcKcE/sEakNXRlQAuCT4RGZRf9dQiiUnBahzSIWawU4rENl+Q==}
