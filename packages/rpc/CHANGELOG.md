@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.8.0
+
+### Minor Changes
+
+- [#92](https://github.com/Effect-TS/rpc/pull/92) [`977d259`](https://github.com/Effect-TS/rpc/commit/977d259a52813c912c516fc788ec4d67d37751a1) Thanks [@tim-smart](https://github.com/tim-smart)! - update to effect package
+
 ## 0.7.0
 
 ### Minor Changes
