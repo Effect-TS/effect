@@ -1,7 +1,7 @@
-import * as Equal from "@effect/data/Equal"
-import { pipe } from "@effect/data/Function"
-import * as Hash from "@effect/data/Hash"
 import type * as PageWidth from "@effect/printer/PageWidth"
+import * as Equal from "effect/Equal"
+import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
 
 // -----------------------------------------------------------------------------
 // Models

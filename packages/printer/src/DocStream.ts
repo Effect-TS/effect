@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 
-import type { Equal } from "@effect/data/Equal"
-import type { TypeLambda } from "@effect/data/HKT"
-import type { Option } from "@effect/data/Option"
 import * as internal from "@effect/printer/internal/docStream"
 import type * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
+import type { Equal } from "effect/Equal"
+import type { TypeLambda } from "effect/HKT"
+import type { Option } from "effect/Option"
 
 // -----------------------------------------------------------------------------
 // Models

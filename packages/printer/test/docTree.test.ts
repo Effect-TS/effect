@@ -1,11 +1,11 @@
-import { pipe } from "@effect/data/Function"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
-import * as String from "@effect/data/String"
-import * as Effect from "@effect/io/Effect"
 import * as Doc from "@effect/printer/Doc"
 import * as DocStream from "@effect/printer/DocStream"
 import * as DocTree from "@effect/printer/DocTree"
 import * as Layout from "@effect/printer/Layout"
+import * as Effect from "effect/Effect"
+import { pipe } from "effect/Function"
+import * as ReadonlyArray from "effect/ReadonlyArray"
+import * as String from "effect/String"
 
 describe.concurrent("DocTree", () => {
   describe.concurrent("constructors", () => {

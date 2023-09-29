@@ -1,5 +1,5 @@
-import { constant } from "@effect/data/Function"
 import * as Doc from "@effect/printer/Doc"
+import { constant } from "effect/Function"
 import * as fc from "fast-check"
 
 export const arbEmpty: fc.Arbitrary<Doc.Doc<number>> = fc.constant(Doc.empty)

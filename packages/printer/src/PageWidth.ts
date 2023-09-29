@@ -2,8 +2,8 @@
  * @since 1.0.0
  */
 
-import type { Equal } from "@effect/data/Equal"
 import * as internal from "@effect/printer/internal/pageWidth"
+import type { Equal } from "effect/Equal"
 
 // -----------------------------------------------------------------------------
 // Models

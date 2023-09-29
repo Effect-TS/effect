@@ -1,10 +1,10 @@
-import { dual } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import type * as Doc from "@effect/printer/Doc"
 import type * as DocStream from "@effect/printer/DocStream"
 import * as layout from "@effect/printer/internal/layout"
 import * as pageWidth from "@effect/printer/internal/pageWidth"
 import type * as PageWidth from "@effect/printer/PageWidth"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 
 // -----------------------------------------------------------------------------
 // Rendering Algorithms

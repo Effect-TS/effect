@@ -1,8 +1,8 @@
-import { dual } from "@effect/data/Function"
-import * as Effect from "@effect/io/Effect"
 import type * as Doc from "@effect/printer/Doc"
 import * as _doc from "@effect/printer/internal/doc"
 import type * as Optimize from "@effect/printer/Optimize"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
 
 /** @internal */
 export const optimize = dual<

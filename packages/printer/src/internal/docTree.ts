@@ -1,9 +1,3 @@
-import * as Equal from "@effect/data/Equal"
-import { dual, pipe } from "@effect/data/Function"
-import * as Hash from "@effect/data/Hash"
-import * as Option from "@effect/data/Option"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
-import * as Effect from "@effect/io/Effect"
 import type * as DocStream from "@effect/printer/DocStream"
 import type * as DocTree from "@effect/printer/DocTree"
 import * as doc from "@effect/printer/internal/doc"
@@ -12,6 +6,12 @@ import * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
+import * as Effect from "effect/Effect"
+import * as Equal from "effect/Equal"
+import { dual, pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
+import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 // -----------------------------------------------------------------------------
 // Models

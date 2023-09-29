@@ -1,5 +1,5 @@
-import { identity } from "@effect/data/Function"
 import * as Flatten from "@effect/printer/Flatten"
+import { identity } from "effect/Function"
 import { describe, expect, it } from "vitest"
 
 describe.concurrent("Flatten", () => {

@@ -1,9 +1,9 @@
-import * as String from "@effect/data/String"
 import type * as AnsiDoc from "@effect/printer-ansi/AnsiDoc"
 import * as AnsiRender from "@effect/printer-ansi/AnsiRender"
 import * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import * as Color from "@effect/printer-ansi/Color"
 import * as Doc from "@effect/printer/Doc"
+import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
 
 export const complex = Doc.annotate(

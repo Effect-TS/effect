@@ -2,13 +2,13 @@
  * @since 1.0.0
  */
 
-import type { Option } from "@effect/data/Option"
-import type { Predicate } from "@effect/data/Predicate"
 import type { Doc } from "@effect/printer/Doc"
 import type { DocStream } from "@effect/printer/DocStream"
 import * as internal from "@effect/printer/internal/layout"
 import type { PageWidth } from "@effect/printer/PageWidth"
 import { defaultPageWidth } from "@effect/printer/PageWidth"
+import type { Option } from "effect/Option"
+import type { Predicate } from "effect/Predicate"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -92,8 +92,8 @@ export const wadlerLeijen: {
  * @example
  * import * as Doc from "@effect/printer/Doc"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@effect/data/Function"
- * import * as String from "@effect/data/String"
+ * import { pipe } from "effect/Function"
+ * import * as String from "effect/String"
  *
  * const doc = pipe(
  *   Doc.vsep([
@@ -163,8 +163,8 @@ export const pretty: {
  * import * as Layout from "@effect/printer/Layout"
  * import * as PageWidth from "@effect/printer/PageWidth"
  * import * as Render from "@effect/printer/Render"
- * import { pipe } from "@effect/data/Function"
- * import * as String from "@effect/data/String"
+ * import { pipe } from "effect/Function"
+ * import * as String from "effect/String"
  *
  * // Consider the following python-ish document:
  * const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>

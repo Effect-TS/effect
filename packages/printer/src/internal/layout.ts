@@ -1,7 +1,3 @@
-import { dual } from "@effect/data/Function"
-import * as List from "@effect/data/List"
-import * as Option from "@effect/data/Option"
-import * as Effect from "@effect/io/Effect"
 import type * as Doc from "@effect/printer/Doc"
 import * as DocStream from "@effect/printer/DocStream"
 import * as docStream from "@effect/printer/internal/docStream"
@@ -9,6 +5,10 @@ import * as pipeline from "@effect/printer/internal/layoutPipeline"
 import * as pageWidth from "@effect/printer/internal/pageWidth"
 import type * as Layout from "@effect/printer/Layout"
 import type * as PageWidth from "@effect/printer/PageWidth"
+import * as Effect from "effect/Effect"
+import { dual } from "effect/Function"
+import * as List from "effect/List"
+import * as Option from "effect/Option"
 
 /** @internal */
 export const options = (pageWidth: PageWidth.PageWidth): Layout.Layout.Options => ({ pageWidth })

@@ -1,5 +1,3 @@
-import * as Option from "@effect/data/Option"
-import * as ReadonlyArray from "@effect/data/ReadonlyArray"
 import type * as AnsiStyle from "@effect/printer-ansi/AnsiStyle"
 import type * as Color from "@effect/printer-ansi/Color"
 import * as renderLayer from "@effect/printer-ansi/internal/renderLayer"
@@ -7,6 +5,8 @@ import * as sgr from "@effect/printer-ansi/internal/sgr"
 import type * as SGR from "@effect/printer-ansi/SGR"
 import * as monoid from "@effect/typeclass/Monoid"
 import * as semigroup from "@effect/typeclass/Semigroup"
+import * as Option from "effect/Option"
+import * as ReadonlyArray from "effect/ReadonlyArray"
 
 // -----------------------------------------------------------------------------
 // Instances

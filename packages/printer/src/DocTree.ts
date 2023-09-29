@@ -1,14 +1,14 @@
 /**
  * @since 1.0.0
  */
-import type { Equal } from "@effect/data/Equal"
-import type { TypeLambda } from "@effect/data/HKT"
 import type * as DocStream from "@effect/printer/DocStream"
 import * as internal from "@effect/printer/internal/docTree"
 import type * as covariant from "@effect/typeclass/Covariant"
 import type * as invariant from "@effect/typeclass/Invariant"
 import type * as monoid from "@effect/typeclass/Monoid"
 import type * as semigroup from "@effect/typeclass/Semigroup"
+import type { Equal } from "effect/Equal"
+import type { TypeLambda } from "effect/HKT"
 
 // -----------------------------------------------------------------------------
 // Models
@@ -299,7 +299,7 @@ export const foldMap: {
  * import * as Doc from "@effect/printer/Doc"
  * import * as DocTree from "@effect/printer/DocTree"
  * import * as Layout from "@effect/printer/Layout"
- * import { identity, pipe } from "@effect/data/Function"
+ * import { identity, pipe } from "effect/Function"
  * import * as String from "@effect/typeclass/data/String"
  *
  * const doc: Doc.Doc<void> = Doc.hsep([

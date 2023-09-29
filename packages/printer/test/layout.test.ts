@@ -1,8 +1,8 @@
-import * as String from "@effect/data/String"
 import * as Doc from "@effect/printer/Doc"
 import * as Layout from "@effect/printer/Layout"
 import * as PageWidth from "@effect/printer/PageWidth"
 import * as Render from "@effect/printer/Render"
+import * as String from "effect/String"
 import { describe, expect, it } from "vitest"
 
 const fun = <A>(doc: Doc.Doc<A>): Doc.Doc<A> =>
